@@ -4,6 +4,8 @@ import { useState } from "react";
 import OrderManagement, { RejectOrderDialog } from "./OrderManagement";
 import { AuthContext } from "@/context/AuthContext";
 
+const apolloState = vi.hoisted(() => ({ edges: [] }));
+
 vi.mock("@apollo/client", () => ({
   gql: (strings) => strings.join(""),
   useLazyQuery: () => [
@@ -11,7 +13,7 @@ vi.mock("@apollo/client", () => ({
     {
       data: {
         ordersByRestaurantNow: {
-          edges: [],
+          edges: apolloState.edges,
           pageInfo: { endCursor: null, hasNextPage: false },
         },
       },
@@ -46,7 +48,13 @@ vi.mock("@/hooks/useSocketOrder", () => ({
 }));
 
 vi.mock("./components/OrderCard", () => ({
-  default: () => <article>Order card</article>,
+  default: ({ order }) => (
+    <article>
+      {(order.items || []).map((item) => (
+        <span key={item._id}>{item.name}</span>
+      ))}
+    </article>
+  ),
 }));
 vi.mock("./components/OrderModal", () => ({
   default: () => <div>Order modal</div>,
@@ -75,6 +83,42 @@ vi.mock("../shared/ManagementPageHeader", () => ({
     </section>
   ),
 }));
+
+const mixedStationOrder = {
+  cursor: "order-1",
+  node: {
+    id: "order-1",
+    orderCode: "ORD-2026-0001",
+    orderKind: "order_batch",
+    orderPaymentStatus: "unpaid",
+    tableCode: "B01",
+    currentStatus: "confirmed",
+    restaurantId: "restaurant-1",
+    orderType: "dine_in",
+    createdAt: "2026-07-07T10:00:00.000Z",
+    payment: { status: "unpaid" },
+    items: [
+      {
+        _id: "item-kitchen",
+        dishId: "dish-kitchen",
+        name: "Bún bò",
+        unit: "portion",
+        quantity: 1,
+        status: "pending",
+        station: "kitchen",
+      },
+      {
+        _id: "item-bar",
+        dishId: "dish-bar",
+        name: "Cà phê sữa",
+        unit: "portion",
+        quantity: 1,
+        status: "pending",
+        station: "bar",
+      },
+    ],
+  },
+};
 
 const RejectDialogHarness = ({ onConfirm = vi.fn() }) => {
   const [reason, setReason] = useState("");
@@ -115,6 +159,7 @@ const renderOrderManagement = () =>
   );
 
 afterEach(() => {
+  apolloState.edges = [];
   document.body.style.overflow = "";
 });
 
@@ -150,20 +195,26 @@ describe("OrderManagement kitchen display", () => {
     expect(document.body.style.overflow).toBe("hidden");
   });
 
-  it("switches from the kitchen queue to the bar queue", () => {
+  it("shows only items assigned to the selected preparation station", () => {
+    apolloState.edges = [mixedStationOrder];
     renderOrderManagement();
 
     fireEvent.click(screen.getByRole("button", { name: /chế độ bếp/i }));
-    const barButton = screen.getByRole("button", {
-      name: /quầy bar, 0 món cần xử lý/i,
-    });
 
+    expect(screen.getAllByText("Bún bò").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Cà phê sữa")).not.toBeInTheDocument();
+
+    const barButton = screen.getByRole("button", {
+      name: /quầy bar, 1 món cần xử lý/i,
+    });
     fireEvent.click(barButton);
 
     expect(
       screen.getByRole("heading", { name: /màn hình quầy bar/i }),
     ).toBeInTheDocument();
     expect(barButton).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getAllByText("Cà phê sữa").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Bún bò")).not.toBeInTheDocument();
   });
 
   it("exits focus mode with Escape and restores body overflow", () => {
