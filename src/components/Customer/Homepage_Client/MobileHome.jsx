@@ -30,17 +30,13 @@ const getCurrentTimeSlot = () => {
 export default function MobileHome() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [restaurantFilter, setRestaurantFilter] = useState({});
   const timeSlot = getCurrentTimeSlot();
 
   const handleSearch = (event) => {
     event.preventDefault();
     const search = query.trim();
     if (!search) return;
-    setRestaurantFilter((current) => ({ ...current, search }));
-    requestAnimationFrame(() => {
-      document.getElementById("restaurants")?.scrollIntoView({ behavior: "smooth" });
-    });
+    navigate(`/search?q=${encodeURIComponent(search)}`);
   };
 
   const handleCategorySelect = useCallback(
@@ -57,15 +53,15 @@ export default function MobileHome() {
       <section className="mobile-home__intro" aria-labelledby="mobile-home-title">
         <span className="mobile-home__eyebrow">Ăn ngon quanh bạn</span>
         <h1 id="mobile-home-title">Hôm nay bạn muốn ăn gì?</h1>
-        <p>Tìm nhà hàng, chọn món và theo dõi đơn trong một luồng gọn.</p>
+        <p>Tìm món ăn, nhà hàng và bếp trưởng trong cùng một luồng.</p>
 
         <form className="mobile-home__search" onSubmit={handleSearch}>
           <Search aria-hidden="true" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Tìm nhà hàng hoặc món ăn"
-            aria-label="Tìm nhà hàng hoặc món ăn"
+            placeholder="Tìm món, nhà hàng, bếp trưởng"
+            aria-label="Tìm món, nhà hàng hoặc bếp trưởng"
           />
           <button type="submit">Tìm</button>
         </form>
@@ -98,7 +94,7 @@ export default function MobileHome() {
         </div>
       </section>
 
-      <RestaurantGrid restaurantFilter={restaurantFilter} />
+      <RestaurantGrid />
 
       <Categories onCategorySelect={handleCategorySelect} timeSlot={timeSlot} />
     </div>

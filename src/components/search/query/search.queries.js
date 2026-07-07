@@ -22,6 +22,18 @@ export const SEARCH_SUGGESTIONS = gql`
         timeSlot
         thumbImage
         basePrice
+        categoryName
+        servingLabel
+        cookingMethods
+      }
+      chefs {
+        id
+        fullName
+        positionTitle
+        avatarUrl
+        restaurantId
+        restaurantName
+        contactPhone
       }
       owners {
         id
@@ -57,6 +69,9 @@ export const SEARCH = gql`
         type
         score
         timeSlot
+        categoryName
+        servingLabel
+        cookingMethods
 
         restaurant {
           id
@@ -65,6 +80,7 @@ export const SEARCH = gql`
           avatar
           avgRating
           cuisineType
+          phone
           address {
             district
             city
@@ -76,6 +92,16 @@ export const SEARCH = gql`
           name
           basePrice
           thumbImage
+        }
+
+        chef {
+          id
+          fullName
+          positionTitle
+          avatarUrl
+          restaurantId
+          restaurantName
+          contactPhone
         }
 
         owner {
