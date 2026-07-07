@@ -1,0 +1,30 @@
+{
+  "id": "customer-self-delete-profile",
+  "name": "customer-self-delete-profile",
+  "title": "Customer self-delete from profile",
+  "description": "Keep the existing account deletion flow customer-only and expose it safely in the customer profile security page.",
+  "status": "in_progress",
+  "dev_type": "feature",
+  "scope": "customer-profile",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "feature/customer-self-delete-profile",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/resolvers/user/customerAccountSecurity.js",
+    "src/components/Customer/Profile/components/SecuritySettings.jsx",
+    "cohan-restaurant-backend/tests/resolvers/customer-account-security.test.js",
+    "src/components/Customer/Profile/components/SecuritySettings.test.jsx"
+  ],
+  "notes": "The GraphQL mutation already exists. This task restricts it to customers and completes guarded UI validation without duplicating the API."
+}
