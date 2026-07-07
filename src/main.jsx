@@ -53,6 +53,7 @@ import "./styles/ManagerMobileRefinement.css";
 import "./styles/TableManagerMobileActionFix.css";
 import "./styles/RestaurantProfileHoursResponsiveFix.css";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoUnifiedPage.css";
+import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoPremiumLayout.css";
 import "./components/Dashboard_Manager/Staff/components/Attendance/OvertimePanelPolicyPolish.scss";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
