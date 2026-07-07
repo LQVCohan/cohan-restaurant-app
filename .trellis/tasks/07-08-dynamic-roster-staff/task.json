@@ -1,0 +1,13 @@
+{
+  "id": "07-08-dynamic-roster-staff",
+  "title": "Use existing roster staff dynamically",
+  "status": "in_progress",
+  "priority": "high",
+  "scope": [
+    "Remove hard-coded demo staff email dependency from the shared roster updater",
+    "Reuse staff referenced by the existing previous/current week shifts",
+    "Apply 8-hour full-time and 4-hour part-time windows without creating staff or shifts",
+    "Verify variable staff and shift counts instead of assuming seven employees and 98 shifts"
+  ],
+  "branch": "fix-dynamic-roster-staff"
+}
