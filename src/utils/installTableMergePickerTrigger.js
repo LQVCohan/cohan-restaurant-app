@@ -3,6 +3,11 @@ import { apolloClient } from "@/apollo/client";
 
 const OBSERVER_KEY = "__cohanTableMergePickerObserver";
 const CLICK_HANDLER_KEY = "__cohanTableMergePickerClickHandler";
+const LEGACY_OBSERVER_KEYS = [
+  "__cohanTableMergePickerTriggerObserver",
+  "__cohanTableTransferMergeObserver",
+];
+const LEGACY_CLICK_HANDLER_KEYS = ["__cohanTableMergePickerTriggerClickHandler"];
 const OPEN_BUTTON_CLASS = "cohan-merge-picker-open";
 const INPUT_CLASS = "cohan-merge-code-input";
 const PICKER_CLASS = "cohan-table-merge-picker";
@@ -95,6 +100,9 @@ const prepareMergeGroup = (modal) => {
   input.setAttribute("aria-label", "Các bàn đã chọn để ghép");
   input.setAttribute("aria-haspopup", "dialog");
 
+  // Disable the legacy per-button listener when Vite HMR kept it alive.
+  mergeButton.dataset.mergePickerBypass = "true";
+
   let openButton = group.querySelector(`.${OPEN_BUTTON_CLASS}`);
   if (!openButton) {
     openButton = document.createElement("button");
@@ -118,7 +126,7 @@ const prepareMergeGroup = (modal) => {
     ? "Ghép bàn đã chọn"
     : "Ghép bàn";
 
-  return { group, input, mergeButton, openButton };
+  return { modal, group, input, mergeButton, openButton };
 };
 
 const prepareAllTableModals = () => {
@@ -380,6 +388,16 @@ const openMergePicker = async ({ modal, input, mergeButton }) => {
 
 export const installTableMergePickerTrigger = () => {
   if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  LEGACY_OBSERVER_KEYS.forEach((key) => {
+    window[key]?.disconnect?.();
+    delete window[key];
+  });
+  LEGACY_CLICK_HANDLER_KEYS.forEach((key) => {
+    const handler = window[key];
+    if (handler) document.removeEventListener("click", handler, true);
+    delete window[key];
+  });
 
   prepareAllTableModals();
 
