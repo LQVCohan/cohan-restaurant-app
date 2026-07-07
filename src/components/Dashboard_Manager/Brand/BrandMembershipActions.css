@@ -194,11 +194,52 @@
   border-left-color: var(--bm-warning);
 }
 
+.manager-layout.manager-layout--brands
+  .brand-member-card:has(.brand-status--inactive) {
+  border-color: rgba(166, 106, 24, 0.34);
+  border-left-color: var(--bm-warning);
+  background:
+    linear-gradient(90deg, rgba(166, 106, 24, 0.09), transparent 38%),
+    rgba(255, 252, 246, 0.98);
+  box-shadow: inset 0 0 0 1px rgba(166, 106, 24, 0.06);
+}
+
+.manager-layout.manager-layout--brands
+  .brand-member-card:has(.brand-status--inactive)
+  :is(.brand-member-card__avatar, .brand-member-card__identity, .brand-member-card__meta) {
+  opacity: 0.58;
+  filter: saturate(0.45);
+}
+
+.manager-layout.manager-layout--brands
+  .brand-member-card:has(.brand-status--inactive)
+  .brand-status--inactive {
+  border-color: rgba(166, 106, 24, 0.42);
+  background: rgba(255, 236, 201, 0.92);
+  color: #7d4d0b;
+}
+
+.manager-layout.manager-layout--brands
+  .brand-member-card:has(.brand-status--inactive)
+  .brand-link-button {
+  border-color: rgba(47, 125, 104, 0.22);
+  background: var(--bm-accent-soft);
+  color: var(--bm-primary-hover);
+}
+
 .manager-layout.manager-layout--brands .brand-member-card:hover {
   border-color: var(--bm-border-strong);
   border-left-color: var(--bm-accent);
   background: #fff;
   box-shadow: 0 12px 26px rgba(48, 72, 61, 0.09);
+}
+
+.manager-layout.manager-layout--brands
+  .brand-member-card:has(.brand-status--inactive):hover {
+  border-color: rgba(166, 106, 24, 0.42);
+  border-left-color: var(--bm-warning);
+  background: rgba(255, 252, 246, 1);
+  box-shadow: 0 10px 22px rgba(113, 76, 25, 0.1);
 }
 
 .manager-layout.manager-layout--brands .brand-member-card__avatar {
