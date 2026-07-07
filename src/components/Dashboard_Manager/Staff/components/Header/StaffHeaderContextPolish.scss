@@ -90,12 +90,14 @@
 
   .mph-stat-card__body {
     min-width: 0 !important;
+    flex: 1 1 auto;
   }
 
   .mph-stat-card__label {
     white-space: normal !important;
     overflow: visible !important;
     text-overflow: clip !important;
+    overflow-wrap: anywhere;
     text-wrap: pretty;
   }
 
@@ -104,9 +106,17 @@
     row-gap: 2px !important;
   }
 
+  .mph-stat-card__value,
   .mph-stat-card__suffix,
   .mph-stat-card__trend {
+    min-width: 0;
     white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+
+  .mph-toggle {
+    top: -12px !important;
+    right: 14px !important;
   }
 }
 
