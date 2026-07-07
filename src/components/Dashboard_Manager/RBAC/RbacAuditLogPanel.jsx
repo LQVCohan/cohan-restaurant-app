@@ -7,6 +7,7 @@ import {
   RBAC_AUDIT_ACTION_LABELS,
   RBAC_AUDIT_TARGET_LABELS,
 } from "@/utils/rbacAuditLogFormatter";
+import { getRbacRoleLabel } from "@/utils/rbacVietnameseLabels";
 
 const formatTime = (value) => {
   if (!value) return "Không rõ";
@@ -41,8 +42,8 @@ export default function RbacAuditLogPanel({
     <section className="rbac-card rbac-audit-log">
       <div className="rbac-card__header">
         <div>
-          <h3>Nhật ký phân quyền</h3>
-          <p>Theo dõi ai đã thay đổi vai trò, quyền hạn hoặc gán vai trò nhân viên.</p>
+          <h3>Lịch sử phân quyền</h3>
+          <p>Xem ai đã tạo, chỉnh sửa hoặc gán vai trò, cùng nội dung thay đổi.</p>
         </div>
         <button type="button" onClick={() => refetch?.()} disabled={loading || auditLogsSkipped}>Làm mới</button>
       </div>
@@ -56,7 +57,7 @@ export default function RbacAuditLogPanel({
           </select>
         </label>
         <label>
-          Loại đối tượng
+          Đối tượng
           <select value={filters.targetType || ""} onChange={(event) => updateFilter("targetType", event.target.value)}>
             <option value="">Tất cả đối tượng</option>
             {Object.entries(RBAC_AUDIT_TARGET_LABELS).map(([targetType, label]) => <option key={targetType} value={targetType}>{label}</option>)}
@@ -79,10 +80,10 @@ export default function RbacAuditLogPanel({
         ) : null}
       </div>
 
-      {needsRestaurant ? <p className="rbac-status rbac-status--info">Vui lòng chọn nhà hàng để xem nhật ký phân quyền.</p> : null}
-      {loading ? <p className="rbac-status">Đang tải nhật ký...</p> : null}
-      {error ? <p className="rbac-status rbac-status--error">Không thể tải nhật ký phân quyền.</p> : null}
-      {!loading && !error && !needsRestaurant && !auditLogs.length ? <p className="rbac-empty">Chưa có nhật ký phân quyền.</p> : null}
+      {needsRestaurant ? <p className="rbac-status rbac-status--info">Chọn nhà hàng để xem lịch sử phân quyền.</p> : null}
+      {loading ? <p className="rbac-status">Đang tải lịch sử…</p> : null}
+      {error ? <p className="rbac-status rbac-status--error">Không thể tải lịch sử phân quyền. Hãy thử làm mới.</p> : null}
+      {!loading && !error && !needsRestaurant && !auditLogs.length ? <p className="rbac-empty">Chưa ghi nhận thay đổi phân quyền.</p> : null}
 
       {!loading && !error && auditLogs.length ? (
         <div className="rbac-audit-table-wrap">
@@ -95,7 +96,7 @@ export default function RbacAuditLogPanel({
                 <th>Hành động</th>
                 <th>Đối tượng</th>
                 <th>Nhà hàng</th>
-                <th>Chi tiết thay đổi</th>
+                <th>Nội dung thay đổi</th>
               </tr>
             </thead>
             <tbody>
@@ -103,7 +104,7 @@ export default function RbacAuditLogPanel({
                 <tr key={log.id}>
                   <td>{formatTime(log.createdAt)}</td>
                   <td>{formatAuditActor(log)}</td>
-                  <td>{log.actorRole || "Không rõ"}</td>
+                  <td>{getRbacRoleLabel(log.actorRole)}</td>
                   <td><span className="rbac-action-badge">{getAuditActionLabel(log.action)}</span></td>
                   <td><strong>{log.targetName || log.targetId || "Không rõ"}</strong><small>{getAuditTargetTypeLabel(log.targetType)}</small></td>
                   <td>{restaurantLabel(log.restaurantId, restaurants)}</td>
