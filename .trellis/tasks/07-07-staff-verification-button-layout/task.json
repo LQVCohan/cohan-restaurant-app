@@ -15,6 +15,7 @@
   "pr_url": null,
   "relatedFiles": [
     "src/components/Dashboard_Manager/Staff/components/EmployeeDetail/EmployeeDetail.jsx",
-    "src/components/Dashboard_Manager/Staff/components/EmployeeDetail/EmployeeDetail.scss"
+    "src/components/Dashboard_Manager/Staff/components/EmployeeDetail/EmployeeDetail.scss",
+    "src/components/Dashboard_Manager/Staff/components/Header/StaffHeaderContextPolish.scss"
   ]
 }
