@@ -1,0 +1,49 @@
+name: temp-run-restaurant-hours-fix
+
+on:
+  push:
+    branches:
+      - fix/restaurant-hours-controls
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, 'fix: upgrade restaurant opening hours controls') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/restaurant-hours-controls
+          fetch-depth: 0
+
+      - name: Extract and run patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/temp-apply-restaurant-hours-fix.yml')
+          lines = workflow.read_text(encoding='utf-8').splitlines()
+          start = next(i for i, line in enumerate(lines) if "python - <<'PY'" in line)
+          end = next(i for i in range(start + 1, len(lines)) if lines[i].strip() == 'PY')
+          script = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in lines[start + 1:end]
+          ) + '\n'
+          Path('/tmp/restaurant_hours_patch.py').write_text(script, encoding='utf-8')
+          PY
+          python /tmp/restaurant_hours_patch.py
+
+      - name: Verify and commit
+        run: |
+          git diff --check
+          grep -q 'type="time"' src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx
+          grep -q 'getHoursValidationError' src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx \
+            src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx \
+            src/styles/RestaurantProfileHoursResponsiveFix.css
+          git commit -m "fix: upgrade restaurant opening hours controls"
+          git push origin HEAD:fix/restaurant-hours-controls
