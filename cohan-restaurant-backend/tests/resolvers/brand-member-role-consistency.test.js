@@ -7,6 +7,7 @@ const modelMocks = vi.hoisted(() => ({
 
 const scopeMocks = vi.hoisted(() => ({
   canManageBrand: vi.fn().mockResolvedValue(true),
+  getUserId: vi.fn((user) => user?.id),
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
@@ -28,6 +29,7 @@ describe("brand member role consistency", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     scopeMocks.canManageBrand.mockResolvedValue(true);
+    scopeMocks.getUserId.mockImplementation((user) => user?.id);
   });
 
   it("rejects system admin as a branch manager", async () => {
@@ -117,6 +119,37 @@ describe("brand member role consistency", () => {
       ),
     ).rejects.toMatchObject({
       message: expect.stringContaining("Không thể tạm ngưng Chủ chuỗi"),
+      extensions: { code: "FORBIDDEN" },
+    });
+    expect(updateBrandMember).not.toHaveBeenCalled();
+  });
+
+  it("rejects an administrator suspending their own membership", async () => {
+    modelMocks.BrandMembership.findById.mockReturnValue(
+      membershipQuery({
+        brandId: "brand-1",
+        userId: "admin-1",
+        role: "admin",
+        status: "active",
+      }),
+    );
+    const updateBrandMember = vi.fn();
+    const { guardBrandMemberRoleMutations } = await import(
+      "../../graphql/resolvers/brand/memberRoleConsistency.js"
+    );
+    const guarded = guardBrandMemberRoleMutations({
+      addBrandMember: vi.fn(),
+      updateBrandMember,
+    });
+
+    await expect(
+      guarded.updateBrandMember(
+        null,
+        { input: { id: "membership-admin", status: "inactive" } },
+        { user: { id: "admin-1" } },
+      ),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining("không thể tự tạm ngưng quyền"),
       extensions: { code: "FORBIDDEN" },
     });
     expect(updateBrandMember).not.toHaveBeenCalled();
