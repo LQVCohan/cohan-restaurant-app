@@ -45,7 +45,13 @@ const AttendancePageScoped = ({ restaurantId, ...props }) => {
 
   if (readyKey !== targetKey) return null;
 
-  return <AttendancePage key={targetKey} {...props} />;
+  return (
+    <AttendancePage
+      key={targetKey}
+      restaurantId={normalizedRestaurantId || undefined}
+      {...props}
+    />
+  );
 };
 
 export default AttendancePageScoped;
