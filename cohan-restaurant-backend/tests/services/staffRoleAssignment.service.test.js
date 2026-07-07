@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const restaurantScopeMocks = vi.hoisted(() => ({
+  canAccessRestaurant: vi.fn(async () => true),
+}));
 const modelMocks = vi.hoisted(() => ({
   Role: { findById: vi.fn() },
   Staff: { findById: vi.fn() },
@@ -8,6 +11,10 @@ const modelMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+}));
 
 function roleQuery(role) {
   const query = {
@@ -34,6 +41,7 @@ describe("staffRoleAssignment.service", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
     modelMocks.AuditLog.create.mockResolvedValue({ _id: "audit-1" });
     modelMocks.Restaurant.exists.mockResolvedValue(true);
   });
@@ -163,6 +171,7 @@ describe("staffRoleAssignment.service", () => {
 
       vi.resetModules();
       vi.clearAllMocks();
+      restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
       modelMocks.AuditLog.create.mockResolvedValue({ _id: "audit-1" });
     }
   });
@@ -211,8 +220,8 @@ describe("staffRoleAssignment.service", () => {
     const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
 
     for (const actor of [
-      { id: "staff-actor", roleName: "staff", restaurantIds: ["restaurant-1"] },
-      { id: "customer-actor", roleName: "customer", restaurantIds: ["restaurant-1"] },
+      { id: "staff-actor", roleName: "staff" },
+      { id: "customer-actor", roleName: "customer" },
     ]) {
       await expect(assignStaffRoleWithinRestaurant({
         actor,
