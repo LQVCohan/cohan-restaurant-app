@@ -111,10 +111,14 @@ const formatMoney = (value) =>
 
 const getDashboardErrorMessage = (error) => {
   if (!error) return "";
+  const graphQLError = error?.graphQLErrors?.[0];
+  if (graphQLError?.message === "FORBIDDEN_SCOPE") {
+    return "Tài khoản không có quyền xem chi nhánh đã chọn. Hãy chọn lại chi nhánh được phân công.";
+  }
   if (error?.networkError) {
     return "Không thể kết nối tới máy chủ. Vui lòng kiểm tra backend và thử lại.";
   }
-  return "Dữ liệu tổng quan chưa sẵn sàng. Vui lòng khởi động lại backend và thử lại.";
+  return "Dữ liệu tổng quan chưa sẵn sàng. Vui lòng thử lại.";
 };
 
 export const useDashboard = () => {
@@ -127,15 +131,20 @@ export const useDashboard = () => {
     restaurantsLoading,
   } = useManagerRestaurantSelection();
   const [range, setRange] = useState("week");
-
+  const hasConfirmedRestaurantScope = Boolean(
+    !restaurantsLoading &&
+      selectedRestaurantId &&
+      selectedRestaurant &&
+      String(selectedRestaurant.id) === String(selectedRestaurantId),
+  );
 
   const { data, loading, error, refetch } = useQuery(GET_MANAGER_DASHBOARD, {
-    skip: !selectedRestaurantId,
+    skip: !hasConfirmedRestaurantScope,
     variables: { restaurantId: selectedRestaurantId, range },
     fetchPolicy: "network-only",
     notifyOnNetworkStatusChange: true,
     pollInterval:
-      selectedRestaurantId && process.env.NODE_ENV !== "test" ? 30000 : 0,
+      hasConfirmedRestaurantScope && process.env.NODE_ENV !== "test" ? 30000 : 0,
   });
 
   useEffect(() => {
@@ -158,8 +167,10 @@ export const useDashboard = () => {
   }, [restaurantOptions, restaurantsLoading, setSelectedRestaurantId]);
 
   useEffect(() => {
-    emitDashboardRestaurantChanged(selectedRestaurantId);
-  }, [selectedRestaurantId]);
+    emitDashboardRestaurantChanged(
+      hasConfirmedRestaurantScope ? selectedRestaurantId : "",
+    );
+  }, [hasConfirmedRestaurantScope, selectedRestaurantId]);
 
   const rawDashboard = data?.managerDashboard;
   const hasStaleDashboard = Boolean(
@@ -167,7 +178,11 @@ export const useDashboard = () => {
       String(rawDashboard.restaurantId ?? "") !== selectedRestaurantId,
   );
   const dashboard = hasStaleDashboard ? null : rawDashboard;
-  const dashboardLoading = loading || hasStaleDashboard;
+  const dashboardLoading =
+    restaurantsLoading ||
+    (Boolean(selectedRestaurantId) && !hasConfirmedRestaurantScope) ||
+    loading ||
+    hasStaleDashboard;
   const dashboardError = useMemo(
     () => (error ? new Error(getDashboardErrorMessage(error)) : null),
     [error],
@@ -191,9 +206,13 @@ export const useDashboard = () => {
     };
   }, [dashboard]);
 
-
   useEffect(() => {
-    if (!selectedRestaurantId || typeof window === "undefined") return undefined;
+    if (
+      !hasConfirmedRestaurantScope ||
+      typeof window === "undefined"
+    ) {
+      return undefined;
+    }
 
     const refreshCurrentDashboard = () =>
       refetch({ restaurantId: selectedRestaurantId, range });
@@ -212,7 +231,7 @@ export const useDashboard = () => {
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener(STAFF_DATA_CHANGED_EVENT, handleStaffDataChanged);
     };
-  }, [range, refetch, selectedRestaurantId]);
+  }, [hasConfirmedRestaurantScope, range, refetch, selectedRestaurantId]);
 
   const handleRestaurantChange = useCallback(
     (restaurantId) => {
@@ -225,7 +244,7 @@ export const useDashboard = () => {
         setSelectedRestaurantId(nextRestaurantId);
       }
     },
-    [restaurantOptions],
+    [restaurantOptions, setSelectedRestaurantId],
   );
 
   const handleSwitchToPOS = useCallback(() => {
@@ -236,10 +255,10 @@ export const useDashboard = () => {
   }, [navigate, selectedRestaurantId]);
 
   const handleGenerateReport = useCallback(() => {
-    if (selectedRestaurantId) {
+    if (hasConfirmedRestaurantScope) {
       refetch({ restaurantId: selectedRestaurantId, range });
     }
-  }, [refetch, selectedRestaurantId, range]);
+  }, [hasConfirmedRestaurantScope, refetch, selectedRestaurantId, range]);
 
   return {
     selectedRestaurant,
@@ -259,17 +278,12 @@ export const useDashboard = () => {
     pendingOrders: dashboard?.pendingOrders || [],
     pendingReservations: dashboard?.pendingReservations || [],
     pendingSupportRequests: dashboard?.pendingSupportRequests || [],
-    pendingOrderCount: dashboard?.pendingOrderCount || 0,
-    pendingReservationCount: dashboard?.pendingReservationCount || 0,
-    pendingSupportRequestCount: dashboard?.pendingSupportRequestCount || 0,
-    refetchDashboard: () => {
-      if (!selectedRestaurantId) return Promise.resolve(null);
-      return refetch({ restaurantId: selectedRestaurantId, range });
-    },
+    pendingOrderCount: Number(dashboard?.pendingOrderCount || 0),
+    pendingReservationCount: Number(dashboard?.pendingReservationCount || 0),
+    pendingSupportRequestCount: Number(dashboard?.pendingSupportRequestCount || 0),
     handleRestaurantChange,
     handleSwitchToPOS,
     handleGenerateReport,
+    refetchDashboard: refetch,
   };
 };
-
-export { GET_MANAGER_DASHBOARD, getDashboardErrorMessage };
