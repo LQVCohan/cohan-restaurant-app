@@ -19,10 +19,4 @@ export const handleRestaurantChatbotMessage = async (options = {}) => {
   return handleCoreRestaurantChatbotMessage(options);
 };
 
-export const __testables = {
-  ...coreTestables,
-  callAiProvider: async (options = {}) => {
-    enforceGeminiProviderPolicy();
-    return coreTestables.callAiProvider(options);
-  },
-};
+export const __testables = coreTestables;
