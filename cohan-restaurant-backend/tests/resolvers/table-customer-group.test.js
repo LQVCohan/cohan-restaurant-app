@@ -173,4 +173,43 @@ describe("tableCustomerGroup", () => {
       }),
     );
   });
+
+  it("updates a legacy code-only row instead of inserting a duplicate", async () => {
+    modelMocks.TableCustomer.findOneAndUpdate.mockReturnValue(
+      leanWrap({
+        _id: "valid-customer-1",
+        tableId: "valid-a1",
+        tableCode: "A1",
+        customerName: "Nguyễn An mới",
+      }),
+    );
+    const { TableCustomerMutation } = await import(
+      "../../graphql/resolvers/table/tableCustomer.js"
+    );
+
+    await TableCustomerMutation.upsertTableCustomer(
+      null,
+      {
+        input: {
+          restaurantId: "valid-r1",
+          tableId: "valid-a1",
+          tableCode: "A1",
+          customerName: "Nguyễn An mới",
+        },
+      },
+      { user: { id: "valid-manager" } },
+    );
+
+    const [condition, update] =
+      modelMocks.TableCustomer.findOneAndUpdate.mock.calls[0];
+    expect(String(condition.restaurantId)).toBe("valid-r1");
+    expect(String(condition.$or[0].tableId)).toBe("valid-a1");
+    expect(condition.$or[1]).toEqual({ tableCode: "A1" });
+    expect(update.$set).toEqual(
+      expect.objectContaining({
+        tableCode: "A1",
+        customerName: "Nguyễn An mới",
+      }),
+    );
+  });
 });
