@@ -146,6 +146,13 @@ const TableManagement = () => {
   const [showVrModal, setShowVrModal] = useState(false);
   const [showTable3DModal, setShowTable3DModal] = useState(false);
   const [simulatorTargetFloor, setSimulatorTargetFloor] = useState(null);
+  const latestLiteTable = useMemo(
+    () =>
+      liteTable?.id
+        ? getRawTableById(tablesRaw, liteTable.id) || liteTable
+        : liteTable,
+    [liteTable, tablesRaw]
+  );
   const [vrForm, setVrForm] = useState({
     vrTourUrl: "",
   });
@@ -888,7 +895,7 @@ const TableManagement = () => {
                     <div className="card-actions">
                       <button
                         type="button"
-                        className="btn-mini primary"
+                        className="btn-mini primary btn-mini--3d"
                         aria-label={`Mở 3D và AR cho bàn ${t.number || "chưa có mã"}`}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -935,10 +942,10 @@ const TableManagement = () => {
       {/* --- MODALS SECTION --- */}
 
       {/* 1. Quick Actions Modal */}
-      {showLiteModal && liteTable && (
+      {showLiteModal && latestLiteTable && (
         <TableActionsLiteModal
           open={showLiteModal}
-          table={liteTable}
+          table={latestLiteTable}
           restaurantId={restaurantId}
           floors={floorsRaw}
           tables={tablesRaw}
@@ -1189,7 +1196,7 @@ const TableManagement = () => {
         restaurantName={restaurant?.name}
         restaurantId={restaurantId}
         restaurant={restaurant}
-        table={liteTable}
+        table={latestLiteTable}
         floor={
           simulatorTargetFloor ||
           floors.find((f) => String(f.id) === String(currentFloor))

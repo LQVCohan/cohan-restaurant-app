@@ -483,7 +483,7 @@ export default function TableActionsLiteModal({
           .map((t) => t.trim())
           .filter(Boolean),
         vrUrl: vrUrl?.trim() || null,
-        deposit: depositAmount === "" ? null : Number.parseFloat(depositAmount),
+        deposit: depositAmount === "" ? null : Number.parseInt(depositAmount, 10),
         promotionIds: selectedPromotions,
         bookingPerks: manualPerks,
         zone: zoneLabel?.trim() || null,
