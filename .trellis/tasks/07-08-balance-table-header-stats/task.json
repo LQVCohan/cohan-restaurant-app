@@ -1,0 +1,32 @@
+{
+  "id": "balance-table-header-stats",
+  "name": "balance-table-header-stats",
+  "title": "Balance table header statistics",
+  "description": "Tighten and visually unify the table-management KPI strip without changing its data source or business logic.",
+  "status": "in_progress",
+  "dev_type": "ui-polish",
+  "scope": "table-management-header",
+  "package": null,
+  "priority": "P2",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
+    "src/components/Dashboard_Manager/Table/TableManagementScorePolish.scss",
+    "src/components/Dashboard_Manager/shared/ManagementPageHeader/ManagementPageHeader.jsx",
+    "src/hooks/useTableManagement.js",
+    "cohan-restaurant-backend/graphql/resolvers/table/query.js",
+    "cohan-restaurant-backend/graphql/schema/floor_table.graphql"
+  ],
+  "notes": "Presentation-only change. Table counts continue to derive from the existing tables query and mapped status values."
+}
