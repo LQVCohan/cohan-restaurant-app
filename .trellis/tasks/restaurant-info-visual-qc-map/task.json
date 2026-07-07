@@ -1,0 +1,23 @@
+{
+  "id": "restaurant-info-visual-qc-map",
+  "title": "Sửa lỗi hiển thị và thêm bản đồ vị trí nhà hàng",
+  "status": "in_progress",
+  "type": "frontend-fix",
+  "scope": [
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoPremiumLayout.css",
+    "src/utils/installRestaurantInfoMapEnhancement.js",
+    "src/utils/installRestaurantInfoMapEnhancement.test.js",
+    "src/main.jsx"
+  ],
+  "flow": "Restaurant.address.lat/lng -> GraphQL Address/AddressInput -> restaurant query/update resolver -> controlled coordinate inputs -> Leaflet map enhancement -> UpdateRestaurantInput.address",
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "vitest run src/utils/installRestaurantInfoMapEnhancement.test.js",
+      "npm run build",
+      "browser smoke at desktop, 430x932 and 390x844"
+    ],
+    "completed": [],
+    "notRun": []
+  }
+}
