@@ -1,0 +1,28 @@
+{
+  "id": "manager-dashboard-real-analytics",
+  "name": "manager-dashboard-real-analytics",
+  "title": "Populate manager dashboard analytics with real data",
+  "description": "Replace the empty occupancy and staff-performance placeholders with restaurant-scoped operational data.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "manager-analytics",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "fix/manager-dashboard-real-analytics",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/resolvers/analytics/index.js",
+    "cohan-restaurant-backend/tests/resolvers/manager-dashboard-analytics.test.js"
+  ],
+  "notes": "Reuse the existing ManagerDashboard GraphQL contract and frontend widgets. No schema or UI changes."
+}
