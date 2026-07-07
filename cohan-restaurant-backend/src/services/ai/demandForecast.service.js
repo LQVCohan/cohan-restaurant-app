@@ -387,9 +387,11 @@ export function computeDemandForecastFromData({
   stockItems = [],
   horizonDays = 2,
   timezone = "Asia/Ho_Chi_Minh",
+  forecastStart = null,
 }) {
   const safeHorizon = clamp(parseNumber(horizonDays, 2), 1, 7);
   const now = new Date();
+  const forecastAnchor = toDate(forecastStart) || now;
 
   const history = aggregateOrderHistory(orders, timezone);
   const reservationUplift = buildReservationUplift(reservations, timezone);
@@ -421,7 +423,7 @@ export function computeDemandForecastFromData({
   const dayForecastMap = new Map();
 
   for (let dayOffset = 0; dayOffset < safeHorizon; dayOffset += 1) {
-    const dayDate = new Date(now);
+    const dayDate = new Date(forecastAnchor);
     dayDate.setDate(dayDate.getDate() + dayOffset);
     dayDate.setMinutes(0, 0, 0);
     const dayKey = toIsoDay(dayDate, timezone);
@@ -502,7 +504,7 @@ export function computeDemandForecastFromData({
     confidence: d.confidence,
   }));
 
-  const todayKey = toIsoDay(now, timezone);
+  const todayKey = toIsoDay(forecastAnchor, timezone);
   const weekAgo = new Date(now);
   weekAgo.setDate(weekAgo.getDate() - 7);
   const monthAgo = new Date(now);
@@ -623,7 +625,7 @@ export function computeDemandForecastFromData({
       forecastFallbackUsed: totalOrders < 20,
       lowDataFallbackUsed: totalOrders < 20,
       aiEnhanced: false,
-      generatedAt: new Date().toISOString(),
+      generatedAt: now.toISOString(),
       granularity: "hourly",
       timezone,
       sampleOrders: totalOrders,
@@ -639,12 +641,14 @@ export async function buildDemandForecast({
   timezone = "Asia/Ho_Chi_Minh",
   horizonDays = 2,
   historyDays = 35,
+  forecastStart = null,
 }) {
   const now = new Date();
+  const forecastAnchor = toDate(forecastStart) || now;
   const historyStart = new Date(now);
   historyStart.setDate(historyStart.getDate() - clamp(parseNumber(historyDays, 35), 14, 90));
 
-  const futureEnd = new Date(now);
+  const futureEnd = new Date(forecastAnchor);
   futureEnd.setDate(futureEnd.getDate() + clamp(parseNumber(horizonDays, 2), 1, 7));
 
   const [orders, reservations, recipes, stockItems] = await Promise.all([
@@ -657,7 +661,7 @@ export async function buildDemandForecast({
       .lean(),
     Reservation.find({
       restaurantId,
-      timeTo: { $gte: now, $lte: futureEnd },
+      timeTo: { $gte: forecastAnchor, $lte: futureEnd },
     })
       .select({ timeTo: 1, partySize: 1, status: 1 })
       .lean(),
@@ -676,6 +680,7 @@ export async function buildDemandForecast({
     stockItems,
     horizonDays,
     timezone,
+    forecastStart: forecastAnchor,
   });
 
   const ai = await tryAiSummary({ forecast, timezone });

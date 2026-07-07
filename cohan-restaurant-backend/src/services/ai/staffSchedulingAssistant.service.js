@@ -356,6 +356,7 @@ export async function buildStaffSchedulingAssistant({
       restaurantId: rid,
       timezone,
       horizonDays: effectiveHorizonDays,
+      forecastStart: requestedStart || startDate,
     });
     shiftDemand = convertHourlyForecastToShiftDemand(
       forecast?.hourlyForecast || [],
