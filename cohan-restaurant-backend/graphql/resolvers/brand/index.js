@@ -22,6 +22,7 @@ const oid = (id) => {
   return new mongoose.Types.ObjectId(id);
 };
 const slugify = (value) => String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const roleName = (user) => String(user?.roleName || user?.role?.slug || user?.role || "").toLowerCase();
 const userId = getUserId;
 const parentId = (parent) => parent._id || parent.id;
@@ -130,6 +131,48 @@ const Query = {
   brandMembers: async (_, { brandId }, ctx) => {
     if (!ctx?.user || !await canManageBrand(ctx.user, brandId)) throw forbidden();
     return BrandMembership.find({ brandId: oid(brandId) }).lean();
+  },
+
+  brandMemberCandidates: async (_, { brandId, search, limit = 20 }, ctx) => {
+    if (!ctx?.user || !await canManageBrand(ctx.user, brandId)) throw forbidden();
+
+    const keyword = String(search || "").trim();
+    if (keyword.length < 2) return [];
+
+    const existingMemberships = await BrandMembership.find({
+      brandId: oid(brandId),
+    }).select("userId").lean();
+    const existingUserIds = existingMemberships.map((membership) => membership.userId);
+    const regex = new RegExp(escapeRegex(keyword), "i");
+    const searchConditions = [
+      { fullName: regex },
+      { username: regex },
+      { email: regex },
+    ];
+    if (mongoose.isValidObjectId(keyword)) {
+      searchConditions.push({ _id: oid(keyword) });
+    }
+
+    const candidates = await User.find({
+      deletedAt: null,
+      status: "active",
+      userType: { $in: ["STAFF", "MANAGER", "HR", "ACCOUNTANT", "ADMIN"] },
+      _id: { $nin: existingUserIds },
+      $or: searchConditions,
+    })
+      .select("_id fullName username email userType status")
+      .sort({ fullName: 1, _id: 1 })
+      .limit(Math.min(Math.max(Number(limit) || 20, 1), 50))
+      .lean();
+
+    return candidates.map((candidate) => ({
+      id: String(candidate._id),
+      fullName: candidate.fullName || null,
+      username: candidate.username || null,
+      email: candidate.email || null,
+      userType: candidate.userType || null,
+      status: candidate.status || null,
+    }));
   },
 
   myBrandMemberships: async (_, __, ctx) => {
