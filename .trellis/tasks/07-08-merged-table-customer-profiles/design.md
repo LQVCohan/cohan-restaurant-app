@@ -2,17 +2,16 @@
 
 ## Data ownership
 
-Customer ownership remains on the physical source table:
+Customer ownership remains on each physical source table:
 
 - `TableCustomer.tableId` and `tableCode` continue to reference the original table.
-- `Table.mergedFromTableIds` identifies the source tables represented by a composite table.
+- `Table.mergedFromTableIds` identifies the physical tables represented by a composite table.
 - No customer row is copied to the composite table during merge.
+- A split only restores source-table visibility; customer migration is unnecessary.
 
-This avoids duplication, stale copies, and split-time data migration.
+This avoids duplicate data, stale copies, ambiguous ownership, and destructive split logic.
 
 ## GraphQL contract
-
-Add:
 
 ```graphql
 type TableCustomerProfile {
@@ -37,33 +36,45 @@ query tableCustomerGroup(
 ): TableCustomerGroup!
 ```
 
-For a normal table, `profiles` contains one slot. For a composite table, it contains one slot per `mergedFromTableIds`. A slot may have `customer: null`.
+A normal table returns one source slot. A composite table returns one slot per `mergedFromTableIds`. A slot remains present with `customer: null` when no information has been entered.
+
+The singular `tableCustomer` query remains available for old clients. When called with a composite table and no direct row, it returns the first populated source profile rather than reporting no customer.
 
 ## Resolver algorithm
 
-1. Validate restaurant access and input.
-2. Resolve the visible table by ID first, otherwise code.
-3. If `mergedFromTableIds` is non-empty, load those source tables; otherwise use the visible table itself.
-4. Load all `TableCustomer` rows whose `tableId` matches those source IDs.
-5. Join rows by source table ID and return profiles ordered by source table code.
-6. Sum non-negative `partySize` values and count non-null customer rows.
+1. Validate restaurant access.
+2. Resolve the visible table by ID, preferred over code.
+3. Expand `mergedFromTableIds`; otherwise use the visible table itself.
+4. Load source-table codes and all matching `TableCustomer` rows by table ID or legacy table code.
+5. Join rows to sources and order profiles by source-table code.
+6. Count populated profiles and sum non-negative party sizes.
+7. Upsert by source ID **or** source code so old code-only records are upgraded instead of duplicated.
 
-## POS interaction
+## Manager table-detail interaction
 
-- Show a compact summary with customer count and total guests.
-- Render one source card per profile.
-- Clicking a card selects its source profile for the existing edit form.
-- Saving uses the selected profile's `sourceTableId` and `sourceTableCode`.
-- For an empty slot, the form creates the missing row for that source table.
-- For a normal table, the only slot is selected automatically, preserving current behavior.
+The existing manager modal remains the owner of table actions. A small installer adds a customer section after `.talite-info`, following the same repository pattern as the searchable merge picker.
+
+- The section shows source-table count, customer-profile count, and total guests.
+- Each source table is a selectable card labeled `Bàn <source code>`.
+- Cards show customer name, contact information, and party size.
+- Empty sources remain visible and can receive a new profile.
+- Selecting a card opens an inline editor.
+- Saving always submits `sourceTableId` and `sourceTableCode`, never the composite table ID.
+- User data is rendered through `textContent`/form values rather than interpolated HTML.
+- Layout collapses to one column on narrow screens and preserves visible keyboard focus.
 
 ## Merge rules
 
 - Allowed source statuses: `available`, `occupied`.
 - Active order or active reservation remains a hard block.
-- Composite status is `occupied` if any source is occupied; otherwise `available`.
-- Customer records are not part of the merge write and therefore do not need rollback.
+- Meaningful `TableCustomer` data is checked before creating the composite.
+- Composite status is `occupied` when any populated source customer exists or any source is occupied; otherwise it is `available`.
+- Customer rows are not part of the merge write and require no rollback.
 
 ## Split behavior
 
-The existing composite split deletes the composite table and clears `mergedIntoTableId` from the source tables. Since customer rows never moved, they immediately become visible on their original tables again.
+The composite split deletes the visible composite table and clears `mergedIntoTableId` from every source. Since customer rows remained attached to source IDs throughout the merge, each original table immediately regains its own customer information.
+
+## Compatibility boundary
+
+Old POS/staff code that requests one customer receives a non-empty fallback. Full multi-customer display and editing use `tableCustomerGroup`; active order merging and combined billing remain deliberately unsupported.
