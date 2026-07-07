@@ -58,6 +58,13 @@ body {
 
 a { text-decoration: none; color: inherit; }
 
+.tm-container .management-page-header.density-compact .mph-stat-card__value {
+  font-size: clamp(1.6rem, 2vw, 1.9rem);
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
 .pos-fly-ghost {
   background: #ffffff;
   border: 2px solid rgba(255, 102, 0, 0.28);
