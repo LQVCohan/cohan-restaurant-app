@@ -1,4 +1,7 @@
-.om-container--focus {
+.om-container--focus,
+.manager-layout.manager-layout--orders
+  .manager-page-shell--orders
+  .om-container.om-container--focus {
   --kitchen-bg: #08131f;
   --kitchen-panel: #0f1d2d;
   --kitchen-card: #132337;
@@ -23,7 +26,20 @@
     linear-gradient(180deg, #0a1725 0%, var(--kitchen-bg) 100%) !important;
 }
 
-.om-container--focus::before {
+.om-container--focus[data-station="bar"] {
+  --kitchen-sage: #69a9cf;
+  --kitchen-sage-strong: #39799f;
+  --kitchen-sage-soft: rgba(105, 169, 207, 0.18);
+  background:
+    radial-gradient(circle at 12% -4%, rgba(74, 142, 184, 0.2), transparent 34rem),
+    radial-gradient(circle at 92% 2%, rgba(77, 155, 141, 0.08), transparent 28rem),
+    linear-gradient(180deg, #0a1725 0%, var(--kitchen-bg) 100%) !important;
+}
+
+.om-container--focus::before,
+.manager-layout.manager-layout--orders
+  .manager-page-shell--orders
+  .om-container.om-container--focus::before {
   opacity: 0.045 !important;
   mix-blend-mode: screen !important;
   background-image:
@@ -70,7 +86,7 @@
 }
 
 .om-container--focus .om-btn-focus:hover {
-  border-color: rgba(77, 155, 141, 0.38) !important;
+  border-color: color-mix(in srgb, var(--kitchen-sage) 45%, transparent) !important;
   background: #20384f !important;
 }
 
@@ -87,9 +103,81 @@
   align-items: center;
 }
 
+.om-container--focus .om-toolbar--focus .om-toolbar__filters {
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
 .om-container--focus .om-toolbar--focus .om-field__label,
 .om-container--focus .om-toolbar--focus .om-size-control > span {
   color: var(--kitchen-muted) !important;
+}
+
+.om-container--focus .om-station-switcher {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--kitchen-border);
+  border-radius: 13px;
+  background: rgba(15, 29, 45, 0.94);
+}
+
+.om-container--focus .om-station-switcher__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 86px;
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--kitchen-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.om-container--focus .om-station-switcher__btn strong {
+  display: grid;
+  min-width: 24px;
+  min-height: 24px;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--kitchen-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.om-container--focus .om-station-switcher__btn:hover {
+  border-color: var(--kitchen-border);
+  background: var(--kitchen-sage-soft);
+  color: var(--kitchen-text);
+  transform: translateY(-1px);
+}
+
+.om-container--focus .om-station-switcher__btn--active,
+.om-container--focus .om-station-switcher__btn[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--kitchen-sage) 55%, transparent);
+  background: var(--kitchen-sage-strong);
+  color: #fff;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--kitchen-sage-strong) 34%, transparent);
+}
+
+.om-container--focus .om-station-switcher__btn:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--kitchen-sage) 42%, transparent);
+  outline-offset: 3px;
 }
 
 .om-container--focus .om-status-segmented,
@@ -116,7 +204,7 @@
 .om-container--focus .om-size-segmented__btn[aria-pressed="true"] {
   background: var(--kitchen-sage-strong) !important;
   color: #fff !important;
-  box-shadow: 0 8px 18px rgba(47, 125, 112, 0.28) !important;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--kitchen-sage-strong) 34%, transparent) !important;
 }
 
 .om-container--focus .om-summary {
@@ -145,25 +233,47 @@
 
 .om-container--focus .om-chip:hover,
 .om-container--focus .om-summary__toggle:hover {
-  border-color: rgba(77, 155, 141, 0.38) !important;
+  border-color: color-mix(in srgb, var(--kitchen-sage) 45%, transparent) !important;
   background: var(--kitchen-card-soft) !important;
 }
 
 .om-container--focus .om-chip--active {
-  border-color: rgba(77, 155, 141, 0.65) !important;
+  border-color: color-mix(in srgb, var(--kitchen-sage) 65%, transparent) !important;
   background: var(--kitchen-sage-soft) !important;
-  box-shadow: 0 0 0 3px rgba(77, 155, 141, 0.13) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--kitchen-sage) 14%, transparent) !important;
 }
 
 .om-container--focus .om-chip__qty {
-  background: rgba(77, 155, 141, 0.22) !important;
-  color: #d9f2ed !important;
+  background: color-mix(in srgb, var(--kitchen-sage) 22%, transparent) !important;
+  color: #e4f5f2 !important;
 }
 
 .om-container--focus .om-content {
   overflow: auto !important;
   padding: 24px clamp(20px, 2vw, 30px) 32px !important;
   background: transparent !important;
+}
+
+.om-container--focus .om-state {
+  min-height: min(430px, calc(100dvh - 190px));
+  border-color: var(--kitchen-border) !important;
+  background:
+    radial-gradient(circle at 50% 0, var(--kitchen-sage-soft), transparent 22rem),
+    rgba(15, 29, 45, 0.78) !important;
+  color: var(--kitchen-muted) !important;
+  box-shadow:
+    0 24px 54px rgba(0, 0, 0, 0.24),
+    inset 0 1px rgba(255, 255, 255, 0.05) !important;
+}
+
+.om-container--focus .om-state h3 {
+  color: var(--kitchen-text) !important;
+}
+
+.om-container--focus .om-state__icon-bg {
+  border: 1px solid color-mix(in srgb, var(--kitchen-sage) 30%, transparent);
+  background: var(--kitchen-sage-soft) !important;
+  color: var(--kitchen-sage) !important;
 }
 
 .om-container--focus .om-grid,
@@ -183,7 +293,7 @@
   border-color: var(--kitchen-border) !important;
   border-radius: 22px !important;
   background:
-    radial-gradient(circle at 8% 0%, rgba(77, 155, 141, 0.11), transparent 18rem),
+    radial-gradient(circle at 8% 0%, var(--kitchen-sage-soft), transparent 18rem),
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 34%),
     var(--kitchen-card) !important;
   color: var(--kitchen-text) !important;
@@ -191,7 +301,7 @@
 }
 
 .om-container--focus .oc-card.mode-focus:hover {
-  border-color: rgba(77, 155, 141, 0.38) !important;
+  border-color: color-mix(in srgb, var(--kitchen-sage) 40%, transparent) !important;
   box-shadow: 0 28px 64px rgba(0, 0, 0, 0.38) !important;
 }
 
@@ -202,7 +312,7 @@
 }
 
 .om-container--focus .oc-card.mode-focus .oc-table-tag {
-  border-color: rgba(77, 155, 141, 0.3) !important;
+  border-color: color-mix(in srgb, var(--kitchen-sage) 30%, transparent) !important;
   background: var(--kitchen-sage-soft) !important;
   color: #d9f2ed !important;
 }
@@ -218,7 +328,7 @@
 .om-container--focus .oc-card.mode-focus .oc-status-pill--ready,
 .om-container--focus .oc-card.mode-focus .oc-status-pill--served,
 .om-container--focus .oc-card.mode-focus .oc-status-pill--completed {
-  border-color: rgba(77, 155, 141, 0.42) !important;
+  border-color: color-mix(in srgb, var(--kitchen-sage) 42%, transparent) !important;
   background: var(--kitchen-sage-soft) !important;
   color: #d9f2ed !important;
 }
@@ -265,7 +375,7 @@
 }
 
 .om-container--focus .oc-card.mode-focus .qty-badge {
-  border-color: rgba(77, 155, 141, 0.28) !important;
+  border-color: color-mix(in srgb, var(--kitchen-sage) 28%, transparent) !important;
   background: var(--kitchen-sage-soft) !important;
   color: #d9f2ed !important;
 }
@@ -292,7 +402,7 @@
   border-color: var(--kitchen-sage) !important;
   background: linear-gradient(180deg, var(--kitchen-sage), var(--kitchen-sage-strong)) !important;
   color: #fff !important;
-  box-shadow: 0 12px 24px rgba(47, 125, 112, 0.26) !important;
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--kitchen-sage-strong) 30%, transparent) !important;
 }
 
 .om-container--focus .oc-card.mode-focus .oc-btn.secondary {
@@ -309,6 +419,14 @@
 }
 
 @media (max-width: 1180px) {
+  .om-container--focus .om-toolbar--focus .om-toolbar__inner {
+    align-items: stretch;
+  }
+
+  .om-container--focus .om-toolbar--focus .om-toolbar__filters {
+    padding-bottom: 3px;
+  }
+
   .om-container--focus .om-grid,
   .om-container--focus .om-skeleton-grid {
     grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)) !important;
@@ -318,6 +436,25 @@
 @media (max-width: 720px) {
   .om-container--focus {
     --om-kitchen-header-height: 108px;
+    --om-kitchen-toolbar-height: 72px;
+  }
+
+  .om-container--focus .om-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .om-container--focus .om-header__focus-title h1 {
+    font-size: 1.25rem !important;
+  }
+
+  .om-container--focus .om-toolbar--focus {
+    padding-inline: 12px !important;
+  }
+
+  .om-container--focus .om-station-switcher__btn {
+    min-width: 78px;
+    min-height: 44px;
   }
 
   .om-container--focus .om-content {
@@ -331,5 +468,11 @@
 
   .om-container--focus .oc-card.mode-focus {
     min-height: 430px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .om-container--focus .om-station-switcher__btn {
+    transition: none;
   }
 }
