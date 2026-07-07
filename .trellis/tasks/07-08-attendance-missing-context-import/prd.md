@@ -6,27 +6,29 @@ Opening the manager attendance page causes Vite to request `src/context/Attendan
 
 ## Root cause
 
-`useAttendanceManagement.js` still imports and reads `AttendanceScopeContext`. The current attendance flow no longer relies on that context: `AttendancePageScoped` injects the selected restaurant into `AuthContext`, and `AttendancePage`/`OvertimePanel` pass `restaurantId` explicitly into the hook. The context import is therefore dead coupling and can break module loading when the local checkout no longer contains the obsolete file.
+`useAttendanceManagement.js` imports `@/context/AttendanceScopeContext` without an extension. The tracked context module was stored as `.jsx`, while the failing local checkout had no resolvable module at that path. Because the hook is imported by the lazy attendance page, this missing module prevents the entire manager screen from loading before any GraphQL request runs.
 
 ## Traced flow
 
-1. Backend authorization remains in restaurant-scoped attendance resolvers and BrandMembership guards.
-2. `AttendancePageScoped` applies the selected restaurant before `AttendancePage` mounts.
-3. `AttendancePage` derives the restaurant from URL/AuthContext and passes it to `useAttendanceManagement`.
-4. `OvertimePanel` also passes an explicit restaurant ID.
-5. `useAttendanceManagement` builds GraphQL variables from the explicit argument.
+1. `AttendancePageScoped` applies the selected restaurant before `AttendancePage` mounts.
+2. `AttendancePage` and `OvertimePanel` import `useAttendanceManagement`.
+3. `useAttendanceManagement` imports `@/context/AttendanceScopeContext`.
+4. Vite cannot resolve that module in the affected checkout and returns 404.
+5. React rejects the lazy module and `AppErrorBoundary` shows the load-failure page.
+
+Backend schema, attendance resolvers, restaurant guards, Apollo operations and user actions are not reached by this failure.
 
 ## Files
 
-- `src/hooks/useAttendanceManagement.js`: remove `useContext`, the obsolete context import, and the fallback lookup.
-- `src/context/AttendanceScopeContext.jsx`: remove the unused context module.
+- `src/context/AttendanceScopeContext.js`: canonical context module using the repository's standard JavaScript extension.
+- `src/context/AttendanceScopeContext.jsx`: removed to avoid two files exporting separate context instances.
 
 ## Acceptance criteria
 
-- Attendance page module loads without requesting `AttendanceScopeContext`.
-- Query variables still use the explicit `restaurantId` passed by attendance callers.
-- No GraphQL operation, resolver, authorization rule, or UI behavior is changed.
-- Existing attendance hook tests continue to import and execute.
+- The extensionless attendance context import resolves to a tracked `.js` module.
+- Attendance page lazy loading no longer fails because of `AttendanceScopeContext` 404.
+- The existing context export names and behavior remain unchanged.
+- No GraphQL operation, resolver, authorization rule or attendance data is changed.
 
 ## Validation
 
