@@ -134,6 +134,7 @@ describe("Brand membership actions", () => {
 
   it("updates a staff membership to one restaurant manager scope", async () => {
     renderActions();
+    fireEvent.click(screen.getByText("Đổi vai trò và phạm vi"));
 
     fireEvent.change(screen.getByLabelText("Thành viên cần đổi quyền"), {
       target: { value: "membership-staff" },
@@ -162,6 +163,7 @@ describe("Brand membership actions", () => {
     const navigateHandler = vi.fn();
     window.addEventListener("manager:navigate", navigateHandler);
     renderActions();
+    fireEvent.click(screen.getByText("Chuyển quyền chủ chuỗi"));
 
     fireEvent.change(screen.getByLabelText("Thành viên nhận quyền chủ chuỗi"), {
       target: { value: "manager-1" },
