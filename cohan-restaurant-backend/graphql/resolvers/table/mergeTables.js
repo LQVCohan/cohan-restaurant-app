@@ -13,6 +13,7 @@ const businessError = (message, code) =>
   new GraphQLError(message, { extensions: { code } });
 
 const tableId = (value) => String(value?._id || value?.id || value || "");
+const MERGEABLE_STATUSES = new Set(["available", "occupied"]);
 
 const mergedCodeFor = (tables) =>
   tables
@@ -36,11 +37,12 @@ const uniqueTags = (tables) =>
 
 const assertTablesCanMerge = async (tables, restaurantId) => {
   const unavailable = tables.find(
-    (table) => String(table.status || "").toLowerCase() !== "available",
+    (table) =>
+      !MERGEABLE_STATUSES.has(String(table.status || "").toLowerCase()),
   );
   if (unavailable) {
     throw businessError(
-      `Bàn ${unavailable.code || "đã chọn"} không ở trạng thái trống. Chỉ có thể ghép các bàn trống.`,
+      `Bàn ${unavailable.code || "đã chọn"} không ở trạng thái có thể ghép. Chỉ hỗ trợ bàn trống hoặc đang có khách nhưng chưa phát sinh order/đặt chỗ.`,
       "TABLE_NOT_AVAILABLE_FOR_MERGE",
     );
   }
@@ -158,6 +160,11 @@ const mergeTables = async (_parent, { input }, ctx) => {
     (total, table) => total + Math.max(0, Number(table.capacity) || 0),
     0,
   );
+  const mergedStatus = tables.some(
+    (table) => String(table.status || "").toLowerCase() === "occupied",
+  )
+    ? "occupied"
+    : "available";
 
   if (!mergedCode || capacity < 2 || !anchor?.position) {
     throw businessError(
@@ -175,7 +182,7 @@ const mergeTables = async (_parent, { input }, ctx) => {
       type: anchor.type || "standard",
       capacity,
       position: anchor.position,
-      status: "available",
+      status: mergedStatus,
       floorLevel: anchor.floorLevel ?? 1,
       tags: uniqueTags(tables),
       zone: anchor.zone,
@@ -240,6 +247,7 @@ const mergeTables = async (_parent, { input }, ctx) => {
       sourceAnchorId: anchorId,
       mergedTableId,
       capacity,
+      status: mergedStatus,
     },
     actorUserId: ctx.user?.id,
     ip: ctx.req?.ip,
