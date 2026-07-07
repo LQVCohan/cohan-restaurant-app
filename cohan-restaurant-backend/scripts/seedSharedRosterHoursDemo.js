@@ -139,22 +139,19 @@ async function resetDemo({ restaurantId, staffIds }) {
 }
 
 async function seedPolicy(restaurantId) {
-  await SchedulingPolicy.findOneAndUpdate(
-    { restaurantId },
-    {
-      $set: {
-        shiftTemplates: SHIFT_TEMPLATES,
-        "laborRules.preventShiftOverlap": true,
-        "employmentTypePolicy.full_time.weeklyHoursTarget": 40,
-        "employmentTypePolicy.full_time.weeklyHoursCap": 48,
-        "employmentTypePolicy.part_time.minWeeklyHours": 8,
-        "employmentTypePolicy.part_time.weeklyHoursTarget": 20,
-        "employmentTypePolicy.part_time.weeklyHoursCap": 28,
-        "employmentTypePolicy.part_time.requireAvailability": true,
-      },
-    },
-    { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true },
-  );
+  const policy =
+    (await SchedulingPolicy.findOne({ restaurantId })) ||
+    new SchedulingPolicy({ restaurantId });
+
+  policy.shiftTemplates = SHIFT_TEMPLATES;
+  policy.laborRules.preventShiftOverlap = true;
+  policy.employmentTypePolicy.full_time.weeklyHoursTarget = 40;
+  policy.employmentTypePolicy.full_time.weeklyHoursCap = 48;
+  policy.employmentTypePolicy.part_time.minWeeklyHours = 8;
+  policy.employmentTypePolicy.part_time.weeklyHoursTarget = 20;
+  policy.employmentTypePolicy.part_time.weeklyHoursCap = 28;
+  policy.employmentTypePolicy.part_time.requireAvailability = true;
+  await policy.save();
 }
 
 async function seedRoster(context) {
