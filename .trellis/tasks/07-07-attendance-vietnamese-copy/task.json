@@ -1,0 +1,25 @@
+{
+  "id": "attendance-vietnamese-copy",
+  "name": "attendance-vietnamese-copy",
+  "title": "Chuẩn hóa tiếng Việt trang chấm công",
+  "description": "Thay các cụm pha Anh-Việt và câu chữ khó hiểu bằng thuật ngữ chấm công nhất quán, ngắn gọn.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-staff-attendance-copy",
+  "priority": "P2",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Staff/components/Attendance/AttendancePage.jsx",
+    "src/components/Dashboard_Manager/Staff/components/Attendance/OvertimePanel.jsx",
+    "src/components/Dashboard_Manager/Staff/components/Attendance/attendanceReconciliationUtils.js",
+    "src/components/Dashboard_Manager/Staff/components/Attendance/attendanceCorrectionUtils.js",
+    "src/components/Dashboard_Manager/Staff/components/Attendance/AttendancePage.test.jsx",
+    "src/components/Dashboard_Manager/Staff/components/Attendance/attendanceReconciliationUtils.test.js",
+    "src/components/Dashboard_Manager/Staff/components/Attendance/attendanceCorrectionUtils.test.js"
+  ]
+}
