@@ -2,58 +2,58 @@
 
 ## Current behavior
 
-The manager chain-management page now uses compact header metrics and readable production wording. The remaining desktop imbalance is in the two-column workspace: `brand-workspace` still inherits `align-items: start`, so the company-information and branch panels end at different vertical positions.
+The manager chain-management page now has aligned company/branch panels and a clear member filter toolbar. Two usability gaps remain:
 
-The member section also mixes two different jobs visually. The small unlabeled search box filters existing members, while the account, role, and branch controls below add a member. Because the search control is visually detached and has no visible field label, users can mistake the add-member account field for the member-list search and cannot clearly narrow the displayed member list by role or branch.
+1. The existing-member filters always occupy vertical space even when the user is only adding a member.
+2. Adding a member still requires pasting an opaque Mongo account ID. The generic `users` query cannot be reused because it is restricted to system administrators, while `addBrandMember` is available to actors who pass `canManageBrand`.
 
 ## End-to-end flow reviewed
 
-1. `BrandMembership` validates owner/admin/manager/staff scope.
-2. `brand.graphql` exposes `myBrands`, `brandMembers`, `updateBrand`, `addBrandMember`, and `updateBrandMember`.
-3. Brand resolvers enforce `canManageBrand`, branch ownership, and one active manager per branch.
-4. `useBrandManagement` merges `myBrands` with the current membership and stores selected chain/restaurant scope.
-5. `BrandManagement` receives each member's `user.fullName`, `user.id`, `userId`, `role`, and `restaurantIds`; these fields are sufficient for local search and filtering.
-6. `ManagerLayout` mounts the page for `manager#brands` and loads the page-scoped compact stylesheet.
+1. `User` stores the searchable account identity (`fullName`, `username`, `email`, `userType`, `status`, `deletedAt`).
+2. `BrandMembership` stores brand role and restaurant scope.
+3. `brand.graphql` currently exposes `brandMembers` and `addBrandMember`, but no safe brand-scoped candidate lookup.
+4. The brand resolver protects membership writes with `canManageBrand` and validates the selected `userId` before upserting membership.
+5. `BrandManagement` currently stores a raw `member.userId` entered by hand and passes it to `addBrandMember`.
+6. The page-scoped compact stylesheet controls the filter/add-member layout.
 
-The backend contract remains correct. The root causes are page composition, missing visible filter labels, and the desktop grid alignment rule.
+The root fix is a small brand-scoped candidate query guarded by the same permission boundary as the mutation, then a native collapsible filter area and a search-plus-select account picker in the existing form.
 
 ## Scope
 
-- Keep the shared header metrics compact.
-- Make the company-information and branch panels equal height on the desktop two-column layout without fixed pixel heights.
-- Separate the existing-member filter toolbar from the add-member form.
-- Make account search visibly labeled and searchable by employee full name or account/user ID.
-- Add role and branch filters for the displayed member list.
-- Treat owner/admin memberships as chain-wide when a branch filter is active.
-- Keep manager branch scope, admin chain-wide scope, and staff branch options visible and usable.
-- Keep all long branch/member values readable without clipping.
-- Reuse the current sage manager palette and component classes.
+- Make `Tìm và lọc thành viên` collapsible with native `<details>`; keep it open initially.
+- Add `BrandMemberCandidate` and `brandMemberCandidates(brandId, search, limit)` to the brand GraphQL contract.
+- Require `canManageBrand` for candidate lookup.
+- Search active non-customer business accounts by full name, username, email, or exact account ID.
+- Exclude deleted accounts and accounts already in the selected brand.
+- Limit and sort candidate results server-side.
+- Replace raw-ID entry with a name/account search field and a select box.
+- Keep the selected candidate ID as the existing `addBrandMember` mutation input.
+- Preserve role, branch scope, manager uniqueness, permissions, and status behavior.
+- Reuse current React, Apollo, SCSS, and manager palette; add no dependency.
 
 ## Acceptance criteria
 
-- On desktop, the bottom edges of `Thông tin doanh nghiệp` and `Chi nhánh` align.
-- Equal height is achieved with grid stretch/flex layout, not a hard-coded panel height.
-- The member area has a clearly visible `Tìm và lọc thành viên` toolbar.
-- The search field has a visible `Tìm tài khoản` label and placeholder `Tên nhân viên hoặc mã tài khoản`.
-- Searching by `user.fullName`, `userId`, or `user.id` returns the matching member.
-- The role filter supports all/admin/manager/staff.
-- The branch filter supports all branches and each restaurant in the selected chain.
-- Selecting a branch keeps chain-wide owner/admin members visible and filters branch-scoped members by `restaurantIds`.
-- The add-member controls remain a separate, clearly labeled `Thêm thành viên` area.
-- Account, role, manager branch scope, and add action fit one row at the reported desktop width when sufficient space is available.
-- At 1120px, 820px, 680px, 430px, 390x844, and 430x932, controls wrap without horizontal overflow.
-- Keyboard focus, field labels, loading, errors, empty states, and reduced-motion behavior remain intact.
-- No schema, resolver, permission, mutation, or restaurant-scope behavior changes.
+- The member filter panel can be opened and collapsed from its summary row.
+- Existing-member search and role/branch filters continue to work when open.
+- Entering fewer than two candidate-search characters does not query or offer ambiguous results.
+- Searching a name returns matching active business accounts that are not already brand members.
+- Candidate options show a readable name plus email/username and account ID context.
+- Selecting an option sets the exact `userId` sent to `addBrandMember`.
+- Changing the candidate search clears a stale previous selection.
+- Loading, no-result, and query-error states are visible without alerts or modals.
+- The picker and add-member controls wrap without horizontal overflow at desktop, tablet, 430px, and 390px widths.
+- No existing mutation or membership validation rule is weakened.
 
 ## Out of scope
 
-- Changing membership rules or owner transfer.
-- Adding server-side member search or account autocomplete for users who are not yet members.
-- Rebuilding `ManagementPageHeader` or the shared manager layout.
-- Adding dependencies, modals, drawers, or new backend state.
+- Creating a new user from this screen.
+- Fuzzy/phonetic search, pagination, or external search services.
+- Editing an existing member's role/scope from the add-member form.
+- Changing owner transfer rules or shared manager layout components.
 
 ## Validation plan
 
-- Run the existing `BrandManagement.test.jsx` component suite, including name/ID search and role/branch filtering.
-- Run the frontend production build.
-- Review the authenticated page at desktop and narrow breakpoints when a browser environment is available.
+- Add a focused brand resolver test for permission, search filter, existing-member exclusion, limit, and safe result mapping.
+- Update `BrandManagement.test.jsx` for collapsed filters, candidate search/select, and mutation variables.
+- Run the targeted frontend component test, targeted backend resolver test, GraphQL check, and frontend production build when execution is available.
+- Review desktop and 390/430px layouts when an authenticated browser environment is available.
