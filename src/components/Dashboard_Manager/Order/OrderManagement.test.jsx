@@ -104,7 +104,7 @@ const mixedStationOrder = {
         name: "Bún bò",
         unit: "portion",
         quantity: 1,
-        status: "pending",
+        status: "preparing",
         station: "kitchen",
       },
       {
@@ -213,6 +213,28 @@ describe("OrderManagement kitchen display", () => {
       screen.getByRole("heading", { name: /màn hình quầy bar/i }),
     ).toBeInTheDocument();
     expect(barButton).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getAllByText("Cà phê sữa").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Bún bò")).not.toBeInTheDocument();
+  });
+
+  it("filters focus mode status by visible item instead of whole order", () => {
+    apolloState.edges = [mixedStationOrder];
+    renderOrderManagement();
+
+    fireEvent.click(screen.getByRole("button", { name: /chế độ bếp/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /tổng hợp, 2 món cần xử lý/i }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /đang chuẩn bị/i }));
+
+    expect(screen.getAllByText("Bún bò").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Cà phê sữa")).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /quầy bar, 1 món cần xử lý/i }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /chờ xác nhận/i }));
+
     expect(screen.getAllByText("Cà phê sữa").length).toBeGreaterThan(0);
     expect(screen.queryByText("Bún bò")).not.toBeInTheDocument();
   });

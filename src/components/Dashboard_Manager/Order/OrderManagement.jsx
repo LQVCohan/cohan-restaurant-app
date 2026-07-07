@@ -10,7 +10,6 @@ import {
   CheckCircle,
   AlertTriangle,
   ChevronDown,
-  Maximize2,
   Minimize2,
   Plus,
   Filter,
@@ -756,6 +755,7 @@ const OrderManagement = () => {
     const singleToken = q && !q.includes(" ");
 
     const matchesStatus = (order) => {
+      if (focusMode && statusFilter !== "remote_staff_pending") return true;
       if (statusFilter === "remote_staff_pending") {
         return isRemoteStaffPendingOrder(order);
       }
@@ -830,6 +830,7 @@ const OrderManagement = () => {
     dateFrom,
     dateTo,
     isRemoteStaffPendingOrder,
+    focusMode,
   ]);
 
   const orderedFilteredOrders = useMemo(() => {
@@ -881,11 +882,19 @@ const OrderManagement = () => {
     () =>
       orderedFilteredOrders
         .map((order) => {
+          const matchesFocusItemStatus = (item) => {
+            if (!statusFilter) return true;
+            if (statusFilter === "remote_staff_pending") {
+              return isRemoteStaffPendingOrder(order);
+            }
+            return normalizeStatus(item?.status) === statusFilter;
+          };
           const items = focusMode
             ? (order.items || []).filter(
                 (item) =>
                   isVisiblePrepItem(item) &&
-                  matchesPrepStation(item, stationMode),
+                  matchesPrepStation(item, stationMode) &&
+                  matchesFocusItemStatus(item),
               )
             : order.items;
           if (focusMode && items.length === 0) return null;
@@ -897,7 +906,14 @@ const OrderManagement = () => {
           };
         })
         .filter(Boolean),
-    [orderedFilteredOrders, batchIndexByOrderId, focusMode, stationMode],
+    [
+      orderedFilteredOrders,
+      batchIndexByOrderId,
+      focusMode,
+      stationMode,
+      statusFilter,
+      isRemoteStaffPendingOrder,
+    ],
   );
 
   const focusItemCount = useMemo(
@@ -1436,11 +1452,11 @@ const OrderManagement = () => {
               <div className="om-filter-group">
                 {focusMode ? (
                   <div className="om-field om-field--kitchen-status">
-                    <span className="om-field__label">Trạng thái đơn</span>
+                    <span className="om-field__label">Trạng thái món</span>
                     <div
                       className="om-status-segmented"
                       role="group"
-                      aria-label="Trạng thái đơn"
+                      aria-label="Trạng thái món"
                     >
                       {KITCHEN_STATUS_FILTER_OPTIONS.map((option) => (
                         <button
