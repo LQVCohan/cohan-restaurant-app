@@ -1,0 +1,666 @@
+/* Premium information workspace for the restaurant profile page.
+   Presentation only: existing form state, GraphQL operations and permissions stay unchanged. */
+
+.manager-layout .restaurant-management-container {
+  --ri-premium-paper: rgba(253, 255, 254, 0.98);
+  --ri-premium-soft: rgba(238, 246, 241, 0.92);
+  --ri-premium-line: var(--manager-border, rgba(83, 108, 97, 0.22));
+  --ri-premium-line-strong: var(--manager-border-strong, rgba(83, 108, 97, 0.34));
+  --ri-premium-ink: var(--manager-text, #24312c);
+  --ri-premium-muted: var(--manager-muted, #607069);
+  --ri-premium-primary: var(--manager-primary, #536c61);
+  --ri-premium-primary-dark: var(--manager-primary-hover, #40584e);
+  --ri-premium-accent: var(--manager-accent, #2f7d68);
+  --ri-premium-accent-soft: var(--manager-accent-soft, #e5f0eb);
+  --ri-premium-shadow: 0 22px 52px rgba(48, 72, 61, 0.12);
+  --ri-premium-shadow-soft: 0 12px 30px rgba(48, 72, 61, 0.08);
+}
+
+@media (min-width: 1181px) {
+  .manager-layout .restaurant-management-container > .main-layout.ant-row {
+    grid-template-columns: minmax(0, 1.72fr) minmax(300px, 0.58fr);
+    gap: 22px;
+  }
+}
+
+.manager-layout .restaurant-management-container .edit-card.ant-card {
+  border-radius: 28px !important;
+  border-color: var(--ri-premium-line) !important;
+  background:
+    radial-gradient(circle at 100% 0, rgba(47, 125, 104, 0.08), transparent 24rem),
+    var(--ri-premium-paper) !important;
+  box-shadow: var(--ri-premium-shadow) !important;
+}
+
+/* Restaurant identity */
+.manager-layout .restaurant-management-container .hero-uploader-section {
+  margin-bottom: 0 !important;
+  border-bottom: 1px solid var(--ri-premium-line);
+  background: var(--ri-premium-paper);
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .cover-image-area {
+  height: clamp(170px, 18vw, 220px) !important;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .cover-image-area::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(255, 255, 255, 0.2), transparent 26%),
+    linear-gradient(180deg, rgba(18, 32, 26, 0.04), rgba(18, 32, 26, 0.48));
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .cover-overlay {
+  z-index: 2;
+  align-items: flex-start !important;
+  justify-content: flex-end !important;
+  padding: 16px;
+  opacity: 1 !important;
+  background: transparent !important;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .cover-overlay .ant-btn {
+  min-height: 38px;
+  border-color: rgba(255, 255, 255, 0.62) !important;
+  border-radius: 11px;
+  background: rgba(31, 48, 40, 0.64) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 24px rgba(21, 37, 30, 0.2);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .cover-overlay .ant-btn:hover {
+  background: rgba(31, 48, 40, 0.82) !important;
+  transform: translateY(-1px);
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .avatar-image-area {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 3;
+  margin: -42px 24px 0 !important;
+  padding: 0 0 20px !important;
+  align-items: flex-end !important;
+  gap: 14px !important;
+  background: linear-gradient(180deg, transparent 0 42px, var(--ri-premium-paper) 42px);
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .avatar-wrapper {
+  width: 92px !important;
+  height: 92px !important;
+  flex: 0 0 92px;
+  border: 4px solid var(--ri-premium-paper) !important;
+  border-radius: 25px !important;
+  box-shadow: 0 16px 36px rgba(34, 56, 47, 0.22) !important;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .avatar-overlay {
+  border-radius: 21px;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .restaurant-title-preview {
+  min-width: 0;
+  padding: 0 0 4px !important;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .restaurant-title-preview h4 {
+  margin: 0 0 3px !important;
+  color: var(--ri-premium-ink) !important;
+  font-size: clamp(1.15rem, 2vw, 1.5rem) !important;
+  font-weight: 860;
+  line-height: 1.12;
+  letter-spacing: -0.04em;
+  text-shadow: none !important;
+  text-wrap: balance;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .restaurant-title-preview > span {
+  color: var(--ri-premium-muted) !important;
+  font-size: 0.78rem;
+  text-shadow: none !important;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .restaurant-title-preview .ant-tag {
+  margin-top: 5px;
+  border-color: var(--ri-premium-line) !important;
+  border-radius: 8px;
+  background: var(--ri-premium-accent-soft) !important;
+  color: var(--ri-premium-primary-dark) !important;
+  font-weight: 700;
+}
+
+/* Segmented navigation */
+.manager-layout .restaurant-management-container .modern-form .form-content-padding {
+  padding: 0 !important;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs > .ant-tabs-nav {
+  margin: 0 !important;
+  padding: 12px 16px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--ri-premium-line) !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, rgba(248, 252, 249, 0.98), var(--ri-premium-soft)) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs > .ant-tabs-nav::before {
+  display: none;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-nav-list {
+  width: 100%;
+  gap: 6px;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab {
+  flex: 1 1 0;
+  min-height: 44px;
+  justify-content: center;
+  margin: 0 !important;
+  padding: 9px 12px !important;
+  border: 1px solid transparent;
+  border-radius: 12px !important;
+  color: var(--ri-premium-muted);
+  font-size: 0.78rem;
+  font-weight: 720;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab:hover {
+  border-color: var(--ri-premium-line);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ri-premium-primary-dark);
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab-active {
+  border-color: var(--ri-premium-line-strong);
+  background: #fff !important;
+  box-shadow: 0 8px 20px rgba(48, 72, 61, 0.1) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--ri-premium-primary-dark) !important;
+  font-weight: 820;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab:active {
+  transform: translateY(1px);
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-ink-bar {
+  display: none !important;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-content-holder {
+  padding: clamp(16px, 2vw, 24px);
+}
+
+/* Basic information is divided into clear visual groups without changing the component tree. */
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-row:first-child,
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .payment-info-alert
+  + .ant-row,
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-form-item {
+  position: relative;
+  margin: 0 0 16px !important;
+  padding: 18px;
+  border: 1px solid var(--ri-premium-line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 8px 22px rgba(48, 72, 61, 0.055);
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-row:first-child {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(220px, 0.75fr);
+  gap: 14px 16px;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-row:first-child
+  > .ant-col {
+  width: auto !important;
+  max-width: none !important;
+  flex: none !important;
+  padding: 0 !important;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-row:first-child
+  > .ant-col:nth-child(3) {
+  grid-column: 1 / -1;
+  padding-top: 14px !important;
+  border-top: 1px solid var(--ri-premium-line);
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-row:first-child
+  .ant-form-item {
+  margin-bottom: 0;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-row:first-child
+  > .ant-col:nth-child(3)
+  .ant-space-vertical {
+  width: 100%;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 14px !important;
+  padding: 14px 16px;
+  border: 1px solid var(--ri-premium-line);
+  border-radius: 15px;
+  background: var(--ri-premium-soft);
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-row:first-child
+  > .ant-col:nth-child(3)
+  .ant-space-item:nth-child(1) {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-row:first-child
+  > .ant-col:nth-child(3)
+  .ant-space-item:nth-child(2) {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+  padding-right: 8px;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-row:first-child
+  > .ant-col:nth-child(3)
+  .ant-space-item:nth-child(3),
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-row:first-child
+  > .ant-col:nth-child(3)
+  .ant-space-item:nth-child(4) {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ri-premium-line);
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-row:first-child
+  > .ant-col:nth-child(3)
+  .ant-space-item:nth-child(3) {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-row:first-child
+  > .ant-col:nth-child(3)
+  .ant-space-item:nth-child(4) {
+  grid-column: 1;
+  grid-row: 2;
+  color: var(--ri-premium-ink);
+  font-weight: 760;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-row:first-child
+  > .ant-col:nth-child(3)
+  .ant-space-item:nth-child(5) {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  padding-top: 4px;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-row:first-child
+  > .ant-col:nth-child(3)
+  .ant-typography-secondary {
+  color: var(--ri-premium-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.manager-layout .restaurant-management-container .modern-form .payment-info-alert {
+  margin: 0 0 16px !important;
+  padding: 11px 14px;
+  border-color: rgba(47, 125, 104, 0.24) !important;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, rgba(229, 243, 237, 0.96), rgba(247, 251, 249, 0.98)) !important;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .payment-info-alert
+  + .ant-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .payment-info-alert
+  + .ant-row
+  > .ant-col {
+  width: auto !important;
+  max-width: none !important;
+  flex: none !important;
+  padding: 0 !important;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .payment-info-alert
+  + .ant-row
+  .ant-form-item {
+  margin-bottom: 0;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ai-textarea-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ai-textarea-wrapper .ai-btn {
+  position: static !important;
+  align-self: flex-end;
+  margin-top: 10px;
+  min-height: 36px;
+  border-radius: 10px;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-form-item:last-child
+  .ant-space-compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-form-item:last-child
+  .ant-space-compact
+  > * {
+  width: auto !important;
+  border-radius: 12px !important;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-form-item:last-child
+  .ant-btn {
+  min-height: 44px;
+  border-color: var(--ri-premium-line-strong);
+  background: var(--ri-premium-soft);
+  color: var(--ri-premium-primary-dark);
+  font-weight: 720;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-content
+  > .ant-tabs-tabpane:first-child
+  > .ant-form-item:last-child
+  .ant-btn:hover {
+  border-color: var(--ri-premium-accent);
+  background: var(--ri-premium-accent-soft);
+}
+
+/* Shared control polish across all information tabs. */
+.manager-layout .restaurant-management-container .modern-form .ant-form-item-label > label {
+  color: var(--ri-premium-ink) !important;
+  font-size: 0.78rem !important;
+  font-weight: 760 !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form :is(
+    .ant-input,
+    .ant-input-affix-wrapper,
+    .ant-select-selector,
+    .ant-input-number,
+    .ant-picker,
+    textarea.ant-input
+  ) {
+  border-color: var(--ri-premium-line) !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form :is(
+    .ant-input:hover,
+    .ant-input-affix-wrapper:hover,
+    .ant-select-selector:hover,
+    .ant-input-number:hover,
+    .ant-picker:hover
+  ) {
+  border-color: var(--ri-premium-line-strong) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form :is(
+    .ant-input:focus,
+    .ant-input-affix-wrapper-focused,
+    .ant-select-focused .ant-select-selector,
+    .ant-input-number-focused,
+    .ant-picker-focused,
+    textarea.ant-input:focus
+  ) {
+  border-color: var(--ri-premium-accent) !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 4px rgba(47, 125, 104, 0.12) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .profile-section-card.ant-card,
+.manager-layout .restaurant-management-container .modern-form .payment-provider-card.ant-card {
+  border-radius: 18px !important;
+  border-color: var(--ri-premium-line) !important;
+  background: rgba(255, 255, 255, 0.76) !important;
+  box-shadow: 0 8px 22px rgba(48, 72, 61, 0.055) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .profile-section-card .ant-card-head,
+.manager-layout .restaurant-management-container .modern-form .payment-provider-card .ant-card-head {
+  border-bottom-color: var(--ri-premium-line) !important;
+  background: linear-gradient(180deg, rgba(248, 252, 249, 0.92), rgba(238, 246, 241, 0.78));
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-switch-checked {
+  background: var(--ri-premium-accent) !important;
+}
+
+.manager-layout .restaurant-management-container .preview-label {
+  border-radius: 12px !important;
+  background: var(--ri-premium-paper) !important;
+  box-shadow: var(--ri-premium-shadow-soft);
+}
+
+.manager-layout .restaurant-management-container .desktop-preview-card {
+  border-color: var(--ri-premium-line-strong) !important;
+  border-radius: 28px !important;
+  box-shadow: 0 28px 62px rgba(35, 58, 48, 0.18) !important;
+}
+
+@media (max-width: 768px) {
+  .manager-layout .restaurant-management-container .modern-tabs > .ant-tabs-nav {
+    padding: 10px 12px !important;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+
+  .manager-layout .restaurant-management-container .modern-tabs .ant-tabs-nav-list {
+    width: max-content;
+  }
+
+  .manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+
+  .manager-layout .restaurant-management-container .modern-tabs .ant-tabs-content-holder {
+    padding: 12px;
+  }
+
+  .manager-layout .restaurant-management-container
+    .modern-tabs
+    .ant-tabs-content
+    > .ant-tabs-tabpane:first-child
+    > .ant-row:first-child,
+  .manager-layout .restaurant-management-container
+    .modern-tabs
+    .ant-tabs-content
+    > .ant-tabs-tabpane:first-child
+    > .payment-info-alert
+    + .ant-row {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-layout .restaurant-management-container
+    .modern-tabs
+    .ant-tabs-content
+    > .ant-tabs-tabpane:first-child
+    > .ant-row:first-child
+    > .ant-col:nth-child(3) {
+    grid-column: 1;
+  }
+
+  .manager-layout .restaurant-management-container
+    .modern-tabs
+    .ant-tabs-content
+    > .ant-tabs-tabpane:first-child
+    > .ant-form-item:last-child
+    .ant-space-compact {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-layout .restaurant-management-container
+    .modern-tabs
+    .ant-tabs-content
+    > .ant-tabs-tabpane:first-child
+    > .ant-form-item:last-child
+    .ant-space-compact
+    > * {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .manager-layout .restaurant-management-container .hero-uploader-section .cover-image-area {
+    height: 145px !important;
+  }
+
+  .manager-layout .restaurant-management-container .hero-uploader-section .cover-overlay {
+    padding: 12px;
+  }
+
+  .manager-layout .restaurant-management-container .hero-uploader-section .avatar-image-area {
+    margin: -34px 14px 0 !important;
+    padding-bottom: 16px !important;
+    background: linear-gradient(180deg, transparent 0 34px, var(--ri-premium-paper) 34px);
+  }
+
+  .manager-layout .restaurant-management-container .hero-uploader-section .avatar-wrapper {
+    width: 74px !important;
+    height: 74px !important;
+    flex-basis: 74px;
+    border-radius: 20px !important;
+  }
+
+  .manager-layout .restaurant-management-container
+    .modern-tabs
+    .ant-tabs-content
+    > .ant-tabs-tabpane:first-child
+    > .ant-row:first-child,
+  .manager-layout .restaurant-management-container
+    .modern-tabs
+    .ant-tabs-content
+    > .ant-tabs-tabpane:first-child
+    > .payment-info-alert
+    + .ant-row,
+  .manager-layout .restaurant-management-container
+    .modern-tabs
+    .ant-tabs-content
+    > .ant-tabs-tabpane:first-child
+    > .ant-form-item {
+    padding: 14px;
+    border-radius: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manager-layout .restaurant-management-container .hero-uploader-section .ant-btn,
+  .manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab {
+    transition: none !important;
+  }
+}
