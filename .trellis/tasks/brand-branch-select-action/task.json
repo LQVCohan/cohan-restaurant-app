@@ -1,0 +1,15 @@
+{
+  "id": "brand-branch-select-action",
+  "title": "Make branch selection open the scoped dashboard",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-brand-branch-selection",
+  "priority": "P1",
+  "createdAt": "2026-07-07",
+  "branch": "fix/brand-branch-select-action",
+  "base_branch": "main",
+  "relatedFiles": [
+    "src/hooks/useBrandManagement.js",
+    "src/hooks/useManagerRestaurantSelection.test.jsx"
+  ]
+}
