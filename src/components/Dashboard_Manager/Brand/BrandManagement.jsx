@@ -47,6 +47,19 @@ const MEMBERS = gql`
   }
 `;
 
+const MEMBER_CANDIDATES = gql`
+  query BrandMemberCandidates($brandId: ID!, $search: String!, $limit: Int) {
+    brandMemberCandidates(brandId: $brandId, search: $search, limit: $limit) {
+      id
+      fullName
+      username
+      email
+      userType
+      status
+    }
+  }
+`;
+
 const ADD_MEMBER = gql`
   mutation AddBrandMember($input: AddBrandMemberInput!) {
     addBrandMember(input: $input) {
@@ -116,6 +129,13 @@ const getChainScopeLabel = (membership, restaurants = [], chainName = "") => {
   return "Chưa có phạm vi";
 };
 
+const getCandidateLabel = (candidate) => {
+  const name =
+    candidate?.fullName || candidate?.username || candidate?.email || "Tài khoản";
+  const identity = candidate?.email || candidate?.username || candidate?.id;
+  return `${name} — ${identity} · ID: ${candidate?.id}`;
+};
+
 const emptyBrandForm = {
   name: "",
   slug: "",
@@ -183,6 +203,9 @@ export default function BrandManagement() {
   const [memberSearch, setMemberSearch] = useState("");
   const [memberRoleFilter, setMemberRoleFilter] = useState("all");
   const [memberRestaurantFilter, setMemberRestaurantFilter] = useState("all");
+  const [memberFiltersOpen, setMemberFiltersOpen] = useState(true);
+  const [candidateSearch, setCandidateSearch] = useState("");
+  const [candidateSearchTerm, setCandidateSearchTerm] = useState("");
   const [changingMemberId, setChangingMemberId] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
@@ -195,6 +218,23 @@ export default function BrandManagement() {
     variables: { brandId: selectedBrandId },
     skip: !selectedBrandId,
     fetchPolicy: "cache-and-network",
+  });
+
+  const candidateSearchReady =
+    Boolean(selectedBrandId) && candidateSearchTerm.length >= 2;
+  const {
+    data: candidateData,
+    loading: candidatesLoading,
+    error: candidateQueryError,
+  } = useQuery(MEMBER_CANDIDATES, {
+    variables: {
+      brandId: selectedBrandId,
+      search: candidateSearchTerm,
+      limit: 20,
+    },
+    skip: !candidateSearchReady,
+    fetchPolicy: "network-only",
+    notifyOnNetworkStatusChange: true,
   });
 
   const [updateBrand, { loading: savingBrand }] = useMutation(UPDATE_BRAND, {
@@ -235,10 +275,26 @@ export default function BrandManagement() {
     setMemberSearch("");
     setMemberRoleFilter("all");
     setMemberRestaurantFilter("all");
+    setCandidateSearch("");
+    setCandidateSearchTerm("");
   }, [selectedBrandId]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setCandidateSearchTerm(candidateSearch.trim()),
+      250,
+    );
+    return () => window.clearTimeout(timer);
+  }, [candidateSearch]);
 
   const members = memberData?.brandMembers || [];
   const restaurants = selectedBrand?.restaurants || [];
+  const candidates = candidateSearchReady
+    ? candidateData?.brandMemberCandidates || []
+    : [];
+  const selectedCandidate = candidates.find(
+    (candidate) => String(candidate.id) === String(member.userId),
+  );
   const assignedManagerByRestaurant = useMemo(
     () => getAssignedManagerByRestaurant(members),
     [members],
@@ -350,7 +406,7 @@ export default function BrandManagement() {
   };
 
   const validateMember = () => {
-    if (!member.userId.trim()) return "Nhập mã tài khoản của thành viên.";
+    if (!member.userId.trim()) return "Chọn tài khoản cần thêm.";
     if (member.role === "manager" && member.restaurantIds.length !== 1) {
       return "Quản lý chi nhánh phải phụ trách đúng một chi nhánh.";
     }
@@ -382,6 +438,8 @@ export default function BrandManagement() {
         },
       });
       setMember(emptyMemberForm);
+      setCandidateSearch("");
+      setCandidateSearchTerm("");
       await refetchMembers?.();
       message.success("Đã cập nhật thành viên trong chuỗi");
     } catch (mutationError) {
@@ -738,75 +796,133 @@ export default function BrandManagement() {
               </div>
             </div>
 
-            <div className="brand-member-filter-panel" aria-label="Tìm và lọc thành viên">
-              <div className="brand-member-filter-panel__heading">
+            <details
+              className="brand-member-filter-panel"
+              open={memberFiltersOpen}
+              onToggle={(event) => setMemberFiltersOpen(event.currentTarget.open)}
+            >
+              <summary className="brand-member-filter-panel__heading">
                 <strong>Tìm và lọc thành viên</strong>
                 <span>{filteredMembers.length}/{members.length} kết quả</span>
-              </div>
-              <div className="brand-member-filters">
-                <label className="brand-field brand-filter-field brand-filter-field--search">
-                  <span>Tìm tài khoản</span>
-                  <div className="brand-member-search">
-                    <span aria-hidden="true">⌕</span>
-                    <input
-                      type="search"
-                      aria-label="Tìm tài khoản theo tên nhân viên hoặc mã tài khoản"
-                      value={memberSearch}
-                      onChange={(event) => setMemberSearch(event.target.value)}
-                      placeholder="Tên nhân viên hoặc mã tài khoản"
-                    />
-                  </div>
-                </label>
+              </summary>
+              <div className="brand-member-filter-panel__body">
+                <div className="brand-member-filters">
+                  <label className="brand-field brand-filter-field brand-filter-field--search">
+                    <span>Tìm tài khoản</span>
+                    <div className="brand-member-search">
+                      <span aria-hidden="true">⌕</span>
+                      <input
+                        type="search"
+                        aria-label="Tìm tài khoản theo tên nhân viên hoặc mã tài khoản"
+                        value={memberSearch}
+                        onChange={(event) => setMemberSearch(event.target.value)}
+                        placeholder="Tên nhân viên hoặc mã tài khoản"
+                      />
+                    </div>
+                  </label>
 
-                <label className="brand-field brand-filter-field">
-                  <span>Vai trò</span>
-                  <select
-                    aria-label="Lọc theo vai trò"
-                    value={memberRoleFilter}
-                    onChange={(event) => setMemberRoleFilter(event.target.value)}
-                  >
-                    <option value="all">Tất cả vai trò</option>
-                    {Object.entries(CHAIN_ROLE_LABELS).map(([role, label]) => (
-                      <option key={role} value={role}>{label}</option>
-                    ))}
-                  </select>
-                </label>
+                  <label className="brand-field brand-filter-field">
+                    <span>Vai trò</span>
+                    <select
+                      aria-label="Lọc theo vai trò"
+                      value={memberRoleFilter}
+                      onChange={(event) => setMemberRoleFilter(event.target.value)}
+                    >
+                      <option value="all">Tất cả vai trò</option>
+                      {Object.entries(CHAIN_ROLE_LABELS).map(([role, label]) => (
+                        <option key={role} value={role}>{label}</option>
+                      ))}
+                    </select>
+                  </label>
 
-                <label className="brand-field brand-filter-field">
-                  <span>Chi nhánh</span>
-                  <select
-                    aria-label="Lọc theo chi nhánh"
-                    value={memberRestaurantFilter}
-                    onChange={(event) => setMemberRestaurantFilter(event.target.value)}
-                  >
-                    <option value="all">Tất cả chi nhánh</option>
-                    {restaurants.map((restaurant) => (
-                      <option key={restaurant.id} value={restaurant.id}>
-                        {restaurant.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                  <label className="brand-field brand-filter-field">
+                    <span>Chi nhánh</span>
+                    <select
+                      aria-label="Lọc theo chi nhánh"
+                      value={memberRestaurantFilter}
+                      onChange={(event) => setMemberRestaurantFilter(event.target.value)}
+                    >
+                      <option value="all">Tất cả chi nhánh</option>
+                      {restaurants.map((restaurant) => (
+                        <option key={restaurant.id} value={restaurant.id}>
+                          {restaurant.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
               </div>
-            </div>
+            </details>
 
             <div className="brand-member-create">
               <div className="brand-member-create__grid">
-                <label className="brand-field">
-                  <span>Mã tài khoản cần thêm</span>
-                  <input
-                    value={member.userId}
-                    onChange={(event) => {
-                      setMember((current) => ({
-                        ...current,
-                        userId: event.target.value,
-                      }));
-                      setMemberFormError("");
-                    }}
-                    placeholder="Nhập mã tài khoản"
-                  />
-                  <small>Lấy mã tại hồ sơ nhân viên hoặc trang quản lý người dùng.</small>
-                </label>
+                <div className="brand-account-picker">
+                  <label className="brand-field">
+                    <span>Tìm người cần thêm</span>
+                    <input
+                      type="search"
+                      aria-label="Tìm người cần thêm theo tên, email hoặc mã tài khoản"
+                      value={candidateSearch}
+                      onChange={(event) => {
+                        setCandidateSearch(event.target.value);
+                        setMember((current) => ({ ...current, userId: "" }));
+                        setMemberFormError("");
+                      }}
+                      placeholder="Nhập tên hoặc email"
+                    />
+                  </label>
+
+                  <label className="brand-field">
+                    <span>Chọn tài khoản</span>
+                    <select
+                      aria-label="Chọn tài khoản cần thêm"
+                      value={member.userId}
+                      onChange={(event) => {
+                        setMember((current) => ({
+                          ...current,
+                          userId: event.target.value,
+                        }));
+                        setMemberFormError("");
+                      }}
+                      disabled={
+                        !candidateSearchReady ||
+                        candidatesLoading ||
+                        Boolean(candidateQueryError) ||
+                        !candidates.length
+                      }
+                    >
+                      <option value="">
+                        {candidateSearch.trim().length < 2
+                          ? "Nhập ít nhất 2 ký tự"
+                          : candidatesLoading
+                            ? "Đang tìm tài khoản..."
+                            : candidates.length
+                              ? "Chọn một tài khoản"
+                              : "Không có kết quả"}
+                      </option>
+                      {candidates.map((candidate) => (
+                        <option key={candidate.id} value={candidate.id}>
+                          {getCandidateLabel(candidate)}
+                        </option>
+                      ))}
+                    </select>
+                    <small
+                      className={candidateQueryError ? "brand-field__error" : undefined}
+                    >
+                      {candidateQueryError
+                        ? "Không thể tìm tài khoản. Vui lòng thử lại."
+                        : selectedCandidate
+                          ? `Đã chọn: ${getCandidateLabel(selectedCandidate)}`
+                          : candidateSearch.trim().length < 2
+                            ? "Nhập ít nhất 2 ký tự để tìm."
+                            : candidatesLoading
+                              ? "Đang tìm tài khoản phù hợp..."
+                              : candidates.length
+                                ? `${candidates.length} tài khoản có thể thêm.`
+                                : "Không tìm thấy tài khoản chưa thuộc chuỗi."}
+                    </small>
+                  </label>
+                </div>
 
                 <label className="brand-field">
                   <span>Vai trò trong chuỗi</span>
