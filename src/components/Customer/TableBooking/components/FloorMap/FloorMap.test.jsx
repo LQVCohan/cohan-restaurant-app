@@ -51,11 +51,50 @@ describe("FloorMap", () => {
 
     const tableButton = screen.getByRole("button", { name: /Bàn A1, 4 chỗ, trống/i });
     expect(tableButton.tagName).toBe("BUTTON");
+    expect(tableButton).toHaveTextContent("4 chỗ");
+    expect(tableButton.querySelector(".table-capacity")).toBeInTheDocument();
     tableButton.focus();
     expect(tableButton).toHaveFocus();
 
     fireEvent.keyDown(tableButton, { key: "Enter" });
     expect(onSelectTable).toHaveBeenCalledWith(availableTable);
+  });
+
+  it("renders every manager floor-plan element that customers need to recognize", () => {
+    const layout = [
+      { id: "door-double", type: "door-double", label: "Cửa chính", x: 10, y: 10, w: 110, h: 12 },
+      { id: "corridor", type: "corridor", label: "Hành lang", x: 10, y: 40, w: 220, h: 14 },
+      { id: "pillar", type: "pillar", label: "Cột giữa", x: 20, y: 80, w: 40, h: 40 },
+      { id: "stairs", type: "stairs", label: "Cầu thang", x: 80, y: 80, w: 100, h: 60 },
+      { id: "bar", type: "bar", label: "Quầy bar", x: 200, y: 80, w: 180, h: 60 },
+      { id: "cashier", type: "cashier", label: "Thu ngân", x: 200, y: 160, w: 120, h: 50 },
+      { id: "kitchen", type: "kitchen", label: "Bếp", x: 340, y: 160, w: 140, h: 90 },
+      { id: "buffet", type: "buffet", label: "Buffet", x: 500, y: 160, w: 160, h: 70 },
+      { id: "wc", type: "wc", label: "WC", x: 500, y: 250, w: 80, h: 80 },
+      { id: "staff", type: "staff-corridor", label: "Lối nhân viên", x: 10, y: 260, w: 180, h: 14 },
+      { id: "sofa", type: "sofa", label: "Sofa chờ", x: 200, y: 260, w: 120, h: 60 },
+      { id: "symbol", type: "symbol", label: "Điểm check-in", icon: "★", x: 340, y: 280, w: 50, h: 50 },
+    ];
+
+    renderMap({ layout });
+
+    [
+      "Cửa chính",
+      "Hành lang",
+      "Cột giữa",
+      "Cầu thang",
+      "Quầy bar",
+      "Thu ngân",
+      "Bếp",
+      "Buffet",
+      "WC",
+      "Lối nhân viên",
+      "Sofa chờ",
+      "Điểm check-in",
+    ].forEach((label) => {
+      expect(screen.getByRole("img", { name: label })).toBeInTheDocument();
+    });
+    expect(screen.getByText("★")).toBeInTheDocument();
   });
 
   it("opens the notification flow for a table that is not available", () => {
