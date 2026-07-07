@@ -43,4 +43,30 @@ describe("AttendancePageScoped", () => {
       restaurantId,
     );
   });
+
+  it("keeps the selected restaurant while AuthContext user is still restoring", async () => {
+    const restaurantId = "69ce9e2e8d8d711f12e251b1";
+
+    render(
+      <AuthContext.Provider value={{ user: null, loading: true }}>
+        <AttendancePageScoped restaurantId={restaurantId} />
+      </AuthContext.Provider>,
+    );
+
+    expect(await screen.findByTestId("attendance-restaurant-scope")).toHaveTextContent(
+      restaurantId,
+    );
+  });
+
+  it("does not mount AttendancePage before a restaurant is selected", () => {
+    render(
+      <AuthContext.Provider
+        value={{ user: { id: "manager-1", roleName: "manager" } }}
+      >
+        <AttendancePageScoped restaurantId="" />
+      </AuthContext.Provider>,
+    );
+
+    expect(screen.queryByTestId("attendance-restaurant-scope")).not.toBeInTheDocument();
+  });
 });

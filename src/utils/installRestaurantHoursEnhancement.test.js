@@ -45,7 +45,7 @@ describe("restaurant hours enhancement", () => {
     renderHoursForm();
   });
 
-  it("renders explicit time selectors and blocks an incomplete hour pair", async () => {
+  it("renders compact time selectors and blocks an incomplete hour pair", async () => {
     installRestaurantHoursEnhancement();
     await Promise.resolve();
 
@@ -64,6 +64,9 @@ describe("restaurant hours enhancement", () => {
     expect(closingSelect).not.toBeNull();
     expect(buildRestaurantTimeOptions()).toContain("08:00");
     expect(buildRestaurantTimeOptions()).toContain("22:00");
+    expect(openingSelect.querySelector('option[value="08:30"]')?.textContent).toBe(
+      "08:30",
+    );
 
     openingSelect.value = "08:00";
     openingSelect.dispatchEvent(new Event("change", { bubbles: true }));
