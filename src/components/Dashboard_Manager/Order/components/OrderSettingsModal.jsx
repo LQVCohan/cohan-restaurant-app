@@ -321,183 +321,185 @@ const OrderSettingsModal = ({
       }
       size="xl"
     >
-      <div className="osm-scope-note" role="note">
-        <MonitorCog size={20} aria-hidden="true" />
-        <div>
-          <strong>Áp dụng trên trình duyệt hiện tại</strong>
-          <span>
-            Cài đặt dùng chung cho màn hình Bếp và Quầy bar. Thay đổi có hiệu lực
-            sau khi chọn Lưu cài đặt.
-          </span>
-        </div>
-      </div>
-
-      <div className="osm-layout">
-        <div className="osm-form">
-          <section className="osm-section" aria-labelledby="osm-time-title">
-            <div className="osm-section__header">
-              <Clock className="icon" size={20} aria-hidden="true" />
-              <div>
-                <h4 id="osm-time-title">Thời gian chờ và mức cảnh báo</h4>
-                <p>
-                  Đặt số phút để thẻ món đổi màu, giúp nhân viên nhận biết món cần
-                  ưu tiên. Mỗi mốc phải lớn hơn mốc trước.
-                </p>
-              </div>
-            </div>
-
-            <div className="osm-time-inputs">
-              {[
-                {
-                  key: "warn",
-                  label: "Bắt đầu cảnh báo",
-                  tone: "warn",
-                },
-                { key: "danger", label: "Cần ưu tiên", tone: "danger" },
-                { key: "critical", label: "Khẩn cấp", tone: "critical" },
-              ].map((item) => (
-                <div className="input-group" key={item.key}>
-                  <label htmlFor={`osm-time-${item.key}`}>{item.label}</label>
-                  <div className={`input-wrapper ${item.tone}`}>
-                    <input
-                      id={`osm-time-${item.key}`}
-                      type="number"
-                      min="1"
-                      inputMode="numeric"
-                      value={localTime[item.key]}
-                      onChange={(event) =>
-                        handleTimeChange(item.key, event.target.value)
-                      }
-                      aria-label={`${item.label} (phút)`}
-                    />
-                    <span>phút</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="osm-section" aria-labelledby="osm-color-title">
-            <div className="osm-section__header">
-              <Palette className="icon" size={20} aria-hidden="true" />
-              <div>
-                <h4 id="osm-color-title">Màu nhận biết theo mức độ</h4>
-                <p>
-                  Chọn màu dễ phân biệt trong điều kiện ánh sáng tại khu chế biến.
-                </p>
-              </div>
-            </div>
-
-            <div className="osm-colors-grid">
-              {Object.keys(DEFAULT_TIME_COLORS).map((key) => (
-                <div key={key} className="color-picker-item">
-                  <label htmlFor={`osm-color-${key}`}>{COLOR_LABELS[key]}</label>
-                  <div className="color-input-wrapper">
-                    <input
-                      id={`osm-color-${key}`}
-                      type="color"
-                      value={previewColors[key]}
-                      onChange={(event) =>
-                        handleColorChange(key, event.target.value)
-                      }
-                      aria-label={`Màu ${COLOR_LABELS[key]}`}
-                    />
-                    <span className="hex-code">{previewColors[key]}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="osm-presets">
-              <span>Bộ màu có sẵn</span>
-              <div
-                className="preset-badges"
-                role="group"
-                aria-label="Chọn bộ màu hiển thị"
-              >
-                {COLOR_PRESETS.map((preset) => {
-                  const active = activePresetName === preset.name;
-                  return (
-                    <button
-                      key={preset.name}
-                      type="button"
-                      className={`preset-btn ${active ? "active" : ""}`}
-                      onClick={() => applyPreset(preset.colors)}
-                      aria-pressed={active}
-                    >
-                      <span className="preset-dots" aria-hidden="true">
-                        {Object.values(preset.colors).map((color) => (
-                          <span key={color} style={{ background: color }} />
-                        ))}
-                      </span>
-                      {preset.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-
-          <section className="osm-section" aria-labelledby="osm-size-title">
-            <div className="osm-section__header">
-              <Layout className="icon" size={20} aria-hidden="true" />
-              <div>
-                <h4 id="osm-size-title">Kích thước hiển thị món</h4>
-                <p>
-                  Điều chỉnh cỡ chữ và khoảng cách trong thẻ món theo vị trí đặt
-                  màn hình.
-                </p>
-              </div>
-            </div>
-
-            <div className="osm-chip-options">
-              {CHIP_SIZE_OPTIONS.map((option) => (
-                <label
-                  key={option.value}
-                  className={`chip-radio ${
-                    normalizedLocalChip === option.value ? "active" : ""
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="chipSize"
-                    value={option.value}
-                    checked={normalizedLocalChip === option.value}
-                    onChange={(event) => setLocalChip(event.target.value)}
-                  />
-                  <span>
-                    <strong>{option.label}</strong>
-                    <small>{option.description}</small>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        <aside className="osm-preview" aria-label="Xem trước cài đặt">
-          <div className="osm-preview__sticky">
-            <h3 className="preview-title">Xem trước</h3>
-            <div className="preview-container">
-              <MockOrderCard
-                chipSize={normalizedLocalChip}
-                colors={previewColors}
-                timeSettings={previewTimeSettings}
-              />
-            </div>
-            <div className="osm-preview__actions">
-              <button
-                type="button"
-                className="btn-reset"
-                onClick={handleResetDefaults}
-              >
-                <RotateCcw size={14} aria-hidden="true" />
-                Đặt lại mặc định
-              </button>
-            </div>
+      <Modal.Body className="osm-scroll-body">
+        <div className="osm-scope-note" role="note">
+          <MonitorCog size={20} aria-hidden="true" />
+          <div>
+            <strong>Áp dụng trên trình duyệt hiện tại</strong>
+            <span>
+              Cài đặt dùng chung cho màn hình Bếp và Quầy bar. Thay đổi có hiệu lực
+              sau khi chọn Lưu cài đặt.
+            </span>
           </div>
-        </aside>
-      </div>
+        </div>
+
+        <div className="osm-layout">
+          <div className="osm-form">
+            <section className="osm-section" aria-labelledby="osm-time-title">
+              <div className="osm-section__header">
+                <Clock className="icon" size={20} aria-hidden="true" />
+                <div>
+                  <h4 id="osm-time-title">Thời gian chờ và mức cảnh báo</h4>
+                  <p>
+                    Đặt số phút để thẻ món đổi màu, giúp nhân viên nhận biết món cần
+                    ưu tiên. Mỗi mốc phải lớn hơn mốc trước.
+                  </p>
+                </div>
+              </div>
+
+              <div className="osm-time-inputs">
+                {[
+                  {
+                    key: "warn",
+                    label: "Bắt đầu cảnh báo",
+                    tone: "warn",
+                  },
+                  { key: "danger", label: "Cần ưu tiên", tone: "danger" },
+                  { key: "critical", label: "Khẩn cấp", tone: "critical" },
+                ].map((item) => (
+                  <div className="input-group" key={item.key}>
+                    <label htmlFor={`osm-time-${item.key}`}>{item.label}</label>
+                    <div className={`input-wrapper ${item.tone}`}>
+                      <input
+                        id={`osm-time-${item.key}`}
+                        type="number"
+                        min="1"
+                        inputMode="numeric"
+                        value={localTime[item.key]}
+                        onChange={(event) =>
+                          handleTimeChange(item.key, event.target.value)
+                        }
+                        aria-label={`${item.label} (phút)`}
+                      />
+                      <span>phút</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="osm-section" aria-labelledby="osm-color-title">
+              <div className="osm-section__header">
+                <Palette className="icon" size={20} aria-hidden="true" />
+                <div>
+                  <h4 id="osm-color-title">Màu nhận biết theo mức độ</h4>
+                  <p>
+                    Chọn màu dễ phân biệt trong điều kiện ánh sáng tại khu chế biến.
+                  </p>
+                </div>
+              </div>
+
+              <div className="osm-colors-grid">
+                {Object.keys(DEFAULT_TIME_COLORS).map((key) => (
+                  <div key={key} className="color-picker-item">
+                    <label htmlFor={`osm-color-${key}`}>{COLOR_LABELS[key]}</label>
+                    <div className="color-input-wrapper">
+                      <input
+                        id={`osm-color-${key}`}
+                        type="color"
+                        value={previewColors[key]}
+                        onChange={(event) =>
+                          handleColorChange(key, event.target.value)
+                        }
+                        aria-label={`Màu ${COLOR_LABELS[key]}`}
+                      />
+                      <span className="hex-code">{previewColors[key]}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="osm-presets">
+                <span>Bộ màu có sẵn</span>
+                <div
+                  className="preset-badges"
+                  role="group"
+                  aria-label="Chọn bộ màu hiển thị"
+                >
+                  {COLOR_PRESETS.map((preset) => {
+                    const active = activePresetName === preset.name;
+                    return (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        className={`preset-btn ${active ? "active" : ""}`}
+                        onClick={() => applyPreset(preset.colors)}
+                        aria-pressed={active}
+                      >
+                        <span className="preset-dots" aria-hidden="true">
+                          {Object.values(preset.colors).map((color) => (
+                            <span key={color} style={{ background: color }} />
+                          ))}
+                        </span>
+                        {preset.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+
+            <section className="osm-section" aria-labelledby="osm-size-title">
+              <div className="osm-section__header">
+                <Layout className="icon" size={20} aria-hidden="true" />
+                <div>
+                  <h4 id="osm-size-title">Kích thước hiển thị món</h4>
+                  <p>
+                    Điều chỉnh cỡ chữ và khoảng cách trong thẻ món theo vị trí đặt
+                    màn hình.
+                  </p>
+                </div>
+              </div>
+
+              <div className="osm-chip-options">
+                {CHIP_SIZE_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className={`chip-radio ${
+                      normalizedLocalChip === option.value ? "active" : ""
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="chipSize"
+                      value={option.value}
+                      checked={normalizedLocalChip === option.value}
+                      onChange={(event) => setLocalChip(event.target.value)}
+                    />
+                    <span>
+                      <strong>{option.label}</strong>
+                      <small>{option.description}</small>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          <aside className="osm-preview" aria-label="Xem trước cài đặt">
+            <div className="osm-preview__sticky">
+              <h3 className="preview-title">Xem trước</h3>
+              <div className="preview-container">
+                <MockOrderCard
+                  chipSize={normalizedLocalChip}
+                  colors={previewColors}
+                  timeSettings={previewTimeSettings}
+                />
+              </div>
+              <div className="osm-preview__actions">
+                <button
+                  type="button"
+                  className="btn-reset"
+                  onClick={handleResetDefaults}
+                >
+                  <RotateCcw size={14} aria-hidden="true" />
+                  Đặt lại mặc định
+                </button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </Modal.Body>
 
       <Modal.Footer>
         <button
