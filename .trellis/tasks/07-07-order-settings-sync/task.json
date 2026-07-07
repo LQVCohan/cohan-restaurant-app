@@ -3,7 +3,7 @@
   "name": "order-settings-sync",
   "title": "Sync order display settings with manager UI",
   "description": "Polish the order settings modal and make all local display settings visibly affect the manager KDS.",
-  "status": "in_progress",
+  "status": "in_review",
   "dev_type": "frontend",
   "scope": "manager-order-settings",
   "priority": "P1",
@@ -18,7 +18,7 @@
     "src/styles/OrderSettingsModalBeauty.css",
     "src/components/Dashboard_Manager/Order/components/OrderSettingsModal.test.jsx"
   ],
-  "notes": "Frontend-only settings. Thresholds and colors already reach OrderCard. Chip size currently reaches summary chips but not KDS item rows. Settings remain browser-local by design.",
+  "notes": "Implemented sage/cream modal polish, accessible controls, normalized save values, browser-local scope copy, and root data-order-chip-size synchronization so small/large settings affect actual fullscreen KDS item rows. Threshold and color callbacks remain unchanged and continue through OrderManagement into OrderCard. Targeted test added; tests/build have not been executed in the connector environment.",
   "meta": {
     "skills": [
       "ponytail",
