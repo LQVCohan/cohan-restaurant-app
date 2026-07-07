@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PERMISSIONS } from "../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../src/services/auth/authorization.service.js";
+
+const restaurantScopeMocks = vi.hoisted(() => ({
+  canAccessRestaurant: vi.fn(),
+}));
 const modelMocks = vi.hoisted(() => ({
   Restaurant: {
     exists: vi.fn(),
@@ -8,9 +12,12 @@ const modelMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+}));
 
 const RESTAURANT_ID = "rest-main-1";
-const OTHER_RESTAURANT_ID = "rest-other-1";
 
 function role(slug, permissions = []) {
   return {
@@ -23,17 +30,17 @@ function role(slug, permissions = []) {
 describe("module permission guards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    restaurantScopeMocks.canAccessRestaurant.mockReset();
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
     modelMocks.Restaurant.exists.mockResolvedValue(false);
   });
 
   it("allows a manager with module permission inside restaurant scope", async () => {
-    modelMocks.Restaurant.exists.mockResolvedValue(true);
     const ctx = {
       user: {
         id: "manager-1",
         roleName: "manager",
         role: role("manager", [PERMISSIONS.MENU_WRITE]),
-        restaurantIds: [RESTAURANT_ID],
       },
     };
 
@@ -43,12 +50,12 @@ describe("module permission guards", () => {
   });
 
   it("blocks a manager with permission outside restaurant scope", async () => {
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValueOnce(false);
     const ctx = {
       user: {
         id: "manager-1",
         roleName: "manager",
         role: role("manager", [PERMISSIONS.MENU_WRITE]),
-        restaurantIds: [OTHER_RESTAURANT_ID],
       },
     };
 
@@ -63,7 +70,6 @@ describe("module permission guards", () => {
         id: "staff-1",
         roleName: "server",
         role: role("server", [PERMISSIONS.MENU_READ]),
-        restaurantForStaff: RESTAURANT_ID,
       },
     };
 
@@ -91,7 +97,6 @@ describe("module permission guards", () => {
         id: "cashier-1",
         roleName: "cashier",
         role: role("cashier", [PERMISSIONS.PAYMENT_WRITE]),
-        restaurantForStaff: RESTAURANT_ID,
       },
     };
 
@@ -106,7 +111,6 @@ describe("module permission guards", () => {
         id: "chef-1",
         roleName: "chef",
         role: role("chef", [PERMISSIONS.ORDER_UPDATE]),
-        restaurantForStaff: RESTAURANT_ID,
       },
     };
 
@@ -121,7 +125,6 @@ describe("module permission guards", () => {
         id: "customer-1",
         roleName: "customer",
         role: role("customer", [PERMISSIONS.RESERVATION_CREATE]),
-        restaurantId: RESTAURANT_ID,
       },
     };
 
