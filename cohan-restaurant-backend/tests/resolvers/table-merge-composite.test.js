@@ -7,6 +7,7 @@ const tableMocks = vi.hoisted(() => ({
   deleteOne: vi.fn(),
   findById: vi.fn(),
 }));
+const tableCustomerMocks = vi.hoisted(() => ({ find: vi.fn() }));
 const authMocks = vi.hoisted(() => ({
   requireRestaurantPermission: vi.fn(),
 }));
@@ -17,6 +18,9 @@ const stateGuardMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/table.model.js", () => ({ default: tableMocks }));
+vi.mock("../../models/tableCustomer.model.js", () => ({
+  default: tableCustomerMocks,
+}));
 vi.mock("../../src/services/auth/authorization.service.js", () => authMocks);
 vi.mock("../../src/services/eventLog.service.js", () => eventMocks);
 vi.mock("../../utils/tableStateGuards.js", () => stateGuardMocks);
@@ -28,6 +32,7 @@ vi.mock("mongoose", () => ({
 }));
 
 const leanWrap = (value) => ({ lean: vi.fn().mockResolvedValue(value) });
+const selectLeanWrap = (value) => ({ select: vi.fn(() => leanWrap(value)) });
 const tableListWrap = (value) => ({
   select: vi.fn().mockReturnThis(),
   sort: vi.fn().mockReturnThis(),
@@ -71,6 +76,7 @@ describe("composite table merge", () => {
     eventMocks.logEvent.mockResolvedValue();
     stateGuardMocks.hasActiveOrdersForTable.mockResolvedValue(false);
     stateGuardMocks.hasActiveReservationsForTable.mockResolvedValue(false);
+    tableCustomerMocks.find.mockReturnValue(selectLeanWrap([]));
     tableMocks.updateMany.mockResolvedValue({ modifiedCount: 2 });
     tableMocks.deleteOne.mockResolvedValue({ deletedCount: 1 });
   });
@@ -132,12 +138,59 @@ describe("composite table merge", () => {
     });
   });
 
-  it("keeps customer-bearing occupied state when no active order or reservation exists", async () => {
-    const occupiedSources = [
-      sourceTables[0],
-      { ...sourceTables[1], status: "occupied" },
-    ];
-    tableMocks.find.mockReturnValueOnce(leanWrap(occupiedSources));
+  it("marks the composite occupied when a preserved source customer exists", async () => {
+    tableMocks.find.mockReturnValueOnce(leanWrap(sourceTables));
+    tableCustomerMocks.find.mockReturnValueOnce(
+      selectLeanWrap([
+        {
+          _id: "valid-customer-a2",
+          customerName: "Trần Bình",
+          partySize: 3,
+        },
+      ]),
+    );
+    tableMocks.create.mockResolvedValue({
+      _id: "valid-merged",
+      id: "valid-merged",
+    });
+
+    const mutations = (
+      await import("../../graphql/resolvers/table/mergeTables.js")
+    ).default;
+    await mutations.mergeTables(
+      null,
+      {
+        input: {
+          restaurantId: "valid-r1",
+          tableIds: ["valid-a1", "valid-a2"],
+          anchorId: "valid-a1",
+          joinGroupId: "group-1",
+        },
+      },
+      { user: { id: "valid-user" }, req: { headers: {} } },
+    );
+
+    expect(tableCustomerMocks.find).toHaveBeenCalledWith({
+      restaurantId: "valid-r1",
+      $or: [
+        { tableId: { $in: ["valid-a1", "valid-a2"] } },
+        { tableCode: { $in: ["A1", "A2"] } },
+      ],
+    });
+    expect(tableMocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "occupied" }),
+    );
+    expect(eventMocks.logEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meta: expect.objectContaining({ customerProfileCount: 1 }),
+      }),
+    );
+  });
+
+  it("keeps occupied source status when no active order or reservation exists", async () => {
+    tableMocks.find.mockReturnValueOnce(
+      leanWrap([sourceTables[0], { ...sourceTables[1], status: "occupied" }]),
+    );
     tableMocks.create.mockResolvedValue({
       _id: "valid-merged",
       id: "valid-merged",
@@ -192,6 +245,7 @@ describe("composite table merge", () => {
       ),
     ).rejects.toThrow("đang có order hoạt động");
 
+    expect(tableCustomerMocks.find).not.toHaveBeenCalled();
     expect(tableMocks.create).not.toHaveBeenCalled();
   });
 
