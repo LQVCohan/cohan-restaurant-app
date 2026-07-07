@@ -217,17 +217,6 @@ extend type Query {
     restaurantFilter: RestaurantFilter
   ): RestaurantConnection!
 
-  # Deprecated: use scopedRestaurants. Kept for backward compatibility.
-  restaurantsByManager(
-    managerId: ID!
-    brandId: ID
-    includeBrandScope: Boolean = true
-    includeLegacyManaged: Boolean = true
-    limit: Int = 20
-    cursor: ID
-    restaurantFilter: RestaurantFilter
-  ): RestaurantConnection! @deprecated(reason: "Use scopedRestaurants")
-
   refRestaurants(userId: ID!): [Restaurant!]!
 
   restaurantsByCategoryTimeSlot(
@@ -285,8 +274,6 @@ input CreateRestaurantInput {
   capabilities: JSON
   reservationPolicy: JSON
   orderPolicy: JSON
-  # Deprecated legacy/cache fallback. Brand flow assigns managers through BrandMembership.
-  managerId: ID
   brandId: ID
   reservationSettings: ReservationSettingsInput
   paymentSettings: PaymentSettingsInput
@@ -330,13 +317,6 @@ input UpdateRestaurantInput {
   manualUsdToVndRate: Float
 }
 
-input UpdateRestaurantManagerInput {
-  restaurantId: ID!
-  managerId: ID!
-  reservationSettings: ReservationSettingsInput
-  paymentSettings: PaymentSettingsInput
-}
-
 input UpdateRestaurantCategoryIndexInput {
   restaurantId: ID!
   timeSlot: TimeSlot!
@@ -347,7 +327,6 @@ extend type Mutation {
   createRestaurant(input: CreateRestaurantInput!): Restaurant!
   updateRestaurant(id: ID!, input: UpdateRestaurantInput!): Restaurant!
   deleteRestaurant(id: ID!): Boolean!
-  updateRestaurantManager(input: UpdateRestaurantManagerInput!): Restaurant!
   updateRestaurantCategoryIndex(
     input: UpdateRestaurantCategoryIndexInput!
   ): RestaurantCategoryIndex!
