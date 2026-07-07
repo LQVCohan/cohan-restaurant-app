@@ -2,58 +2,63 @@
 
 ## Current behavior
 
-The manager chain-management page now has aligned company/branch panels and a clear member filter toolbar. Two usability gaps remain:
-
-1. The existing-member filters always occupy vertical space even when the user is only adding a member.
-2. Adding a member still requires pasting an opaque Mongo account ID. The generic `users` query cannot be reused because it is restricted to system administrators, while `addBrandMember` is available to actors who pass `canManageBrand`.
+The chain-management page has compact filters and searchable account selection. The remaining ownership gap is more than a missing button: `Brand.ownerId` and the `owner` membership must change together, while the previous owner must receive a valid manager scope. Using the generic member mutation could otherwise create two owners or leave `Brand.ownerId` pointing to the old owner.
 
 ## End-to-end flow reviewed
 
-1. `User` stores the searchable account identity (`fullName`, `username`, `email`, `userType`, `status`, `deletedAt`).
-2. `BrandMembership` stores brand role and restaurant scope.
-3. `brand.graphql` currently exposes `brandMembers` and `addBrandMember`, but no safe brand-scoped candidate lookup.
-4. The brand resolver protects membership writes with `canManageBrand` and validates the selected `userId` before upserting membership.
-5. `BrandManagement` currently stores a raw `member.userId` entered by hand and passes it to `addBrandMember`.
-6. The page-scoped compact stylesheet controls the filter/add-member layout.
+1. `Brand.ownerId` stores the current owner reference used by Brand resolvers.
+2. `BrandMembership` is the permission source for owner/admin/manager/staff scope; managers require exactly one restaurant.
+3. `restaurantScope.service` grants owner/admin brand-wide access and manager access only to assigned restaurants.
+4. `brand.graphql` exposes general member mutations but previously had no ownership-transfer contract.
+5. The Brand resolver protected ordinary membership writes but did not atomically synchronize both owner records.
+6. `useBrandManagement` exposes the current account's selected-brand membership role.
+7. `BrandManagement` renders the member workflow and can redirect the previous owner to the assigned branch after transfer.
 
-The root fix is a small brand-scoped candidate query guarded by the same permission boundary as the mutation, then a native collapsible filter area and a search-plus-select account picker in the existing form.
+The root fix is a dedicated transaction-backed ownership mutation. It promotes one active existing member, demotes the current owner to manager, assigns exactly one branch, updates `Brand.ownerId`, and blocks owner changes through generic member mutations.
 
 ## Scope
 
-- Make `Tìm và lọc thành viên` collapsible with native `<details>`; keep it open initially.
-- Add `BrandMemberCandidate` and `brandMemberCandidates(brandId, search, limit)` to the brand GraphQL contract.
-- Require `canManageBrand` for candidate lookup.
-- Search active non-customer business accounts by full name, username, email, or exact account ID.
-- Exclude deleted accounts and accounts already in the selected brand.
-- Limit and sort candidate results server-side.
-- Replace raw-ID entry with a name/account search field and a select box.
-- Keep the selected candidate ID as the existing `addBrandMember` mutation input.
-- Preserve role, branch scope, manager uniqueness, permissions, and status behavior.
-- Reuse current React, Apollo, SCSS, and manager palette; add no dependency.
+- Keep the existing collapsible member filters and searchable add-member picker.
+- Add `TransferBrandOwnershipInput`, payload, and `transferBrandOwnership` mutation.
+- Allow only the current active Brand owner to execute the transfer.
+- Require the new owner to be a different, active existing member of the same Brand.
+- Require exactly one Brand restaurant for the previous owner's manager scope.
+- Reject a selected restaurant when another manager would remain assigned to it.
+- In one MongoDB transaction:
+  - promote the selected membership to `owner` with chain-wide scope;
+  - demote the current owner membership to `manager` with one restaurant;
+  - update `Brand.ownerId` to the selected user.
+- Block adding, promoting, demoting, deactivating, or removing an owner through generic membership mutations.
+- Show a compact owner-only transfer disclosure in the member area.
+- Require an explicit confirmation checkbox and redirect the previous owner to the assigned branch dashboard after success.
+- Reuse the current React, Apollo, SCSS, GraphQL, and manager navigation patterns; add no dependency.
 
 ## Acceptance criteria
 
-- The member filter panel can be opened and collapsed from its summary row.
-- Existing-member search and role/branch filters continue to work when open.
-- Entering fewer than two candidate-search characters does not query or offer ambiguous results.
-- Searching a name returns matching active business accounts that are not already brand members.
-- Candidate options show a readable name plus email/username and account ID context.
-- Selecting an option sets the exact `userId` sent to `addBrandMember`.
-- Changing the candidate search clears a stale previous selection.
-- Loading, no-result, and query-error states are visible without alerts or modals.
-- The picker and add-member controls wrap without horizontal overflow at desktop, tablet, 430px, and 390px widths.
-- No existing mutation or membership validation rule is weakened.
+- Non-owners do not see the ownership-transfer control.
+- Only the current active owner can call `transferBrandOwnership`.
+- The target must be an active existing member and cannot be the current owner.
+- The previous owner must be assigned exactly one restaurant after transfer.
+- A branch already occupied by an unrelated active manager cannot be selected.
+- A manager target may vacate their current branch by becoming owner, allowing the previous owner to take that branch.
+- After success, exactly one membership is `owner`, the previous owner is `manager`, and `Brand.ownerId` matches the new owner.
+- All three writes commit or roll back together.
+- Generic member mutations direct ownership changes to the dedicated transfer flow.
+- The UI displays the consequences, requires explicit confirmation, sends the correct three IDs, selects the previous owner's branch, and navigates to the dashboard.
+- Existing member search, filters, add-member behavior, manager uniqueness, and responsive layout remain intact.
 
 ## Out of scope
 
-- Creating a new user from this screen.
+- Creating a new account during transfer; add the account as a member first.
+- Multi-owner Brands or co-owner voting/approval.
+- Email invitations, OTP confirmation, delayed transfer, or transfer cancellation windows.
 - Fuzzy/phonetic search, pagination, or external search services.
-- Editing an existing member's role/scope from the add-member form.
-- Changing owner transfer rules or shared manager layout components.
+- Rebuilding shared manager layout components.
 
 ## Validation plan
 
-- Add a focused brand resolver test for permission, search filter, existing-member exclusion, limit, and safe result mapping.
-- Update `BrandManagement.test.jsx` for collapsed filters, candidate search/select, and mutation variables.
-- Run the targeted frontend component test, targeted backend resolver test, GraphQL check, and frontend production build when execution is available.
-- Review desktop and 390/430px layouts when an authenticated browser environment is available.
+- Run the focused ownership resolver test for successful atomic transfer and non-owner rejection.
+- Run the ownership-transfer component test for owner-only visibility, confirmation, mutation variables, branch selection, and navigation.
+- Run the existing BrandManagement component suite and member-candidate resolver suite.
+- Run GraphQL schema validation and the frontend production build.
+- Review the authenticated owner and admin screens at desktop, 390x844, and 430x932 when a browser environment is available.
