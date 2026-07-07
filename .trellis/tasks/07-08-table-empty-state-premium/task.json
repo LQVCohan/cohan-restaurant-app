@@ -2,9 +2,9 @@
   "id": "table-empty-state-premium",
   "name": "table-empty-state-premium",
   "title": "Upgrade empty table-management setup state",
-  "description": "Replace the sparse and visually broken no-floor state with a compact sage/cream setup flow while preserving existing table and floor behavior.",
+  "description": "Keep the React-owned table empty state visually polished without injecting DOM into the populated table grid.",
   "status": "completed",
-  "dev_type": "ui",
+  "dev_type": "bugfix",
   "scope": "manager-table-empty-state",
   "package": null,
   "priority": "P1",
@@ -15,7 +15,7 @@
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": "4647e513282d247fb7165e48cbf185b875c9efbd",
+  "commit": "29e01bdcdacfcd74eb36e1eaba03f3ce74eab214",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -26,5 +26,5 @@
     "src/utils/installTableEmptyStateEnhancement.js",
     "src/utils/installTableEmptyStateEnhancement.test.js"
   ],
-  "notes": "The backend floor/table flow was already correct. The final CSS layer repairs the legacy .tm-empty span collision with Button.btn__text and adds a responsive sage/cream onboarding layout. The installer reuses the existing add-floor action, hides unusable filters, skips loading/error states, and restores normal UI when floors appear. Focused tests and build were not executed in the connected environment; GitHub reported no workflow run for the final code commit."
+  "notes": "The regression came from a MutationObserver inserting onboarding nodes into DOM owned by React. During the transition from no floors to populated tables, those nodes could survive and become children of the table grid, squeezing cards and breaking the layout. The installer now only removes stale HMR nodes/listeners and never observes or injects DOM. Empty-state polish is CSS-only and scoped to the existing React-rendered .tm-empty element. A focused test verifies legacy nodes are removed while table cards remain untouched. Tests/build were not executed in the connected environment."
 }
