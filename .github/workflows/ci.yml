@@ -108,7 +108,12 @@ jobs:
         run: npm run lint --if-present
 
       - name: Test
-        run: npm run test --if-present
+        run: |
+          set +e
+          npm run test --if-present > /tmp/backend-test.log 2>&1
+          status=$?
+          tail -n 60 /tmp/backend-test.log
+          exit "$status"
 
       - name: Test Menu RBAC
         run: npm run test:menu-rbac --if-present
