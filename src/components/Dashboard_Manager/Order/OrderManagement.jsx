@@ -112,6 +112,7 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
             }
             weightGrams
             status
+            station
             ingredientsSnapshot {
               ingredientId
               name
@@ -230,6 +231,13 @@ const ACTIVE_ORDER_HIDDEN_STATUSES = new Set([
   "cancelled",
   "failed",
 ]);
+const PREP_ITEM_HIDDEN_STATUSES = new Set(["served", "cancelled", "returned"]);
+const PREP_ITEM_ACTIVE_STATUSES = new Set([
+  "pending",
+  "confirmed",
+  "customer_attached",
+  "preparing",
+]);
 
 const normalizeStatus = (value) =>
   String(value || "")
@@ -240,6 +248,16 @@ const normalizeTableCode = (value) =>
   String(value || "")
     .trim()
     .toUpperCase();
+const normalizePrepStation = (value) => {
+  const station = normalizeStatus(value);
+  return ["kitchen", "bar"].includes(station) ? station : null;
+};
+const getItemStation = (item) =>
+  normalizePrepStation(item?.station || item?.prepStation);
+const isVisiblePrepItem = (item) =>
+  Boolean(item) && !PREP_ITEM_HIDDEN_STATUSES.has(normalizeStatus(item?.status));
+const matchesPrepStation = (item, stationMode) =>
+  stationMode === "all" || getItemStation(item) === stationMode;
 
 const isParentTableSession = (order) => order?.orderKind === "table_session";
 
@@ -273,7 +291,28 @@ const KITCHEN_STATUS_FILTER_OPTIONS = [
   { value: "preparing", label: "Đang chuẩn bị" },
   { value: "ready", label: "Sẵn sàng" },
 ];
-
+const PREP_STATION_OPTIONS = [
+  { value: "kitchen", label: "Bếp chính", shortLabel: "Bếp" },
+  { value: "bar", label: "Quầy bar", shortLabel: "Bar" },
+  { value: "all", label: "Tổng hợp", shortLabel: "Tất cả" },
+];
+const PREP_STATION_META = {
+  kitchen: {
+    title: "MÀN HÌNH BẾP",
+    emptyTitle: "Bếp chính chưa có món cần xử lý.",
+    emptyCopy: "Món mới vào bếp sẽ được đồng bộ realtime tại đây.",
+  },
+  bar: {
+    title: "MÀN HÌNH QUẦY BAR",
+    emptyTitle: "Quầy bar chưa có món cần xử lý.",
+    emptyCopy: "Đồ uống và món thuộc quầy bar sẽ được đồng bộ realtime tại đây.",
+  },
+  all: {
+    title: "BẾP & QUẦY BAR",
+    emptyTitle: "Chưa có món cần xử lý.",
+    emptyCopy: "Bếp và quầy bar đang chờ món mới được đồng bộ realtime.",
+  },
+};
 const CHIP_SIZE_OPTIONS = [
   { value: "s", label: "Nhỏ" },
   { value: "m", label: "Vừa" },
@@ -481,6 +520,7 @@ const OrderManagement = () => {
   const [sortBy, setSortBy] = useState("oldest");
 
   const [focusMode, setFocusMode] = useState(false);
+  const [stationMode, setStationMode] = useState("kitchen");
   const [highlightDishKey, setHighlightDishKey] = useState(null);
   const [highlightedOrderIds, setHighlightedOrderIds] = useState([]);
 
@@ -570,10 +610,14 @@ const OrderManagement = () => {
     }));
   }, [ordersData]);
 
-
   useEffect(() => {
     setHiddenOrderIds([]);
   }, [selectedRestaurantId]);
+
+  useEffect(() => {
+    setHighlightDishKey(null);
+    setHighlightedOrderIds([]);
+  }, [stationMode]);
 
   useSocketOrder(selectedRestaurantId, {
     onAny: (evt) => {
@@ -661,6 +705,24 @@ const OrderManagement = () => {
       }),
     [orders, hiddenOrderIds],
   );
+
+  const stationQueueCounts = useMemo(() => {
+    const counts = { kitchen: 0, bar: 0, all: 0 };
+    activeOrders.forEach((order) => {
+      (order.items || []).forEach((item) => {
+        if (
+          !isVisiblePrepItem(item) ||
+          !PREP_ITEM_ACTIVE_STATUSES.has(normalizeStatus(item?.status))
+        ) {
+          return;
+        }
+        counts.all += 1;
+        const station = getItemStation(item);
+        if (station) counts[station] += 1;
+      });
+    });
+    return counts;
+  }, [activeOrders]);
 
   const normalizeText = (value) => {
     if (!value) return "";
@@ -817,13 +879,36 @@ const OrderManagement = () => {
 
   const displayOrders = useMemo(
     () =>
-      orderedFilteredOrders.map((order) => ({
-        ...order,
-        actionOrderId: resolveKitchenActionOrderId(order, order.id),
-        batchDisplayIndex: batchIndexByOrderId.get(order.id) || null,
-      })),
-    [orderedFilteredOrders, batchIndexByOrderId],
+      orderedFilteredOrders
+        .map((order) => {
+          const items = focusMode
+            ? (order.items || []).filter(
+                (item) =>
+                  isVisiblePrepItem(item) &&
+                  matchesPrepStation(item, stationMode),
+              )
+            : order.items;
+          if (focusMode && items.length === 0) return null;
+          return {
+            ...order,
+            items,
+            actionOrderId: resolveKitchenActionOrderId(order, order.id),
+            batchDisplayIndex: batchIndexByOrderId.get(order.id) || null,
+          };
+        })
+        .filter(Boolean),
+    [orderedFilteredOrders, batchIndexByOrderId, focusMode, stationMode],
   );
+
+  const focusItemCount = useMemo(
+    () =>
+      displayOrders.reduce(
+        (total, order) => total + (order.items || []).length,
+        0,
+      ),
+    [displayOrders],
+  );
+  const activeStationMeta = PREP_STATION_META[stationMode];
 
   const handleExportCsv = useCallback(() => {
     const rows = orderedFilteredOrders.map((order) => ({
@@ -875,12 +960,12 @@ const OrderManagement = () => {
 
   const dishSummaries = useMemo(() => {
     const map = new Map();
-    activeOrders.forEach((order) => {
+    displayOrders.forEach((order) => {
       const createdAtMs = order.createdAt
         ? new Date(order.createdAt).getTime()
         : Date.now();
       (order.items || []).forEach((item) => {
-        if (!item || item.status === "cancelled") return;
+        if (!isVisiblePrepItem(item)) return;
         const name = item.name || "Món không tên";
         const unit = item.unit || "portion";
         const dishId = item.dishId || item.menuId || name;
@@ -921,7 +1006,7 @@ const OrderManagement = () => {
           a.name.localeCompare(b.name, "vi")
         );
       });
-  }, [activeOrders]);
+  }, [displayOrders]);
 
   const stats = useMemo(() => {
     const countByStatus = (statuses) =>
@@ -1225,7 +1310,10 @@ const OrderManagement = () => {
   );
 
   return (
-    <div className={`om-container ${focusMode ? "om-container--focus" : ""}`}>
+    <div
+      className={`om-container ${focusMode ? "om-container--focus" : ""}`}
+      data-station={focusMode ? stationMode : undefined}
+    >
       <div className="om-wrapper">
         {!focusMode ? (
           <ManagementPageHeader
@@ -1263,12 +1351,12 @@ const OrderManagement = () => {
             <div>
               <div className="om-header__focus-title">
                 <span className="om-badge-live">LIVE</span>
-                <h1>MÀN HÌNH BẾP</h1>
+                <h1>{activeStationMeta.title}</h1>
               </div>
-              <div className="om-header__meta">
-                <span>
-                  {displayOrders.length.toLocaleString("vi-VN")} đơn đang lọc
-                </span>
+              <div className="om-header__meta" aria-live="polite">
+                <span>{focusItemCount.toLocaleString("vi-VN")} món</span>
+                <span>•</span>
+                <span>{displayOrders.length.toLocaleString("vi-VN")} đơn</span>
                 <span>•</span>
                 <span>
                   {sortBy === "oldest"
@@ -1280,11 +1368,11 @@ const OrderManagement = () => {
             <div className="om-header__actions">
               <button
                 type="button"
-                onClick={() => setFocusMode(!focusMode)}
-                className={`om-btn-focus ${focusMode ? "om-btn-focus--active" : ""}`}
+                onClick={() => setFocusMode(false)}
+                className="om-btn-focus om-btn-focus--active"
               >
-                {focusMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-                <span>{focusMode ? "Thoát chế độ Bếp" : "Chế độ Bếp"}</span>
+                <Minimize2 size={18} />
+                <span>Thoát màn hình chế biến</span>
               </button>
             </div>
           </header>
@@ -1313,10 +1401,38 @@ const OrderManagement = () => {
 
         <section
           className={`om-toolbar ${focusMode ? "om-toolbar--focus" : ""}`}
-          aria-label="Bộ lọc đơn hàng"
+          aria-label={focusMode ? "Điều khiển màn hình chế biến" : "Bộ lọc đơn hàng"}
         >
           <div className="om-toolbar__inner">
             <div className="om-toolbar__filters">
+              {focusMode && (
+                <div
+                  className="om-station-switcher"
+                  role="group"
+                  aria-label="Khu vực chế biến"
+                >
+                  {PREP_STATION_OPTIONS.map((option) => {
+                    const isActive = stationMode === option.value;
+                    const count = stationQueueCounts[option.value] || 0;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={`om-station-switcher__btn ${
+                          isActive ? "om-station-switcher__btn--active" : ""
+                        }`}
+                        aria-pressed={isActive}
+                        aria-label={`${option.label}, ${count} món cần xử lý`}
+                        onClick={() => setStationMode(option.value)}
+                      >
+                        <span>{option.shortLabel}</span>
+                        <strong>{count}</strong>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               <div className="om-filter-group">
                 {focusMode ? (
                   <div className="om-field om-field--kitchen-status">
@@ -1498,7 +1614,11 @@ const OrderManagement = () => {
           />
         )}
 
-        <section className="om-content" aria-label="Danh sách đơn hàng">
+        <section
+          className="om-content"
+          aria-label={focusMode ? "Danh sách món theo khu vực" : "Danh sách đơn hàng"}
+          aria-live="polite"
+        >
           {ordersLoading ? (
             <div
               className="om-skeleton-grid"
@@ -1532,13 +1652,21 @@ const OrderManagement = () => {
                 </button>
               )}
             </div>
-          ) : filteredOrders.length === 0 ? (
+          ) : displayOrders.length === 0 ? (
             <div className="om-state om-state--empty">
               <div className="om-state__icon-bg">
                 <CheckCircle size={40} />
               </div>
-              <h3>Chưa có đơn hàng trong bộ lọc hiện tại.</h3>
-              <p>Điều chỉnh bộ lọc hoặc chờ đơn mới được đồng bộ realtime.</p>
+              <h3>
+                {focusMode
+                  ? activeStationMeta.emptyTitle
+                  : "Chưa có đơn hàng trong bộ lọc hiện tại."}
+              </h3>
+              <p>
+                {focusMode
+                  ? activeStationMeta.emptyCopy
+                  : "Điều chỉnh bộ lọc hoặc chờ đơn mới được đồng bộ realtime."}
+              </p>
             </div>
           ) : (
             <div className="om-grid">
