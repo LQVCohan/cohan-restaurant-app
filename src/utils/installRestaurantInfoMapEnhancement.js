@@ -31,8 +31,12 @@ const findCoordinateField = (root, labelText) => {
 };
 
 export const readRestaurantCoordinatePair = (latInput, lngInput) => {
-  const lat = Number(latInput?.value);
-  const lng = Number(lngInput?.value);
+  const latText = String(latInput?.value ?? "").trim();
+  const lngText = String(lngInput?.value ?? "").trim();
+  if (!latText || !lngText) return null;
+
+  const lat = Number(latText);
+  const lng = Number(lngText);
   if (
     !Number.isFinite(lat) ||
     !Number.isFinite(lng) ||
@@ -114,7 +118,7 @@ const syncMapFromInputs = (card, context, { recenter = false } = {}) => {
 
 const applyMapCoordinates = (card, lat, lng) => {
   const state = card.__restaurantMapState;
-  if (!state) return;
+  if (!state || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
   const context = getMapContext();
   if (!context) return;
