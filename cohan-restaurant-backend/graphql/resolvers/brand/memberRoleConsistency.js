@@ -1,5 +1,6 @@
 import { GraphQLError } from "graphql";
 import { BrandMembership, User } from "../../../models/index.js";
+import { canManageBrand } from "../../../src/services/auth/restaurantScope.service.js";
 
 const bad = (message) => new GraphQLError(message, {
   extensions: { code: "BAD_USER_INPUT" },
@@ -24,11 +25,12 @@ export async function assertBrandMembershipAccountCompatibility({
   if (!account) throw bad("Không tìm thấy tài khoản thành viên.");
 
   const accountRole = accountRoleOf(account);
+  const nextMembershipRole = String(membershipRole || "").trim().toLowerCase();
   if (!accountRole) {
     throw bad("Tài khoản chưa có vai trò hệ thống.");
   }
 
-  if (membershipRole === "manager" && accountRole !== "manager") {
+  if (nextMembershipRole === "manager" && accountRole !== "manager") {
     if (accountRole === "admin") {
       throw bad(
         "Admin hệ thống luôn có quyền trên mọi nhà hàng. Hãy đổi vai trò hệ thống sang Manager trước khi gán Quản lý chi nhánh.",
@@ -40,7 +42,7 @@ export async function assertBrandMembershipAccountCompatibility({
   }
 
   if (
-    membershipRole === "admin" &&
+    nextMembershipRole === "admin" &&
     !["admin", "manager"].includes(accountRole)
   ) {
     throw bad(
@@ -49,7 +51,7 @@ export async function assertBrandMembershipAccountCompatibility({
   }
 
   if (
-    membershipRole === "staff" &&
+    nextMembershipRole === "staff" &&
     ["admin", "manager", "customer"].includes(accountRole)
   ) {
     throw bad(
@@ -63,6 +65,10 @@ export async function assertBrandMembershipAccountCompatibility({
 export function guardBrandMemberRoleMutations(mutations = {}) {
   return {
     addBrandMember: async (root, { input }, ctx, info) => {
+      if (!ctx?.user || !await canManageBrand(ctx.user, input.brandId)) {
+        return mutations.addBrandMember(root, { input }, ctx, info);
+      }
+
       await assertBrandMembershipAccountCompatibility({
         userId: input.userId,
         membershipRole: input.role,
@@ -72,17 +78,23 @@ export function guardBrandMemberRoleMutations(mutations = {}) {
 
     updateBrandMember: async (root, { input }, ctx, info) => {
       const membership = await BrandMembership.findById(input.id)
-        .select("userId role status")
+        .select("brandId userId role status")
         .lean();
 
-      if (membership) {
-        const nextStatus = input.status || membership.status;
-        if (nextStatus === "active") {
-          await assertBrandMembershipAccountCompatibility({
-            userId: membership.userId,
-            membershipRole: input.role || membership.role,
-          });
-        }
+      if (
+        !membership ||
+        !ctx?.user ||
+        !await canManageBrand(ctx.user, membership.brandId)
+      ) {
+        return mutations.updateBrandMember(root, { input }, ctx, info);
+      }
+
+      const nextStatus = input.status || membership.status;
+      if (nextStatus === "active") {
+        await assertBrandMembershipAccountCompatibility({
+          userId: membership.userId,
+          membershipRole: input.role || membership.role,
+        });
       }
 
       return mutations.updateBrandMember(root, { input }, ctx, info);
