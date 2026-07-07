@@ -3,6 +3,7 @@
   "title": "Sửa marker định vị và hoàn thiện hồ sơ bếp trưởng thương hiệu",
   "status": "in_progress",
   "type": "frontend-fix",
+  "execution": "queued",
   "scope": [
     "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx",
     "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoPremiumLayout.css",
