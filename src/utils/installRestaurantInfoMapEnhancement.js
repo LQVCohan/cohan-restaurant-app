@@ -91,6 +91,8 @@ const syncMapFromInputs = (card, context, { recenter = false } = {}) => {
     context.latitude.input,
     context.longitude.input,
   );
+  const pairKey = pair ? `${pair.lat}:${pair.lng}` : "";
+  const changed = pairKey !== state.pairKey;
   updateCoordinateSummary(card, pair);
 
   if (!pair) {
@@ -98,6 +100,7 @@ const syncMapFromInputs = (card, context, { recenter = false } = {}) => {
       state.map.removeLayer(state.marker);
       state.marker = null;
     }
+    state.pairKey = "";
     return;
   }
 
@@ -109,11 +112,14 @@ const syncMapFromInputs = (card, context, { recenter = false } = {}) => {
       const next = event.target.getLatLng();
       applyMapCoordinates(card, next.lat, next.lng);
     });
-  } else {
+  } else if (changed) {
     state.marker.setLatLng([pair.lat, pair.lng]);
   }
 
-  if (recenter) state.map.setView([pair.lat, pair.lng], state.map.getZoom());
+  if (recenter && changed) {
+    state.map.setView([pair.lat, pair.lng], state.map.getZoom());
+  }
+  state.pairKey = pairKey;
 };
 
 const applyMapCoordinates = (card, lat, lng) => {
@@ -167,7 +173,7 @@ const createMapCard = (context) => {
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(map);
 
-  card.__restaurantMapState = { map, marker: null };
+  card.__restaurantMapState = { map, marker: null, pairKey: "" };
   map.on("click", (event) => {
     applyMapCoordinates(card, event.latlng.lat, event.latlng.lng);
   });
@@ -230,15 +236,17 @@ export const installRestaurantInfoMapEnhancement = () => {
   });
 
   document.addEventListener("click", (event) => {
-    const button = event.target.closest("button");
-    if (!button) return;
-    const text = normalizeLabel(button.textContent);
-    if (
-      text.includes("Địa chỉ & giờ hoạt động") ||
-      text.includes("Lấy vị trí hiện tại")
-    ) {
+    const trigger = event.target.closest('button, [role="tab"]');
+    if (!trigger) return;
+    const text = normalizeLabel(trigger.textContent);
+    if (text.includes("Địa chỉ & giờ hoạt động")) {
       scheduleEnhance();
-      window.setTimeout(scheduleEnhance, 250);
+      window.setTimeout(scheduleEnhance, 100);
+    }
+    if (text.includes("Lấy vị trí hiện tại")) {
+      [100, 500, 1500, 3500, 9000].forEach((delay) => {
+        window.setTimeout(scheduleEnhance, delay);
+      });
     }
   });
 
