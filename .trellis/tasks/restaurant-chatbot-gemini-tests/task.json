@@ -15,7 +15,7 @@
   "branch": "fix/restaurant-brand-membership-guards",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": "c0cd1d542d1da902cabe252e0213e944653c50a8",
+  "commit": "bb4cbe82c9d97ea29b2832bbf896279263f070ac",
   "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1223",
   "subtasks": [],
   "children": [],
@@ -27,7 +27,7 @@
     "cohan-restaurant-backend/tests/services/restaurantChatbot.phase26-cache.service.test.js",
     "cohan-restaurant-backend/tests/services/restaurantChatbot.service.test.js"
   ],
-  "notes": "Production code remains Gemini-only. Updated the three stale tests to assert the Gemini request contract and the core implementation file. GitHub Actions run 28850579218 passed backend lint, full backend tests, Menu RBAC, backend build, frontend lint/tests/build, and Playwright smoke tests.",
+  "notes": "Production code remains Gemini-only. Updated the three stale tests to assert the Gemini request contract and the core implementation file. Final GitHub Actions run 28850836519 passed backend lint, full backend tests, Menu RBAC, backend build, frontend lint/tests/build, and Playwright smoke tests.",
   "meta": {
     "skills": ["ponytail"]
   }
