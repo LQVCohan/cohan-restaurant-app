@@ -1,0 +1,400 @@
+/* Visual parity between the manager designer and the customer floor map. */
+
+.fp-layout .fp-item {
+  overflow: visible;
+}
+
+/* Doors mask the wall and show the opening direction. */
+.fp-layout .fp-item.door,
+.fp-layout .fp-item.door-double {
+  border: 0 !important;
+  border-radius: 2px !important;
+  background: var(--fp-bg) !important;
+  box-shadow: 0 0 0 5px var(--fp-bg), 0 4px 9px rgba(74, 49, 29, 0.12) !important;
+}
+
+.fp-layout .fp-item.door::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 48%;
+  height: 34px;
+  border-top: 2px solid #855a34;
+  border-right: 2px solid #855a34;
+  border-radius: 0 34px 0 0;
+  transform: rotate(-32deg);
+  transform-origin: left bottom;
+}
+
+.fp-layout .fp-item.door::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 2px;
+  height: 34px;
+  background: #855a34;
+  transform: rotate(-32deg);
+  transform-origin: center bottom;
+}
+
+.fp-layout .fp-item.door-double::before,
+.fp-layout .fp-item.door-double::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: 46%;
+  height: 30px;
+  border-top: 2px solid #855a34;
+}
+
+.fp-layout .fp-item.door-double::before {
+  left: 50%;
+  border-left: 2px solid #855a34;
+  border-radius: 30px 0 0;
+  transform: rotate(28deg);
+  transform-origin: left bottom;
+}
+
+.fp-layout .fp-item.door-double::after {
+  right: 50%;
+  border-right: 2px solid #855a34;
+  border-radius: 0 30px 0 0;
+  transform: rotate(-28deg);
+  transform-origin: right bottom;
+}
+
+.fp-layout .fp-item.door .decor-label,
+.fp-layout .fp-item.door-double .decor-label {
+  bottom: calc(100% + 27px) !important;
+}
+
+/* Windows and paths use the same visual language as the customer map. */
+.fp-layout .fp-item.window {
+  min-width: 8px;
+  min-height: 8px;
+  border: 2px solid #5c8790 !important;
+  border-radius: 2px !important;
+  background: linear-gradient(90deg, #dff2f5, #a8d0d7 48%, #eaf8fa) !important;
+  box-shadow: 0 0 0 3px var(--fp-bg), inset 0 0 0 1px rgba(255, 255, 255, 0.75) !important;
+}
+
+.fp-layout .fp-item.window::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  right: 2px;
+  height: 1px;
+  background: rgba(61, 105, 115, 0.55);
+  transform: translateY(-50%);
+}
+
+.fp-layout .fp-item.corridor,
+.fp-layout .fp-item.staff-corridor {
+  min-height: 12px;
+  border: 1px solid rgba(181, 111, 54, 0.48) !important;
+  border-radius: 999px !important;
+  background:
+    repeating-linear-gradient(90deg, rgba(217, 101, 47, 0.12) 0 12px, transparent 12px 23px),
+    rgba(255, 244, 232, 0.88) !important;
+  box-shadow: inset 0 0 0 2px rgba(255, 253, 248, 0.58) !important;
+}
+
+.fp-layout .fp-item.staff-corridor {
+  border-style: dashed !important;
+  border-color: rgba(82, 123, 132, 0.58) !important;
+  background:
+    repeating-linear-gradient(90deg, rgba(82, 123, 132, 0.12) 0 12px, transparent 12px 23px),
+    rgba(232, 240, 241, 0.9) !important;
+}
+
+.fp-layout .fp-item.corridor .decor-label,
+.fp-layout .fp-item.staff-corridor .decor-label {
+  top: 50% !important;
+  bottom: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+/* Structural objects. */
+.fp-layout .fp-item.pillar {
+  border: 2px solid #74685f !important;
+  border-radius: 7px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.6), transparent 48%),
+    #cfc7c0 !important;
+  box-shadow: inset 0 0 0 4px rgba(99, 86, 76, 0.12), 0 5px 10px rgba(68, 46, 31, 0.14) !important;
+}
+
+.fp-layout .fp-item.pillar::before {
+  content: "";
+  width: 36%;
+  height: 36%;
+  border-radius: 3px;
+  background: #81746a;
+}
+
+.fp-layout .fp-item.stairs {
+  overflow: hidden;
+  border: 1px solid #74685f !important;
+  border-radius: 7px !important;
+  background: repeating-linear-gradient(90deg, #b8afa7 0 7px, #ece7e2 7px 14px) !important;
+  box-shadow: 0 5px 11px rgba(68, 46, 31, 0.12) !important;
+}
+
+.fp-layout .fp-item.stairs::after {
+  content: "→" !important;
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  inset: auto 8px auto auto !important;
+  color: #51463e;
+  background: none !important;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+/* Functional areas mirror the customer result instead of generic colored rectangles. */
+.fp-layout .fp-item.bar,
+.fp-layout .fp-item.cashier,
+.fp-layout .fp-item.kitchen,
+.fp-layout .fp-item.buffet,
+.fp-layout .fp-item.wc,
+.fp-layout .fp-item.sofa {
+  overflow: hidden;
+  border: 1px solid rgba(91, 68, 52, 0.24) !important;
+  border-radius: 12px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78), 0 7px 15px rgba(68, 46, 31, 0.1) !important;
+}
+
+.fp-layout .fp-item.bar {
+  border-color: rgba(157, 116, 46, 0.48) !important;
+  background: linear-gradient(145deg, #fff8dc, #ead9a3) !important;
+}
+
+.fp-layout .fp-item.bar::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  height: 9px;
+  border-radius: 999px;
+  background: #9d742e;
+  box-shadow:
+    18px 15px 0 -2px rgba(157, 116, 46, 0.42),
+    52px 15px 0 -2px rgba(157, 116, 46, 0.42),
+    86px 15px 0 -2px rgba(157, 116, 46, 0.42);
+}
+
+.fp-layout .fp-item.cashier {
+  border-color: rgba(157, 116, 46, 0.48) !important;
+  background: linear-gradient(145deg, #fff8e8, #ead9ad) !important;
+}
+
+.fp-layout .fp-item.cashier::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  width: 28%;
+  height: 22px;
+  border: 2px solid #8d6829;
+  border-radius: 5px 5px 8px 8px;
+  background:
+    radial-gradient(circle at 28% 65%, #8d6829 0 2px, transparent 2.5px),
+    radial-gradient(circle at 50% 65%, #8d6829 0 2px, transparent 2.5px),
+    radial-gradient(circle at 72% 65%, #8d6829 0 2px, transparent 2.5px),
+    rgba(255, 253, 248, 0.52);
+  transform: translateY(-50%);
+}
+
+.fp-layout .fp-item.cashier .decor-label {
+  top: 50% !important;
+  right: 8px;
+  bottom: auto !important;
+  left: auto !important;
+  max-width: 58%;
+  padding: 0 !important;
+  border: 0 !important;
+  color: #674b1c !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: translateY(-50%) !important;
+}
+
+.fp-layout .fp-item.kitchen {
+  border-color: rgba(113, 91, 71, 0.48) !important;
+  background: linear-gradient(145deg, #f4ede5, #d9c6b4) !important;
+}
+
+.fp-layout .fp-item.kitchen::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  width: 48%;
+  height: 34%;
+  border: 2px solid rgba(87, 68, 52, 0.72);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 28% 50%, transparent 0 5px, rgba(87, 68, 52, 0.7) 5.5px 7px, transparent 7.5px),
+    radial-gradient(circle at 72% 50%, transparent 0 5px, rgba(87, 68, 52, 0.7) 5.5px 7px, transparent 7.5px),
+    rgba(255, 253, 248, 0.45);
+}
+
+.fp-layout .fp-item.kitchen .decor-label,
+.fp-layout .fp-item.bar .decor-label,
+.fp-layout .fp-item.buffet .decor-label,
+.fp-layout .fp-item.sofa .decor-label {
+  bottom: 7px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.fp-layout .fp-item.buffet {
+  border-color: rgba(190, 123, 37, 0.48) !important;
+  background: linear-gradient(145deg, #fff9e8, #edd7a5) !important;
+}
+
+.fp-layout .fp-item.buffet::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 12%;
+  right: 12%;
+  height: 24px;
+  border: 2px solid rgba(151, 95, 27, 0.68);
+  border-radius: 12px 12px 5px 5px;
+  background:
+    linear-gradient(90deg, transparent 31%, rgba(151, 95, 27, 0.48) 31% 33%, transparent 33% 65%, rgba(151, 95, 27, 0.48) 65% 67%, transparent 67%),
+    rgba(255, 253, 248, 0.48);
+}
+
+.fp-layout .fp-item.wc {
+  border-color: rgba(82, 123, 132, 0.5) !important;
+  background: linear-gradient(145deg, #edf7f8, #c9dfe3) !important;
+}
+
+.fp-layout .fp-item.wc::before {
+  content: "WC";
+  color: rgba(49, 91, 99, 0.58);
+  font-size: clamp(1rem, 3vw, 2rem);
+  font-weight: 950;
+  letter-spacing: -0.08em;
+}
+
+.fp-layout .fp-item.wc .decor-label {
+  display: none !important;
+}
+
+.fp-layout .fp-item.sofa {
+  border-color: rgba(181, 111, 54, 0.48) !important;
+  background: linear-gradient(145deg, #fff2e4, #e6b98d) !important;
+}
+
+.fp-layout .fp-item.sofa::before {
+  content: "";
+  position: absolute;
+  inset: 10px 14px 17px;
+  border: 2px solid rgba(132, 75, 34, 0.54);
+  border-radius: 10px 10px 7px 7px;
+  background: rgba(255, 253, 248, 0.38);
+  box-shadow:
+    -10px 7px 0 -5px rgba(132, 75, 34, 0.6),
+    10px 7px 0 -5px rgba(132, 75, 34, 0.6);
+}
+
+/* Tables retain their configured shape but gain visible chairs like the customer map. */
+.fp-layout .fp-item.table::before,
+.fp-layout .fp-item.table-rect-2::before,
+.fp-layout .fp-item.table-rect-4::before,
+.fp-layout .fp-item.table::after,
+.fp-layout .fp-item.table-rect-2::after,
+.fp-layout .fp-item.table-rect-4::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 28%;
+  height: 7px;
+  border: 2px solid #3c5c4d;
+  border-radius: 5px 5px 2px 2px;
+  background: #6d9b83;
+  transform: translateX(-50%);
+  z-index: -1;
+}
+
+.fp-layout .fp-item.table::before,
+.fp-layout .fp-item.table-rect-2::before,
+.fp-layout .fp-item.table-rect-4::before {
+  top: -8px;
+}
+
+.fp-layout .fp-item.table::after,
+.fp-layout .fp-item.table-rect-2::after,
+.fp-layout .fp-item.table-rect-4::after {
+  bottom: -8px;
+  transform: translateX(-50%) rotate(180deg);
+}
+
+/* Palette previews use the same silhouettes as canvas objects. */
+.fp-layout .palette-swatch.palette-door,
+.fp-layout .palette-swatch.palette-door2 {
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.fp-layout .palette-swatch.palette-door::before,
+.fp-layout .palette-swatch.palette-door2::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  bottom: 3px;
+  width: 14px;
+  height: 14px;
+  border-top: 2px solid #855a34;
+  border-right: 2px solid #855a34;
+  border-radius: 0 14px 0 0;
+}
+
+.fp-layout .palette-swatch.palette-cashier {
+  border-color: #9d742e !important;
+  background:
+    radial-gradient(circle at 30% 55%, #8d6829 0 2px, transparent 2.5px),
+    linear-gradient(145deg, #fff8e8, #ead9ad) !important;
+}
+
+.fp-layout .palette-swatch.palette-kitchen {
+  border-color: #74604e !important;
+  background:
+    radial-gradient(circle at 35% 45%, transparent 0 3px, #74604e 3.5px 4.5px, transparent 5px),
+    radial-gradient(circle at 68% 45%, transparent 0 3px, #74604e 3.5px 4.5px, transparent 5px),
+    linear-gradient(145deg, #f4ede5, #d9c6b4) !important;
+}
+
+.fp-layout .palette-swatch.palette-wc {
+  border-color: #527b84 !important;
+  background: #d9ebee !important;
+}
+
+.fp-layout .palette-swatch.palette-wc::after {
+  color: #315b63 !important;
+  font-weight: 900 !important;
+}
+
+.fp-layout .palette-swatch.palette-pillar {
+  border-color: #74685f !important;
+  background: #cfc7c0 !important;
+  box-shadow: inset 0 0 0 3px rgba(99, 86, 76, 0.14);
+}
+
+.fp-layout .palette-swatch.palette-stairs {
+  border-color: #74685f !important;
+  background: repeating-linear-gradient(90deg, #b8afa7 0 4px, #ece7e2 4px 8px) !important;
+}
