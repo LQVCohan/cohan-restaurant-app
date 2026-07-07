@@ -1,3 +1,40 @@
+/* NewOrderModal owns its shell. Keep the global order-modal theme from
+   reintroducing the old sage header after this component's styles load. */
+.new-order-modal-shell.modal-container {
+  border-color: rgba(117, 82, 45, 0.18) !important;
+  background: #fffaf3 !important;
+  box-shadow:
+    0 30px 80px rgba(42, 33, 25, 0.28),
+    inset 0 1px rgba(255, 255, 255, 0.78) !important;
+}
+
+.new-order-modal-shell .modal-header {
+  border-bottom-color: rgba(117, 82, 45, 0.18) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 250, 243, 0.98),
+    rgba(247, 240, 230, 0.95)
+  ) !important;
+}
+
+.new-order-modal-shell .modal-header h2,
+.new-order-modal-shell .modal-header h3 {
+  color: #4d3522 !important;
+  letter-spacing: -0.022em !important;
+}
+
+.new-order-modal-shell .modal-close {
+  color: #7c4f2a !important;
+  background: rgba(255, 250, 243, 0.92) !important;
+  border-color: rgba(117, 82, 45, 0.18) !important;
+}
+
+.new-order-modal-shell .modal-close:hover {
+  color: #4d3522 !important;
+  background: #fff2df !important;
+  border-color: rgba(184, 147, 101, 0.58) !important;
+}
+
 .new-order-modal-shell {
   .form-group--searchable {
     min-width: 0;
