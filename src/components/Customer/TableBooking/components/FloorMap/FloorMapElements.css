@@ -1,4 +1,10 @@
 /* Customer-facing renderer for every floor-plan element available in the manager designer. */
+
+/* Keep the table-selection task unobstructed; the compact chatbot button remains available. */
+body:has(.table-booking-premium) .today-meal-utilities {
+  display: none !important;
+}
+
 .floor-map-viz .layout-node {
   isolation: isolate;
   transform-origin: center;
@@ -23,14 +29,16 @@
   white-space: nowrap;
 }
 
+/* Functional labels belong to the object instead of floating as duplicate pills. */
 .floor-map-viz .layout-node .layout-feature-label {
   left: 50%;
   bottom: 7px;
-  padding: 4px 7px;
-  border: 1px solid rgba(67, 55, 47, 0.14);
-  border-radius: 7px;
-  background: rgba(255, 253, 248, 0.88);
-  box-shadow: 0 3px 8px rgba(68, 46, 31, 0.08);
+  padding: 0;
+  border: 0;
+  color: #4f4036;
+  background: transparent;
+  box-shadow: none;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72);
   transform: translateX(-50%);
 }
 
@@ -55,52 +63,75 @@
   transform: translate(-50%, -50%);
 }
 
+/* Mask the wall underneath and draw a readable door opening instead of a thin bar. */
 .floor-map-viz .layout-node.door,
 .floor-map-viz .layout-node.door-double {
   overflow: visible;
-  border: 2px solid #855a34;
-  border-radius: 4px;
-  background: linear-gradient(180deg, #ead2b8, #c89a6e);
+  border: 0;
+  border-radius: 2px;
+  background: #fffdf8;
   box-shadow:
-    0 0 0 3px rgba(255, 253, 248, 0.86),
-    0 4px 9px rgba(74, 49, 29, 0.18);
+    0 0 0 5px #fffdf8,
+    0 4px 9px rgba(74, 49, 29, 0.12);
 }
 
 .floor-map-viz .layout-node.door::before {
   content: "";
   position: absolute;
-  inset: 2px 18% 2px 3px;
-  border: 1px solid rgba(104, 67, 36, 0.52);
-  border-radius: 3px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.34), transparent);
+  left: 50%;
+  bottom: 0;
+  width: 48%;
+  height: 34px;
+  border-top: 2px solid #855a34;
+  border-right: 2px solid #855a34;
+  border-radius: 0 34px 0 0;
+  transform-origin: left bottom;
+  transform: rotate(-32deg);
 }
 
 .floor-map-viz .layout-node.door::after {
   content: "";
   position: absolute;
-  top: 50%;
-  right: 7px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #5f3b20;
-  transform: translateY(-50%);
+  left: 50%;
+  bottom: 0;
+  width: 2px;
+  height: 34px;
+  background: #855a34;
+  transform-origin: center bottom;
+  transform: rotate(-32deg);
 }
 
 .floor-map-viz .layout-node.door-double::before,
 .floor-map-viz .layout-node.door-double::after {
   content: "";
   position: absolute;
-  top: 2px;
-  bottom: 2px;
-  width: calc(50% - 5px);
-  border: 1px solid rgba(104, 67, 36, 0.5);
-  border-radius: 3px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(151, 100, 57, 0.12));
+  bottom: 0;
+  width: 46%;
+  height: 30px;
+  border-top: 2px solid #855a34;
+  transform-origin: bottom;
 }
 
-.floor-map-viz .layout-node.door-double::before { left: 3px; }
-.floor-map-viz .layout-node.door-double::after { right: 3px; }
+.floor-map-viz .layout-node.door-double::before {
+  left: 50%;
+  border-left: 2px solid #855a34;
+  border-radius: 30px 0 0;
+  transform: rotate(28deg);
+  transform-origin: left bottom;
+}
+
+.floor-map-viz .layout-node.door-double::after {
+  right: 50%;
+  border-right: 2px solid #855a34;
+  border-radius: 0 30px 0 0;
+  transform: rotate(-28deg);
+  transform-origin: right bottom;
+}
+
+.floor-map-viz .layout-node.door .layout-edge-label,
+.floor-map-viz .layout-node.door-double .layout-edge-label {
+  bottom: calc(100% + 28px);
+}
 
 .floor-map-viz .layout-node.window {
   min-width: 8px;
@@ -235,28 +266,40 @@
 }
 
 .floor-map-viz .layout-node.cashier {
-  border-color: rgba(180, 91, 75, 0.48);
-  background: linear-gradient(145deg, #fff1ec, #efc7ba);
+  border-color: rgba(157, 116, 46, 0.48);
+  background: linear-gradient(145deg, #fff8e8, #ead9ad);
 }
 
 .floor-map-viz .layout-node.cashier::before {
   content: "";
   position: absolute;
-  top: 8px;
-  width: 38%;
-  height: 20px;
-  border: 2px solid #9f4f40;
+  top: 50%;
+  left: 10px;
+  width: 28%;
+  height: 22px;
+  border: 2px solid #8d6829;
   border-radius: 5px 5px 8px 8px;
   background:
-    radial-gradient(circle at 28% 65%, #9f4f40 0 2px, transparent 2.5px),
-    radial-gradient(circle at 50% 65%, #9f4f40 0 2px, transparent 2.5px),
-    radial-gradient(circle at 72% 65%, #9f4f40 0 2px, transparent 2.5px),
+    radial-gradient(circle at 28% 65%, #8d6829 0 2px, transparent 2.5px),
+    radial-gradient(circle at 50% 65%, #8d6829 0 2px, transparent 2.5px),
+    radial-gradient(circle at 72% 65%, #8d6829 0 2px, transparent 2.5px),
     rgba(255, 253, 248, 0.52);
+  transform: translateY(-50%);
+}
+
+.floor-map-viz .layout-node.cashier .layout-feature-label {
+  top: 50%;
+  right: 8px;
+  bottom: auto;
+  left: auto;
+  max-width: 58%;
+  color: #674b1c;
+  transform: translateY(-50%);
 }
 
 .floor-map-viz .layout-node.kitchen {
-  border-color: rgba(163, 77, 74, 0.48);
-  background: linear-gradient(145deg, #faece9, #e7bbb7);
+  border-color: rgba(113, 91, 71, 0.48);
+  background: linear-gradient(145deg, #f4ede5, #d9c6b4);
 }
 
 .floor-map-viz .layout-node.kitchen::before {
@@ -265,12 +308,16 @@
   top: 10px;
   width: 48%;
   height: 34%;
-  border: 2px solid rgba(125, 58, 56, 0.72);
+  border: 2px solid rgba(87, 68, 52, 0.72);
   border-radius: 8px;
   background:
-    radial-gradient(circle at 28% 50%, transparent 0 5px, rgba(125, 58, 56, 0.7) 5.5px 7px, transparent 7.5px),
-    radial-gradient(circle at 72% 50%, transparent 0 5px, rgba(125, 58, 56, 0.7) 5.5px 7px, transparent 7.5px),
+    radial-gradient(circle at 28% 50%, transparent 0 5px, rgba(87, 68, 52, 0.7) 5.5px 7px, transparent 7.5px),
+    radial-gradient(circle at 72% 50%, transparent 0 5px, rgba(87, 68, 52, 0.7) 5.5px 7px, transparent 7.5px),
     rgba(255, 253, 248, 0.45);
+}
+
+.floor-map-viz .layout-node.kitchen .layout-feature-label {
+  color: #594638;
 }
 
 .floor-map-viz .layout-node.buffet {
@@ -300,11 +347,16 @@
 .floor-map-viz .layout-node.wc::before {
   content: "WC";
   position: absolute;
-  top: 10%;
-  color: rgba(49, 91, 99, 0.3);
+  top: 50%;
+  color: rgba(49, 91, 99, 0.58);
   font-size: clamp(1rem, 3vw, 2rem);
   font-weight: 950;
   letter-spacing: -0.08em;
+  transform: translateY(-50%);
+}
+
+.floor-map-viz .layout-node.wc .layout-feature-label {
+  display: none;
 }
 
 .floor-map-viz .layout-node.sofa {
@@ -355,6 +407,11 @@
   padding: 8px 6px 21px;
 }
 
+.floor-map-viz .table-node:hover,
+.floor-map-viz .table-node:focus-within {
+  transform: rotate(var(--table-rotation, 0deg)) translateY(-2px) scale(1.025);
+}
+
 .floor-map-viz .table-node .table-status-copy {
   max-width: calc(100% - 4px);
   font-size: 0.48rem;
@@ -389,6 +446,11 @@
   background: rgba(255, 253, 248, 0.96);
   box-shadow: 0 2px 5px rgba(66, 47, 34, 0.12);
   font-size: 0.42rem;
+}
+
+/* The status text already says "đã được đặt"; a second tiny badge only adds clutter. */
+.floor-map-viz .table-node .status-badge.reserved {
+  display: none;
 }
 
 .floor-map-viz .table-node.selected .table-capacity {
