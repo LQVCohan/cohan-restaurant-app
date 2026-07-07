@@ -1,0 +1,32 @@
+{
+  "id": "order-settings-sync",
+  "name": "order-settings-sync",
+  "title": "Sync order display settings with manager UI",
+  "description": "Polish the order settings modal and make all local display settings visibly affect the manager KDS.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-order-settings",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Order/components/OrderSettingsModal.jsx",
+    "src/styles/OrderSettingsModalBeauty.css",
+    "src/components/Dashboard_Manager/Order/components/OrderSettingsModal.test.jsx"
+  ],
+  "notes": "Frontend-only settings. Thresholds and colors already reach OrderCard. Chip size currently reaches summary chips but not KDS item rows. Settings remain browser-local by design.",
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "taste-ui-redesign",
+      "redesign-existing-projects",
+      "react-ui-performance",
+      "wcag-ui-audit"
+    ]
+  }
+}
