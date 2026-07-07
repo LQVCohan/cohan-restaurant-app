@@ -1,73 +1,75 @@
-# Synchronize table management with selected branch
+# Synchronize manager pages with the selected branch
 
 ## Current behavior
 
-The manager header uses `useManagerRestaurantSelection` and stores the active branch in `manager.selectedRestaurantId`.
+The manager layout stores the active branch in `manager.selectedRestaurantId` and broadcasts changes through `manager:scope-selection`.
 
-`TableManagement` does not use that shared selection. It creates a private `selectedRestaurantId`, initializes it from the first restaurant in `AuthContext.restaurants`, and passes that value to `useFloorManagement` and `useTableManagement`.
+Several older manager pages, including `TableManagement`, still keep a private `selectedRestaurantId` and render that selector through the shared `ManagementPageHeader`. Their GraphQL hooks receive the private value instead of the value selected in the top manager header.
 
-Changing the branch in the manager header therefore updates the header only; the table page continues querying the first restaurant.
+Changing the branch in the top header therefore changes the visible scope label but those pages can continue querying the previous restaurant.
 
 ## Root cause
 
-There are two independent restaurant-selection states in the same manager page:
+The backend and Apollo contracts are already restaurant-scoped correctly:
 
-1. `ManagerLayout` / `useManagerRestaurantSelection` for the global header.
-2. A local `useState` inside `TableManagement` for floors and tables.
+`Table.restaurantId` → `tables(restaurantId)` resolver filter → `useTableManagement({ restaurantId })` → table UI.
 
-The GraphQL schema, resolver, and Apollo table hook already scope correctly by the `restaurantId` variable. The wrong variable originates in the page component.
+The drift occurs between two frontend selection states:
 
-## End-to-end flow
+1. `ManagerLayout` / `useManagerRestaurantSelection` publishes the manager-wide branch.
+2. Legacy pages own a local selector through `ManagementPageHeader` but do not subscribe to that manager-wide branch.
 
-1. The user changes the branch in `BrandRestaurantSelector`.
-2. `useManagerRestaurantSelection` updates `manager.selectedRestaurantId` and dispatches `manager:scope-selection`.
-3. `TableManagement` uses the same hook and receives the new selected restaurant ID.
-4. `useFloorManagement({ restaurantId })` and `useTableManagement({ restaurantId })` rerun with the new ID.
-5. The backend validates access and filters `Floor` and `Table` records by that restaurant ID.
-6. The page displays only the selected branch's floors and tables.
+Because every affected legacy selector already passes through `ManagementPageHeader`, the smallest shared fix is to synchronize at that component boundary instead of patching each page separately.
 
-## Scope
+## Implemented flow
 
-- Replace the private restaurant-selection state in `TableManagement` with `useManagerRestaurantSelection`.
-- Use `restaurantOptions` for the page-level branch selector.
-- Reset the selected floor to “Tất cả tầng” when the branch changes.
-- Close an open table-detail modal when the branch changes so a table from the previous branch cannot remain editable under the new branch context.
-- Add a focused component test proving that a shared branch-selection change reaches both table and floor hooks.
+1. The top manager selector changes restaurant B.
+2. `useBrandManagement` persists B and emits `manager:scope-selection`.
+3. `ManagementPageHeader` validates that B exists in the page's allowed `restaurantList`.
+4. It invokes the page's existing `onRestaurantChange(B)` callback.
+5. `TableManagement` updates its local restaurant ID.
+6. `useFloorManagement` and `useTableManagement` rerun with B.
+7. Backend permissions are checked and only B's floors/tables are returned.
 
-## Files to change
+When a legacy page first opens, `ManagementPageHeader` also reads the persisted manager restaurant and applies it, preventing the page from temporarily remaining on its first `AuthContext` restaurant.
 
-- `src/components/Dashboard_Manager/Table/TableManagement.jsx`
-  - Remove the duplicate AuthContext restaurant state.
-  - Reuse the shared manager restaurant selection.
-  - Reset branch-specific UI state on restaurant changes.
-- `src/components/Dashboard_Manager/Table/TableManagement.test.jsx`
-  - Mock the shared selection hook.
-  - Assert that changing the selected branch updates the restaurant ID passed to data hooks.
+The page-level selector publishes the same manager scope event so the top header and other open manager selectors remain synchronized.
+
+## Files changed
+
+- `src/components/Dashboard_Manager/shared/ManagementPageHeader/ManagementPageHeader.jsx`
+  - Subscribe to the existing manager scope event.
+  - Apply the persisted branch on mount/list changes.
+  - Publish page-level branch changes through the same protocol.
+  - Ignore restaurant IDs outside the page's allowed list.
+- `src/components/Dashboard_Manager/shared/ManagementPageHeader/ManagementPageHeader.test.jsx`
+  - Cover persisted selection, top-header changes, page-level publishing, and out-of-scope IDs.
 
 ## Constraints
 
-- Do not change the GraphQL schema or backend resolver because their restaurant scoping is already correct.
-- Do not introduce a new context or dependency.
-- Preserve the existing page-level restaurant selector and manager header synchronization.
-- Preserve backend permission checks.
+- Do not change GraphQL schema, table/floor resolvers, or permission guards.
+- Do not add a new context, global store, or dependency.
+- Reuse the existing `manager.selectedRestaurantId` storage key and `manager:scope-selection` event.
+- Never apply a restaurant ID absent from the page's allowed restaurant list.
 
 ## Acceptance criteria
 
-- A brand owner/system manager switching from restaurant A to restaurant B sees restaurant B's floors and tables without reloading the page.
-- The page-level branch selector and global manager header show the same active restaurant.
-- `useTableManagement` and `useFloorManagement` receive the new restaurant ID.
-- An open table-detail modal from restaurant A is closed when switching to restaurant B.
-- The floor filter resets to “Tất cả tầng”.
-- Existing table-management rendering and actions remain unchanged.
+- A brand owner/system manager switching from restaurant A to B sees B's floors and tables without reloading.
+- The page-level branch selector follows the top manager selector.
+- Opening a legacy manager page uses the already selected manager branch.
+- Selecting a branch inside a page updates the shared manager scope.
+- IDs outside the page's authorized restaurant list are ignored.
+- Existing GraphQL restaurant scoping and backend permission checks remain unchanged.
 
 ## Out of scope
 
 - Changing brand membership or restaurant access rules.
-- Changing the backend `tables` or `floors` query contracts.
-- Refactoring every manager page to a new provider.
+- Changing the backend `tables` or `floors` contracts.
+- Replacing all legacy local states in one refactor.
 
 ## Validation plan
 
-- `vitest run src/components/Dashboard_Manager/Table/TableManagement.test.jsx`
+- `vitest run src/components/Dashboard_Manager/shared/ManagementPageHeader/ManagementPageHeader.test.jsx`
+- Existing table-management component tests.
 - `npm run check:graphql`
 - `npm run build`
