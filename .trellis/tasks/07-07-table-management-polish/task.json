@@ -1,0 +1,33 @@
+{
+  "id": "table-management-polish",
+  "name": "table-management-polish",
+  "title": "Polish table cards and repair table workflows",
+  "description": "Reduce the visual weight of the per-table 3D/AR action and repair contract/cache issues in table details, merge, and split workflows.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "manager-table-management",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "fix/table-management-polish",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/models/table.model.js",
+    "cohan-restaurant-backend/graphql/schema/floor_table.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/table/mutation.js",
+    "src/hooks/useTableManagement.js",
+    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
+    "src/components/Dashboard_Manager/Table/TableManagement.scss",
+    "src/components/Dashboard_Manager/Table/TableActionsLiteModal.jsx"
+  ],
+  "notes": "Trace completed from Mongoose model through resolver, Apollo hook, manager table page, and modal actions."
+}
