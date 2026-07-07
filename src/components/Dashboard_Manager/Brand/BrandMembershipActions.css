@@ -82,13 +82,13 @@
   accent-color: var(--bm-accent);
 }
 
-/* Member workspace hierarchy: keep the compact layout, emphasize decisions and state. */
+/* Neutral surfaces keep green reserved for primary actions and live status. */
 .manager-layout.manager-layout--brands .brand-members-panel {
-  border-color: rgba(83, 108, 97, 0.3);
+  border-color: rgba(168, 133, 95, 0.24);
   background:
-    radial-gradient(circle at 100% 0, rgba(47, 125, 104, 0.08), transparent 24rem),
-    rgba(249, 252, 250, 0.97);
-  box-shadow: 0 16px 34px rgba(48, 72, 61, 0.1);
+    radial-gradient(circle at 100% 0, rgba(168, 133, 95, 0.07), transparent 24rem),
+    rgba(255, 253, 249, 0.98);
+  box-shadow: 0 16px 34px rgba(75, 56, 32, 0.08);
 }
 
 .manager-layout.manager-layout--brands .brand-members-panel > .brand-panel__header {
@@ -102,24 +102,24 @@
   inset: 0 auto 0 0;
   width: 3px;
   border-radius: 999px;
-  background: var(--bm-accent);
+  background: #a8855f;
 }
 
 .manager-layout.manager-layout--brands .brand-members-panel > .brand-panel__header h3 {
-  color: var(--bm-ink);
+  color: #24303f;
   font-size: 1.12rem;
   font-weight: 850;
   letter-spacing: -0.025em;
 }
 
 .manager-layout.manager-layout--brands .brand-members-panel > .brand-panel__header p {
-  color: var(--bm-muted);
+  color: #667085;
   font-size: 0.76rem;
 }
 
 .manager-layout.manager-layout--brands .brand-members-panel .brand-member-filter-panel {
-  border-color: rgba(83, 108, 97, 0.24);
-  background: rgba(241, 247, 243, 0.72);
+  border-color: rgba(168, 133, 95, 0.2);
+  background: rgba(248, 246, 241, 0.9);
 }
 
 .manager-layout.manager-layout--brands
@@ -131,12 +131,13 @@
 .manager-layout.manager-layout--brands
   .brand-members-panel
   .brand-member-filter-panel__heading:hover {
-  background: rgba(229, 240, 235, 0.7);
+  background: rgba(239, 233, 224, 0.82);
 }
 
 .manager-layout.manager-layout--brands
   .brand-members-panel
   .brand-member-filter-panel__heading strong {
+  color: #374151;
   font-weight: 800;
 }
 
@@ -144,20 +145,20 @@
   .brand-members-panel
   .brand-member-filter-panel__heading > span {
   padding: 0.26rem 0.48rem;
-  border: 1px solid rgba(83, 108, 97, 0.18);
+  border: 1px solid rgba(168, 133, 95, 0.22);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--bm-primary-hover);
+  background: rgba(255, 253, 249, 0.95);
+  color: #735637;
   font-weight: 750;
 }
 
 .manager-layout.manager-layout--brands .brand-member-create {
-  border-color: rgba(47, 125, 104, 0.28);
-  border-left: 3px solid var(--bm-accent);
+  border-color: rgba(168, 133, 95, 0.24);
+  border-left: 3px solid #a8855f;
   background:
-    radial-gradient(circle at 100% 0, rgba(47, 125, 104, 0.12), transparent 18rem),
-    rgba(241, 247, 243, 0.86);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+    radial-gradient(circle at 100% 0, rgba(168, 133, 95, 0.1), transparent 18rem),
+    rgba(250, 248, 244, 0.94);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .manager-layout.manager-layout--brands .brand-member-create .brand-field > span,
@@ -165,7 +166,7 @@
   .brand-member-filter-panel__body
   .brand-field
   > span {
-  color: #40584e;
+  color: #5d5144;
   font-weight: 750;
 }
 
@@ -175,10 +176,10 @@
 
 .manager-layout.manager-layout--brands .brand-member-card {
   position: relative;
-  border-color: rgba(83, 108, 97, 0.22);
-  border-left: 3px solid rgba(83, 108, 97, 0.36);
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 5px 14px rgba(48, 72, 61, 0.045);
+  border-color: rgba(168, 133, 95, 0.2);
+  border-left: 3px solid rgba(168, 133, 95, 0.42);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 5px 14px rgba(75, 56, 32, 0.045);
 }
 
 .manager-layout.manager-layout--brands
@@ -194,45 +195,45 @@
 }
 
 .manager-layout.manager-layout--brands .brand-member-card:hover {
-  border-color: rgba(47, 125, 104, 0.34);
-  border-left-color: var(--bm-accent);
+  border-color: rgba(168, 133, 95, 0.34);
+  border-left-color: #a8855f;
   background: #fff;
-  box-shadow: 0 12px 26px rgba(48, 72, 61, 0.1);
+  box-shadow: 0 12px 26px rgba(75, 56, 32, 0.09);
 }
 
 .manager-layout.manager-layout--brands .brand-member-card__avatar {
-  border-color: rgba(47, 125, 104, 0.25);
+  border-color: rgba(168, 133, 95, 0.28);
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.78), transparent),
-    var(--bm-accent-soft);
-  color: #36584c;
-  box-shadow: 0 5px 12px rgba(48, 72, 61, 0.09);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.82), transparent),
+    #eee5d8;
+  color: #6f563c;
+  box-shadow: 0 5px 12px rgba(75, 56, 32, 0.08);
 }
 
 .manager-layout.manager-layout--brands .brand-member-card__identity strong {
-  color: #22332c;
+  color: #24303f;
   font-size: 0.9rem;
   font-weight: 850;
   letter-spacing: -0.012em;
 }
 
 .manager-layout.manager-layout--brands .brand-member-card__identity span {
-  color: #6d7d76;
+  color: #707784;
   font-size: 0.71rem;
 }
 
 .manager-layout.manager-layout--brands .brand-member-card__meta {
   align-content: center;
   padding-left: 0.72rem;
-  border-left: 1px solid rgba(83, 108, 97, 0.15);
+  border-left: 1px solid rgba(168, 133, 95, 0.16);
 }
 
 .manager-layout.manager-layout--brands .brand-role-badge {
-  border-color: rgba(47, 125, 104, 0.25);
-  background: linear-gradient(180deg, #edf6f1, #e2efe9);
-  color: #315e50;
+  border-color: rgba(168, 133, 95, 0.28);
+  background: linear-gradient(180deg, #f4eee5, #ebe1d3);
+  color: #684f35;
   font-weight: 850;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
 }
 
 .manager-layout.manager-layout--brands
@@ -242,8 +243,8 @@
   max-width: 100%;
   padding: 0.22rem 0.42rem;
   border-radius: 6px;
-  background: rgba(83, 108, 97, 0.07);
-  color: #5e7068;
+  background: rgba(100, 116, 139, 0.08);
+  color: #626b78;
   font-weight: 650;
 }
 
@@ -257,7 +258,7 @@
   padding: 0.28rem 0.5rem;
   border: 1px solid transparent;
   border-radius: 7px;
-  color: #3d7463;
+  color: #735637;
   font-weight: 750;
   text-decoration: none;
 }
@@ -265,22 +266,23 @@
 .manager-layout.manager-layout--brands
   .brand-member-card
   .brand-link-button:hover:not(:disabled) {
-  border-color: rgba(47, 125, 104, 0.2);
-  background: var(--bm-accent-soft);
-  color: var(--bm-primary-hover);
+  border-color: rgba(168, 133, 95, 0.22);
+  background: rgba(168, 133, 95, 0.1);
+  color: #5f452d;
   text-decoration: none;
 }
 
 .manager-layout.manager-layout--brands
   .brand-membership-actions-stack
   .brand-member-filter-panel {
-  background: rgba(248, 251, 249, 0.9);
+  border-color: rgba(168, 133, 95, 0.2);
+  background: rgba(250, 248, 244, 0.94);
 }
 
 .manager-layout.manager-layout--brands
   .brand-membership-actions-stack
   .brand-member-filter-panel__heading strong {
-  color: #314b41;
+  color: #4f4338;
 }
 
 @media (max-width: 900px) {
