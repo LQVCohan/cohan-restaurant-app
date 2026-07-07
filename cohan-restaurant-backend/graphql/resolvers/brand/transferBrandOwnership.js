@@ -30,10 +30,15 @@ export default async function transferBrandOwnership(_, { input }, ctx) {
     throw bad("Người nhận quyền phải là một tài khoản khác.");
   }
 
-  const managerRestaurantIds = await ensureBrandRestaurants(
-    input.brandId,
-    [input.previousOwnerRestaurantId],
-  );
+  let managerRestaurantIds;
+  try {
+    managerRestaurantIds = await ensureBrandRestaurants(
+      input.brandId,
+      [input.previousOwnerRestaurantId],
+    );
+  } catch (error) {
+    throw bad(error.message);
+  }
   if (managerRestaurantIds.length !== 1) {
     throw bad("Chủ cũ phải được gán đúng một chi nhánh để làm quản lý.");
   }
