@@ -1,0 +1,7 @@
+{
+  "id": "07-08-attendance-missing-context-import",
+  "title": "Remove obsolete attendance scope context import",
+  "status": "in_progress",
+  "priority": "high",
+  "branch": "fix-attendance-missing-context-import"
+}
