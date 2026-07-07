@@ -1,0 +1,478 @@
+/* Final touch-first overrides for the authentication, table-management and 3D workflows.
+   Keep this layer mobile-only so desktop layouts and business logic remain unchanged. */
+
+@media (max-width: 768px) {
+  /* ---------- Authentication ---------- */
+  .login-page-wrapper {
+    min-height: 100dvh !important;
+    gap: 8px !important;
+    padding:
+      calc(10px + env(safe-area-inset-top))
+      max(10px, env(safe-area-inset-right))
+      calc(18px + env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left)) !important;
+  }
+
+  .login-page-wrapper .mobile-switcher {
+    top: calc(6px + env(safe-area-inset-top)) !important;
+    max-width: 430px !important;
+    padding: 4px !important;
+    border-radius: 16px !important;
+  }
+
+  .login-page-wrapper .mobile-switcher [role="tab"] {
+    min-height: 44px !important;
+    border-radius: 12px !important;
+  }
+
+  .login-page-wrapper .container {
+    width: 100% !important;
+    max-width: 430px !important;
+    margin-top: 0 !important;
+    overflow: hidden !important;
+    border-radius: 22px !important;
+  }
+
+  .login-page-wrapper .form-container {
+    padding: 18px 16px 22px !important;
+  }
+
+  .login-page-wrapper .auth-form {
+    gap: 0 !important;
+  }
+
+  .login-page-wrapper .auth-brand-row {
+    margin-bottom: 8px !important;
+    padding: 5px 9px !important;
+  }
+
+  .login-page-wrapper .auth-form h1 {
+    margin-bottom: 7px !important;
+    font-size: clamp(1.85rem, 9vw, 2.25rem) !important;
+    line-height: 1.02 !important;
+  }
+
+  .login-page-wrapper .auth-subtitle {
+    margin: 5px 0 9px !important;
+    font-size: 0.78rem !important;
+    line-height: 1.38 !important;
+  }
+
+  .login-page-wrapper .auth-audience-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .login-page-wrapper .auth-audience-grid span {
+    min-width: 0 !important;
+    min-height: 48px !important;
+    padding: 8px 9px !important;
+    border-radius: 13px !important;
+  }
+
+  .login-page-wrapper .auth-audience-grid strong {
+    overflow: hidden !important;
+    font-size: 0.72rem !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .login-page-wrapper .auth-audience-grid small {
+    margin-top: 2px !important;
+    overflow: hidden !important;
+    font-size: 0.61rem !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .login-page-wrapper .field-label {
+    margin: 3px 0 0 !important;
+    font-size: 0.72rem !important;
+  }
+
+  .login-page-wrapper .input-wrapper {
+    margin: 5px 0 !important;
+  }
+
+  .login-page-wrapper .input-wrapper input {
+    min-height: 48px !important;
+    padding: 11px 46px 11px 43px !important;
+    font-size: 0.88rem !important;
+  }
+
+  .login-page-wrapper .input-wrapper > .field-icon {
+    left: 14px !important;
+  }
+
+  .login-page-wrapper .input-wrapper .toggle-pw-btn {
+    right: 4px !important;
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .login-page-wrapper .forgot-link {
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    margin: 2px 0 !important;
+    font-size: 0.78rem !important;
+  }
+
+  .login-page-wrapper .captcha-container {
+    min-height: 74px !important;
+    margin: 6px 0 4px !important;
+  }
+
+  .login-page-wrapper .remember-card,
+  .login-page-wrapper .check-card {
+    margin: 5px 0 7px !important;
+    padding: 8px 10px !important;
+    border-radius: 13px !important;
+    font-size: 0.7rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .login-page-wrapper .check-row {
+    min-height: 32px !important;
+    align-items: center !important;
+  }
+
+  .login-page-wrapper .check-row + .check-row {
+    margin-top: 2px !important;
+  }
+
+  .login-page-wrapper .check-row input,
+  .login-page-wrapper .check-card input {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .login-page-wrapper button.btn-primary {
+    width: 100% !important;
+    min-height: 48px !important;
+    margin-top: 5px !important;
+  }
+
+  .login-page-wrapper .social-container {
+    justify-content: center !important;
+    margin-top: 9px !important;
+  }
+
+  /* ---------- Table management ---------- */
+  .manager-layout--tables .manager-layout__content {
+    padding-inline: 0 !important;
+  }
+
+  .manager-layout--tables .tm-container {
+    width: 100% !important;
+    padding: 8px !important;
+  }
+
+  .manager-layout--tables .tm-layout {
+    gap: 10px !important;
+  }
+
+  .manager-layout--tables .tm-sidebar,
+  .manager-layout--tables .tm-grid-area {
+    padding: 12px !important;
+    border-radius: 18px !important;
+  }
+
+  .manager-layout--tables .tm-sidebar {
+    gap: 12px !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .manager-layout--tables .tm-panel-heading {
+    flex-direction: row !important;
+    align-items: end !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+  }
+
+  .manager-layout--tables .tm-panel-heading h2 {
+    font-size: 1rem !important;
+  }
+
+  .manager-layout--tables .tm-floor-list {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 2px 1px 7px !important;
+    scroll-padding-inline: 1px !important;
+    scroll-snap-type: x proximity !important;
+    scrollbar-width: thin !important;
+  }
+
+  .manager-layout--tables .tm-floor-item,
+  .manager-layout--tables .tm-add-floor-btn {
+    flex: 0 0 auto !important;
+    min-height: 44px !important;
+    scroll-snap-align: start !important;
+  }
+
+  .manager-layout--tables .tm-floor-item {
+    width: min(46vw, 172px) !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+  }
+
+  .manager-layout--tables .tm-add-floor-btn {
+    width: 126px !important;
+  }
+
+  .manager-layout--tables .tm-floor-design-card {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+  }
+
+  .manager-layout--tables .tm-floor-design-card button {
+    min-height: 44px !important;
+    padding-inline: 12px !important;
+  }
+
+  .manager-layout--tables .tm-filter-box {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 9px !important;
+    padding-top: 12px !important;
+  }
+
+  .manager-layout--tables .tm-filter-heading,
+  .manager-layout--tables .tm-filter-box > .tm-filter-field:first-of-type {
+    grid-column: 1 / -1 !important;
+  }
+
+  .manager-layout--tables .tm-filter-field {
+    min-width: 0 !important;
+  }
+
+  .manager-layout--tables .tm-filter-field input,
+  .manager-layout--tables .tm-filter-field select {
+    min-height: 44px !important;
+    font-size: 0.88rem !important;
+  }
+
+  .manager-layout--tables .tm-grid-area {
+    min-height: 0 !important;
+  }
+
+  .manager-layout--tables .tm-grid-toolbar {
+    position: static !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    margin: 0 0 12px !important;
+    padding: 0 0 11px !important;
+  }
+
+  .manager-layout--tables .tm-grid-toolbar h2 {
+    font-size: 1.08rem !important;
+  }
+
+  .manager-layout--tables .tm-table-grid {
+    gap: 10px !important;
+  }
+
+  .manager-layout--tables .tm-table-card {
+    min-height: 0 !important;
+    gap: 10px !important;
+    padding: 13px !important;
+    border-radius: 17px !important;
+  }
+
+  .manager-layout--tables .tm-table-card .card-body {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px 10px !important;
+  }
+
+  .manager-layout--tables .tm-table-card .info-row {
+    min-width: 0 !important;
+    font-size: 0.8rem !important;
+  }
+
+  .manager-layout--tables .tm-table-card .card-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  .manager-layout--tables .tm-table-card .card-actions .btn-mini {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    padding-inline: 8px !important;
+    font-size: 0.76rem !important;
+  }
+}
+
+@media (max-width: 860px) {
+  /* ---------- Table 3D / AR modal ---------- */
+  body:has(.table-3d-modal__header) .modal-container.table-3d-modal {
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  body:has(.table-3d-modal__header) .modal-container.table-3d-modal > .modal-body {
+    grid-template-rows: auto minmax(0, 1fr) !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: start !important;
+    gap: 8px !important;
+    min-height: 0 !important;
+    padding:
+      calc(9px + env(safe-area-inset-top))
+      max(10px, env(safe-area-inset-right))
+      9px
+      max(10px, env(safe-area-inset-left)) !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__title-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__title-row h3 {
+    min-width: 0 !important;
+    max-width: none !important;
+    font-size: 0.96rem !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-ar-status {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    font-size: 0.68rem !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__header p {
+    max-width: 100% !important;
+    font-size: 0.72rem !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__header-actions {
+    display: flex !important;
+    gap: 6px !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__header-actions .btn {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__layout {
+    overscroll-behavior: contain !important;
+    padding:
+      8px
+      max(8px, env(safe-area-inset-right))
+      calc(8px + env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left)) !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__viewer-wrap,
+  body:has(.table-3d-modal__header) .table-3d-modal__sidebar {
+    border-radius: 16px !important;
+  }
+
+  body:has(.table-3d-modal__header) .viewer-overlay {
+    gap: 3px !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-stage,
+  body:has(.table-3d-modal__header) .table-3d-viewer,
+  body:has(.table-3d-modal__header) .viewer-placeholder {
+    height: clamp(230px, 36dvh, 340px) !important;
+    min-height: 230px !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__controls .btn,
+  body:has(.table-3d-modal__header) .table-3d-modal__controls button {
+    min-height: 44px !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__models {
+    scroll-padding-inline: 1px !important;
+  }
+
+  body:has(.table-3d-modal__header) .model-item {
+    min-width: min(76vw, 270px) !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__footer {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    padding:
+      8px
+      8px
+      calc(8px + env(safe-area-inset-bottom)) !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__footer > .btn,
+  body:has(.table-3d-modal__header) .table-3d-modal__footer > button,
+  body:has(.table-3d-modal__header) .table-3d-position-action,
+  body:has(.table-3d-modal__header) .table-3d-position-action .btn {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__footer .btn,
+  body:has(.table-3d-modal__header) .table-3d-modal__footer button {
+    min-height: 46px !important;
+    padding-inline: 9px !important;
+    font-size: 0.75rem !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-apply-button {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .manager-layout--tables .tm-filter-box {
+    grid-template-columns: 1fr !important;
+  }
+
+  .manager-layout--tables .tm-filter-heading,
+  .manager-layout--tables .tm-filter-box > .tm-filter-field:first-of-type {
+    grid-column: auto !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__header-actions > .btn:first-of-type {
+    display: none !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-modal__footer {
+    grid-template-columns: 1fr !important;
+  }
+
+  body:has(.table-3d-modal__header) .table-3d-apply-button {
+    grid-column: auto !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-page-wrapper *,
+  .manager-layout--tables *,
+  body:has(.table-3d-modal__header) * {
+    scroll-behavior: auto !important;
+  }
+}
