@@ -2,76 +2,75 @@
 
 ## Current behavior
 
-`TableCustomer` stores one customer profile per physical table. The new merge flow creates a separate composite `Table` record and hides its source tables through `mergedIntoTableId`.
+`TableCustomer` stores one customer profile per physical table. The composite merge flow creates a separate visible `Table` record and hides its source tables through `mergedIntoTableId`.
 
-The POS modal still calls the singular `tableCustomer` query with the composite table ID/code. No `TableCustomer` row exists for that new ID, so the UI hydrates nothing and the source customer profiles appear to have been deleted even though they remain in the database.
+The existing singular `tableCustomer` query looked up the composite table ID/code. No customer row belongs to that new ID, so the UI appeared to lose the customers even though their source rows remained in MongoDB.
 
-The merge resolver also currently requires every source table to be `available`, which prevents a table marked `occupied` only because customer information was recorded from being merged.
+The manager table-detail modal also had no customer section capable of rendering more than one source profile.
 
 ## Root cause
 
-The data model correctly preserves the source tables, but the customer read contract is still singular and unaware of `mergedFromTableIds`. The UI assumes one table equals one editable customer row, so it cannot render or edit multiple source profiles after merge.
+The merge data model preserves source tables, but the customer read contract and UI still assumed one visible table equals one customer row. They did not follow `mergedFromTableIds` back to the source tables.
 
-## End-to-end flow
+## Implemented end-to-end flow
 
-1. `TableCustomer` keeps the original `tableId` and `tableCode` for each physical table.
-2. A composite `Table` stores all source IDs in `mergedFromTableIds`.
-3. A new grouped GraphQL query resolves the visible table, expands its source table IDs when it is composite, and returns one profile slot per source table.
-4. POS uses the grouped query, displays all source customers, and edits the selected source profile without creating a replacement row on the composite table.
-5. Staff ordering uses the same grouped query and derives a combined customer label for the selected merged table.
-6. Splitting deletes the composite table and restores the source tables; customer rows require no migration because they never moved.
+1. `TableCustomer` keeps its original `tableId` and `tableCode`; merge never copies or deletes customer rows.
+2. The composite `Table` stores source IDs in `mergedFromTableIds`.
+3. `tableCustomerGroup` resolves the visible table, loads every source table, and returns one profile slot per source.
+4. Each profile includes `sourceTableId`, `sourceTableCode`, and a nullable customer row.
+5. The manager table-detail modal displays every profile as a card labeled with its original table code.
+6. Selecting a card edits only that source table's customer row.
+7. Aggregate `customerCount` and `totalPartySize` are shown for the composite table.
+8. Splitting removes the composite and restores source tables; customer rows immediately reappear because they never moved.
 
-## Scope
+## Scope completed
 
-- Add a source-aware grouped customer query while preserving the existing singular query.
-- Return profile slots for every source table, including a source table that currently has no customer row.
-- Include aggregate customer count and total party size for the merged table.
-- Display all customer profiles in the POS table modal with their original table code.
-- Allow selecting one profile card and saving changes back to that source table.
-- Keep non-merged table behavior unchanged.
-- Allow `occupied` source tables to merge only when neither active orders nor active reservations exist.
-- Set the composite status to `occupied` when any source table is occupied.
-- Update staff table hydration so merged tables retain a combined customer label.
+- Added grouped GraphQL result types and `tableCustomerGroup` query.
+- Preserved the existing singular query; legacy clients receive the first available source customer instead of `null`.
+- Matched old code-only customer rows by table ID or code when saving, preventing duplicate rows.
+- Returned empty source slots when a source table has no customer information.
+- Added a source-aware customer panel to `TableActionsLiteModal` through the existing manager-page installer pattern.
+- Added per-source profile selection and editing without overwriting another customer's data.
+- Marked a composite table `occupied` when a meaningful source customer row exists or a source table is occupied.
+- Continued blocking merges when any source has an active order or active reservation.
+- Added backend and frontend regression tests.
 
-## Constraints
+## Files changed
 
-- Do not move or duplicate `TableCustomer` rows during merge.
-- Do not merge active orders, invoices, reservations, or payment sessions.
-- Do not change the existing `tableCustomer` response type or existing upsert mutation.
-- Preserve restaurant access checks and source-table scoping.
-- No new dependency.
+- `cohan-restaurant-backend/graphql/schema/tableCustomer.graphql`
+- `cohan-restaurant-backend/graphql/resolvers/table/tableCustomer.js`
+- `cohan-restaurant-backend/graphql/resolvers/table/mergeTables.js`
+- `src/utils/installMergedTableCustomerProfiles.js`
+- `src/components/Dashboard_Manager/Table/TableCustomerProfilesEnhancement.css`
+- `src/main.jsx`
+- `cohan-restaurant-backend/tests/resolvers/table-customer-group.test.js`
+- `cohan-restaurant-backend/tests/resolvers/table-merge-composite.test.js`
+- `src/utils/installMergedTableCustomerProfiles.test.js`
 
-## Files to change
+## Acceptance behavior
 
-- `cohan-restaurant-backend/graphql/schema/tableCustomer.graphql`: grouped query and result types.
-- `cohan-restaurant-backend/graphql/resolvers/table/tableCustomer.js`: source-aware customer grouping.
-- `cohan-restaurant-backend/graphql/resolvers/table/mergeTables.js`: allow safe occupied tables and derive composite status.
-- `src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.jsx`: grouped query, profile selection, editing target, and summary UI.
-- `src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.module.scss`: responsive customer profile cards.
-- `src/components/Staff/StaffOrdering.jsx`: grouped query and combined customer hydration.
-- Narrow backend tests for grouped customer resolution and composite status.
-
-## Acceptance criteria
-
-- Merging two tables with existing customer profiles does not delete or overwrite either profile.
-- Opening the composite table shows both customers, each labeled with the original table code.
-- The displayed total party size equals the sum of the source customer party sizes.
-- Selecting and saving customer A updates customer A's original `TableCustomer` row only.
-- Splitting the table restores the original tables with their previous customer information intact.
-- A source table with no customer data appears as an empty source slot instead of disappearing.
-- An occupied table without active order/reservation may merge; any active order/reservation still blocks merge.
-- Existing non-merged table customer flows continue to work.
+- Merging A1 and A2 does not delete, move, or overwrite either customer's row.
+- Opening A1+A2 shows both profiles, labeled `Bàn A1` and `Bàn A2`.
+- The total party size is the sum of both source profiles.
+- Saving profile A2 updates A2 only.
+- A source without a customer appears as an empty card that can receive a new profile.
+- Splitting restores A1 and A2 with their previous customer information.
+- A customer-bearing table can merge only when it has no active order or reservation.
+- Existing clients using `tableCustomer` no longer receive an empty result for a composite table.
 
 ## Out of scope
 
-- Combining active orders from multiple tables.
-- Combining or transferring reservations.
-- Joint billing or payment allocation between customer profiles.
-- Supporting more than one `TableCustomer` row on the same physical table.
+- Combining or transferring active orders.
+- Combining reservations, invoices, or payment sessions.
+- Joint billing or payment allocation between source profiles.
+- More than one customer profile per physical source table.
 
-## Validation plan
+## Validation
+
+Added focused checks:
 
 - `vitest run cohan-restaurant-backend/tests/resolvers/table-customer-group.test.js`
 - `vitest run cohan-restaurant-backend/tests/resolvers/table-merge-composite.test.js`
-- Existing POS component/build checks when a runnable workspace is available.
-- Browser smoke test: merge two customer-bearing tables, inspect both cards, edit one, split, and verify both source profiles return.
+- `vitest run src/utils/installMergedTableCustomerProfiles.test.js`
+
+The connected environment could not clone the repository because outbound DNS for GitHub was unavailable. Tests, build, browser smoke testing, and screenshot comparison were therefore not executed here.
