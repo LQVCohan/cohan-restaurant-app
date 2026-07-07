@@ -1,16 +1,12 @@
-const FALLBACK_GEMINI_REWRITE_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-1.5-flash-latest",
-  "gemini-1.5-flash",
-];
+import { DEFAULT_GEMINI_MODEL, generateGeminiText } from "./geminiClient.service.js";
 
-function getGeminiRewriteModels() {
-  return [process.env.GEMINI_REWRITE_MODEL, ...FALLBACK_GEMINI_REWRITE_MODELS]
-    .map((model) => String(model || "").trim())
-    .filter(Boolean)
-    .filter((model, index, models) => models.indexOf(model) === index);
-}
+const getGeminiRewriteModel = () =>
+  String(
+    process.env.GEMINI_REWRITE_MODEL ||
+      process.env.AI_CHATBOT_MODEL ||
+      process.env.GEMINI_MODEL ||
+      DEFAULT_GEMINI_MODEL,
+  ).trim() || DEFAULT_GEMINI_MODEL;
 
 const cleanText = (value = "") =>
   String(value || "")
@@ -113,64 +109,22 @@ Tone: ${cleanText(tone) || "ấm áp, chuyên nghiệp, đáng tin cậy"}
 Chỉ trả về mô tả hoàn chỉnh.
 `.trim();
 
-const extractGeminiText = (payload) => {
-  const parts = payload?.candidates?.[0]?.content?.parts || [];
-  return cleanText(parts.map((part) => part?.text || "").join(" "));
-};
-
-const buildGeminiEndpoint = (model) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-
 const getModelTimeoutMs = () => {
   const timeout = Number(process.env.GEMINI_REWRITE_TIMEOUT_MS || 30000);
   return Number.isFinite(timeout) && timeout >= 5000 ? timeout : 30000;
 };
 
 const requestGemini = async ({ credential, model, prompt }) => {
-  const controller = new AbortController();
-  const timeoutMs = getModelTimeoutMs();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(`${buildGeminiEndpoint(model)}?key=${encodeURIComponent(credential)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: controller.signal,
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.72,
-          topP: 0.9,
-          maxOutputTokens: 260,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "");
-      const error = new Error(`Gemini ${model} HTTP ${response.status}: ${errorText.slice(0, 220)}`);
-      error.status = response.status;
-      throw error;
-    }
-
-    const payload = await response.json();
-    return clampText(extractGeminiText(payload));
-  } catch (error) {
-    if (error?.name === "AbortError") {
-      const timeoutError = new Error(`Gemini ${model} request timeout after ${timeoutMs}ms`);
-      timeoutError.name = "GeminiTimeoutError";
-      timeoutError.status = "timeout";
-      throw timeoutError;
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
+  const text = await generateGeminiText({
+    apiKey: credential,
+    model,
+    systemInstruction: "Bạn viết nội dung tiếng Việt tự nhiên và chỉ trả phần mô tả được yêu cầu.",
+    prompt,
+    timeoutMs: getModelTimeoutMs(),
+    temperature: 0.72,
+    maxOutputTokens: 260,
+  });
+  return clampText(text);
 };
 
 const callGeminiModel = async ({ credential, model, input }) => {
@@ -202,9 +156,9 @@ const callGeminiModel = async ({ credential, model, input }) => {
 };
 
 const readGeminiCredential = () =>
-  process.env["GEMINI_" + "API_KEY"] ||
-  process.env["GOOGLE_GEMINI_" + "API_KEY"] ||
-  process.env["GOOGLE_AI_" + "API_KEY"] ||
+  process.env.GEMINI_API_KEY ||
+  process.env.GOOGLE_GEMINI_API_KEY ||
+  process.env.GOOGLE_AI_API_KEY ||
   "";
 
 export async function rewriteRestaurantProfileDescription(input = {}) {
@@ -220,33 +174,27 @@ export async function rewriteRestaurantProfileDescription(input = {}) {
     };
   }
 
-  const attemptedErrors = [];
+  const model = getGeminiRewriteModel();
+  try {
+    const text = await callGeminiModel({ credential, model, input });
+    const validation = validateRewriteText(text);
 
-  for (const model of getGeminiRewriteModels()) {
-    try {
-      const text = await callGeminiModel({ credential, model, input });
-      const validation = validateRewriteText(text);
-
-      if (!validation.ok) {
-        attemptedErrors.push(`${model}: ${validation.reason}`);
-        continue;
-      }
-
-      return {
-        text,
-        provider: "gemini",
-        usedGemini: true,
-        reason: `model:${model}`,
-      };
-    } catch (error) {
-      attemptedErrors.push(error?.message || `${model}: request failed`);
+    if (!validation.ok) {
+      throw new Error(`${model}: ${validation.reason}`);
     }
-  }
 
-  return {
-    text: fallbackText,
-    provider: "fallback",
-    usedGemini: false,
-    reason: attemptedErrors.join(" | ").slice(0, 900) || "Gemini returned no usable response",
-  };
+    return {
+      text,
+      provider: "gemini",
+      usedGemini: true,
+      reason: `model:${model}`,
+    };
+  } catch (error) {
+    return {
+      text: fallbackText,
+      provider: "fallback",
+      usedGemini: false,
+      reason: error?.message || `${model}: request failed`,
+    };
+  }
 }
