@@ -1,16 +1,6 @@
 @import "./OrderKitchenModeFix.css";
 @import "./NewOrderModalPromotionTheme.css";
 
-.manager-layout.manager-layout--orders,
-.manager-layout.manager-layout--orders .manager-layout__main,
-.manager-layout.manager-layout--orders .manager-layout__content {
-  background:
-    radial-gradient(circle at 12% 0%, rgba(255, 255, 252, 0.74), transparent 36rem),
-    radial-gradient(circle at 88% 6%, rgba(31, 106, 96, 0.055), transparent 34rem),
-    radial-gradient(circle at 70% 100%, rgba(190, 179, 160, 0.1), transparent 42rem),
-    linear-gradient(180deg, #f8f7f2 0%, #f4f1ea 50%, #efebe3 100%) !important;
-}
-
 .manager-layout.manager-layout--orders .manager-layout__content {
   padding: clamp(1rem, 2vw, 1.5rem) !important;
   padding-bottom: max(96px, clamp(1rem, 2vw, 1.5rem)) !important;
