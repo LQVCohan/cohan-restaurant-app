@@ -10,40 +10,42 @@ Demo operating time: `07:00` to `23:00` in Asia/Ho_Chi_Minh.
 
 - Full-time shift: 8 hours.
 - Part-time shift: 4 hours.
-- Other employment types use scenario-appropriate durations inside the operating time.
+- The demo contains one completed week for attendance and one scheduled week for calendar testing.
 
-## Current behavior and root cause
+## Root cause
 
 - Planned hours already come from `Shift.startTime` and `Shift.endTime`; actual hours already come from `Timesheet.hours`. A new persisted hours field would duplicate data.
 - Backend overlap validation searches by `employeeId`, so it correctly blocks overlap only for the same employee.
-- Frontend template validation currently rejects every overlapping time window, even when different employees should work concurrently.
-- The manager schedule groups rows only by date and shift type, so the same type with different start/end times can be merged visually.
-- The staff performance seed currently creates eight-hour shifts for every employee, including part-time staff.
+- Frontend template validation rejected every overlapping time window, even when different employees should work at the same time.
+- The existing performance demo remains separate. A focused roster seed covers the missing employment-hour case without changing its performance data.
 
 ## Traced flow
 
 1. Models: `Staff`, `Shift`, `Timesheet`, `SchedulingPolicy`.
-2. Service: `shiftAssignmentValidation.service.js` calculates hours from start/end and checks overlap per employee.
+2. Service: `shiftAssignmentValidation.service.js` calculates planned hours from start/end and checks overlap per employee.
 3. GraphQL: staff shift mutations validate before creating or updating assignments.
-4. Frontend: `ScheduleManagement.jsx` loads shift rows and groups them for the calendar.
-5. Seed and verifier: scripts create and verify roster, attendance, corrections, overtime, and performance data.
+4. Frontend: `ShiftRulesModal` calls `validateShiftRules` before saving templates.
+5. Demo scripts create policy templates, shifts, historical attendance, and verification output.
 
-## Minimal file plan
+## Implemented files
 
-- `src/components/Dashboard_Manager/Schedule/utils/scheduleHelpers.js`: permit overlapping template windows while retaining valid-time checks.
-- `src/components/Dashboard_Manager/Schedule/ScheduleManagement.jsx`: include start/end time in the group key.
-- `cohan-restaurant-backend/scripts/seedStaffPerformanceWeekRoster.js`: use scenario-specific durations within 07:00-23:00.
-- `cohan-restaurant-backend/scripts/verifyStaffPerformanceWeekRoster.js`: verify durations, boundaries, and mixed-employment overlap.
-- Add a focused helper test where the existing test structure supports it.
+- `src/components/Dashboard_Manager/Schedule/utils/scheduleHelpers.js`: allow overlapping template windows while retaining valid-time checks.
+- `src/components/Dashboard_Manager/Schedule/utils/scheduleHelpers.test.js`: test overlapping templates and invalid values.
+- `cohan-restaurant-backend/scripts/seedSharedRosterHoursDemo.js`: seed fourteen employees, 8-hour full-time shifts, 4-hour part-time shifts, and overlapping coverage inside 07:00-23:00.
+- `cohan-restaurant-backend/scripts/verifySharedRosterHoursDemo.js`: verify duration, operating boundaries, attendance hours, policy values, mixed-employment overlap, and no same-employee overlap.
+- `cohan-restaurant-backend/package.json`: add focused seed and verify commands to the staff demo workflow.
+
+The demo uses a distinct template key for each time window, so concurrent groups stay separate without changing the calendar component.
 
 ## Validation
 
 - Run focused frontend tests for schedule helpers.
-- Run the demo verifier in an allowed demo environment.
-- Run lint/build or use pull-request CI.
+- Run `npm run seed:demo:shared-roster-hours` and `npm run verify:demo:shared-roster-hours` in an allowed demo database.
+- Run pull-request CI.
 
 ## Non-goals
 
 - Do not weaken same-employee overlap protection.
 - Do not add a redundant `hours` field to `Shift`.
-- Do not redesign the automatic scheduler beyond this mixed-roster requirement.
+- Do not rewrite the existing performance, correction, or overtime demo.
+- Do not redesign the automatic scheduler.
