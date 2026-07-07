@@ -11,10 +11,10 @@
   "assignee": "LQVCohan",
   "createdAt": "2026-07-07",
   "completedAt": "2026-07-07",
-  "branch": "fix/table-detail-content-ai",
+  "branch": "fix/table-detail-content-ai-clean",
   "base_branch": "main",
-  "commit": "8f22123cec6ae21adaec139ffedadea0c7bf345a",
-  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1252",
+  "commit": "b21788de0b34d4afac5787e95bdb9b1a6f1b112d",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1253",
   "relatedFiles": [
     "src/hooks/usePromotions.js",
     "src/components/Dashboard_Manager/Table/TableActionsLiteModal.jsx",
