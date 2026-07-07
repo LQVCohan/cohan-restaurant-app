@@ -105,6 +105,7 @@ describe("composite table merge", () => {
         code: "A1+A2",
         capacity: 10,
         position: sourceTables[0].position,
+        status: "available",
         joinGroupId: "group-1",
         mergedFromTableIds: ["valid-a1", "valid-a2"],
       }),
@@ -129,6 +130,69 @@ describe("composite table merge", () => {
       anchorId: "valid-a1",
       tableIds: ["valid-a1", "valid-a2"],
     });
+  });
+
+  it("keeps customer-bearing occupied state when no active order or reservation exists", async () => {
+    const occupiedSources = [
+      sourceTables[0],
+      { ...sourceTables[1], status: "occupied" },
+    ];
+    tableMocks.find.mockReturnValueOnce(leanWrap(occupiedSources));
+    tableMocks.create.mockResolvedValue({
+      _id: "valid-merged",
+      id: "valid-merged",
+    });
+
+    const mutations = (
+      await import("../../graphql/resolvers/table/mergeTables.js")
+    ).default;
+    await mutations.mergeTables(
+      null,
+      {
+        input: {
+          restaurantId: "valid-r1",
+          tableIds: ["valid-a1", "valid-a2"],
+          anchorId: "valid-a1",
+          joinGroupId: "group-1",
+        },
+      },
+      { user: { id: "valid-user" }, req: { headers: {} } },
+    );
+
+    expect(stateGuardMocks.hasActiveOrdersForTable).toHaveBeenCalledTimes(2);
+    expect(stateGuardMocks.hasActiveReservationsForTable).toHaveBeenCalledTimes(2);
+    expect(tableMocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "occupied" }),
+    );
+  });
+
+  it("still blocks an occupied source table with an active order", async () => {
+    tableMocks.find.mockReturnValueOnce(
+      leanWrap([sourceTables[0], { ...sourceTables[1], status: "occupied" }]),
+    );
+    stateGuardMocks.hasActiveOrdersForTable
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+
+    const mutations = (
+      await import("../../graphql/resolvers/table/mergeTables.js")
+    ).default;
+    await expect(
+      mutations.mergeTables(
+        null,
+        {
+          input: {
+            restaurantId: "valid-r1",
+            tableIds: ["valid-a1", "valid-a2"],
+            anchorId: "valid-a1",
+            joinGroupId: "group-1",
+          },
+        },
+        { user: { id: "valid-user" }, req: { headers: {} } },
+      ),
+    ).rejects.toThrow("đang có order hoạt động");
+
+    expect(tableMocks.create).not.toHaveBeenCalled();
   });
 
   it("deletes the composite and restores all source tables when split", async () => {
