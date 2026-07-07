@@ -1,6 +1,7 @@
 enum SearchEntityType {
   RESTAURANT
   MENU_ITEM
+  CHEF
   OWNER
   LOCATION
   CHEF
@@ -26,6 +27,19 @@ type MenuItemSearchSuggestion {
   timeSlot: TimeSlot
   thumbImage: String
   basePrice: Float
+  categoryName: String
+  servingLabel: String
+  cookingMethods: [String!]!
+}
+
+type ChefSearchProfile {
+  id: ID!
+  fullName: String
+  positionTitle: String
+  avatarUrl: String
+  restaurantId: ID!
+  restaurantName: String!
+  contactPhone: String
 }
 
 type OwnerSearchSuggestion {
@@ -50,6 +64,7 @@ type LocationSearchSuggestion {
 type SearchSuggestions {
   restaurants: [RestaurantSearchSuggestion!]!
   menuItems: [MenuItemSearchSuggestion!]!
+  chefs: [ChefSearchProfile!]!
   owners: [OwnerSearchSuggestion!]!
   locations: [LocationSearchSuggestion!]!
 }
@@ -69,8 +84,13 @@ type SearchResult {
 
   restaurant: Restaurant
   menuItem: MenuItem
+  chef: ChefSearchProfile
   owner: User
   chef: User
+
+  categoryName: String
+  servingLabel: String
+  cookingMethods: [String!]!
 
   locationLabel: String
   locationCity: String

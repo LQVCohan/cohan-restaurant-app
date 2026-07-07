@@ -1,5 +1,6 @@
 import { gql, useMutation, useQuery } from "@apollo/client";
-import { useMemo } from "react";
+import { useContext, useMemo } from "react";
+import { AttendanceScopeContext } from "@/context/AttendanceScopeContext";
 
 export const QUERY_ATTENDANCE_PAGE = gql`
   query AttendancePageData(
@@ -473,15 +474,18 @@ export default function useAttendanceManagement({
   restaurantId,
   employeeId,
 } = {}) {
+  const scopedRestaurantId = useContext(AttendanceScopeContext);
+  const effectiveRestaurantId = restaurantId || scopedRestaurantId || undefined;
+
   const queryVars = useMemo(
     () =>
       buildAttendanceQueryVars({
         selectedDate,
         status,
         search,
-        restaurantId,
+        restaurantId: effectiveRestaurantId,
       }),
-    [restaurantId, search, selectedDate, status],
+    [effectiveRestaurantId, search, selectedDate, status],
   );
 
   const correctionFilter = useMemo(
@@ -490,30 +494,42 @@ export default function useAttendanceManagement({
         selectedDate,
         correctionStatus,
         search,
-        restaurantId,
+        restaurantId: effectiveRestaurantId,
         employeeId,
       }),
-    [correctionStatus, employeeId, restaurantId, search, selectedDate],
+    [
+      correctionStatus,
+      effectiveRestaurantId,
+      employeeId,
+      search,
+      selectedDate,
+    ],
   );
-
 
   const offScheduleFilter = useMemo(
     () =>
       buildOffScheduleAttendanceFilter({
         selectedDate,
-        restaurantId,
+        restaurantId: effectiveRestaurantId,
         employeeId,
         search,
         approvalStatus: offScheduleApprovalStatus,
         onlyPending: offScheduleApprovalStatus === "pending",
       }),
-    [employeeId, offScheduleApprovalStatus, restaurantId, search, selectedDate],
+    [
+      effectiveRestaurantId,
+      employeeId,
+      offScheduleApprovalStatus,
+      search,
+      selectedDate,
+    ],
   );
 
   const { data, loading, error, refetch } = useQuery(QUERY_ATTENDANCE_PAGE, {
     variables: queryVars,
     fetchPolicy: "cache-and-network",
-    skip: !queryVars.startDate || !queryVars.endDate,
+    skip:
+      !queryVars.restaurantId || !queryVars.startDate || !queryVars.endDate,
   });
 
   const {
@@ -524,9 +540,11 @@ export default function useAttendanceManagement({
   } = useQuery(QUERY_ATTENDANCE_CORRECTIONS, {
     variables: { filter: correctionFilter },
     fetchPolicy: "cache-and-network",
-    skip: !correctionFilter.startDate || !correctionFilter.endDate,
+    skip:
+      !correctionFilter.restaurantId ||
+      !correctionFilter.startDate ||
+      !correctionFilter.endDate,
   });
-
 
   const {
     data: offScheduleData,
@@ -635,7 +653,6 @@ export default function useAttendanceManagement({
 
     return { total, pending, applied, rejected, cancelled };
   }, [correctionRequests]);
-
 
   const offScheduleStats = useMemo(() => {
     const total = offScheduleRecords.length;

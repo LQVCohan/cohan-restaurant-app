@@ -1,0 +1,172 @@
+.app-error-boundary {
+  --error-sage: #2f7d68;
+  --error-sage-deep: #40584e;
+  --error-ink: #24312c;
+  --error-muted: #607069;
+  --error-border: rgba(83, 108, 97, 0.22);
+
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 4vw, 3rem);
+  color: var(--error-ink);
+  background:
+    radial-gradient(circle at 12% 0, rgba(252, 254, 253, 0.9), transparent 34rem),
+    radial-gradient(circle at 88% 8%, rgba(47, 125, 104, 0.1), transparent 30rem),
+    linear-gradient(180deg, #eef5f1 0%, #e8f1ec 52%, #dfeae4 100%);
+}
+
+.app-error-boundary__panel {
+  width: min(100%, 34rem);
+  padding: clamp(1.5rem, 4vw, 2.4rem);
+  border: 1px solid var(--error-border);
+  border-radius: 1.5rem;
+  background: rgba(249, 252, 250, 0.92);
+  box-shadow:
+    0 24px 58px rgba(48, 72, 61, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  text-align: center;
+  backdrop-filter: blur(14px);
+}
+
+.app-error-boundary__mark {
+  width: 3.5rem;
+  height: 3.5rem;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 1rem;
+  border: 1px solid rgba(47, 125, 104, 0.25);
+  border-radius: 1.1rem;
+  color: var(--error-sage);
+  background: #e5f0eb;
+  font-size: 1.55rem;
+  font-weight: 850;
+  box-shadow: 0 12px 26px rgba(48, 72, 61, 0.1);
+}
+
+.app-error-boundary__eyebrow {
+  display: block;
+  margin-bottom: 0.55rem;
+  color: var(--error-sage);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-error-boundary h1 {
+  margin: 0;
+  color: var(--error-ink);
+  font-size: clamp(1.45rem, 4vw, 2rem);
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.app-error-boundary p {
+  max-width: 47ch;
+  margin: 0.85rem auto 0;
+  color: var(--error-muted);
+  font-size: 0.94rem;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.app-error-boundary__actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 1.35rem;
+}
+
+.app-error-boundary__actions button {
+  min-height: 42px;
+  padding: 0.68rem 1rem;
+  border: 1px solid var(--error-border);
+  border-radius: 999px;
+  color: var(--error-sage-deep);
+  background: rgba(255, 255, 255, 0.84);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 750;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.app-error-boundary__actions button:hover {
+  border-color: rgba(47, 125, 104, 0.42);
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+.app-error-boundary__actions button:active {
+  transform: translateY(0);
+}
+
+.app-error-boundary__actions button:focus-visible,
+.app-error-boundary__details summary:focus-visible {
+  outline: 3px solid rgba(47, 125, 104, 0.2);
+  outline-offset: 3px;
+}
+
+.app-error-boundary__actions .primary {
+  border-color: var(--error-sage);
+  color: #fff;
+  background: linear-gradient(135deg, var(--error-sage), var(--error-sage-deep));
+  box-shadow: 0 12px 24px rgba(47, 125, 104, 0.2);
+}
+
+.app-error-boundary__actions .primary:hover {
+  color: #fff;
+  background: var(--error-sage-deep);
+}
+
+.app-error-boundary__details {
+  margin-top: 1.15rem;
+  color: var(--error-muted);
+  font-size: 0.76rem;
+  text-align: left;
+}
+
+.app-error-boundary__details summary {
+  width: fit-content;
+  margin: 0 auto;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.app-error-boundary__details code {
+  display: block;
+  max-height: 8rem;
+  margin-top: 0.65rem;
+  padding: 0.75rem;
+  overflow: auto;
+  border: 1px solid var(--error-border);
+  border-radius: 0.75rem;
+  color: #6b3e2e;
+  background: rgba(255, 253, 248, 0.82);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  .app-error-boundary__actions {
+    flex-direction: column;
+  }
+
+  .app-error-boundary__actions button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-error-boundary__actions button {
+    transition: none;
+  }
+}

@@ -4,6 +4,7 @@ const requireRoleMock = vi.hoisted(() => vi.fn());
 const modelMocks = vi.hoisted(() => ({
   Role: { findOne: vi.fn(), create: vi.fn(), findById: vi.fn() },
   User: {},
+  Staff: { aggregate: vi.fn() },
   Permission: { find: vi.fn() },
   ParentRole: { findById: vi.fn() },
   MenuItem: { aggregate: vi.fn() },
@@ -23,6 +24,7 @@ describe("backend authorization wrap-up", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    modelMocks.Staff.aggregate.mockResolvedValue([]);
   });
 
   it("role.createRole is admin-only and denies before DB access", async () => {
@@ -153,6 +155,6 @@ describe("backend authorization wrap-up", () => {
       {},
     );
 
-    expect(result).toEqual({ restaurants: [], menuItems: [], locations: [], owners: [] });
+    expect(result).toEqual({ restaurants: [], menuItems: [], chefs: [], locations: [], owners: [] });
   });
 });

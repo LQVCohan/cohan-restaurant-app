@@ -189,24 +189,8 @@ export const validateShiftRules = (rules = []) => {
     }
   });
 
-  const windows = normalizedRules
-    .map((rule) => ({
-      ...rule,
-      start: toMinutes(rule.startTime),
-      end: toMinutes(rule.endTime),
-    }))
-    .filter((rule) => rule.start != null && rule.end != null && rule.end > rule.start);
-
-  for (let i = 0; i < windows.length; i += 1) {
-    for (let j = i + 1; j < windows.length; j += 1) {
-      const left = windows[i];
-      const right = windows[j];
-      if (left.start < right.end && right.start < left.end) {
-        errors.push(`${left.label} đang chồng thời gian với ${right.label}.`);
-      }
-    }
-  }
-
+  // Các khung ca có thể chồng nhau để nhiều nhóm nhân sự cùng phủ giờ cao điểm.
+  // Xung đột của cùng một nhân viên vẫn được backend kiểm tra theo employeeId.
   return {
     ok: errors.length === 0,
     errors,

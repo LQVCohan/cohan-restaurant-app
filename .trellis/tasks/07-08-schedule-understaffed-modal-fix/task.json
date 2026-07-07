@@ -1,0 +1,44 @@
+{
+  "id": "schedule-understaffed-modal-fix",
+  "name": "schedule-understaffed-modal-fix",
+  "title": "Fix schedule staffing status and add-shift modal",
+  "description": "Remove stale empty-week guidance, correct visible staffing coverage, and improve the add-shift modal without changing the backend contract.",
+  "status": "completed",
+  "dev_type": "frontend",
+  "scope": "manager-schedule",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": "2026-07-08",
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "c0beaa412a041e19591c67cf430ab7163794fdb2",
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/utils/scheduleManagerAdminPolish.js",
+    "src/components/Dashboard_Manager/Schedule/components/ShiftDetailModal.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/AddShiftModal.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/AddShiftModal.scss",
+    "src/components/Dashboard_Manager/Schedule/components/AddShiftModal.test.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/ShiftDetailModal.test.jsx",
+    "tests/e2e/p1/manager-schedule.spec.js"
+  ],
+  "notes": "Implementation and focused regression tests were added. The final diff was reviewed. Test, lint, build, and Playwright commands were not run because this session does not provide a repository checkout or attached workflow run.",
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "taste-ui-redesign",
+      "redesign-existing-projects",
+      "web-design-guidelines",
+      "wcag-ui-audit",
+      "react-ui-performance"
+    ]
+  }
+}

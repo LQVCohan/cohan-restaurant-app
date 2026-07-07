@@ -1,0 +1,33 @@
+{
+  "id": "global-search-catalog-chefs",
+  "name": "global-search-catalog-chefs",
+  "title": "Unify global search for restaurants, dishes, categories, portions, cooking methods, and chefs",
+  "description": "Fix the shared search contract end to end so desktop and mobile use one safe GraphQL flow, menu results include restaurant/category/portion/cooking metadata, and public chef profiles are searchable without exposing private staff phone numbers.",
+  "status": "in_progress",
+  "dev_type": "feature_fix",
+  "scope": "customer-global-search",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "codex/global-search-catalog-chefs",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/schema/search.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/search/query.js",
+    "src/components/search/query/search.queries.js",
+    "src/components/Customer/Homepage_Client/components/HeaderSearch.jsx",
+    "src/pages/SearchPage.jsx",
+    "src/components/Customer/Homepage_Client/MobileHome.jsx",
+    "cohan-restaurant-backend/tests/resolvers/search-public-safety.test.js"
+  ],
+  "notes": "Keep OWNER admin-only. Chef results may match a restaurant contact phone but must never expose or search a staff personal phone in the public flow. Reuse the existing search resolver and Apollo hooks; add no dependency."
+}

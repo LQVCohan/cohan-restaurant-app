@@ -1,16 +1,24 @@
 import React from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
 
 const tableManagementState = vi.hoisted(() => ({
+  restaurantId: null,
   tables: [],
   tablesLoading: false,
   tablesError: null,
 }));
 
 const floorManagementState = vi.hoisted(() => ({
+  restaurantId: null,
   floors: [],
   floorsLoading: false,
   floorsError: null,
@@ -31,33 +39,39 @@ const table3dModalState = vi.hoisted(() => ({
 }));
 
 vi.mock("@/hooks/useTableManagement", () => ({
-  default: () => ({
-    tables: tableManagementState.tables,
-    tablesLoading: tableManagementState.tablesLoading,
-    tablesError: tableManagementState.tablesError,
-    setTableStatus: vi.fn(),
-    createTable: vi.fn(),
-    updateTable: vi.fn(),
-    refetchTables: vi.fn(),
-    moveTable: vi.fn(),
-    deleteTable: vi.fn(),
-    fetchTableByCode: vi.fn(),
-    swapTableCodes: vi.fn(),
-    mergeTables: vi.fn(),
-    splitTables: vi.fn(),
-  }),
+  default: ({ restaurantId }) => {
+    tableManagementState.restaurantId = restaurantId;
+    return {
+      tables: tableManagementState.tables,
+      tablesLoading: tableManagementState.tablesLoading,
+      tablesError: tableManagementState.tablesError,
+      setTableStatus: vi.fn(),
+      createTable: vi.fn(),
+      updateTable: vi.fn(),
+      refetchTables: vi.fn(),
+      moveTable: vi.fn(),
+      deleteTable: vi.fn(),
+      fetchTableByCode: vi.fn(),
+      swapTableCodes: vi.fn(),
+      mergeTables: vi.fn(),
+      splitTables: vi.fn(),
+    };
+  },
 }));
 
 vi.mock("@/hooks/useFloorManagement", () => ({
-  default: () => ({
-    floors: floorManagementState.floors,
-    floorsLoading: floorManagementState.floorsLoading,
-    floorsError: floorManagementState.floorsError,
-    setActiveLevel: floorManagementState.setActiveLevel,
-    getIdFromLevel: floorManagementState.getIdFromLevel,
-    getLevelFromId: floorManagementState.getLevelFromId,
-    createFloor: vi.fn(),
-  }),
+  default: ({ restaurantId }) => {
+    floorManagementState.restaurantId = restaurantId;
+    return {
+      floors: floorManagementState.floors,
+      floorsLoading: floorManagementState.floorsLoading,
+      floorsError: floorManagementState.floorsError,
+      setActiveLevel: floorManagementState.setActiveLevel,
+      getIdFromLevel: floorManagementState.getIdFromLevel,
+      getLevelFromId: floorManagementState.getLevelFromId,
+      createFloor: vi.fn(),
+    };
+  },
 }));
 
 vi.mock("@/hooks/useRestaurant", () => ({
@@ -113,7 +127,10 @@ const renderTableManagement = async () => {
     <MemoryRouter>
       <AuthContext.Provider
         value={{
-          restaurants: [{ id: "restaurant-1", name: "Cơ sở trung tâm" }],
+          restaurants: [
+            { id: "restaurant-1", name: "Cơ sở trung tâm" },
+            { id: "restaurant-2", name: "Cơ sở quận 2" },
+          ],
         }}
       >
         <TableManagement />
@@ -157,13 +174,16 @@ const setDefaultData = () => {
 
 beforeEach(() => {
   vi.resetModules();
+  localStorage.clear();
   tableActionsModalState.renderCount = 0;
   tableActionsModalState.lastTable = null;
   table3dModalState.open = false;
   table3dModalState.table = null;
   table3dModalState.floor = null;
+  tableManagementState.restaurantId = null;
   tableManagementState.tablesLoading = false;
   tableManagementState.tablesError = null;
+  floorManagementState.restaurantId = null;
   floorManagementState.floorsLoading = false;
   floorManagementState.floorsError = null;
   floorManagementState.setActiveLevel.mockClear();
@@ -181,6 +201,29 @@ describe("TableManagement operations UI", () => {
     expect(screen.getAllByText("Trống").length).toBeGreaterThan(0);
     expect(screen.getByText("Đang sử dụng")).toBeInTheDocument();
     expect(screen.getByText("Số tầng")).toBeInTheDocument();
+  });
+
+  it("passes the shared manager branch to table and floor queries", async () => {
+    await renderTableManagement();
+
+    await waitFor(() => {
+      expect(tableManagementState.restaurantId).toBe("restaurant-1");
+      expect(floorManagementState.restaurantId).toBe("restaurant-1");
+    });
+
+    window.dispatchEvent(
+      new CustomEvent("manager:scope-selection", {
+        detail: {
+          key: "manager.selectedRestaurantId",
+          value: "restaurant-2",
+        },
+      }),
+    );
+
+    await waitFor(() => {
+      expect(tableManagementState.restaurantId).toBe("restaurant-2");
+      expect(floorManagementState.restaurantId).toBe("restaurant-2");
+    });
   });
 
   it("renders the table code instead of exposing the raw table id", async () => {
@@ -220,11 +263,11 @@ describe("TableManagement operations UI", () => {
 
     const tableCard = screen.getByText("A1").closest("article");
     fireEvent.click(
-      within(tableCard).getByRole("button", { name: /Mở cấu hình bàn A1/i })
+      within(tableCard).getByRole("button", { name: /Mở cấu hình bàn A1/i }),
     );
 
     tableManagementState.tables = tableManagementState.tables.map((item) =>
-      item.code === "A1" ? { ...item, joinGroupId: "group-1" } : item
+      item.code === "A1" ? { ...item, joinGroupId: "group-1" } : item,
     );
     rerenderTableManagement();
 
@@ -251,12 +294,14 @@ describe("TableManagement operations UI", () => {
     await renderTableManagement();
 
     const occupiedCard = screen.getByText("VIP-02").closest("article");
-    const paymentAction = within(occupiedCard).getByRole("button", { name: "Thanh to\u00e1n" });
+    const paymentAction = within(occupiedCard).getByRole("button", {
+      name: "Thanh toán",
+    });
 
     expect(paymentAction).toBeDisabled();
     expect(paymentAction).toHaveAttribute(
       "title",
-      "Vui lòng thao tác tại POS để đồng bộ order và phiên bàn."
+      "Vui lòng thao tác tại POS để đồng bộ order và phiên bàn.",
     );
   });
 });

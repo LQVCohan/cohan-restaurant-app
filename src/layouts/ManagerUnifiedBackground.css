@@ -2,7 +2,6 @@
 @import "../components/Dashboard_Manager/Order/OrderPromotionCards.css";
 @import "../components/Dashboard_Manager/Order/OrderDashboardScaleFix.css";
 @import "../components/Dashboard_Manager/Order/OrderKitchenModeFix.css";
-@import "../components/Dashboard_Manager/Order/NewOrderModalPromotionTheme.css";
 @import "../components/Dashboard_Manager/Order/OrderInteractionFix.css";
 @import "../components/Dashboard_Manager/Analyst/AnalystPaletteCore.css";
 @import "../components/Dashboard_Manager/Analyst/AnalystPaletteKpi.css";
@@ -79,376 +78,274 @@
   isolation: isolate;
 }
 
-.manager-layout .manager-layout__content::before {
-  content: "";
-  position: fixed;
-  inset: var(--manager-header-height, 64px) 0 0 var(--sidebar-width, 72px);
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.42;
-  background-image:
-    linear-gradient(var(--manager-grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--manager-grid-line) 1px, transparent 1px);
-  background-size: 64px 64px;
-  -webkit-mask-image: linear-gradient(
-    180deg,
-    #000 0%,
-    rgba(0, 0, 0, 0.14) 74%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    180deg,
-    #000 0%,
-    rgba(0, 0, 0, 0.14) 74%,
-    transparent 100%
-  );
+/* Keep the manager chrome on the same sage system as the page content. */
+.manager-layout__header {
+  --manager-header-accent: var(--manager-accent);
+  --manager-header-ink: var(--manager-text);
+  --manager-header-muted: var(--manager-muted);
+  --manager-header-border: var(--manager-border-strong);
 }
 
-.manager-layout :is(.manager-page-shell, .manager-page-shell__body) {
-  position: relative;
-  z-index: 1;
-}
-
-.manager-layout .manager-page-shell {
-  width: min(100%, 1500px);
-}
-
-.manager-layout .manager-page-shell__body > :where(div, main, section, article) {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-}
-
-.manager-layout
-  .manager-page-shell__body
-  > :where(div, main, section, article)::before {
-  background-image: none !important;
-}
-
-.manager-layout :where(
-    .manager-dashboard,
-    .tm-container,
-    .menu-management,
-    .menu-management-page,
-    .modifier-management,
-    .staff-management,
-    .staff-page-container,
-    .schedule-management-page,
-    .cm-page,
-    .customer-management,
-    .customer-analytics-page,
-    .manager-analyst,
-    .reports-management,
-    .finance-dashboard,
-    .transaction-management,
-    .promotion-management,
-    .payroll-management,
-    .review-management,
-    .settings-management,
-    .backup-management,
-    .print-management,
-    .rbac-management,
-    .restaurant-info-management,
-    .ai-handoff-inbox,
-    .ai-chatbot-analytics-page,
-    .ai-chatbot-settings-page,
-    .ai-chatbot-knowledge-page,
-    .storage-management
-  ) {
-  color: var(--manager-text) !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-}
-
-/* Header, scope selector and navigation rail use the same sage family. */
-.manager-layout .manager-layout__header .header {
-  border-bottom-color: var(--manager-border) !important;
+.manager-layout__header > .header {
+  border-bottom-color: var(--manager-border);
   background:
-    radial-gradient(circle at 18% 0, rgba(83, 108, 97, 0.12), transparent 22rem),
-    linear-gradient(
-      90deg,
-      rgba(249, 252, 250, 0.98),
-      rgba(232, 241, 236, 0.96)
-    ) !important;
-  box-shadow: 0 12px 30px rgba(48, 72, 61, 0.09) !important;
+    radial-gradient(circle at 20% -120%, rgba(47, 125, 104, 0.16), transparent 22rem),
+    linear-gradient(90deg, rgba(249, 252, 250, 0.98), rgba(241, 247, 243, 0.97));
+  box-shadow: 0 8px 24px rgba(48, 72, 61, 0.08);
 }
 
-.manager-layout .manager-scope-selector label {
-  border-color: var(--manager-border) !important;
-  color: var(--manager-text) !important;
-  background: rgba(249, 252, 250, 0.94) !important;
-  box-shadow: 0 10px 22px rgba(48, 72, 61, 0.08) !important;
+.manager-layout__header > .header .header__content {
+  grid-template-columns: minmax(15rem, 19rem) minmax(24rem, 1fr) max-content;
+  gap: clamp(0.75rem, 1.4vw, 1.25rem);
+  width: min(calc(100% - 3rem), 1500px);
 }
 
-.manager-layout .manager-scope-selector span {
-  color: var(--manager-muted) !important;
+.manager-layout__header .header__scope {
+  width: 100%;
+  max-width: 19rem;
 }
 
-.manager-layout .manager-scope-selector :is(strong, select) {
-  color: var(--manager-text) !important;
+.manager-layout__header .header__center {
+  justify-self: stretch;
+}
+
+.manager-layout__header .header__center .search-box,
+.manager-layout__header .header__scope .manager-scope-selector {
+  border-color: var(--manager-border-strong);
+  background: var(--manager-surface);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 4px 12px rgba(48, 72, 61, 0.05);
+}
+
+.manager-layout__header .header__center .search-box:hover,
+.manager-layout__header .header__center .search-box:focus-within {
+  border-color: rgba(47, 125, 104, 0.48);
+  background: rgba(252, 254, 253, 0.98);
+}
+
+.manager-layout__header .header__center .search-box:focus-within {
+  box-shadow:
+    0 0 0 3px rgba(47, 125, 104, 0.1),
+    0 8px 18px rgba(48, 72, 61, 0.07);
+}
+
+.manager-layout__header .header__scope .manager-scope-selector label + label::before {
+  background: var(--manager-border);
+}
+
+.manager-layout__header .header__scope .manager-scope-selector span,
+.manager-layout__header .current-status,
+.manager-layout__header .header__center .search-input::placeholder {
+  color: var(--manager-muted);
+}
+
+.manager-layout__header .header__scope .manager-scope-selector strong,
+.manager-layout__header .header__scope .manager-scope-selector select,
+.manager-layout__header .current-time,
+.manager-layout__header .user-name,
+.manager-layout__header .header__center .search-input {
+  color: var(--manager-text);
+}
+
+.manager-layout__header .notification-btn,
+.manager-layout__header .user-menu-btn {
+  color: var(--manager-muted);
+}
+
+.manager-layout__header .notification-btn:hover,
+.manager-layout__header .user-menu-btn:hover,
+.manager-layout__header .notification-btn--active,
+.manager-layout__header .user-menu-btn--active {
+  border-color: var(--manager-border);
+  color: var(--manager-primary-hover);
+  background: var(--manager-surface);
 }
 
 .manager-layout .sidebar {
-  color: var(--manager-text) !important;
-  border-right-color: var(--manager-border) !important;
+  color: var(--manager-text);
+  border-right-color: var(--manager-border);
   background:
-    radial-gradient(circle at 8% -10%, rgba(83, 108, 97, 0.16), transparent 24rem),
-    radial-gradient(circle at 92% 4%, rgba(47, 125, 104, 0.1), transparent 25rem),
-    linear-gradient(
-      180deg,
-      rgba(249, 252, 250, 0.99) 0%,
-      var(--manager-surface-soft) 48%,
-      var(--manager-bg-base) 100%
-    ) !important;
-  box-shadow: 18px 0 44px rgba(48, 72, 61, 0.1) !important;
+    radial-gradient(circle at 10% -8%, rgba(47, 125, 104, 0.14), transparent 24rem),
+    radial-gradient(circle at 92% 6%, rgba(83, 108, 97, 0.1), transparent 22rem),
+    linear-gradient(180deg, rgba(249, 252, 250, 0.99), rgba(238, 245, 241, 0.98));
+  box-shadow: 14px 0 34px rgba(48, 72, 61, 0.1);
 }
 
-.manager-layout :is(.sidebar-header, .sidebar-footer) {
-  border-color: var(--manager-border) !important;
-  background: rgba(241, 247, 243, 0.88) !important;
+.manager-layout .sidebar::before {
+  background-image:
+    linear-gradient(var(--manager-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--manager-grid-line) 1px, transparent 1px);
 }
 
+.manager-layout .sidebar-header,
+.manager-layout .sidebar-footer {
+  border-color: var(--manager-border);
+  background: rgba(241, 247, 243, 0.9);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.manager-layout .nav-section-title,
+.manager-layout .nav-item,
+.manager-layout .user-status-small,
+.manager-layout .sidebar-version {
+  color: var(--manager-muted);
+}
+
+.manager-layout .nav-icon,
 .manager-layout .sidebar-user,
-.manager-layout .sidebar-rail-toggle,
-.manager-layout .nav-icon {
-  border-color: var(--manager-border) !important;
-  color: var(--manager-primary) !important;
-  background: rgba(249, 252, 250, 0.94) !important;
-  box-shadow: 0 10px 22px rgba(48, 72, 61, 0.08) !important;
+.manager-layout .sidebar-rail-toggle {
+  border-color: var(--manager-border);
+  color: var(--manager-primary);
+  background: var(--manager-surface);
+  box-shadow: 0 8px 18px rgba(48, 72, 61, 0.08);
 }
 
-.manager-layout .nav-section-title {
-  color: var(--manager-muted) !important;
-}
-
-.manager-layout .nav-item {
-  color: var(--manager-muted) !important;
-}
-
-.manager-layout .nav-item:hover {
-  color: var(--manager-text) !important;
-  border-color: var(--manager-border) !important;
-  background: var(--manager-surface) !important;
-  box-shadow: 0 10px 22px rgba(48, 72, 61, 0.08) !important;
-}
-
+.manager-layout .nav-item:hover,
 .manager-layout .nav-item.active {
-  color: var(--manager-text) !important;
-  border-color: var(--manager-border-strong) !important;
-  background: linear-gradient(
-    135deg,
-    rgba(249, 252, 250, 0.99),
-    rgba(229, 240, 235, 0.96)
-  ) !important;
+  border-color: var(--manager-border-strong);
+  color: var(--manager-text);
+  background: linear-gradient(135deg, rgba(249, 252, 250, 0.98), var(--manager-accent-soft));
   box-shadow:
-    0 14px 30px rgba(48, 72, 61, 0.11),
-    inset 0 1px rgba(255, 255, 255, 0.74) !important;
+    0 10px 22px rgba(48, 72, 61, 0.1),
+    inset 0 1px rgba(255, 255, 255, 0.72);
 }
 
-.manager-layout .nav-item:is(:hover, .active) .nav-icon {
-  color: var(--manager-primary) !important;
-  border-color: var(--manager-border-strong) !important;
-  background: var(--manager-accent-soft) !important;
+.manager-layout .nav-item:hover .nav-icon,
+.manager-layout .nav-item.active .nav-icon {
+  border-color: var(--manager-border-strong);
+  color: var(--manager-primary-hover);
+  background: rgba(229, 240, 235, 0.96);
+  box-shadow: inset 0 0 0 1px rgba(47, 125, 104, 0.12);
 }
 
-/* Neutral page surfaces. Semantic success/warning/danger cards keep their own colors. */
-.manager-layout.manager-layout
-  .manager-layout__content
-  :is(
-    .management-page-header,
-    .manager-page-header,
-    .page-header,
-    .dashboard-header,
-    .dashboard-compact-header,
-    .storage-header,
-    .finance-header,
-    .reports-header,
-    .review-header,
-    .customers-header,
-    .settings-header,
-    .backup-header,
-    .print-header,
-    .content-card,
-    .section-card,
-    .data-card,
-    .list-card,
-    .form-card,
-    .table-card,
-    .toolbar-card,
-    .filter-panel,
-    .panel,
-    .card,
-    .ant-card,
-    .ant-table-wrapper,
-    .ant-table-container,
-    .ant-modal-content,
-    .ant-drawer-content,
-    .ant-collapse,
-    .ant-list
-  ):not(.success):not(.warning):not(.danger):not(.error) {
-  border-color: var(--manager-border) !important;
-  background: linear-gradient(
-    180deg,
-    rgba(249, 252, 250, 0.98),
-    rgba(241, 247, 243, 0.94)
-  ) !important;
+.manager-layout .sidebar-rail-toggle:hover {
+  border-color: var(--manager-border-strong);
+  color: var(--manager-accent);
+  background: rgba(252, 254, 253, 0.98);
   box-shadow:
-    var(--manager-shadow),
-    inset 0 1px rgba(255, 255, 255, 0.82) !important;
+    0 10px 22px rgba(48, 72, 61, 0.12),
+    0 0 0 3px rgba(47, 125, 104, 0.07);
 }
 
-.manager-layout.manager-layout
-  .manager-layout__content
-  :is(
-    .management-page-header,
-    .manager-page-header,
-    .page-header,
-    .dashboard-header,
-    .dashboard-compact-header,
-    .storage-header,
-    .finance-header,
-    .reports-header,
-    .review-header,
-    .customers-header,
-    .settings-header,
-    .backup-header,
-    .print-header
-  ) {
-  border-left-color: var(--manager-primary) !important;
-  background:
-    radial-gradient(circle at 0 0, rgba(83, 108, 97, 0.11), transparent 20rem),
-    linear-gradient(
-      135deg,
-      rgba(249, 252, 250, 0.99),
-      rgba(229, 240, 235, 0.94)
-    ) !important;
+.manager-layout .sidebar-rail-toggle:focus-visible,
+.manager-layout .manager-sidebar-brand:focus-visible {
+  outline-color: rgba(47, 125, 104, 0.24);
 }
 
-.manager-layout.manager-layout .manager-layout__content :is(
-    input,
-    textarea,
-    select,
-    .ant-input,
-    .ant-input-affix-wrapper,
-    .ant-select-selector,
-    .ant-picker,
-    .ant-input-number
-  ) {
-  border-color: var(--manager-border-strong) !important;
-  color: var(--manager-text) !important;
-  background: rgba(249, 252, 250, 0.96) !important;
+.manager-layout .status-dot-small {
+  background: var(--manager-success);
+  box-shadow: 0 0 0 4px rgba(47, 125, 104, 0.12);
 }
 
-.manager-layout.manager-layout .manager-layout__content :is(
-    input:focus,
-    input:focus-visible,
-    textarea:focus,
-    textarea:focus-visible,
-    select:focus,
-    select:focus-visible,
-    .ant-input:focus,
-    .ant-input-focused,
-    .ant-input-affix-wrapper-focused,
-    .ant-select-focused .ant-select-selector,
-    .ant-picker-focused,
-    .ant-input-number-focused
-  ) {
-  outline: none !important;
-  border-color: var(--manager-primary) !important;
-  box-shadow: 0 0 0 3px rgba(83, 108, 97, 0.16) !important;
+@media (max-width: 1320px) {
+  .manager-layout__header > .header .header__content {
+    grid-template-columns: minmax(14rem, 17rem) minmax(18rem, 1fr) max-content;
+    width: calc(100% - 1.5rem);
+    max-width: 1500px;
+  }
+
+  .manager-layout__header .header__scope {
+    max-width: 17rem;
+  }
 }
 
-.manager-layout.manager-layout .manager-layout__content :is(
-    .ant-btn-primary,
-    .btn-primary,
-    .primary-btn,
-    .button-primary,
-    .save-btn,
-    .submit-btn,
-    .action-primary
-  ) {
-  color: #ffffff !important;
-  border-color: var(--manager-primary) !important;
-  background: linear-gradient(
-    135deg,
-    var(--manager-primary),
-    var(--manager-primary-hover)
-  ) !important;
-  box-shadow: 0 12px 24px rgba(64, 88, 78, 0.2) !important;
+@media (max-width: 1080px) {
+  .manager-layout__header > .header .header__content {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+
+  .manager-layout__header .header__scope {
+    display: none;
+  }
+
+  .manager-layout__header .header__center {
+    grid-column: 1;
+    justify-self: stretch;
+    width: 100%;
+    max-width: none;
+  }
+
+  .manager-layout__header .header__right {
+    grid-column: 2;
+  }
 }
 
-.manager-layout.manager-layout .manager-layout__content :is(
-    .ant-btn-default,
-    .btn-secondary,
-    .secondary-btn,
-    .button-secondary,
-    .outline-btn
-  ) {
-  color: var(--manager-primary) !important;
-  border-color: var(--manager-border-strong) !important;
-  background: var(--manager-accent-soft) !important;
-}
-
-.manager-layout.manager-layout .manager-layout__content :is(
-    .ant-table,
-    .ant-table-thead > tr > th,
-    table thead th
-  ) {
-  color: var(--manager-text) !important;
-  border-color: var(--manager-border) !important;
-  background: rgba(232, 241, 236, 0.94) !important;
-}
-
-.manager-layout.manager-layout
-  .manager-layout__content
-  :is(.ant-table-tbody > tr:hover > td, table tbody tr:hover) {
-  background: rgba(229, 240, 235, 0.72) !important;
-}
-
-.manager-layout.manager-layout .manager-layout__content :is(
-    .ant-modal-header,
-    .ant-drawer-header,
-    .ant-card-head,
-    .ant-modal-footer,
-    .ant-drawer-footer
-  ) {
-  border-color: var(--manager-border) !important;
-  background: rgba(241, 247, 243, 0.96) !important;
-}
-
-.manager-layout.manager-layout .manager-layout__content :is(
-    .ant-tabs-tab-active,
-    .ant-tabs-tab:hover
-  ) .ant-tabs-tab-btn {
-  color: var(--manager-primary) !important;
-}
-
-.manager-layout.manager-layout .manager-layout__content .ant-tabs-ink-bar {
-  background: var(--manager-primary) !important;
-}
-
-.manager-layout .manager-page-shell__empty,
-.manager-layout.manager-layout .manager-layout__content :is(
-    .ant-empty,
-    .empty-state,
-    .state-box,
-    .mm-state-box
-  ) {
-  min-height: 320px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--manager-border) !important;
-  border-radius: 24px;
-  color: var(--manager-muted) !important;
-  background:
-    radial-gradient(circle at 50% 0, rgba(83, 108, 97, 0.11), transparent 18rem),
-    var(--manager-surface) !important;
-  box-shadow: var(--manager-shadow) !important;
+@media (max-width: 900px) {
+  .manager-layout__header .user-info {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {
-  .manager-layout .manager-layout__content::before {
-    inset: var(--manager-header-height, 64px) 0 0 0;
+  .manager-layout__header > .header .header__content {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    width: calc(100% - 1.5rem);
+    gap: 0.5rem;
+  }
+
+  .manager-layout__header .header__left {
+    display: flex;
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  .manager-layout__header .header__left .page-info,
+  .manager-layout__header .header__center {
+    display: none;
+  }
+
+  .manager-layout__header .header__right {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+}
+
+/* Keep route loading and other manager fallback states on the same sage canvas. */
+.manager-layout .manager-page-shell__body > .manager-page-shell__empty {
+  min-height: clamp(18rem, 58vh, 36rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin: 0;
+  padding: clamp(2rem, 6vw, 4rem) 1rem;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: var(--manager-muted) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.55;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.manager-layout .manager-page-shell__body > .manager-page-shell__empty::before {
+  content: "";
+  width: 3.25rem;
+  height: 3.25rem;
+  flex: 0 0 3.25rem;
+  border: 1px solid var(--manager-border);
+  border-radius: 1rem;
+  background:
+    linear-gradient(var(--manager-accent), var(--manager-accent)) 0.84rem 0.84rem / 1.58rem 0.28rem no-repeat,
+    linear-gradient(var(--manager-primary), var(--manager-primary)) 0.84rem 1.47rem / 1.16rem 0.28rem no-repeat,
+    linear-gradient(rgba(83, 108, 97, 0.48), rgba(83, 108, 97, 0.48)) 0.84rem 2.1rem / 0.78rem 0.28rem no-repeat,
+    rgba(249, 252, 250, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 12px 28px rgba(48, 72, 61, 0.1);
+}
+
+@media (max-width: 768px) {
+  .manager-layout .manager-page-shell__body > .manager-page-shell__empty {
+    min-height: 46vh;
+    padding-block: 2rem;
   }
 }

@@ -2,6 +2,24 @@
 
 `BrandMembership` is the only runtime authorization source for restaurant management scope.
 
+## Account role and BrandMembership role
+
+These are separate dimensions and must not be treated as interchangeable:
+
+- `User.role` controls the portal and system capability set.
+- `User.userType` is a legacy/discriminator field. The populated current role takes precedence when detecting a System Admin; `userType` is only a fallback when no role is available.
+- `BrandMembership.role` controls the user's authority inside one Brand.
+- `BrandMembership.restaurantIds` controls the exact restaurant scope for `manager` and `staff` memberships.
+
+A global `manager` account can legitimately be a Brand `owner` or `admin`, so it will see every restaurant in that Brand. A branch manager must use global role `manager` together with BrandMembership role `manager` and exactly one restaurant ID. A System Admin cannot be restricted to one branch because System Admin access is global.
+
+New Brand membership assignments enforce these compatibility rules:
+
+- Brand `owner` / `admin`: account role must be `manager` or `admin`.
+- Brand `manager`: account role must be exactly `manager`.
+- Brand `staff`: account role must be a staff/HR/accounting role, not `admin`, `manager`, or `customer`.
+- Incompatible legacy memberships can still be deactivated so access can be repaired safely.
+
 ## Non-authorization fields
 
 - `refRestaurants` tracks restaurants a customer recently accessed. It is customer context/history only.

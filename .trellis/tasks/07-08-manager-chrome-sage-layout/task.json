@@ -1,0 +1,22 @@
+{
+  "id": "07-08-manager-chrome-sage-layout",
+  "title": "Đồng bộ màu và layout header/sidebar quản lý",
+  "status": "implemented_unverified",
+  "type": "frontend-redesign",
+  "scope": [
+    "src/layouts/ManagerUnifiedBackground.css"
+  ],
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "npm run build",
+      "visual review at desktop and mobile widths"
+    ],
+    "completed": [
+      "reviewed final CSS cascade and responsive rules"
+    ],
+    "notRun": [
+      "local commands and browser review were not available"
+    ]
+  }
+}

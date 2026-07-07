@@ -40,15 +40,6 @@ const setControlledInputValue = (input, value) => {
   input.dispatchEvent(new Event("change", { bubbles: true }));
 };
 
-const toTimeLabel = (value) => {
-  const [hourText, minuteText] = value.split(":");
-  const hour = Number(hourText);
-  if (hour === 0 && minuteText === "00") return `${value} · 12 giờ đêm`;
-  if (hour === 12 && minuteText === "00") return `${value} · 12 giờ trưa`;
-  if (hour < 12) return `${value} · ${hour || 12}:${minuteText} sáng`;
-  return `${value} · ${hour - 12}:${minuteText} chiều/tối`;
-};
-
 export const buildRestaurantTimeOptions = (currentValue = "") => {
   const options = [];
   for (let minutes = 0; minutes < 24 * 60; minutes += TIME_STEP_MINUTES) {
@@ -112,7 +103,7 @@ const ensureTimeSelect = (context, field, role, placeholder) => {
     for (const value of buildRestaurantTimeOptions(field.input.value.trim())) {
       const option = document.createElement("option");
       option.value = value;
-      option.textContent = toTimeLabel(value);
+      option.textContent = value;
       select.appendChild(option);
     }
 
@@ -132,7 +123,7 @@ const ensureTimeSelect = (context, field, role, placeholder) => {
   if (value && !Array.from(select.options).some((option) => option.value === value)) {
     const option = document.createElement("option");
     option.value = value;
-    option.textContent = toTimeLabel(value);
+    option.textContent = value;
     select.appendChild(option);
   }
   select.value = value;

@@ -32,7 +32,7 @@ function getTableAccessTokenSecret() {
 }
 
 function getTableAccessTokenIssuer() {
-  return process.env.JWT_ISSUER || "foodhub-system";
+  return process.env.JWT_ISSUER || "cohan-system";
 }
 
 function normalizeTokenExpiresIn(value, fallback = "8h") {

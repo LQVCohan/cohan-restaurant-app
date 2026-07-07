@@ -330,7 +330,7 @@ export const apolloClient = new ApolloClient({
       errorPolicy: "all",
     },
     mutate: {
-      errorPolicy: "all",
+      errorPolicy: "none",
     },
   },
 });

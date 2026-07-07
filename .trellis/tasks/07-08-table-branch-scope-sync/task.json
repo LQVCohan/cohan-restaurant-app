@@ -1,0 +1,29 @@
+{
+  "id": "table-branch-scope-sync",
+  "name": "table-branch-scope-sync",
+  "title": "Synchronize table management with selected branch",
+  "description": "Synchronize legacy manager page branch selectors with the shared manager restaurant scope so changing the header branch reloads that branch's data.",
+  "status": "completed",
+  "dev_type": "bugfix",
+  "scope": "manager-table-restaurant-selection",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": "2026-07-08",
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "a2a32316b3c9c78008a8b5ab174b6b119b2026c3",
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/shared/ManagementPageHeader/ManagementPageHeader.jsx",
+    "src/components/Dashboard_Manager/shared/ManagementPageHeader/ManagementPageHeader.test.jsx",
+    "src/components/Dashboard_Manager/Table/TableManagement.test.jsx"
+  ],
+  "notes": "The backend table and floor queries were already scoped correctly. The shared ManagementPageHeader now consumes the existing manager.selectedRestaurantId / manager:scope-selection protocol, applies persisted or newly selected manager branches to legacy page callbacks, and publishes page-level changes back to the shared scope. Tests cover the shared protocol and verify TableManagement passes the new restaurant ID to both table and floor data hooks. Tests/build were not executed locally because the connected environment cannot clone the repository and no workflow run was available for the commit."
+}

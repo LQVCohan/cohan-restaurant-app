@@ -5,21 +5,10 @@ const session = vi.hoisted(() => ({
   endSession: vi.fn(),
 }));
 
-const modelMocks = vi.hoisted(() => ({
-  Brand: {
-    findById: vi.fn(),
-  },
-  BrandMembership: {
-    findOne: vi.fn(),
-  },
-  User: {
-    findById: vi.fn(),
-  },
-}));
-
-const scopeMocks = vi.hoisted(() => ({
-  ensureBrandRestaurants: vi.fn(),
-  getUserId: vi.fn((user) => user?.id),
+const models = vi.hoisted(() => ({
+  Brand: { findById: vi.fn() },
+  BrandMembership: { findOne: vi.fn() },
+  User: { findById: vi.fn() },
 }));
 
 vi.mock("mongoose", () => ({
@@ -35,12 +24,14 @@ vi.mock("mongoose", () => ({
   },
 }));
 
-vi.mock("../../models/index.js", () => modelMocks);
-vi.mock("../../src/services/auth/restaurantScope.service.js", () => scopeMocks);
+vi.mock("../../models/index.js", () => models);
+vi.mock("../../src/services/auth/restaurantScope.service.js", () => ({
+  getUserId: (user) => user?.id,
+}));
 
-const ownerDoc = () => ({
-  _id: "membership-owner",
-  role: "owner",
+const membershipDoc = (role, id) => ({
+  _id: id,
+  role,
   restaurantIds: [],
   status: "active",
   updatedBy: null,
@@ -52,46 +43,11 @@ const ownerDoc = () => ({
       restaurantIds: this.restaurantIds,
       status: this.status,
     };
-  },
-});
-
-const targetDoc = () => ({
-  _id: "membership-target",
-  role: "admin",
-  restaurantIds: [],
-  status: "active",
-  updatedBy: null,
-  save: vi.fn(),
-  toObject() {
-    return {
-      id: this._id,
-      role: this.role,
-      restaurantIds: this.restaurantIds,
-      status: this.status,
-    };
-  },
-});
-
-const brandDoc = () => ({
-  _id: "brand-1",
-  ownerId: "owner-1",
-  updatedBy: null,
-  save: vi.fn(),
-  toObject() {
-    return { id: this._id, ownerId: this.ownerId };
   },
 });
 
 const resolvedQuery = (value) => ({
   session: vi.fn().mockResolvedValue(value),
-});
-
-const conflictQuery = (value) => ({
-  session: vi.fn().mockReturnValue({
-    select: vi.fn().mockReturnValue({
-      lean: vi.fn().mockResolvedValue(value),
-    }),
-  }),
 });
 
 const userQuery = (value) => ({
@@ -106,24 +62,29 @@ describe("transferBrandOwnership", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     session.withTransaction.mockImplementation(async (work) => work());
-    scopeMocks.ensureBrandRestaurants.mockResolvedValue([{ toString: () => "restaurant-2" }]);
-    modelMocks.User.findById.mockReturnValue(userQuery({
+    models.User.findById.mockReturnValue(userQuery({
       status: "active",
       role: { slug: "manager" },
     }));
   });
 
-  it("atomically promotes the target, demotes the current owner and updates Brand.ownerId", async () => {
-    const currentOwner = ownerDoc();
-    const newOwner = targetDoc();
-    const brand = brandDoc();
+  it("promotes the target and changes the previous owner to chain admin", async () => {
+    const currentOwner = membershipDoc("owner", "membership-owner");
+    const newOwner = membershipDoc("admin", "membership-target");
+    const brand = {
+      _id: "brand-1",
+      ownerId: "owner-1",
+      updatedBy: null,
+      save: vi.fn(),
+      toObject() {
+        return { id: this._id, ownerId: this.ownerId };
+      },
+    };
 
-    modelMocks.BrandMembership.findOne.mockImplementation((filter) => {
-      if (filter.role === "owner") return resolvedQuery(currentOwner);
-      if (filter.role === "manager") return conflictQuery(null);
-      return resolvedQuery(newOwner);
-    });
-    modelMocks.Brand.findById.mockReturnValue(resolvedQuery(brand));
+    models.BrandMembership.findOne
+      .mockReturnValueOnce(resolvedQuery(currentOwner))
+      .mockReturnValueOnce(resolvedQuery(newOwner));
+    models.Brand.findById.mockReturnValue(resolvedQuery(brand));
 
     const transferBrandOwnership = (
       await import("../../graphql/resolvers/brand/transferBrandOwnership.js")
@@ -131,35 +92,24 @@ describe("transferBrandOwnership", () => {
 
     const result = await transferBrandOwnership(
       null,
-      {
-        input: {
-          brandId: "brand-1",
-          newOwnerUserId: "target-1",
-          previousOwnerRestaurantId: "restaurant-2",
-        },
-      },
+      { input: { brandId: "brand-1", newOwnerUserId: "target-1" } },
       { user: { id: "owner-1" } },
     );
 
-    expect(scopeMocks.ensureBrandRestaurants).toHaveBeenCalledWith(
-      "brand-1",
-      ["restaurant-2"],
-    );
     expect(newOwner.role).toBe("owner");
     expect(newOwner.restaurantIds).toEqual([]);
-    expect(currentOwner.role).toBe("manager");
-    expect(currentOwner.restaurantIds).toHaveLength(1);
+    expect(currentOwner.role).toBe("admin");
+    expect(currentOwner.restaurantIds).toEqual([]);
     expect(brand.ownerId.toString()).toBe("target-1");
     expect(newOwner.save).toHaveBeenCalledWith({ session });
     expect(currentOwner.save).toHaveBeenCalledWith({ session });
     expect(brand.save).toHaveBeenCalledWith({ session });
-    expect(result.newOwnerMembership.role).toBe("owner");
-    expect(result.previousOwnerMembership.role).toBe("manager");
+    expect(result.previousOwnerMembership.role).toBe("admin");
     expect(session.endSession).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects callers who are not the current active owner", async () => {
-    modelMocks.BrandMembership.findOne.mockReturnValueOnce(resolvedQuery(null));
+  it("rejects a caller who is not the current active owner", async () => {
+    models.BrandMembership.findOne.mockReturnValueOnce(resolvedQuery(null));
 
     const transferBrandOwnership = (
       await import("../../graphql/resolvers/brand/transferBrandOwnership.js")
@@ -168,29 +118,20 @@ describe("transferBrandOwnership", () => {
     await expect(
       transferBrandOwnership(
         null,
-        {
-          input: {
-            brandId: "brand-1",
-            newOwnerUserId: "target-1",
-            previousOwnerRestaurantId: "restaurant-2",
-          },
-        },
+        { input: { brandId: "brand-1", newOwnerUserId: "target-1" } },
         { user: { id: "admin-1" } },
       ),
     ).rejects.toMatchObject({ extensions: { code: "FORBIDDEN" } });
 
-    expect(modelMocks.User.findById).not.toHaveBeenCalled();
-    expect(modelMocks.Brand.findById).not.toHaveBeenCalled();
-    expect(session.endSession).toHaveBeenCalledTimes(1);
+    expect(models.User.findById).not.toHaveBeenCalled();
+    expect(models.Brand.findById).not.toHaveBeenCalled();
   });
 
-  it("rejects a target account that cannot access the manager portal", async () => {
-    const currentOwner = ownerDoc();
-    const newOwner = targetDoc();
-    modelMocks.BrandMembership.findOne.mockImplementation((filter) =>
-      filter.role === "owner" ? resolvedQuery(currentOwner) : resolvedQuery(newOwner),
-    );
-    modelMocks.User.findById.mockReturnValue(userQuery({
+  it("rejects a target account without manager portal access", async () => {
+    models.BrandMembership.findOne
+      .mockReturnValueOnce(resolvedQuery(membershipDoc("owner", "membership-owner")))
+      .mockReturnValueOnce(resolvedQuery(membershipDoc("admin", "membership-target")));
+    models.User.findById.mockReturnValue(userQuery({
       status: "active",
       role: { slug: "staff" },
     }));
@@ -202,17 +143,11 @@ describe("transferBrandOwnership", () => {
     await expect(
       transferBrandOwnership(
         null,
-        {
-          input: {
-            brandId: "brand-1",
-            newOwnerUserId: "target-1",
-            previousOwnerRestaurantId: "restaurant-2",
-          },
-        },
+        { input: { brandId: "brand-1", newOwnerUserId: "target-1" } },
         { user: { id: "owner-1" } },
       ),
     ).rejects.toMatchObject({ extensions: { code: "BAD_USER_INPUT" } });
 
-    expect(modelMocks.Brand.findById).not.toHaveBeenCalled();
+    expect(models.Brand.findById).not.toHaveBeenCalled();
   });
 });

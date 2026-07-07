@@ -26,9 +26,12 @@ const HardenedOrderMutation = withOrderConflictHardening(LifecycleOrderMutation)
 const CheckoutSafeOrderMutation = withCheckoutIdempotency(HardenedOrderMutation);
 const GuardedOrderMutation = withOrderRestaurantAccessGuards(CheckoutSafeOrderMutation);
 
+const CanonicalOrderQuery = { ...OrderQuery };
+delete CanonicalOrderQuery.managerDashboard;
+
 export default {
   Query: {
-    ...OrderQuery,
+    ...CanonicalOrderQuery,
     ...OrderCoreRecoveryQuery,
     ...publicTableSessionQuery,
     ...CustomerOrderHistoryQuery,

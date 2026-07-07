@@ -27,13 +27,20 @@ describe("search public safety", () => {
     modelMocks.Restaurant.find.mockReturnValue(createFindChain([]));
     modelMocks.Restaurant.aggregate.mockResolvedValue([]);
     modelMocks.MenuItem.aggregate.mockResolvedValue([]);
+    modelMocks.Staff.aggregate.mockResolvedValue([]);
     modelMocks.User.find.mockReturnValue(createFindChain([]));
     modelMocks.BrandMembership.find.mockReturnValue(createFindChain([]));
   });
 
   it("searchSuggestions for public user does not call User.find and returns owners []", async () => {
-    const { default: searchQueryResolvers } = await import("../../graphql/resolvers/search/query.js");
-    const result = await searchQueryResolvers.searchSuggestions(null, { query: "pizza", timeSlot: null, limitPerType: 5 }, {});
+    const { default: searchQueryResolvers } = await import(
+      "../../graphql/resolvers/search/query.js"
+    );
+    const result = await searchQueryResolvers.searchSuggestions(
+      null,
+      { query: "pizza", timeSlot: null, limitPerType: 5 },
+      {},
+    );
 
     expect(modelMocks.User.find).not.toHaveBeenCalled();
     expect(result.owners).toEqual([]);
@@ -44,8 +51,14 @@ describe("search public safety", () => {
     modelMocks.User.find.mockReturnValue(createFindChain(owners));
     modelMocks.BrandMembership.find.mockReturnValue(createFindChain([{ userId: "u1", role: "manager", restaurantIds: ["r1", "r1", "r2"] }]));
 
-    const { default: searchQueryResolvers } = await import("../../graphql/resolvers/search/query.js");
-    const result = await searchQueryResolvers.searchSuggestions(null, { query: "admin", limitPerType: 5 }, { user: { roleName: "ADMIN" } });
+    const { default: searchQueryResolvers } = await import(
+      "../../graphql/resolvers/search/query.js"
+    );
+    const result = await searchQueryResolvers.searchSuggestions(
+      null,
+      { query: "admin", limitPerType: 5 },
+      { user: { roleName: "ADMIN" } },
+    );
 
     expect(modelMocks.User.find).toHaveBeenCalled();
     expect(result.owners[0]).toMatchObject({
@@ -58,16 +71,33 @@ describe("search public safety", () => {
   });
 
   it("search default public excludes OWNER", async () => {
-    const { default: searchQueryResolvers } = await import("../../graphql/resolvers/search/query.js");
-    const result = await searchQueryResolvers.search(null, { query: "pho", filter: {}, limit: 20, offset: 0 }, {});
+    const { default: searchQueryResolvers } = await import(
+      "../../graphql/resolvers/search/query.js"
+    );
+    const result = await searchQueryResolvers.search(
+      null,
+      { query: "pho", filter: {}, limit: 20, offset: 0 },
+      {},
+    );
 
     expect(modelMocks.User.find).not.toHaveBeenCalled();
     expect(result.items.every((item) => item.type !== "OWNER")).toBe(true);
   });
 
   it("search public ignores requested OWNER type", async () => {
-    const { default: searchQueryResolvers } = await import("../../graphql/resolvers/search/query.js");
-    const result = await searchQueryResolvers.search(null, { query: "owner", filter: { types: ["OWNER"] }, limit: 20, offset: 0 }, {});
+    const { default: searchQueryResolvers } = await import(
+      "../../graphql/resolvers/search/query.js"
+    );
+    const result = await searchQueryResolvers.search(
+      null,
+      {
+        query: "owner",
+        filter: { types: ["OWNER"] },
+        limit: 20,
+        offset: 0,
+      },
+      {},
+    );
 
     expect(modelMocks.User.find).not.toHaveBeenCalled();
     expect(result.items).toEqual([]);
@@ -79,16 +109,41 @@ describe("search public safety", () => {
     modelMocks.User.find.mockReturnValue(createFindChain(users));
     modelMocks.BrandMembership.find.mockReturnValue(createFindChain([]));
 
-    const { default: searchQueryResolvers } = await import("../../graphql/resolvers/search/query.js");
-    const result = await searchQueryResolvers.search(null, { query: "boss", filter: { types: ["OWNER"] }, limit: 20, offset: 0 }, { user: { roleName: "ADMIN" } });
+    const { default: searchQueryResolvers } = await import(
+      "../../graphql/resolvers/search/query.js"
+    );
+    const result = await searchQueryResolvers.search(
+      null,
+      {
+        query: "boss",
+        filter: { types: ["OWNER"] },
+        limit: 20,
+        offset: 0,
+      },
+      { user: { roleName: "ADMIN" } },
+    );
 
     expect(modelMocks.User.find).toHaveBeenCalled();
-    expect(result.items[0]).toMatchObject({ type: "OWNER", owner: { id: "u2", phone: "0123", email: "boss@example.com" } });
+    expect(result.items[0]).toMatchObject({
+      type: "OWNER",
+      owner: { id: "u2", phone: "0123", email: "boss@example.com" },
+    });
   });
 
   it("restaurant/menu item/location public search still works", async () => {
-    const { default: searchQueryResolvers } = await import("../../graphql/resolvers/search/query.js");
-    await searchQueryResolvers.search(null, { query: "hanoi", filter: { types: ["RESTAURANT", "MENU_ITEM", "LOCATION"] }, limit: 20, offset: 0 }, {});
+    const { default: searchQueryResolvers } = await import(
+      "../../graphql/resolvers/search/query.js"
+    );
+    await searchQueryResolvers.search(
+      null,
+      {
+        query: "hanoi",
+        filter: { types: ["RESTAURANT", "MENU_ITEM", "LOCATION"] },
+        limit: 20,
+        offset: 0,
+      },
+      {},
+    );
 
     expect(modelMocks.Restaurant.find).toHaveBeenCalled();
     expect(modelMocks.MenuItem.aggregate).toHaveBeenCalled();

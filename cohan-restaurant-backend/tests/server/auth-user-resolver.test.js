@@ -83,7 +83,7 @@ describe("resolveAuthenticatedUserFromRequest", () => {
     });
 
     expect(jwtMocks.verify).toHaveBeenCalledWith("token-1", "test-secret", {
-      issuer: "foodhub-system",
+      issuer: "cohan-system",
     });
     expect(userMocks.User.findById).toHaveBeenCalledWith("user-1");
     expect(user.roleName).toBe("manager");
@@ -118,7 +118,7 @@ describe("resolveAuthenticatedUserFromRequest", () => {
 
     expect(user.id).toBe("user-1");
     expect(jwtMocks.verify).toHaveBeenCalledWith("token-2", "test-secret", {
-      issuer: "foodhub-system",
+      issuer: "cohan-system",
     });
   });
 

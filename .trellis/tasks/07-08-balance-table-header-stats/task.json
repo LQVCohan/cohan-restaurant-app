@@ -1,0 +1,33 @@
+{
+  "id": "balance-table-header-stats",
+  "name": "balance-table-header-stats",
+  "title": "Balance table header statistics",
+  "description": "Tighten and visually unify the table-management KPI strip without changing its data source or business logic.",
+  "status": "completed",
+  "dev_type": "ui-polish",
+  "scope": "table-management-header",
+  "package": null,
+  "priority": "P2",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": "2026-07-08",
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "eed89da0b04310b35fae3a73342a41f9f6ff6b26",
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/main.jsx",
+    "src/components/Dashboard_Manager/Table/TableManagementHeaderStatsPolish.scss",
+    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
+    "src/components/Dashboard_Manager/shared/ManagementPageHeader/ManagementPageHeader.jsx",
+    "src/hooks/useTableManagement.js",
+    "cohan-restaurant-backend/graphql/resolvers/table/query.js",
+    "cohan-restaurant-backend/graphql/schema/floor_table.graphql"
+  ],
+  "notes": "CSS-only runtime fix scoped to the table page. The existing JSX, shared header, GraphQL schema, resolver, Apollo query, and count calculations remain unchanged. The KPI cards now form one compact segmented strip with aligned labels/values and consistent status glyphs. No local component test, build, or browser screenshot comparison ran in the connected environment."
+}

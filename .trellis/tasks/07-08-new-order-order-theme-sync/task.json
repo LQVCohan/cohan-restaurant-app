@@ -1,0 +1,33 @@
+{
+  "id": "new-order-order-theme-sync",
+  "name": "new-order-order-theme-sync",
+  "title": "Sync new order modal with Order Management UI",
+  "description": "Align the manager new-order modal with the Order Management neutral paper and sage palette without changing its workflow.",
+  "status": "in_review",
+  "dev_type": "frontend",
+  "scope": "manager-new-order-modal",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": "4b789f2c81527c7bcb7a15ce4e2f512133783746",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Order/components/NewOrderModalPolish.scss",
+    "src/components/Dashboard_Manager/Order/components/NewOrderSearchSelect.scss"
+  ],
+  "notes": "Replaced the warm orange/brown modal treatment with the exact neutral paper, ink and sage family already used by OrderPromotionTheme.css. Primary actions, active service tabs, focus rings, menu prices and the cart panel now use sage; backgrounds, cards and skeletons use neutral off-white surfaces. The old 700-line polish layer was reduced to a focused component theme instead of adding another override. Ant Design Select fields and portal dropdowns were updated to the same palette. No JSX, data hooks, mutations, draft behavior, permissions or backend flow changed. Component tests, Sass build and browser screenshots were not run because the connector environment has no executable repository checkout.",
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "redesign-existing-projects",
+      "taste-ui-redesign",
+      "react-ui-performance",
+      "wcag-ui-audit",
+      "web-design-guidelines"
+    ]
+  }
+}

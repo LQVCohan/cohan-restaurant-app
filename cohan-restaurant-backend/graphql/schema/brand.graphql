@@ -110,7 +110,6 @@ input UpdateBrandMemberInput {
 input TransferBrandOwnershipInput {
   brandId: ID!
   newOwnerUserId: ID!
-  previousOwnerRestaurantId: ID!
 }
 
 type TransferBrandOwnershipPayload {

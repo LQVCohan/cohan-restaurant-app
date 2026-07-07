@@ -1,0 +1,13 @@
+{
+  "id": "07-08-shared-roster-hours",
+  "title": "Shared full-time and part-time roster hours",
+  "status": "in_progress",
+  "priority": "high",
+  "scope": [
+    "Allow overlapping schedule templates for different employees",
+    "Keep same-employee overlap validation in the backend",
+    "Update the existing two-week roster to 8-hour full-time and 4-hour part-time shifts",
+    "Verify planned hours and mixed-employment overlap without creating duplicate data"
+  ],
+  "branch": "fix-existing-roster-hours-data"
+}

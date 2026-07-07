@@ -1,9 +1,7 @@
-/* Restaurant detail live-preview fit repair.
-   Scoped by the disabled preview back button, so customer detail pages keep their normal layout. */
-
+/* Compact restaurant detail layout used only by the disabled manager preview. */
 .restaurant-detail-page:has(.btn-back:disabled) {
   min-height: 100vh !important;
-  padding-bottom: 0 !important;
+  padding-bottom: 64px !important;
   overflow-x: hidden !important;
   background: #fffaf3 !important;
 
@@ -13,145 +11,264 @@
 
   .hero-cover,
   .hero-cover.fallback-cover {
-    height: clamp(132px, 30vw, 168px) !important;
+    height: 118px !important;
   }
 
-  .hero-cover .btn-back {
-    top: 0.78rem !important;
-    left: 50% !important;
-    width: 2.05rem !important;
-    height: 2.05rem !important;
-    padding: 0 !important;
-    border-radius: 999px !important;
-    transform: translateX(-50%) !important;
-    color: #24303f !important;
-    background: rgba(255, 253, 248, 0.9) !important;
-    border: 1px solid rgba(116, 88, 54, 0.12) !important;
-    box-shadow: 0 8px 18px rgba(36, 48, 63, 0.12) !important;
-    opacity: 1 !important;
+  .hero-cover .overlay {
+    background: linear-gradient(180deg, rgba(22, 18, 15, 0.1), rgba(22, 18, 15, 0.38)) !important;
   }
 
-  .hero-cover .btn-back svg {
-    width: 1rem !important;
-    height: 1rem !important;
-  }
-
+  .hero-cover .btn-back,
   .fallback-cover-copy {
-    left: 1rem !important;
-    right: 1rem !important;
-    bottom: 2.35rem !important;
-    max-width: calc(100% - 2rem) !important;
-  }
-
-  .fallback-cover-copy span {
-    padding: 0.28rem 0.5rem !important;
-    font-size: 0.58rem !important;
-  }
-
-  .fallback-cover-copy strong {
-    font-size: clamp(1.06rem, 7vw, 1.38rem) !important;
+    display: none !important;
   }
 
   .hero-content.container,
   .container {
-    padding-left: 0.78rem !important;
-    padding-right: 0.78rem !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
   }
 
-  .res-info-card {
-    display: block !important;
-    margin-top: -2.15rem !important;
-    padding: 1rem !important;
-    border-radius: 1.25rem !important;
-    box-shadow: 0 12px 28px rgba(36, 48, 63, 0.13) !important;
+  .res-info-card,
+  .res-info-card.res-info-card--compact {
+    display: grid !important;
+    grid-template-columns: 58px minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin-top: -22px !important;
+    padding: 12px !important;
+    border: 1px solid rgba(255, 102, 0, 0.1) !important;
+    border-radius: 18px !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+    box-shadow: 0 12px 26px rgba(58, 38, 24, 0.12) !important;
+    backdrop-filter: none !important;
   }
 
   .res-info-card .avatar-wrapper {
-    margin-bottom: 0.72rem !important;
+    margin: 0 !important;
+    align-self: start !important;
   }
 
   .res-info-card .avatar-wrapper img,
   .res-info-card .avatar-wrapper .avatar-fallback {
-    width: 4.55rem !important;
-    height: 4.55rem !important;
-    border-radius: 1rem !important;
-    border-width: 0.24rem !important;
+    width: 58px !important;
+    height: 58px !important;
+    border: 3px solid #fff !important;
+    border-radius: 14px !important;
+    box-shadow: 0 8px 18px rgba(82, 47, 26, 0.14) !important;
+  }
+
+  .res-info-card .avatar-wrapper .avatar-fallback {
+    gap: 2px !important;
   }
 
   .res-info-card .avatar-wrapper .avatar-fallback span {
-    font-size: 1.4rem !important;
+    font-size: 1.08rem !important;
   }
 
   .res-info-card .avatar-wrapper .avatar-fallback small {
-    font-size: 0.54rem !important;
+    font-size: 0.42rem !important;
   }
 
-  .res-info-card .info-text .bread-crumbs {
+  .res-info-card .info-text {
+    min-width: 0 !important;
+  }
+
+  .res-info-card .info-text .bread-crumbs,
+  .res-info-card .info-text .res-address,
+  .res-info-card .info-text .profile-summary {
+    display: none !important;
+  }
+
+  .res-info-card .info-text .res-name {
+    margin: 0 0 8px !important;
+    font-size: 1.22rem !important;
+    line-height: 1.02 !important;
+    letter-spacing: -0.045em !important;
+    text-wrap: balance !important;
+  }
+
+  .res-info-card .info-text .res-meta {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 5px !important;
+    margin: 0 !important;
+  }
+
+  .res-info-card .info-text .res-meta .rating,
+  .res-info-card .info-text .res-meta .cuisine {
+    min-height: 25px !important;
     max-width: 100% !important;
-    margin-bottom: 0.55rem !important;
-    padding: 0.32rem 0.55rem !important;
-    font-size: 0.58rem !important;
+    padding: 4px 7px !important;
+    border-radius: 999px !important;
+    font-size: 0.63rem !important;
+    line-height: 1 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
   }
 
-  .res-info-card .info-text .res-name {
-    margin-bottom: 0.58rem !important;
-    font-size: clamp(1.42rem, 9vw, 1.86rem) !important;
-    line-height: 1.05 !important;
+  .res-info-card .info-text .res-meta .rating svg {
+    width: 12px !important;
+    height: 12px !important;
   }
 
-  .res-info-card .info-text .res-meta {
-    gap: 0.38rem !important;
-    margin-bottom: 0.58rem !important;
-  }
-
-  .res-info-card .info-text .res-meta .rating,
-  .res-info-card .info-text .res-meta .cuisine,
   .res-info-card .info-text .res-meta .status,
-  .res-info-card .info-text .profile-summary .summary-chip {
-    min-height: 1.85rem !important;
-    padding: 0.34rem 0.55rem !important;
-    font-size: 0.72rem !important;
+  .res-info-card .info-text .res-meta .dot,
+  .res-info-card .action-group,
+  .rd-tabs,
+  .sidebar-content {
+    display: none !important;
   }
 
-  .res-info-card .info-text .res-address {
-    margin-top: 0.3rem !important;
+  .rd-container,
+  .rd-container.container {
+    display: block !important;
+    padding: 10px 10px 78px !important;
+  }
+
+  .main-content {
+    display: block !important;
+    min-height: 0 !important;
+  }
+
+  .restaurant-info-premium {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .restaurant-info-premium .info-card {
+    display: none !important;
+    min-height: 0 !important;
+    padding: 10px 11px !important;
+    border-radius: 14px !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  .restaurant-info-premium .info-card--intro,
+  .restaurant-info-premium .info-card--chef,
+  .restaurant-info-premium .info-card--contact,
+  .restaurant-info-premium .info-card--intro + .info-card:not(.info-card--chef),
+  .restaurant-info-premium .info-card--chef + .info-card {
+    display: block !important;
+    grid-column: 1 !important;
+  }
+
+  .restaurant-info-premium .title-row {
+    gap: 6px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .restaurant-info-premium .title-icon {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .restaurant-info-premium .title-icon svg,
+  .restaurant-info-premium .contact-icon svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .restaurant-info-premium h3,
+  .restaurant-info-premium h4 {
     font-size: 0.78rem !important;
-    line-height: 1.35 !important;
+    line-height: 1.2 !important;
   }
 
-  .res-info-card .info-text .profile-summary {
-    gap: 0.38rem !important;
-    margin-top: 0.62rem !important;
+  .restaurant-info-premium p {
+    font-size: 0.69rem !important;
+    line-height: 1.42 !important;
   }
 
-  .res-info-card .action-group {
-    display: none !important;
+  .restaurant-info-premium .info-card--intro p,
+  .restaurant-info-premium .chef-profile p {
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
   }
 
-  .rd-tabs {
-    display: none !important;
+  .restaurant-info-premium .placeholder-box {
+    margin-top: 5px !important;
+    padding: 7px 8px !important;
+    border-radius: 9px !important;
+    font-size: 0.66rem !important;
   }
 
-  .rd-container {
-    display: none !important;
+  .restaurant-info-premium .status-chip {
+    margin-bottom: 4px !important;
+    padding: 3px 7px !important;
+    font-size: 0.62rem !important;
+  }
+
+  .restaurant-info-premium .chef-profile {
+    grid-template-columns: 32px minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .restaurant-info-premium .chef-monogram {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 10px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .restaurant-info-premium .chef-profile strong {
+    font-size: 0.76rem !important;
+  }
+
+  .restaurant-info-premium .chef-profile span,
+  .restaurant-info-premium .chef-eyebrow {
+    font-size: 0.61rem !important;
+  }
+
+  .restaurant-info-premium .contact-row {
+    gap: 7px !important;
+    margin-top: 5px !important;
+  }
+
+  .restaurant-info-premium .contact-icon {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .restaurant-info-premium .direction-link {
+    margin-top: 7px !important;
+    padding: 4px 8px !important;
+    font-size: 0.64rem !important;
   }
 
   .mobile-action-bar {
-    position: sticky !important;
+    position: fixed !important;
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
     z-index: 20 !important;
-    padding: 0.6rem 0.78rem 0.72rem !important;
-    background: linear-gradient(180deg, rgba(255, 250, 243, 0), #fffaf3 35%) !important;
+    display: block !important;
+    padding: 8px 10px 10px !important;
+    border-top: 1px solid rgba(92, 64, 51, 0.08) !important;
+    background: rgba(255, 250, 243, 0.96) !important;
+    box-shadow: 0 -10px 24px rgba(82, 47, 26, 0.08) !important;
+    backdrop-filter: blur(12px) !important;
   }
 
   .btn-book-mobile {
-    min-height: 2.75rem !important;
-    border-radius: 0.82rem !important;
-    font-size: 0.86rem !important;
+    min-height: 40px !important;
+    padding: 8px 12px !important;
+    border-radius: 11px !important;
+    font-size: 0.78rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .restaurant-detail-page:has(.btn-back:disabled) .hero-cover,
+  .restaurant-detail-page:has(.btn-back:disabled) .res-info-card,
+  .restaurant-detail-page:has(.btn-back:disabled) .avatar-wrapper img,
+  .restaurant-detail-page:has(.btn-back:disabled) .avatar-fallback {
+    animation: none !important;
   }
 }

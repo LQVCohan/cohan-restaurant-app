@@ -24,7 +24,7 @@ export async function resolveAuthenticatedUserFromRequest(request) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET, {
-      issuer: process.env.JWT_ISSUER || "foodhub-system",
+      issuer: process.env.JWT_ISSUER || "cohan-system",
     });
 
     const userId = String(payload.id || payload.sub || payload.userId || "");

@@ -1,0 +1,30 @@
+{
+  "id": "restaurant-info-premium-layout",
+  "title": "Nâng cấp bố cục thông tin nhà hàng",
+  "status": "implemented_unverified",
+  "type": "frontend-redesign",
+  "scope": [
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoPremiumLayout.css",
+    "src/main.jsx"
+  ],
+  "flow": "restaurant model -> GraphQL schema -> restaurant resolvers and scope guards -> Apollo operations -> existing form DOM -> final scoped CSS layer",
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "targeted component test",
+      "npm run build",
+      "responsive browser smoke"
+    ],
+    "completed": [
+      "reviewed the complete scoped CSS file after commit",
+      "confirmed the new layer is imported after RestaurantInfoUnifiedPage.css",
+      "confirmed no data contract or component behavior changed"
+    ],
+    "notRun": [
+      "conflict check",
+      "component test",
+      "build",
+      "browser smoke"
+    ]
+  }
+}

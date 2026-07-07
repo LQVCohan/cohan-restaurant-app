@@ -167,7 +167,7 @@ const Header = ({
                   <div className="user-dropdown-header">
                     {renderAvatar("user-avatar-large")}
                     <div className="user-details"><h3>{normalizedUser.fullName}</h3><p>{normalizedUser.email}</p><span className="user-badge">{brandRoleLabel || systemRoleLabel}</span></div>
-                    <div className="user-role-breakdown"><span>Loại tài khoản: <strong>{systemRoleLabel}</strong></span><span>Vai trò trong thương hiệu: <strong>{brandRoleLabel || "Chưa gắn Brand hiện tại"}</strong></span><span>Phạm vi phụ trách: <strong>{scopeLabel}</strong></span></div>
+                    <div className="user-role-breakdown"><span>Cấp tài khoản: <strong>{systemRoleLabel}</strong></span><span>Quyền trong chuỗi: <strong>{brandRoleLabel || "Chưa tham gia chuỗi"}</strong></span><span>Phạm vi quản lý: <strong>{scopeLabel}</strong></span></div>
                   </div>
                   <div className="user-menu-items">
                     <button className="user-menu-item" type="button" onClick={() => openAccount("profile")}><span className="menu-icon"><FiUser /></span><span>Thông tin cá nhân</span></button>

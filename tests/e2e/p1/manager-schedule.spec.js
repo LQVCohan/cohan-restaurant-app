@@ -321,9 +321,9 @@ const openManagerSchedulePage = async (page) => {
 
 const createOneShift = async (page) => {
   await page.getByRole("button", { name: /Tạo ca/ }).click();
-  await expect(page.getByText("Thêm Ca Làm Việc Mới")).toBeVisible();
+  await expect(page.getByText("Thêm ca làm việc")).toBeVisible();
   await page.locator(".staff-item", { hasText: STAFF_USER.fullName }).click();
-  await page.getByRole("button", { name: "Lưu & Tạo Lịch" }).click();
+  await page.getByRole("button", { name: "Tạo ca làm việc" }).click();
   await expect(page.getByRole("status")).toContainText("Đã tạo ca cho 1 nhân viên.");
 };
 
@@ -352,7 +352,7 @@ test.describe("P1 manager schedule", () => {
     await openManagerSchedulePage(page);
 
     await page.getByRole("button", { name: /Tạo ca/ }).click();
-    await expect(page.getByText("Thêm Ca Làm Việc Mới")).toBeVisible();
+    await expect(page.getByText("Thêm ca làm việc")).toBeVisible();
 
     const staffRow = page.locator(".staff-item", { hasText: STAFF_USER.fullName });
     await expect(staffRow).toBeVisible();
@@ -367,10 +367,10 @@ test.describe("P1 manager schedule", () => {
     await openManagerSchedulePage(page);
 
     await page.getByRole("button", { name: /Tạo ca/ }).click();
-    await expect(page.getByText("Thêm Ca Làm Việc Mới")).toBeVisible();
+    await expect(page.getByText("Thêm ca làm việc")).toBeVisible();
 
     backendGuard.clear();
-    await page.getByRole("button", { name: "Lưu & Tạo Lịch" }).click();
+    await page.getByRole("button", { name: "Tạo ca làm việc" }).click();
     await expect(page.locator(".submit-error")).toContainText("Cần chọn ít nhất một nhân viên cho ca làm.");
     backendGuard.assertNoBackendErrors("manager schedule empty create shift validation");
   });

@@ -28,6 +28,7 @@
 @import "./components/Login.product.css";
 @import "./styles/TableLayoutClarity.css";
 @import "./styles/FloorPlanDesignerVisualSync.css";
+@import "./styles/FloorPlanDesignerModals.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

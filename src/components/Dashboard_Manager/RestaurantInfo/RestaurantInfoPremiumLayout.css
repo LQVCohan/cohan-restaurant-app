@@ -1,0 +1,653 @@
+/* Final scoped QC layer for the restaurant information workspace. */
+
+.manager-layout .restaurant-management-container {
+  --ri-qc-paper: rgba(253, 255, 254, 0.98);
+  --ri-qc-soft: rgba(238, 246, 241, 0.92);
+  --ri-qc-line: var(--manager-border, rgba(83, 108, 97, 0.22));
+  --ri-qc-line-strong: var(--manager-border-strong, rgba(83, 108, 97, 0.34));
+  --ri-qc-ink: var(--manager-text, #24312c);
+  --ri-qc-muted: var(--manager-muted, #607069);
+  --ri-qc-accent: var(--manager-accent, #2f7d68);
+  --ri-qc-accent-soft: var(--manager-accent-soft, #e5f0eb);
+}
+
+@media (min-width: 1181px) {
+  .manager-layout .restaurant-management-container > .main-layout.ant-row {
+    grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.55fr);
+    gap: 22px;
+  }
+}
+
+.manager-layout .restaurant-management-container .edit-card.ant-card {
+  border-radius: 26px !important;
+  background:
+    radial-gradient(circle at 100% 0, rgba(47, 125, 104, 0.07), transparent 24rem),
+    var(--ri-qc-paper) !important;
+  box-shadow: 0 20px 48px rgba(48, 72, 61, 0.11) !important;
+}
+
+/* Identity block */
+.manager-layout .restaurant-management-container .hero-uploader-section {
+  margin-bottom: 0 !important;
+  border-bottom: 1px solid var(--ri-qc-line);
+  background: var(--ri-qc-paper);
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .cover-image-area {
+  height: clamp(170px, 18vw, 220px) !important;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .cover-image-area::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(18, 32, 26, 0.03), rgba(18, 32, 26, 0.42));
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .cover-overlay {
+  z-index: 2;
+  align-items: flex-start !important;
+  justify-content: flex-end !important;
+  padding: 16px;
+  opacity: 1 !important;
+  background: transparent !important;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .cover-overlay .ant-btn {
+  min-height: 38px;
+  border-color: rgba(255, 255, 255, 0.62) !important;
+  border-radius: 11px;
+  background: rgba(31, 48, 40, 0.7) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 24px rgba(21, 37, 30, 0.2);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .avatar-image-area {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 3;
+  margin: -42px 24px 0 !important;
+  padding: 0 0 20px !important;
+  align-items: flex-end !important;
+  gap: 14px !important;
+  background: linear-gradient(180deg, transparent 0 42px, var(--ri-qc-paper) 42px);
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .avatar-wrapper {
+  width: 92px !important;
+  height: 92px !important;
+  flex: 0 0 92px;
+  border: 4px solid var(--ri-qc-paper) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 16px 34px rgba(34, 56, 47, 0.2) !important;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .restaurant-title-preview {
+  min-width: 0;
+  padding: 0 0 4px !important;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .restaurant-title-preview h4,
+.manager-layout .restaurant-management-container .hero-uploader-section .restaurant-title-preview > span {
+  color: var(--ri-qc-ink) !important;
+  text-shadow: none !important;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .restaurant-title-preview h4 {
+  margin: 0 0 3px !important;
+  font-size: clamp(1.15rem, 2vw, 1.48rem) !important;
+  line-height: 1.12;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+
+/* Tabs */
+.manager-layout .restaurant-management-container .modern-form .form-content-padding {
+  padding: 0 !important;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs > .ant-tabs-nav {
+  margin: 0 !important;
+  padding: 12px 16px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--ri-qc-line) !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, rgba(248, 252, 249, 0.98), var(--ri-qc-soft)) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs > .ant-tabs-nav::before,
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-ink-bar {
+  display: none !important;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-nav-list {
+  width: 100%;
+  gap: 6px;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab {
+  flex: 1 1 0;
+  min-height: 44px;
+  justify-content: center;
+  margin: 0 !important;
+  padding: 9px 12px !important;
+  border: 1px solid transparent;
+  border-radius: 12px !important;
+  color: var(--ri-qc-muted);
+  font-size: 0.78rem;
+  font-weight: 720;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab:hover {
+  border-color: var(--ri-qc-line);
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--manager-primary-hover, #40584e);
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab-active {
+  border-color: var(--ri-qc-line-strong);
+  background: #fff !important;
+  box-shadow: 0 8px 20px rgba(48, 72, 61, 0.1) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab:active {
+  transform: translateY(1px);
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-content-holder {
+  padding: clamp(16px, 2vw, 24px);
+}
+
+/* Ant Design control readability */
+.manager-layout .restaurant-management-container .modern-form .ant-select-selection-item,
+.manager-layout .restaurant-management-container .modern-form .ant-select-selection-placeholder,
+.manager-layout .restaurant-management-container .modern-form .ant-select-arrow,
+.manager-layout .restaurant-management-container .modern-form .ant-badge-status-text {
+  color: var(--ri-qc-ink) !important;
+  opacity: 1 !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-select-selection-placeholder {
+  color: #7a8982 !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-select-disabled,
+.manager-layout .restaurant-management-container .modern-form .ant-select-disabled .ant-select-selector,
+.manager-layout .restaurant-management-container .modern-form .ant-input-disabled {
+  cursor: not-allowed;
+  opacity: 1 !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-select-disabled .ant-select-selector,
+.manager-layout .restaurant-management-container .modern-form .ant-input-disabled {
+  border-color: var(--ri-qc-line) !important;
+  background: #f1f6f3 !important;
+  color: #52635b !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-select-disabled .ant-select-selection-item,
+.manager-layout .restaurant-management-container .modern-form .ant-input-disabled::placeholder {
+  color: #52635b !important;
+  -webkit-text-fill-color: #52635b !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-select-focused .ant-select-selector,
+.manager-layout .restaurant-management-container .modern-form .ant-input-affix-wrapper-focused,
+.manager-layout .restaurant-management-container .modern-form .ant-input:focus {
+  border-color: var(--ri-qc-accent) !important;
+  box-shadow: 0 0 0 3px rgba(47, 125, 104, 0.13) !important;
+}
+
+/* Prefix inputs must not receive a second inner border. */
+.manager-layout .restaurant-management-container .modern-form .ant-input-affix-wrapper > input.ant-input {
+  min-height: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-input-affix-wrapper > input.ant-input:focus {
+  box-shadow: none !important;
+}
+
+/* Basic information */
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-tabpane:has([aria-label="Nhận đơn từ xa"])
+  > .ant-row:first-child {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(220px, 0.72fr);
+  gap: 14px 16px;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid var(--ri-qc-line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 8px 22px rgba(48, 72, 61, 0.055);
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-tabpane:has([aria-label="Nhận đơn từ xa"])
+  > .ant-row:first-child
+  > .ant-col {
+  width: auto !important;
+  max-width: none !important;
+  flex: none !important;
+  padding: 0 !important;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-tabpane:has([aria-label="Nhận đơn từ xa"])
+  > .ant-row:first-child
+  > .ant-col:nth-child(3) {
+  grid-column: 1 / -1;
+  padding-top: 14px !important;
+  border-top: 1px solid var(--ri-qc-line);
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-form-item:has([aria-label="Nhận đơn từ xa"])
+  > .ant-row
+  > .ant-form-item-label {
+  display: none;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-form-item:has([aria-label="Nhận đơn từ xa"])
+  .ant-space-vertical {
+  width: 100%;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 14px !important;
+  padding: 14px 16px;
+  border: 1px solid var(--ri-qc-line);
+  border-radius: 15px;
+  background: var(--ri-qc-soft);
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-form-item:has([aria-label="Nhận đơn từ xa"])
+  .ant-space-item:nth-child(1) {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-form-item:has([aria-label="Nhận đơn từ xa"])
+  .ant-space-item:nth-child(2) {
+  grid-column: 1;
+  grid-row: 1;
+  color: var(--ri-qc-muted);
+  line-height: 1.5;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-form-item:has([aria-label="Nhận đơn từ xa"])
+  .ant-space-item:nth-child(2)::before {
+  content: "Nhận đơn từ xa";
+  display: block;
+  margin-bottom: 3px;
+  color: var(--ri-qc-ink);
+  font-weight: 780;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-form-item:has([aria-label="Nhận đơn từ xa"])
+  .ant-space-item:nth-child(3),
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-form-item:has([aria-label="Nhận đơn từ xa"])
+  .ant-space-item:nth-child(4) {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ri-qc-line);
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-form-item:has([aria-label="Nhận đơn từ xa"])
+  .ant-space-item:nth-child(3) {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-form-item:has([aria-label="Nhận đơn từ xa"])
+  .ant-space-item:nth-child(4) {
+  grid-column: 1;
+  grid-row: 2;
+  color: var(--ri-qc-ink);
+  font-weight: 780;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-form-item:has([aria-label="Nhận đơn từ xa"])
+  .ant-space-item:nth-child(5) {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  padding-top: 4px;
+  color: var(--ri-qc-muted);
+  line-height: 1.5;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-tabpane:has([aria-label="Nhận đơn từ xa"])
+  > .payment-info-alert
+  + .ant-row,
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-tabpane:has([aria-label="Nhận đơn từ xa"])
+  > .ant-form-item {
+  margin: 0 0 16px !important;
+  padding: 18px;
+  border: 1px solid var(--ri-qc-line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 8px 22px rgba(48, 72, 61, 0.055);
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-tabpane:has([aria-label="Nhận đơn từ xa"])
+  > .payment-info-alert
+  + .ant-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-tabs
+  .ant-tabs-tabpane:has([aria-label="Nhận đơn từ xa"])
+  > .payment-info-alert
+  + .ant-row
+  > .ant-col {
+  width: auto !important;
+  max-width: none !important;
+  flex: none !important;
+  padding: 0 !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ai-textarea-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ai-textarea-wrapper .ai-btn {
+  position: static !important;
+  align-self: flex-end;
+  margin-top: 10px;
+  min-height: 36px;
+  border-radius: 10px;
+}
+
+/* Address map */
+.manager-layout .restaurant-management-container .restaurant-coordinate-field {
+  display: none !important;
+}
+
+.manager-layout .restaurant-management-container .restaurant-location-map-card {
+  overflow: hidden;
+  margin-top: 4px;
+  border: 1px solid var(--ri-qc-line);
+  border-radius: 18px;
+  background: var(--ri-qc-paper);
+  box-shadow: 0 10px 26px rgba(48, 72, 61, 0.075);
+}
+
+.manager-layout .restaurant-management-container .restaurant-location-map-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 16px;
+  border-bottom: 1px solid var(--ri-qc-line);
+  background: linear-gradient(135deg, rgba(248, 252, 249, 0.98), var(--ri-qc-soft));
+}
+
+.manager-layout .restaurant-management-container .restaurant-location-map-card__header > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.manager-layout .restaurant-management-container .restaurant-location-map-card__header strong {
+  color: var(--ri-qc-ink);
+  font-size: 0.86rem;
+  font-weight: 820;
+}
+
+.manager-layout .restaurant-management-container .restaurant-location-map-card__header span {
+  color: var(--ri-qc-muted);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.manager-layout .restaurant-management-container .restaurant-location-map-card__coordinates {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.manager-layout .restaurant-management-container .restaurant-location-map-card__coordinates > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--ri-qc-line);
+  border-radius: 9px;
+  background: #fff;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.manager-layout .restaurant-management-container .restaurant-location-map-card__coordinates b {
+  color: var(--ri-qc-ink);
+  font-weight: 780;
+}
+
+.manager-layout .restaurant-management-container .restaurant-location-map-card__canvas {
+  width: 100%;
+  height: clamp(280px, 34vw, 360px);
+  background: #dfe9e3;
+}
+
+.manager-layout .restaurant-management-container .restaurant-location-map-card .leaflet-container {
+  font-family: inherit;
+}
+
+.manager-layout .restaurant-management-container .restaurant-location-map-card .leaflet-control-zoom a {
+  color: var(--ri-qc-ink);
+}
+
+/* Menu slot */
+.manager-layout .restaurant-management-container .category-card .ant-select {
+  width: 158px !important;
+  min-width: 158px;
+}
+
+.manager-layout .restaurant-management-container .category-card .ant-select-selection-item {
+  color: var(--ri-qc-ink) !important;
+  opacity: 1 !important;
+}
+
+/* Payment settings */
+.manager-layout .restaurant-management-container .payment-provider-card .ant-card-body > .ant-row {
+  display: grid;
+  grid-template-columns: minmax(170px, 1.15fr) minmax(110px, 0.58fr) minmax(150px, 0.82fr) minmax(105px, 0.48fr);
+  gap: 12px;
+}
+
+.manager-layout .restaurant-management-container .payment-provider-card .ant-card-body > .ant-row > .ant-col {
+  width: auto !important;
+  max-width: none !important;
+  flex: none !important;
+  padding: 0 !important;
+}
+
+.manager-layout .restaurant-management-container .payment-provider-card .ant-form-item {
+  margin-bottom: 0;
+}
+
+.manager-layout .restaurant-management-container .payment-provider-card .ant-select,
+.manager-layout .restaurant-management-container .payment-info-alert + .ant-row .ant-select {
+  width: 100%;
+}
+
+/* Compact preview */
+.manager-layout .restaurant-management-container .preview-wrapper {
+  top: calc(var(--manager-header-height, 64px) + 12px);
+}
+
+.manager-layout .restaurant-management-container .preview-label {
+  min-height: 36px;
+  border-radius: 11px !important;
+  background: var(--ri-qc-paper) !important;
+  box-shadow: 0 8px 20px rgba(48, 72, 61, 0.07);
+}
+
+.manager-layout .restaurant-management-container .desktop-preview-card {
+  width: min(100%, 340px) !important;
+  margin-inline: auto;
+  padding: 8px !important;
+  border-color: var(--ri-qc-line-strong) !important;
+  border-radius: 25px !important;
+  background: #fff !important;
+  box-shadow: 0 22px 48px rgba(35, 58, 48, 0.16) !important;
+}
+
+.manager-layout .restaurant-management-container .desktop-preview-card::before {
+  display: none !important;
+}
+
+.manager-layout .restaurant-management-container .desktop-preview-card .desktop-iframe {
+  height: min(610px, calc(100dvh - 150px)) !important;
+  min-height: 540px !important;
+  border-radius: 18px !important;
+}
+
+@media (max-width: 980px) {
+  .manager-layout .restaurant-management-container .payment-provider-card .ant-card-body > .ant-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .manager-layout .restaurant-management-container .modern-tabs > .ant-tabs-nav {
+    padding: 10px 12px !important;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+
+  .manager-layout .restaurant-management-container .modern-tabs .ant-tabs-nav-list {
+    width: max-content;
+  }
+
+  .manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+
+  .manager-layout .restaurant-management-container .modern-tabs .ant-tabs-content-holder {
+    padding: 12px;
+  }
+
+  .manager-layout .restaurant-management-container
+    .modern-tabs
+    .ant-tabs-tabpane:has([aria-label="Nhận đơn từ xa"])
+    > .ant-row:first-child,
+  .manager-layout .restaurant-management-container
+    .modern-tabs
+    .ant-tabs-tabpane:has([aria-label="Nhận đơn từ xa"])
+    > .payment-info-alert
+    + .ant-row,
+  .manager-layout .restaurant-management-container .payment-provider-card .ant-card-body > .ant-row {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-layout .restaurant-management-container
+    .modern-tabs
+    .ant-tabs-tabpane:has([aria-label="Nhận đơn từ xa"])
+    > .ant-row:first-child
+    > .ant-col:nth-child(3) {
+    grid-column: 1;
+  }
+
+  .manager-layout .restaurant-management-container .restaurant-location-map-card__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .manager-layout .restaurant-management-container .restaurant-location-map-card__coordinates {
+    justify-content: flex-start;
+  }
+
+  .manager-layout .restaurant-management-container .category-card .ant-select {
+    width: 100% !important;
+  }
+
+  .manager-layout .restaurant-management-container .desktop-preview-card .desktop-iframe {
+    height: 570px !important;
+    min-height: 0 !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .manager-layout .restaurant-management-container .hero-uploader-section .cover-image-area {
+    height: 145px !important;
+  }
+
+  .manager-layout .restaurant-management-container .hero-uploader-section .avatar-image-area {
+    margin: -34px 14px 0 !important;
+    background: linear-gradient(180deg, transparent 0 34px, var(--ri-qc-paper) 34px);
+  }
+
+  .manager-layout .restaurant-management-container .hero-uploader-section .avatar-wrapper {
+    width: 74px !important;
+    height: 74px !important;
+    flex-basis: 74px;
+    border-radius: 20px !important;
+  }
+
+  .manager-layout .restaurant-management-container .restaurant-location-map-card__canvas {
+    height: 260px;
+  }
+
+  .manager-layout .restaurant-management-container .restaurant-location-map-card__coordinates > span {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .manager-layout .restaurant-management-container .desktop-preview-card {
+    width: min(100%, 326px) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab,
+  .manager-layout .restaurant-management-container .hero-uploader-section .ant-btn {
+    transition: none !important;
+  }
+}

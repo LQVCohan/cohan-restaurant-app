@@ -2,7 +2,7 @@
   "id": "compact-brand-management",
   "name": "compact-brand-management",
   "title": "Compact restaurant chain management layout",
-  "description": "Improve member filtering and account selection, then add an atomic owner-transfer flow that keeps Brand.ownerId and BrandMembership roles synchronized.",
+  "description": "Extend the current member workflow with role and restaurant-scope editing while keeping the dedicated ownership transfer flow.",
   "status": "in_progress",
   "dev_type": "fullstack",
   "scope": "manager-brand-management",
@@ -23,15 +23,16 @@
   "relatedFiles": [
     "src/components/Dashboard_Manager/Brand/BrandManagement.jsx",
     "src/components/Dashboard_Manager/Brand/BrandOwnershipTransfer.jsx",
+    "src/components/Dashboard_Manager/Brand/BrandMembershipActions.css",
     "src/components/Dashboard_Manager/Brand/BrandOwnershipTransfer.test.jsx",
-    "src/components/Dashboard_Manager/Brand/BrandManagementCompact.scss",
     "src/hooks/useBrandManagement.js",
     "cohan-restaurant-backend/models/brand.model.js",
     "cohan-restaurant-backend/models/brandMembership.model.js",
     "cohan-restaurant-backend/graphql/schema/brand.graphql",
     "cohan-restaurant-backend/graphql/resolvers/brand/index.js",
     "cohan-restaurant-backend/graphql/resolvers/brand/transferBrandOwnership.js",
-    "cohan-restaurant-backend/tests/resolvers/brand-ownership-transfer.test.js"
+    "cohan-restaurant-backend/tests/resolvers/brand-ownership-transfer.test.js",
+    "cohan-restaurant-backend/tests/resolvers/brand-owner-mutation-guards.test.js"
   ],
-  "notes": "Ownership changes use one dedicated transaction: promote the target, demote the current owner to one restaurant manager, and update Brand.ownerId. Generic member mutations cannot change owner roles."
+  "notes": "Owner and admin users edit non-owner membership roles and branch scopes through updateBrandMember. Ownership changes remain in the dedicated transaction. Membership status remains the existing revoke and restore mechanism."
 }

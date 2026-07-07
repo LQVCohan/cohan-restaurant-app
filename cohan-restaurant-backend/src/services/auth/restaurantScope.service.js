@@ -6,13 +6,24 @@ const BrandMembership = model("BrandMembership");
 const Restaurant = model("Restaurant");
 
 const emptyFilter = () => ({ _id: { $in: [] } });
-const roleName = (user) => String(user?.roleName || user?.role?.slug || user?.role || "").toLowerCase();
+const roleName = (user) => {
+  const role = user?.role;
+  const value =
+    user?.roleName ||
+    role?.slug ||
+    role?.name ||
+    (typeof role === "string" ? role : "");
+  return String(value || "").trim().toLowerCase();
+};
 const toObjectId = (id) => (mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null);
 const idString = (value) => String(value?._id || value?.id || value || "");
 const uniqueIds = (ids) => [...new Map(ids.filter(Boolean).map((id) => [String(id), id])).values()];
 
 export const getUserId = (user) => idString(user);
-export const isSystemAdmin = (user) => String(user?.userType || "").toUpperCase() === "ADMIN" || roleName(user) === "admin";
+export const isSystemAdmin = (user) => {
+  const currentRole = roleName(user);
+  return currentRole ? currentRole === "admin" : String(user?.userType || "").toUpperCase() === "ADMIN";
+};
 
 export const getUserBrandMemberships = async (user) => {
   const uid = toObjectId(getUserId(user));
@@ -40,33 +51,38 @@ export async function getScopedRestaurantFilter(user) {
   return ors.length ? { $or: ors } : emptyFilter();
 }
 
-async function loadRestaurantForScope(restaurantId) {
-  if (!mongoose.isValidObjectId(restaurantId) || typeof Restaurant?.findById !== "function") return null;
-  const query = Restaurant.findById(restaurantId);
-  return typeof query?.select === "function"
-    ? query.select("_id brandId").lean()
-    : query;
-}
+const includesId = (values, target) =>
+  (values || []).some((value) => String(value) === String(target));
 
 export async function canAccessRestaurant(user, restaurantId) {
   if (!user || !restaurantId) return false;
   if (isSystemAdmin(user)) return true;
 
-  const [memberships, restaurant] = await Promise.all([
-    getUserBrandMemberships(user),
-    loadRestaurantForScope(restaurantId),
-  ]);
-  if (!restaurant?.brandId) return false;
+  const rid = toObjectId(restaurantId);
+  if (!rid) return false;
+  const scopedFilter = await getScopedRestaurantFilter(user);
 
-  const matching = memberships.filter(
-    (membership) => String(membership.brandId) === String(restaurant.brandId),
-  );
+  if (typeof Restaurant?.exists === "function") {
+    return Boolean(
+      await Restaurant.exists({
+        $and: [{ _id: rid }, scopedFilter],
+      }),
+    );
+  }
 
-  if (matching.some((membership) => ["owner", "admin"].includes(membership.role))) return true;
-  return matching.some(
-    (membership) =>
-      ["manager", "staff"].includes(membership.role) &&
-      (membership.restaurantIds || []).some((id) => String(id) === String(restaurant._id)),
+  if (typeof Restaurant?.findById !== "function") return false;
+  const query = Restaurant.findById(rid);
+  const restaurant = typeof query?.select === "function"
+    ? await query.select("_id brandId").lean()
+    : await query;
+  if (!restaurant) return false;
+  if (scopedFilter._id?.$in) {
+    return includesId(scopedFilter._id.$in, restaurant._id);
+  }
+  return (scopedFilter.$or || []).some(
+    (clause) =>
+      String(clause.brandId) === String(restaurant.brandId) &&
+      (!clause._id?.$in || includesId(clause._id.$in, restaurant._id)),
   );
 }
 
@@ -116,10 +132,8 @@ export async function isActiveBrandOperator(candidateUserId, brandId) {
 export async function ensureBrandRestaurants(brandId, restaurantIds = []) {
   const ids = [...new Set((restaurantIds || []).filter(Boolean).map(String))];
   if (!ids.length) return [];
-
   const objectIds = ids.map(toObjectId);
   if (objectIds.some((id) => !id) || !toObjectId(brandId)) throw new Error("Invalid ID");
-
   const count = await Restaurant.countDocuments({
     _id: { $in: objectIds },
     brandId: toObjectId(brandId),

@@ -4,6 +4,7 @@ import baseResolvers from "./base.js";
 import role from "./role/index.js";
 import restaurant from "./restaurant/index.js";
 import brand from "./brand/index.js";
+import { guardBrandMemberRoleMutations } from "./brand/memberRoleConsistency.js";
 import user from "./user/index.js";
 import wallet from "./wallet/index.js";
 import permission from "./permission/index.js";
@@ -47,6 +48,10 @@ import backup from "./backup/index.js";
 import customerAddress from "./customerAddress/index.js";
 import dashboard from "./dashboard/index.js";
 import analytics from "./analytics/index.js";
+
+const guardedBrandMemberMutations = guardBrandMemberRoleMutations(
+  brand.Mutation || {},
+);
 
 export default {
   ...baseResolvers,
@@ -137,6 +142,7 @@ export default {
     ...(systemSetting.Mutation || {}),
     ...(backup.Mutation || {}),
     ...(customerAddress.Mutation || {}),
+    ...guardedBrandMemberMutations,
   },
 
   ...(role.Role ? { Role: role.Role } : {}),

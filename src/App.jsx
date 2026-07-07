@@ -24,10 +24,16 @@ import NotificationProvider from "./context/NotificationProvider";
 import { CartProvider } from "./context/CartProvider";
 import { CustomerNotificationProvider } from "./context/CustomerNotificationContext";
 import AiChatbotWidget from "./components/common/AiChatbotWidget";
+import AppErrorBoundary from "./components/common/AppErrorBoundary";
 
 function ScopedAiChatbotWidget() {
   const location = useLocation();
-  if (location.pathname.startsWith("/manager")) return null;
+  if (
+    location.pathname.startsWith("/manager") ||
+    location.pathname.startsWith("/preview/")
+  ) {
+    return null;
+  }
   return <AiChatbotWidget />;
 }
 
@@ -37,15 +43,17 @@ function App() {
       <Router>
         <AuthProvider>
           <NotificationProvider>
-            <ScrollToTop />
-            <CustomerNotificationProvider>
-              <CartProvider>
-                <AppRouter />
-                <FoodDetailAvailabilityGlobalMount />
-                <GlobalMenuAvailabilityPrompt />
-                <ScopedAiChatbotWidget />
-              </CartProvider>
-            </CustomerNotificationProvider>
+            <AppErrorBoundary>
+              <ScrollToTop />
+              <CustomerNotificationProvider>
+                <CartProvider>
+                  <AppRouter />
+                  <FoodDetailAvailabilityGlobalMount />
+                  <GlobalMenuAvailabilityPrompt />
+                  <ScopedAiChatbotWidget />
+                </CartProvider>
+              </CustomerNotificationProvider>
+            </AppErrorBoundary>
             <NotificationContainer />
           </NotificationProvider>
         </AuthProvider>

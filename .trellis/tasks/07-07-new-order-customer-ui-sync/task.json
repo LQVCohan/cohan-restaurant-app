@@ -1,0 +1,36 @@
+{
+  "id": "new-order-customer-ui-sync",
+  "name": "new-order-customer-ui-sync",
+  "title": "Sync new order modal with customer manager UI",
+  "description": "Align the manager new-order modal with the established Customer Management warm-neutral and sage visual system without changing the order workflow.",
+  "status": "in_review",
+  "dev_type": "frontend",
+  "scope": "manager-new-order-modal",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": "e748bf3da611cea1ef7a0a6fc417528c9f19ae44",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Order/components/NewOrderModal.jsx",
+    "src/components/Dashboard_Manager/Order/components/NewOrderSearchSelect.scss",
+    "src/components/Dashboard_Manager/Order/components/NewOrderModal.test.jsx",
+    "src/components/Dashboard_Manager/Order/NewOrderModalPromotionTheme.css",
+    "src/components/Dashboard_Manager/Customer/CustomerManagement.scss",
+    "src/components/Dashboard_Manager/Customer/CustomerManagerScale.scss"
+  ],
+  "notes": "The modal now reuses the Customer Management warm-neutral, sage and charcoal system. Table and category controls are searchable Ant Design selects. Category labels are resolved from menus[].categoryMenu instead of the absent item.category object; orphaned category IDs are grouped into one Khác option. Menu text search also uses the resolved category name. CreateOrderForTable schema/resolver, useOrderManagement.saveOrder, restaurant scope, validation, draft restore and realtime side effects remain unchanged. Added focused helper tests. Tests, build and browser screenshots were not run in the connector environment; no GitHub workflow run or status was available for the latest commit.",
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "redesign-existing-projects",
+      "taste-ui-redesign",
+      "react-ui-performance",
+      "wcag-ui-audit"
+    ]
+  }
+}

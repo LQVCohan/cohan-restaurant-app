@@ -1,0 +1,549 @@
+/* Floor plan designer modal polish: automatic layout + unsaved-exit confirmation. */
+
+.modal-overlay:has(.fp-modal-shell--ai),
+.modal-overlay:has(.fp-modal-shell--exit) {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(83, 108, 97, 0.2), transparent 28rem),
+    radial-gradient(circle at 82% 18%, rgba(168, 133, 95, 0.16), transparent 26rem),
+    rgba(42, 48, 45, 0.54);
+  backdrop-filter: blur(10px) saturate(1.04);
+}
+
+.fp-modal-shell--ai,
+.fp-modal-shell--exit {
+  --fp-modal-sage: #536c61;
+  --fp-modal-sage-dark: #344d43;
+  --fp-modal-sage-soft: #eaf0ed;
+  --fp-modal-paper: #fffdf8;
+  --fp-modal-paper-soft: #f6f2eb;
+  --fp-modal-line: rgba(86, 72, 58, 0.16);
+  --fp-modal-ink: #25312c;
+  --fp-modal-muted: #6e776f;
+  --fp-modal-danger: #a54545;
+
+  border-color: rgba(86, 72, 58, 0.18) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.995), rgba(247, 243, 236, 0.98)),
+    radial-gradient(circle at 10% 0%, rgba(83, 108, 97, 0.1), transparent 24rem) !important;
+  box-shadow:
+    0 32px 80px rgba(38, 46, 41, 0.28),
+    0 10px 28px rgba(38, 46, 41, 0.14),
+    inset 0 1px rgba(255, 255, 255, 0.84) !important;
+}
+
+.fp-modal-shell--ai .modal-header,
+.fp-modal-shell--exit .modal-header {
+  min-height: 68px;
+  padding: 16px 20px 14px !important;
+  border-bottom-color: var(--fp-modal-line) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(247, 243, 236, 0.94)) !important;
+}
+
+.fp-modal-shell--ai .modal-header h2,
+.fp-modal-shell--exit .modal-header h2 {
+  color: var(--fp-modal-ink) !important;
+  font-size: 1.08rem !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.03em !important;
+}
+
+.fp-modal-shell--ai .modal-close,
+.fp-modal-shell--exit .modal-close {
+  width: 38px !important;
+  height: 38px !important;
+  border-color: rgba(86, 72, 58, 0.18) !important;
+  border-radius: 12px !important;
+  color: #7b857e !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+}
+
+.fp-modal-shell--ai .modal-close:hover,
+.fp-modal-shell--exit .modal-close:hover {
+  color: var(--fp-modal-danger) !important;
+  border-color: rgba(165, 69, 69, 0.22) !important;
+  background: #fff4f2 !important;
+}
+
+.fp-modal-shell--ai .modal-body,
+.fp-modal-shell--exit .modal-body {
+  padding: 0 !important;
+  background: transparent;
+}
+
+/* ================= AUTOMATIC LAYOUT ================= */
+.fp-modal-shell--ai {
+  width: min(94vw, 920px) !important;
+}
+
+.fp-modal-shell--ai .fp-modal {
+  min-width: 0 !important;
+  max-width: none !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 16px !important;
+  padding: 20px !important;
+  background: transparent !important;
+}
+
+.fp-modal-shell--ai .fp-modal-intro {
+  grid-column: 1 / -1;
+  position: relative;
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 17px 18px 17px 72px !important;
+  overflow: hidden;
+  border: 1px solid rgba(83, 108, 97, 0.2) !important;
+  border-radius: 16px !important;
+  color: var(--fp-modal-ink);
+  background:
+    radial-gradient(circle at 94% 10%, rgba(83, 108, 97, 0.16), transparent 14rem),
+    linear-gradient(135deg, #f3f7f4, #ebe6dd) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72);
+}
+
+.fp-modal-shell--ai .fp-modal-intro::before {
+  content: "✦";
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(83, 108, 97, 0.18);
+  border-radius: 13px;
+  color: #fff;
+  background: linear-gradient(145deg, #6f897d, #496257);
+  box-shadow: 0 8px 18px rgba(53, 78, 67, 0.22);
+  transform: translateY(-50%);
+  font-size: 1rem;
+}
+
+.fp-modal-shell--ai .fp-modal-intro strong {
+  color: var(--fp-modal-sage-dark) !important;
+  font-size: 1rem !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.02em;
+}
+
+.fp-modal-shell--ai .fp-modal-intro p {
+  max-width: 68ch;
+  margin-top: 5px !important;
+  color: #59655e !important;
+  font-size: 0.84rem !important;
+  line-height: 1.5;
+}
+
+.fp-modal-shell--ai .fp-ai-section {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--fp-modal-line);
+  border-radius: 16px;
+  background: rgba(255, 253, 248, 0.82);
+  box-shadow:
+    0 10px 24px rgba(75, 61, 47, 0.07),
+    inset 0 1px rgba(255, 255, 255, 0.74);
+}
+
+.fp-modal-shell--ai .fp-ai-section:has(select) {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(170px, 0.45fr) minmax(220px, 0.55fr);
+  align-items: center;
+  gap: 16px;
+}
+
+.fp-modal-shell--ai .fp-ai-section h4 {
+  margin: 0 0 12px;
+  color: var(--fp-modal-ink);
+  font-size: 0.82rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fp-modal-shell--ai .fp-ai-section:has(select) h4 {
+  margin: 0;
+}
+
+.fp-modal-shell--ai .fp-modal-row {
+  min-height: 54px;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px !important;
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(86, 72, 58, 0.12);
+}
+
+.fp-modal-shell--ai .fp-modal-row:last-child {
+  border-bottom: 0;
+}
+
+.fp-modal-shell--ai .fp-ai-section:has(select) .fp-modal-row {
+  min-height: auto;
+  display: block !important;
+  padding: 0;
+  border: 0;
+}
+
+.fp-modal-shell--ai .fp-modal-row label {
+  min-width: 0;
+  color: #34413b !important;
+  font-size: 0.84rem !important;
+  font-weight: 760 !important;
+  line-height: 1.25;
+}
+
+.fp-modal-shell--ai .fp-modal-row label small {
+  display: block;
+  margin-top: 4px;
+  color: var(--fp-modal-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.fp-modal-shell--ai .fp-stepper {
+  display: grid;
+  grid-template-columns: 34px 48px 34px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(83, 108, 97, 0.22);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: inset 0 1px 2px rgba(51, 65, 59, 0.04);
+}
+
+.fp-modal-shell--ai .fp-stepper button,
+.fp-modal-shell--ai .fp-stepper input {
+  width: 100%;
+  height: 36px;
+  min-height: 36px;
+  margin: 0;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  text-align: center;
+}
+
+.fp-modal-shell--ai .fp-stepper button {
+  color: var(--fp-modal-sage-dark);
+  background: var(--fp-modal-sage-soft);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 850;
+  transition: background 0.16s ease, transform 0.16s ease;
+}
+
+.fp-modal-shell--ai .fp-stepper button:hover {
+  background: #dce7e1;
+}
+
+.fp-modal-shell--ai .fp-stepper button:active {
+  transform: scale(0.94);
+}
+
+.fp-modal-shell--ai .fp-stepper input {
+  appearance: textfield;
+  color: var(--fp-modal-ink);
+  background: #fff !important;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.86rem !important;
+  font-weight: 800;
+}
+
+.fp-modal-shell--ai .fp-stepper input::-webkit-inner-spin-button,
+.fp-modal-shell--ai .fp-stepper input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.fp-modal-shell--ai .fp-ai-note {
+  grid-column: 1 / -1;
+  margin: -2px 0 0 !important;
+  padding: 11px 13px 11px 38px;
+  border: 1px solid rgba(168, 133, 95, 0.18);
+  border-radius: 12px;
+  color: #64594d;
+  background: #fbf5ea;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.fp-modal-shell--ai .fp-ai-note::before {
+  content: "i";
+  position: absolute;
+  margin-left: -25px;
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #a8855f;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.fp-modal-shell--ai select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(83, 108, 97, 0.22) !important;
+  border-radius: 11px !important;
+  color: var(--fp-modal-ink);
+  background: #fff !important;
+}
+
+.fp-modal-shell--ai select:focus {
+  border-color: rgba(83, 108, 97, 0.54) !important;
+  box-shadow: 0 0 0 3px rgba(83, 108, 97, 0.14) !important;
+}
+
+.fp-modal-shell--ai .fp-modal-actions {
+  grid-column: 1 / -1;
+  position: sticky;
+  bottom: -20px;
+  z-index: 3;
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  margin: 0 -20px -20px;
+  padding: 14px 20px 16px;
+  border-top: 1px solid var(--fp-modal-line);
+  background: rgba(255, 253, 248, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.fp-modal-shell--ai .fp-modal-actions button,
+.fp-modal-shell--exit .fp-modal-actions button {
+  min-height: 42px;
+  padding: 10px 16px !important;
+  border: 1px solid transparent !important;
+  border-radius: 11px !important;
+  font-size: 0.82rem;
+  font-weight: 780 !important;
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.fp-modal-shell--ai .fp-modal-actions button:hover,
+.fp-modal-shell--exit .fp-modal-actions button:hover {
+  transform: translateY(-1px);
+}
+
+.fp-modal-shell--ai .fp-modal-actions button:active,
+.fp-modal-shell--exit .fp-modal-actions button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.fp-modal-shell--ai .fp-modal-actions .btn-secondary,
+.fp-modal-shell--exit .fp-modal-actions .btn-secondary {
+  color: #4d5a54 !important;
+  border-color: rgba(83, 108, 97, 0.16) !important;
+  background: #f0f4f2 !important;
+}
+
+.fp-modal-shell--ai .fp-modal-actions .btn-secondary:hover,
+.fp-modal-shell--exit .fp-modal-actions .btn-secondary:hover {
+  border-color: rgba(83, 108, 97, 0.3) !important;
+  background: #e5ece8 !important;
+}
+
+.fp-modal-shell--ai .fp-modal-actions .btn-primary,
+.fp-modal-shell--exit .fp-modal-actions .btn-primary {
+  color: #fff !important;
+  border-color: #486158 !important;
+  background: linear-gradient(145deg, #647e72, #466056) !important;
+  box-shadow: 0 8px 18px rgba(55, 82, 70, 0.2);
+}
+
+.fp-modal-shell--ai .fp-modal-actions .btn-primary:hover,
+.fp-modal-shell--exit .fp-modal-actions .btn-primary:hover {
+  background: linear-gradient(145deg, #6e897c, #3f594f) !important;
+  box-shadow: 0 10px 22px rgba(55, 82, 70, 0.26);
+}
+
+/* ================= EXIT CONFIRMATION ================= */
+.fp-modal-shell--exit {
+  width: min(92vw, 520px) !important;
+}
+
+.fp-modal-shell--exit .fp-modal {
+  min-width: 0 !important;
+  max-width: none !important;
+  gap: 0 !important;
+  padding: 22px !important;
+  background: transparent !important;
+}
+
+.fp-modal-shell--exit .fp-modal-intro {
+  position: relative;
+  min-height: 126px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20px 20px 20px 84px !important;
+  border: 1px solid rgba(168, 133, 95, 0.22) !important;
+  border-radius: 16px !important;
+  background:
+    radial-gradient(circle at 95% 10%, rgba(168, 133, 95, 0.16), transparent 15rem),
+    linear-gradient(135deg, #fbf6ec, #f2ece3) !important;
+}
+
+.fp-modal-shell--exit .fp-modal-intro::before {
+  content: "!";
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(168, 133, 95, 0.24);
+  border-radius: 15px;
+  color: #fff;
+  background: linear-gradient(145deg, #b3926d, #8f6f4c);
+  box-shadow: 0 9px 20px rgba(111, 82, 52, 0.2);
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.fp-modal-shell--exit .fp-modal-intro strong {
+  color: #4f3d2c !important;
+  font-size: 1rem !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.02em;
+}
+
+.fp-modal-shell--exit .fp-modal-intro p {
+  margin-top: 6px !important;
+  color: #6b5f53 !important;
+  font-size: 0.84rem !important;
+  line-height: 1.5;
+}
+
+.fp-modal-shell--exit .fp-modal-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 10px !important;
+  margin-top: 18px;
+}
+
+.fp-modal-shell--exit .fp-modal-actions .btn-secondary:nth-child(2) {
+  color: var(--fp-modal-danger) !important;
+  border-color: rgba(165, 69, 69, 0.2) !important;
+  background: #fff5f3 !important;
+}
+
+.fp-modal-shell--exit .fp-modal-actions .btn-secondary:nth-child(2):hover {
+  border-color: rgba(165, 69, 69, 0.34) !important;
+  background: #fdebe8 !important;
+}
+
+.fp-modal-shell--exit .fp-modal-actions button:disabled {
+  opacity: 0.62;
+  cursor: wait;
+  transform: none !important;
+}
+
+.fp-modal-shell--ai button:focus-visible,
+.fp-modal-shell--ai input:focus-visible,
+.fp-modal-shell--ai select:focus-visible,
+.fp-modal-shell--exit button:focus-visible {
+  outline: 3px solid rgba(83, 108, 97, 0.24) !important;
+  outline-offset: 2px !important;
+}
+
+@media (max-width: 760px) {
+  .fp-modal-shell--ai {
+    width: 100% !important;
+  }
+
+  .fp-modal-shell--ai .fp-modal {
+    grid-template-columns: 1fr;
+    padding: 16px !important;
+  }
+
+  .fp-modal-shell--ai .fp-modal-intro,
+  .fp-modal-shell--ai .fp-ai-note,
+  .fp-modal-shell--ai .fp-ai-section,
+  .fp-modal-shell--ai .fp-ai-section:has(select),
+  .fp-modal-shell--ai .fp-modal-actions {
+    grid-column: 1;
+  }
+
+  .fp-modal-shell--ai .fp-ai-section:has(select) {
+    grid-template-columns: 1fr;
+  }
+
+  .fp-modal-shell--ai .fp-modal-actions {
+    bottom: -16px;
+    margin: 0 -16px -16px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 520px) {
+  .fp-modal-shell--ai .fp-modal-intro {
+    padding: 68px 16px 16px !important;
+  }
+
+  .fp-modal-shell--ai .fp-modal-intro::before {
+    top: 16px;
+    left: 16px;
+    transform: none;
+  }
+
+  .fp-modal-shell--ai .fp-modal-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px !important;
+  }
+
+  .fp-modal-shell--ai .fp-stepper {
+    grid-template-columns: 32px 42px 32px;
+  }
+
+  .fp-modal-shell--ai .fp-modal-actions,
+  .fp-modal-shell--exit .fp-modal-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .fp-modal-shell--ai .fp-modal-actions {
+    display: grid !important;
+  }
+
+  .fp-modal-shell--ai .fp-modal-actions .btn-primary {
+    grid-row: 1;
+  }
+
+  .fp-modal-shell--exit .fp-modal {
+    padding: 16px !important;
+  }
+
+  .fp-modal-shell--exit .fp-modal-intro {
+    min-height: 0;
+    padding: 70px 16px 16px !important;
+  }
+
+  .fp-modal-shell--exit .fp-modal-intro::before {
+    top: 16px;
+    left: 16px;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fp-modal-shell--ai *,
+  .fp-modal-shell--exit * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

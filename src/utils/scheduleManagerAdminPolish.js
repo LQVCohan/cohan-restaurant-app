@@ -119,15 +119,46 @@ const collapseAvailabilityPanelOnce = (root) => {
 
 const markBoardEmptyState = (root) => {
   const board = root.querySelector(".schedule-board:not(.month-board)");
-  if (!board || board.querySelector(".schedule-empty-guidance")) return;
+  if (!board) return;
 
-  const hasAnyShiftCard = Boolean(board.querySelector(".shift-card, .schedule-shift-card"));
-  if (hasAnyShiftCard) return;
+  const guidance = board.querySelector(".schedule-empty-guidance");
+  const shiftCards = Array.from(
+    board.querySelectorAll(".shift-card, .schedule-shift-card"),
+  );
 
-  const guidance = document.createElement("div");
-  guidance.className = "schedule-empty-guidance";
-  guidance.textContent = "Tuần này chưa có ca. Hãy tạo ca thủ công hoặc dùng chia ca tự động.";
-  board.prepend(guidance);
+  if (shiftCards.length > 0) {
+    const understaffedCount = shiftCards.filter((card) =>
+      card.classList.contains("critical"),
+    ).length;
+
+    if (understaffedCount <= 0) {
+      guidance?.remove();
+      return;
+    }
+
+    const nextGuidance = guidance || document.createElement("div");
+    const message = `Tuần này đã có ${shiftCards.length} ca, trong đó ${understaffedCount} ca còn thiếu nhân sự. Mở từng ca để bổ sung.`;
+
+    nextGuidance.className =
+      "schedule-empty-guidance schedule-understaffed-guidance";
+    nextGuidance.setAttribute("role", "status");
+    if (nextGuidance.textContent !== message) {
+      nextGuidance.textContent = message;
+    }
+    if (!guidance) board.prepend(nextGuidance);
+    return;
+  }
+
+  const nextGuidance = guidance || document.createElement("div");
+  const message =
+    "Tuần này chưa có ca. Hãy tạo ca thủ công hoặc dùng chia ca tự động.";
+
+  nextGuidance.className = "schedule-empty-guidance";
+  nextGuidance.setAttribute("role", "status");
+  if (nextGuidance.textContent !== message) {
+    nextGuidance.textContent = message;
+  }
+  if (!guidance) board.prepend(nextGuidance);
 };
 
 let cleanupRef = null;

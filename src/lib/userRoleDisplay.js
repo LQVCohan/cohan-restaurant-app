@@ -3,7 +3,7 @@ const sameId = (left, right) => Boolean(left && right && String(left) === String
 
 export const SYSTEM_ROLE_LABELS = {
   admin: "Quản trị hệ thống",
-  manager: "Quản lý hệ thống",
+  manager: "Quản lý",
   hr: "Nhân sự",
   accountant: "Kế toán",
   staff: "Nhân viên",
@@ -11,10 +11,10 @@ export const SYSTEM_ROLE_LABELS = {
 };
 
 export const BRAND_ROLE_LABELS = {
-  owner: "Chủ thương hiệu",
-  admin: "Quản trị Brand",
-  manager: "Quản lý nhà hàng",
-  staff: "Nhân viên nhà hàng",
+  owner: "Chủ chuỗi",
+  admin: "Quản trị chuỗi",
+  manager: "Quản lý chi nhánh",
+  staff: "Nhân viên chi nhánh",
 };
 
 export const normalizeSystemRole = (user) =>
@@ -32,13 +32,15 @@ export const normalizeMembershipRestaurantIds = (membership) =>
 
 export const getMembershipScopeLabel = (membership, restaurants = [], brandName = "") => {
   const role = normalizeBrandRole(membership);
-  if (isBrandWideRole(role)) return brandName ? `Toàn bộ Brand ${brandName}` : "Toàn bộ Brand";
+  if (isBrandWideRole(role)) {
+    return brandName ? `Tất cả chi nhánh thuộc ${brandName}` : "Tất cả chi nhánh trong chuỗi";
+  }
   const ids = normalizeMembershipRestaurantIds(membership);
   const byId = new Map((restaurants || []).map((restaurant) => [String(restaurant?.id || restaurant?._id), restaurant?.name || restaurant?.restaurantName]));
   const names = ids.map((id) => byId.get(id) || id).filter(Boolean);
-  if (role === "manager") return names[0] || "Phạm vi: xem trong cấu hình Brand";
-  if (role === "staff") return names.length ? names.join(", ") : "Chưa gán nhà hàng";
-  return "Chưa gắn Brand hiện tại";
+  if (role === "manager") return names[0] || "Chưa xác định chi nhánh";
+  if (role === "staff") return names.length ? names.join(", ") : "Chưa gán chi nhánh";
+  return "Chưa tham gia chuỗi";
 };
 
 export const getSystemRoleLabel = (user) => {
@@ -67,7 +69,7 @@ export const getCombinedRoleLabel = ({ user, activeBrand, membership, compact = 
 };
 
 export const getRoleTooltip = ({ user, activeBrand, membership } = {}) => {
-  const brandLabel = getBrandRoleLabel({ user, activeBrand, membership }) || "Chưa gắn Brand hiện tại";
+  const brandLabel = getBrandRoleLabel({ user, activeBrand, membership }) || "Chưa tham gia chuỗi";
   const systemLabel = getSystemRoleLabel(user);
-  return `Vai trò trong thương hiệu: ${brandLabel} | Loại tài khoản: ${systemLabel}`;
+  return `Cấp tài khoản: ${systemLabel} | Quyền trong chuỗi: ${brandLabel}`;
 };

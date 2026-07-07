@@ -1,0 +1,371 @@
+.talite-modal {
+  width: min(1240px, 96vw) !important;
+  max-height: min(880px, 90dvh) !important;
+}
+
+.talite-body {
+  max-height: calc(min(880px, 90dvh) - 122px) !important;
+  overscroll-behavior: contain;
+}
+
+.cohan-merge-code-input[readonly] {
+  cursor: pointer;
+  color: #40524a;
+  background: #f4f8f6 !important;
+}
+
+.cohan-merge-picker-open {
+  width: 100%;
+  min-height: 38px !important;
+  margin-top: 8px;
+  justify-content: center;
+  border-color: rgba(83, 108, 97, 0.28) !important;
+  color: #315b4d !important;
+  background: #edf5f1 !important;
+  font-weight: 780 !important;
+}
+
+.cohan-merge-picker-open:hover {
+  border-color: rgba(83, 108, 97, 0.48) !important;
+  background: #e3f0ea !important;
+}
+
+.cohan-merge-picker-open:active {
+  transform: translateY(1px);
+}
+
+.cohan-merge-picker-open:focus-visible,
+.cohan-merge-code-input:focus-visible {
+  outline: 3px solid rgba(83, 108, 97, 0.2) !important;
+  outline-offset: 2px;
+}
+
+.cohan-merge-picker-hint {
+  margin-top: 7px;
+  color: #68756f;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.cohan-table-merge-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(29, 39, 35, 0.6);
+  -webkit-backdrop-filter: blur(11px) saturate(1.04);
+  backdrop-filter: blur(11px) saturate(1.04);
+  overscroll-behavior: contain;
+}
+
+.cohan-table-merge-picker__dialog {
+  width: min(780px, 96vw);
+  max-height: min(780px, 90dvh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(83, 108, 97, 0.2);
+  border-radius: 22px;
+  color: #26352f;
+  background: linear-gradient(180deg, #fffdf8, #f5f2eb);
+  box-shadow: 0 30px 82px rgba(31, 42, 36, 0.32);
+}
+
+.cohan-table-merge-picker__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 15px;
+  border-bottom: 1px solid rgba(83, 108, 97, 0.15);
+  background: rgba(255, 253, 248, 0.97);
+}
+
+.cohan-table-merge-picker__header h2 {
+  margin: 0;
+  color: #20332b;
+  font-size: 1.1rem;
+  font-weight: 850;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.cohan-table-merge-picker__header p {
+  margin: 4px 0 0;
+  color: #69756f;
+  font-size: 0.8rem;
+}
+
+.cohan-table-merge-picker__close {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(83, 108, 97, 0.2);
+  border-radius: 12px;
+  color: #65736c;
+  background: #fff;
+  cursor: pointer;
+  font-size: 1.3rem;
+}
+
+.cohan-table-merge-picker__body {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  overflow: hidden;
+}
+
+.cohan-table-merge-picker__anchor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(83, 108, 97, 0.17);
+  border-radius: 14px;
+  background: #eaf3ee;
+}
+
+.cohan-table-merge-picker__anchor span {
+  color: #66736c;
+  font-size: 0.76rem;
+}
+
+.cohan-table-merge-picker__anchor strong {
+  color: #315044;
+  font-size: 0.92rem;
+}
+
+.cohan-table-merge-picker__search {
+  display: grid;
+  gap: 6px;
+}
+
+.cohan-table-merge-picker__search span {
+  color: #46554e;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.cohan-table-merge-picker__search input {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid rgba(83, 108, 97, 0.24);
+  border-radius: 11px;
+  color: #26352f;
+  background: #fff;
+  font: inherit;
+}
+
+.cohan-table-merge-picker__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #6a756f;
+  font-size: 0.76rem;
+}
+
+.cohan-table-merge-picker__summary strong {
+  color: #315044;
+  font-variant-numeric: tabular-nums;
+}
+
+.cohan-table-merge-picker__list {
+  min-height: 190px;
+  max-height: 390px;
+  display: grid;
+  gap: 8px;
+  padding-right: 5px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(83, 108, 97, 0.28) transparent;
+}
+
+.cohan-table-merge-picker__item {
+  min-height: 66px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(86, 72, 58, 0.15);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.84);
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.cohan-table-merge-picker__item:hover {
+  border-color: rgba(83, 108, 97, 0.36);
+  background: #f1f7f4;
+  transform: translateY(-1px);
+}
+
+.cohan-table-merge-picker__item.is-selected {
+  border-color: rgba(83, 108, 97, 0.6);
+  background: #e6f1eb;
+  box-shadow: inset 0 0 0 1px rgba(83, 108, 97, 0.12);
+}
+
+.cohan-table-merge-picker__item.is-disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.cohan-table-merge-picker__item input {
+  width: 18px;
+  height: 18px;
+  accent-color: #536c61;
+}
+
+.cohan-table-merge-picker__item-main {
+  min-width: 0;
+}
+
+.cohan-table-merge-picker__item-main strong,
+.cohan-table-merge-picker__item-main span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cohan-table-merge-picker__item-main strong {
+  color: #27372f;
+  font-size: 0.9rem;
+}
+
+.cohan-table-merge-picker__item-main span {
+  margin-top: 3px;
+  color: #6c7872;
+  font-size: 0.74rem;
+}
+
+.cohan-table-merge-picker__status {
+  padding: 5px 8px;
+  border-radius: 8px;
+  color: #4a5d54;
+  background: #eef3f0;
+  font-size: 0.7rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.cohan-table-merge-picker__empty,
+.cohan-table-merge-picker__error,
+.cohan-table-merge-picker__loading {
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  border: 1px dashed rgba(83, 108, 97, 0.24);
+  border-radius: 14px;
+  color: #6b7771;
+  background: rgba(255, 253, 248, 0.74);
+  text-align: center;
+  font-size: 0.82rem;
+}
+
+.cohan-table-merge-picker__error {
+  color: #984441;
+  border-color: rgba(165, 69, 69, 0.24);
+  background: #fff3f1;
+}
+
+.cohan-table-merge-picker__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px 16px;
+  border-top: 1px solid rgba(83, 108, 97, 0.15);
+  background: rgba(255, 253, 248, 0.98);
+}
+
+.cohan-table-merge-picker__footer button {
+  min-height: 42px;
+  padding: 9px 15px;
+  border: 1px solid rgba(83, 108, 97, 0.2);
+  border-radius: 11px;
+  color: #46564f;
+  background: #eff4f1;
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.cohan-table-merge-picker__footer button[data-confirm] {
+  color: #fff;
+  border-color: #486158;
+  background: linear-gradient(145deg, #657f73, #466056);
+  box-shadow: 0 8px 18px rgba(55, 82, 70, 0.2);
+}
+
+.cohan-table-merge-picker__footer button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.cohan-table-merge-picker button:focus-visible,
+.cohan-table-merge-picker input:focus-visible {
+  outline: 3px solid rgba(83, 108, 97, 0.22);
+  outline-offset: 2px;
+}
+
+@media (max-width: 980px) {
+  .talite-modal {
+    width: min(960px, 96vw) !important;
+    max-height: 90dvh !important;
+  }
+
+  .talite-body {
+    max-height: calc(90dvh - 120px) !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .cohan-table-merge-picker {
+    align-items: end;
+    padding: 0;
+  }
+
+  .cohan-table-merge-picker__dialog {
+    width: 100%;
+    max-height: 92dvh;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 22px 22px 0 0;
+  }
+
+  .cohan-table-merge-picker__item {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .cohan-table-merge-picker__status {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .cohan-table-merge-picker__footer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cohan-table-merge-picker__item,
+  .cohan-merge-picker-open {
+    transition: none !important;
+  }
+}

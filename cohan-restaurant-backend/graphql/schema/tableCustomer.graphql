@@ -20,6 +20,21 @@ type TableCustomer {
   updatedAt: DateTime
 }
 
+type TableCustomerProfile {
+  sourceTableId: ID!
+  sourceTableCode: String!
+  customer: TableCustomer
+}
+
+type TableCustomerGroup {
+  tableId: ID!
+  tableCode: String!
+  isMerged: Boolean!
+  customerCount: Int!
+  totalPartySize: Int!
+  profiles: [TableCustomerProfile!]!
+}
+
 input UpsertTableCustomerInput {
   restaurantId: ID!
   tableId: ID
@@ -46,6 +61,16 @@ extend type Query {
     tableId: ID
     tableCode: String
   ): TableCustomer
+
+  """
+  Lấy toàn bộ hồ sơ khách của bàn đang hiển thị.
+  Nếu là bàn ghép, mỗi profile tương ứng một bàn gốc.
+  """
+  tableCustomerGroup(
+    restaurantId: ID!
+    tableId: ID
+    tableCode: String
+  ): TableCustomerGroup!
 
   """
   Lấy tất cả TableCustomer của 1 nhà hàng

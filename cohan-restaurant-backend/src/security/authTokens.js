@@ -32,7 +32,7 @@ export function signAccessToken(user) {
     process.env.JWT_SECRET,
     {
       expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || process.env.JWT_EXPIRES_IN || "15m",
-      issuer: process.env.JWT_ISSUER || "foodhub-system",
+      issuer: process.env.JWT_ISSUER || "cohan-system",
     },
   );
 }

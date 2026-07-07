@@ -118,16 +118,22 @@ async function findRestaurantSuggestions(query, limit) {
     .sort({ avgRating: -1 })
     .lean();
 
-  return docs.map((r) => ({
-    id: r._id.toString(),
-    name: r.name,
-    shortAddress: toShortAddress(r?.address),
-    fullAddress: compactAddressParts(r?.address).join(", "),
-    phone: r.phone || null,
-    avgRating: r.avgRating ?? 0,
-    cuisineType: r.cuisineType || null,
-    lat: typeof r?.address?.lat === "number" ? r.address.lat : null,
-    lng: typeof r?.address?.lng === "number" ? r.address.lng : null,
+  return docs.map((restaurant) => ({
+    id: restaurant._id.toString(),
+    name: restaurant.name,
+    shortAddress: toShortAddress(restaurant?.address),
+    fullAddress: compactAddressParts(restaurant?.address).join(", "),
+    phone: restaurant.phone || null,
+    avgRating: restaurant.avgRating ?? 0,
+    cuisineType: restaurant.cuisineType || null,
+    lat:
+      typeof restaurant?.address?.lat === "number"
+        ? restaurant.address.lat
+        : null,
+    lng:
+      typeof restaurant?.address?.lng === "number"
+        ? restaurant.address.lng
+        : null,
   }));
 }
 
@@ -146,14 +152,15 @@ async function findMenuItemSuggestions(query, timeSlotDb, limit) {
   ];
   const docs = await MenuItem.aggregate(pipeline);
 
-  return docs.map((d) => ({
-    id: d._id.toString(),
-    name: d.name,
-    restaurantId: d.restaurant?._id?.toString() || null,
-    restaurantName: d.restaurant?.name || null,
-    timeSlot: d.menu?.timeSlot || null,
-    thumbImage: d.thumbImage || null,
-    basePrice: d.basePrice ?? 0,
+  return docs.map((chef) => ({
+    id: chef._id.toString(),
+    fullName: chef.fullName || null,
+    positionTitle: chef.positionTitle || chef.roleName || "Bếp trưởng",
+    avatarUrl: chef.avatarUrl || null,
+    restaurantId: chef.restaurant._id.toString(),
+    restaurantName: chef.restaurant.name,
+    contactPhone: chef.restaurant.phone || null,
+    restaurant: chef.restaurant,
   }));
 }
 
@@ -279,6 +286,22 @@ async function fullSearch(query, filter, limit, offset, ctx) {
   const trimmed = (query || "").trim().slice(0, MAX_QUERY_LENGTH);
   if (!trimmed) return { items: [], totalCount: 0 };
 
+  return User.find(
+    {
+      userType: { $in: ["MANAGER", "ADMIN"] },
+      $or: searchConditions,
+    },
+    { fullName: 1, phone: 1, email: 1, refRestaurants: 1 },
+  )
+    .limit(clampLimit(limit, 20, 50))
+    .skip(clampOffset(offset))
+    .lean();
+}
+
+async function fullSearch(query, filter = {}, limit, offset, ctx) {
+  const trimmed = String(query || "").trim();
+  if (!trimmed) return { items: [], totalCount: 0 };
+
   const adminUser = isAdminUser(ctx);
   const requestedTypes = filter?.types?.length ? filter.types : ["RESTAURANT", "MENU_ITEM", "LOCATION"];
   const types = new Set(requestedTypes.map((t) => t.toString().toUpperCase()).filter((t) => t !== "OWNER" || adminUser));
@@ -298,9 +321,90 @@ async function fullSearch(query, filter, limit, offset, ctx) {
   owners.forEach((o) => items.push({ type: "OWNER", score: (o.managedRestaurantCount || 0) + 1, owner: { id: o._id.toString(), fullName: o.fullName || null, phone: o.phone || null, email: o.email || null } }));
   locations.forEach((l) => items.push({ type: "LOCATION", score: 1, locationLabel: l.label, locationCity: l.city, locationDistrict: l.district }));
 
-  items.sort((a, b) => (b.score || 0) - (a.score || 0));
+  restaurants.forEach((restaurant) => {
+    items.push({
+      type: "RESTAURANT",
+      score: restaurant.avgRating || 0,
+      restaurant: toRestaurantPayload(restaurant),
+      cookingMethods: [],
+    });
+  });
+
+  menuItems.forEach((menuItem) => {
+    items.push({
+      type: "MENU_ITEM",
+      score: menuItem.rate || 1,
+      timeSlot: menuItem.menu?.timeSlot || null,
+      restaurant: toRestaurantPayload(menuItem.restaurant),
+      menuItem: {
+        id: menuItem._id.toString(),
+        name: menuItem.name,
+        basePrice: menuItem.basePrice ?? 0,
+        thumbImage: menuItem.thumbImage || null,
+      },
+      categoryName: menuItem.category?.name || null,
+      servingLabel: buildServingLabel(menuItem),
+      cookingMethods: extractCookingMethods(menuItem),
+    });
+  });
+
+  chefs.forEach((chef) => {
+    items.push({
+      type: "CHEF",
+      score: 1,
+      restaurant: toRestaurantPayload(chef.restaurant),
+      chef: {
+        id: chef.id,
+        fullName: chef.fullName,
+        positionTitle: chef.positionTitle,
+        avatarUrl: chef.avatarUrl,
+        restaurantId: chef.restaurantId,
+        restaurantName: chef.restaurantName,
+        contactPhone: chef.contactPhone,
+      },
+      cookingMethods: [],
+    });
+  });
+
+  owners.forEach((owner) => {
+    items.push({
+      type: "OWNER",
+      score:
+        (Array.isArray(owner.refRestaurants)
+          ? owner.refRestaurants.length
+          : 0) + 1,
+      owner: {
+        id: owner._id.toString(),
+        fullName: owner.fullName || null,
+        phone: owner.phone || null,
+        email: owner.email || null,
+      },
+      cookingMethods: [],
+    });
+  });
+
+  locations.forEach((location) => {
+    items.push({
+      type: "LOCATION",
+      score: 1,
+      locationLabel: location.label,
+      locationCity: location.city,
+      locationDistrict: location.district,
+      cookingMethods: [],
+    });
+  });
+
+  items.sort((left, right) => (right.score || 0) - (left.score || 0));
   return { items, totalCount: items.length };
 }
+
+const emptySuggestions = () => ({
+  restaurants: [],
+  menuItems: [],
+  chefs: [],
+  owners: [],
+  locations: [],
+});
 
 const searchQueryResolvers = {
   async searchSuggestions(_, { query, timeSlot, limitPerType = 5 }, ctx) {
@@ -326,8 +430,8 @@ const searchQueryResolvers = {
   async search(_, { query, filter, limit = 20, offset = 0 }, ctx) {
     try {
       return await fullSearch(query, filter, limit, offset, ctx);
-    } catch (err) {
-      console.error("search error:", err);
+    } catch (error) {
+      console.error("search error:", error);
       return { items: [], totalCount: 0 };
     }
   },
