@@ -33,13 +33,14 @@ describe("MobileHome search", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(
-      screen.getByRole("textbox", { name: /tìm nhà hàng hoặc món ăn/i }),
-      { target: { value: "Cá nướng" } },
-    );
+    fireEvent.change(screen.getByRole("textbox", { name: /tìm món/i }), {
+      target: { value: "Cá nướng" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Tìm" }));
 
     expect(screen.getByTestId("pathname")).toHaveTextContent("/search");
-    expect(new URLSearchParams(screen.getByTestId("query-string").textContent).get("q")).toBe("Cá nướng");
+    expect(
+      new URLSearchParams(screen.getByTestId("query-string").textContent).get("q"),
+    ).toBe("Cá nướng");
   });
 });
