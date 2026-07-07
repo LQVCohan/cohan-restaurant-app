@@ -12,20 +12,21 @@ The cart model also states that one user has one active cart, but the current `{
 
 ## Implementation
 
-- Give real reservation shortages a stable `INSUFFICIENT_STOCK` error code at the inventory service boundary.
-- Convert only that code to GraphQL `OUT_OF_STOCK` and publish the out-of-stock event.
-- Map an escaped duplicate-key/write-conflict error to `CART_CONFLICT_RETRY` with a user-facing retry message; do not publish out-of-stock.
-- Retry active-cart creation once after a duplicate-key race, then reload the winning active cart.
+- Recognize only the canonical insufficient-reservation error from `reserveForOrderTx` as a real stock shortage.
+- Convert only a real shortage to GraphQL `OUT_OF_STOCK` and publish the out-of-stock event.
+- Map an escaped duplicate-key/write-conflict error to `CART_CONFLICT_RETRY`; do not publish out-of-stock.
+- Map an unknown transaction commit result to `CART_STATE_UNKNOWN`, instructing the customer to reload the cart before another action instead of risking a duplicate retry.
 - Add a unique partial index so a user can have only one cart whose status is `active`, while retaining multiple historical checked-out or abandoned carts.
 - Keep the atomic stock condition, transaction, five-minute hold, GraphQL schema and frontend contract unchanged.
 
 ## Acceptance criteria
 
-- Two different users competing for one remaining unit result in one success and one `OUT_OF_STOCK`; inventory never goes negative.
+- Two different users competing for one remaining unit result in one success and one `OUT_OF_STOCK`; inventory never goes negative because the existing atomic reservation remains the source of truth.
 - A technical reservation failure is not converted to `OUT_OF_STOCK` and does not publish an out-of-stock event.
 - MongoDB write conflicts return `CART_CONFLICT_RETRY` rather than a false stock-out.
+- An unknown commit result tells the customer to reload instead of blindly retrying the write.
 - Two requests for the same user cannot create two active carts after the unique partial index exists.
-- A duplicate-key race during cart creation retries once and uses the cart created by the competing request.
+- A duplicate-key race during active-cart creation returns a retryable cart conflict.
 - Historical carts remain allowed.
 - No GraphQL schema or frontend change is required.
 
