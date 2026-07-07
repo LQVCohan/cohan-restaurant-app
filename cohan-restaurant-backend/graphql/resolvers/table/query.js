@@ -79,7 +79,9 @@ async function requirePublicRestaurant(restaurantId) {
 }
 
 function buildTableFilter({ restaurantId, floorId, status, type, search }) {
-  const q = { restaurantId };
+  // Bàn vật lý đang nằm trong một bàn ghép được giữ trong DB để có thể tách lại,
+  // nhưng không hiển thị đồng thời với bàn ghép.
+  const q = { restaurantId, mergedIntoTableId: null };
   if (floorId && mongoose.isValidObjectId(floorId)) q.floorId = floorId;
   if (status) q.status = status;
   if (type) q.type = type;
@@ -135,7 +137,12 @@ export default {
     ) return null;
     await requireTableListAccess(ctx, restaurantId);
     await cleanupExpiredViewLocks(restaurantId);
-    return Table.findOne({ restaurantId, floorId, code }).lean({
+    return Table.findOne({
+      restaurantId,
+      floorId,
+      code,
+      mergedIntoTableId: null,
+    }).lean({
       virtuals: true,
     });
   },
