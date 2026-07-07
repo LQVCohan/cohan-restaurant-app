@@ -10,6 +10,41 @@ const roleName = (user) => String(user?.roleName || user?.role?.slug || user?.ro
 const toObjectId = (id) => (mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null);
 const idString = (value) => String(value?._id || value?.id || value || "");
 const uniqueIds = (ids) => [...new Map(ids.filter(Boolean).map((id) => [String(id), id])).values()];
+const operationalRoles = new Set([
+  "manager",
+  "hr",
+  "accountant",
+  "staff",
+  "server",
+  "supervisor",
+  "host",
+  "cashier",
+  "chef",
+  "cook",
+  "kitchen_helper",
+  "cleaner",
+  "shipper",
+  "storekeeper",
+  "bartender",
+]);
+const userRoleNames = (user) => [
+  roleName(user),
+  String(user?.userType || "").toLowerCase(),
+  ...(Array.isArray(user?.roles) ? user.roles.map((role) => String(role).toLowerCase()) : []),
+].filter(Boolean);
+const hasOperationalRole = (user) => userRoleNames(user).some((role) => operationalRoles.has(role));
+const explicitRestaurantValuesFromUser = (user) => [
+  user?.restaurantId,
+  user?.restaurantForStaff,
+  ...(user?.restaurantIds || []),
+  ...(user?.restaurants || []),
+];
+const explicitRestaurantIdsFromUser = (user) => explicitRestaurantValuesFromUser(user)
+  .map(toObjectId)
+  .filter(Boolean);
+const explicitRestaurantIdStringsFromUser = (user) => explicitRestaurantValuesFromUser(user)
+  .map(idString)
+  .filter(Boolean);
 
 export const getUserId = (user) => idString(user);
 export const isSystemAdmin = (user) => String(user?.userType || "").toUpperCase() === "ADMIN" || roleName(user) === "admin";
@@ -37,6 +72,13 @@ export async function getScopedRestaurantFilter(user) {
       : [];
   });
 
+  // Active BrandMembership is authoritative. Explicit user scope remains only
+  // for operational accounts that have not been migrated yet.
+  if (!memberships.length && hasOperationalRole(user)) {
+    const explicitIds = uniqueIds(explicitRestaurantIdsFromUser(user));
+    if (explicitIds.length) ors.push({ _id: { $in: explicitIds } });
+  }
+
   return ors.length ? { $or: ors } : emptyFilter();
 }
 
@@ -56,18 +98,24 @@ export async function canAccessRestaurant(user, restaurantId) {
     getUserBrandMemberships(user),
     loadRestaurantForScope(restaurantId),
   ]);
-  if (!restaurant?.brandId) return false;
 
-  const matching = memberships.filter(
-    (membership) => String(membership.brandId) === String(restaurant.brandId),
-  );
+  if (memberships.length) {
+    if (!restaurant?.brandId) return false;
+    const matching = memberships.filter(
+      (membership) => String(membership.brandId) === String(restaurant.brandId),
+    );
 
-  if (matching.some((membership) => ["owner", "admin"].includes(membership.role))) return true;
-  return matching.some(
-    (membership) =>
-      ["manager", "staff"].includes(membership.role) &&
-      (membership.restaurantIds || []).some((id) => String(id) === String(restaurant._id)),
-  );
+    if (matching.some((membership) => ["owner", "admin"].includes(membership.role))) return true;
+    return matching.some(
+      (membership) =>
+        ["manager", "staff"].includes(membership.role) &&
+        (membership.restaurantIds || []).some((id) => String(id) === String(restaurant._id)),
+    );
+  }
+
+  if (!hasOperationalRole(user)) return false;
+  const targetId = String(restaurant?._id || restaurantId);
+  return explicitRestaurantIdStringsFromUser(user).some((id) => id === targetId);
 }
 
 export async function canReadBrand(user, brandId) {
