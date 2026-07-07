@@ -1,0 +1,27 @@
+{
+  "id": "new-order-modal-category-fix",
+  "name": "new-order-modal-category-fix",
+  "title": "Fix new order modal category contract",
+  "description": "Fix the manager new-order modal crash caused by treating Menu.categoryMenu as an array of dish categories.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-new-order-modal",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Order/components/NewOrderModal.jsx",
+    "src/components/Dashboard_Manager/Order/components/NewOrderModal.test.jsx"
+  ],
+  "meta": {
+    "skills": [
+      "ponytail",
+      "react-ui-performance"
+    ]
+  }
+}
