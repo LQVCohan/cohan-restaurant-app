@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { message } from "antd";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 import useBrandManagement, { MY_BRANDS_QUERY } from "@/hooks/useBrandManagement";
+import BrandOwnershipTransfer from "./BrandOwnershipTransfer";
 import "./BrandManagement.css";
 
 const UPDATE_BRAND = gql`
@@ -1025,6 +1026,14 @@ export default function BrandManagement() {
                 </div>
               )}
             </div>
+
+            <BrandOwnershipTransfer
+              selectedBrand={selectedBrand}
+              members={members}
+              restaurants={restaurants}
+              assignedManagerByRestaurant={assignedManagerByRestaurant}
+              setSelectedRestaurantId={setSelectedRestaurantId}
+            />
 
             {memberQueryError && (
               <div className="brand-alert brand-alert--danger" role="alert">
