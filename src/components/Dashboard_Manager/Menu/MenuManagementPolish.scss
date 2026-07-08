@@ -14,3 +14,24 @@
 .manager-layout--menu .mm-page-container::before {
   display: none !important;
 }
+
+/* Compact cards keep their rounded inner regions, but action menus may escape the card. */
+.manager-layout--menu .mm-grid--grid .menu-item-card,
+.manager-layout--menu .mm-grid--grid.mm-grid--sparse .menu-item-card {
+  overflow: visible !important;
+}
+
+.manager-layout--menu .menu-item-card.is-status-menu-open {
+  z-index: 30;
+}
+
+.manager-layout--menu .menu-item-card .card-image-wrapper,
+.manager-layout--menu .menu-item-card .variants-list {
+  overflow: hidden !important;
+}
+
+.manager-layout--menu .menu-item-card__quick-note--low_stock {
+  border-color: #f4c46d;
+  background: #fff5dc;
+  color: #8a5414;
+}
