@@ -2,6 +2,8 @@ import Order from "../../../models/order.model.js";
 import Reservation from "../../../models/reservation.model.js";
 import Table from "../../../models/table.model.js";
 import TableCustomer from "../../../models/tableCustomer.model.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import * as authorizationService from "../../../src/services/auth/authorization.service.js";
 
 const ACTIVE_ORDER_STATUSES = { $nin: ["completed", "cancelled", "failed"] };
 const ACTIVE_RESERVATION_STATUSES = [
@@ -10,10 +12,39 @@ const ACTIVE_RESERVATION_STATUSES = [
   "seated",
   "pending_change",
 ];
+const MERGE_DETAILS_PERMISSIONS = [
+  PERMISSIONS.TABLE_READ,
+  PERMISSIONS.ORDER_READ,
+  PERMISSIONS.RESERVATION_READ,
+];
 
 const getId = (value) => String(value?._id || value?.id || value || "");
 const normalizeCode = (value) => String(value || "").trim();
 const normalizeCodeKey = (value) => normalizeCode(value).toLowerCase();
+
+async function canReadMergeDetails(ctx, restaurantId) {
+  if (!ctx?.user || !restaurantId) return false;
+  try {
+    if (
+      typeof authorizationService.requireAnyRestaurantPermission === "function"
+    ) {
+      await authorizationService.requireAnyRestaurantPermission(
+        ctx,
+        restaurantId,
+        MERGE_DETAILS_PERMISSIONS,
+      );
+    } else {
+      await authorizationService.requireRestaurantPermission(
+        ctx,
+        restaurantId,
+        PERMISSIONS.TABLE_READ,
+      );
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const getCustomerForSource = (customers, source) =>
   customers.find((customer) => {
@@ -43,13 +74,15 @@ const getSessionCode = (order) =>
       order?.orderCode,
   );
 
-export async function resolveTableMergeDetails(table) {
+export async function resolveTableMergeDetails(table, ctx) {
   const sourceIds = Array.isArray(table?.mergedFromTableIds)
     ? [...new Set(table.mergedFromTableIds.map(getId).filter(Boolean))]
     : [];
   if (sourceIds.length < 2) return null;
 
   const restaurantId = table.restaurantId;
+  if (!(await canReadMergeDetails(ctx, restaurantId))) return null;
+
   const compositeId = getId(table);
   const sourceTables = await Table.find({
     restaurantId,
