@@ -8,96 +8,92 @@ $rd-border: rgba(92, 64, 51, 0.12);
 .restaurant-detail-page {
   .hero-cover.fallback-cover {
     height: clamp(220px, 22vw, 300px);
-    background-size: cover;
-    background-position: center;
+    background:
+      linear-gradient(180deg, rgba(24, 18, 14, 0.06), rgba(24, 18, 14, 0.42)),
+      url("https://images.unsplash.com/photo-1517248135467-4c7edcad34c5?auto=format&fit=crop&w=1800&q=82") center 58% / cover no-repeat,
+      linear-gradient(135deg, #c9a889, #755d4d);
+    background-color: #755d4d;
 
     &::before {
       content: "";
       position: absolute;
       inset: 0;
       background:
-        radial-gradient(circle at 78% 16%, rgba(255, 255, 255, 0.24), transparent 23rem),
-        linear-gradient(90deg, rgba(30, 25, 21, 0.5), rgba(30, 25, 21, 0.18) 50%, rgba(30, 25, 21, 0.5));
+        radial-gradient(circle at 78% 16%, rgba(255, 255, 255, 0.18), transparent 22rem),
+        linear-gradient(90deg, rgba(30, 25, 21, 0.18), transparent 54%, rgba(30, 25, 21, 0.18));
       pointer-events: none;
     }
 
     .overlay {
-      background:
-        linear-gradient(180deg, rgba(30, 25, 21, 0.18) 0%, rgba(30, 25, 21, 0.54) 100%),
-        radial-gradient(circle at 14% 18%, rgba(255, 138, 61, 0.28), transparent 28rem);
+      background: linear-gradient(180deg, rgba(30, 25, 21, 0.04) 0%, rgba(30, 25, 21, 0.34) 100%);
     }
   }
 
   .fallback-cover-copy {
     position: absolute;
-    left: max(24px, calc((100vw - 1280px) / 2 + 24px));
-    bottom: clamp(98px, 8vw, 122px);
+    right: max(24px, calc((100vw - 1280px) / 2 + 24px));
+    bottom: 18px;
+    left: auto;
     z-index: 2;
-    display: grid;
-    gap: 7px;
-    max-width: min(34vw, 420px);
+    display: block;
+    max-width: none;
+    padding: 0;
     color: #fff;
-    text-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+    text-shadow: none;
     pointer-events: none;
 
     span {
-      width: fit-content;
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
       padding: 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.34);
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.18);
-      border: 1px solid rgba(255, 255, 255, 0.28);
-      font-size: 0.7rem;
-      font-weight: 900;
-      letter-spacing: 0.08em;
+      background: rgba(30, 25, 21, 0.56);
+      font-size: 0;
+      font-weight: 800;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      -webkit-backdrop-filter: blur(12px);
-      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
     }
 
-    strong {
-      display: block;
-      max-width: 100%;
-      font-size: clamp(1.35rem, 2.2vw, 2.05rem);
-      letter-spacing: -0.045em;
-      line-height: 1.04;
-      text-wrap: balance;
+    span::after {
+      content: "Ảnh minh họa";
+      font-size: 0.68rem;
+    }
+
+    strong,
+    small {
+      display: none;
     }
   }
 
   .res-info-card.res-info-card--compact {
-    margin-top: -58px;
+    margin-top: -68px;
   }
 
   .avatar-wrapper {
     .avatar-fallback {
-      width: 128px;
-      height: 128px;
-      border-radius: 24px;
+      width: 112px;
+      height: 112px;
+      border-radius: 22px;
       display: grid;
       place-items: center;
       align-content: center;
       gap: 4px;
-      border: 6px solid rgba(255, 255, 255, 0.92);
+      border: 5px solid rgba(255, 255, 255, 0.94);
       background:
-        radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.86), transparent 26%),
+        linear-gradient(rgba(255, 102, 0, 0.08), rgba(154, 52, 18, 0.12)),
+        url("https://ui-avatars.com/api/?name=COHAN&background=ff6600&color=ffffff&size=256&bold=true&format=png") center / cover no-repeat,
         linear-gradient(135deg, #ff8a3d, #ff6600 46%, #9a3412 100%);
       color: #fff;
-      box-shadow: 0 18px 40px rgba(82, 47, 26, 0.2);
+      box-shadow: 0 16px 34px rgba(82, 47, 26, 0.18);
       text-align: center;
 
-      span {
-        font-size: 2rem;
-        font-weight: 950;
-        letter-spacing: -0.05em;
-        line-height: 1;
-      }
-
+      span,
       small {
-        font-size: 0.68rem;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        opacity: 0.84;
+        display: none;
       }
     }
   }
@@ -160,7 +156,7 @@ $rd-border: rgba(92, 64, 51, 0.12);
 @media (prefers-reduced-motion: no-preference) {
   .restaurant-detail-page {
     .fallback-cover-copy {
-      animation: detailFallbackCopyIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+      animation: detailFallbackCopyIn 0.45s ease-out 0.1s both;
     }
 
     .avatar-fallback {
@@ -177,17 +173,14 @@ $rd-border: rgba(92, 64, 51, 0.12);
   .restaurant-detail-page {
     .hero-cover.fallback-cover {
       height: 200px;
+      background-position: center;
     }
 
     .fallback-cover-copy {
-      bottom: 80px;
-      left: 20px;
-      right: 20px;
-      max-width: calc(100% - 40px);
-
-      strong {
-        font-size: clamp(1.18rem, 6vw, 1.72rem);
-      }
+      right: 16px;
+      bottom: 14px;
+      left: auto;
+      max-width: none;
     }
 
     .res-info-card.res-info-card--compact {
@@ -195,13 +188,9 @@ $rd-border: rgba(92, 64, 51, 0.12);
     }
 
     .avatar-wrapper .avatar-fallback {
-      width: 100px;
-      height: 100px;
-      border-radius: 22px;
-
-      span {
-        font-size: 1.65rem;
-      }
+      width: 92px;
+      height: 92px;
+      border-radius: 20px;
     }
   }
 }
@@ -209,13 +198,9 @@ $rd-border: rgba(92, 64, 51, 0.12);
 @media (max-width: 576px) {
   .restaurant-detail-page {
     .avatar-wrapper .avatar-fallback {
-      width: 92px;
-      height: 92px;
-      border-radius: 20px;
-
-      span {
-        font-size: 1.5rem;
-      }
+      width: 84px;
+      height: 84px;
+      border-radius: 18px;
     }
   }
 }
@@ -223,7 +208,7 @@ $rd-border: rgba(92, 64, 51, 0.12);
 @keyframes detailFallbackCopyIn {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
