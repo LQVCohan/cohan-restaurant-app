@@ -28,7 +28,7 @@
     "src/components/Dashboard_Manager/Staff/components/modals/AddEmployeeModal/AddEmployeeModal.jsx",
     "src/components/Dashboard_Manager/Staff/components/modals/AddEmployeeModal/AddEmployeeModal.test.jsx"
   ],
-  "notes": "The normalized add flow sends request-only staffBusinessContext from the active manager restaurant and its Brand. The account payload no longer supplies restaurantForStaff as the source of Brand scope; backend fallback remains only for older callers. Focused CI checks are pending.",
+  "notes": "The normalized add flow sends request-only staffBusinessContext from the active manager restaurant and its Brand. The account payload no longer supplies restaurantForStaff as the source of Brand scope; backend fallback remains only for older callers. node --check passed for the changed resolver and backend test, and TypeScript transpile syntax checks passed for the JSX wrapper and test. GitHub Actions could not run lint, Vitest, schema validation, or build because backend dependency installation failed before those steps; package and lock files are unchanged.",
   "meta": {
     "skills": ["ponytail"]
   }
