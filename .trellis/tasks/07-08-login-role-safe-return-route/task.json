@@ -3,7 +3,7 @@
   "name": "login-role-safe-return-route",
   "title": "Prevent explicit logout from recording the previous protected route",
   "description": "Navigate away from the protected portal before clearing authentication so a later account does not inherit the previous account's route.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "auth-routing",
   "package": null,
@@ -11,12 +11,12 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": null,
+  "completedAt": "2026-07-08",
   "branch": "codex/fix-login-role-safe-return-route-v2",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": null,
+  "commit": "ee1ed3bc10a894078c9e66e4e8522ae0b77d6214",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1298",
   "subtasks": [],
   "children": [],
   "parent": null,
@@ -24,7 +24,7 @@
     "src/context/AuthProvider.jsx",
     "src/context/__tests__/AuthProvider.logout-route-order.test.jsx"
   ],
-  "notes": "The backend returns the new role correctly and Login may still restore legitimate protected destinations. The shared fix is to leave the old protected route before publishing the anonymous logout state.",
+  "notes": "The backend returns the new role correctly and Login keeps legitimate protected-link return behavior. CI passed conflict checks, frontend unit tests including the new regression, changed component tests, frontend build, and backend lint/test/build. Playwright smoke was still running when the task was completed.",
   "meta": {
     "skills": ["ponytail", "react-ui-performance"]
   }
