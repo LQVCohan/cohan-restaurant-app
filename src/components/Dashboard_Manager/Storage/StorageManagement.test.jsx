@@ -1,17 +1,41 @@
 import React from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import StorageManagement from "./StorageManagement";
 import { AuthContext } from "../../../context/AuthContext";
 
+const apolloMocks = vi.hoisted(() => ({
+  warehouses: [{ id: "wh-1", name: "Kho chính", code: "MAIN", isActive: true }],
+  createWarehouse: vi.fn(),
+}));
+
 vi.mock("@apollo/client", async () => {
   const actual = await vi.importActual("@apollo/client");
+  const operationName = (document) => document?.definitions?.find(
+    (definition) => definition.kind === "OperationDefinition",
+  )?.name?.value;
+
   return {
     ...actual,
-    useMutation: vi.fn(() => [vi.fn(async () => ({ data: {} })), {}]),
+    useMutation: vi.fn((mutation) => {
+      if (operationName(mutation) === "CreateWarehouse") {
+        return [apolloMocks.createWarehouse, { loading: false }];
+      }
+      return [vi.fn(async () => ({ data: {} })), {}];
+    }),
     useQuery: vi.fn((query) => {
-      const opName = query?.definitions?.find((def) => def.kind === "OperationDefinition")?.name?.value;
-      const refetch = vi.fn(async () => ({ data: {} }));
+      const opName = operationName(query);
+      const refetch = vi.fn(async () => ({
+        data: opName === "Warehouses"
+          ? { warehouses: apolloMocks.warehouses }
+          : {},
+      }));
       if (opName === "ScopedRestaurants") {
         return {
           data: {
@@ -38,7 +62,7 @@ vi.mock("@apollo/client", async () => {
       }
       if (opName === "Warehouses") {
         return {
-          data: { warehouses: [{ id: "wh-1", name: "Kho chính" }] },
+          data: { warehouses: apolloMocks.warehouses },
           loading: false,
           error: null,
           refetch,
@@ -115,14 +139,16 @@ vi.mock("./components/ingredients/QuickStockModal", () => ({
   default: () => null,
 }));
 
-const renderPage = () =>
+const writableUser = {
+  id: "manager-1",
+  permissions: ["inventory.write", "stock.write"],
+};
+
+const renderPage = (user = writableUser) =>
   render(
     <AuthContext.Provider
       value={{
-        user: {
-          id: "manager-1",
-          permissions: ["inventory.write", "stock.write"],
-        },
+        user,
         restaurants: [{ id: "res-1", name: "Cơm nhà Cohan" }],
         restaurantsLoading: false,
       }}
@@ -132,6 +158,21 @@ const renderPage = () =>
   );
 
 const lowStockKpi = () => screen.getByText("Sắp hết").closest(".sm-kpi-card");
+
+beforeEach(() => {
+  apolloMocks.warehouses = [
+    { id: "wh-1", name: "Kho chính", code: "MAIN", isActive: true },
+  ];
+  apolloMocks.createWarehouse.mockReset();
+  apolloMocks.createWarehouse.mockImplementation(async ({ variables }) => {
+    const createdWarehouse = {
+      id: "wh-created",
+      ...variables.input,
+    };
+    apolloMocks.warehouses = [createdWarehouse];
+    return { data: { createWarehouse: createdWarehouse } };
+  });
+});
 
 describe("StorageManagement operations UI", () => {
   it("renders storage title, tabs, KPI cards, and empty ingredient state", async () => {
@@ -164,5 +205,37 @@ describe("StorageManagement operations UI", () => {
     fireEvent.click(await screen.findByRole("tab", { name: /Kiểm kê/i }));
 
     expect(screen.getByText("Kiểm kê đang hiển thị")).toBeInTheDocument();
+  });
+
+  it("offers Kho chính setup when a legacy restaurant has no warehouse", async () => {
+    apolloMocks.warehouses = [];
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Nhà hàng chưa có kho" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /Nguyên liệu/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo Kho chính" }));
+
+    await waitFor(() => {
+      expect(apolloMocks.createWarehouse).toHaveBeenCalledWith({
+        variables: {
+          input: {
+            restaurantId: "res-1",
+            name: "Kho chính",
+            code: "MAIN",
+            isActive: true,
+          },
+        },
+      });
+    });
+  });
+
+  it("does not show warehouse creation action to a read-only user", async () => {
+    apolloMocks.warehouses = [];
+    renderPage({ id: "viewer-1", permissions: ["inventory.read"] });
+
+    expect(await screen.findByRole("heading", { name: "Nhà hàng chưa có kho" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tạo Kho chính" })).not.toBeInTheDocument();
+    expect(screen.getByText(/cần quyền quản lý kho/i)).toBeInTheDocument();
   });
 });
