@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { requireRestaurantAccess } from "../../guards.js";
 import { Table, TableCustomer } from "../../../models/index.js";
+import { emitRestaurantEvent } from "../order/helper/emitOrderEvent.js";
 
 function badInput(message) {
   return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
@@ -253,13 +254,25 @@ async function upsertTableCustomer(_, { input }, _ctx) {
   ].some((value) => String(value || "").trim());
 
   if (hasCustomerIdentity) {
-    await Table.updateOne(
+    const tableUpdate = await Table.updateOne(
       {
         ...buildTableLookup(rid, tableId, tableCode),
         status: "available",
       },
       { $set: { status: "reserved" } },
     );
+
+    if (tableUpdate?.modifiedCount > 0) {
+      await emitRestaurantEvent(_ctx, String(restaurantId), "TABLE_CUSTOMER_UPDATED", {
+        restaurantId: String(restaurantId),
+        table: {
+          id: getId(tid || doc?.tableId),
+          code: code || doc?.tableCode || null,
+          status: "reserved",
+        },
+        tableCustomer: serializeCustomer(doc),
+      });
+    }
   }
 
   return serializeCustomer(doc);
