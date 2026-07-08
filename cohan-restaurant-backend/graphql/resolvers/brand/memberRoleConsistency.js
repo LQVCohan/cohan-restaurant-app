@@ -4,6 +4,7 @@ import {
   canManageBrand,
   getUserId,
 } from "../../../src/services/auth/restaurantScope.service.js";
+import { notifyUser } from "../../../src/services/notification/notificationWorkflow.service.js";
 
 const bad = (message) => new GraphQLError(message, {
   extensions: { code: "BAD_USER_INPUT" },
@@ -110,6 +111,32 @@ async function clearRevocationAudit(membershipId) {
   return BrandMembership.findById(membershipId).lean();
 }
 
+async function notifyBrandInvitation(membership) {
+  if (membership?.status !== "invited") return;
+  const membershipId = membership._id || membership.id;
+  if (!membershipId || !membership.userId) return;
+
+  const roleLabel = membership.role === "admin"
+    ? "Quản trị chuỗi"
+    : "Quản lý chi nhánh";
+  const invitedAt = new Date(membership.invitedAt || Date.now()).getTime();
+
+  await notifyUser({
+    userId: membership.userId,
+    restaurantId: membership.restaurantIds?.[0] || null,
+    type: "brand_invitation",
+    payload: {
+      title: "Lời mời tham gia chuỗi",
+      message: `Bạn được mời tham gia chuỗi với vai trò ${roleLabel}. Vui lòng kiểm tra email để xác nhận.`,
+      brandId: String(membership.brandId || ""),
+      membershipId: String(membershipId),
+      membershipRole: membership.role,
+    },
+    sourceType: "brand_invitation",
+    sourceId: `${membershipId}:${invitedAt}`,
+  });
+}
+
 export async function assertBrandMembershipAccountCompatibility({
   userId,
   membershipRole,
@@ -200,8 +227,25 @@ export function guardBrandMemberRoleMutations(mutations = {}) {
 
       const membership = await mutations.addBrandMember(root, { input }, ctx, info);
       const membershipId = membership?._id || membership?.id;
-      return membershipId ? clearRevocationAudit(membershipId) : membership;
+      const result = membershipId
+        ? await clearRevocationAudit(membershipId)
+        : membership;
+      await notifyBrandInvitation(result);
+      return result;
     },
+
+    ...(mutations.resendBrandInvitation ? {
+      resendBrandInvitation: async (root, { id }, ctx, info) => {
+        const membership = await mutations.resendBrandInvitation(
+          root,
+          { id },
+          ctx,
+          info,
+        );
+        await notifyBrandInvitation(membership);
+        return membership;
+      },
+    } : {}),
 
     updateBrandMember: async (root, { input }, ctx, info) => {
       const membership = await loadMembership(input.id);
