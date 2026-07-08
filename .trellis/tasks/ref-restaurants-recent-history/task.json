@@ -5,7 +5,7 @@
   "dev_type": "fullstack",
   "scope": "customer-restaurant-history",
   "base_branch": "main",
-  "branch": "codex/fix-search-regression-after-merge",
+  "branch": "codex/fix-search-regression-after-merge-to7a9w",
   "relatedFiles": [
     "cohan-restaurant-backend/models/user.model.js",
     "cohan-restaurant-backend/models/customer.model.js",
