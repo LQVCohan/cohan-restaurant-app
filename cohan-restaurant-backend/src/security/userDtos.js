@@ -81,8 +81,6 @@ export function sanitizeAuthUser(user) {
     verifiedAt: source.verifiedAt,
     emailVerifiedAt: source.emailVerifiedAt,
     phoneVerifiedAt: source.phoneVerifiedAt,
-    forcePasswordChange:
-      typeof source.forcePasswordChange === "boolean" ? source.forcePasswordChange : undefined,
 
     address: source.address,
     provider: source.provider,
