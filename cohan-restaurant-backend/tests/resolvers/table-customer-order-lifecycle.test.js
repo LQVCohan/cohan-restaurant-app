@@ -23,7 +23,7 @@ const tableCustomerRow = {
   customerName: "Nguyễn An",
   customerPhone: "0901000001",
   customerEmail: "an@example.com",
-  customerUserId: null,
+  customerUserId: "expired-guest-1",
 };
 
 describe("withTableCustomerOrderLifecycle", () => {
@@ -73,6 +73,7 @@ describe("withTableCustomerOrderLifecycle", () => {
       { user: { id: "staff-1" } },
       undefined,
     );
+    expect(createOrderForTable.mock.calls[0][1].input.userId).toBeUndefined();
     expect(modelMocks.TableCustomer.updateOne).toHaveBeenCalledWith(
       {
         _id: "table-customer-1",
