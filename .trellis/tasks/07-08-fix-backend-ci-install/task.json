@@ -1,12 +1,12 @@
 {
   "id": "07-08-fix-backend-ci-install",
   "name": "fix-backend-ci-install",
-  "title": "Restore CI dependency installation after staff PR merge",
-  "description": "Align the backend dependency manifest with its existing lockfile so frontend and backend CI jobs can reach their test steps.",
+  "title": "Repair post-merge CI and reported tests",
+  "description": "Restore backend npm ci, align public search with normalized BrandMembership scope, and verify Apollo cache cleanup through AuthProvider behavior.",
   "status": "in_review",
-  "dev_type": "ci",
-  "scope": "backend-dependency-manifest",
-  "package": "cohan-restaurant-backend",
+  "dev_type": "fullstack",
+  "scope": "ci-auth-search-regressions",
+  "package": null,
   "priority": "P1",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
@@ -22,10 +22,12 @@
   "parent": null,
   "relatedFiles": [
     "cohan-restaurant-backend/package.json",
-    "cohan-restaurant-backend/package-lock.json",
-    ".github/workflows/ci.yml"
+    "cohan-restaurant-backend/graphql/resolvers/search/query.js",
+    "cohan-restaurant-backend/tests/resolvers/search-public-safety.test.js",
+    "src/context/__tests__/AuthProvider.test.jsx",
+    "src/context/__tests__/AuthProvider.logout-cache.test.jsx"
   ],
-  "notes": "Both CI jobs previously stopped at backend npm ci because package.json declared mongoose-lean-virtuals ^0.8.0 while package-lock.json records ^2.0.0. PR #1274 aligns the stale manifest entry. CI now passes both backend install steps and lint. A temporary targeted run proved staff-create-business-context.test.js and AddEmployeeModal.test.jsx both pass, then the diagnostic workflow was removed. The full backend suite still reports a separate failure outside those two focused tests; frontend unit execution remains outside this task's one-line dependency fix.",
+  "notes": "Backend manifest now matches the committed lockfile, so both CI install steps pass. The normalized search resolver/test changes from PR #1273 are included here. Targeted GitHub Actions passed search-public-safety.test.js and AuthProvider.test.jsx. The source-inspection logout test and all temporary diagnostic workflows were removed from the final diff.",
   "meta": {
     "skills": ["ponytail"]
   }
