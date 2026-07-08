@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -73,7 +73,9 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
   const location = useLocation();
   const token = searchParams.get("token");
   const invitationToken = searchParams.get("inviteToken");
+  const invitedEmail = String(searchParams.get("email") || "").trim().toLowerCase();
   const isBrandInvitation = Boolean(invitationToken);
+  const autoAcceptInvitation = isBrandInvitation && searchParams.get("auto") === "1";
   const requiresInvitationPassword = isBrandInvitation && searchParams.get("new") === "1";
   const channel = useMemo(
     () => forcedChannel || String(searchParams.get("channel") || pathChannel(location.pathname)).toUpperCase(),
@@ -94,6 +96,7 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
   const [verifying, setVerifying] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const autoAcceptedRef = useRef(false);
   const isSms = channel === "SMS";
 
   useEffect(() => {
@@ -131,8 +134,12 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
         password: requiresInvitationPassword ? password : null,
       },
     });
-    setRedirectPath("/login");
+    const loginPath = invitedEmail
+      ? `/login?email=${encodeURIComponent(invitedEmail)}&invited=1`
+      : "/login";
+    setRedirectPath(loginPath);
     window.history.replaceState(null, "", "/verify-email/confirm");
+    if (autoAcceptInvitation) navigate(loginPath, { replace: true });
   };
 
   const verifyAccount = async () => {
@@ -181,6 +188,14 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
       setVerifying(false);
     }
   };
+
+  useEffect(() => {
+    if (!autoAcceptInvitation || autoAcceptedRef.current) return;
+    autoAcceptedRef.current = true;
+    handleConfirm();
+    // handleConfirm intentionally runs once for the one-use invitation token.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAcceptInvitation]);
 
   return (
     <main className="account-verification-page" aria-labelledby="account-verification-title">
@@ -241,7 +256,7 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
               <button type="button" className="account-verification-button is-primary" onClick={handleConfirm} disabled={verifying}>
                 {verifying ? "Đang xác nhận..." : isBrandInvitation ? "Xác nhận lời mời" : "Xác nhận & đăng nhập"}
               </button>
-              <button type="button" className="account-verification-button is-muted" onClick={() => navigate("/login", { replace: true })}>
+              <button type="button" className="account-verification-button is-muted" onClick={() => navigate(invitedEmail ? `/login?email=${encodeURIComponent(invitedEmail)}` : "/login", { replace: true })}>
                 Để sau
               </button>
             </div>
@@ -253,11 +268,11 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
             <div className="account-verification-spinner" aria-hidden="true" />
             <div className="account-verification-icon" aria-hidden="true">{isBrandInvitation ? "🏢" : isSms ? "📱" : "📧"}</div>
             <h1 className="account-verification-title" id="account-verification-title">
-              {isBrandInvitation ? "Đang xác nhận lời mời" : "Đang xác minh tài khoản"}
+              {isBrandInvitation ? "Đang kích hoạt lời mời" : "Đang xác minh tài khoản"}
             </h1>
             <p className="account-verification-text">
               {isBrandInvitation
-                ? "Cohan đang kích hoạt quyền thành viên trong chuỗi nhà hàng."
+                ? "Cohan đang kích hoạt tài khoản và chuyển bạn đến trang đăng nhập."
                 : "Cohan đang kiểm tra mã xác minh, kích hoạt tài khoản và tạo phiên đăng nhập cho bạn."}
             </p>
           </>
@@ -271,7 +286,7 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
             </h1>
             <p className="account-verification-text">
               {isBrandInvitation
-                ? "Quyền thành viên đã được kích hoạt. Hãy đăng nhập để vào đúng khu vực quản lý được phân công."
+                ? "Quyền thành viên đã được kích hoạt. Hãy đăng nhập bằng thông tin được cung cấp trong email."
                 : "Tài khoản đã được kích hoạt và đăng nhập tự động trên thiết bị này."}
             </p>
             <div className="account-verification-actions">
