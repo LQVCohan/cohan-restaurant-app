@@ -177,10 +177,11 @@ describe("TableActionsLiteModal", () => {
     });
 
     const typeSelect = screen.getByText("Loại bàn").parentElement.querySelector("select");
+    expect(typeSelect).toBeTruthy();
     fireEvent.change(typeSelect, { target: { value: "vip" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(updateTable).toHaveBeenCalledWith({
         id: "table-a1",
         code: "A1",
@@ -195,9 +196,9 @@ describe("TableActionsLiteModal", () => {
         reservationHoldMinutes: 15,
         minSpend: 500000,
         cancelPolicy: "Hủy trước 2 giờ để được hoàn cọc.",
-      }),
-    );
-    expect(onUpdated).toHaveBeenCalled();
-    expect(mocks.clearDraft).toHaveBeenCalled();
+      });
+      expect(onUpdated).toHaveBeenCalled();
+      expect(mocks.clearDraft).toHaveBeenCalled();
+    });
   });
 });
