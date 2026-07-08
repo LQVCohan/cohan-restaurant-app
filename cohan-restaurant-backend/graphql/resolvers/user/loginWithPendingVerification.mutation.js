@@ -180,7 +180,10 @@ export async function loginWithPendingVerification(
         ? [
             {
               $expr: {
-                $eq: [buildNormalizedFieldExpr("$username"), normalizedUsername],
+                $eq: [
+                  buildNormalizedFieldExpr("$username"),
+                  normalizedUsername,
+                ],
               },
             },
           ]
@@ -220,6 +223,12 @@ export async function loginWithPendingVerification(
 
   const ok = user.checkPassword ? await user.checkPassword(password) : false;
   if (!ok) await failLogin();
+
+  if (String(user.status || "").toLowerCase() === "pending" && activationSatisfied(user)) {
+    user.status = "active";
+    user.verifiedAt = user.verifiedAt || new Date();
+    await user.save();
+  }
 
   const status = String(user.status || "").toLowerCase();
   if (status !== "active" && !isPendingVerificationAccount(user)) {
