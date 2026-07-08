@@ -5,6 +5,7 @@ import FormGroup from "../../../../common/Form/FormGroup";
 import FormInput from "../../../../common/Form/FormInput";
 import FormLabel from "../../../../common/Form/FormLabel";
 import FormSelect from "../../../../common/Form/FormSelect";
+import { getConvertibleUnits, toBaseQty } from "../../../../../utils/unitConversion";
 import RecipeDishPickerModal from "./RecipeDishPickerModal";
 import "./RecipeModal.scss";
 
@@ -205,13 +206,22 @@ const RecipeModal = ({
 
   const getAllowedUnitsForIngredient = (ingredientId) => {
     const ingredient = findIngredient(ingredientId);
-    if (!ingredient) return ["g", "kg", "ml", "l", "unit"];
-    const units = new Set([ingredient.baseUnit || "g"]);
-    (ingredient.conversions || []).forEach((conversion) => {
-      if (conversion?.from) units.add(conversion.from);
-      if (conversion?.to) units.add(conversion.to);
-    });
-    return Array.from(units);
+    if (!ingredient) return [];
+    return getConvertibleUnits(
+      ingredient.baseUnit || "g",
+      ingredient.conversions || [],
+    );
+  };
+
+  const getComponentBaseQuantity = (component) => {
+    const ingredient = findIngredient(component?.ingredientId);
+    if (!ingredient) return Number.NaN;
+    return toBaseQty(
+      component?.qty,
+      component?.unit || ingredient.baseUnit,
+      ingredient.baseUnit,
+      ingredient.conversions || [],
+    );
   };
 
   const calculateVariantCost = (variant) => {
@@ -224,8 +234,8 @@ const RecipeModal = ({
       }
 
       const ingredient = findIngredient(component.ingredientId);
-      const qty = toNumber(component.qty);
-      if (!ingredient || qty <= 0) return null;
+      const qtyBase = getComponentBaseQuantity(component);
+      if (!ingredient || !Number.isFinite(qtyBase) || qtyBase <= 0) return null;
 
       const unitCost = Number(
         ingredient.costPerBaseUnit ||
@@ -235,7 +245,7 @@ const RecipeModal = ({
           0,
       );
       const wasteMultiplier = 1 + Math.max(0, toNumber(component.wastePct)) / 100;
-      total += qty * unitCost * wasteMultiplier;
+      total += qtyBase * unitCost * wasteMultiplier;
     }
 
     return total;
@@ -243,7 +253,7 @@ const RecipeModal = ({
 
   const activeCost = useMemo(
     () => calculateVariantCost(activeVariant),
-    [activeVariant, ingredients],
+    [activeVariant, ingredientMap],
   );
 
   const recipeSummary = useMemo(() => {
@@ -259,7 +269,8 @@ const RecipeModal = ({
         if (
           component.ingredientId &&
           !isMissingIngredientId(component.ingredientId) &&
-          toNumber(component.qty) > 0
+          Number.isFinite(getComponentBaseQuantity(component)) &&
+          getComponentBaseQuantity(component) > 0
         ) {
           validComponents += 1;
         }
@@ -282,7 +293,8 @@ const RecipeModal = ({
         (component) =>
           component.ingredientId &&
           !isMissingIngredientId(component.ingredientId) &&
-          toNumber(component.qty) > 0,
+          Number.isFinite(getComponentBaseQuantity(component)) &&
+          getComponentBaseQuantity(component) > 0,
       ).length,
       displayPrice: formatMoney(activeVariant?.price || formData.menuItemPrice || 0),
     };
@@ -476,9 +488,14 @@ const RecipeModal = ({
         (variant.components || []).forEach((component, componentIndex) => {
           if (!component.ingredientId) {
             nextErrors[`component_${componentIndex}`] = `Dòng ${componentIndex + 1}: chưa chọn nguyên liệu.`;
+            return;
           }
           if (toNumber(component.qty) <= 0) {
             nextErrors[`qty_${componentIndex}`] = `Dòng ${componentIndex + 1}: số lượng phải lớn hơn 0.`;
+            return;
+          }
+          if (!Number.isFinite(getComponentBaseQuantity(component))) {
+            nextErrors[`unit_${componentIndex}`] = `Dòng ${componentIndex + 1}: đơn vị không thể quy đổi về đơn vị gốc.`;
           }
         });
       }
@@ -498,6 +515,12 @@ const RecipeModal = ({
       }
       if (toNumber(component.qty) <= 0) {
         list.push(`Dòng ${index + 1}: số lượng phải lớn hơn 0.`);
+      } else if (
+        component.ingredientId &&
+        !isMissingIngredientId(component.ingredientId) &&
+        !Number.isFinite(getComponentBaseQuantity(component))
+      ) {
+        list.push(`Dòng ${index + 1}: đơn vị không thể quy đổi về đơn vị gốc.`);
       }
     });
     return list;
@@ -724,7 +747,7 @@ const RecipeModal = ({
                       <FormLabel>Tên biến thể *</FormLabel>
                       <FormInput
                         value={activeVariant.name || ""}
-                        placeholder="VD: Default, Size lớn..."
+                        placeholder="VD: Default, Size lớn…"
                         onChange={(event) => updateVariant(activeVariantIndex, { name: event.target.value })}
                       />
                     </FormGroup>
@@ -732,7 +755,7 @@ const RecipeModal = ({
                       <FormLabel>Định danh (Key) *</FormLabel>
                       <FormInput
                         value={activeVariant.key || ""}
-                        placeholder="VD: default, size_lon..."
+                        placeholder="VD: default, size_lon…"
                         onChange={(event) => updateVariant(activeVariantIndex, { key: event.target.value })}
                       />
                     </FormGroup>
@@ -750,6 +773,7 @@ const RecipeModal = ({
                           <FormLabel>Số lượng bán *</FormLabel>
                           <FormInput
                             value={activeVariant.sellQtyText || ""}
+                            inputMode="decimal"
                             onChange={(event) =>
                               updateVariant(activeVariantIndex, {
                                 sellQtyText: sanitizeDecimalText(event.target.value),
@@ -846,7 +870,7 @@ const RecipeModal = ({
                               </div>
                             ) : (
                               <FormInput
-                                placeholder="🔍 Tìm nguyên liệu..."
+                                placeholder="🔍 Tìm nguyên liệu…"
                                 value={component.ingSearch || ""}
                                 onFocus={() => updateComponent(activeVariantIndex, componentIndex, { ingFocused: true })}
                                 onBlur={() =>
@@ -965,11 +989,11 @@ const RecipeModal = ({
               </Button>
               {hasExistingRecipe && (
                 <Button type="button" variant="danger" onClick={handleDeleteClick} disabled={saving || deleting}>
-                  {deleting ? "Đang xoá..." : "Xóa công thức này"}
+                  {deleting ? "Đang xoá…" : "Xóa công thức này"}
                 </Button>
               )}
               <Button type="submit" variant="primary" disabled={saving || deleting || !formData.menuItemId}>
-                {saving ? "Đang lưu..." : "💾 Lưu công thức"}
+                {saving ? "Đang lưu…" : "💾 Lưu công thức"}
               </Button>
             </div>
           </Modal.Footer>
