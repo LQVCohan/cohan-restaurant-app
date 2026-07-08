@@ -17,9 +17,16 @@ const modelMocks = vi.hoisted(() => ({
 const guardMocks = vi.hoisted(() => ({
   requireRestaurantAccess: vi.fn(),
 }));
+const eventMocks = vi.hoisted(() => ({
+  emitRestaurantEvent: vi.fn(),
+}));
 
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../graphql/guards.js", () => guardMocks);
+vi.mock(
+  "../../graphql/resolvers/order/helper/emitOrderEvent.js",
+  () => eventMocks,
+);
 vi.mock("mongoose", () => {
   function ObjectId(value) {
     this.value = String(value);
@@ -81,6 +88,7 @@ describe("tableCustomerGroup", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     guardMocks.requireRestaurantAccess.mockResolvedValue();
+    eventMocks.emitRestaurantEvent.mockResolvedValue();
     modelMocks.Table.updateOne.mockResolvedValue({ modifiedCount: 1 });
     modelMocks.TableCustomer.findOne.mockReturnValue(leanWrap(null));
   });
@@ -188,6 +196,7 @@ describe("tableCustomerGroup", () => {
     const { TableCustomerMutation } = await import(
       "../../graphql/resolvers/table/tableCustomer.js"
     );
+    const ctx = { user: { id: "valid-manager" } };
 
     await TableCustomerMutation.upsertTableCustomer(
       null,
@@ -199,7 +208,7 @@ describe("tableCustomerGroup", () => {
           customerName: "Nguyễn An mới",
         },
       },
-      { user: { id: "valid-manager" } },
+      ctx,
     );
 
     const [condition, update] =
@@ -220,6 +229,19 @@ describe("tableCustomerGroup", () => {
         status: "available",
       },
       { $set: { status: "reserved" } },
+    );
+    expect(eventMocks.emitRestaurantEvent).toHaveBeenCalledWith(
+      ctx,
+      "valid-r1",
+      "TABLE_CUSTOMER_UPDATED",
+      expect.objectContaining({
+        restaurantId: "valid-r1",
+        table: expect.objectContaining({
+          id: "valid-a1",
+          code: "A1",
+          status: "reserved",
+        }),
+      }),
     );
   });
 });
