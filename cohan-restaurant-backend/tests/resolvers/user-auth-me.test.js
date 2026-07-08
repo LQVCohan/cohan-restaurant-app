@@ -33,6 +33,7 @@ describe('User resolvers integration', () => {
       _id: 'u1',
       email: 'a@a.com',
       role: { slug: 'customer' },
+      restaurantForStaff: 'legacy-restaurant',
       passwordHash: 'hash',
       nationalId: 'secret-id',
       bankAccountNumber: 'secret-bank',
@@ -47,6 +48,7 @@ describe('User resolvers integration', () => {
     const { UserQuery } = await import('../../graphql/resolvers/user/query.js');
     const result = await UserQuery.me(null, {}, { user: { id: '67a1f8f6a2df3b17f0c12345' } });
     expect(result).toMatchObject({ id: 'u1', email: 'a@a.com', roleName: 'customer' });
+    expect(result.restaurantForStaff).toBeUndefined();
     expect(result.passwordHash).toBeUndefined();
     expect(result.nationalId).toBeUndefined();
     expect(result.bankAccountNumber).toBeUndefined();
@@ -118,13 +120,21 @@ describe('User resolvers integration', () => {
 
     modelMocks.User.findOne.mockReturnValue({ populate: async () => loginUser });
     modelMocks.User.findById.mockReturnValue({
-      populate: () => ({ lean: async () => ({ _id: loginUser._id, email: 'm@x.com', role: { slug: 'manager' } }) }),
+      populate: () => ({
+        lean: async () => ({
+          _id: loginUser._id,
+          email: 'm@x.com',
+          role: { slug: 'manager' },
+          restaurantForStaff: 'legacy-restaurant',
+        }),
+      }),
     });
 
     const { UserMutation } = await import('../../graphql/resolvers/user/mutation.js');
     const result = await UserMutation.login(null, { email: 'm@x.com', password: 'secret' }, {});
 
     expect(result.user.roleName).toBe('manager');
+    expect(result.user.restaurantForStaff).toBeUndefined();
     expect(typeof result.token).toBe('string');
   });
 
