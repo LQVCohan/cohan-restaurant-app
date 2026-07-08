@@ -10,11 +10,31 @@ import { logRbacAudit } from "../../../src/services/audit/rbacAudit.service.js";
 import mongoose from "mongoose";
 import { loadRoleForRbacResponse } from "./rbacRoleResponse.js";
 
+const MANAGER_PARENT_ROLE_SLUG = "staff";
+
+function normalizedSlug(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function forbidden(message) {
+  return new GraphQLError(message, { extensions: { code: "FORBIDDEN" } });
+}
+
 function assertNonAdminCanUseParentRole(user, parentRole) {
-  if (!hasRole(user, ["admin"]) && isProtectedSystemRoleSlug(parentRole?.slug)) {
-    throw new GraphQLError("Protected parent role cannot be used by non-admin", {
-      extensions: { code: "FORBIDDEN" },
-    });
+  if (hasRole(user, ["admin"])) return;
+  if (normalizedSlug(parentRole?.slug || parentRole?.name) !== MANAGER_PARENT_ROLE_SLUG) {
+    throw forbidden("Manager can only manage roles that inherit from staff");
+  }
+}
+
+function assertNonAdminCanModifyRole(user, role) {
+  if (hasRole(user, ["admin"])) return;
+  assertNonAdminCanUseParentRole(user, role?.parentRole);
+}
+
+function assertAdminOnly(user) {
+  if (!hasRole(user, ["admin"])) {
+    throw forbidden("Only admin can manage parent roles");
   }
 }
 
@@ -64,11 +84,15 @@ export const RoleMutation = {
     const { id, permissionIds, parentRoleId, ...rest } = input;
     const r = await Role.findById(id);
     if (!r) throw new GraphQLError("Role not found");
-    if (r.isSystem || isProtectedSystemRoleSlug(r.slug)) throw new GraphQLError("System role cannot be modified", { extensions: { code: "FORBIDDEN" } });
+    await r.populate?.("parentRole");
+    if (r.isSystem || isProtectedSystemRoleSlug(r.slug)) throw forbidden("System role cannot be modified");
+    assertNonAdminCanModifyRole(user, r);
     const before = typeof r.toObject === "function" ? r.toObject() : { ...r };
     if (parentRoleId !== undefined) {
-      if (parentRoleId === null) r.parentRole = undefined;
-      else {
+      if (parentRoleId === null) {
+        if (!hasRole(user, ["admin"])) throw forbidden("Manager roles must inherit from staff");
+        r.parentRole = undefined;
+      } else {
         if (!mongoose.isValidObjectId(parentRoleId)) throw new GraphQLError("parentRoleId is invalid", { extensions: { code: "BAD_USER_INPUT" } });
         const parentRole = await ParentRole.findById(parentRoleId);
         if (!parentRole) throw new GraphQLError("ParentRole not found", { extensions: { code: "BAD_USER_INPUT" } });
@@ -96,9 +120,10 @@ export const RoleMutation = {
   deleteRole: async (_, { id }, ctx) => {
     const { user } = ctx;
     await requirePermission({ user }, "role.write");
-    const r = await Role.findById(id).lean();
+    const r = await Role.findById(id).populate("parentRole").lean();
     if (!r) throw new GraphQLError("Role not found");
-    if (r.isSystem || isProtectedSystemRoleSlug(r.slug)) throw new GraphQLError("System role cannot be deleted", { extensions: { code: "FORBIDDEN" } });
+    if (r.isSystem || isProtectedSystemRoleSlug(r.slug)) throw forbidden("System role cannot be deleted");
+    assertNonAdminCanModifyRole(user, r);
     const used = await User.exists({ role: id });
     if (used) throw new GraphQLError("Cannot delete: role is assigned to users", { extensions: { code: "BAD_REQUEST" } });
     await Role.findByIdAndDelete(id);
@@ -109,6 +134,7 @@ export const RoleMutation = {
   createParentRole: async (_, { input }, ctx) => {
     const { user } = ctx;
     await requirePermission({ user }, "role.write");
+    assertAdminOnly(user);
     const { permissionIds = [], ...rest } = input;
     const slug = (rest.slug || "").toLowerCase().trim();
     if (!slug) throw new GraphQLError("Slug is required", { extensions: { code: "BAD_USER_INPUT" } });
@@ -119,7 +145,6 @@ export const RoleMutation = {
       const valid = permissionIds.filter((id) => mongoose.isValidObjectId(id));
       if (valid.length !== permissionIds.length) throw new GraphQLError("Some permissionIds are invalid", { extensions: { code: "BAD_USER_INPUT" } });
       const perms = await Permission.find({ _id: { $in: valid } }, { _id: 1, code: 1 }).lean();
-      if (!hasRole(user, ["admin"])) assertManagerAssignablePermissionCodes(perms.map((p) => p.code));
       permObjectIds = perms.map((p) => p._id);
     }
     const doc = await ParentRole.create({ ...rest, slug, permissions: permObjectIds });
@@ -130,16 +155,15 @@ export const RoleMutation = {
   updateParentRole: async (_, { input }, ctx) => {
     const { user } = ctx;
     await requirePermission({ user }, "role.write");
+    assertAdminOnly(user);
     const { id, permissionIds, ...rest } = input;
     const pr = await ParentRole.findById(id);
     if (!pr) throw new GraphQLError("ParentRole not found");
-    if (!hasRole(user, ["admin"]) && isProtectedSystemRoleSlug(pr.slug)) throw new GraphQLError("System parent role cannot be modified", { extensions: { code: "FORBIDDEN" } });
     const before = typeof pr.toObject === "function" ? pr.toObject() : { ...pr };
     if (Array.isArray(permissionIds)) {
       const valid = permissionIds.filter((pid) => mongoose.isValidObjectId(pid));
       if (valid.length !== permissionIds.length) throw new GraphQLError("Some permissionIds are invalid", { extensions: { code: "BAD_USER_INPUT" } });
       const perms = await Permission.find({ _id: { $in: valid } }, { _id: 1, code: 1 }).lean();
-      if (!hasRole(user, ["admin"])) assertManagerAssignablePermissionCodes(perms.map((p) => p.code));
       pr.permissions = perms.map((p) => p._id);
     }
     if (rest.name !== undefined) pr.name = rest.name;
@@ -153,9 +177,10 @@ export const RoleMutation = {
   deleteParentRole: async (_, { id }, ctx) => {
     const { user } = ctx;
     await requirePermission({ user }, "role.write");
+    assertAdminOnly(user);
     const pr = await ParentRole.findById(id).lean();
     if (!pr) throw new GraphQLError("ParentRole not found");
-    if (isProtectedSystemRoleSlug(pr.slug)) throw new GraphQLError("System parent role cannot be deleted", { extensions: { code: "FORBIDDEN" } });
+    if (isProtectedSystemRoleSlug(pr.slug)) throw forbidden("System parent role cannot be deleted");
     const used = await Role.exists({ parentRole: id });
     if (used) throw new GraphQLError("Cannot delete: parentRole is assigned to roles", { extensions: { code: "BAD_REQUEST" } });
     await ParentRole.findByIdAndDelete(id);

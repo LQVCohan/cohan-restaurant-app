@@ -148,25 +148,6 @@ export const useDashboard = () => {
   });
 
   useEffect(() => {
-    if (restaurantsLoading) return;
-
-    setSelectedRestaurantId((currentId) => {
-      if (restaurantOptions.length === 0) return "";
-
-      const normalizedCurrentId = String(currentId || "");
-      const hasCurrentRestaurant = restaurantOptions.some(
-        (restaurant) => restaurant.id === normalizedCurrentId,
-      );
-
-      if (normalizedCurrentId && hasCurrentRestaurant) {
-        return normalizedCurrentId;
-      }
-
-      return restaurantOptions[0].id;
-    });
-  }, [restaurantOptions, restaurantsLoading, setSelectedRestaurantId]);
-
-  useEffect(() => {
     emitDashboardRestaurantChanged(
       hasConfirmedRestaurantScope ? selectedRestaurantId : "",
     );

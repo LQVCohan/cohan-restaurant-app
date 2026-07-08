@@ -32,8 +32,8 @@ const brandData = {
   ],
 };
 
-const wrapperFor = (user) => ({ children }) => (
-  <AuthContext.Provider value={{ user, restaurants: [] }}>
+const wrapperFor = (user, context = {}) => ({ children }) => (
+  <AuthContext.Provider value={{ user, restaurants: [], ...context }}>
     {children}
   </AuthContext.Provider>
 );
@@ -75,6 +75,47 @@ describe("useBrandManagement restaurant scope", () => {
         "restaurant-1",
         "restaurant-2",
       ]);
+    });
+  });
+
+  it("reuses authenticated Brand context without requesting MyBrands", async () => {
+    const { result } = renderHook(
+      () => useBrandManagement(undefined, { loadFullBrands: false }),
+      {
+        wrapper: wrapperFor(
+          { id: "owner-1", roleName: "manager" },
+          {
+            brandMemberships: [
+              {
+                id: "membership-owner",
+                brandId: "brand-1",
+                role: "owner",
+                status: "active",
+                restaurantIds: [],
+                brand: { id: "brand-1", name: "Cohan", slug: "cohan" },
+              },
+            ],
+            restaurants: [
+              { id: "restaurant-1", name: "Chi nhánh 1", brandId: "brand-1" },
+              { id: "restaurant-2", name: "Chi nhánh 2", brandId: "brand-1" },
+            ],
+            restaurantsLoading: false,
+          },
+        ),
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.restaurantsInSelectedBrand.map((item) => item.id)).toEqual([
+        "restaurant-1",
+        "restaurant-2",
+      ]);
+    });
+    expect(useQuery.mock.calls.at(-1)?.[1]?.skip).toBe(true);
+    expect(result.current.selectedBrand).toMatchObject({
+      id: "brand-1",
+      name: "Cohan",
+      membershipRole: "owner",
     });
   });
 });

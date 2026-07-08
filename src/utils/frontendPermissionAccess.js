@@ -64,6 +64,7 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
     "coupon.read",
     "coupon.write",
     "role.read",
+    "role.write",
     "permission.read",
     "review.read",
     "review.write",
