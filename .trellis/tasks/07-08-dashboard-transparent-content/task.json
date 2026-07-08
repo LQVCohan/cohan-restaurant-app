@@ -3,7 +3,7 @@
   "name": "dashboard-transparent-content",
   "title": "Remove dashboard content shell background",
   "description": "Let the manager dashboard use the shared full-page sage canvas instead of rendering a separate warm content shell.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-dashboard",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": null,
+  "completedAt": "2026-07-08",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "b029fbf8f9793c853a848c32b8d7bb7124ced056",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -27,5 +27,5 @@
     "src/layouts/ManagerLayout.jsx",
     "src/layouts/ManagerUnifiedBackground.css"
   ],
-  "notes": "Visual-only CSS cascade fix. No schema, resolver, GraphQL, permission, data, or UI-action changes are required."
+  "notes": "Visual-only CSS cascade fix. Removed the later root-shell background, radius, and padding override so Dashboard.scss remains the owner of the transparent dashboard canvas. Static import/cascade and commit diff review completed. No local build, browser screenshot comparison, automated tests, workflow run, or status check was available."
 }
