@@ -3,21 +3,21 @@
   "name": "fix-pos-table-merge-feedback",
   "title": "Fix false POS table merge errors and missing split refresh",
   "description": "Wire the POS table refresh callback correctly so merge/split update immediately and successful merges do not fall into the failure alert.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "bugfix",
   "scope": "pos-table-merge-feedback",
   "priority": "P0",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": null,
+  "completedAt": "2026-07-08",
   "branch": "main",
   "base_branch": "main",
-  "commit": null,
+  "commit": "c2695816cc9b328777523c1eb84db7581b70f54b",
   "pr_url": null,
   "relatedFiles": [
     "src/components/Dashboard_Manager/POS/components/pos/LeftPanel.jsx",
     "src/components/Dashboard_Manager/POS/components/pos/LeftPanel.tableRefresh.test.jsx"
   ],
-  "notes": "Root cause confirmed from the actual POS caller: PosContext exposes refetchTables, but LeftPanel destructures refreshTables. The undefined callback throws after a successful drag-drop merge and is passed as undefined to TableActionsModal, so both merge and split require manual refresh."
+  "notes": "Fixed the actual callback-name mismatch: PosContext exposes refetchTables while LeftPanel requested refreshTables. LeftPanel now aliases refetchTables to its existing local name, so drag-drop merge refreshes without entering the false failure alert and TableActionsModal receives a valid refresh callback for merge/split. Added component regression coverage for both paths. Targeted Vitest and frontend build were not run because the connected environment has no repository checkout or installed project dependencies. No GitHub CI status was attached to the final commit."
 }
