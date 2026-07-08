@@ -27,42 +27,37 @@ jobs:
           python <<'PY'
           from pathlib import Path
 
-          def read(path):
-              return Path(path).read_text(encoding="utf-8")
+          invitation_path = Path("cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js")
+          text = invitation_path.read_text(encoding="utf-8")
+          start = text.index("  resendBrandInvitation: async")
+          end = text.index("\n\n  acceptBrandInvitation:", start)
+          block = text[start:end]
 
-          def write(path, text):
-              Path(path).write_text(text, encoding="utf-8")
-
-          def replace_once(path, old, new, label):
-              text = read(path)
-              count = text.count(old)
-              if count != 1:
-                  raise RuntimeError(f"{label}: expected one match, found {count}")
-              write(path, text.replace(old, new, 1))
-
-          invitation = "cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js"
-          replace_once(
-              invitation,
-              '''    if (membership.status !== "invited") {
+          old_status = '''    if (membership.status !== "invited") {
                 throw bad("Lời mời này không còn ở trạng thái chờ xác nhận.");
-              }
-              await assertInvitePermission(ctx, membership.brandId, membership.role);'''.replace("              ", ""),
+              }'''.replace("              ", "")
+          if old_status not in block:
+              raise RuntimeError("resend status block not found")
+          block = block.replace(
+              old_status,
               '''    const cancelledInvitation =
                 membership.status === "inactive" &&
                 membership.revokedFromStatus === "invited";
               if (membership.status !== "invited" && !cancelledInvitation) {
                 throw bad("Lời mời này không còn ở trạng thái có thể gửi lại.");
-              }
-              await assertInvitePermission(ctx, membership.brandId, membership.role);'''.replace("              ", ""),
-              "allow cancelled invitation resend",
+              }'''.replace("              ", ""),
+              1,
           )
-          replace_once(
-              invitation,
-              '''    membership.inviteTokenHash = hash;
+
+          old_token = '''    membership.inviteTokenHash = hash;
               membership.inviteTokenExp = new Date(Date.now() + inviteTtlMs());
               membership.invitedAt = new Date();
               membership.invitedBy = oid(getUserId(ctx.user));
-              membership.updatedBy = oid(getUserId(ctx.user));'''.replace("              ", ""),
+              membership.updatedBy = oid(getUserId(ctx.user));'''.replace("              ", "")
+          if old_token not in block:
+              raise RuntimeError("resend token block not found")
+          block = block.replace(
+              old_token,
               '''    membership.status = "invited";
               membership.inviteTokenHash = hash;
               membership.inviteTokenExp = new Date(Date.now() + inviteTtlMs());
@@ -73,34 +68,36 @@ jobs:
               membership.revokedReason = null;
               membership.revokedFromStatus = null;
               membership.updatedBy = oid(getUserId(ctx.user));'''.replace("              ", ""),
-              "reactivate cancelled invitation",
+              1,
+          )
+          invitation_path.write_text(text[:start] + block + text[end:], encoding="utf-8")
+
+          management_path = Path("src/components/Dashboard_Manager/Brand/BrandManagement.jsx")
+          management = management_path.read_text(encoding="utf-8")
+          query_anchor = "      role\n      status\n      user {"
+          if management.count(query_anchor) != 1:
+              raise RuntimeError(f"member query anchor count: {management.count(query_anchor)}")
+          management_path.write_text(
+              management.replace(
+                  query_anchor,
+                  "      role\n      status\n      revokedFromStatus\n      user {",
+                  1,
+              ),
+              encoding="utf-8",
           )
 
-          management = "src/components/Dashboard_Manager/Brand/BrandManagement.jsx"
-          replace_once(
-              management,
-              '''      role
-              status
-              user {'''.replace("              ", ""),
-              '''      role
-              status
-              revokedFromStatus
-              user {'''.replace("              ", ""),
-              "query revoked invitation source",
-          )
-
-          test = "src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx"
-          text = read(test)
-          if 'source.includes("mutation ResendBrandInvitationAccess")' not in text:
+          test_path = Path("src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx")
+          test = test_path.read_text(encoding="utf-8")
+          if 'source.includes("mutation ResendBrandInvitationAccess")' not in test:
               anchor = '    if (source.includes("mutation RemoveBrandMemberAccess")) {'
-              if text.count(anchor) != 1:
-                  raise RuntimeError(f"resend mutation mapping anchor count: {text.count(anchor)}")
+              if test.count(anchor) != 1:
+                  raise RuntimeError(f"resend test mapping anchor count: {test.count(anchor)}")
               mapping = '''    if (source.includes("mutation ResendBrandInvitationAccess")) {
                 return [vi.fn().mockResolvedValue({ data: { resendBrandInvitation: {} } }), { loading: false }];
               }
               '''
-              text = text.replace(anchor, mapping + anchor, 1)
-              write(test, text)
+              test = test.replace(anchor, mapping + anchor, 1)
+              test_path.write_text(test, encoding="utf-8")
           PY
 
       - name: Install dependencies without rewriting lockfiles
