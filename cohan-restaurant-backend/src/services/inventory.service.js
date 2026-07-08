@@ -1,4 +1,4 @@
-// src/services/inventory.service.js (FINAL - integer baseUnit, servingKey, recipe per 1 sell unit)
+// src/services/inventory.service.js (baseUnit quantities, servingKey, recipe per 1 sell unit)
 import mongoose from "mongoose";
 import {
   Recipe,
@@ -30,12 +30,11 @@ async function withOptionalTransaction(externalSession, fn) {
   }
 }
 
-// ceil safe for float noise
-function ceilInt(x) {
-  const n = Number(x);
-  if (!Number.isFinite(n)) return 0;
-  // avoid ceil(2.00000000001) => 3
-  return Math.ceil(n - 1e-9);
+function roundQty(value, digits = 9) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  const factor = 10 ** digits;
+  return Math.round((number + Number.EPSILON) * factor) / factor;
 }
 
 /* ------------ unit conversion graph ------------ */
@@ -109,7 +108,7 @@ function convertToBaseFloat(qty, fromUnit, ing) {
       }'`
     );
   }
-  return n * mult;
+  return roundQty(n * mult);
 }
 
 /* ------------ serving variant resolve (key only) ------------ */
@@ -171,7 +170,7 @@ function multiplierForLine(serving, line) {
   return q / sellQty;
 }
 
-/* ------------ needs builder (INTEGER baseUnit) ------------ */
+/* ------------ needs builder (ingredient baseUnit) ------------ */
 async function buildNeeds({ restaurantId, lines, session }) {
   if (!restaurantId) throw new Error("restaurantId is required");
   if (!Array.isArray(lines) || !lines.length) return new Map();
@@ -265,17 +264,15 @@ async function buildNeeds({ restaurantId, lines, session }) {
 
       if (!(qty > 0)) continue;
 
-      // float in baseUnit
-      const baseFloat = convertToBaseFloat(qty, unit, ing);
-      if (!(baseFloat > 0)) continue;
+      const baseQty = convertToBaseFloat(qty, unit, ing);
+      if (!(baseQty > 0)) continue;
 
-      const needFloat = baseFloat * mult * (1 + wastePct / 100);
-      const needInt = ceilInt(needFloat); // ✅ chốt integer baseUnit
-      if (!(needInt > 0)) continue;
+      const need = roundQty(baseQty * mult * (1 + wastePct / 100));
+      if (!(need > 0)) continue;
 
       const k = String(ingredientId);
       const curr = needs.get(k) || { total: 0, parts: [] };
-      curr.total += needInt;
+      curr.total = roundQty(curr.total + need);
       curr.parts.push({
         menuItemId: line.menuItemId,
         servingKey: s(serving.key),
@@ -284,7 +281,7 @@ async function buildNeeds({ restaurantId, lines, session }) {
         sellUnit: serving.sellUnit,
         quantity: line.quantity ?? null,
         weightGrams: line.weightGrams ?? null,
-        need: needInt,
+        need,
       });
       needs.set(k, curr);
     }
@@ -303,7 +300,7 @@ function consumeFromBatchesFEFO(batches = [], qtyNeed) {
     }))
     .sort((a, b) => a._t - b._t);
 
-  let remain = qtyNeed;
+  let remain = roundQty(qtyNeed);
   const lots = [];
 
   for (const b of sorted) {
@@ -312,14 +309,14 @@ function consumeFromBatchesFEFO(batches = [], qtyNeed) {
     const available = toNum(b.qty, 0);
     if (available <= 0) continue;
 
-    const take = Math.min(available, remain);
+    const take = roundQty(Math.min(available, remain));
     if (take > 0) {
-      b.qty = available - take;
-      remain -= take;
+      b.qty = roundQty(available - take);
+      remain = roundQty(remain - take);
 
       lots.push({
         lot: b.lot || null,
-        qty: take, // ✅ integer
+        qty: take,
         expiry: b.expiry || null,
         costPerBaseUnit: toNum(b.costPerBaseUnit, 0) || 0,
         shortage: false,
@@ -440,7 +437,6 @@ async function findLowStocks({
   return q3.lean({ virtuals: true });
 }
 
-
 export async function checkAvailabilityForLinesTx({
   restaurantId,
   warehouseId,
@@ -471,7 +467,12 @@ export async function checkAvailabilityForLinesTx({
       const maxByIngredient = Math.floor(available / need);
       if (maxByIngredient < maxAvailable) maxAvailable = maxByIngredient;
       if (available < need) {
-        shortages.push({ ingredientId, available, required: need, missing: need - available });
+        shortages.push({
+          ingredientId,
+          available,
+          required: need,
+          missing: roundQty(need - available),
+        });
       }
     }
 
@@ -487,7 +488,7 @@ export async function checkAvailabilityForLinesTx({
 
 /* ---------------- Public APIs ---------------- */
 
-// Reserve: reserved += needInt
+// Reserve: reserved += quantity in ingredient baseUnit
 export async function reserveForOrderTx({
   restaurantId,
   warehouseId,
@@ -511,7 +512,7 @@ export async function reserveForOrderTx({
     });
 
     for (const [ingredientId, info] of needs) {
-      const need = Number(info.total || 0); // integer
+      const need = Number(info.total || 0);
 
       const filter = { restaurantId, warehouseId, ingredientId };
       if (!allowNegative) {
@@ -536,7 +537,7 @@ export async function reserveForOrderTx({
   });
 }
 
-// Cancel reservation: reserved -= needInt (must have reserved>=need)
+// Cancel reservation: reserved -= need (must have reserved >= need)
 export async function cancelReservationForOrderTx({
   restaurantId,
   warehouseId,
@@ -584,7 +585,7 @@ export async function cancelReservationForOrderTx({
   });
 }
 
-// Commit: reserved -= needInt, onHand -= needInt + FEFO + outbound movement (qty negative int)
+// Commit: reserved/onHand decrease in baseUnit + FEFO + outbound movements
 export async function commitReservationForOrderTx({
   restaurantId,
   warehouseId,
@@ -636,7 +637,7 @@ export async function commitReservationForOrderTx({
 
     for (const [ingredientId, info] of needs) {
       const need = Number(info.total || 0);
-      totalConsumed += need;
+      totalConsumed = roundQty(totalConsumed + need);
 
       const item = await StockItem.findOne({
         restaurantId,
@@ -686,7 +687,7 @@ export async function commitReservationForOrderTx({
   });
 }
 
-// Consume directly: onHand -= needInt + FEFO + outbound movement
+// Consume directly: onHand decreases in baseUnit + FEFO + outbound movements
 export async function consumeForOrderTx({
   restaurantId,
   warehouseId,
@@ -733,7 +734,7 @@ export async function consumeForOrderTx({
 
     for (const [ingredientId, info] of needs) {
       const need = Number(info.total || 0);
-      totalConsumed += need;
+      totalConsumed = roundQty(totalConsumed + need);
 
       const item = await StockItem.findOne({
         restaurantId,
