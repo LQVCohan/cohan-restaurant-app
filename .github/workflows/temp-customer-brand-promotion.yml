@@ -1,0 +1,602 @@
+name: Temporary customer Brand promotion update
+
+on:
+  push:
+    branches:
+      - feature/brand-member-invitation-flow
+    paths:
+      - .github/workflows/temp-customer-brand-promotion.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/brand-member-invitation-flow
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Apply focused customer-promotion patch
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import json
+
+          def read(path):
+              return Path(path).read_text(encoding="utf-8")
+
+          def write(path, text):
+              Path(path).write_text(text, encoding="utf-8")
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f"Missing patch anchor: {label}")
+              return text.replace(old, new, 1)
+
+          # Backend compatibility and the atomic CUSTOMER -> MANAGER transition.
+          path = "cohan-restaurant-backend/graphql/resolvers/brand/memberRoleConsistency.js"
+          text = read(path)
+          text = replace_once(
+              text,
+              'import { BrandMembership, User } from "../../../models/index.js";',
+              'import { BrandMembership, Role, User } from "../../../models/index.js";',
+              "member-role imports",
+          )
+          start = text.index("export async function assertBrandMembershipAccountCompatibility({")
+          end = text.index("export function guardBrandMemberRoleMutations", start)
+          replacement = '''export async function assertBrandMembershipAccountCompatibility({
+            userId,
+            membershipRole,
+            session = null,
+            allowCustomerPromotion = false,
+          }) {
+            const account = await loadAccount(userId, session);
+            if (!account) throw bad("Không tìm thấy tài khoản thành viên.");
+
+            const accountRole = accountRoleOf(account);
+            const nextMembershipRole = String(membershipRole || "").trim().toLowerCase();
+            if (!accountRole) {
+              throw bad("Tài khoản chưa có vai trò hệ thống.");
+            }
+
+            const promotesCustomer =
+              allowCustomerPromotion &&
+              account.userType === "CUSTOMER" &&
+              accountRole === "customer" &&
+              ["admin", "manager"].includes(nextMembershipRole);
+
+            if (nextMembershipRole === "manager" && accountRole !== "manager" && !promotesCustomer) {
+              if (accountRole === "admin") {
+                throw bad(
+                  "Admin hệ thống không được gán làm Quản lý chi nhánh; hãy sử dụng tài khoản Manager hoặc Customer.",
+                );
+              }
+              throw bad(
+                "Quản lý chi nhánh phải sử dụng tài khoản Manager hoặc Customer có thể được nâng quyền sau khi xác nhận lời mời.",
+              );
+            }
+
+            if (nextMembershipRole === "admin" && accountRole !== "manager" && !promotesCustomer) {
+              if (accountRole === "admin") {
+                throw bad(
+                  "Admin hệ thống đã có phạm vi toàn hệ thống và không được gán làm Quản trị chuỗi.",
+                );
+              }
+              throw bad(
+                "Quản trị chuỗi phải sử dụng tài khoản Manager hoặc Customer có thể được nâng quyền sau khi xác nhận lời mời.",
+              );
+            }
+
+            if (
+              nextMembershipRole === "staff" &&
+              ["admin", "manager", "customer"].includes(accountRole)
+            ) {
+              throw bad(
+                "Nhân viên chi nhánh phải sử dụng vai trò nhân sự phù hợp; hãy đổi vai trò hệ thống trước khi hạ quyền trong chuỗi.",
+              );
+            }
+
+            return account;
+          }
+
+          export async function promoteCustomerAccountToManager({ userId, session = null }) {
+            const roleQuery = Role.findOne({
+              $or: [{ slug: "manager" }, { name: /^manager$/i }],
+            }).select("_id");
+            if (session) roleQuery.session(session);
+            const managerRole = await roleQuery.lean();
+            if (!managerRole) throw bad("Không tìm thấy vai trò Manager trong hệ thống.");
+
+            const result = await User.updateOne(
+              { _id: userId, userType: "CUSTOMER" },
+              { $set: { userType: "MANAGER", role: managerRole._id } },
+              {
+                ...(session ? { session } : {}),
+                runValidators: true,
+                overwriteDiscriminatorKey: true,
+              },
+            );
+            if ((result.matchedCount ?? result.n ?? 0) !== 1) {
+              throw bad("Tài khoản không còn ở trạng thái Customer để nâng quyền.");
+            }
+
+            return managerRole._id;
+          }
+
+          '''
+          text = text[:start] + replacement + text[end:]
+          text = replace_once(
+              text,
+              '''          membershipRole: input.role,
+                });''',
+              '''          membershipRole: input.role,
+                  allowCustomerPromotion: ["admin", "manager"].includes(input.role),
+                });''',
+              "invitation guard customer option",
+          )
+          write(path, text)
+
+          # Invitation resolver: search Customer accounts, defer promotion until acceptance.
+          path = "cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js"
+          text = read(path)
+          text = replace_once(
+              text,
+              'import { assertBrandMembershipAccountCompatibility } from "./memberRoleConsistency.js";',
+              '''import {
+            assertBrandMembershipAccountCompatibility,
+            promoteCustomerAccountToManager,
+          } from "./memberRoleConsistency.js";''',
+              "invitation consistency imports",
+          )
+          text = replace_once(
+              text,
+              'const isEmail = (value) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(normalizeEmail(value));',
+              '''const isEmail = (value) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(normalizeEmail(value));
+          const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&");''',
+              "email helper",
+          )
+          text = replace_once(
+              text,
+              '''        membershipRole: input.role,
+                  session,
+                });''',
+              '''        membershipRole: input.role,
+                  session,
+                  allowCustomerPromotion: true,
+                });''',
+              "create invitation customer option",
+          )
+          query_start = text.index("const Query = {")
+          query_end = text.index("\n\nconst Mutation = {", query_start)
+          query_block = '''const Query = {
+            brandMemberCandidates: async (root, args, ctx, info) => {
+              const candidates = await baseBrandResolvers.Query.brandMemberCandidates(root, args, ctx, info);
+              const keyword = String(args.search || "").trim();
+              if (keyword.length < 2) return candidates;
+
+              const maxLimit = Math.min(Math.max(Number(args.limit) || 20, 1), 50);
+              const existingMemberships = await BrandMembership.find({
+                brandId: oid(args.brandId),
+              }).select("userId").lean();
+              const existingUserIds = existingMemberships.map((membership) => membership.userId);
+              const existingUserIdSet = new Set(existingUserIds.map(String));
+              const regex = new RegExp(escapeRegex(keyword), "i");
+              const customerCandidates = await User.find({
+                deletedAt: null,
+                status: "active",
+                userType: "CUSTOMER",
+                email: { $exists: true, $type: "string", $ne: "" },
+                _id: { $nin: existingUserIds },
+                $or: [{ fullName: regex }, { username: regex }, { email: regex }],
+              })
+                .select("_id fullName username email userType status")
+                .sort({ fullName: 1, _id: 1 })
+                .limit(maxLimit)
+                .lean();
+
+              const merged = new Map(
+                [...candidates, ...customerCandidates.map((candidate) => ({
+                  id: String(candidate._id),
+                  fullName: candidate.fullName || null,
+                  username: candidate.username || null,
+                  email: candidate.email || null,
+                  userType: candidate.userType || null,
+                  status: candidate.status || null,
+                }))].map((candidate) => [String(candidate.id), candidate]),
+              );
+
+              const email = normalizeEmail(keyword);
+              if (!isEmail(email)) return [...merged.values()].slice(0, maxLimit);
+
+              const exactUser = await User.findOne({
+                email,
+                deletedAt: null,
+                status: { $in: ["active", "pending"] },
+              }).select("_id fullName username email userType status").lean();
+              if (exactUser) {
+                if (existingUserIdSet.has(String(exactUser._id))) {
+                  return [...merged.values()].slice(0, maxLimit);
+                }
+                const exactCandidate = {
+                  id: String(exactUser._id),
+                  fullName: exactUser.fullName || null,
+                  username: exactUser.username || null,
+                  email: exactUser.email || null,
+                  userType: exactUser.userType || null,
+                  status: exactUser.status || null,
+                };
+                return [
+                  exactCandidate,
+                  ...[...merged.values()].filter((candidate) => candidate.id !== exactCandidate.id),
+                ].slice(0, maxLimit);
+              }
+
+              const invitedCandidate = {
+                id: `${INVITE_PREFIX}${email}`,
+                fullName: "Mời tài khoản mới",
+                username: null,
+                email,
+                userType: "MANAGER",
+                status: "pending",
+              };
+              return [invitedCandidate, ...merged.values()].slice(0, maxLimit);
+            },
+          };'''
+          text = text[:query_start] + query_block + text[query_end:]
+          text = replace_once(
+              text,
+              'const user = await User.findById(membership.userId).session(session);',
+              'const user = await User.findById(membership.userId).populate("role").session(session);',
+              "accept invitation populated user",
+          )
+          text = replace_once(
+              text,
+              '''        if (!["active", "pending"].includes(user.status)) {
+                  throw forbidden("Tài khoản đang bị khóa hoặc tạm ngưng.");
+                }
+
+                if (membership.role === "manager") {''',
+              '''        if (!["active", "pending"].includes(user.status)) {
+                  throw forbidden("Tài khoản đang bị khóa hoặc tạm ngưng.");
+                }
+
+                const currentAccountRole = roleName(user);
+                const promotesCustomer =
+                  user.userType === "CUSTOMER" && currentAccountRole === "customer";
+                const isManagerAccount =
+                  user.userType === "MANAGER" && currentAccountRole === "manager";
+                if (!promotesCustomer && !isManagerAccount) {
+                  throw bad(
+                    "Lời mời chỉ có thể được xác nhận bởi tài khoản Customer hoặc Manager hợp lệ.",
+                  );
+                }
+
+                if (membership.role === "manager") {''',
+              "accept invitation account validation",
+          )
+          text = replace_once(
+              text,
+              '''        if (user.status === "pending") user.status = "active";
+                await user.save({ session });
+
+                membership.status = "active";''',
+              '''        if (user.status === "pending") user.status = "active";
+                await user.save({ session });
+
+                if (promotesCustomer) {
+                  await promoteCustomerAccountToManager({ userId: user._id, session });
+                }
+
+                membership.status = "active";''',
+              "atomic customer promotion",
+          )
+          write(path, text)
+
+          # UI: show Customer candidates for Brand roles, keep them out of the staff picker.
+          path = "src/components/Dashboard_Manager/Brand/BrandManagement.jsx"
+          text = read(path)
+          old_label = '''const getCandidateLabel = (candidate) => {
+            const name =
+              candidate?.fullName || candidate?.username || candidate?.email || "Tài khoản";
+            const identity = candidate?.email || candidate?.username || candidate?.id;
+            return `${name} — ${identity} · ID: ${candidate?.id}`;
+          };'''
+          new_label = '''const getCandidateLabel = (candidate) => {
+            const name =
+              candidate?.fullName || candidate?.username || candidate?.email || "Tài khoản";
+            const identity = candidate?.email || candidate?.username || candidate?.id;
+            const source = String(candidate?.id || "").startsWith("invite:")
+              ? "Tài khoản mới"
+              : candidate?.userType === "CUSTOMER"
+                ? "Khách hàng hiện có"
+                : "Tài khoản quản lý";
+            return `${name} — ${identity} · ${source} · ID: ${candidate?.id}`;
+          };'''
+          text = replace_once(text, old_label, new_label, "candidate label")
+          text = replace_once(
+              text,
+              '''  const candidates = candidateSearchReady
+              ? candidateData?.brandMemberCandidates || []
+              : [];
+            const selectedCandidate = candidates.find(''',
+              '''  const rawCandidates = candidateSearchReady
+              ? candidateData?.brandMemberCandidates || []
+              : [];
+            const candidates = rawCandidates.filter((candidate) =>
+              member.role === "staff"
+                ? candidate.userType !== "CUSTOMER"
+                : ["CUSTOMER", "MANAGER"].includes(candidate.userType),
+            );
+            const selectedCandidate = candidates.find(''',
+              "role-aware candidate filter",
+          )
+          text = replace_once(
+              text,
+              '      message.success("Đã cập nhật thành viên trong chuỗi");',
+              '''      message.success(
+                member.role === "staff"
+                  ? "Đã cập nhật thành viên trong chuỗi"
+                  : "Đã gửi lời mời tham gia chuỗi",
+              );''',
+              "invitation success wording",
+          )
+          text = replace_once(
+              text,
+              '''                        role: event.target.value,
+                            restaurantIds: [],''',
+              '''                        role: event.target.value,
+                            userId: "",
+                            restaurantIds: [],''',
+              "clear candidate on role change",
+          )
+          text = replace_once(
+              text,
+              '''                  {addingMember ? "Đang thêm..." : "Thêm thành viên"}''',
+              '''                  {addingMember
+                    ? member.role === "staff" ? "Đang thêm..." : "Đang gửi..."
+                    : member.role === "staff" ? "Thêm thành viên" : "Gửi lời mời"}''',
+              "invite button wording",
+          )
+          note_anchor = '''                                : "Không tìm thấy tài khoản chưa thuộc chuỗi."}
+                        </small>
+                      </label>
+                    </div>'''
+          note_replacement = '''                                : "Không tìm thấy tài khoản chưa thuộc chuỗi."}
+                        </small>
+                      </label>
+                      {selectedCandidate?.userType === "CUSTOMER" && member.role !== "staff" && (
+                        <div className="brand-scope-note">
+                          <strong>Tài khoản khách hàng hiện có</strong>
+                          <span>
+                            Quyền chỉ chuyển sang Manager sau khi người này xác nhận lời mời qua email.
+                          </span>
+                        </div>
+                      )}
+                    </div>'''
+          text = replace_once(text, note_anchor, note_replacement, "customer promotion note")
+          write(path, text)
+
+          # Focused backend tests.
+          path = "cohan-restaurant-backend/tests/resolvers/brand-member-invitation-guards.test.js"
+          text = read(path)
+          text = replace_once(
+              text,
+              '''  User: {
+                findById: vi.fn(),
+              },''',
+              '''  User: {
+                findById: vi.fn(),
+                updateOne: vi.fn(),
+              },
+              Role: {
+                findOne: vi.fn(),
+              },''',
+              "backend test model mocks",
+          )
+          insert_before = '''  it("lets the invitation resolver create a new account from a synthetic email candidate", async () => {'''
+          tests = '''  it("lets an existing Customer enter the invitation flow without immediate promotion", async () => {
+              const accountQuery = {
+                lean: vi.fn().mockResolvedValue({
+                  _id: "customer-1",
+                  userType: "CUSTOMER",
+                  role: { slug: "customer" },
+                }),
+              };
+              accountQuery.populate = vi.fn().mockReturnValue(accountQuery);
+              modelMocks.User.findById.mockReturnValue(accountQuery);
+              const addBrandMember = vi.fn().mockResolvedValue({ status: "invited" });
+              const { guardBrandMemberRoleMutations } = await import(
+                "../../graphql/resolvers/brand/memberRoleConsistency.js"
+              );
+              const guarded = guardBrandMemberRoleMutations({ addBrandMember });
+              const input = {
+                brandId: "brand-1",
+                userId: "customer-1",
+                role: "manager",
+                restaurantIds: ["restaurant-1"],
+              };
+
+              await expect(
+                guarded.addBrandMember(null, { input }, { user: { id: "owner-1" } }, {}),
+              ).resolves.toEqual({ status: "invited" });
+
+              expect(modelMocks.User.updateOne).not.toHaveBeenCalled();
+              expect(addBrandMember).toHaveBeenCalledTimes(1);
+            });
+
+            it("promotes a Customer with the discriminator override only after acceptance", async () => {
+              const roleQuery = {
+                lean: vi.fn().mockResolvedValue({ _id: "manager-role" }),
+              };
+              roleQuery.select = vi.fn().mockReturnValue(roleQuery);
+              modelMocks.Role.findOne.mockReturnValue(roleQuery);
+              modelMocks.User.updateOne.mockResolvedValue({ matchedCount: 1 });
+              const { promoteCustomerAccountToManager } = await import(
+                "../../graphql/resolvers/brand/memberRoleConsistency.js"
+              );
+
+              await expect(
+                promoteCustomerAccountToManager({ userId: "customer-1" }),
+              ).resolves.toBe("manager-role");
+
+              expect(modelMocks.User.updateOne).toHaveBeenCalledWith(
+                { _id: "customer-1", userType: "CUSTOMER" },
+                { $set: { userType: "MANAGER", role: "manager-role" } },
+                expect.objectContaining({
+                  runValidators: true,
+                  overwriteDiscriminatorKey: true,
+                }),
+              );
+            });
+
+          '''
+          text = replace_once(text, insert_before, tests + insert_before, "backend promotion tests")
+          write(path, text)
+
+          # Focused frontend test updates.
+          path = "src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx"
+          text = read(path)
+          text = replace_once(text, '    userType: "STAFF",', '    userType: "MANAGER",', "manager fixture")
+          text = replace_once(
+              text,
+              '''  },
+            ];
+
+            const setSelectedBrandIdMock''',
+              '''  },
+              {
+                id: "u-customer",
+                fullName: "Phạm Minh Khôi",
+                username: "minh.khoi",
+                email: "khoi@example.com",
+                userType: "CUSTOMER",
+                status: "active",
+              },
+            ];
+
+            const setSelectedBrandIdMock''',
+              "customer fixture",
+          )
+          text = text.replace('name: "Thêm thành viên"', 'name: "Gửi lời mời"')
+          insert_before = '''  it("clears a stale selected account when the candidate search changes", async () => {'''
+          ui_test = '''  it("shows that an existing Customer is promoted only after accepting the email invitation", async () => {
+              render(<BrandManagement />);
+
+              fireEvent.change(
+                screen.getByLabelText("Tìm người cần thêm theo tên, email hoặc mã tài khoản"),
+                { target: { value: "Phạm Minh Khôi" } },
+              );
+              const accountSelect = screen.getByLabelText("Chọn tài khoản cần thêm");
+              await waitFor(() => expect(accountSelect).not.toBeDisabled());
+              fireEvent.change(accountSelect, { target: { value: "u-customer" } });
+
+              expect(screen.getByText("Tài khoản khách hàng hiện có")).toBeInTheDocument();
+              expect(
+                screen.getByText(/Quyền chỉ chuyển sang Manager sau khi người này xác nhận/),
+              ).toBeInTheDocument();
+
+              fireEvent.change(screen.getByLabelText("Chi nhánh phụ trách"), {
+                target: { value: "r2" },
+              });
+              fireEvent.click(screen.getByRole("button", { name: "Gửi lời mời" }));
+
+              await waitFor(() => expect(addMemberMock).toHaveBeenCalledTimes(1));
+              expect(addMemberMock.mock.calls[0][0].variables.input).toEqual({
+                brandId: "b1",
+                userId: "u-customer",
+                role: "manager",
+                restaurantIds: ["r2"],
+              });
+              expect(message.success).toHaveBeenCalledWith("Đã gửi lời mời tham gia chuỗi");
+            });
+
+          '''
+          text = replace_once(text, insert_before, ui_test + insert_before, "customer promotion UI test")
+          write(path, text)
+
+          # Trellis task contract.
+          path = ".trellis/tasks/brand-member-invitation-flow/prd.md"
+          text = read(path)
+          text = replace_once(
+              text,
+              "- Existing compatible manager-capable accounts can be invited.",
+              "- Existing Manager accounts and public Customer accounts can be invited.",
+              "prd existing accounts",
+          )
+          text = replace_once(
+              text,
+              "- Accepting an invitation activates the membership and, for a new account, verifies email and sets the chosen password.",
+              "- Accepting an invitation activates the membership; an existing Customer is atomically promoted to global Manager at that point, while a new account is verified and receives its chosen password.",
+              "prd acceptance scope",
+          )
+          text = replace_once(
+              text,
+              "5. New account supplies a password; existing account only confirms.\n6. Backend verifies token, activates membership, and activates/verifies a new account.",
+              "5. New account supplies a password; an existing Customer or Manager confirms the invitation.\n6. Backend verifies the token, promotes an existing Customer to global Manager only after confirmation, then activates the membership and activates/verifies a new account.",
+              "prd flow",
+          )
+          text = replace_once(
+              text,
+              "- Reject Customer or operational staff accounts for Brand admin/manager invitations.",
+              "- Allow Customer accounts for Brand admin/manager invitations but do not promote them before acceptance; reject operational Staff, HR, Accountant, and System Admin accounts.",
+              "prd validation",
+          )
+          text = replace_once(
+              text,
+              "- Customer/staff incompatibility and manager-scope conflicts remain blocked.",
+              "- Existing Customer promotion occurs only on acceptance; operational-role incompatibility and manager-scope conflicts remain blocked.",
+              "prd tests",
+          )
+          write(path, text)
+
+          path = ".trellis/tasks/brand-member-invitation-flow/task.json"
+          task = json.loads(read(path))
+          for related in [
+              "src/components/Dashboard_Manager/Brand/BrandManagement.jsx",
+              "src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx",
+          ]:
+              if related not in task["relatedFiles"]:
+                  task["relatedFiles"].append(related)
+          task["notes"] = (
+              "Employee/staff account creation remains explicitly out of scope. Existing Customer accounts may now receive Brand admin/manager invitations, but role and userType are changed atomically only after the recipient accepts the email. Customer-specific data is preserved in MongoDB. Focused backend/frontend tests, GraphQL checks and frontend build are run by the temporary validation workflow. Repository CI may still be blocked by the pre-existing backend package.json/package-lock dependency mismatch."
+          )
+          write(path, json.dumps(task, ensure_ascii=False, indent=2) + "\n")
+          PY
+
+      - name: Install dependencies without rewriting lockfiles
+        run: |
+          npm install --no-package-lock
+          npm --prefix cohan-restaurant-backend install --no-package-lock
+
+      - name: Validate focused flow
+        run: |
+          node --check cohan-restaurant-backend/graphql/resolvers/brand/memberRoleConsistency.js
+          node --check cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js
+          npm --prefix cohan-restaurant-backend test -- tests/resolvers/brand-member-invitation-guards.test.js
+          npm run check:graphql
+          npx vitest run src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx
+          npm run build
+
+      - name: Commit validated changes and remove temporary workflow
+        shell: bash
+        run: |
+          rm .github/workflows/temp-customer-brand-promotion.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .trellis/tasks/brand-member-invitation-flow \
+            cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js \
+            cohan-restaurant-backend/graphql/resolvers/brand/memberRoleConsistency.js \
+            cohan-restaurant-backend/tests/resolvers/brand-member-invitation-guards.test.js \
+            src/components/Dashboard_Manager/Brand/BrandManagement.jsx \
+            src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx \
+            .github/workflows/temp-customer-brand-promotion.yml
+          git commit -m "fix: promote invited customers after acceptance"
+          git push origin HEAD:feature/brand-member-invitation-flow
