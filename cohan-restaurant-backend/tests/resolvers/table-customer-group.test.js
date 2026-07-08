@@ -184,7 +184,9 @@ describe("tableCustomerGroup", () => {
     );
   });
 
-  it("updates a legacy code-only row and reserves only an available table", async () => {
+  it("updates a legacy code-only row, saves both times, and reserves only an available table", async () => {
+    const timeFrom = "2026-08-07T11:30:00.000Z";
+    const timeTo = "2026-08-07T13:30:00.000Z";
     modelMocks.TableCustomer.findOneAndUpdate.mockReturnValue(
       leanWrap({
         _id: "valid-customer-1",
@@ -206,6 +208,8 @@ describe("tableCustomerGroup", () => {
           tableId: "valid-a1",
           tableCode: "A1",
           customerName: "Nguyễn An mới",
+          timeFrom,
+          timeTo,
         },
       },
       ctx,
@@ -220,8 +224,12 @@ describe("tableCustomerGroup", () => {
       expect.objectContaining({
         tableCode: "A1",
         customerName: "Nguyễn An mới",
+        timeFrom: expect.any(Date),
+        timeTo: expect.any(Date),
       }),
     );
+    expect(update.$set.timeFrom.toISOString()).toBe(timeFrom);
+    expect(update.$set.timeTo.toISOString()).toBe(timeTo);
     expect(modelMocks.Table.updateOne).toHaveBeenCalledWith(
       {
         restaurantId: expect.anything(),
