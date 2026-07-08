@@ -1,5 +1,6 @@
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { useCallback, useMemo } from "react";
+import { useNotification } from "./useNotification";
 
 /* ========= Fragments ========= */
 const F_TABLE_MIN = gql`
@@ -134,6 +135,7 @@ const M_SPLIT = gql`
 `;
 
 export default function useTableManagement({ restaurantId }) {
+  const { showNotification } = useNotification();
   const { data, loading, error, refetch } = useQuery(Q_TABLES, {
     variables: { restaurantId },
     skip: !restaurantId,
@@ -284,10 +286,19 @@ export default function useTableManagement({ restaurantId }) {
           },
         })
       )?.data?.mergeTables;
-      await refetch();
+
+      showNotification(
+        result?.mergedTableCode
+          ? `Đã ghép bàn thành ${result.mergedTableCode}.`
+          : "Đã ghép bàn thành công.",
+        "success",
+      );
+      void refetch().catch((refreshError) => {
+        console.warn("Không thể tải lại danh sách bàn sau khi ghép:", refreshError);
+      });
       return result;
     },
-    [mergeMut, refetch, restaurantId],
+    [mergeMut, refetch, restaurantId, showNotification],
   );
   const splitTables = useCallback(
     async ({ joinGroupId, mode, tableIds }) => {
@@ -296,10 +307,14 @@ export default function useTableManagement({ restaurantId }) {
           variables: { input: { restaurantId, joinGroupId, mode, tableIds } },
         })
       )?.data?.splitTables;
-      await refetch();
+
+      showNotification("Đã tách bàn thành công.", "success");
+      void refetch().catch((refreshError) => {
+        console.warn("Không thể tải lại danh sách bàn sau khi tách:", refreshError);
+      });
       return result;
     },
-    [splitMut, refetch, restaurantId],
+    [splitMut, refetch, restaurantId, showNotification],
   );
 
   const fetchTableByCode = useCallback(
