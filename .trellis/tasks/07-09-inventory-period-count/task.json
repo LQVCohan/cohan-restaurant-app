@@ -13,19 +13,21 @@
   "completedAt": null,
   "branch": "fix/inventory-period-count",
   "base_branch": "main",
-  "commit": null,
-  "pr_url": null,
+  "commit": "e2247ccec14ed66ae95ff139cbf91afd6581e32c",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1311",
   "relatedFiles": [
     "cohan-restaurant-backend/models/inventory-count.model.js",
     "cohan-restaurant-backend/models/index.js",
-    "cohan-restaurant-backend/graphql/schema/inventory.graphql",
+    "cohan-restaurant-backend/graphql/schema/inventoryCount.graphql",
+    "cohan-restaurant-backend/graphql/schema/index.js",
     "cohan-restaurant-backend/graphql/resolvers/inventory/inventoryCount.js",
     "cohan-restaurant-backend/graphql/resolvers/inventory/index.js",
     "cohan-restaurant-backend/tests/models/inventory-count.model.test.js",
-    "src/components/Dashboard_Manager/Storage/graphql/inventory.gql.js",
+    "src/components/Dashboard_Manager/Storage/graphql/inventoryAudit.gql.js",
     "src/components/Dashboard_Manager/Storage/StorageManagement.jsx",
     "src/components/Dashboard_Manager/Storage/components/inventory/InventoryAuditTab.jsx",
-    "src/components/Dashboard_Manager/Storage/components/inventory/InventoryAuditTab.scss"
+    "src/components/Dashboard_Manager/Storage/components/inventory/InventoryAuditTab.scss",
+    "src/components/Dashboard_Manager/Storage/components/inventory/InventoryAuditTab.test.jsx"
   ],
   "notes": "Trace: inventory schema -> stock/movement resolver -> InventoryAuditTab query props -> UI actions for count closing and document reconciliation.",
   "meta": {
