@@ -3,6 +3,20 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import InventoryAuditTab from "./InventoryAuditTab";
 
+vi.mock("lucide-react", () => {
+  const Icon = (props) => <span aria-hidden="true" {...props} />;
+  return {
+    AlertCircle: Icon,
+    ArrowDownUp: Icon,
+    Boxes: Icon,
+    CheckCircle2: Icon,
+    ClipboardCheck: Icon,
+    FileCheck2: Icon,
+    History: Icon,
+    Search: Icon,
+  };
+});
+
 vi.mock("@apollo/client", () => ({
   gql: (strings) => (Array.isArray(strings) ? strings.join("") : String(strings || "")),
   useQuery: vi.fn(() => ({
