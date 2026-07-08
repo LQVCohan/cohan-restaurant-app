@@ -5,7 +5,7 @@
   "dev_type": "fullstack",
   "scope": "customer-restaurant-history",
   "base_branch": "main",
-  "branch": "codex/chuan-hoa-refrestaurants-cho-khach-hang",
+  "branch": "codex/fix-refrestaurants-post-merge-regressions",
   "relatedFiles": [
     "cohan-restaurant-backend/models/user.model.js",
     "cohan-restaurant-backend/models/customer.model.js",
@@ -35,6 +35,25 @@
     "cohan-restaurant-backend/tests/resolvers/search-public-safety.test.js",
     "cohan-restaurant-backend/tests/resolvers/communication-public-support.test.js",
     "cohan-restaurant-backend/tests/resolvers/communication-access.test.js",
-    "cohan-restaurant-backend/tests/resolvers/admin-sensitive-user-access.test.js"
-  ]
+    "cohan-restaurant-backend/tests/resolvers/admin-sensitive-user-access.test.js",
+    "cohan-restaurant-backend/tests/resolvers/order-user-utils.test.js"
+  ],
+  "postMergeCleanup": {
+    "rootCause": "PR #1257 conflict hotfix restored search but left owner/manager managed count tied to CUSTOMER refRestaurants and left search tests with hybrid mocks; ensureUserForOrder queried Customer before validating selected ObjectId.",
+    "validationRun": [
+      "npm run check:conflicts",
+      "npm run check:graphql",
+      "node -e \"import('./cohan-restaurant-backend/graphql/resolvers/search/query.js').then(() => console.log('search resolver import ok'))\"",
+      "npm --prefix cohan-restaurant-backend test -- tests/resolvers/search-public-safety.test.js tests/resolvers/order-user-utils.test.js",
+      "npm --prefix cohan-restaurant-backend test -- tests/resolvers/recent-restaurants.query.test.js tests/resolvers/customer-identity.service.test.js tests/resolvers/communication-public-support.test.js tests/services/notification-reviewers.behavior.test.js",
+      "npm --prefix cohan-restaurant-backend test",
+      "npm run build",
+      "timeout 20s npm --prefix cohan-restaurant-backend run start"
+    ],
+    "validationNotPassing": [
+      "npm run test:unit: existing frontend unit suites fail in AuthProvider/useDashboard/table empty-state tests and Vitest does not exit cleanly in this environment.",
+      "npm run test:component: existing component suites fail in ScheduleManagement/TableManagement/SettingsManagement/OrderSettingsModal/Sidebar and Vitest does not exit cleanly in this environment.",
+      "npm run test:ci: reaches the same existing test:unit failures after passing conflicts/lint/build/graphql."
+    ]
+  }
 }
