@@ -2,6 +2,7 @@ export const FOOD_ORDER_ACTION = Object.freeze({
   ADD: "add",
   LOGIN: "login",
   VALIDATE_MODIFIERS: "validate_modifiers",
+  RETRY_MODIFIERS: "retry_modifiers",
   RETRY_STOCK: "retry_stock",
   BLOCKED: "blocked",
 });
@@ -13,6 +14,7 @@ export function getFoodOrderingActionState({
   restaurantCanOrder = false,
   restaurantBlockedReason = "Nhà hàng hiện chưa nhận đơn",
   modifierLoading = false,
+  modifierLoadError = false,
   modifierErrorMessage = "",
   hasSelectedVariant = false,
   liveLoading = false,
@@ -57,6 +59,13 @@ export function getFoodOrderingActionState({
       disabled: true,
       intent: FOOD_ORDER_ACTION.BLOCKED,
       label: "Đang tải tùy chọn…",
+    };
+  }
+  if (modifierLoadError) {
+    return {
+      disabled: false,
+      intent: FOOD_ORDER_ACTION.RETRY_MODIFIERS,
+      label: "Tải lại tùy chọn",
     };
   }
   if (!hasSelectedVariant) {
