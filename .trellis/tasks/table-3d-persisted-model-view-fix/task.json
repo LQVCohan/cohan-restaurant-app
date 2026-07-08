@@ -21,11 +21,9 @@
   "children": [],
   "parent": null,
   "relatedFiles": [
-    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
-    "src/components/Dashboard_Manager/Table/TableManagement.test.jsx",
-    "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.jsx",
-    "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.test.jsx"
+    "src/components/Dashboard_Manager/Table/Table3DSimulatorModal.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DSimulatorModal.test.jsx"
   ],
-  "notes": "The GraphQL Table visualConfig field, updateTable mutation, backend sanitizer, permissions, audit logging, and Apollo fragment already support the persisted model payload; this task fixes only the missing frontend caller behavior.",
+  "notes": "The existing onSaveArPosition callback already routes through updateTable, refetch, permission checks, sanitizer, and audit logging. The wrapper only selects that existing path for a concrete table and rehydrates its persisted model before mounting V2.",
   "meta": {}
 }
