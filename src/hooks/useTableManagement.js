@@ -293,12 +293,9 @@ export default function useTableManagement({ restaurantId }) {
           : "Đã ghép bàn thành công.",
         "success",
       );
-      void refetch().catch((refreshError) => {
-        console.warn("Không thể tải lại danh sách bàn sau khi ghép:", refreshError);
-      });
       return result;
     },
-    [mergeMut, refetch, restaurantId, showNotification],
+    [mergeMut, restaurantId, showNotification],
   );
   const splitTables = useCallback(
     async ({ joinGroupId, mode, tableIds }) => {
@@ -309,12 +306,9 @@ export default function useTableManagement({ restaurantId }) {
       )?.data?.splitTables;
 
       showNotification("Đã tách bàn thành công.", "success");
-      void refetch().catch((refreshError) => {
-        console.warn("Không thể tải lại danh sách bàn sau khi tách:", refreshError);
-      });
       return result;
     },
-    [splitMut, refetch, restaurantId, showNotification],
+    [splitMut, restaurantId, showNotification],
   );
 
   const fetchTableByCode = useCallback(
