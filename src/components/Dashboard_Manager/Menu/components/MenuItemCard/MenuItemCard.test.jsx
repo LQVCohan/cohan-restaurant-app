@@ -26,6 +26,7 @@ const renderCard = (props = {}) => {
     categoryName: "Món nước",
     status: "available",
     inventoryStatus: "IN_STOCK",
+    maxAvailable: 12,
     prepStation: "kitchen",
     basePrice: 65000,
     servingVariants: [{ key: "regular", name: "Tô thường", price: 65000 }],
@@ -42,24 +43,43 @@ const renderCard = (props = {}) => {
 };
 
 describe("MenuItemCard", () => {
-  it("renders scannable dish details without exposing raw ids", () => {
+  it("renders scannable dish details and remaining servings without exposing raw ids", () => {
     renderCard();
 
     expect(screen.getByRole("heading", { name: "Bún bò Huế" })).toBeInTheDocument();
     expect(screen.getByText("Món nước")).toBeInTheDocument();
     expect(screen.getAllByText(/65.000/).length).toBeGreaterThan(0);
     expect(screen.getByText("Sẵn sàng")).toBeInTheDocument();
+    expect(screen.getByText("Còn 12 suất")).toBeInTheDocument();
     expect(screen.queryByText("cat-raw-456")).not.toBeInTheDocument();
     expect(screen.queryByText("raw-id-123")).not.toBeInTheDocument();
   });
 
+  it("renders zero remaining servings when ingredient stock is exhausted", () => {
+    renderCard({
+      item: {
+        inventoryStatus: "OUT_OF_STOCK",
+        maxAvailable: 0,
+        stockWarnings: ["Không đủ nguyên liệu"],
+      },
+    });
+
+    expect(screen.getByText("Còn 0 suất")).toBeInTheDocument();
+  });
+
   it("calls status handler from the quick status menu", () => {
     const onStatusChange = vi.fn();
-    renderCard({ onStatusChange });
+    const { container } = renderCard({ onStatusChange });
 
     fireEvent.click(screen.getByRole("button", { name: "Mở menu trạng thái món" }));
+    expect(container.querySelector(".menu-item-card")).toHaveClass(
+      "is-status-menu-open",
+    );
     fireEvent.click(screen.getByRole("menuitem", { name: "Tạm dừng" }));
 
-    expect(onStatusChange).toHaveBeenCalledWith(expect.objectContaining({ name: "Bún bò Huế" }), "unavailable");
+    expect(onStatusChange).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Bún bò Huế" }),
+      "unavailable",
+    );
   });
 });
