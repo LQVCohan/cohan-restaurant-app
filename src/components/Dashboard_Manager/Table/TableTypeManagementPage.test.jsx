@@ -71,16 +71,17 @@ describe("TableTypeManagementPage", () => {
   });
 
   it("shows all fixed types and persists a table type change", async () => {
-    renderPage();
+    const { container } = renderPage();
 
     expect(screen.getByRole("heading", { name: "Quản lý loại bàn" })).toBeInTheDocument();
     expect(screen.getByText("Loại hệ thống: 6")).toBeInTheDocument();
-    expect(screen.getByText("Trong nhà")).toBeInTheDocument();
-    expect(screen.getByText("VIP")).toBeInTheDocument();
-    expect(screen.getByText("Booth")).toBeInTheDocument();
-    expect(screen.getByText("Ngoài trời")).toBeInTheDocument();
-    expect(screen.getByText("Bar")).toBeInTheDocument();
-    expect(screen.getByText("Riêng")).toBeInTheDocument();
+    expect(container.querySelectorAll(".ttm-type-card")).toHaveLength(6);
+    expect(screen.getByRole("button", { name: /standard.*Trong nhà.*1 bàn/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /booth.*Booth.*0 bàn/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /vip.*VIP.*1 bàn/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /outdoor.*Ngoài trời.*0 bàn/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /bar.*Bar.*0 bàn/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /private.*Riêng.*0 bàn/i })).toBeInTheDocument();
 
     fireEvent.change(screen.getByRole("combobox", { name: "Loại bàn A1" }), {
       target: { value: "vip" },
