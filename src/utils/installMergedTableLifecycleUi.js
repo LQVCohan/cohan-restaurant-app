@@ -5,6 +5,7 @@ const OBSERVER_KEY = "__cohanMergedTableLifecycleUiObserver";
 const CARD_CLASS = "cohan-merged-table-card";
 const SUMMARY_CLASS = "cohan-merged-table-summary";
 const PAYMENT_CLASS = "cohan-merged-payment-customers";
+const ORDER_SOURCE_CLASS = "cohan-merged-order-source";
 
 const TABLES_QUERY = gql`
   query MergedTableLifecycleUi($restaurantId: ID!) {
@@ -23,6 +24,10 @@ const TABLES_QUERY = gql`
 
 const normalize = (value) => String(value || "").trim();
 const normalizeKey = (value) => normalize(value).toLowerCase();
+const orderCodeKey = (value) => {
+  const code = normalize(value).replace(/^#/, "");
+  return normalizeKey(code.split("-").pop());
+};
 
 const getRestaurantSelect = () =>
   document.querySelector('select[class*="restaurantSelect"]');
@@ -104,6 +109,30 @@ const parseMergeDetails = (table) => {
     reservationCount: Number(details.reservationCount || 0),
     totalOpenAmount: Number(details.totalOpenAmount || 0),
   };
+};
+
+const buildOrderSourceMap = (details) => {
+  const sourceByOrderCode = new Map();
+
+  for (const source of details?.sources || []) {
+    const sourceTableCode = normalize(source?.tableCode);
+    if (!sourceTableCode) continue;
+
+    for (const session of source?.orderSessions || []) {
+      for (const orderCode of session?.orderCodes || []) {
+        const key = orderCodeKey(orderCode);
+        if (!key) continue;
+
+        const existing = sourceByOrderCode.get(key);
+        sourceByOrderCode.set(
+          key,
+          existing && existing !== sourceTableCode ? "" : sourceTableCode,
+        );
+      }
+    }
+  }
+
+  return sourceByOrderCode;
 };
 
 const makeLine = (className, label, value) => {
@@ -273,6 +302,67 @@ const renderPaymentCustomerLabel = (tablesByCode) => {
   info.appendChild(label);
 };
 
+const getPosOrderPanel = () =>
+  document.querySelector("[data-pos-order-panel]");
+
+const getPosTableCode = (panel) =>
+  normalize(panel?.querySelector('[class*="tableName"]')?.textContent).replace(
+    /^Bàn\s+/i,
+    "",
+  );
+
+const clearPosOrderSourceLabels = (panel) => {
+  panel
+    ?.querySelectorAll(`.${ORDER_SOURCE_CLASS}`)
+    .forEach((label) => label.remove());
+};
+
+const renderPosOrderSourceLabels = (tablesByCode) => {
+  const panel = getPosOrderPanel();
+  if (!panel) return;
+
+  const table = tablesByCode.get(normalizeKey(getPosTableCode(panel)));
+  const details = parseMergeDetails(table);
+  const isMerged =
+    details?.sourceCount > 1 ||
+    (Array.isArray(table?.mergedFromTableIds) &&
+      table.mergedFromTableIds.length > 1);
+
+  if (!isMerged) {
+    clearPosOrderSourceLabels(panel);
+    return;
+  }
+
+  const sourceByOrderCode = buildOrderSourceMap(details);
+  const batchHeaders = panel.querySelectorAll('[class*="batchHeader"]');
+
+  batchHeaders.forEach((header) => {
+    const title = header.querySelector('[class*="batchTitle"]');
+    const orderCode = header.querySelector('[class*="batchCode"]')?.textContent;
+    if (!title) return;
+
+    const sourceTableCode = sourceByOrderCode.get(orderCodeKey(orderCode));
+    let label = title.querySelector(`.${ORDER_SOURCE_CLASS}`);
+
+    if (!sourceTableCode) {
+      label?.remove();
+      return;
+    }
+
+    if (label?.dataset.sourceTableCode === sourceTableCode) return;
+
+    if (!label) {
+      label = document.createElement("span");
+      label.className = ORDER_SOURCE_CLASS;
+      title.insertBefore(label, title.firstChild);
+    }
+
+    label.dataset.sourceTableCode = sourceTableCode;
+    label.textContent = `Bàn ${sourceTableCode}`;
+    label.title = `Order trước khi ghép thuộc bàn ${sourceTableCode}`;
+  });
+};
+
 const installState = {
   restaurantId: "",
   tablesByCode: new Map(),
@@ -338,6 +428,7 @@ const enhance = async () => {
     if (table) renderCardSummary(card, table);
   });
   renderPaymentCustomerLabel(installState.tablesByCode);
+  renderPosOrderSourceLabels(installState.tablesByCode);
 };
 
 const scheduleEnhance = () => {
@@ -375,4 +466,5 @@ export const __testables = {
   OBSERVER_KEY,
   SUMMARY_CLASS,
   PAYMENT_CLASS,
+  ORDER_SOURCE_CLASS,
 };
