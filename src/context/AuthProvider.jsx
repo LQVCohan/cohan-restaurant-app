@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "./AuthContext";
 import { gql } from "@apollo/client";
 import { useApolloClient, useQuery } from "@apollo/client/react";
-import { isRestaurantScopedRole } from "@/utils/frontendRoleAccess";
 import {
   readStorageValue,
 } from "@/lib/browserStorage";
@@ -28,7 +27,6 @@ const AUTH_ERROR_CODES = new Set([
   "TOKEN_REVOKED",
   "UNAUTHORIZED",
 ]);
-const isRestaurantScopedAccessRole = (roleName) => isRestaurantScopedRole(roleName);
 
 const GET_RECENT_RESTAURANTS = gql`
   query AuthRecentRestaurants($limit: Int = 12) {
@@ -40,9 +38,22 @@ const GET_RECENT_RESTAURANTS = gql`
     }
   }
 `;
-const GET_ADMIN_RESTAURANTS = gql`
-  query AdminRestaurants($limit: Int = 100, $cursor: ID) {
-    restaurants(limit: $limit, cursor: $cursor) {
+
+const GET_AUTH_BUSINESS_CONTEXT = gql`
+  query AuthBusinessContext($limit: Int = 100, $cursor: ID) {
+    myBrandMemberships {
+      id
+      brandId
+      role
+      restaurantIds
+      status
+      brand {
+        id
+        name
+        slug
+      }
+    }
+    scopedRestaurants(limit: $limit, cursor: $cursor) {
       edges {
         cursor
         node {
@@ -63,33 +74,7 @@ const GET_ADMIN_RESTAURANTS = gql`
   }
 `;
 
-const GET_SCOPED_RESTAURANTS = gql`
-  query ScopedRestaurants($limit: Int = 50, $cursor: ID) {
-    scopedRestaurants(
-      limit: $limit
-      cursor: $cursor
-    ) {
-      edges {
-        cursor
-        node {
-          id
-          name
-          avatar
-          brandId
-          address {
-            city
-          }
-        }
-      }
-      pageInfo {
-        endCursor
-        hasNextPage
-      }
-    }
-  }
-`;
-
-// GraphQL query: thông tin người dùng
+// GraphQL query: thông tin tài khoản; phạm vi doanh nghiệp lấy riêng từ BrandMembership.
 const ME_QUERY = gql`
   query Me {
     me {
@@ -117,7 +102,6 @@ const ME_QUERY = gql`
         id
         name
       }
-      restaurantForStaff
       employmentType
       department
       positionTitle
@@ -167,14 +151,6 @@ function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
   )
     .trim()
     .toLowerCase();
-  const isStaffUser = isRestaurantScopedAccessRole(roleName);
-
-  const restaurantForStaff =
-    rawUser?.restaurantForStaff?.id ||
-    rawUser?.restaurantForStaff ||
-    fallbackUser?.restaurantForStaff?.id ||
-    fallbackUser?.restaurantForStaff ||
-    null;
   const customerRefRestaurants =
     rawUser?.refRestaurants || fallbackUser?.refRestaurants || [];
 
@@ -189,7 +165,6 @@ function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
       fallbackUser?.avatar ??
       null,
     status: rawUser?.status || fallbackUser?.status || "active",
-    restaurantForStaff,
     employmentType:
       rawUser?.employmentType ||
       fallbackUser?.employmentType ||
@@ -205,13 +180,13 @@ function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
     refRestaurants: customerRefRestaurants,
   };
 
+  delete baseUser.restaurantForStaff;
+  delete baseUser.restaurantId;
+  delete baseUser.restaurantIds;
+
   if (roleName !== "customer") {
     delete baseUser.refRestaurants;
     delete baseUser.refRestaurant;
-  }
-
-  if (!isStaffUser) {
-    delete baseUser.restaurantForStaff;
   }
 
   return baseUser;
@@ -227,6 +202,7 @@ export const AuthProvider = ({ children }) => {
   const [sessionState, setSessionState] = useState("anonymous");
   const [sessionWarning, setSessionWarning] = useState("");
   const [restoreNeedsMeValidation, setRestoreNeedsMeValidation] = useState(false);
+  const [brandMemberships, setBrandMemberships] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
   const [refRestaurant, setRefRestaurant] = useState([]);
   const refreshRecoveryAttemptedRef = React.useRef(false);
@@ -290,17 +266,16 @@ export const AuthProvider = ({ children }) => {
 
   const isAuthenticated = !!token;
   const roleName = String(user?.roleName || user?.role?.slug || "").toLowerCase();
-  const { data: adminRestaurantsData, loading: adminRestaurantsLoading } = useQuery(
-    GET_ADMIN_RESTAURANTS,
-    {
-      variables: { limit: 100 },
-      skip: roleName !== "admin",
-    }
-  );
-  const { data: scopedData, loading: scopedRestaurantsLoading } = useQuery(GET_SCOPED_RESTAURANTS, {
-    variables: { limit: 50 },
-    skip:
-      !user?.id || roleName === "customer" || roleName === "admin",
+  const shouldLoadBusinessContext = Boolean(user?.id) && roleName !== "customer";
+  const {
+    data: businessContextData,
+    loading: businessContextLoading,
+    error: businessContextError,
+  } = useQuery(GET_AUTH_BUSINESS_CONTEXT, {
+    variables: { limit: 100 },
+    skip: !shouldLoadBusinessContext,
+    fetchPolicy: "network-only",
+    notifyOnNetworkStatusChange: true,
   });
 
   const { loading: meLoading, refetch: refetchMe } = useQuery(ME_QUERY, {
@@ -320,10 +295,7 @@ export const AuthProvider = ({ children }) => {
       }
       setSessionState("authenticated");
       setSessionWarning("");
-      setUser((prev) => {
-        const merged = normalizeUserModel(me, prev);
-        return merged;
-      });
+      setUser((prev) => normalizeUserModel(me, prev));
     },
     onError: (error) => {
       if (isAuthFailure(error)) {
@@ -332,6 +304,7 @@ export const AuthProvider = ({ children }) => {
           clearPersistedCart();
           setToken(null);
           setUser(null);
+          setBrandMemberships([]);
           setRestaurants([]);
           setRefRestaurant([]);
           setSessionState("anonymous");
@@ -349,6 +322,7 @@ export const AuthProvider = ({ children }) => {
               clearPersistedCart();
               setToken(null);
               setUser(null);
+              setBrandMemberships([]);
               setRestaurants([]);
               setRefRestaurant([]);
               setSessionState("anonymous");
@@ -366,6 +340,7 @@ export const AuthProvider = ({ children }) => {
             clearPersistedCart();
             setToken(null);
             setUser(null);
+            setBrandMemberships([]);
             setRestaurants([]);
             setRefRestaurant([]);
             setSessionState("anonymous");
@@ -403,7 +378,6 @@ export const AuthProvider = ({ children }) => {
     };
   }, [token, sessionState, refetchMe]);
 
-
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
 
@@ -431,44 +405,31 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener("pageshow", handlePageShow);
   }, [refetchMe]);
 
-  const restaurantsLoading =
-    (roleName === "admin" && adminRestaurantsLoading) ||
-    (roleName !== "customer" && scopedRestaurantsLoading);
-
   useEffect(() => {
-    if (isRestaurantScopedAccessRole(roleName)) {
-      const staffRestaurantId = user?.restaurantForStaff?.id || user?.restaurantForStaff || null;
-      if (staffRestaurantId) {
-        setRestaurants([{ id: staffRestaurantId }]);
-        return;
-      }
+    if (roleName === "customer") {
+      setBrandMemberships([]);
+      return;
+    }
+    if (!shouldLoadBusinessContext) return;
+
+    if (businessContextData) {
+      setBrandMemberships(businessContextData.myBrandMemberships || []);
+      setRestaurants(
+        (businessContextData.scopedRestaurants?.edges || []).map((edge) => edge.node),
+      );
+      return;
+    }
+
+    if (!businessContextLoading && businessContextError) {
+      setBrandMemberships([]);
       setRestaurants([]);
-      return;
-    }
-
-    if (roleName === "admin") {
-      if (adminRestaurantsData?.restaurants) {
-        setRestaurants(adminRestaurantsData.restaurants.edges.map((e) => e.node));
-        return;
-      }
-      if (!adminRestaurantsLoading) setRestaurants([]);
-      return;
-    }
-
-    if (roleName !== "customer") {
-      if (scopedData?.scopedRestaurants) {
-        setRestaurants(scopedData.scopedRestaurants.edges.map((e) => e.node));
-        return;
-      }
-      if (!scopedRestaurantsLoading) setRestaurants([]);
     }
   }, [
-    adminRestaurantsData,
-    adminRestaurantsLoading,
-    scopedRestaurantsLoading,
-    scopedData,
+    businessContextData,
+    businessContextError,
+    businessContextLoading,
     roleName,
-    user?.restaurantForStaff,
+    shouldLoadBusinessContext,
   ]);
 
   useEffect(() => {
@@ -493,7 +454,6 @@ export const AuthProvider = ({ children }) => {
       setRestaurants([]);
     }
   }, [recentRestaurantsError, roleName]);
-  // ✅ Lấy token từ storage khi khởi động
 
   useEffect(() => {
     if (refreshTimerRef.current) {
@@ -529,29 +489,29 @@ export const AuthProvider = ({ children }) => {
     };
   }, [token, applyRefreshedSession]);
 
-  // ✅ Hàm login được gọi từ LoginPage
   const login = useCallback(
     (newToken, roleOrUser, avatar = null, options = {}) => {
       const rawUser =
         typeof roleOrUser === "string" ? { roleName: roleOrUser } : roleOrUser;
-      const newUser = normalizeUserModel(rawUser, user, avatar);
+      const newUser = normalizeUserModel(rawUser, null, avatar);
 
       setAuth({ token: newToken });
       setToken(newToken);
       setUser(newUser);
+      setBrandMemberships([]);
+      setRestaurants([]);
+      setRefRestaurant([]);
       setSessionState("authenticated");
       setSessionWarning("");
     },
-    [user]
+    []
   );
 
-  // ✅ Lấy danh sách nhà hàng mà khách hàng có thể truy cập
-
-  // ✅ Logout
   const logout = useCallback(() => {
     fetch(getLogoutUrl(), { method: "POST", credentials: "include" }).catch(() => {});
     setToken(null);
     setUser(null);
+    setBrandMemberships([]);
     setRestaurants([]);
     setRefRestaurant([]);
     setSessionState("anonymous");
@@ -562,17 +522,25 @@ export const AuthProvider = ({ children }) => {
     navigate("/login", { replace: true });
   }, [apolloClient, navigate]);
 
+  const activeRestaurant = roleName === "customer" ? null : restaurants[0] || null;
+  const restaurantsLoading = shouldLoadBusinessContext && businessContextLoading;
   const value = useMemo(
     () => ({
       token,
       user,
-      loading: loading || (!!token && sessionState === "restoring" && (meLoading || restoreNeedsMeValidation)),
+      loading:
+        loading ||
+        (!!token && sessionState === "restoring" && (meLoading || restoreNeedsMeValidation)) ||
+        (!!token && roleName !== "customer" && businessContextLoading),
       sessionState,
       sessionWarning,
       isAuthenticated,
       login,
       logout,
+      brandMemberships,
       restaurants,
+      activeRestaurant,
+      activeRestaurantId: activeRestaurant?.id || null,
       restaurantsLoading,
       refRestaurant,
       rememberedLoginIdentifier: readStorageValue(TOKEN_KEYS.rememberedIdentifier) || "",
@@ -588,9 +556,13 @@ export const AuthProvider = ({ children }) => {
       isAuthenticated,
       login,
       logout,
+      brandMemberships,
       restaurants,
+      activeRestaurant,
       restaurantsLoading,
       refRestaurant,
+      roleName,
+      businessContextLoading,
     ]
   );
 
