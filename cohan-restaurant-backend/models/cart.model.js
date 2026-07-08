@@ -1,13 +1,71 @@
-// src/models/cart.model.js
 import mongoose from "mongoose";
 import BaseSchemaModel from "./baseSchemaModel.js";
 import { computeCartTotalAmount } from "./cartDerivedFields.js";
 
 const { Schema, Types } = mongoose;
 
+const CartModifierIngredientLineSchema = new Schema(
+  {
+    ingredientId: {
+      type: Types.ObjectId,
+      ref: "Ingredient",
+      required: true,
+    },
+    qty: { type: Number, default: 0 },
+    unit: { type: String, trim: true },
+    wastePct: { type: Number, default: 0 },
+  },
+  { _id: false },
+);
+
+const CartModifierSnapshotSchema = new Schema(
+  {
+    groupId: {
+      type: Types.ObjectId,
+      ref: "ModifierGroup",
+      required: true,
+    },
+    groupName: { type: String, trim: true },
+    optionId: { type: Types.ObjectId, required: true },
+    optionName: { type: String, trim: true },
+    priceRule: {
+      rule: {
+        type: String,
+        enum: ["DELTA", "SET"],
+        default: "DELTA",
+      },
+      amount: { type: Number, default: 0 },
+    },
+    inventoryRule: {
+      rule: {
+        type: String,
+        enum: [
+          "NONE",
+          "ADD_INGREDIENTS",
+          "REPLACE_INGREDIENTS",
+          "MULTIPLY_BASE_RECIPE",
+        ],
+        default: "NONE",
+      },
+      ingredientLines: {
+        type: [CartModifierIngredientLineSchema],
+        default: [],
+      },
+      baseRecipeMultiplier: { type: Number, default: null },
+      note: { type: String, trim: true },
+    },
+  },
+  { _id: false },
+);
+
 const CartItemSchema = new Schema(
   {
-    itemType: { type: String, enum: ["MENU_ITEM", "COMBO"], default: "MENU_ITEM", index: true },
+    itemType: {
+      type: String,
+      enum: ["MENU_ITEM", "COMBO"],
+      default: "MENU_ITEM",
+      index: true,
+    },
     menuItemId: {
       type: Types.ObjectId,
       ref: "MenuItem",
@@ -21,22 +79,33 @@ const CartItemSchema = new Schema(
       required: true,
     },
 
-    // Mirror theo FE hook/state
-    name: { type: String, trim: true }, // tên món tại thời điểm thêm
-    price: { type: Number, default: 0, min: 0 }, // đơn giá tại thời điểm thêm
+    name: { type: String, trim: true },
+    price: { type: Number, default: 0, min: 0 },
+    modifiersPrice: { type: Number, default: 0 },
     quantity: { type: Number, default: 1, min: 1 },
 
     thumbImage: { type: String, trim: true },
     note: { type: String, trim: true },
 
-    // Serving variant (nếu có)
-    servingKey: { type: String, trim: true }, // vd: "portion" | "byWeight"
-    servingName: { type: String, trim: true }, // vd: "1 phần", "100g"
+    servingKey: { type: String, trim: true },
+    servingName: { type: String, trim: true },
+    modifiers: { type: [CartModifierSnapshotSchema], default: [] },
+    modifierSelectionKey: { type: String, trim: true, default: "" },
 
     holdExpiresAt: { type: Date, index: true },
-    holdStatus: { type: String, enum: ["active", "released", "ordered"], default: "active" },
+    holdStatus: {
+      type: String,
+      enum: [
+        "active",
+        "released",
+        "ordered",
+        "checkout_pending",
+        "expired",
+      ],
+      default: "active",
+    },
   },
-  { _id: true }
+  { _id: true },
 );
 
 const CartSchema = BaseSchemaModel({
@@ -54,9 +123,6 @@ const CartSchema = BaseSchemaModel({
     index: true,
   },
 
-  // Denormalized convenience field for single-restaurant carts. When a cart
-  // contains items from multiple restaurants, item.restaurantId remains the
-  // source of truth and this field is intentionally null.
   restaurantId: {
     type: Types.ObjectId,
     ref: "Restaurant",
@@ -81,7 +147,6 @@ const CartSchema = BaseSchemaModel({
   },
 });
 
-// Một user chỉ có 1 cart active; các cart lịch sử vẫn được giữ lại.
 CartSchema.index(
   { userId: 1, status: 1 },
   {
@@ -91,14 +156,15 @@ CartSchema.index(
   },
 );
 
-// Tổng số lượng
-CartSchema.virtual("totalQuantity").get(function () {
+CartSchema.virtual("totalQuantity").get(function totalQuantity() {
   if (!Array.isArray(this.items)) return 0;
-  return this.items.reduce((sum, i) => sum + (Number(i?.quantity) || 0), 0);
+  return this.items.reduce(
+    (sum, item) => sum + (Number(item?.quantity) || 0),
+    0,
+  );
 });
 
-// Tổng tiền
-CartSchema.virtual("totalPrice").get(function () {
+CartSchema.virtual("totalPrice").get(function totalPrice() {
   if (!Array.isArray(this.items)) return 0;
   return computeCartTotalAmount(this.items);
 });
@@ -106,5 +172,4 @@ CartSchema.virtual("totalPrice").get(function () {
 CartSchema.index({ status: 1, "items.holdExpiresAt": 1 });
 
 export const Cart = mongoose.models.Cart || mongoose.model("Cart", CartSchema);
-
 export default Cart;

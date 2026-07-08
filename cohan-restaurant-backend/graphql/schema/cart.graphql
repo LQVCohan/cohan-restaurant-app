@@ -2,9 +2,27 @@
 # CART GRAPHQL SCHEMA
 # ============================
 
+type CartModifierPriceRule {
+  rule: String!
+  amount: Float!
+}
+
+type CartModifierSnapshot {
+  groupId: ID!
+  groupName: String
+  optionId: ID!
+  optionName: String
+  priceRule: CartModifierPriceRule!
+}
+
+input CartModifierSelectionInput {
+  groupId: ID!
+  optionId: ID!
+}
+
 "1 dòng trong giỏ hàng"
 type CartItem {
-  id: ID! # _id của subdocument (đã map ở resolver CartItemFieldResolvers.id)
+  id: ID!
   restaurantId: ID!
   itemType: String!
   menuItemId: ID
@@ -13,18 +31,17 @@ type CartItem {
 
   name: String
   price: Float
+  modifiersPrice: Float!
   quantity: Int!
 
   thumbImage: String
   note: String
   servingVariantKey: String
+  modifiers: [CartModifierSnapshot!]!
   holdExpiresAt: DateTime
   holdStatus: String
 
-  "Resolve từ CartItemFieldResolvers.restaurant"
   restaurant: Restaurant
-
-  "Resolve từ CartItemFieldResolvers.menuItem"
   menuItem: MenuItem
 }
 
@@ -33,23 +50,14 @@ type Cart {
   id: ID!
   userId: ID!
   restaurantId: ID
-  status: String! # 'active' | sau này có thể thêm 'checked_out', 'cancelled'
+  status: String!
   items: [CartItem!]!
-
-  "Tổng số lượng (sum quantity) – CartFieldResolvers.totalQuantity"
   totalQuantity: Int!
-
-  "Tổng tiền lưu trong DB (cart.totalAmount) – được set trong mutation"
   totalAmount: Float!
-
-  "Tổng tiền cho FE dùng – CartFieldResolvers.totalPrice (nếu totalPrice không có thì tự tính lại từ items)"
   totalPrice: Float!
-
   lastActivityAt: DateTime
   createdAt: DateTime
   updatedAt: DateTime
-
-  "Resolve từ CartFieldResolvers.user"
   user: User
 }
 
@@ -101,6 +109,7 @@ input AddCartItemInput {
   thumbImage: String
   note: String
   servingVariantKey: String
+  selectedModifiers: [CartModifierSelectionInput!] = []
   holdExpiresAt: DateTime
   holdStatus: String
 }
@@ -147,7 +156,6 @@ input CancelMenuAvailabilityWatchInput {
 # --------------------------
 
 extend type Query {
-  "Lấy giỏ hàng active của user. Nếu userId không truyền thì BE có thể lấy từ ctx.user.id"
   myCart(userId: ID): Cart
   menuItemLiveState(input: MenuItemLiveStateInput!): MenuItemLiveState!
 }
@@ -166,7 +174,6 @@ extend type Mutation {
   registerMenuAvailabilityWatch(input: RegisterMenuAvailabilityWatchInput!): RegisterMenuAvailabilityWatchPayload!
   cancelMenuAvailabilityWatch(input: CancelMenuAvailabilityWatchInput!): CancelMenuAvailabilityWatchPayload!
 }
-
 
 type MenuItemLiveState {
   itemType: String!
@@ -190,11 +197,12 @@ type MenuItemLiveState {
 
 input MenuItemLiveStateInput {
   restaurantId: ID!
-  itemType: String!
+  itemType: String! = "MENU_ITEM"
   menuItemId: ID
   comboId: ID
   comboSnapshot: JSON
   servingVariantKey: String
+  selectedModifiers: [CartModifierSelectionInput!] = []
   userId: ID
 }
 

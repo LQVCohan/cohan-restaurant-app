@@ -1,27 +1,34 @@
-// src/components/Customer/RestaurantMenu/components/MenuItemCard.jsx
 import React from "react";
+import { Clock3 } from "lucide-react";
 import { formatCurrency } from "../../../../utils/formatters";
-import { canCustomerOrderMenuItem, getMenuItemAvailability } from "../../../../utils/menuItemAvailability";
+import {
+  canCustomerOrderMenuItem,
+  getMenuItemAvailability,
+} from "../../../../utils/menuItemAvailability";
 import "../styles/MenuItemCard.scss";
 
-const MENU_ITEM_PLACEHOLDER = "https://placehold.co/720x480/f5eadb/9a4f08?text=Cohan+Food";
+const MENU_ITEM_PLACEHOLDER = "/default-dishes.jpg";
+
+export const getMenuItemPriceLabel = (item = {}) => {
+  const prices = (item.servingVariants || [])
+    .map((variant) => Number(variant?.price))
+    .filter((price) => Number.isFinite(price) && price >= 0);
+  if (!prices.length) return formatCurrency(item.basePrice);
+
+  const minimum = Math.min(...prices);
+  const maximum = Math.max(...prices);
+  return minimum === maximum
+    ? formatCurrency(minimum)
+    : `Từ ${formatCurrency(minimum)}`;
+};
 
 const MenuItemCard = ({ item, onClick, disabled = false }) => {
   const foodPreferenceMeta = item?.foodPreferenceMeta;
   const availability = getMenuItemAvailability(item);
-  const isOrderable = canCustomerOrderMenuItem(item) && !disabled;
+  const canOrderNow = canCustomerOrderMenuItem(item) && !disabled;
   const imageSrc = item?.thumbImage || MENU_ITEM_PLACEHOLDER;
 
-  const handleImageError = (event) => {
-    event.currentTarget.onerror = null;
-    event.currentTarget.src = MENU_ITEM_PLACEHOLDER;
-  };
-
-  const handleOpen = () => {
-    if (!isOrderable) return;
-    onClick(item);
-  };
-
+  const handleOpen = () => onClick?.(item);
   const handleKeyDown = (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -31,63 +38,83 @@ const MenuItemCard = ({ item, onClick, disabled = false }) => {
 
   return (
     <article
-      className={`item-card ${!isOrderable ? "inactive" : ""}`}
+      className={`item-card ${!canOrderNow ? "inactive" : ""}`}
       onClick={handleOpen}
       onKeyDown={handleKeyDown}
       role="button"
-      tabIndex={isOrderable ? 0 : -1}
-      aria-disabled={!isOrderable}
-      aria-label={`Xem chi tiết ${item.name}`}
+      tabIndex={0}
+      aria-label={`Xem chi tiết ${item.name}${
+        canOrderNow ? "" : `, ${availability.label}`
+      }`}
     >
       <div className="thumb">
         <img
           src={imageSrc}
-          alt={item.name || "Món ăn Cohan"}
+          alt={item.name || "Món ăn"}
           loading="lazy"
-          onError={handleImageError}
+          onError={(event) => {
+            event.currentTarget.onerror = null;
+            event.currentTarget.src = MENU_ITEM_PLACEHOLDER;
+          }}
         />
-        {!isOrderable && <span className="badge">{availability.label}</span>}
-        {item.promotionLabel && (
+        {!canOrderNow ? <span className="badge">{availability.label}</span> : null}
+        {item.promotionLabel ? (
           <span
             className="menu-item-card__promo-badge"
             title={item.promotion?.name || "Ưu đãi"}
           >
             {item.promotionLabel}
           </span>
-        )}
+        ) : null}
       </div>
+
       <div className="details">
         <h4 title={item.name}>{item.name}</h4>
-        {item.promotion?.name && (
+        {item.promotion?.name ? (
           <div className="menu-item-card__promo-name">{item.promotion.name}</div>
-        )}
+        ) : null}
+
         {foodPreferenceMeta?.hasAllergyWarning ? (
           <div
             className="food-preference-badge food-preference-badge--warning"
-            title={foodPreferenceMeta.warningReason || `Có thể chứa: ${(foodPreferenceMeta.matchedAllergies || []).join(", ")}`}
+            title={
+              foodPreferenceMeta.warningReason ||
+              `Có thể chứa: ${(foodPreferenceMeta.matchedAllergies || []).join(", ")}`
+            }
           >
             ⚠ Cần kiểm tra dị ứng
           </div>
         ) : foodPreferenceMeta?.isRecommended ? (
           <div
             className="food-preference-badge food-preference-badge--match"
-            title={(foodPreferenceMeta.reasons || []).join(". ") || "Phù hợp khẩu vị của bạn"}
+            title={
+              (foodPreferenceMeta.reasons || []).join(". ") ||
+              "Phù hợp khẩu vị của bạn"
+            }
           >
             ✨ Phù hợp khẩu vị
           </div>
         ) : null}
-        <p title={item.description}>{item.description}</p>
-        {item.servingVariants?.length > 0 && (
-          <div className="variants">
-            {item.servingVariants.map((v, i) => (
-              <span key={i}>{v.name}</span>
-            ))}
-          </div>
-        )}
+
+        <p title={item.description || ""}>
+          {item.description || "Nhà hàng chưa cập nhật mô tả cho món này."}
+        </p>
+
+        <div className="menu-item-card__meta">
+          {Number(item.avgPrepTimeMin) > 0 ? (
+            <span>
+              <Clock3 size={14} aria-hidden="true" /> {item.avgPrepTimeMin} phút
+            </span>
+          ) : null}
+          {item.servingVariants?.length > 1 ? (
+            <span>{item.servingVariants.length} lựa chọn</span>
+          ) : null}
+        </div>
+
         <div className="bottom">
-          <span className="price">{formatCurrency(item.basePrice)}</span>
+          <span className="price">{getMenuItemPriceLabel(item)}</span>
           <span className="add-btn" aria-hidden="true">
-            Xem
+            {canOrderNow ? "Chọn món" : "Xem chi tiết"}
           </span>
         </div>
       </div>

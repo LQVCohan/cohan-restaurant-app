@@ -38,8 +38,8 @@ enum ModifierInventoryRuleType {
 type ModifierInventoryIngredientLine {
   ingredientId: ID!
   qty: Float!
-  unit: String! # must match UnitEnum in BE (g, kg, ml, l, unit, piece,...)
-  wastePct: Float # 0..100
+  unit: String!
+  wastePct: Float
 }
 
 input ModifierInventoryIngredientLineInput {
@@ -51,7 +51,7 @@ input ModifierInventoryIngredientLineInput {
 
 type ModifierPriceRule {
   rule: ModifierPriceRuleType!
-  amount: Float! # VND; DELTA can be negative; SET must be >= 0
+  amount: Float!
 }
 
 input ModifierPriceRuleInput {
@@ -61,7 +61,6 @@ input ModifierPriceRuleInput {
 
 type ModifierInventoryRule {
   rule: ModifierInventoryRuleType!
-
   ingredientLines: [ModifierInventoryIngredientLine!]!
   baseRecipeMultiplier: Float
   note: String
@@ -83,7 +82,6 @@ type ModifierOption {
   name: String!
   isDefault: Boolean
   isActive: Boolean
-
   priceRule: ModifierPriceRule!
   inventoryRule: ModifierInventoryRule!
 }
@@ -92,7 +90,6 @@ input ModifierOptionInput {
   name: String!
   isDefault: Boolean
   isActive: Boolean
-
   priceRule: ModifierPriceRuleInput!
   inventoryRule: ModifierInventoryRuleInput!
 }
@@ -105,27 +102,22 @@ type ModifierGroup {
   id: ID!
   restaurantId: ID!
   name: String!
-
   groupType: ModifierGroupType!
   coverage: ModifierCoverage!
-
-  # if coverage=ITEMS => must have values
-  # if coverage=GLOBAL => must be empty
   menuItemIds: [ID!]!
-
   selectionType: ModifierSelectionType!
   required: Boolean
-
   minSelected: Int
   maxSelected: Int
-
   options: [ModifierOption!]!
-
   note: String
   isActive: Boolean
-
   createdAt: DateTime
   updatedAt: DateTime
+}
+
+extend type MenuItem {
+  ingredientNames: [String!]!
 }
 
 # =========================================================
@@ -135,54 +127,41 @@ type ModifierGroup {
 input CreateModifierGroupInput {
   restaurantId: ID!
   name: String!
-
   groupType: ModifierGroupType! = CUSTOM
   coverage: ModifierCoverage! = ITEMS
   menuItemIds: [ID!]
-
   selectionType: ModifierSelectionType! = multiple
   required: Boolean = false
   minSelected: Int = 0
   maxSelected: Int
-
   options: [ModifierOptionInput!]!
-
   note: String
   isActive: Boolean = true
 }
 
 input UpdateModifierGroupInput {
   id: ID!
-
   name: String
-
   groupType: ModifierGroupType
   coverage: ModifierCoverage
   menuItemIds: [ID!]
-
   selectionType: ModifierSelectionType
   required: Boolean
   minSelected: Int
   maxSelected: Int
-
   options: [ModifierOptionInput!]
-
   note: String
   isActive: Boolean
 }
 
 # =========================================================
-# FILTERS (for Query)
+# FILTERS
 # =========================================================
 
 input ModifierGroupFilterInput {
   restaurantId: ID!
   search: String
-
-  # fetch groups applicable to a menu item:
-  # - coverage=GLOBAL OR (coverage=ITEMS and menuItemIds contains menuItemId)
   menuItemId: ID
-
   groupType: ModifierGroupType
   isActive: Boolean = true
 }
@@ -192,19 +171,20 @@ input ModifierGroupFilterInput {
 # =========================================================
 
 extend type Query {
-  # list groups with filters (cleaner than separate params)
-  modifierGroups(filter: ModifierGroupFilterInput!): [ModifierGroup!]!
+  customerModifierGroups(
+    restaurantId: ID!
+    menuItemId: ID!
+  ): [ModifierGroup!]!
 
+  modifierGroups(filter: ModifierGroupFilterInput!): [ModifierGroup!]!
   modifierGroup(id: ID!): ModifierGroup
 }
 
 extend type Mutation {
-  # Group CRUD
   createModifierGroup(input: CreateModifierGroupInput!): ModifierGroup!
   updateModifierGroup(input: UpdateModifierGroupInput!): ModifierGroup!
   deleteModifierGroup(id: ID!): Boolean!
 
-  # Option CRUD (operate on a group)
   addModifierOption(groupId: ID!, option: ModifierOptionInput!): ModifierGroup!
   updateModifierOption(
     groupId: ID!

@@ -1,6 +1,10 @@
 export function computeCartTotalAmount(items = []) {
   return (items || []).reduce(
-    (sum, i) => sum + (Number(i?.price) || 0) * (Number(i?.quantity) || 0),
+    (sum, item) =>
+      sum +
+      ((Number(item?.price) || 0) +
+        (Number(item?.modifiersPrice) || 0)) *
+        (Number(item?.quantity) || 0),
     0,
   );
 }

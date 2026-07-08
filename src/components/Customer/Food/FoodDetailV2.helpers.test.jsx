@@ -1,0 +1,86 @@
+import { describe, expect, it, vi } from "vitest";
+import {
+  buildModifierSelectionKey,
+  calculateModifierPricing,
+  getModifierSelectionError,
+  shareFoodDetail,
+} from "./FoodDetailV2";
+
+const groups = [
+  {
+    id: "size",
+    name: "Kích cỡ",
+    selectionType: "single",
+    required: true,
+    options: [
+      {
+        id: "large",
+        name: "Lớn",
+        priceRule: { rule: "DELTA", amount: 20000 },
+      },
+    ],
+  },
+  {
+    id: "sauce",
+    name: "Nước sốt",
+    selectionType: "multiple",
+    required: false,
+    maxSelected: 2,
+    options: [
+      {
+        id: "premium",
+        name: "Sốt đặc biệt",
+        priceRule: { rule: "SET", amount: 120000 },
+      },
+      {
+        id: "cheese",
+        name: "Phô mai",
+        priceRule: { rule: "DELTA", amount: 10000 },
+      },
+    ],
+  },
+];
+
+describe("FoodDetailV2 helpers", () => {
+  it("requires mandatory modifier groups before ordering", () => {
+    expect(getModifierSelectionError(groups, {})).toContain("Kích cỡ");
+    expect(
+      getModifierSelectionError(groups, { size: ["large"], sauce: [] }),
+    ).toBe("");
+  });
+
+  it("calculates the displayed unit price from SET and DELTA rules", () => {
+    const pricing = calculateModifierPricing(90000, groups, {
+      size: ["large"],
+      sauce: ["premium", "cheese"],
+    });
+
+    expect(pricing).toEqual({
+      unitPrice: 150000,
+      modifiersPrice: 60000,
+      setCount: 1,
+    });
+  });
+
+  it("builds stable cart identity regardless of selection order", () => {
+    expect(
+      buildModifierSelectionKey([
+        { groupId: "b", optionId: "2" },
+        { groupId: "a", optionId: "1" },
+      ]),
+    ).toBe("a:1|b:2");
+  });
+
+  it("uses clipboard when native sharing is unavailable", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const result = await shareFoodDetail({
+      title: "Món ăn",
+      text: "Xem món ăn",
+      url: "https://example.test/food/1",
+      navigatorRef: { clipboard: { writeText } },
+    });
+
+    expect(result).toBe("copied");
+    expect(writeText).toHaveBeenCalledWith("https://example.test/food/1");
+  });
+});
