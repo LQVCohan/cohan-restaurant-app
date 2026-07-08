@@ -77,7 +77,7 @@ describe("installTableEmptyStateEnhancement", () => {
     expect(document.querySelector(".tm-empty__message")).toHaveTextContent(
       "Chưa có tầng để gán bàn.",
     );
-    expect(document.querySelector(".tm-empty__action .btn__text")).toHaveTextContent(
+    expect(document.querySelector(".btn__text")).toHaveTextContent(
       "Thêm tầng",
     );
     expect(document.querySelector(".mph-btn--primary span")).toHaveTextContent(
