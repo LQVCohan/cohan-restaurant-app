@@ -13,8 +13,8 @@
   "completedAt": null,
   "branch": "fix/restaurant-default-warehouse",
   "base_branch": "main",
-  "commit": null,
-  "pr_url": null,
+  "commit": "276b61f6066f0c3253cdf710377aaa291d2cd8cf",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1306",
   "relatedFiles": [
     "cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js",
     "cohan-restaurant-backend/tests/resolvers/restaurant-mutation-access.test.js",
@@ -23,7 +23,7 @@
     "src/components/Dashboard_Manager/Storage/StorageManagement.scss",
     "src/components/Dashboard_Manager/Storage/StorageManagement.test.jsx"
   ],
-  "notes": "Flow traced from Restaurant and Warehouse models through createRestaurant/createWarehouse, Apollo warehouse operations, StorageManagement and Header. The creation invariant is missing at the restaurant mutation boundary; the UI also has no recovery path when a legacy restaurant has zero warehouses.",
+  "notes": "Flow traced from Restaurant and Warehouse models through createRestaurant/createWarehouse, Apollo warehouse operations, StorageManagement and Header. The creation invariant was added at the restaurant mutation boundary; the UI now provides a permission-aware recovery path for legacy restaurants with zero warehouses. PR #1306 is open and CI is pending.",
   "meta": {
     "skills": [
       "ponytail",
