@@ -378,3 +378,20 @@
     display: grid;
   }
 }
+
+/* Keep the add-member row aligned after a long candidate is selected. */
+.manager-layout.manager-layout--brands
+  .brand-account-picker
+  .brand-field:nth-child(2)
+  > small:not(.brand-field__error) {
+  overflow: hidden;
+  display: block;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manager-layout.manager-layout--brands
+  .brand-account-picker
+  > .brand-scope-note {
+  display: none;
+}
