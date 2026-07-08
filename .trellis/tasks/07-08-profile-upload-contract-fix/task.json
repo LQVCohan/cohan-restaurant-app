@@ -1,0 +1,27 @@
+{
+  "id": "07-08-profile-upload-contract-fix",
+  "title": "Sửa luồng cập nhật hồ sơ và upload avatar",
+  "status": "in_progress",
+  "type": "full-stack-bugfix",
+  "scope": [
+    "cohan-restaurant-backend/graphql/schema/user.graphql",
+    "vite.config.js",
+    "src/components/Dashboard_Manager/Account/ManagerAccountCenter.jsx",
+    "src/components/Dashboard_Manager/Account/ManagerAccountCenter.scss",
+    "src/__tests__/graphql-schema-validation.test.js",
+    "src/lib/apiBaseUrl.test.ts"
+  ],
+  "flow": "User schema -> UserMutation.updateUser -> Apollo updateUser mutation -> shared upload hook -> manager account save action -> profile UI",
+  "validation": {
+    "planned": [
+      "npm run check:graphql",
+      "npx vitest run src/__tests__/graphql-schema-validation.test.js src/lib/apiBaseUrl.test.ts",
+      "npm run build"
+    ],
+    "completed": [
+      "traced updateUser schema, resolver and all frontend callers",
+      "traced shared upload hook, Fastify upload routes and Vite proxy"
+    ],
+    "notRun": []
+  }
+}
