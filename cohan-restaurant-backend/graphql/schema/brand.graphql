@@ -55,6 +55,10 @@ type BrandMembership {
   status: String!
   invitedAt: DateTime
   acceptedAt: DateTime
+  revokedAt: DateTime
+  revokedBy: ID
+  revokedReason: String
+  revokedFromStatus: String
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -163,5 +167,5 @@ extend type Mutation {
   resendBrandInvitation(id: ID!): BrandMembership!
   acceptBrandInvitation(token: String!, password: String): BrandMembership!
   transferBrandOwnership(input: TransferBrandOwnershipInput!): TransferBrandOwnershipPayload!
-  removeBrandMember(id: ID!): Boolean!
+  removeBrandMember(id: ID!, reason: String): Boolean!
 }
