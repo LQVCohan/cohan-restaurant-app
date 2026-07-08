@@ -224,7 +224,7 @@ const MENU_ACTION_PERMISSION_MAP = {
   [MENU_MANAGEMENT_ACTIONS.TOGGLE_MENU]: ["menu.update", "menu.write"],
   [MENU_MANAGEMENT_ACTIONS.COPY_MENU]: ["menu.copy", "menu.write"],
   [MENU_MANAGEMENT_ACTIONS.SYNC_INVENTORY]: ["menu.inventory.sync", "menu.write", "inventory.write"],
-  [MENU_MANAGEMENT_ACTIONS.VIEW_AUDIT]: ["menu.audit.read", "menu.read", "menu.write"],
+  [MENU_MANAGEMENT_ACTIONS.VIEW_AUDIT]: ["menu.audit.read", "menu.read", "menu.write", "log.read"],
 };
 
 const getUserPermissionCodes = (userOrRole, explicit = []) => {
