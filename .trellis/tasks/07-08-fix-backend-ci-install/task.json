@@ -2,10 +2,10 @@
   "id": "07-08-fix-backend-ci-install",
   "name": "fix-backend-ci-install",
   "title": "Repair post-merge CI and reported tests",
-  "description": "Restore backend npm ci, align public search with normalized BrandMembership scope, verify Apollo cache cleanup, and fix Vietnamese accent-insensitive promotion filtering.",
+  "description": "Restore CI, align normalized restaurant scope, verify logout cache cleanup, and repair frontend utility/dashboard regressions exposed by the full unit suite.",
   "status": "in_review",
   "dev_type": "fullstack",
-  "scope": "ci-auth-search-regressions",
+  "scope": "ci-auth-search-dashboard-regressions",
   "package": null,
   "priority": "P1",
   "creator": "LQVCohan",
@@ -26,10 +26,14 @@
     "cohan-restaurant-backend/tests/resolvers/search-public-safety.test.js",
     "src/context/__tests__/AuthProvider.test.jsx",
     "src/context/__tests__/AuthProvider.logout-cache.test.jsx",
+    "src/hooks/useBrandManagement.js",
+    "src/hooks/useDashboard.js",
+    "src/hooks/useDashboard.test.jsx",
     "src/utils/installTablePromotionSearch.js",
-    "src/utils/installTablePromotionSearch.test.js"
+    "src/utils/installTablePromotionSearch.test.js",
+    "src/utils/installTableEmptyStateEnhancement.test.js"
   ],
-  "notes": "Backend manifest now matches the committed lockfile. Normalized search tests and AuthProvider logout behavior pass. Promotion search now maps Vietnamese đ to d after Unicode diacritic removal; the focused installTablePromotionSearch test passes. Vitest was not hung: it continued the remaining unit files before printing the final failure summary. All temporary diagnostic workflows were removed from the final diff.",
+  "notes": "Backend manifest, normalized search, AuthProvider logout, and Vietnamese promotion filtering are repaired. Dashboard no longer duplicates restaurant auto-selection with an incompatible functional setter, and Brand scope selection now waits for current account restaurants to finish loading. The legacy table empty-state test now asserts restored text without querying through the class that cleanup intentionally removes. Final full CI is pending on the latest head.",
   "meta": {
     "skills": ["ponytail"]
   }
