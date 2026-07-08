@@ -25,6 +25,12 @@ import {
 } from "../../../src/services/availability/availabilityRegistrationSchedule.service.js";
 
 const SCHEDULING_TIMEZONE = "Asia/Ho_Chi_Minh";
+const PART_TIME_EMPLOYMENT_TYPES = new Set([
+  "part_time",
+  "seasonal",
+  "probation",
+  "contract",
+]);
 
 function normalizeEmploymentType(value) {
   return String(value || "")
@@ -109,6 +115,7 @@ function resolveAvailabilityRequirement({ policy, windowDoc, employmentType }) {
   return {
     employmentPolicy,
     requiresWeeklyAvailability:
+      PART_TIME_EMPLOYMENT_TYPES.has(employmentType) ||
       targetEmploymentTypes.includes(employmentType) ||
       employmentPolicy.requireAvailability === true,
   };
@@ -118,7 +125,6 @@ function validateSubmission({
   input,
   windowDoc,
   policy,
-  employmentType,
   requiresWeeklyAvailability,
   employmentPolicy,
 }) {
@@ -328,7 +334,6 @@ export default {
       input,
       windowDoc,
       policy,
-      employmentType,
       requiresWeeklyAvailability,
       employmentPolicy,
     });
