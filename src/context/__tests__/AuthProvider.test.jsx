@@ -39,6 +39,7 @@ function Consumer() {
       <div data-testid="memberships">{String((ctx?.brandMemberships || []).length)}</div>
       <div data-testid="active-restaurant">{ctx?.activeRestaurantId || ""}</div>
       <div data-testid="restaurants">{(ctx?.restaurants || []).map((item) => item.name).join(",")}</div>
+      <div data-testid="restaurant-setup-status">{ctx?.restaurants?.[0]?.initialSetup?.status || ""}</div>
       <button
         onClick={() =>
           ctx.login("abc", {
@@ -253,7 +254,14 @@ describe("AuthProvider", () => {
         ],
         scopedRestaurants: {
           edges: [
-            { node: { id: "res-1", name: "Cohan Quận 1", brandId: "brand-1" } },
+            {
+              node: {
+                id: "res-1",
+                name: "Cohan Quận 1",
+                brandId: "brand-1",
+                initialSetup: { status: "pending" },
+              },
+            },
             { node: { id: "res-2", name: "Cohan Quận 3", brandId: "brand-1" } },
           ],
         },
@@ -280,11 +288,13 @@ describe("AuthProvider", () => {
     );
     expect(screen.getByTestId("memberships")).toHaveTextContent("1");
     expect(screen.getByTestId("active-restaurant")).toHaveTextContent("res-1");
+    expect(screen.getByTestId("restaurant-setup-status")).toHaveTextContent("pending");
 
     const businessCalls = useQueryMock.mock.calls.filter(([query]) =>
       getQueryText(query).includes("query AuthBusinessContext"),
     );
     expect(businessCalls.some(([, options]) => options?.skip === false)).toBe(true);
+    expect(getQueryText(businessCalls[0]?.[0])).toContain("initialSetup");
   });
 
   it("refresh timer triggers one refresh before expiry", async () => {
