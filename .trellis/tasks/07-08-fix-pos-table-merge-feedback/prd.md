@@ -2,36 +2,38 @@
 
 ## Current behavior
 
-In POS, merging two empty tables can commit successfully in the backend but still show a failure message. Splitting succeeds but provides no confirmation.
+In POS, merging two empty tables commits successfully in the backend and the GraphQL response is successful, but the drag-drop UI still shows the native alert `Gộp bàn thất bại.`. Splitting succeeds and must keep its success feedback.
 
 ## Root cause
 
-`useTableManagement.mergeTables` and `splitTables` await a follow-up `refetch()` after the mutation. When that refresh rejects, the mutation wrapper rejects too, so POS catch handlers report a business failure even though the backend transaction already committed. POS modal and drag-drop callers also have inconsistent success/error notifications.
+`useTableManagement.mergeTables` and `splitTables` still invoke `refetch()` after the successful mutation. The previous guard only handles a rejected Promise. If `refetch()` throws synchronously while being called, the shared wrapper rejects after the backend transaction has already committed, so `LeftPanel` enters its failure catch and displays the native alert.
+
+The refresh is redundant inside the hook because every real merge/split UI caller already refreshes after a successful result:
+
+- POS drag-drop calls `refreshTables()`.
+- POS table modal calls `onUpdated`, which is `refreshTables`.
+- Manager table modal calls `onUpdated`, which is `refetchTables`.
 
 ## Caller flow
 
-`Table/Reservation models -> mergeTables/splitTables resolver -> GraphQL mutation -> useTableManagement -> PosContext -> LeftPanel/TableActionsModal -> notification`
+`Table/Reservation models -> mergeTables/splitTables resolver -> GraphQL mutation -> useTableManagement -> PosContext -> LeftPanel/TableActionsModal -> caller-owned refresh and notification`
 
 ## Required behavior
 
-1. A successful backend merge must resolve successfully even if the follow-up table refresh fails.
-2. A successful split must resolve successfully even if the follow-up table refresh fails.
-3. POS modal shows a success notification after merge and split.
-4. POS drag-drop merge uses the same success/error wording.
-5. A real GraphQL mutation error still shows an error and does not show success.
-6. The table list is still refreshed by the existing POS caller after a successful action.
+1. A successful backend merge resolves successfully regardless of any refresh behavior.
+2. A successful split resolves successfully regardless of any refresh behavior.
+3. The shared hook emits merge/split success notifications only after a successful mutation.
+4. A real GraphQL mutation error still rejects and does not show success.
+5. Existing UI callers remain responsible for refreshing their table list.
 
 ## Files
 
-- `src/hooks/useTableManagement.js`: make merge/split wrappers return only the mutation result; callers already own refresh.
-- `src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.jsx`: add accurate success/error notifications and isolate refresh failures.
-- `src/components/Dashboard_Manager/POS/components/pos/LeftPanel.jsx`: align drag-drop merge feedback.
-- `src/hooks/useTableManagement.test.jsx`: verify mutation success is not coupled to refetch.
+- `src/hooks/useTableManagement.js`: remove redundant hook-owned `refetch()` calls from merge/split wrappers.
+- `src/hooks/useTableManagement.test.jsx`: prove merge/split do not call or depend on `refetch`, including a synchronous-throwing refetch mock.
 
 ## Validation
 
-- Targeted Vitest for `useTableManagement`.
-- Targeted POS component tests when available.
+- Targeted Vitest for `src/hooks/useTableManagement.test.jsx`.
 - Frontend build if the connected environment permits it.
 
 ## Out of scope
