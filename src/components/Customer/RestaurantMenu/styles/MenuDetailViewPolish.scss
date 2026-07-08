@@ -58,7 +58,7 @@
 }
 
 .menu-detail-view .menu-header .top-row {
-  grid-template-columns: auto minmax(0, 1fr) minmax(300px, 0.52fr) !important;
+  grid-template-columns: auto minmax(0, 1fr) minmax(500px, 0.52fr) !important;
   gap: 0.85rem 1rem !important;
 }
 
@@ -102,6 +102,7 @@
 }
 
 .menu-detail-view .search-box {
+  min-width: 220px;
   width: 100% !important;
 }
 
