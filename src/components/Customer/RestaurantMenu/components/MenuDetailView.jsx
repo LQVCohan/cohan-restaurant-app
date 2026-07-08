@@ -314,7 +314,9 @@ const MenuDetailView = ({
                 <span aria-hidden="true">⌕</span>
                 <input
                   type="search"
-                  placeholder="Tìm theo tên hoặc mô tả món"
+                  name="menuSearch"
+                  autoComplete="off"
+                  placeholder="Tìm theo tên hoặc mô tả món…"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                 />
@@ -322,7 +324,11 @@ const MenuDetailView = ({
 
               <label className="menu-sort-control">
                 <span>Sắp xếp</span>
-                <select value={sort} onChange={(event) => setSort(event.target.value)}>
+                <select
+                  name="menuSort"
+                  value={sort}
+                  onChange={(event) => setSort(event.target.value)}
+                >
                   {SORT_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -474,7 +480,7 @@ const MenuDetailView = ({
                   disabled={isLoadingMore}
                   aria-busy={isLoadingMore}
                 >
-                  {isLoadingMore ? "Đang tải thêm..." : "Xem thêm món"}
+                  {isLoadingMore ? "Đang tải thêm…" : "Xem thêm món"}
                 </button>
               </div>
             ) : null}

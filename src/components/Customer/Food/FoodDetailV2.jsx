@@ -41,6 +41,10 @@ import {
 } from "../../../utils/menuItemAvailability";
 import { getCannotOrderReason } from "../../../utils/restaurantStatus";
 import {
+  FOOD_ORDER_ACTION,
+  getFoodOrderingActionState,
+} from "../../../utils/foodOrderingActionState";
+import {
   FOR_YOU_ANALYTICS_EVENTS,
   recordForYouAnalyticsEvent,
 } from "../../../utils/forYouAnalytics";
@@ -800,37 +804,28 @@ const FoodDetailV2 = () => {
     Boolean(liveState) && maxAvailable > 0 && quantity > maxAvailable;
   const totalPrice = modifierPricing.unitPrice * quantity;
 
-  const orderingDisabled =
-    adding ||
-    restaurantLoading ||
-    !restaurant ||
-    !restaurantCanOrder ||
-    modifierLoading ||
-    Boolean(modifierErrorMessage) ||
-    !selectedVariant ||
-    liveLoading ||
-    Boolean(liveError) ||
-    !liveState ||
-    Boolean(liveState?.blocked) ||
-    outOfStock ||
-    quantityExceedsAvailable;
-
-  const addButtonLabel = (() => {
-    if (adding) return "Đang giữ món...";
-    if (restaurantLoading) return "Đang kiểm tra nhà hàng...";
-    if (!restaurant) return "Nhà hàng không khả dụng";
-    if (!restaurantCanOrder) return restaurantBlockedReason;
-    if (modifierLoading) return "Đang tải tùy chọn...";
-    if (modifierErrorMessage) return "Chọn đủ tùy chọn bắt buộc";
-    if (liveError) return "Chưa kiểm tra được tồn kho";
-    if (liveLoading || !liveState) return "Đang kiểm tra tồn kho...";
-    if (liveState.blocked) return "Tạm chặn giữ món";
-    if (outOfStock) return "Món hiện đã hết";
-    if (quantityExceedsAvailable) return "Số lượng vượt quá tồn kho";
-    return isAuthenticated && isCustomer
-      ? "Thêm vào giỏ"
-      : "Đăng nhập để thêm vào giỏ";
-  })();
+  const orderAction = getFoodOrderingActionState({
+    adding,
+    restaurantLoading,
+    hasRestaurant: Boolean(restaurant),
+    restaurantCanOrder,
+    restaurantBlockedReason,
+    modifierLoading,
+    modifierErrorMessage,
+    hasSelectedVariant: Boolean(selectedVariant),
+    liveLoading,
+    liveError: Boolean(liveError),
+    hasLiveState: Boolean(liveState),
+    liveBlocked: Boolean(liveState?.blocked),
+    outOfStock,
+    quantityExceedsAvailable,
+    isAuthenticated,
+    isCustomer,
+  });
+  const buyButtonLabel =
+    orderAction.intent === FOOD_ORDER_ACTION.LOGIN
+      ? "Đăng nhập để đặt"
+      : "Đặt ngay";
 
   const toggleModifier = (group, optionId) => {
     setModifierAttempted(false);
@@ -918,19 +913,23 @@ const FoodDetailV2 = () => {
   const addSelectionToCart = async () => {
     setModifierAttempted(true);
     if (modifierErrorMessage) {
-      document
-        .querySelector(".food-detail-v2__modifiers")
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const modifierSection = document.querySelector(
+        ".food-detail-v2__modifiers",
+      );
+      modifierSection?.scrollIntoView({ behavior: "smooth", block: "center" });
+      modifierSection?.querySelector("input")?.focus();
       return false;
     }
-    if (!isAuthenticated || !isCustomer) {
+    if (orderAction.intent === FOOD_ORDER_ACTION.RETRY_STOCK) {
+      showNotification("Đang kiểm tra lại tồn kho…", "info");
+      await refetchLiveState?.();
+      return false;
+    }
+    if (orderAction.intent === FOOD_ORDER_ACTION.LOGIN) {
       redirectToLogin();
       return false;
     }
-    if (orderingDisabled) {
-      if (liveError) refetchLiveState?.();
-      return false;
-    }
+    if (orderAction.disabled) return false;
 
     try {
       const { data } = await addCartItem({
@@ -1107,6 +1106,10 @@ const FoodDetailV2 = () => {
               <img
                 src={dish.thumbImage || FOOD_PLACEHOLDER}
                 alt={dish.name}
+                width="1200"
+                height="900"
+                fetchPriority="high"
+                decoding="async"
                 onError={(event) => {
                   event.currentTarget.onerror = null;
                   event.currentTarget.src = FOOD_PLACEHOLDER;
@@ -1364,10 +1367,12 @@ const FoodDetailV2 = () => {
             <label className="food-detail-v2__note">
               <span>Ghi chú cho nhà hàng</span>
               <textarea
+                name="orderNote"
+                autoComplete="off"
                 value={note}
                 maxLength={180}
                 onChange={(event) => setNote(event.target.value)}
-                placeholder="Ví dụ: ít cay, không hành, đóng gói riêng..."
+                placeholder="Ví dụ: ít cay, không hành, đóng gói riêng…"
               />
               <small>{note.length}/180</small>
             </label>
@@ -1461,20 +1466,22 @@ const FoodDetailV2 = () => {
               <button
                 type="button"
                 className="secondary"
-                disabled={orderingDisabled && isAuthenticated && isCustomer}
+                disabled={orderAction.disabled}
+                aria-describedby="food-order-action-status"
                 onClick={addSelectionToCart}
               >
-                <ShoppingCart size={19} /> {addButtonLabel}
+                <ShoppingCart size={19} aria-hidden="true" /> {orderAction.label}
               </button>
               <button
                 type="button"
-                disabled={orderingDisabled && isAuthenticated && isCustomer}
+                disabled={orderAction.disabled}
+                aria-describedby="food-order-action-status"
                 onClick={handleBuyNow}
               >
-                <ShoppingBag size={19} /> Đặt ngay
+                <ShoppingBag size={19} aria-hidden="true" /> {buyButtonLabel}
               </button>
             </div>
-            <p className="food-detail-v2__hold-note">
+            <p id="food-order-action-status" className="food-detail-v2__hold-note">
               Khi thêm vào giỏ, hệ thống giữ tồn kho tối đa 5 phút. Giá và tồn kho
               được xác nhận lại trên máy chủ.
             </p>
