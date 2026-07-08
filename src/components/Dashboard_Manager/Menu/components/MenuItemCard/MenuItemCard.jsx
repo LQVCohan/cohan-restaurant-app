@@ -27,6 +27,12 @@ const STATUS_OPTIONS = [
   { value: "hidden", label: "Ẩn khỏi thực đơn" },
 ];
 
+const TRACKED_INVENTORY_STATUSES = new Set([
+  "IN_STOCK",
+  "LOW_STOCK",
+  "OUT_OF_STOCK",
+]);
+
 const getInventoryWarningCta = (item, availability) => {
   const inventoryStatus = String(item?.inventoryStatus || "").toLowerCase();
   const warnings = Array.isArray(item?.stockWarnings) ? item.stockWarnings : [];
@@ -152,6 +158,25 @@ const MenuItemCard = ({
   const remainingCount = Math.max(0, variants.length - 3);
   const displayCategoryName = item.categoryName || "Chưa phân loại";
   const baseDisplayPrice = variants[0]?.price ?? item.basePrice ?? 0;
+  const inventoryStatus = String(
+    item?.inventoryStatus || availability.inventoryStatus || "NOT_TRACKED",
+  ).toUpperCase();
+  const rawMaxAvailable = Number(item?.maxAvailable);
+  const remainingAvailable =
+    TRACKED_INVENTORY_STATUSES.has(inventoryStatus) &&
+    Number.isFinite(rawMaxAvailable)
+      ? Math.max(0, Math.floor(rawMaxAvailable))
+      : null;
+  const quickNoteTone =
+    item?.status !== "available"
+      ? item?.status || "unavailable"
+      : inventoryStatus === "OUT_OF_STOCK"
+        ? "out_of_stock"
+        : inventoryStatus === "LOW_STOCK"
+          ? "low_stock"
+          : inventoryStatus === "ERROR"
+            ? "unavailable"
+            : "available";
   const quickNote =
     item?.status === "hidden"
       ? "Đang ẩn với khách"
@@ -159,9 +184,11 @@ const MenuItemCard = ({
         ? "Tạm hết món"
         : item?.status === "unavailable"
           ? "Tạm ngưng bán"
-          : availability.orderability === "orderable"
-            ? "Có thể đặt món"
-            : availability.label;
+          : remainingAvailable !== null
+            ? `Còn ${remainingAvailable.toLocaleString("vi-VN")} suất`
+            : availability.orderability === "orderable"
+              ? "Chưa theo dõi tồn kho"
+              : availability.label;
 
   const renderFallbackImage = () => (
     <div className="placeholder-img">
@@ -188,11 +215,18 @@ const MenuItemCard = ({
     return renderFallbackImage();
   };
 
-  const renderStatusBadge = () => (
-    <div className={`status-badge ${availability.badgeClassName}`}>
-      {item?.status === "available" ? "Sẵn sàng" : availability.label}
-    </div>
-  );
+  const renderStatusBadge = () => {
+    const hasInventoryOverride = ["LOW_STOCK", "OUT_OF_STOCK", "ERROR"].includes(
+      inventoryStatus,
+    );
+    return (
+      <div className={`status-badge ${availability.badgeClassName}`}>
+        {item?.status === "available" && !hasInventoryOverride
+          ? "Sẵn sàng"
+          : availability.label}
+      </div>
+    );
+  };
 
   const canUpdateItem =
     typeof canUpdateItemProp === "boolean"
@@ -224,7 +258,9 @@ const MenuItemCard = ({
   return (
     <>
       <article
-        className={`menu-item-card ${selected ? "is-selected" : ""}`.trim()}
+        className={`menu-item-card ${selected ? "is-selected" : ""} ${
+          isStatusMenuOpen ? "is-status-menu-open" : ""
+        }`.trim()}
       >
         {typeof onSelectToggle === "function" && (
           <label
@@ -269,7 +305,12 @@ const MenuItemCard = ({
                 {formatPrice(baseDisplayPrice)}
               </strong>
               <span
-                className={`menu-item-card__quick-note menu-item-card__quick-note--${item?.status || "available"}`}
+                className={`menu-item-card__quick-note menu-item-card__quick-note--${quickNoteTone}`}
+                title={
+                  remainingAvailable !== null
+                    ? "Tồn khả dụng theo cách chế biến mặc định"
+                    : quickNote
+                }
               >
                 {quickNote}
               </span>
