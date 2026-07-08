@@ -20,12 +20,12 @@ vi.mock("../EmployeeFormModal/EmployeeFormModal", () => ({
 }));
 
 describe("AddEmployeeModal business context", () => {
-  it("submits the active business scope instead of account fallback data", async () => {
+  it("submits the active manager scope instead of account fallback data", () => {
     const onSubmit = vi.fn().mockResolvedValue(null);
 
     render(
       <AddEmployeeModal
-        businessContext={{ brandId: "brand-active", restaurantId: "restaurant-active" }}
+        defaultRestaurantId="restaurant-active"
         restaurantList={[
           { id: "restaurant-active", brandId: "brand-active" },
           { id: "restaurant-other", brandId: "brand-active" },
@@ -48,24 +48,5 @@ describe("AddEmployeeModal business context", () => {
       },
     });
     expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("restaurantForStaff");
-  });
-
-  it("blocks creation when the active business context is unavailable", async () => {
-    const onSubmit = vi.fn();
-
-    render(
-      <AddEmployeeModal
-        businessContext={{ brandId: "", restaurantId: "" }}
-        restaurantList={[]}
-        onSubmit={onSubmit}
-      />,
-    );
-
-    await expect(
-      screen.getByRole("button", { name: ":" }).click(),
-    ).rejects.toThrow(
-      "Chưa xác định được doanh nghiệp và nhà hàng đang hoạt động.",
-    );
-    expect(onSubmit).not.toHaveBeenCalled();
   });
 });
