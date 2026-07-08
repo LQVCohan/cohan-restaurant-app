@@ -17,6 +17,13 @@ function rememberPendingVerificationContact(user) {
 }
 
 export const resolveRoleName = (me) => {
+  if (
+    me &&
+    typeof me === "object" &&
+    (me.forcePasswordChange || me.status === "force_password_change")
+  ) {
+    return "force_password_change";
+  }
   if (me && typeof me === "object" && !isAccountVerified(me)) {
     rememberPendingVerificationContact(me);
     return "pending_verification";
@@ -38,7 +45,11 @@ export const hasAllowedRole = (allowedRoles, roleName) => {
     .includes(normalizedRole);
 };
 
-export const getRoleHomeRoute = (roleName) =>
-  normalizeRoleName(roleName) === "pending_verification"
-    ? "/verify-email"
-    : getDefaultPathForRole(roleName);
+export const getRoleHomeRoute = (roleName) => {
+  const normalizedRole = normalizeRoleName(roleName);
+  if (normalizedRole === "force_password_change") {
+    return "/verify-account/confirm?forcePasswordChange=1";
+  }
+  if (normalizedRole === "pending_verification") return "/verify-email";
+  return getDefaultPathForRole(roleName);
+};
