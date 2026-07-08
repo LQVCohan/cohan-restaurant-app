@@ -1,0 +1,21 @@
+name: verify-dashboard-tests
+
+on:
+  push:
+    branches: [codex/verify-dashboard-tests]
+
+permissions:
+  contents: read
+
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --silent
+      - run: npx vitest run src/hooks/useDashboard.test.jsx src/utils/installTableEmptyStateEnhancement.test.js --reporter=verbose
