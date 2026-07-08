@@ -6,6 +6,7 @@ const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8"
 const detailSource = readSource("./RestaurantDetail.jsx");
 const detailStyles = readSource("./RestaurantDetail.complete.scss");
 const infoSource = readSource("./components/RestaurantInfo/RestaurantInfo.jsx");
+const infoStyles = readSource("./components/RestaurantInfo/RestaurantInfo.complete.scss");
 const menuSource = readSource("./components/MenuSection/MenuSection.jsx");
 const gallerySource = readSource("./components/PhotoGallery/PhotoGallery.jsx");
 
@@ -39,6 +40,16 @@ describe("Restaurant detail complete UX contract", () => {
     expect(infoSource).toContain("weeklyOpeningHours");
     expect(infoSource).toContain("reservationSettings");
     expect(infoSource).toContain("customerInfo.faqs");
+  });
+
+  it("keeps restaurant information readable without raw keys or nested scrolling", () => {
+    expect(infoSource).toContain("CORE_AMENITY_LABELS[text] || text");
+    expect(infoStyles).toContain("align-items: start");
+    expect(infoStyles).toContain(".info-card--policy");
+    expect(infoStyles).toContain("grid-template-columns: 1fr");
+    expect(detailStyles).toContain(".sidebar-content");
+    expect(detailStyles).toContain("position: static");
+    expect(detailStyles).toContain("overflow: visible");
   });
 
   it("keeps dish browsing available when ordering is unavailable", () => {
