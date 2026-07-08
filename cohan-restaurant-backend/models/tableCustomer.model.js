@@ -31,6 +31,7 @@ const tableCustomerSchema = BaseSchemaModel({
 
   // Thông tin thêm cho bàn/khách
   partySize: Number,
+  timeFrom: Date,
   timeTo: Date,
 });
 
