@@ -103,6 +103,11 @@ export async function resolveOrCreateGuestCustomerForOrder({
 
 export async function ensureUserForOrder(userId, customer, options = {}) {
   if (userId) {
+    if (!mongoose.isValidObjectId(userId)) {
+      if (options?.snapshotOnly) return null;
+      throw new Error("Không tìm thấy tài khoản khách hàng.");
+    }
+
     const query = Customer.findOne({ _id: userId, userType: "CUSTOMER", deletedAt: null });
     if (options?.session) query.session(options.session);
     const customerDoc = await query;

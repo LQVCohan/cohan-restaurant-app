@@ -6,9 +6,13 @@ import { clearRefreshPromise } from "@/lib/authRefresh";
 import { SESSION_ACCESS_TOKEN_KEY, setAuth } from "@/lib/authStorage";
 
 const navigateMock = vi.fn();
+const clearStoreMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const useQueryMock = vi.hoisted(() => vi.fn());
 vi.mock("react-router-dom", async (i) => ({ ...(await i()), useNavigate: () => navigateMock }));
 vi.mock("@apollo/client/react", () => ({
+  useApolloClient: () => ({
+    clearStore: clearStoreMock,
+  }),
   useQuery: useQueryMock,
 }));
 
@@ -59,6 +63,8 @@ describe("AuthProvider", () => {
     sessionStorage.clear();
     setAuth({ token: null });
     navigateMock.mockReset();
+    clearStoreMock.mockReset();
+    clearStoreMock.mockResolvedValue(undefined);
     clearRefreshPromise();
     useQueryMock.mockImplementation(() => defaultQueryResult());
     global.fetch = vi.fn().mockResolvedValue({ ok: false });
@@ -126,6 +132,32 @@ describe("AuthProvider", () => {
       getQueryText(query).includes("query Me"),
     );
     expect(getQueryText(meQueryCall?.[0])).not.toContain("restaurantForStaff");
+  });
+
+  it("clears Apollo account cache on logout", async () => {
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+
+    fireEvent.click(screen.getByText("login"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("is-auth")).toHaveTextContent("true"),
+    );
+
+    fireEvent.click(screen.getByText("logout"));
+
+    await waitFor(() =>
+      expect(clearStoreMock).toHaveBeenCalledTimes(1),
+    );
+
+    expect(navigateMock).toHaveBeenCalledWith("/login", {
+      replace: true,
+    });
+
+    expect(sessionStorage.getItem(SESSION_ACCESS_TOKEN_KEY)).toBeNull();
   });
 
   it("applies token and user from a successful refresh response", async () => {
