@@ -4,6 +4,7 @@ const modelMocks = vi.hoisted(() => ({
   Table: {
     findOne: vi.fn(),
     find: vi.fn(),
+    updateOne: vi.fn(),
   },
   TableCustomer: {
     findOne: vi.fn(),
@@ -80,6 +81,7 @@ describe("tableCustomerGroup", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     guardMocks.requireRestaurantAccess.mockResolvedValue();
+    modelMocks.Table.updateOne.mockResolvedValue({ modifiedCount: 1 });
     modelMocks.TableCustomer.findOne.mockReturnValue(leanWrap(null));
   });
 
@@ -174,7 +176,7 @@ describe("tableCustomerGroup", () => {
     );
   });
 
-  it("updates a legacy code-only row instead of inserting a duplicate", async () => {
+  it("updates a legacy code-only row and reserves only an available table", async () => {
     modelMocks.TableCustomer.findOneAndUpdate.mockReturnValue(
       leanWrap({
         _id: "valid-customer-1",
@@ -210,6 +212,14 @@ describe("tableCustomerGroup", () => {
         tableCode: "A1",
         customerName: "Nguyễn An mới",
       }),
+    );
+    expect(modelMocks.Table.updateOne).toHaveBeenCalledWith(
+      {
+        restaurantId: expect.anything(),
+        _id: expect.anything(),
+        status: "available",
+      },
+      { $set: { status: "reserved" } },
     );
   });
 });

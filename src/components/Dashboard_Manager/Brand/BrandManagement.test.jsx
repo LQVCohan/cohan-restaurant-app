@@ -336,6 +336,32 @@ describe("BrandManagement", () => {
     expect(accountSelect).toHaveValue("u-new-manager");
   });
 
+  it("keeps an incompatible selected account visible and reports the role mismatch", async () => {
+    render(<BrandManagement />);
+
+    fireEvent.change(
+      screen.getByLabelText("Tìm người cần thêm theo tên, email hoặc mã tài khoản"),
+      { target: { value: "Phạm Minh Khôi" } },
+    );
+
+    const accountSelect = screen.getByLabelText("Chọn tài khoản cần thêm");
+    await waitFor(() => expect(accountSelect).not.toBeDisabled());
+    fireEvent.change(accountSelect, { target: { value: "u-customer" } });
+
+    fireEvent.change(screen.getByLabelText("Vai trò trong chuỗi"), {
+      target: { value: "staff" },
+    });
+
+    expect(accountSelect).toHaveValue("u-customer");
+    fireEvent.click(screen.getByRole("button", { name: "Thêm thành viên" }));
+    expect(
+      screen.getByText(
+        "Tài khoản đã chọn không phù hợp với vai trò này. Hãy chọn tài khoản nhân sự phù hợp.",
+      ),
+    ).toBeInTheDocument();
+    expect(addMemberMock).not.toHaveBeenCalled();
+  });
+
 
 it("shows that an existing Customer is promoted only after accepting the email", async () => {
   render(<BrandManagement />);

@@ -245,6 +245,23 @@ async function upsertTableCustomer(_, { input }, _ctx) {
     setDefaultsOnInsert: true,
   }).lean();
 
+  const hasCustomerIdentity = [
+    customerName,
+    customerPhone,
+    customerEmail,
+    customerUserId,
+  ].some((value) => String(value || "").trim());
+
+  if (hasCustomerIdentity) {
+    await Table.updateOne(
+      {
+        ...buildTableLookup(rid, tableId, tableCode),
+        status: "available",
+      },
+      { $set: { status: "reserved" } },
+    );
+  }
+
   return serializeCustomer(doc);
 }
 
