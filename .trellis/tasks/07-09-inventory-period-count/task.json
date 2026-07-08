@@ -3,17 +3,17 @@
   "name": "inventory-period-count",
   "title": "Add period inventory count and document reconciliation",
   "description": "Create end-of-period count sessions, reconcile counted stock with system stock, post closing adjustments, and mark inbound/outbound documents as reconciled.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack",
   "scope": "inventory-audit",
   "priority": "P1",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-09",
-  "completedAt": null,
+  "completedAt": "2026-07-09",
   "branch": "fix/inventory-period-count",
   "base_branch": "main",
-  "commit": "e2247ccec14ed66ae95ff139cbf91afd6581e32c",
+  "commit": "84522f58a30b22fdeb12f50f8b1c238ceb93fea4",
   "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1311",
   "relatedFiles": [
     "cohan-restaurant-backend/models/inventory-count.model.js",
@@ -29,7 +29,7 @@
     "src/components/Dashboard_Manager/Storage/components/inventory/InventoryAuditTab.scss",
     "src/components/Dashboard_Manager/Storage/components/inventory/InventoryAuditTab.test.jsx"
   ],
-  "notes": "Trace: inventory schema -> stock/movement resolver -> InventoryAuditTab query props -> UI actions for count closing and document reconciliation.",
+  "notes": "Trace: inventory schema -> stock/movement resolver -> InventoryAuditTab query props -> UI actions for count closing and document reconciliation. CI run 6929 passed backend lint/test/Menu RBAC/build and frontend lint/unit/component/build/smoke.",
   "meta": {
     "skills": ["ponytail", "frontend-design", "web-design-guidelines"]
   }
