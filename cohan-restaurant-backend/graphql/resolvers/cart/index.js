@@ -1,4 +1,5 @@
 import { CartQuery } from "./query.js";
+import { CustomerCartQuery } from "./customerQuery.js";
 import { CartMutation } from "./mutation.js";
 import { CustomerCartMutation } from "./customerMutation.js";
 import { CartAvailabilityWatchMutation } from "./availabilityWatchMutation.js";
@@ -11,6 +12,7 @@ import {
 export default {
   Query: {
     ...CartQuery,
+    ...CustomerCartQuery,
   },
   Mutation: {
     ...CartMutation,
