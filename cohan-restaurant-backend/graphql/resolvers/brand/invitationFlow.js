@@ -14,7 +14,10 @@ import {
   isBrandOwner,
   isSystemAdmin,
 } from "../../../src/services/auth/restaurantScope.service.js";
-import { assertBrandMembershipAccountCompatibility } from "./memberRoleConsistency.js";
+import {
+  assertBrandMembershipAccountCompatibility,
+  promoteCustomerAccountToManager,
+} from "./memberRoleConsistency.js";
 import baseBrandResolvers from "./index.js";
 
 const INVITE_PREFIX = "invite:";
@@ -240,6 +243,7 @@ async function createInvitation({ input, ctx }) {
         userId: user._id,
         membershipRole: input.role,
         session,
+        allowCustomerPromotion: true,
       });
 
       const existingMembership = await BrandMembership.findOne({
@@ -489,10 +493,21 @@ const Mutation = {
           throw bad("Lời mời không hợp lệ, đã hết hạn hoặc đã được sử dụng.");
         }
 
-        const user = await User.findById(membership.userId).session(session);
+        const user = await User.findById(membership.userId).populate("role").session(session);
         if (!user) throw notFound("Không tìm thấy tài khoản được mời.");
         if (!["active", "pending"].includes(user.status)) {
           throw forbidden("Tài khoản đang bị khóa hoặc tạm ngưng.");
+        }
+
+        const currentAccountRole = roleName(user);
+        const promotesCustomer =
+user.userType === "CUSTOMER" && currentAccountRole === "customer";
+        const isManagerAccount =
+user.userType === "MANAGER" && currentAccountRole === "manager";
+        if (!promotesCustomer && !isManagerAccount) {
+throw bad(
+  "Lời mời chỉ có thể được xác nhận bởi tài khoản Customer hoặc Manager hợp lệ.",
+);
         }
 
         if (membership.role === "manager") {
@@ -521,6 +536,10 @@ const Mutation = {
         user.verifiedAt = user.verifiedAt || now;
         if (user.status === "pending") user.status = "active";
         await user.save({ session });
+
+        if (promotesCustomer) {
+await promoteCustomerAccountToManager({ userId: user._id, session });
+        }
 
         membership.status = "active";
         membership.acceptedAt = now;

@@ -96,7 +96,7 @@ const memberCandidates = [
     fullName: "Lê Thu Lan",
     username: "thu.lan",
     email: "lan@cohan.vn",
-    userType: "STAFF",
+    userType: "MANAGER",
     status: "active",
   },
 ];
@@ -265,7 +265,7 @@ describe("BrandManagement", () => {
   it("searches, selects and adds a manager without entering a raw account ID", async () => {
     render(<BrandManagement />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Thêm thành viên" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gửi lời mời" }));
     expect(screen.getByText("Chọn tài khoản cần thêm.")).toBeInTheDocument();
 
     fireEvent.change(
@@ -277,7 +277,7 @@ describe("BrandManagement", () => {
     await waitFor(() => expect(accountSelect).not.toBeDisabled());
     fireEvent.change(accountSelect, { target: { value: "u-new-manager" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Thêm thành viên" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gửi lời mời" }));
     expect(
       screen.getByText("Quản lý chi nhánh phải phụ trách đúng một chi nhánh."),
     ).toBeInTheDocument();
@@ -286,7 +286,7 @@ describe("BrandManagement", () => {
     fireEvent.change(screen.getByLabelText("Chi nhánh phụ trách"), {
       target: { value: "r2" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Thêm thành viên" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gửi lời mời" }));
 
     await waitFor(() => expect(addMemberMock).toHaveBeenCalledTimes(1));
     expect(addMemberMock.mock.calls[0][0].variables.input).toEqual({

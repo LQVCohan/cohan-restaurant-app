@@ -27,10 +27,17 @@
     "cohan-restaurant-backend/models/brandMembership.model.js",
     "cohan-restaurant-backend/tests/resolvers/brand-member-invitation-guards.test.js",
     "src/pages/VerifyAccountConfirm.jsx",
-    "src/pages/BrandInvitationAccept.css"
+    "src/pages/BrandInvitationAccept.css",
+    "cohan-restaurant-backend/graphql/resolvers/brand/index.js",
+    "src/components/Dashboard_Manager/Brand/BrandManagement.jsx",
+    "src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx"
   ],
-  "notes": "Employee/staff account creation is explicitly out of scope because it is being implemented separately. Targeted syntax, GraphQL, focused invitation tests and frontend build passed in temporary validation commit 3709da87f872e1ddd4231a469184637211275be9. Repository CI remains blocked before tests by the pre-existing backend package.json/package-lock dependency mismatch.",
+  "notes": "Employee/staff account creation remains explicitly out of scope. Existing Customer accounts can receive Brand admin/manager invitations, but role and userType are changed atomically only after email acceptance. Customer-specific fields remain stored. Focused tests, GraphQL checks and frontend build must pass before commit. Repository CI may remain blocked by the pre-existing backend dependency lock mismatch.",
   "meta": {
-    "skills": ["ponytail", "taste-ui-redesign", "redesign-existing-projects"]
+    "skills": [
+      "ponytail",
+      "taste-ui-redesign",
+      "redesign-existing-projects"
+    ]
   }
 }

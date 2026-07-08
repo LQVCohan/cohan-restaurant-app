@@ -3,96 +3,115 @@ name: ci
 on:
   pull_request:
     branches: [main, develop]
+  push:
+    branches: [main, develop]
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  apply-customer-promotion:
-    if: github.head_ref == 'feature/brand-member-invitation-flow'
+  frontend:
+    name: frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: .
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cohan-restaurant-backend/package-lock.json
 
-      - name: Apply prepared patch
-        shell: bash
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install backend schema dependencies
+        run: npm --prefix cohan-restaurant-backend ci
+
+      - name: Check unresolved conflict markers
+        run: npm run check:conflicts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Test Menu RBAC
+        run: npm run test:menu-rbac --if-present
+
+      - name: Component tests for changed code
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          python <<'PY'
-          from pathlib import Path
-          import subprocess
+          TEST_BASE="$(git merge-base HEAD "origin/${BASE_REF}")"
+          echo "Running component tests for changes since ${TEST_BASE} (origin/${BASE_REF})"
+          timeout --signal=TERM --kill-after=30s 15m \
+            npm run test:component -- \
+            --changed "${TEST_BASE}" \
+            --detectAsyncLeaks \
+            --maxWorkers=2
 
-          def extract(source, step_name=None):
-              if step_name:
-                  source = source.split(f"      - name: {step_name}", 1)[1]
-              marker = "          python <<'PY'\n"
-              script = source.split(marker, 1)[1].split("\n          PY", 1)[0]
-              return "\n".join(
-                  line[10:] if line.startswith("          ") else line
-                  for line in script.splitlines()
-              )
+      - name: Full component tests
+        if: github.event_name != 'pull_request'
+        run: >-
+          timeout --signal=TERM --kill-after=30s 30m
+          npm run test:component --
+          --detectAsyncLeaks
+          --maxWorkers=2
 
-          prepared = Path('.github/workflows/temp-customer-brand-promotion.yml').read_text(encoding='utf-8')
-          try:
-              exec(compile(extract(prepared), 'customer-promotion-prefix.py', 'exec'))
-          except RuntimeError as error:
-              if 'accept account validation' not in str(error):
-                  raise
+      - name: Build
+        run: npm run build
 
-          parent_ci = subprocess.check_output(
-              ['git', 'show', 'HEAD^:.github/workflows/ci.yml'],
-              text=True,
-          )
-          exec(compile(
-              extract(parent_ci, 'Complete remaining patch'),
-              'customer-promotion-remainder.py',
-              'exec',
-          ))
-          PY
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
-      - name: Install dependencies without changing lockfiles
-        run: |
-          npm install --no-package-lock
-          npm --prefix cohan-restaurant-backend install --no-package-lock
+      - name: Smoke tests
+        run: npm run test:smoke
 
-      - name: Validate focused flow
-        id: validate
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          {
-            node --check cohan-restaurant-backend/graphql/resolvers/brand/memberRoleConsistency.js
-            node --check cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js
-            node --check cohan-restaurant-backend/graphql/resolvers/brand/index.js
-            npm --prefix cohan-restaurant-backend test -- tests/resolvers/brand-member-invitation-guards.test.js
-            npm run check:graphql
-            npx vitest run src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx
-            npm run build
-          } 2>&1 | tee /tmp/customer-promotion-validation.log
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cohan-restaurant-backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Upload validation output
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          name: customer-promotion-validation
-          path: /tmp/customer-promotion-validation.log
-          if-no-files-found: error
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cohan-restaurant-backend/package-lock.json
 
-      - name: Commit patch and restore CI
-        if: always()
-        shell: bash
-        run: |
-          rm .github/workflows/temp-customer-brand-promotion.yml
-          git show 30a5c9a638c056c54aae397adfadd2210fd33b45:.github/workflows/ci.yml > .github/workflows/ci.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "fix: promote invited customers after acceptance"
-          git push origin HEAD:${{ github.head_ref }}
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Test
+        run: npm run test --if-present
+
+      - name: Test Menu RBAC
+        run: npm run test:menu-rbac --if-present
+
+      - name: Build
+        run: npm run build --if-present

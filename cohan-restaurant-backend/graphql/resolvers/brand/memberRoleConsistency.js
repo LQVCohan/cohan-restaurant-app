@@ -1,5 +1,5 @@
 import { GraphQLError } from "graphql";
-import { BrandMembership, User } from "../../../models/index.js";
+import { BrandMembership, Role, User } from "../../../models/index.js";
 import {
   canManageBrand,
   getUserId,
@@ -32,6 +32,7 @@ export async function assertBrandMembershipAccountCompatibility({
   userId,
   membershipRole,
   session = null,
+  allowCustomerPromotion = false,
 }) {
   const account = await loadAccount(userId, session);
   if (!account) throw bad("Không tìm thấy tài khoản thành viên.");
@@ -42,23 +43,25 @@ export async function assertBrandMembershipAccountCompatibility({
     throw bad("Tài khoản chưa có vai trò hệ thống.");
   }
 
-  if (nextMembershipRole === "manager" && accountRole !== "manager") {
-    if (accountRole === "admin") {
-      throw bad(
-        "Admin hệ thống luôn có quyền trên mọi nhà hàng. Hãy đổi vai trò hệ thống sang Manager trước khi gán Quản lý chi nhánh.",
-      );
-    }
+  const promotesCustomer =
+    allowCustomerPromotion &&
+    account.userType === "CUSTOMER" &&
+    accountRole === "customer" &&
+    ["admin", "manager"].includes(nextMembershipRole);
+
+  if (nextMembershipRole === "manager" && accountRole !== "manager" && !promotesCustomer) {
     throw bad(
-      "Tài khoản phải có vai trò hệ thống Manager trước khi được gán làm Quản lý chi nhánh.",
+      accountRole === "admin"
+        ? "Admin hệ thống không được gán làm Quản lý chi nhánh."
+        : "Quản lý chi nhánh phải sử dụng tài khoản Manager hoặc Customer hợp lệ.",
     );
   }
 
-  if (
-    nextMembershipRole === "admin" &&
-    !["admin", "manager"].includes(accountRole)
-  ) {
+  if (nextMembershipRole === "admin" && accountRole !== "manager" && !promotesCustomer) {
     throw bad(
-      "Quản trị chuỗi phải sử dụng tài khoản có vai trò hệ thống Manager hoặc Admin.",
+      accountRole === "admin"
+        ? "Admin hệ thống đã có phạm vi toàn hệ thống và không được gán làm Quản trị chuỗi."
+        : "Quản trị chuỗi phải sử dụng tài khoản Manager hoặc Customer hợp lệ.",
     );
   }
 
@@ -74,6 +77,30 @@ export async function assertBrandMembershipAccountCompatibility({
   return account;
 }
 
+export async function promoteCustomerAccountToManager({ userId, session = null }) {
+  const roleQuery = Role.findOne({
+    $or: [{ slug: "manager" }, { name: /^manager$/i }],
+  }).select("_id");
+  if (session) roleQuery.session(session);
+  const managerRole = await roleQuery.lean();
+  if (!managerRole) throw bad("Không tìm thấy vai trò Manager trong hệ thống.");
+
+  const result = await User.updateOne(
+    { _id: userId, userType: "CUSTOMER" },
+    { $set: { userType: "MANAGER", role: managerRole._id } },
+    {
+      ...(session ? { session } : {}),
+      runValidators: true,
+      overwriteDiscriminatorKey: true,
+    },
+  );
+  if ((result.matchedCount ?? result.n ?? 0) !== 1) {
+    throw bad("Tài khoản không còn ở trạng thái Customer để nâng quyền.");
+  }
+
+  return managerRole._id;
+}
+
 export function guardBrandMemberRoleMutations(mutations = {}) {
   return {
     addBrandMember: async (root, { input }, ctx, info) => {
@@ -83,8 +110,9 @@ export function guardBrandMemberRoleMutations(mutations = {}) {
 
       if (!isSyntheticInviteId(input.userId)) {
         await assertBrandMembershipAccountCompatibility({
-          userId: input.userId,
-          membershipRole: input.role,
+userId: input.userId,
+membershipRole: input.role,
+allowCustomerPromotion: ["admin", "manager"].includes(input.role),
         });
       }
       return mutations.addBrandMember(root, { input }, ctx, info);
@@ -105,7 +133,7 @@ export function guardBrandMemberRoleMutations(mutations = {}) {
 
       if (membership.status === "invited" && input.status === "active") {
         throw forbidden(
-          "Thành viên phải tự xác nhận liên kết trong email trước khi quyền được kích hoạt.",
+"Thành viên phải tự xác nhận liên kết trong email trước khi quyền được kích hoạt.",
         );
       }
 
@@ -113,20 +141,20 @@ export function guardBrandMemberRoleMutations(mutations = {}) {
         input.status === "inactive" && membership.status !== "inactive";
       if (suspendsMembership && membership.role === "owner") {
         throw forbidden(
-          "Không thể tạm ngưng Chủ chuỗi. Hãy chuyển quyền sở hữu trước nếu cần thay đổi tài khoản chủ.",
+"Không thể tạm ngưng Chủ chuỗi. Hãy chuyển quyền sở hữu trước nếu cần thay đổi tài khoản chủ.",
         );
       }
       if (suspendsMembership && sameId(membership.userId, getUserId(ctx.user))) {
         throw forbidden(
-          "Bạn không thể tự tạm ngưng quyền của mình. Hãy nhờ Chủ chuỗi hoặc một Quản trị chuỗi khác thực hiện.",
+"Bạn không thể tự tạm ngưng quyền của mình. Hãy nhờ Chủ chuỗi hoặc một Quản trị chuỗi khác thực hiện.",
         );
       }
 
       const nextStatus = input.status || membership.status;
       if (nextStatus === "active") {
         await assertBrandMembershipAccountCompatibility({
-          userId: membership.userId,
-          membershipRole: input.role || membership.role,
+userId: membership.userId,
+membershipRole: input.role || membership.role,
         });
       }
 

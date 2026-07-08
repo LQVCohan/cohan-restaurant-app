@@ -9,9 +9,9 @@ Business-owner registration currently activates and signs in the account immedia
 - New business owners create the Brand, owner membership, and first restaurant atomically but remain `pending` until email verification.
 - Brand owners can invite Brand administrators or branch managers.
 - Brand administrators can invite branch managers only.
-- Existing compatible manager-capable accounts can be invited.
+- Existing Manager accounts and public Customer accounts can be invited.
 - A new manager-capable account can be created in `pending` state from an invitation email.
-- Accepting an invitation activates the membership and, for a new account, verifies email and sets the chosen password.
+- Accepting an invitation activates the membership; an existing Customer is promoted to global Manager only at that point, while a new account is verified and receives its chosen password.
 - Employee/staff creation and occupational roles are not changed.
 
 ## Invariants
@@ -41,12 +41,12 @@ Business-owner registration currently activates and signs in the account immedia
 2. Actor selects an existing compatible account or enters a new email.
 3. Backend creates or reuses the User, stores an `invited` BrandMembership, hashes a one-use token, and sends an invitation email.
 4. Recipient opens the invitation link.
-5. New account supplies a password; existing account only confirms.
-6. Backend verifies token, activates membership, and activates/verifies a new account.
+5. New account supplies a password; an existing Customer or Manager confirms the invitation.
+6. Backend verifies the token, promotes an existing Customer to global Manager only after confirmation, then activates the membership and activates/verifies a new account.
 
 ## Validation
 
-- Reject Customer or operational staff accounts for Brand admin/manager invitations.
+- Allow Customer accounts for Brand admin/manager invitations but do not promote them before acceptance; reject operational Staff, HR, Accountant, and System Admin accounts.
 - Reject Brand admin invitation from non-owner Brand administrators.
 - Reject manager invitation without exactly one Brand restaurant.
 - Reject an invitation that would replace an active manager implicitly.
@@ -59,4 +59,4 @@ Business-owner registration currently activates and signs in the account immedia
 - Owner/admin can invite manager with one available restaurant.
 - New invited user is pending and becomes active after acceptance/password setup.
 - Existing compatible user becomes an active member after acceptance.
-- Customer/staff incompatibility and manager-scope conflicts remain blocked.
+- Existing Customer promotion occurs only on acceptance; operational-role incompatibility and manager-scope conflicts remain blocked.
