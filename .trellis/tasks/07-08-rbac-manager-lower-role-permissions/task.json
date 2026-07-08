@@ -1,0 +1,35 @@
+{
+  "id": "07-08-rbac-manager-lower-role-permissions",
+  "title": "Cho Admin và Manager chỉnh quyền vai trò cấp dưới",
+  "status": "implemented_unverified",
+  "type": "security-fix",
+  "flow": "Role/ParentRole model -> authorization service and role/staff resolvers -> GraphQL role mutations -> useRbacManagement -> RbacManagement UI -> focused tests",
+  "scope": [
+    "cohan-restaurant-backend/src/services/auth/authorization.service.js",
+    "cohan-restaurant-backend/graphql/resolvers/role/mutation.js",
+    "cohan-restaurant-backend/src/services/auth/staffRoleAssignment.service.js",
+    "src/utils/frontendPermissionAccess.js",
+    "src/utils/frontendPermissionAccess.manager-role.test.js",
+    "cohan-restaurant-backend/tests/services/authorization.service.test.js",
+    "cohan-restaurant-backend/tests/services/staffRoleAssignment.lower-scope.test.js",
+    "cohan-restaurant-backend/tests/resolvers/role-lower-scope.test.js",
+    "cohan-restaurant-backend/tests/resolvers/backend-auth-wrapup-access.test.js"
+  ],
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "npx vitest run src/utils/frontendPermissionAccess.manager-role.test.js",
+      "npm --prefix cohan-restaurant-backend test -- tests/services/authorization.service.test.js tests/services/staffRoleAssignment.lower-scope.test.js tests/resolvers/role-lower-scope.test.js tests/resolvers/backend-auth-wrapup-access.test.js",
+      "npm run check:graphql",
+      "npm run build"
+    ],
+    "completed": [
+      "traced Role and ParentRole models through authorization service, role mutations, staff role assignment, frontend permission helper and RbacManagement controls",
+      "confirmed the existing manager route and RBAC page access already use role.read, permission.read or staff.write",
+      "added focused frontend and backend regression tests"
+    ],
+    "notRun": [
+      "local tests and build are pending CI because the current environment does not have a repository checkout"
+    ]
+  }
+}

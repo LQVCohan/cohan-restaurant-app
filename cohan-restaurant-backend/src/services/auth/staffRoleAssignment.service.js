@@ -57,6 +57,10 @@ export function assertAssignableStaffRole({ actor, role }) {
     throw forbidden("Protected system role cannot be assigned to staff");
   }
 
+  if (parentRoleSlug(role) !== "staff") {
+    throw forbidden("Only staff-derived roles can be assigned to staff");
+  }
+
   if (hasRole(actor, ["admin"])) return true;
 
   assertManagerAssignablePermissionCodes(effectivePermissionCodes(role));
