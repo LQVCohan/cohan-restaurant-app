@@ -11,6 +11,7 @@ import recipeM from "./recipe.mutation.js";
 import consumeM from "./consume.mutation.js";
 import reservationM from "./reservation.mutation.js";
 import movementQ from "./movement.query.js";
+import inventoryCount from "./inventoryCount.js";
 import typesResolvers from "./types.js";
 export default {
   Query: {
@@ -20,6 +21,7 @@ export default {
     ...stockQ,
     ...recipeQ,
     ...movementQ,
+    ...inventoryCount.Query,
   },
   Mutation: {
     ...ingredientM,
@@ -29,6 +31,7 @@ export default {
     ...recipeM,
     ...consumeM,
     ...reservationM,
+    ...inventoryCount.Mutation,
   },
   ...typesResolvers,
 };
