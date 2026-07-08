@@ -19,18 +19,21 @@ const roleSlug = (role) =>
 const accountRoleOf = (user) => roleSlug(user?.role);
 const sameId = (left, right) =>
   Boolean(left && right && String(left) === String(right));
+const isSyntheticInviteId = (value) => String(value || "").startsWith("invite:");
 
-async function loadAccount(userId) {
-  return User.findById(userId)
-    .populate({ path: "role", populate: { path: "parentRole" } })
-    .lean();
+async function loadAccount(userId, session = null) {
+  const query = User.findById(userId)
+    .populate({ path: "role", populate: { path: "parentRole" } });
+  if (session) query.session(session);
+  return query.lean();
 }
 
 export async function assertBrandMembershipAccountCompatibility({
   userId,
   membershipRole,
+  session = null,
 }) {
-  const account = await loadAccount(userId);
+  const account = await loadAccount(userId, session);
   if (!account) throw bad("Không tìm thấy tài khoản thành viên.");
 
   const accountRole = accountRoleOf(account);
@@ -78,10 +81,12 @@ export function guardBrandMemberRoleMutations(mutations = {}) {
         return mutations.addBrandMember(root, { input }, ctx, info);
       }
 
-      await assertBrandMembershipAccountCompatibility({
-        userId: input.userId,
-        membershipRole: input.role,
-      });
+      if (!isSyntheticInviteId(input.userId)) {
+        await assertBrandMembershipAccountCompatibility({
+          userId: input.userId,
+          membershipRole: input.role,
+        });
+      }
       return mutations.addBrandMember(root, { input }, ctx, info);
     },
 
@@ -96,6 +101,12 @@ export function guardBrandMemberRoleMutations(mutations = {}) {
         !await canManageBrand(ctx.user, membership.brandId)
       ) {
         return mutations.updateBrandMember(root, { input }, ctx, info);
+      }
+
+      if (membership.status === "invited" && input.status === "active") {
+        throw forbidden(
+          "Thành viên phải tự xác nhận liên kết trong email trước khi quyền được kích hoạt.",
+        );
       }
 
       const suspendsMembership =
