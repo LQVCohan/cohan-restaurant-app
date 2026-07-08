@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { message } from "antd";
 import { useMutation, useQuery } from "@apollo/client/react";
 import RestaurantCuisineOnboarding from "./RestaurantCuisineOnboarding";
@@ -51,8 +51,11 @@ const operationSource = (operation) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
-  window.requestAnimationFrame = (callback) => window.setTimeout(callback, 0);
-  window.cancelAnimationFrame = (id) => window.clearTimeout(id);
+  vi.stubGlobal("requestAnimationFrame", (callback) => {
+    callback();
+    return 1;
+  });
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
 
   useQuery.mockReturnValue({
     data: { restaurantCuisineTemplates: templates },
@@ -91,6 +94,10 @@ beforeEach(() => {
     }
     throw new Error(`Unexpected mutation: ${source}`);
   });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe("RestaurantCuisineOnboarding", () => {

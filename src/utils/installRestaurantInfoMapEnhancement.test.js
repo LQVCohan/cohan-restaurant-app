@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const leafletState = vi.hoisted(() => {
   const mapHandlers = {};
@@ -79,10 +79,10 @@ const renderCoordinateFields = () => {
 describe("restaurant information location map enhancement", () => {
   beforeEach(() => {
     window.history.pushState({}, "", "/manager#restaurant-info-management");
-    window.requestAnimationFrame = (callback) => {
+    vi.stubGlobal("requestAnimationFrame", (callback) => {
       callback();
       return 1;
-    };
+    });
     Object.keys(leafletState.mapHandlers).forEach(
       (key) => delete leafletState.mapHandlers[key],
     );
@@ -91,6 +91,12 @@ describe("restaurant information location map enhancement", () => {
     );
     vi.clearAllMocks();
     renderCoordinateFields();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.body.innerHTML = "";
+    window.history.pushState({}, "", "/");
   });
 
   it("renders the stored point with the custom marker and writes map clicks back to controlled inputs", () => {

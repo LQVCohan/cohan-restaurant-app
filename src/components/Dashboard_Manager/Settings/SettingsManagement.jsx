@@ -354,7 +354,7 @@ const SettingsManagement = () => {
       {selectedRestaurantId && !loading ? (
         <section className="settings-management__workspace" aria-label="Không gian cấu hình">
           <div className="settings-management__primary-column">
-            <form className={`settings-management__form ${editMode ? "is-editing" : ""}`} onSubmit={handleSave} aria-label="Biểu mẫu cấu hình hệ thống">
+            <form className={`settings-management__form ${editMode ? "is-editing" : ""}`} onSubmit={handleSave} aria-label="Biểu mẫu cấu hình hệ thống" noValidate>
               <div className="settings-management__form-header">
                 <div>
                   <span>Cấu hình vận hành</span>

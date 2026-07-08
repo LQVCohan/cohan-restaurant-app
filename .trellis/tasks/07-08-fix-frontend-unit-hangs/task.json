@@ -1,0 +1,36 @@
+{
+  "id": "07-08-fix-frontend-unit-hangs",
+  "name": "fix-frontend-unit-hangs",
+  "title": "Repair frontend test conflicts and async leaks",
+  "description": "Keep manager scope selection stable, repair stale assertions, and remove test globals that prevent Vitest workers from exiting.",
+  "status": "in_review",
+  "dev_type": "frontend",
+  "scope": "manager-scope-and-test-isolation",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "codex/fix-frontend-unit-hangs",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1279",
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/hooks/useBrandManagement.js",
+    "src/components/Dashboard_Manager/Settings/SettingsManagement.jsx",
+    "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.test.jsx",
+    "src/utils/installRestaurantHoursEnhancement.test.js",
+    "src/utils/installRestaurantInfoMapEnhancement.test.js",
+    "src/utils/installTableEmptyStateEnhancement.test.js",
+    "src/utils/installTablePromotionSearch.js"
+  ],
+  "notes": "Rebased from the latest main to remove historical conflicts. Final CI validation is pending on the cleaned PR head.",
+  "meta": {
+    "skills": ["ponytail"]
+  }
+}

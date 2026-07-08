@@ -71,13 +71,16 @@ describe("installTableEmptyStateEnhancement", () => {
     expect(document.querySelector(".tm-container")).not.toHaveClass(
       "tm-container--no-floors",
     );
-    expect(document.querySelector(".tm-empty")).not.toHaveClass(
-      "tm-empty--setup",
-    );
-    expect(document.querySelector(".tm-empty__message")).toHaveTextContent(
-      "Chưa có tầng để gán bàn.",
-    );
-    expect(document.querySelector(".tm-empty__action .btn__text")).toHaveTextContent(
+
+    const emptyState = document.querySelector(".tm-empty");
+    const restoredMessage = emptyState?.querySelector("p");
+    const restoredAction = emptyState?.querySelector("button.btn");
+
+    expect(emptyState).not.toHaveClass("tm-empty--setup");
+    expect(restoredMessage).toHaveTextContent("Chưa có tầng để gán bàn.");
+    expect(restoredMessage).not.toHaveClass("tm-empty__message");
+    expect(restoredAction).not.toHaveClass("tm-empty__action");
+    expect(restoredAction?.querySelector(".btn__text")).toHaveTextContent(
       "Thêm tầng",
     );
     expect(document.querySelector(".mph-btn--primary span")).toHaveTextContent(
