@@ -4,7 +4,11 @@
 
 ## Đăng nhập nhanh
 
-Các tài khoản trong database mẫu sử dụng cùng mật khẩu demo. Giá trị mặc định development được khai báo tại `DEFAULT_DEMO_PASSWORD` trong `cohan-restaurant-backend/scripts/lib/scriptSafety.js` và được ghi trong `handover/README.md`.
+Tất cả tài khoản trong database mẫu sử dụng mật khẩu chung:
+
+```text
+Demo@123456
+```
 
 Có thể nhập email hoặc username tại màn hình đăng nhập.
 
@@ -23,7 +27,7 @@ Tài khoản tối thiểu để kiểm tra hai nhóm quyền chính:
 ```text
 Admin: admin.demo@cohan.local
 User:  customer.demo@cohan.local
-Password: xem handover/README.md
+Password chung: Demo@123456
 ```
 
 ## Business và phạm vi truy cập
@@ -44,10 +48,10 @@ Password: xem handover/README.md
 
 ## Kiểm tra database mẫu
 
-Mật khẩu trong file database phải khớp với giá trị trong `handover/README.md`. Sau khi restore, nên đăng nhập thử bằng:
+Sau khi restore, nên đăng nhập thử bằng:
 
 1. `admin.demo@cohan.local`.
 2. `customer.demo@cohan.local`.
 3. `manager.demo@cohan.local`.
 
-Nếu thay đổi `DEMO_PASSWORD`, cần cập nhật tài liệu và tạo lại database archive để password hash đồng nhất.
+Mật khẩu trong archive hiện tại phải khớp với `Demo@123456`. Nếu thay đổi `DEMO_PASSWORD`, cần cập nhật tài liệu và tạo lại database archive để password hash đồng nhất.
