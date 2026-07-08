@@ -1,0 +1,28 @@
+{
+  "id": "07-08-restaurant-detail-complete-ux",
+  "title": "Hoàn thiện trải nghiệm trang chi tiết nhà hàng",
+  "status": "in_progress",
+  "type": "frontend-feature",
+  "scope": [
+    "src/components/Customer/RestaurantDetail/RestaurantDetail.jsx",
+    "src/components/Customer/RestaurantDetail/RestaurantDetail.refinements.scss",
+    "src/components/Customer/RestaurantDetail/components/RestaurantInfo/RestaurantInfo.jsx",
+    "src/components/Customer/RestaurantDetail/components/RestaurantInfo/RestaurantInfo.scss",
+    "src/components/Customer/RestaurantDetail/components/MenuSection/MenuSection.jsx",
+    "src/components/Customer/RestaurantDetail/components/PhotoGallery/PhotoGallery.jsx",
+    "src/components/Customer/RestaurantDetail/components/ReviewsSection/ReviewsSection.jsx",
+    "src/components/Customer/RestaurantDetail/RestaurantDetail.ux-contract.test.jsx"
+  ],
+  "flow": "Restaurant model -> Restaurant GraphQL fields -> publicRestaurant resolver/public visibility guard -> RestaurantDetail Apollo query -> RestaurantInfo/Menu/Photo/Review actions -> customer decision and interaction",
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "npm run check:graphql",
+      "npx vitest run src/components/Customer/RestaurantDetail/RestaurantDetail.ux-contract.test.jsx src/components/Customer/RestaurantDetail/RestaurantDetail.record-recent.test.jsx",
+      "npm run build",
+      "browser smoke at desktop, 390x844 and 430x932"
+    ],
+    "completed": [],
+    "notRun": []
+  }
+}
