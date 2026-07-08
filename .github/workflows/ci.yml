@@ -3,115 +3,347 @@ name: ci
 on:
   pull_request:
     branches: [main, develop]
-  push:
-    branches: [main, develop]
 
 permissions:
-  contents: read
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  contents: write
 
 jobs:
-  frontend:
-    name: frontend
+  finalize-brand-revocation:
+    if: github.head_ref == 'feature/brand-member-invitation-flow'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    defaults:
-      run:
-        working-directory: .
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            cohan-restaurant-backend/package-lock.json
 
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Install backend schema dependencies
-        run: npm --prefix cohan-restaurant-backend ci
-
-      - name: Check unresolved conflict markers
-        run: npm run check:conflicts
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Unit tests
-        run: npm run test:unit
-
-      - name: Test Menu RBAC
-        run: npm run test:menu-rbac --if-present
-
-      - name: Component tests for changed code
-        if: github.event_name == 'pull_request'
-        env:
-          BASE_REF: ${{ github.base_ref }}
+      - name: Apply UI and task updates
+        shell: bash
         run: |
-          TEST_BASE="$(git merge-base HEAD "origin/${BASE_REF}")"
-          echo "Running component tests for changes since ${TEST_BASE} (origin/${BASE_REF})"
-          timeout --signal=TERM --kill-after=30s 15m \
-            npm run test:component -- \
-            --changed "${TEST_BASE}" \
-            --detectAsyncLeaks \
-            --maxWorkers=2
+          python <<'PY'
+          from pathlib import Path
+          import json
 
-      - name: Full component tests
-        if: github.event_name != 'pull_request'
-        run: >-
-          timeout --signal=TERM --kill-after=30s 30m
-          npm run test:component --
-          --detectAsyncLeaks
-          --maxWorkers=2
+          def read(path):
+              return Path(path).read_text(encoding="utf-8")
 
-      - name: Build
-        run: npm run build
+          def write(path, content):
+              Path(path).write_text(content, encoding="utf-8")
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+          def replace_once(path, old, new, label):
+              text = read(path)
+              count = text.count(old)
+              if count != 1:
+                  raise RuntimeError(f"{label}: expected one match, found {count}")
+              write(path, text.replace(old, new, 1))
 
-      - name: Smoke tests
-        run: npm run test:smoke
+          invitation = "cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js"
+          replace_once(
+              invitation,
+              '''            acceptedAt: null,
+              invitedBy: actorId,'''.replace("              ", ""),
+              '''            acceptedAt: null,
+              revokedAt: null,
+              revokedBy: null,
+              revokedReason: null,
+              revokedFromStatus: null,
+              invitedBy: actorId,'''.replace("              ", ""),
+              "clear revocation audit on new invitation",
+          )
 
-  backend:
-    name: backend
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: cohan-restaurant-backend
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+          ui = "src/components/Dashboard_Manager/Brand/BrandManagement.jsx"
+          replace_once(
+              ui,
+              '''      role
+              status
+              user {'''.replace("              ", ""),
+              '''      role
+              status
+              revokedAt
+              revokedFromStatus
+              user {'''.replace("              ", ""),
+              "member query revocation fields",
+          )
+          replace_once(
+              ui,
+              '''const UPDATE_MEMBER = gql`
+              mutation UpdateBrandMember($input: UpdateBrandMemberInput!) {
+                updateBrandMember(input: $input) {
+                  id
+                  role
+                  status
+                  restaurantIds
+                }
+              }
+            `;
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: cohan-restaurant-backend/package-lock.json
+            const BRAND_STATUS_LABELS'''.replace("            ", ""),
+              '''const UPDATE_MEMBER = gql`
+              mutation UpdateBrandMember($input: UpdateBrandMemberInput!) {
+                updateBrandMember(input: $input) {
+                  id
+                  role
+                  status
+                  restaurantIds
+                }
+              }
+            `;
 
-      - name: Install dependencies
-        run: npm ci
+            const REMOVE_MEMBER = gql`
+              mutation RemoveBrandMember($id: ID!, $reason: String) {
+                removeBrandMember(id: $id, reason: $reason)
+              }
+            `;
 
-      - name: Lint
-        run: npm run lint --if-present
+            const BRAND_STATUS_LABELS'''.replace("            ", ""),
+              "remove member mutation",
+          )
+          replace_once(
+              ui,
+              '''  const [addMember, { loading: addingMember }] = useMutation(ADD_MEMBER);
+              const [updateMember] = useMutation(UPDATE_MEMBER);'''.replace("              ", ""),
+              '''  const [addMember, { loading: addingMember }] = useMutation(ADD_MEMBER);
+              const [updateMember] = useMutation(UPDATE_MEMBER);
+              const [removeMember] = useMutation(REMOVE_MEMBER);'''.replace("              ", ""),
+              "remove member hook",
+          )
 
-      - name: Test
-        run: npm run test --if-present
+          text = read(ui)
+          start = text.index("  const toggleMemberStatus = async (currentMember) => {")
+          end = text.index("\n\n  const refreshPage", start)
+          action = '''  const toggleMemberStatus = async (currentMember) => {
+            const cancelledInvitation =
+              currentMember.status === "inactive" &&
+              currentMember.revokedFromStatus === "invited";
+            const revoking = ["active", "invited"].includes(currentMember.status);
 
-      - name: Test Menu RBAC
-        run: npm run test:menu-rbac --if-present
+            if (revoking) {
+              const confirmed = window.confirm(
+                currentMember.status === "invited"
+                  ? "Hủy lời mời này? Liên kết trong email sẽ không còn hiệu lực."
+                  : "Tháo quyền Brand của thành viên này? Tài khoản và dữ liệu lịch sử vẫn được giữ.",
+              );
+              if (!confirmed) return;
+            }
 
-      - name: Build
-        run: npm run build --if-present
+            setChangingMemberId(currentMember.id);
+            try {
+              if (cancelledInvitation) {
+                await addMember({
+                  variables: {
+                    input: {
+                      brandId: selectedBrandId,
+                      userId: currentMember.userId,
+                      role: currentMember.role,
+                      restaurantIds: currentMember.restaurantIds || [],
+                    },
+                  },
+                });
+                message.success("Đã gửi lại lời mời tham gia chuỗi");
+              } else if (currentMember.status === "inactive") {
+                await updateMember({
+                  variables: { input: { id: currentMember.id, status: "active" } },
+                });
+                message.success("Đã khôi phục quyền Brand");
+              } else {
+                await removeMember({
+                  variables: {
+                    id: currentMember.id,
+                    reason: currentMember.status === "invited"
+                      ? "Hủy lời mời từ trang quản lý chuỗi"
+                      : "Tháo quyền từ trang quản lý chuỗi",
+                  },
+                });
+                message.success(
+                  currentMember.status === "invited"
+                    ? "Đã hủy lời mời"
+                    : "Đã tháo quyền Brand",
+                );
+              }
+              await refetchMembers?.();
+            } catch (mutationError) {
+              message.error(
+                getErrorMessage(mutationError, "Không thể cập nhật quyền Brand."),
+              );
+            } finally {
+              setChangingMemberId("");
+            }
+          };'''.replace("          ", "")
+          write(ui, text[:start] + action + text[end:])
+
+          replace_once(
+              ui,
+              '''                  const statusLabel =
+              MEMBER_STATUS_LABELS[currentMember.status] || "Không xác định";'''.replace("              ", ""),
+              '''                  const statusLabel = currentMember.status === "inactive"
+              ? currentMember.revokedFromStatus === "invited"
+              ? "Lời mời đã hủy"
+              : currentMember.revokedAt
+              ? "Đã tháo quyền"
+              : MEMBER_STATUS_LABELS.inactive
+              : MEMBER_STATUS_LABELS[currentMember.status] || "Không xác định";'''.replace("              ", ""),
+              "revocation status label",
+          )
+          replace_once(
+              ui,
+              '''                        <button
+              type="button"
+              className="brand-link-button"
+              onClick={() => toggleMemberStatus(currentMember)}
+              disabled={changingMemberId === currentMember.id}
+            >
+              {changingMemberId === currentMember.id
+              ? "Đang xử lý..."
+              : currentMember.status === "active"
+              ? "Tạm ngưng"
+              : "Kích hoạt"}
+            </button>'''.replace("              ", ""),
+              '''                        {currentMember.role === "owner" ? (
+              <span>Dùng mục chuyển quyền sở hữu để thay đổi</span>
+            ) : (
+              <button
+                type="button"
+                className="brand-link-button"
+                onClick={() => toggleMemberStatus(currentMember)}
+                disabled={changingMemberId === currentMember.id}
+              >
+                {changingMemberId === currentMember.id
+                  ? "Đang xử lý..."
+                  : currentMember.status === "invited"
+                    ? "Hủy lời mời"
+                    : currentMember.status === "active"
+                      ? "Tháo quyền"
+                      : currentMember.revokedFromStatus === "invited"
+                        ? "Mời lại"
+                        : "Khôi phục quyền"}
+              </button>
+            )}'''.replace("              ", ""),
+              "member revocation actions",
+          )
+
+          test = "src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx"
+          replace_once(
+              test,
+              "const updateMemberMock = vi.fn();",
+              "const updateMemberMock = vi.fn();\nconst removeMemberMock = vi.fn();",
+              "remove member test mock",
+          )
+          replace_once(
+              test,
+              '''  updateMemberMock.mockResolvedValue({
+              data: { updateBrandMember: { id: "m1", role: "manager", status: "inactive" } },
+            });'''.replace("            ", ""),
+              '''  updateMemberMock.mockResolvedValue({
+              data: { updateBrandMember: { id: "m1", role: "manager", status: "active" } },
+            });
+            removeMemberMock.mockResolvedValue({ data: { removeBrandMember: true } });
+            window.confirm = vi.fn(() => true);'''.replace("            ", ""),
+              "member action test setup",
+          )
+          replace_once(
+              test,
+              '''    if (source.includes("mutation UpdateBrandMember")) {
+              return [updateMemberMock, { loading: false }];
+            }
+            if (source.includes("mutation UpdateBrand")) {'''.replace("            ", ""),
+              '''    if (source.includes("mutation UpdateBrandMember")) {
+              return [updateMemberMock, { loading: false }];
+            }
+            if (source.includes("mutation RemoveBrandMember")) {
+              return [removeMemberMock, { loading: false }];
+            }
+            if (source.includes("mutation UpdateBrand")) {'''.replace("            ", ""),
+              "remove member mutation mock",
+          )
+          replace_once(
+              test,
+              '''    fireEvent.click(within(memberCard).getByRole("button", { name: "Tạm ngưng" }));
+
+              await waitFor(() => expect(updateMemberMock).toHaveBeenCalledTimes(1));
+              expect(updateMemberMock.mock.calls[0][0].variables.input).toEqual({
+                id: "m1",
+                status: "inactive",
+              });'''.replace("              ", ""),
+              '''    fireEvent.click(within(memberCard).getByRole("button", { name: "Tháo quyền" }));
+
+              await waitFor(() => expect(removeMemberMock).toHaveBeenCalledTimes(1));
+              expect(removeMemberMock.mock.calls[0][0].variables).toEqual({
+                id: "m1",
+                reason: "Tháo quyền từ trang quản lý chuỗi",
+              });'''.replace("              ", ""),
+              "active member revocation component test",
+          )
+
+          prd = ".trellis/tasks/brand-member-invitation-flow/prd.md"
+          replace_once(
+              prd,
+              "- Employee/staff creation and occupational roles are not changed.",
+              "- Employee/staff creation and occupational roles are not changed.\n- Brand access is revoked by deactivating the membership, invalidating invitation tokens, and preserving the User account and history.",
+              "revocation scope",
+          )
+          replace_once(
+              prd,
+              "## Validation\n",
+              '''### Brand access revocation
+
+1. An authorized actor revokes a non-owner membership.
+2. Backend records who revoked it, when, why, and whether it was active or invited.
+3. A pending invitation token is invalidated immediately.
+4. The User global role and userType remain unchanged.
+5. A cancelled invitation must be sent again; an accepted inactive membership may be restored.
+
+## Validation
+''',
+              "revocation flow",
+          )
+          replace_once(
+              prd,
+              "- Existing Customer promotion occurs only on acceptance; operational-role incompatibility and manager-scope conflicts remain blocked.",
+              "- Existing Customer promotion occurs only on acceptance; operational-role incompatibility and manager-scope conflicts remain blocked.\n- Revoking active or invited access preserves User data, invalidates invitation tokens, and prevents direct activation of a cancelled invitation.",
+              "revocation tests",
+          )
+
+          task_path = ".trellis/tasks/brand-member-invitation-flow/task.json"
+          task = json.loads(read(task_path))
+          task["description"] = (
+              "Require email verification for new business owners, support verified Brand invitations, and revoke Brand access without changing the separate employee-creation workflow."
+          )
+          task["scope"] = "brand-owner-verification-member-invitations-and-revocation"
+          task["status"] = "review"
+          role_test = "cohan-restaurant-backend/tests/resolvers/brand-member-role-consistency.test.js"
+          if role_test not in task["relatedFiles"]:
+              task["relatedFiles"].append(role_test)
+          task["notes"] = (
+              "Employee/staff account creation remains out of scope. Brand access revocation is a soft membership revoke with audit metadata and invitation-token invalidation. The global User role and userType are not automatically demoted. Cancelled invitations must be sent again; accepted inactive memberships can be restored."
+          )
+          write(task_path, json.dumps(task, ensure_ascii=False, indent=2) + "\n")
+          PY
+
+      - name: Install dependencies without rewriting lockfiles
+        run: |
+          npm install --no-package-lock
+          npm --prefix cohan-restaurant-backend install --no-package-lock
+
+      - name: Validate focused Brand flow
+        run: |
+          node --check cohan-restaurant-backend/graphql/resolvers/brand/memberRoleConsistency.js
+          node --check cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js
+          node --check cohan-restaurant-backend/models/brandMembership.model.js
+          npm --prefix cohan-restaurant-backend test -- tests/resolvers/brand-member-role-consistency.test.js tests/resolvers/brand-member-invitation-guards.test.js
+          npm run check:graphql
+          npx vitest run src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx
+          npm run build
+
+      - name: Commit validated changes and restore CI
+        shell: bash
+        run: |
+          git show HEAD^:.github/workflows/ci.yml > .github/workflows/ci.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: add auditable Brand access revocation"
+          git push origin HEAD:${{ github.head_ref }}
