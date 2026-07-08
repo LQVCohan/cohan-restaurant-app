@@ -446,8 +446,11 @@ const Mutation = {
   resendBrandInvitation: async (_, { id }, ctx) => {
     const membership = await BrandMembership.findById(id);
     if (!membership) throw notFound("Không tìm thấy lời mời.");
-    if (membership.status !== "invited") {
-      throw bad("Lời mời này không còn ở trạng thái chờ xác nhận.");
+    const cancelledInvitation =
+      membership.status === "inactive" &&
+      membership.revokedFromStatus === "invited";
+    if (membership.status !== "invited" && !cancelledInvitation) {
+      throw bad("Lời mời này không còn ở trạng thái có thể gửi lại.");
     }
     await assertInvitePermission(ctx, membership.brandId, membership.role);
 
@@ -461,10 +464,15 @@ const Mutation = {
     if (!user.email) throw bad("Tài khoản được mời chưa có email.");
 
     const { token, hash } = generateInvitationToken();
+    membership.status = "invited";
     membership.inviteTokenHash = hash;
     membership.inviteTokenExp = new Date(Date.now() + inviteTtlMs());
     membership.invitedAt = new Date();
     membership.invitedBy = oid(getUserId(ctx.user));
+    membership.revokedAt = null;
+    membership.revokedBy = null;
+    membership.revokedReason = null;
+    membership.revokedFromStatus = null;
     membership.updatedBy = oid(getUserId(ctx.user));
     await membership.save();
 

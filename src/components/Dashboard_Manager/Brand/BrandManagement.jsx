@@ -38,6 +38,7 @@ const MEMBERS = gql`
       userId
       role
       status
+      revokedFromStatus
       user {
         id
         fullName

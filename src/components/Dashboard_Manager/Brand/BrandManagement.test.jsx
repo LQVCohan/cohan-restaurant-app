@@ -179,7 +179,10 @@ beforeEach(() => {
     if (source.includes("mutation UpdateBrandMember")) {
       return [updateMemberMock, { loading: false }];
     }
-    if (source.includes("mutation RemoveBrandMemberAccess")) {
+    if (source.includes("mutation ResendBrandInvitationAccess")) {
+      return [vi.fn().mockResolvedValue({ data: { resendBrandInvitation: {} } }), { loading: false }];
+    }
+        if (source.includes("mutation RemoveBrandMemberAccess")) {
     return [removeMemberMock, { loading: false }];
   }
     if (source.includes("mutation UpdateBrand")) {
