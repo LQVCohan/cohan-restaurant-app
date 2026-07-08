@@ -1,43 +1,42 @@
-# Fix POS table merge feedback
+# Fix POS table merge feedback and refresh
 
 ## Current behavior
 
-In POS, merging two empty tables commits successfully in the backend and the GraphQL response is successful, but the drag-drop UI still shows the native alert `Gộp bàn thất bại.`. Splitting succeeds and must keep its success feedback.
+In POS, merging two empty tables commits successfully in the backend and the GraphQL response succeeds, but the UI shows `Gộp bàn thất bại.`. Both merge and split only become visible after a manual page refresh.
 
 ## Root cause
 
-`useTableManagement.mergeTables` and `splitTables` still invoke `refetch()` after the successful mutation. The previous guard only handles a rejected Promise. If `refetch()` throws synchronously while being called, the shared wrapper rejects after the backend transaction has already committed, so `LeftPanel` enters its failure catch and displays the native alert.
+`PosContext` exposes the table refresh function as `refetchTables`, but `LeftPanel` destructures a non-existent `refreshTables` property.
 
-The refresh is redundant inside the hook because every real merge/split UI caller already refreshes after a successful result:
+That mismatch breaks both POS paths:
 
-- POS drag-drop calls `refreshTables()`.
-- POS table modal calls `onUpdated`, which is `refreshTables`.
-- Manager table modal calls `onUpdated`, which is `refetchTables`.
+- Drag-drop merge calls the undefined `refreshTables()` after the successful mutation. The resulting `TypeError` is caught by the merge error handler, which incorrectly shows `Gộp bàn thất bại.`.
+- `TableActionsModal` receives `onUpdated={refreshTables}` as `undefined`, so successful merge/split actions do not refresh the POS table list.
 
 ## Caller flow
 
-`Table/Reservation models -> mergeTables/splitTables resolver -> GraphQL mutation -> useTableManagement -> PosContext -> LeftPanel/TableActionsModal -> caller-owned refresh and notification`
+`Table resolver -> GraphQL mutation -> useTableManagement -> PosContext.refetchTables -> LeftPanel -> drag-drop merge / TableActionsModal -> immediate table-list refresh`
 
 ## Required behavior
 
-1. A successful backend merge resolves successfully regardless of any refresh behavior.
-2. A successful split resolves successfully regardless of any refresh behavior.
-3. The shared hook emits merge/split success notifications only after a successful mutation.
-4. A real GraphQL mutation error still rejects and does not show success.
-5. Existing UI callers remain responsible for refreshing their table list.
+1. POS drag-drop merge refreshes the table list immediately after success.
+2. POS modal merge and split refresh the table list immediately after success.
+3. A successful merge does not enter the failure alert.
+4. A real merge mutation error still shows the existing failure alert.
+5. No backend or GraphQL contract changes.
 
 ## Files
 
-- `src/hooks/useTableManagement.js`: remove redundant hook-owned `refetch()` calls from merge/split wrappers.
-- `src/hooks/useTableManagement.test.jsx`: prove merge/split do not call or depend on `refetch`, including a synchronous-throwing refetch mock.
+- `src/components/Dashboard_Manager/POS/components/pos/LeftPanel.jsx`: alias `refetchTables` from context to the existing local `refreshTables` name.
+- `src/components/Dashboard_Manager/POS/components/pos/LeftPanel.tableRefresh.test.jsx`: verify drag-drop merge and modal refresh callbacks use `refetchTables`.
 
 ## Validation
 
-- Targeted Vitest for `src/hooks/useTableManagement.test.jsx`.
+- Targeted Vitest for the new LeftPanel test.
 - Frontend build if the connected environment permits it.
 
 ## Out of scope
 
-- Changing backend merge/split business rules.
-- Redesigning the merge picker.
-- Changing table/order/reservation persistence.
+- Changing merge/split business rules.
+- Redesigning the POS table UI.
+- Changing order, reservation, or payment behavior.
