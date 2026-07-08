@@ -509,8 +509,8 @@ extend type Mutation {
     restaurantId: ID!
     warehouseId: ID!
     ingredientId: ID!
-    onHand: Int
-    reserved: Int
+    onHand: Float
+    reserved: Float
     batches: [StockBatchInput!]
   ): StockItem!
 
@@ -518,7 +518,7 @@ extend type Mutation {
     restaurantId: ID!
     warehouseId: ID!
     ingredientId: ID!
-    qty: Int!
+    qty: Float!
     reason: String
   ): StockItem!
 
@@ -527,7 +527,7 @@ extend type Mutation {
     fromWarehouseId: ID!
     toWarehouseId: ID!
     ingredientId: ID!
-    qty: Int!
+    qty: Float!
     reason: String
   ): Boolean!
 
@@ -535,7 +535,7 @@ extend type Mutation {
     restaurantId: ID!
     warehouseId: ID!
     ingredientId: ID!
-    qty: Int!
+    qty: Float!
     costPerBaseUnit: Float!
     reason: String
     lot: String
