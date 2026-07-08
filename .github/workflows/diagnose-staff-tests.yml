@@ -1,0 +1,56 @@
+name: diagnose-staff-tests
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cohan-restaurant-backend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci --silent
+          npm --prefix cohan-restaurant-backend ci --silent
+
+      - name: Run targeted tests
+        id: tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          npm --prefix cohan-restaurant-backend test -- tests/resolvers/staff-create-business-context.test.js --reporter=verbose > backend-test.log 2>&1
+          echo $? > backend-test.status
+          npx vitest run src/components/Dashboard_Manager/Staff/components/modals/AddEmployeeModal/AddEmployeeModal.test.jsx --reporter=verbose > frontend-test.log 2>&1
+          echo $? > frontend-test.status
+          set -e
+
+      - name: Upload targeted logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: targeted-staff-test-logs
+          path: |
+            backend-test.log
+            backend-test.status
+            frontend-test.log
+            frontend-test.status
+
+      - name: Fail when a targeted test failed
+        shell: bash
+        run: |
+          test "$(cat backend-test.status)" = "0"
+          test "$(cat frontend-test.status)" = "0"
