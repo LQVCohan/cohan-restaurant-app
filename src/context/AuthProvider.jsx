@@ -518,6 +518,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(() => {
     fetch(getLogoutUrl(), { method: "POST", credentials: "include" }).catch(() => {});
+    navigate("/login", { replace: true });
     setToken(null);
     setUser(null);
     setBrandMemberships([]);
@@ -528,7 +529,6 @@ export const AuthProvider = ({ children }) => {
     clearAuth();
     clearPersistedCart();
     accountCacheResetRef.current = apolloClient.clearStore().catch(() => {});
-    navigate("/login", { replace: true });
   }, [apolloClient, navigate]);
 
   const activeRestaurant = roleName === "customer" ? null : restaurants[0] || null;
