@@ -1,0 +1,29 @@
+{
+  "id": "show-merged-order-source",
+  "name": "show-merged-order-source",
+  "title": "Show source table for merged POS orders",
+  "description": "Preserve each active order batch's physical source table in the POS item mapper and display it in the merged-table order panel.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "pos-merged-table-ui",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/hooks/useOrderManagement.js",
+    "src/components/Dashboard_Manager/POS/components/pos/RightPanel.jsx",
+    "src/hooks/useOrderManagement.mergedTableSource.test.js"
+  ],
+  "notes": "Direct main update requested by the user."
+}
