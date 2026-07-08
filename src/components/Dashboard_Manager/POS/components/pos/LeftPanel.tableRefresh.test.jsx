@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useQuery } from "@apollo/client";
 import { usePos } from "../../../../../context/PosContext";
 import LeftPanel from "./LeftPanel";
@@ -108,6 +108,10 @@ describe("LeftPanel table refresh wiring", () => {
     mocks.mergeTables.mockResolvedValue({ mergedTableId: "merged-1" });
     vi.spyOn(window, "confirm").mockReturnValue(true);
     vi.spyOn(window, "alert").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("refreshes after a successful drag-drop merge without showing failure", async () => {
