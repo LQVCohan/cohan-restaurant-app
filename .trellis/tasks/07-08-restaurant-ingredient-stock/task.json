@@ -3,7 +3,7 @@
   "name": "restaurant-ingredient-stock",
   "title": "Seed ingredient stock for Cohan Restaurant",
   "description": "Create an idempotent inbound stock seed for every active ingredient in restaurant 69ce9e2e8d8d711f12e251b1, using the first active warehouse and today's Vietnam date.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "data-seed",
   "scope": "inventory-stock",
   "package": "cohan-restaurant-backend",
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": null,
+  "completedAt": "2026-07-08",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "d047ae1562582b904c9872f0618c307d022f65b6",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -28,5 +28,5 @@
     "cohan-restaurant-backend/models/stock-movement.model.js",
     "cohan-restaurant-backend/graphql/resolvers/inventory/stock.mutation.js"
   ],
-  "notes": "The seed follows the existing receiveStock contract: StockItem batch plus inbound StockMovement metadata. It validates by default and writes only with --apply."
+  "notes": "Added validate/apply commands. The seed follows the receiveStock contract, preserves reserved stock, writes an inbound batch and movement dated at runtime in Asia/Ho_Chi_Minh, and skips duplicate seed movements on the same date. Syntax check passed; MongoDB validate/apply was not run because database credentials are unavailable in this environment."
 }
