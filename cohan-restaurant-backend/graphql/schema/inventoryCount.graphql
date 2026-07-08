@@ -1,0 +1,102 @@
+enum InventoryCountStatus {
+  draft
+  closed
+  cancelled
+}
+
+enum InventoryDocumentStatus {
+  pending
+  matched
+  mismatch
+  missing
+}
+
+type InventoryCountLine {
+  ingredientId: ID!
+  nameSnapshot: String
+  skuSnapshot: String
+  unit: Unit!
+  systemQty: Float!
+  countedQty: Float
+  variance: Float!
+  note: String
+}
+
+type InventoryCountDocument {
+  movementId: ID
+  documentNo: String
+  status: InventoryDocumentStatus!
+  note: String
+  checkedAt: DateTime
+}
+
+type InventoryCount {
+  id: ID!
+  restaurantId: ID!
+  warehouseId: ID!
+  code: String!
+  title: String
+  periodStart: DateTime!
+  periodEnd: DateTime!
+  status: InventoryCountStatus!
+  lines: [InventoryCountLine!]!
+  documents: [InventoryCountDocument!]!
+  note: String
+  closedAt: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CreateInventoryCountInput {
+  restaurantId: ID!
+  warehouseId: ID!
+  title: String
+  periodStart: DateTime!
+  periodEnd: DateTime!
+  note: String
+}
+
+input UpdateInventoryCountLineInput {
+  countId: ID!
+  ingredientId: ID!
+  countedQty: Float!
+  note: String
+}
+
+input CloseInventoryCountInput {
+  countId: ID!
+  note: String
+}
+
+input ReconcileStockMovementDocumentInput {
+  movementId: ID!
+  documentNo: String
+  status: InventoryDocumentStatus!
+  note: String
+}
+
+extend type Query {
+  inventoryCounts(
+    restaurantId: ID!
+    warehouseId: ID
+    status: InventoryCountStatus
+    limit: Int = 20
+  ): [InventoryCount!]!
+  inventoryCount(id: ID!): InventoryCount
+  inventoryDocumentMovements(
+    restaurantId: ID!
+    warehouseId: ID
+    status: InventoryDocumentStatus
+    dateFrom: DateTime
+    dateTo: DateTime
+    limit: Int = 100
+  ): [StockMovement!]!
+}
+
+extend type Mutation {
+  createInventoryCount(input: CreateInventoryCountInput!): InventoryCount!
+  updateInventoryCountLine(input: UpdateInventoryCountLineInput!): InventoryCount!
+  closeInventoryCount(input: CloseInventoryCountInput!): InventoryCount!
+  cancelInventoryCount(id: ID!): InventoryCount!
+  reconcileStockMovementDocument(input: ReconcileStockMovementDocumentInput!): StockMovement!
+}
