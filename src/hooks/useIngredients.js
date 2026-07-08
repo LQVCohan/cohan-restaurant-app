@@ -21,7 +21,10 @@ import {
   RECEIVE_STOCK,
   INGREDIENT_PRICE_SUGGESTIONS,
 } from "@/components/Dashboard_Manager/Storage/graphql/inventory.gql";
-import { toBaseQty } from "@/utils/unitConversion";
+import {
+  calculateStockReceipt,
+  roundUnitQuantity,
+} from "@/utils/unitConversion";
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -410,24 +413,23 @@ export function useIngredients(
       const created = res?.data?.createIngredient;
       const createdId = created?.id;
 
-      // init stock (nhập tồn ban đầu phải có giá nhập)
-      const qty0 = Number(initialStockQty) || 0;
+      // init stock is already entered in the ingredient base unit.
+      const qty0 = roundUnitQuantity(initialStockQty);
       if (qty0 > 0 && withStock) {
         const wid = assertWarehouseForStock();
-        const intQty = Math.round(qty0); // BE: integer
         const initCost = Number(payload.costPerBaseUnit);
         if (!Number.isFinite(initCost) || initCost <= 0) {
           throw new Error(
             "Nhập tồn ban đầu bắt buộc có giá nhập > 0 (cost per base unit)."
           );
         }
-        if (intQty > 0 && createdId) {
+        if (createdId) {
           await receiveStockMu({
             variables: {
               restaurantId,
               warehouseId: wid,
               ingredientId: createdId,
-              qty: intQty,
+              qty: qty0,
               costPerBaseUnit: initCost,
               reason: "Nhập tồn ban đầu",
               lot: "INIT",
@@ -510,19 +512,15 @@ export function useIngredients(
         throw new Error("withStock=false: không hỗ trợ nhập kho.");
 
       const wid = assertWarehouseForStock();
-
-      const q = Number(qty);
-      if (!Number.isFinite(q) || q <= 0) return;
-
-      const intQty = Math.round(q); // BE integer
-      if (intQty === 0) return;
+      const normalizedQty = roundUnitQuantity(Math.abs(Number(qty)));
+      if (!Number.isFinite(normalizedQty) || normalizedQty <= 0) return;
 
       await adjustStockMu({
         variables: {
           restaurantId,
           warehouseId: wid,
           ingredientId,
-          qty: Math.abs(intQty),
+          qty: normalizedQty,
           reason,
         },
       });
@@ -550,28 +548,13 @@ export function useIngredients(
       const ing = ingredientsMapped.find((x) => String(x.id) === String(ingredientId));
       if (!ing) throw new Error("Không tìm thấy nguyên liệu.");
 
-      const qtyNum = Number(qty);
-      if (!Number.isFinite(qtyNum) || qtyNum <= 0) {
-        throw new Error("Số lượng nhập phải > 0.");
-      }
-
-      const unitPriceNum = Number(unitPrice);
-      if (!Number.isFinite(unitPriceNum) || unitPriceNum <= 0) {
-        throw new Error("Giá nhập là bắt buộc và phải > 0.");
-      }
-
-      const fromUnit = unit || ing.baseUnit;
-      const qtyBaseRaw = toBaseQty(qtyNum, fromUnit, ing.baseUnit);
-      const qtyBase = Math.round(qtyBaseRaw);
-      if (!Number.isFinite(qtyBase) || qtyBase <= 0) {
-        throw new Error("Số lượng quy đổi về đơn vị gốc không hợp lệ.");
-      }
-
-      const costPerBaseUnit = unitPriceNum / qtyBaseRaw;
-      if (!Number.isFinite(costPerBaseUnit) || costPerBaseUnit <= 0) {
-        throw new Error("Không thể tính giá theo đơn vị gốc.");
-      }
-
+      const { qtyBase, costPerBaseUnit } = calculateStockReceipt({
+        qty,
+        unit: unit || ing.baseUnit,
+        unitPrice,
+        baseUnit: ing.baseUnit,
+        conversions: ing.conversions || [],
+      });
       const normalizedExpiry = normalizeExpiryForMutation(expiry);
 
       try {
