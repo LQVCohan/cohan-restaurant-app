@@ -112,9 +112,6 @@ export const hasStaffKitchenAccess = (role) =>
 
 export const getDefaultPathForRole = (userOrRole) => {
   const normalized = resolveUserRoleName(userOrRole);
-  if (normalized === "force_password_change") {
-    return "/verify-account/confirm?forcePasswordChange=1";
-  }
   if (normalized === "pending_verification") return "/verify-email";
   if (isAdminRole(normalized)) return "/manager";
   if (isManagerRole(normalized)) return "/manager";
