@@ -1,0 +1,39 @@
+name: diagnose-backend-test
+
+on:
+  push:
+    branches: [codex/diagnose-backend-799b053]
+
+permissions:
+  contents: read
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cohan-restaurant-backend/package-lock.json
+      - run: npm --prefix cohan-restaurant-backend ci --silent
+      - name: Run backend tests and capture output
+        shell: bash
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=30s 15m \
+            npm --prefix cohan-restaurant-backend test > backend.log 2>&1
+          echo $? > backend.status
+          set -e
+      - name: Upload backend log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-log
+          path: |
+            backend.log
+            backend.status
+      - name: Fail when backend tests failed
+        run: test "$(cat backend.status)" = "0"
