@@ -1,0 +1,31 @@
+{
+  "id": "table-3d-persisted-model-view-fix",
+  "name": "table-3d-persisted-model-view-fix",
+  "title": "Persist and reopen uploaded table 3D models",
+  "description": "Apply an uploaded 3D model to the selected existing table and reopen that persisted model in the real 3D/AR simulator instead of falling back to the generic first catalog item.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-table-3d-ar",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
+    "src/components/Dashboard_Manager/Table/TableManagement.test.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.test.jsx"
+  ],
+  "notes": "The GraphQL Table visualConfig field, updateTable mutation, backend sanitizer, permissions, audit logging, and Apollo fragment already support the persisted model payload; this task fixes only the missing frontend caller behavior.",
+  "meta": {}
+}
