@@ -12,29 +12,29 @@ Màn hình Quản lý kho chỉ hiển thị nguyên liệu và công thức dư
 
 ## Nguyên nhân gốc
 
-Bố cục danh sách đang được cố định bằng CSS Grid trong từng tab và chưa có trạng thái lựa chọn kiểu hiển thị ở màn hình kho.
+Bố cục danh sách đang được cố định bằng CSS Grid trong từng tab và chưa có lựa chọn kiểu hiển thị ở thanh tab dùng chung.
 
 ## Phạm vi thay đổi
 
-- Thêm bộ chuyển `Thẻ / Danh sách` ở thanh công cụ chung của màn hình kho.
+- Thêm bộ chuyển native radio `Thẻ / Danh sách` cạnh các tab Nguyên liệu và Công thức.
 - Giữ chế độ đã chọn khi chuyển giữa tab Nguyên liệu và Công thức trong cùng phiên màn hình.
-- Dùng class bố cục ở `StorageManagement` để chuyển các thẻ hiện có thành hàng ngang; không tạo component hoặc query mới.
-- Trên màn hình nhỏ, tiếp tục ưu tiên bố cục một cột để tránh hàng ngang bị nén khó đọc.
+- Dùng CSS `:has()` tại shell kho để chuyển các card hiện có thành hàng ngang; không tạo component dữ liệu, state dùng chung hoặc query mới.
+- Trên màn hình nhỏ hơn 900 px, ẩn bộ chuyển và tiếp tục ưu tiên bố cục một cột để tránh hàng ngang bị nén khó đọc.
 
 ## Tiêu chí nghiệm thu
 
 - Mặc định vẫn hiển thị dạng thẻ như hiện tại.
-- Người dùng có thể chuyển sang danh sách ngang tại tab Nguyên liệu và Công thức.
-- Danh sách ngang hiển thị nhiều bản ghi hơn trong cùng chiều cao màn hình và vẫn giữ đủ số liệu, trạng thái, nút thao tác.
-- Nút chuyển có `aria-pressed`, focus rõ và không xuất hiện ở tab không liên quan.
+- Người dùng có thể chuyển sang danh sách ngang tại tab Nguyên liệu và Công thức trên màn hình quản lý desktop.
+- Danh sách ngang hiển thị nhiều bản ghi hơn trong cùng chiều cao màn hình và vẫn giữ số liệu, trạng thái cùng nút thao tác chính.
+- Bộ chuyển dùng radio semantic, focus rõ và không xuất hiện ở tab không liên quan.
 - Chuyển tab Nguyên liệu ↔ Công thức không làm mất lựa chọn bố cục.
 - Không thay đổi quyền, mutation, realtime, công thức tính tồn hoặc dữ liệu công thức.
 
 ## File thay đổi
 
-- `src/components/Dashboard_Manager/Storage/StorageManagement.jsx`: lưu lựa chọn và gắn class bố cục.
-- `src/components/Dashboard_Manager/Storage/StorageManagement.scss`: tạo segmented control và bố cục hàng ngang dùng chung.
-- `src/components/Dashboard_Manager/Storage/StorageManagement.test.jsx`: kiểm tra chuyển chế độ và duy trì khi đổi tab.
+- `src/components/Dashboard_Manager/Storage/layout/Tabs/Tabs.jsx`: bổ sung bộ chuyển kiểu hiển thị dùng radio native.
+- `src/components/Dashboard_Manager/Storage/layout/Tabs/Tabs.scss`: tạo segmented control và bố cục hàng ngang dùng chung cho thẻ nguyên liệu / công thức.
+- `src/components/Dashboard_Manager/Storage/layout/Tabs/Tabs.test.jsx`: kiểm tra lựa chọn mặc định, chuyển sang danh sách và duy trì khi đổi tab.
 
 ## Ngoài phạm vi
 
