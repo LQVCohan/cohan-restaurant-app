@@ -112,18 +112,18 @@ const TIME_LEVEL_LABELS = {
 const PENDING_ITEM_STATUSES = ["pending", "confirmed", "customer_attached"];
 const HIDDEN_ITEM_STATUSES = ["cancelled", "returned", "served"];
 
-const getRestaurantForStaffId = (restaurantForStaff) => {
-  if (!restaurantForStaff) return null;
-  if (typeof restaurantForStaff === "string") return restaurantForStaff;
-  if (typeof restaurantForStaff === "object") {
-    return restaurantForStaff.id || restaurantForStaff._id || null;
+const getRestaurantId = (restaurant) => {
+  if (!restaurant) return null;
+  if (typeof restaurant === "string") return restaurant;
+  if (typeof restaurant === "object") {
+    return restaurant.id || restaurant._id || null;
   }
   return null;
 };
 
-const getRestaurantForStaffName = (restaurantForStaff) => {
-  if (!restaurantForStaff || typeof restaurantForStaff !== "object") return null;
-  return restaurantForStaff.name || restaurantForStaff.restaurantName || null;
+const getRestaurantName = (restaurant) => {
+  if (!restaurant || typeof restaurant !== "object") return null;
+  return restaurant.name || restaurant.restaurantName || null;
 };
 
 const normalizeStatus = (status) => String(status || "pending").toLowerCase();
@@ -273,12 +273,13 @@ const LoadingSkeleton = () => (
 );
 
 const StaffKitchenPage = () => {
-  const { user } = useContext(AuthContext) || {};
+  const { user, activeRestaurant, activeRestaurantId, restaurants } =
+    useContext(AuthContext) || {};
   const role = resolveUserRoleName(user);
   const lockedStationMode = ROLE_STATION_MODE[role] || null;
-  const restaurantForStaff = user?.restaurantForStaff;
-  const restaurantId = getRestaurantForStaffId(restaurantForStaff);
-  const restaurantName = getRestaurantForStaffName(restaurantForStaff);
+  const restaurant = activeRestaurant || restaurants?.[0] || null;
+  const restaurantId = activeRestaurantId || getRestaurantId(restaurant);
+  const restaurantName = getRestaurantName(restaurant);
   const [savingKey, setSavingKey] = useState(null);
   const [statusFilter, setStatusFilter] = useState("active");
   const [stationFilter, setStationFilter] = useState(() => lockedStationMode || "all");
