@@ -1,7 +1,7 @@
 {
   "id": "07-09-table-type-management",
   "title": "Tạo trang quản lý loại bàn",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-feature",
   "scope": [
     "src/components/Dashboard_Manager/Table/TableTypeManagementPage.jsx",
@@ -20,8 +20,16 @@
     "completed": [
       "traced Table.type model and enum through GraphQL updateTable, useTableManagement, manager routing and sidebar navigation",
       "confirmed the existing contract already persists and returns all six table type values",
-      "removed the unnecessary Restaurant.tableTypeSettings draft so Table.type remains the single source of truth"
+      "removed the unnecessary Restaurant.tableTypeSettings draft so Table.type remains the single source of truth",
+      "reviewed the page update flow, responsive states, route permission, sidebar entry and focused component assertions",
+      "confirmed the final diff contains no backend schema, resolver, model or database contract change"
     ],
-    "notRun": []
+    "notRun": [
+      "targeted Vitest was unavailable in the GitHub connector environment",
+      "npm run check:conflicts was not executable in the GitHub connector environment",
+      "npm run check:graphql was not executable in the GitHub connector environment",
+      "npm run build was not executable in the GitHub connector environment",
+      "desktop and mobile browser smoke screenshots were unavailable"
+    ]
   }
 }
