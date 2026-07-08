@@ -13,8 +13,8 @@
   "completedAt": null,
   "branch": "fix/inventory-unit-conversion",
   "base_branch": "main",
-  "commit": null,
-  "pr_url": null,
+  "commit": "01ceecbb2e4f89667753c5701c8cc2e97bf9e5fa",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1309",
   "relatedFiles": [
     "src/utils/unitConversion.js",
     "src/utils/unitConversion.test.js",
