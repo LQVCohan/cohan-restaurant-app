@@ -176,6 +176,7 @@ function buildGraphqlData(operationName, variables, authUser) {
     case "Me":
       return { me: authUser };
     case "GetRestaurants":
+    case "AuthBusinessContext":
     case "ScopedRestaurants":
       return {
         refRestaurants: authUser?.roleName === "customer" ? [TEST_RESTAURANT] : [],
