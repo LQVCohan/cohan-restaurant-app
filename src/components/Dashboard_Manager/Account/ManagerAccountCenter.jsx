@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import {
@@ -14,7 +14,9 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import { useAvatarUploadLocal } from "@/hooks/useAvatarUploadLocal";
 import { useNotification } from "@/hooks/useNotification";
+import { compressAvatar } from "@/utils/compressAvatar";
 import "./ManagerAccountCenter.scss";
 
 const Q_MY_ACCOUNT = gql`
@@ -99,8 +101,13 @@ const formatDate = (value) => value ? new Date(value).toLocaleString("vi-VN") : 
 
 const ManagerAccountCenter = ({ initialTab = "profile", onClose }) => {
   const { showNotification } = useNotification();
+  const { upload } = useAvatarUploadLocal();
+  const avatarInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState(TABS.has(initialTab) ? initialTab : "profile");
   const [profileForm, setProfileForm] = useState({ fullName: "" });
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState("");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
   const [notificationPreferences, setNotificationPreferences] = useState(readNotificationPreferences);
 
@@ -124,6 +131,8 @@ const ManagerAccountCenter = ({ initialTab = "profile", onClose }) => {
   const accountStatus = ACCOUNT_STATUS_LABELS[String(user?.status || "active").toLowerCase()]
     || user?.status
     || "Đang hoạt động";
+  const displayedAvatarUrl = avatarPreview || user?.avatarUrl || "";
+  const savingProfile = updateState.loading || uploadingAvatar;
 
   useEffect(() => {
     setActiveTab(TABS.has(initialTab) ? initialTab : "profile");
@@ -132,6 +141,10 @@ const ManagerAccountCenter = ({ initialTab = "profile", onClose }) => {
   useEffect(() => {
     if (user) setProfileForm({ fullName: user.fullName || "" });
   }, [user]);
+
+  useEffect(() => () => {
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+  }, [avatarPreview]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -151,16 +164,48 @@ const ManagerAccountCenter = ({ initialTab = "profile", onClose }) => {
     onClose?.();
   };
 
+  const handleAvatarChange = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const compressedFile = await compressAvatar(file);
+      setAvatarFile(compressedFile);
+      setAvatarPreview(URL.createObjectURL(compressedFile));
+    } catch (avatarError) {
+      showNotification(avatarError.message || "Không thể xử lý ảnh đại diện.", "error");
+    }
+  };
+
   const saveProfile = async (event) => {
     event.preventDefault();
     const fullName = profileForm.fullName.trim();
     if (!fullName) return showNotification("Họ và tên không được để trống.", "warning");
     try {
-      await updateAccount({ variables: { input: { fullName } } });
+      let avatarUrl;
+      if (avatarFile) {
+        setUploadingAvatar(true);
+        avatarUrl = await upload(avatarFile);
+      }
+      await updateAccount({
+        variables: {
+          input: {
+            fullName,
+            ...(avatarUrl ? { avatarUrl } : {}),
+          },
+        },
+        refetchQueries: ["Me"],
+        awaitRefetchQueries: true,
+      });
+      setAvatarFile(null);
+      setAvatarPreview("");
       await refetch();
       showNotification("Đã cập nhật thông tin cá nhân.", "success");
     } catch (mutationError) {
       showNotification(mutationError.message || "Không thể cập nhật thông tin cá nhân.", "error");
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -246,7 +291,7 @@ const ManagerAccountCenter = ({ initialTab = "profile", onClose }) => {
                 <p id="manager-account-description">Quản lý thông tin cá nhân, bảo mật và thông báo ngay trong không gian vận hành Cohan.</p>
               </div>
               <div className="manager-account__identity">
-                <div className="manager-account__avatar">{user?.avatarUrl ? <img src={user.avatarUrl} alt={`Ảnh đại diện của ${user?.fullName || "quản lý"}`} /> : <span>{initials}</span>}</div>
+                <div className="manager-account__avatar">{displayedAvatarUrl ? <img src={displayedAvatarUrl} alt={`Ảnh đại diện của ${user?.fullName || "quản lý"}`} /> : <span>{initials}</span>}</div>
                 <div><strong>{user?.fullName}</strong><span>{user?.email}</span></div>
                 <span className="manager-account__status"><CheckCircle2 size={14} aria-hidden="true" /> {accountStatus}</span>
               </div>
@@ -270,7 +315,11 @@ const ManagerAccountCenter = ({ initialTab = "profile", onClose }) => {
                       <label><span>Số điện thoại</span><input value={user?.phone || "Chưa cập nhật"} disabled /></label>
                       <label><span>Vai trò hệ thống</span><input value={user?.roleName || "manager"} disabled /></label>
                     </div>
-                    <div className="manager-account__actions"><button className="manager-account__primary" disabled={updateState.loading} type="submit"><Save size={16} aria-hidden="true" />{updateState.loading ? "Đang lưu..." : "Lưu thay đổi"}</button></div>
+                    <input ref={avatarInputRef} type="file" hidden accept="image/*" onChange={handleAvatarChange} />
+                    <div className="manager-account__actions">
+                      <button className="manager-account__primary" disabled={savingProfile} type="button" onClick={() => avatarInputRef.current?.click()}><UserRound size={16} aria-hidden="true" />Đổi ảnh</button>
+                      <button className="manager-account__primary" disabled={savingProfile} type="submit"><Save size={16} aria-hidden="true" />{uploadingAvatar ? "Đang tải ảnh..." : updateState.loading ? "Đang lưu..." : "Lưu thay đổi"}</button>
+                    </div>
                   </form>
                 )}
 
