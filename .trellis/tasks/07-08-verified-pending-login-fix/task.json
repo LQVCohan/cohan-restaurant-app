@@ -1,0 +1,31 @@
+{
+  "id": "07-08-verified-pending-login-fix",
+  "name": "verified-pending-login-fix",
+  "title": "Activate verified pending accounts during login",
+  "description": "Allow a pending account that already satisfies the configured verification policy to self-heal to active during password login instead of returning FORBIDDEN.",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "auth-login-verification-state",
+  "package": "cohan-restaurant-backend",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "codex/fix-verified-pending-login",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "9f3fce463b55d0cc6cd8c9c2b47133288d01a08b",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1293",
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/resolvers/user/loginWithPendingVerification.mutation.js",
+    "cohan-restaurant-backend/tests/resolvers/login-with-pending-verification.test.js"
+  ],
+  "notes": "The frontend login mutation and GraphQL schema remain unchanged; the defect is the backend transition between verification state and account status. Local syntax checks passed; focused Vitest awaits CI because the execution container has no repository dependencies or outbound GitHub/npm access.",
+  "meta": {
+    "skills": ["ponytail", "react-ui-performance"]
+  }
+}
