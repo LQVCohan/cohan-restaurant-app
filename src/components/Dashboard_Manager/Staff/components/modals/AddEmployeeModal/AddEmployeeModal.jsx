@@ -28,8 +28,8 @@ const AddEmployeeModal = ({
         );
       }
 
-      const { restaurantForStaff: _legacyRestaurant, ...accountInput } =
-        values || {};
+      const accountInput = { ...(values || {}) };
+      delete accountInput.restaurantForStaff;
 
       return onSubmit?.({
         ...accountInput,
