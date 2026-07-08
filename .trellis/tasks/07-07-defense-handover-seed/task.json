@@ -1,8 +1,8 @@
 {
   "id": "defense-handover-seed",
   "name": "defense-handover-seed",
-  "title": "Prepare defense handover seed",
-  "description": "Create one local demo seed command and handover documentation for the graduation defense.",
+  "title": "Prepare reusable demo data and setup documentation",
+  "description": "Provide deterministic demo data, a restorable MongoDB archive, and setup documentation for anyone running the project locally.",
   "status": "in_progress",
   "dev_type": "backend",
   "scope": "demo-seed-and-handover-docs",
@@ -10,14 +10,16 @@
   "priority": "P1",
   "createdAt": "2026-07-07",
   "completedAt": null,
-  "branch": "defense-handover-seed-latest",
+  "branch": "docs-finalize-handover-readme",
   "base_branch": "main",
   "relatedFiles": [
+    "README.md",
     "cohan-restaurant-backend/scripts/seedDefenseDemo.js",
     "cohan-restaurant-backend/tests/scripts/seed-defense-demo.test.js",
     "cohan-restaurant-backend/package.json",
     "package.json",
     "handover/README.md",
-    "handover/Account.md"
+    "handover/Account.md",
+    "handover/database/README.md"
   ]
 }
