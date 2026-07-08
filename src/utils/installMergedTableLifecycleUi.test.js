@@ -46,7 +46,7 @@ const mergedTable = {
         orderSessions: [
           {
             sessionCode: "TS-A1",
-            orderCodes: ["POS-A1-001"],
+            orderCodes: ["POS-A1-X001"],
           },
         ],
       },
@@ -58,7 +58,7 @@ const mergedTable = {
         orderSessions: [
           {
             sessionCode: "TS-A2",
-            orderCodes: ["POS-A2-001", "POS-A2-002"],
+            orderCodes: ["POS-A2-X002", "POS-A2-X003"],
           },
         ],
       },
@@ -74,6 +74,17 @@ const mountPos = () => {
     <div class="tablesGrid_mock">
       <div class="tableItem_mock">
         <span class="tableCode_mock">A1+A2</span>
+      </div>
+    </div>
+    <div data-pos-order-panel>
+      <div class="tableName_mock">Bàn A1+A2</div>
+      <div class="batchHeader_mock">
+        <div class="batchTitle_mock">Đợt 1</div>
+        <span class="batchCode_mock">#X001</span>
+      </div>
+      <div class="batchHeader_mock">
+        <div class="batchTitle_mock">Đợt 2</div>
+        <span class="batchCode_mock">#X002</span>
       </div>
     </div>
     <div role="dialog">
@@ -105,7 +116,7 @@ describe("installMergedTableLifecycleUi", () => {
     }
   });
 
-  it("expands the merged card and shows source sessions and combined customers", async () => {
+  it("shows merged table details and labels POS batches by source table", async () => {
     installMergedTableLifecycleUi();
 
     await waitFor(() => {
@@ -116,6 +127,13 @@ describe("installMergedTableLifecycleUi", () => {
       expect(card.textContent).toContain("A1: TS-A1");
       expect(card.textContent).toContain("A2: TS-A2");
       expect(card.textContent).toContain("250.000đ");
+
+      const sourceLabels = document.querySelectorAll(
+        `.${__testables.ORDER_SOURCE_CLASS}`,
+      );
+      expect(sourceLabels).toHaveLength(2);
+      expect(sourceLabels[0].textContent).toBe("Bàn A1");
+      expect(sourceLabels[1].textContent).toBe("Bàn A2");
     });
 
     const paymentLabel = document.querySelector(
