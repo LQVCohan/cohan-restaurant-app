@@ -1,39 +1,50 @@
-# Restore backend dependency installation in CI
+# Repair post-merge CI and reported test failures
 
-## Current behavior and root cause
+## Current behavior and root causes
 
-Both GitHub Actions jobs run backend `npm ci` before lint and tests. The backend `package.json` declares `mongoose-lean-virtuals` as `^0.8.0`, while the committed lockfile root manifest records `^2.0.0`. `npm ci` rejects this manifest/lockfile drift, so neither frontend nor backend tests start.
+After PR #1272 merged, CI exposed three independent problems:
 
-## End-to-end flow
+1. Both jobs stopped before tests because backend `package.json` declared `mongoose-lean-virtuals` as `^0.8.0` while the committed lockfile root manifest records `^2.0.0`.
+2. Public search tests still mocked the pre-normalization query flow and the resolver still counted owner/manager restaurants through legacy `refRestaurants` instead of active `BrandMembership`.
+3. The logout-cache regression test inspected source text with `readFileSync` instead of exercising `AuthProvider.logout`, so it failed independently of the actual Apollo cache behavior.
 
-`cohan-restaurant-backend/package.json` + `package-lock.json` -> frontend CI backend-schema install and backend CI dependency install -> lint/tests/build.
+## End-to-end flows
+
+- `package.json` + `package-lock.json` -> frontend/backend `npm ci` -> lint/tests/build.
+- `BrandMembership` + Restaurant -> search resolver -> public/admin search results -> resolver tests.
+- `AuthProvider.logout` -> Apollo Client `clearStore` -> account cache removal -> context test.
 
 ## Scope
 
-- Align the stale `mongoose-lean-virtuals` declaration in `package.json` with the existing lockfile.
-- Keep runtime staff logic and the tests introduced by PR #1272 unchanged.
-- Let the existing CI workflow verify installation and test execution.
+- Align the stale backend dependency declaration with the existing lockfile.
+- Reuse the already validated search fix from PR #1273: compute managed restaurant counts from active `BrandMembership`, preserve public OWNER restrictions, and align search test mocks with the real models.
+- Replace the brittle logout source inspection with a behavioral assertion using the existing `AuthProvider.test.jsx` harness.
+- Keep staff creation logic from PR #1272 unchanged.
 
 ## Constraints
 
-- Do not regenerate or broadly rewrite the lockfile.
-- Do not change dependency code, GraphQL contracts, staff logic, or test assertions.
+- Do not regenerate or broadly rewrite lockfiles.
+- Do not restore authorization use of `refRestaurants`.
+- Do not change the GraphQL search contract or public OWNER visibility rules.
+- Do not change runtime logout behavior solely to satisfy the test.
 - Do not add dependencies.
 
 ## Acceptance criteria
 
-1. Backend `package.json` and lockfile root manifest declare the same `mongoose-lean-virtuals` range.
-2. Frontend and backend CI jobs pass their backend dependency installation step.
-3. CI proceeds to the existing lint/test/build steps.
+1. Frontend and backend backend-dependency installation steps pass.
+2. `search-public-safety.test.js` passes with the normalized BrandMembership scope.
+3. AuthProvider logout is verified by calling the context action and asserting Apollo `clearStore` is invoked.
+4. The standalone source-inspection logout test is removed.
+5. Temporary diagnostic workflow files are absent from the final diff.
 
 ## Validation plan
 
-- Review the one-line manifest diff against the lockfile root dependency entry.
-- Open a separate PR and inspect both CI jobs.
-- Record any test failures that occur after installation separately rather than masking them here.
+- `npm --prefix cohan-restaurant-backend test -- tests/resolvers/search-public-safety.test.js`
+- `npx vitest run src/context/__tests__/AuthProvider.test.jsx`
+- Existing GitHub Actions frontend and backend jobs.
 
 ## Out of scope
 
-- Updating package versions beyond the existing lockfile.
-- Fixing unrelated test-suite failures.
-- Changing PR #1272 runtime implementation.
+- Changing staff creation behavior.
+- Resolving unrelated repository-wide test failures not listed in this task.
+- Updating dependency versions beyond the already committed lockfile.
