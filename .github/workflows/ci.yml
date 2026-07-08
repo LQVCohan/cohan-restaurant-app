@@ -27,74 +27,73 @@ jobs:
           python <<'PY'
           from pathlib import Path
           from textwrap import dedent
+          import re
 
           path = Path("src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx")
           text = path.read_text(encoding="utf-8")
 
-          def replace_once(old, new, label):
-              global text
-              count = text.count(old)
-              if count != 1:
-                  raise RuntimeError(f"{label}: expected one match, found {count}")
-              text = text.replace(old, new, 1)
+          if "const removeMemberMock = vi.fn();" not in text:
+              text = text.replace(
+                  "const updateMemberMock = vi.fn();",
+                  "const updateMemberMock = vi.fn();\nconst removeMemberMock = vi.fn();",
+                  1,
+              )
 
-          replace_once(
-              "const updateMemberMock = vi.fn();",
-              "const updateMemberMock = vi.fn();\nconst removeMemberMock = vi.fn();",
-              "remove member mock declaration",
-          )
-
-          replace_once(
-              '''  updateMemberMock.mockResolvedValue({
-                data: { updateBrandMember: { id: "m1", role: "manager", status: "inactive" } },
-              });''',
-              '''  updateMemberMock.mockResolvedValue({
-                data: { updateBrandMember: { id: "m1", role: "manager", status: "inactive" } },
-              });
+          if "removeMemberMock.mockResolvedValue" not in text:
+              pattern = re.compile(
+                  r'(  updateMemberMock\.mockResolvedValue\(\{\n'
+                  r'    data: \{ updateBrandMember: \{ id: "m1", role: "manager", status: "inactive" \} \},\n'
+                  r'  \}\);)'
+              )
+              text, count = pattern.subn(
+                  r'''\1
               removeMemberMock.mockResolvedValue({
                 data: { removeBrandMember: true },
               });
-              window.confirm = vi.fn(() => true);''',
-              "remove member mock setup",
-          )
+              window.confirm = vi.fn(() => true);'''.replace("              ", ""),
+                  text,
+                  count=1,
+              )
+              if count != 1:
+                  raise RuntimeError("remove member setup anchor not found")
 
-          replace_once(
-              '''    if (source.includes("mutation UpdateBrand")) {
-                return [updateBrandMock, { loading: false }];
-              }''',
-              '''    if (source.includes("mutation RemoveBrandMemberAccess")) {
-                return [removeMemberMock, { loading: false }];
-              }
-              if (source.includes("mutation UpdateBrand")) {
-                return [updateBrandMock, { loading: false }];
-              }''',
-              "remove member mutation mapping",
-          )
+          if 'source.includes("mutation RemoveBrandMemberAccess")' not in text:
+              anchor = '    if (source.includes("mutation UpdateBrand")) {'
+              if text.count(anchor) != 1:
+                  raise RuntimeError(f"mutation mapping anchor count: {text.count(anchor)}")
+              mapping = '''    if (source.includes("mutation RemoveBrandMemberAccess")) {
+              return [removeMemberMock, { loading: false }];
+            }
+          '''.replace("          ", "")
+              text = text.replace(anchor, mapping + anchor, 1)
 
-          new_test = dedent('''
-            it("revokes Brand access from the existing membership access panel", async () => {
-              render(<BrandManagement />);
+          if "revokes Brand access from the existing membership access panel" not in text:
+              new_test = dedent('''
+                it("revokes Brand access from the existing membership access panel", async () => {
+                  render(<BrandManagement />);
 
-              fireEvent.click(screen.getByText("Đổi vai trò và phạm vi"));
-              fireEvent.change(screen.getByLabelText("Thành viên cần đổi quyền"), {
-                target: { value: "m1" },
-              });
-              fireEvent.click(screen.getByRole("button", { name: "Tháo quyền Brand" }));
+                  fireEvent.click(screen.getByText("Đổi vai trò và phạm vi"));
+                  fireEvent.change(screen.getByLabelText("Thành viên cần đổi quyền"), {
+                    target: { value: "m1" },
+                  });
+                  fireEvent.click(screen.getByRole("button", { name: "Tháo quyền Brand" }));
 
-              await waitFor(() => expect(removeMemberMock).toHaveBeenCalledTimes(1));
-              expect(window.confirm).toHaveBeenCalledWith(
-                "Tháo quyền Brand của thành viên này? Tài khoản và dữ liệu lịch sử vẫn được giữ.",
-              );
-              expect(removeMemberMock.mock.calls[0][0].variables).toEqual({
-                id: "m1",
-                reason: "Tháo quyền từ trang quản lý chuỗi",
-              });
-              expect(message.success).toHaveBeenCalledWith("Đã tháo quyền Brand");
-            });
+                  await waitFor(() => expect(removeMemberMock).toHaveBeenCalledTimes(1));
+                  expect(window.confirm).toHaveBeenCalledWith(
+                    "Tháo quyền Brand của thành viên này? Tài khoản và dữ liệu lịch sử vẫn được giữ.",
+                  );
+                  expect(removeMemberMock.mock.calls[0][0].variables).toEqual({
+                    id: "m1",
+                    reason: "Tháo quyền từ trang quản lý chuỗi",
+                  });
+                  expect(message.success).toHaveBeenCalledWith("Đã tháo quyền Brand");
+                });
 
-          ''')
-          anchor = '  it("searches by employee name or account ID and filters by role and branch", async () => {'
-          replace_once(anchor, new_test + anchor, "revocation component test")
+              ''')
+              anchor = '  it("searches by employee name or account ID and filters by role and branch", async () => {'
+              if text.count(anchor) != 1:
+                  raise RuntimeError(f"test insertion anchor count: {text.count(anchor)}")
+              text = text.replace(anchor, new_test + anchor, 1)
 
           path.write_text(text, encoding="utf-8")
           PY
