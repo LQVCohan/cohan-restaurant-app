@@ -2,36 +2,51 @@
 
 Cohan Restaurant App là hệ thống quản trị nhà hàng full-stack phục vụ các luồng: menu, đặt bàn/đặt món, POS/order, coupon/promotion, review, AI chatbot, RBAC, scheduling/attendance/payroll/performance và vận hành production-like.
 
-## Cài đặt và dữ liệu mẫu
+## Bắt đầu nhanh trên máy local
 
-Bất kỳ ai muốn tải source code và chạy dự án có thể bắt đầu tại:
+Repository đã bao gồm file database mẫu tại `handover/database/cohan-defense.archive.gz`. Database này chứa sample data và các tài khoản kiểm thử, vì vậy không cần chạy seed sau khi restore.
 
-- Hướng dẫn cài, restore database và chạy project: [`handover/README.md`](handover/README.md)
+Tài liệu liên quan:
+
+- Hướng dẫn cài đặt và chạy project: [`handover/README.md`](handover/README.md)
 - Tài khoản Admin/User và các vai trò kiểm thử: [`handover/Account.md`](handover/Account.md)
-- Hướng dẫn xuất Atlas và restore về MongoDB local: [`handover/database/README.md`](handover/database/README.md)
-- File database có sample data sẽ được đặt tại `handover/database/cohan-defense.archive.gz`
+- Hướng dẫn restore database về MongoDB local: [`handover/database/README.md`](handover/database/README.md)
 
-Dự án có thể được khởi động từ **source code + database backup đã chứa sample data**. Khi file database đã được cung cấp, người dùng không cần chạy seed để sử dụng dữ liệu mẫu.
-
-## Quick start (local development)
-
-### 1) Tạo env local
+### 1. Clone và cài dependencies
 
 ```bash
+git clone https://github.com/LQVCohan/cohan-restaurant-app.git
+cd cohan-restaurant-app
+npm install
+npm install --prefix cohan-restaurant-backend
 npm run env:local
 ```
 
-### 2) Chạy frontend
+### 2. Restore database mẫu
+
+Làm theo [`handover/database/README.md`](handover/database/README.md) để restore:
+
+```text
+handover/database/cohan-defense.archive.gz
+```
+
+vào MongoDB local với tên database `RestaurantDB`.
+
+### 3. Chạy backend
+
+```bash
+npm run dev --prefix cohan-restaurant-backend
+```
+
+### 4. Chạy frontend
+
+Mở terminal thứ hai tại thư mục gốc:
 
 ```bash
 npm run dev
 ```
 
-### 3) Chạy backend
-
-```bash
-npm run dev --prefix cohan-restaurant-backend
-```
+Frontend mặc định chạy tại `http://localhost:5173`. Đăng nhập bằng tài khoản trong [`handover/Account.md`](handover/Account.md).
 
 ## Tài liệu
 
@@ -51,6 +66,8 @@ Bộ tài liệu chính nằm tại [`docs/README.md`](docs/README.md):
 - Metrics: `/metrics`
 
 ## Demo seed thường dùng
+
+Các lệnh seed dưới đây chỉ dành cho phát triển khi cần tái tạo dữ liệu thử nghiệm:
 
 ```bash
 npm run seed:demo:menu-management --prefix cohan-restaurant-backend
