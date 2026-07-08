@@ -1,0 +1,29 @@
+{
+  "id": "07-09-table-type-management",
+  "title": "Quản lý loại bàn theo nhà hàng",
+  "status": "planning",
+  "type": "full-stack-feature",
+  "scope": [
+    "cohan-restaurant-backend/models/restaurant.model.js",
+    "cohan-restaurant-backend/graphql/schema/restaurant.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js",
+    "src/hooks/useRestaurant.js",
+    "src/utils/tableManagementOptions.js",
+    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
+    "src/components/Dashboard_Manager/Table/TableManagement.scss",
+    "src/components/Dashboard_Manager/Table/TableActionsLiteModal.jsx",
+    "src/components/Customer/BookingTableModal/BookingModal.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "targeted backend table type settings test",
+      "targeted TableManagement component test",
+      "targeted TableActionsLiteModal component test",
+      "targeted BookingModal component test",
+      "npm run check:graphql",
+      "npm run build"
+    ],
+    "completed": [],
+    "notRun": []
+  }
+}
