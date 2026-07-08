@@ -1,51 +1,47 @@
-# PRD — Quản lý loại bàn theo nhà hàng
+# PRD — Trang quản lý loại bàn
 
 ## Hiện trạng
 
-Bàn đã lưu trường `type` với sáu mã hệ thống: `standard`, `booth`, `vip`, `outdoor`, `bar`, `private`. Giao diện chỉ dùng danh sách nhãn tĩnh trong frontend nên quản lý không có nơi đổi tên hiển thị hoặc tạm ngưng một loại bàn.
+Mỗi bàn đã lưu trực tiếp trường `type` với sáu mã hệ thống: `standard`, `booth`, `vip`, `outdoor`, `bar`, `private`. Người quản lý có thể đổi loại trong modal chi tiết từng bàn, nhưng chưa có màn hình tập trung để xem số lượng, tìm bàn và phân loại lại hàng loạt theo từng bản ghi.
 
 ## Luồng thật
 
-`Restaurant model` → `restaurant.graphql` → `updateRestaurant` → `useRestaurant` → `TableManagement` → modal quản lý loại bàn → form thêm/chỉnh sửa bàn → `Table.type`.
+`Table model.type` → `TableType` / `UpdateTableInput.type` → resolver `tables` / `updateTable` → `useTableManagement` → trang Quản lý loại bàn → thao tác đổi loại của một bàn.
 
-Trang khách dùng `publicRestaurant` và `publicTables` để hiển thị thông tin loại bàn khi đặt chỗ.
+Dữ liệu đã đủ ở hợp đồng hiện tại. Không cần thêm model, collection, field cấu hình nhà hàng hoặc mutation mới.
 
-## Thiết kế dữ liệu
+## Nguyên nhân gốc
 
-- Giữ `Table.type` là enum hiện tại để không phá dữ liệu, filter và API cũ.
-- Lưu cấu hình tên hiển thị/trạng thái trong `Restaurant.tableTypeSettings` dưới dạng JSON nhúng trực tiếp.
-- Không tạo model, collection hoặc quan hệ con mới.
-- Sáu mã hệ thống không được đổi; quản lý chỉ thay đổi `label` và `active`.
-
-Ví dụ:
-
-```json
-{
-  "standard": { "label": "Trong nhà", "active": true },
-  "vip": { "label": "Phòng VIP", "active": true }
-}
-```
+Thiếu một caller UI tập trung cho dữ liệu `Table.type`; không phải thiếu persistence. Tạo thêm cấu hình loại bàn ở `Restaurant` sẽ trùng nguồn dữ liệu và không giải quyết việc quản lý các bàn đang thuộc từng loại.
 
 ## Phạm vi
 
-- Thêm nút `Loại bàn` ở trang Quản lý bàn.
-- Modal hiển thị sáu loại, số bàn đang dùng, tên hiển thị và trạng thái bật/tắt.
-- Lưu cấu hình qua mutation nhà hàng hiện có, giữ kiểm tra `restaurant.write` và restaurant scope.
-- Loại tắt không xuất hiện trong form tạo bàn; form chi tiết vẫn hiển thị loại hiện tại của bàn cũ.
-- Bộ lọc vẫn hiển thị mọi loại để quản lý dữ liệu cũ.
-- Trang khách dùng nhãn đã cấu hình, fallback về nhãn mặc định nếu chưa có cấu hình.
+- Thêm mục `Loại bàn` trong menu quản lý, yêu cầu quyền `table.write`.
+- Tạo trang hiển thị đủ sáu loại hệ thống, số bàn và mã bàn thuộc từng loại.
+- Cho phép tìm theo mã bàn, lọc theo loại và đổi loại từng bàn bằng mutation `updateTable` hiện có.
+- Sau khi cập nhật, refetch danh sách để kết quả phản ánh dữ liệu MongoDB.
+- Giữ nhãn hiện tại từ `TABLE_AREA_OPTIONS` và giữ mã hệ thống bất biến.
 
 ## Tiêu chí nghiệm thu
 
-- Quản lý có thể mở modal, đổi tên một loại bàn và lưu xuống MongoDB.
-- Tải lại trang vẫn giữ tên và trạng thái đã lưu.
-- Bật/tắt không làm đổi `type` của các bàn hiện có.
-- Không thể lưu nhãn rỗng hoặc tắt toàn bộ sáu loại.
-- Không thể gửi mã loại ngoài danh sách hệ thống.
-- Không thay đổi quyền, trạng thái bàn, ghép bàn, đặt bàn hoặc cấu trúc collection hiện tại.
+- Mục `Loại bàn` xuất hiện riêng trong nhóm Vận hành.
+- Trang hiển thị tổng số bàn và số lượng theo cả sáu loại.
+- Chọn một loại giúp lọc đúng danh sách bàn.
+- Đổi loại một bàn gọi `updateTable({ id, type })`, tải lại dữ liệu và hiển thị kết quả mới.
+- Lỗi cập nhật có thông báo rõ ràng và không làm mất danh sách hiện tại.
+- Không thay đổi schema, resolver, quyền backend, trạng thái bàn, ghép bàn hoặc đặt bàn.
+- Không tạo model con hay field cấu hình trùng lặp.
+
+## File thay đổi
+
+- `src/components/Dashboard_Manager/Table/TableTypeManagementPage.jsx`: màn hình quản lý tập trung và thao tác cập nhật.
+- `src/components/Dashboard_Manager/Table/TableTypeManagementPage.scss`: bố cục responsive theo giao diện quản lý bàn.
+- `src/components/Dashboard_Manager/Table/TableTypeManagementPage.test.jsx`: kiểm tra thống kê và mutation đổi loại.
+- `src/layouts/ManagerLayout.jsx`: đăng ký trang, quyền và lazy route.
+- `src/components/Dashboard_Manager/Sidebar.jsx`: thêm mục điều hướng.
 
 ## Ngoài phạm vi
 
-- Không cho tạo mã loại bàn tùy ý vì `TableType` đang là enum dùng chung ở backend, GraphQL và nhiều caller.
-- Không xóa/migrate dữ liệu bàn cũ khi tắt một loại.
-- Không thêm kéo thả sắp xếp hoặc màu tùy chỉnh.
+- Không cho tạo hoặc xóa mã loại bàn tùy ý vì đây là enum dùng chung ở model, GraphQL và các caller.
+- Không đổi tên nhãn loại bàn theo từng nhà hàng.
+- Không cập nhật nhiều bàn trong một mutation; thao tác từng bàn dùng đúng contract hiện có.
