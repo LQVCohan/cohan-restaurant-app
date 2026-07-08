@@ -143,10 +143,12 @@ const getCandidateLabel = (candidate) => {
   return `${name} — ${identity} · ${source} · ID: ${candidate?.id}`;
 };
 
-const isCandidateEligibleForRole = (candidate, role) =>
-  role === "staff"
-    ? candidate?.userType !== "CUSTOMER"
-    : ["CUSTOMER", "MANAGER"].includes(candidate?.userType);
+const isCandidateEligibleForRole = (candidate, role) => {
+  const userType = String(candidate?.userType || "").toUpperCase();
+  return role === "staff"
+    ? ["STAFF", "HR", "ACCOUNTANT"].includes(userType)
+    : ["CUSTOMER", "MANAGER"].includes(userType);
+};
 
 const emptyBrandForm = {
   name: "",
@@ -304,13 +306,11 @@ export default function BrandManagement() {
   const rawCandidates = candidateSearchReady
     ? candidateData?.brandMemberCandidates || []
     : [];
-  const selectedCandidate = rawCandidates.find(
-    (candidate) => String(candidate.id) === String(member.userId),
+  const candidates = rawCandidates.filter((candidate) =>
+    isCandidateEligibleForRole(candidate, member.role),
   );
-  const candidates = rawCandidates.filter(
-    (candidate) =>
-      isCandidateEligibleForRole(candidate, member.role) ||
-      String(candidate.id) === String(member.userId),
+  const selectedCandidate = candidates.find(
+    (candidate) => String(candidate.id) === String(member.userId),
   );
   const assignedManagerByRestaurant = useMemo(
     () => getAssignedManagerByRestaurant(members),
@@ -424,12 +424,6 @@ export default function BrandManagement() {
 
   const validateMember = () => {
     if (!member.userId.trim()) return "Chọn tài khoản cần thêm.";
-    if (
-      selectedCandidate &&
-      !isCandidateEligibleForRole(selectedCandidate, member.role)
-    ) {
-      return "Tài khoản đã chọn không phù hợp với vai trò này. Hãy chọn tài khoản nhân sự phù hợp.";
-    }
     if (member.role === "manager" && member.restaurantIds.length !== 1) {
       return "Quản lý chi nhánh phải phụ trách đúng một chi nhánh.";
     }
@@ -973,7 +967,11 @@ export default function BrandManagement() {
                       setMemberFormError("");
                     }}
                   >
-                    {ROLE_OPTIONS.map((role) => (
+                    {ROLE_OPTIONS.filter(
+                      (role) =>
+                        !selectedCandidate ||
+                        isCandidateEligibleForRole(selectedCandidate, role),
+                    ).map((role) => (
                       <option key={role} value={role}>
                         {getChainRoleLabel(role)}
                       </option>
