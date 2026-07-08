@@ -1,0 +1,233 @@
+.restaurant-info-complete {
+  display: grid;
+  gap: 1rem;
+
+  .info-card {
+    overflow: hidden;
+  }
+
+  .info-card p,
+  .info-card a,
+  .info-card strong,
+  .info-card span {
+    text-wrap: pretty;
+  }
+
+  .brand-story {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+  }
+
+  .brand-story > strong {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: #7c2d12;
+    font-size: 0.84rem;
+  }
+
+  .restaurant-fact-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .restaurant-fact {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    min-width: 0;
+    padding: 0.85rem;
+    border-radius: 0.8rem;
+    background: #f8fafc;
+    color: #9a3412;
+  }
+
+  .restaurant-fact > svg {
+    flex: 0 0 auto;
+    margin-top: 0.1rem;
+  }
+
+  .restaurant-fact > div {
+    min-width: 0;
+  }
+
+  .restaurant-fact span {
+    display: block;
+    margin-bottom: 0.15rem;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  .restaurant-fact strong {
+    display: block;
+    color: #1e293b;
+    font-size: 0.86rem;
+    line-height: 1.45;
+  }
+
+  .opening-note,
+  .next-opening {
+    margin: 0.55rem 0;
+    color: #475569;
+  }
+
+  .next-opening {
+    padding: 0.65rem 0.75rem;
+    border-left: 3px solid #ea580c;
+    border-radius: 0 0.5rem 0.5rem 0;
+    background: #fff7ed;
+  }
+
+  .weekly-hours-list {
+    display: grid;
+    gap: 0.15rem;
+    margin-top: 0.8rem;
+  }
+
+  .weekly-hours-row,
+  .special-hours-row {
+    display: grid;
+    grid-template-columns: minmax(6rem, 0.55fr) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  }
+
+  .weekly-hours-row:last-child,
+  .special-hours-row:last-child {
+    border-bottom: 0;
+  }
+
+  .weekly-hours-row span,
+  .special-hours-row span:first-child {
+    color: #64748b;
+    font-size: 0.82rem;
+  }
+
+  .weekly-hours-row strong,
+  .special-hours-row span:last-child {
+    color: #1e293b;
+    font-size: 0.84rem;
+    text-align: right;
+  }
+
+  .special-hours-block {
+    margin-top: 1rem;
+    padding: 0.85rem;
+    border-radius: 0.8rem;
+    background: #fffbeb;
+  }
+
+  .special-hours-block > strong {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.35rem;
+    color: #92400e;
+    font-size: 0.82rem;
+  }
+
+  .info-link-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 0.8rem;
+  }
+
+  .suitable-for {
+    margin-top: 0.9rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.16);
+  }
+
+  .suitable-for > strong {
+    display: block;
+    margin-bottom: 0.55rem;
+    color: #334155;
+    font-size: 0.82rem;
+  }
+
+  .contact-row a {
+    color: #9a3412;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  .policy-list--complete .policy-item {
+    align-items: flex-start;
+  }
+
+  .policy-list--complete .policy-badge {
+    max-width: 65%;
+    white-space: normal;
+    text-align: right;
+  }
+
+  .policy-badge.neutral {
+    background: #f1f5f9;
+    color: #334155;
+  }
+
+  .restaurant-faq-list {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .restaurant-faq-list details {
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 0.75rem;
+    background: #ffffff;
+  }
+
+  .restaurant-faq-list summary {
+    cursor: pointer;
+    padding: 0.8rem 0.9rem;
+    color: #1e293b;
+    font-size: 0.88rem;
+    font-weight: 650;
+  }
+
+  .restaurant-faq-list details[open] summary {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  }
+
+  .restaurant-faq-list details p {
+    margin: 0;
+    padding: 0.8rem 0.9rem 0.95rem;
+    color: #475569;
+  }
+
+  .direction-link:focus-visible,
+  .restaurant-faq-list summary:focus-visible,
+  .contact-row a:focus-visible {
+    outline: 3px solid rgba(234, 88, 12, 0.28);
+    outline-offset: 3px;
+  }
+}
+
+@media (max-width: 680px) {
+  .restaurant-info-complete {
+    .restaurant-fact-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .weekly-hours-row,
+    .special-hours-row {
+      grid-template-columns: minmax(5.5rem, 0.6fr) minmax(0, 1fr);
+      gap: 0.65rem;
+    }
+
+    .policy-list--complete .policy-item {
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .policy-list--complete .policy-badge {
+      max-width: 100%;
+      text-align: left;
+    }
+  }
+}

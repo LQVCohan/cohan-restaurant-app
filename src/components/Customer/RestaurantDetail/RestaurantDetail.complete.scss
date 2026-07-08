@@ -1,0 +1,183 @@
+.restaurant-detail-page {
+  .hero-cover.fallback-cover {
+    background:
+      radial-gradient(circle at 18% 25%, rgba(249, 115, 22, 0.2), transparent 34%),
+      radial-gradient(circle at 82% 68%, rgba(180, 83, 9, 0.16), transparent 36%),
+      linear-gradient(135deg, #fff7ed 0%, #f8fafc 48%, #ffedd5 100%);
+  }
+
+  .hero-cover.fallback-cover .overlay {
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.22));
+  }
+
+  .fallback-cover-copy {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 4rem 1.5rem 6rem;
+    color: #431407;
+    text-align: center;
+  }
+
+  .fallback-cover-copy span {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+  }
+
+  .fallback-cover-copy strong {
+    max-width: 32rem;
+    font-size: clamp(1.5rem, 4vw, 3rem);
+    line-height: 1.05;
+    text-wrap: balance;
+  }
+
+  .fallback-cover-copy small {
+    color: #7c2d12;
+    font-size: 0.86rem;
+  }
+
+  .res-meta .rating {
+    color: #b45309;
+  }
+
+  .profile-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .summary-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.38rem 0.72rem;
+    border: 1px solid rgba(180, 83, 9, 0.16);
+    border-radius: 0.65rem;
+    background: rgba(255, 247, 237, 0.82);
+    color: #7c2d12;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  .share-feedback {
+    display: block;
+    min-height: 1.25rem;
+    margin-top: 0.35rem;
+    color: #475569;
+    font-size: 0.75rem;
+    text-align: right;
+  }
+
+  .booking-widget--primary-cta {
+    border-color: rgba(234, 88, 12, 0.24);
+    background: linear-gradient(145deg, #fffaf5, #ffffff);
+  }
+
+  .booking-widget--primary-cta .time-picker-mock {
+    align-items: flex-start;
+    line-height: 1.45;
+  }
+
+  .dish-img-wrapper {
+    background: #f8fafc;
+  }
+
+  .dish-image-placeholder {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-height: 8rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 1rem;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(249, 115, 22, 0.13), transparent 42%),
+      linear-gradient(145deg, #fff7ed, #f8fafc);
+    color: #9a3412;
+    text-align: center;
+  }
+
+  .dish-image-placeholder strong {
+    display: grid;
+    width: 2.4rem;
+    height: 2.4rem;
+    place-items: center;
+    border-radius: 0.65rem;
+    background: rgba(255, 255, 255, 0.78);
+    font-size: 1.1rem;
+  }
+
+  .dish-image-placeholder span {
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  .dish-card-horizontal.is-unavailable {
+    opacity: 1;
+  }
+
+  .dish-card-horizontal.is-unavailable .availability-badge {
+    opacity: 0.9;
+  }
+
+  .dish-card-horizontal.is-unavailable .btn-add.btn-view-only {
+    border-color: #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+  }
+
+  .dish-card-horizontal.is-unavailable .btn-add.btn-view-only:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+  }
+
+  .reviews-section .review-actions [aria-label="Bình luận"] {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .restaurant-detail-page {
+    .fallback-cover-copy {
+      padding-bottom: 5rem;
+    }
+
+    .profile-summary {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 0.2rem;
+      scrollbar-width: none;
+    }
+
+    .profile-summary::-webkit-scrollbar {
+      display: none;
+    }
+
+    .summary-chip {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    .share-feedback {
+      text-align: left;
+    }
+
+    .mobile-action-bar {
+      padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .restaurant-detail-page * {
+    scroll-behavior: auto !important;
+  }
+}
