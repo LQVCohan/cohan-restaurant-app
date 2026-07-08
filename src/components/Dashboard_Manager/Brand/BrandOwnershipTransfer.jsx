@@ -16,6 +16,12 @@ const UPDATE_BRAND_MEMBER = gql`
   }
 `;
 
+const REMOVE_BRAND_MEMBER = gql`
+  mutation RemoveBrandMemberAccess($id: ID!, $reason: String) {
+    removeBrandMember(id: $id, reason: $reason)
+  }
+`;
+
 const TRANSFER_BRAND_OWNERSHIP = gql`
   mutation TransferBrandOwnership($input: TransferBrandOwnershipInput!) {
     transferBrandOwnership(input: $input) {
@@ -50,6 +56,12 @@ const getMemberLabel = (member) => {
   return `${name} — ${ROLE_LABELS[member?.role] || member?.role}`;
 };
 
+const getMemberStatusSuffix = (member) => {
+  if (member?.status === "invited") return " — đang chờ xác nhận";
+  if (member?.status === "inactive") return " — đã tháo quyền";
+  return "";
+};
+
 const getErrorMessage = (error, fallback) =>
   error?.graphQLErrors?.[0]?.message || error?.message || fallback;
 
@@ -66,6 +78,13 @@ function BrandMembershipAccessForm({
     refetchQueries: ["BrandMembers"],
     awaitRefetchQueries: true,
   });
+  const [removeMember, { loading: removing }] = useMutation(
+    REMOVE_BRAND_MEMBER,
+    {
+      refetchQueries: ["BrandMembers"],
+      awaitRefetchQueries: true,
+    },
+  );
 
   const editableMembers = useMemo(
     () =>
@@ -147,6 +166,45 @@ function BrandMembershipAccessForm({
     }
   };
 
+  const revokeAccess = async () => {
+    if (!selectedMember) {
+      setFormError("Chọn thành viên cần tháo quyền.");
+      return;
+    }
+    if (selectedMember.status === "inactive") {
+      setFormError("Thành viên này đã được tháo quyền.");
+      return;
+    }
+
+    const cancellingInvitation = selectedMember.status === "invited";
+    const confirmed = window.confirm(
+      cancellingInvitation
+        ? "Hủy lời mời này? Liên kết trong email sẽ không còn hiệu lực."
+        : "Tháo quyền Brand của thành viên này? Tài khoản và dữ liệu lịch sử vẫn được giữ.",
+    );
+    if (!confirmed) return;
+
+    setFormError("");
+    try {
+      await removeMember({
+        variables: {
+          id: selectedMember.id,
+          reason: cancellingInvitation
+            ? "Hủy lời mời từ trang quản lý chuỗi"
+            : "Tháo quyền từ trang quản lý chuỗi",
+        },
+      });
+      setMembershipId("");
+      setRole("staff");
+      setRestaurantIds([]);
+      message.success(
+        cancellingInvitation ? "Đã hủy lời mời" : "Đã tháo quyền Brand",
+      );
+    } catch (error) {
+      setFormError(getErrorMessage(error, "Không thể tháo quyền Brand."));
+    }
+  };
+
   return (
     <details className="brand-member-filter-panel brand-membership-actions">
       <summary className="brand-member-filter-panel__heading">
@@ -168,7 +226,7 @@ function BrandMembershipAccessForm({
                   {editableMembers.map((member) => (
                     <option key={member.id} value={member.id}>
                       {getMemberLabel(member)}
-                      {member.status !== "active" ? " — đang tạm ngưng" : ""}
+                      {getMemberStatusSuffix(member)}
                     </option>
                   ))}
                 </select>
@@ -192,10 +250,25 @@ function BrandMembershipAccessForm({
                 type="button"
                 className="brand-button brand-button--primary"
                 onClick={saveAccess}
-                disabled={loading || !selectedMember}
+                disabled={loading || removing || !selectedMember}
               >
                 {loading ? "Đang lưu quyền..." : "Lưu quyền thành viên"}
               </button>
+
+              {selectedMember?.status !== "inactive" && (
+                <button
+                  type="button"
+                  className="brand-button brand-button--secondary"
+                  onClick={revokeAccess}
+                  disabled={loading || removing}
+                >
+                  {removing
+                    ? "Đang xử lý..."
+                    : selectedMember?.status === "invited"
+                      ? "Hủy lời mời"
+                      : "Tháo quyền Brand"}
+                </button>
+              )}
             </div>
 
             {selectedMember && role === "admin" && (
@@ -258,8 +331,9 @@ function BrandMembershipAccessForm({
             )}
 
             <p className="brand-membership-actions__hint">
-              Hủy hoặc khôi phục quyền truy cập bằng nút Tạm ngưng / Kích hoạt trên
-              thẻ thành viên. Quyền chủ chuỗi chỉ đổi ở phần chuyển quyền bên dưới.
+              Hủy lời mời hoặc tháo quyền tại đây. Thành viên đã tháo quyền có thể
+              được khôi phục bằng nút Kích hoạt trên thẻ thành viên. Quyền chủ chuỗi
+              chỉ thay đổi ở phần chuyển quyền bên dưới.
             </p>
           </>
         ) : (
