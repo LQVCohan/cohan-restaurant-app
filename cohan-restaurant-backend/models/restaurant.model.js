@@ -167,6 +167,7 @@ const restaurantSchema = BaseSchemaModel({
   orderPolicy: { type: mongoose.Schema.Types.Mixed, default: () => ({ allowWhenClosed: false, minAdvanceMinutes: 0 }) },
   reviewCount: { type: Number, default: 0, min: 0 },
   reservationSettings: { type: reservationSettingsSchema, default: () => ({}) },
+  tableTypeSettings: { type: mongoose.Schema.Types.Mixed, default: undefined },
   aiChatbotSettings: { type: aiChatbotSettingsSchema, default: () => ({}) },
   paymentSettings: { type: paymentSettingsSchema, default: () => ({}) },
   defaultCurrency: { type: String, enum: ["VND", "USD"], default: "VND" },
