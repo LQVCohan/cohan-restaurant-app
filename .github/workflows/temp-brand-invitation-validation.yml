@@ -1,0 +1,33 @@
+name: temp-brand-invitation-validation
+
+on:
+  push:
+    branches: [feature/brand-member-invitation-flow]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install frontend dependencies
+        run: npm install --no-package-lock
+      - name: Install backend dependencies
+        run: npm --prefix cohan-restaurant-backend install --no-package-lock
+      - name: Check backend syntax
+        run: |
+          node --check cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js
+          node --check cohan-restaurant-backend/graphql/resolvers/brand/memberRoleConsistency.js
+          node --check cohan-restaurant-backend/graphql/resolvers/index.js
+      - name: Check GraphQL schema and operations
+        run: npm run check:graphql
+      - name: Run focused invitation guards
+        run: npm --prefix cohan-restaurant-backend test -- tests/resolvers/brand-member-invitation-guards.test.js
+      - name: Build frontend
+        run: npm run build
