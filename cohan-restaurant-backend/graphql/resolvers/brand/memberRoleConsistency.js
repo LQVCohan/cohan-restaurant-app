@@ -110,9 +110,9 @@ export function guardBrandMemberRoleMutations(mutations = {}) {
 
       if (!isSyntheticInviteId(input.userId)) {
         await assertBrandMembershipAccountCompatibility({
-userId: input.userId,
-membershipRole: input.role,
-allowCustomerPromotion: ["admin", "manager"].includes(input.role),
+          userId: input.userId,
+          membershipRole: input.role,
+          allowCustomerPromotion: ["admin", "manager"].includes(input.role),
         });
       }
       return mutations.addBrandMember(root, { input }, ctx, info);
@@ -133,7 +133,7 @@ allowCustomerPromotion: ["admin", "manager"].includes(input.role),
 
       if (membership.status === "invited" && input.status === "active") {
         throw forbidden(
-"Thành viên phải tự xác nhận liên kết trong email trước khi quyền được kích hoạt.",
+          "Thành viên phải tự xác nhận liên kết trong email trước khi quyền được kích hoạt.",
         );
       }
 
@@ -141,20 +141,20 @@ allowCustomerPromotion: ["admin", "manager"].includes(input.role),
         input.status === "inactive" && membership.status !== "inactive";
       if (suspendsMembership && membership.role === "owner") {
         throw forbidden(
-"Không thể tạm ngưng Chủ chuỗi. Hãy chuyển quyền sở hữu trước nếu cần thay đổi tài khoản chủ.",
+          "Không thể tạm ngưng Chủ chuỗi. Hãy chuyển quyền sở hữu trước nếu cần thay đổi tài khoản chủ.",
         );
       }
       if (suspendsMembership && sameId(membership.userId, getUserId(ctx.user))) {
         throw forbidden(
-"Bạn không thể tự tạm ngưng quyền của mình. Hãy nhờ Chủ chuỗi hoặc một Quản trị chuỗi khác thực hiện.",
+          "Bạn không thể tự tạm ngưng quyền của mình. Hãy nhờ Chủ chuỗi hoặc một Quản trị chuỗi khác thực hiện.",
         );
       }
 
       const nextStatus = input.status || membership.status;
       if (nextStatus === "active") {
         await assertBrandMembershipAccountCompatibility({
-userId: membership.userId,
-membershipRole: input.role || membership.role,
+          userId: membership.userId,
+          membershipRole: input.role || membership.role,
         });
       }
 
