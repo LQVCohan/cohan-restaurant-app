@@ -19,11 +19,18 @@ export default function useAvailabilityPolicyUpdate({
           ...basePolicy,
           availabilityRegistrationPolicy: {
             ...(basePolicy.availabilityRegistrationPolicy || {}),
-            availabilityRegistrationMode: draftInput.availabilityRegistrationMode,
-            availabilityOpenDayOffset: Number(draftInput.availabilityOpenDayOffset),
+            availabilityRegistrationMode:
+              draftInput.availabilityRegistrationMode,
+            availabilityOpenDayOffset: Number(
+              draftInput.availabilityOpenDayOffset,
+            ),
             availabilityOpenTime: draftInput.availabilityOpenTime,
-            availabilityCloseDayOffset: Number(draftInput.availabilityCloseDayOffset),
+            availabilityCloseDayOffset: Number(
+              draftInput.availabilityCloseDayOffset,
+            ),
             availabilityCloseTime: draftInput.availabilityCloseTime,
+            lateChangeRequiresApproval:
+              draftInput.lateChangeRequiresApproval !== false,
           },
         };
         await updateSchedulingPolicy({
@@ -34,10 +41,16 @@ export default function useAvailabilityPolicyUpdate({
         });
         await refetchManagerWindows?.();
         await refetchManagerSubmissions?.();
-        showNotification("Đã cập nhật chế độ đăng ký lịch nhân viên.", "success");
+        showNotification(
+          "Đã cập nhật chế độ đăng ký lịch nhân viên.",
+          "success",
+        );
       } catch (error) {
         showNotification(
-          getGraphQLErrorMessage(error, "Không thể cập nhật chính sách đăng ký lịch."),
+          getGraphQLErrorMessage(
+            error,
+            "Không thể cập nhật chính sách đăng ký lịch.",
+          ),
           "error",
         );
       }
