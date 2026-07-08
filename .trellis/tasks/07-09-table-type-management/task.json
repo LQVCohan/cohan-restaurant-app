@@ -1,29 +1,27 @@
 {
   "id": "07-09-table-type-management",
-  "title": "Quản lý loại bàn theo nhà hàng",
-  "status": "planning",
-  "type": "full-stack-feature",
+  "title": "Tạo trang quản lý loại bàn",
+  "status": "in_progress",
+  "type": "frontend-feature",
   "scope": [
-    "cohan-restaurant-backend/models/restaurant.model.js",
-    "cohan-restaurant-backend/graphql/schema/restaurant.graphql",
-    "cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js",
-    "src/hooks/useRestaurant.js",
-    "src/utils/tableManagementOptions.js",
-    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
-    "src/components/Dashboard_Manager/Table/TableManagement.scss",
-    "src/components/Dashboard_Manager/Table/TableActionsLiteModal.jsx",
-    "src/components/Customer/BookingTableModal/BookingModal.jsx"
+    "src/components/Dashboard_Manager/Table/TableTypeManagementPage.jsx",
+    "src/components/Dashboard_Manager/Table/TableTypeManagementPage.scss",
+    "src/components/Dashboard_Manager/Table/TableTypeManagementPage.test.jsx",
+    "src/layouts/ManagerLayout.jsx",
+    "src/components/Dashboard_Manager/Sidebar.jsx"
   ],
   "validation": {
     "planned": [
-      "targeted backend table type settings test",
-      "targeted TableManagement component test",
-      "targeted TableActionsLiteModal component test",
-      "targeted BookingModal component test",
+      "npx vitest run src/components/Dashboard_Manager/Table/TableTypeManagementPage.test.jsx",
+      "npm run check:conflicts",
       "npm run check:graphql",
       "npm run build"
     ],
-    "completed": [],
+    "completed": [
+      "traced Table.type model and enum through GraphQL updateTable, useTableManagement, manager routing and sidebar navigation",
+      "confirmed the existing contract already persists and returns all six table type values",
+      "removed the unnecessary Restaurant.tableTypeSettings draft so Table.type remains the single source of truth"
+    ],
     "notRun": []
   }
 }
