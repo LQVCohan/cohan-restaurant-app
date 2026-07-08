@@ -1,26 +1,20 @@
-/* Final viewport polish for Promotion modal.
-   Keeps the manager header/sidebar visually behind the modal and moves the form upward. */
+/* Promotion dialogs share this viewport boundary.
+   Release them from manager stacking/paint containment and let the real overlay own the blur. */
 
-body:has(.premium-modal-overlay)::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 1040;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(31, 106, 96, 0.16), transparent 26rem),
-    rgba(21, 29, 32, 0.62);
-  -webkit-backdrop-filter: blur(9px) saturate(108%);
-  backdrop-filter: blur(9px) saturate(108%);
+body:has(.premium-modal-overlay) .manager-layout__main,
+body:has(.premium-modal-overlay) .manager-layout__content {
+  z-index: auto !important;
+  transform: none !important;
+  contain: none !important;
+  will-change: auto !important;
 }
 
-body:has(.premium-modal-overlay) .manager-layout__sidebar,
-body:has(.premium-modal-overlay) .manager-layout__header,
-body:has(.premium-modal-overlay) .manager-shell-sidebar,
-body:has(.premium-modal-overlay) .sidebar,
-body:has(.premium-modal-overlay) .app-header,
-body:has(.premium-modal-overlay) header {
-  filter: brightness(0.72) saturate(0.82);
+body:has(.premium-modal-overlay) .manager-page-shell {
+  z-index: auto !important;
+}
+
+body:has(.premium-modal-overlay) .promotion-manager-page {
+  isolation: auto !important;
 }
 
 .premium-modal-overlay {
@@ -29,15 +23,12 @@ body:has(.premium-modal-overlay) header {
   justify-content: center !important;
   padding-top: max(0.35rem, env(safe-area-inset-top)) !important;
   padding-bottom: max(0.55rem, env(safe-area-inset-bottom)) !important;
-  background: transparent !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
 }
 
 .premium-modal-overlay .premium-modal {
   position: relative !important;
   z-index: 1110 !important;
-  margin-top: clamp(-5.7rem, -7.5vh, -3.2rem) !important;
+  margin-top: 0 !important;
   max-height: min(96dvh, 900px) !important;
   box-shadow:
     0 34px 92px rgba(12, 20, 22, 0.34),
@@ -61,7 +52,6 @@ body:has(.premium-modal-overlay) header {
 
 @media (max-height: 760px) {
   .premium-modal-overlay .premium-modal {
-    margin-top: -4.5rem !important;
     max-height: 98dvh !important;
   }
 
@@ -75,16 +65,11 @@ body:has(.premium-modal-overlay) header {
 }
 
 @media (max-width: 760px) {
-  body:has(.premium-modal-overlay)::before {
-    z-index: 1040;
-  }
-
   .premium-modal-overlay {
     padding: 0 !important;
   }
 
   .premium-modal-overlay .premium-modal {
-    margin-top: 0 !important;
     max-height: 100dvh !important;
   }
 }
