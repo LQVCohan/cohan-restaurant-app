@@ -43,7 +43,7 @@ export { default as Promotion } from "./promotion.model.js";
 export { default as EventPackage } from "./event-package.model.js";
 export { default as TableEvent } from "./table_event.model.js";
 export { default as Coupon } from "./coupon.model.js";
-export { default as CouponRedemption } from "./coupon-redemption.model.js";
+export { default as CouponRedemption } from "./coupon_redemption.model.js";
 export { default as UserCoupon } from "./user_coupon.model.js";
 export { default as VoucherPackage } from "./voucher-package.model.js";
 export { default as Shift } from "./shift.model.js";
@@ -124,5 +124,5 @@ export { default as AiChatbotKnowledgeSuggestion } from "./ai-chatbot-knowledge-
 
 export { default as AiChatbotAnswerFeedback } from "./ai-chatbot-answer-feedback.model.js";
 
-export { default as AiChatbotSafetyRule } from "./ai-chatbotSafetyRule.model.js";
-export { default as AiChatbotEvaluationCase } from "./ai-chatbotEvaluationCase.model.js";
+export { default as AiChatbotSafetyRule } from "./ai-chatbot-safety-rule.model.js";
+export { default as AiChatbotEvaluationCase } from "./ai-chatbot-evaluation-case.model.js";
