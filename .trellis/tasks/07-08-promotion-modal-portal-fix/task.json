@@ -1,0 +1,28 @@
+{
+  "id": "promotion-modal-viewport-fix",
+  "name": "promotion-modal-viewport-fix",
+  "title": "Fix blurred promotion modal",
+  "description": "Release the promotion modal from the manager layout stacking and paint-containment chain, and remove the body-level blur workaround that covers the dialog itself.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-promotion-modals",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "fix/promotion-modal-portal-blur",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/styles/PromotionModalViewportFix.css"
+  ],
+  "notes": "Frontend CSS boundary fix shared by promotion, coupon and coupon-package dialogs. Promotion schema, resolver, permissions, Apollo payloads and mutations remain unchanged.",
+  "meta": {}
+}
