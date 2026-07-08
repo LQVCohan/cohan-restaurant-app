@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Modal from "../../../../common/Modal";
-import { toBaseQty } from "../../../../../utils/unitConversion";
+import {
+  calculateStockReceipt,
+  getConvertibleUnits,
+} from "../../../../../utils/unitConversion";
 import { formatPrice } from "../../../../../utils/formatters";
 import {
   convertCurrencyAmount,
@@ -80,7 +83,7 @@ const QuickStockModal = ({
   useEffect(() => {
     if (!isOpen) return;
     const now = new Date();
-    const defaultDate = now.toISOString().slice(0, 16); // yyyy-MM-ddTHH:mm
+    const defaultDate = now.toISOString().slice(0, 16);
     setFormRows(
       normalized.map((e) => ({
         ...e,
@@ -91,14 +94,14 @@ const QuickStockModal = ({
         supplier: "",
         note: "",
         datetime: defaultDate,
-      }))
+      })),
     );
     setErrors({});
     setSubmitError("");
     setSubmitting(false);
     setPriceHintsByIngredient({});
     setPrevCurrency(activeCurrency);
-  }, [isOpen, normalized]);
+  }, [activeCurrency, isOpen, normalized]);
 
   useEffect(() => {
     if (!isOpen || prevCurrency === activeCurrency) return;
@@ -148,8 +151,43 @@ const QuickStockModal = ({
 
   const updateRow = (idx, patch) => {
     setFormRows((rows) =>
-      rows.map((r, i) => (i === idx ? { ...r, ...patch } : r))
+      rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)),
     );
+  };
+
+  const getIngredient = (row) => ingredientMap.get(String(row.id));
+
+  const getAllowedUnits = (row) => {
+    const ingredient = getIngredient(row);
+    if (!ingredient) return [row.unit].filter(Boolean);
+    return getConvertibleUnits(
+      ingredient.baseUnit || row.unit,
+      ingredient.conversions || [],
+    );
+  };
+
+  const getDerivedPricing = (row) => {
+    const ingredient = getIngredient(row);
+    if (!ingredient || !(Number(row.qty) > 0) || !(Number(row.unitPrice) > 0)) {
+      return null;
+    }
+
+    try {
+      return calculateStockReceipt({
+        qty: row.qty,
+        unit: row.unit || ingredient.baseUnit,
+        unitPrice: convertCurrencyAmount(
+          Number(row.unitPrice),
+          activeCurrency,
+          "VND",
+          usdToVndRate,
+        ),
+        baseUnit: ingredient.baseUnit,
+        conversions: ingredient.conversions || [],
+      });
+    } catch {
+      return null;
+    }
   };
 
   const validate = () => {
@@ -165,6 +203,28 @@ const QuickStockModal = ({
         nextErrors[idx] = { unitPrice: "Giá nhập là bắt buộc và phải > 0" };
         return;
       }
+
+      const ingredient = getIngredient(row);
+      if (ingredient) {
+        try {
+          calculateStockReceipt({
+            qty: qtyNum,
+            unit: row.unit || ingredient.baseUnit,
+            unitPrice: convertCurrencyAmount(
+              priceNum,
+              activeCurrency,
+              "VND",
+              usdToVndRate,
+            ),
+            baseUnit: ingredient.baseUnit,
+            conversions: ingredient.conversions || [],
+          });
+        } catch (error) {
+          nextErrors[idx] = { unit: error?.message || "Đơn vị nhập không hợp lệ." };
+          return;
+        }
+      }
+
       if (row.expiry) {
         const expiryDate = parseLocalDateOnly(row.expiry);
         if (!expiryDate) {
@@ -175,7 +235,6 @@ const QuickStockModal = ({
         todayStart.setHours(0, 0, 0, 0);
         if (expiryDate.getTime() < todayStart.getTime()) {
           nextErrors[idx] = { expiry: "Hạn dùng không được ở trong quá khứ." };
-          return;
         }
       }
     });
@@ -184,8 +243,7 @@ const QuickStockModal = ({
   };
 
   const submit = async () => {
-    if (submitting) return;
-    if (!validate()) return;
+    if (submitting || !validate()) return;
     setSubmitError("");
     const payload = formRows.map((row) => ({
       id: row.id,
@@ -219,35 +277,20 @@ const QuickStockModal = ({
     }
   };
 
-  const getAllowedUnits = (row) => {
-    const ing = ingredientMap.get(String(row.id));
-    if (!ing) return [row.unit].filter(Boolean);
-    const base = ing.baseUnit || row.unit;
-    const set = new Set([base]);
-    (ing.conversions || []).forEach((c) => {
-      const from = c?.from;
-      const to = c?.to;
-      if (from === base && to) set.add(to);
-      if (to === base && from) set.add(from);
+  const applySuggestedBasePrice = (idx, basePrice, qtyBase) => {
+    const totalVnd = Number(basePrice || 0) * Number(qtyBase || 0);
+    updateRow(idx, {
+      unitPrice: String(
+        Math.round(
+          convertCurrencyAmount(
+            totalVnd,
+            "VND",
+            activeCurrency,
+            usdToVndRate,
+          ),
+        ),
+      ),
     });
-    return Array.from(set);
-  };
-
-  const getDerivedPricing = (row) => {
-    const ing = ingredientMap.get(String(row.id));
-    if (!ing) return null;
-    const qty = Number(row.qty) || 0;
-    if (!(qty > 0)) return null;
-    const unitPrice = Number(row.unitPrice) || 0;
-    const qtyBase = toBaseQty(qty, row.unit || ing.baseUnit, ing.baseUnit);
-    if (!(qtyBase > 0)) return null;
-    const costPerBaseUnit = unitPrice > 0 ? unitPrice / qtyBase : 0;
-    return {
-      qtyBase,
-      costPerBaseUnit,
-      totalValue: unitPrice,
-      baseUnit: ing.baseUnit,
-    };
   };
 
   return (
@@ -259,7 +302,11 @@ const QuickStockModal = ({
       className="storage-modal-shell storage-modal-quick-stock"
     >
       <div className="qsm-wrapper">
-        {submitError ? <div className="qsm-error">{submitError}</div> : null}
+        {submitError ? (
+          <div className="qsm-error" role="alert">
+            {submitError}
+          </div>
+        ) : null}
         <div className="qsm-list">
           {formRows.map((row, idx) => (
             <div className="qsm-item" key={`${row.id}-${idx}`}>
@@ -282,7 +329,10 @@ const QuickStockModal = ({
                   <input
                     type="number"
                     min="0"
-                    step="1"
+                    step="any"
+                    inputMode="decimal"
+                    name={`stock-quantity-${idx}`}
+                    autoComplete="off"
                     value={row.qty}
                     onChange={(e) => updateRow(idx, { qty: e.target.value })}
                     className={errors[idx]?.qty ? "error" : ""}
@@ -296,15 +346,21 @@ const QuickStockModal = ({
                 <label className="qsm-field">
                   <span className="qsm-label">Đơn vị nhập</span>
                   <select
+                    name={`stock-unit-${idx}`}
+                    autoComplete="off"
                     value={row.unit}
                     onChange={(e) => updateRow(idx, { unit: e.target.value })}
+                    className={errors[idx]?.unit ? "error" : ""}
                   >
-                    {getAllowedUnits(row).map((u) => (
-                      <option key={u} value={u}>
-                        {u}
+                    {getAllowedUnits(row).map((unit) => (
+                      <option key={unit} value={unit}>
+                        {unit}
                       </option>
                     ))}
                   </select>
+                  {errors[idx]?.unit && (
+                    <small className="qsm-error">{errors[idx].unit}</small>
+                  )}
                 </label>
 
                 <label className="qsm-field">
@@ -314,11 +370,12 @@ const QuickStockModal = ({
                   <input
                     type="number"
                     min="0"
-                    step="1000"
+                    step="any"
+                    inputMode="decimal"
+                    name={`stock-price-${idx}`}
+                    autoComplete="off"
                     value={row.unitPrice}
-                    onChange={(e) =>
-                      updateRow(idx, { unitPrice: e.target.value })
-                    }
+                    onChange={(e) => updateRow(idx, { unitPrice: e.target.value })}
                     className={errors[idx]?.unitPrice ? "error" : ""}
                     placeholder="0"
                   />
@@ -331,11 +388,11 @@ const QuickStockModal = ({
                   <span className="qsm-label">Nhà cung cấp / Nguồn</span>
                   <input
                     type="text"
+                    name={`stock-supplier-${idx}`}
+                    autoComplete="organization"
                     value={row.supplier}
-                    onChange={(e) =>
-                      updateRow(idx, { supplier: e.target.value })
-                    }
-                    placeholder="Tên NCC hoặc nguồn"
+                    onChange={(e) => updateRow(idx, { supplier: e.target.value })}
+                    placeholder="Tên NCC hoặc nguồn…"
                   />
                 </label>
 
@@ -343,10 +400,10 @@ const QuickStockModal = ({
                   <span className="qsm-label">Ngày giờ nhập</span>
                   <input
                     type="datetime-local"
+                    name={`stock-datetime-${idx}`}
+                    autoComplete="off"
                     value={row.datetime}
-                    onChange={(e) =>
-                      updateRow(idx, { datetime: e.target.value })
-                    }
+                    onChange={(e) => updateRow(idx, { datetime: e.target.value })}
                   />
                 </label>
 
@@ -354,6 +411,9 @@ const QuickStockModal = ({
                   <span className="qsm-label">Mã lô</span>
                   <input
                     type="text"
+                    name={`stock-lot-${idx}`}
+                    autoComplete="off"
+                    spellCheck={false}
                     value={row.lot}
                     onChange={(e) => updateRow(idx, { lot: e.target.value })}
                     placeholder="LOT-2026-001"
@@ -364,6 +424,8 @@ const QuickStockModal = ({
                   <span className="qsm-label">Hạn dùng</span>
                   <input
                     type="date"
+                    name={`stock-expiry-${idx}`}
+                    autoComplete="off"
                     value={row.expiry}
                     min={todayDate}
                     onChange={(e) => updateRow(idx, { expiry: e.target.value })}
@@ -377,17 +439,17 @@ const QuickStockModal = ({
 
               {(() => {
                 const hint = priceHintsByIngredient[String(row.id)];
-                const d = getDerivedPricing(row);
+                const derived = getDerivedPricing(row);
                 return (
                   <div className="qsm-derived">
-                    {d && (
+                    {derived && (
                       <div className="qsm-meta">
-                        Quy đổi: {Number(d.qtyBase).toLocaleString("vi-VN")} {" "}
-                        {d.baseUnit} • Giá/base: {" "}
+                        Quy đổi: {Number(derived.qtyBase).toLocaleString("vi-VN")} {" "}
+                        {derived.baseUnit} • Giá/base: {" "}
                         <b>
                           {formatPrice(
                             convertCurrencyAmount(
-                              d.costPerBaseUnit,
+                              derived.costPerBaseUnit,
                               "VND",
                               activeCurrency,
                               usdToVndRate,
@@ -396,24 +458,25 @@ const QuickStockModal = ({
                           )}
                         </b>{" "}
                         • Tổng lô: {" "}
-                        <b>{formatPrice(Number(row.unitPrice) || 0, { currency: activeCurrency })}</b>
+                        <b>
+                          {formatPrice(Number(row.unitPrice) || 0, {
+                            currency: activeCurrency,
+                          })}
+                        </b>
                       </div>
                     )}
-                    {hint && (
+                    {hint && derived && (
                       <div className="qsm-hints">
                         {hint.latestCostPerBaseUnit > 0 && (
                           <button
                             type="button"
                             className="qsm-btn qsm-btn--secondary"
                             onClick={() =>
-                              d &&
-                              updateRow(idx, {
-                                unitPrice: String(
-                                  Math.round(
-                                    hint.latestCostPerBaseUnit * d.qtyBase,
-                                  ),
-                                ),
-                              })
+                              applySuggestedBasePrice(
+                                idx,
+                                hint.latestCostPerBaseUnit,
+                                derived.qtyBase,
+                              )
                             }
                           >
                             Giá gần nhất
@@ -424,34 +487,32 @@ const QuickStockModal = ({
                             type="button"
                             className="qsm-btn qsm-btn--secondary"
                             onClick={() =>
-                              d &&
-                              updateRow(idx, {
-                                unitPrice: String(
-                                  Math.round(
-                                    hint.avgRecentCostPerBaseUnit * d.qtyBase,
-                                  ),
-                                ),
-                              })
+                              applySuggestedBasePrice(
+                                idx,
+                                hint.avgRecentCostPerBaseUnit,
+                                derived.qtyBase,
+                              )
                             }
                           >
                             TB gần đây
                           </button>
                         )}
-                        {(hint.recent || []).slice(0, 3).map((p, pIdx) => (
+                        {(hint.recent || []).slice(0, 3).map((point, pointIndex) => (
                           <button
-                            key={`${p.movementId}_${pIdx}`}
+                            key={`${point.movementId}_${pointIndex}`}
                             type="button"
                             className="qsm-btn qsm-btn--secondary"
                             onClick={() =>
-                              d &&
-                              updateRow(idx, {
-                                unitPrice: String(
-                                  Math.round((Number(p.costPerBaseUnit) || 0) * d.qtyBase),
-                                ),
-                              })
+                              applySuggestedBasePrice(
+                                idx,
+                                point.costPerBaseUnit,
+                                derived.qtyBase,
+                              )
                             }
                           >
-                            {new Date(p.createdAt).toLocaleDateString("vi-VN")}
+                            {new Intl.DateTimeFormat("vi-VN").format(
+                              new Date(point.createdAt),
+                            )}
                           </button>
                         ))}
                       </div>
@@ -463,9 +524,11 @@ const QuickStockModal = ({
               <label className="qsm-field">
                 <span className="qsm-label">Ghi chú</span>
                 <textarea
+                  name={`stock-note-${idx}`}
+                  autoComplete="off"
                   value={row.note}
                   onChange={(e) => updateRow(idx, { note: e.target.value })}
-                  placeholder="Thông tin bổ sung..."
+                  placeholder="Thông tin bổ sung…"
                 />
               </label>
             </div>
@@ -483,7 +546,7 @@ const QuickStockModal = ({
           onClick={submit}
           disabled={submitting}
         >
-          {submitting ? "Đang nhập..." : "Xác nhận nhập kho"}
+          {submitting ? "Đang nhập…" : "Xác nhận nhập kho"}
         </button>
       </Modal.Footer>
     </Modal>
