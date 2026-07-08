@@ -74,6 +74,22 @@ import { installMergedTableLifecycleUi } from "./utils/installMergedTableLifecyc
 import { installTableEmptyStateEnhancement } from "./utils/installTableEmptyStateEnhancement";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 
+const normalizeLegacyManagerHash = () => {
+  if (
+    window.location.pathname.startsWith("/manager") &&
+    window.location.hash === "#storage"
+  ) {
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${window.location.search}#inventory`,
+    );
+  }
+};
+
+normalizeLegacyManagerHash();
+window.addEventListener("hashchange", normalizeLegacyManagerHash);
+
 installRbacVietnameseLabels();
 applyChatThreadToolbarStyle();
 installRestaurantHoursEnhancement();
