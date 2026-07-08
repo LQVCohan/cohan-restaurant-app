@@ -1,0 +1,21 @@
+{
+  "id": "07-08-table-detail-persistence",
+  "title": "Persist table detail modal fields",
+  "status": "planning",
+  "type": "full-stack-bugfix",
+  "scope": [
+    "cohan-restaurant-backend/graphql/resolvers/table/query.js",
+    "cohan-restaurant-backend/tests/resolvers/table-restaurant-access.test.js",
+    "src/components/Dashboard_Manager/Table/TableActionsLiteModal.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "targeted backend resolver Vitest",
+      "targeted TableActionsLiteModal component Vitest",
+      "npm run check:graphql",
+      "npm run build"
+    ],
+    "completed": [],
+    "notRun": []
+  }
+}
