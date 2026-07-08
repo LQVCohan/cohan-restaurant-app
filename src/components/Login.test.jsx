@@ -58,6 +58,26 @@ const getLoginForm = () => screen.getAllByRole("heading", { name: "Đăng nhập
 const getRegisterForm = () => screen.getByRole("form", { name: "Đăng ký" });
 const getPrimaryLoginButton = () => within(getLoginForm()).getByRole("button", { name: "Đăng nhập" });
 
+const openRegisterForm = () => {
+  fireEvent.click(screen.getByRole("tab", { name: "Đăng ký" }));
+  return getRegisterForm();
+};
+
+const expectPasswordToggles = (registerForm) => {
+  const password = within(registerForm).getByPlaceholderText("Mật khẩu");
+  const confirmation = within(registerForm).getByPlaceholderText("Nhập lại mật khẩu");
+
+  expect(password).toHaveAttribute("type", "password");
+  expect(confirmation).toHaveAttribute("type", "password");
+
+  fireEvent.click(within(registerForm).getByRole("button", { name: "Hiện mật khẩu" }));
+  expect(password).toHaveAttribute("type", "text");
+  expect(confirmation).toHaveAttribute("type", "password");
+
+  fireEvent.click(within(registerForm).getByRole("button", { name: "Hiện mật khẩu xác nhận" }));
+  expect(confirmation).toHaveAttribute("type", "text");
+};
+
 describe("Login captcha config", () => {
   beforeEach(() => {
     cleanup();
@@ -109,8 +129,7 @@ describe("Login captcha config", () => {
   it("register submits without captcha token when disabled", async () => {
     renderLogin();
 
-    fireEvent.click(screen.getByRole("tab", { name: "Đăng ký" }));
-    const registerForm = getRegisterForm();
+    const registerForm = openRegisterForm();
     fireEvent.change(within(registerForm).getByPlaceholderText("Họ và tên"), { target: { value: "Tester" } });
     fireEvent.change(within(registerForm).getByPlaceholderText("Email"), { target: { value: "tester@example.com" } });
     fireEvent.change(within(registerForm).getByPlaceholderText("Mật khẩu"), { target: { value: "123456" } });
@@ -120,5 +139,30 @@ describe("Login captcha config", () => {
 
     await waitFor(() => expect(mocks.registerMutationMock).toHaveBeenCalledTimes(1));
     expect(mocks.registerMutationMock.mock.calls[0][0].variables.i.captchaToken).toBeUndefined();
+  });
+
+  it("reveals customer and brand registration passwords independently", () => {
+    renderLogin();
+
+    const registerForm = openRegisterForm();
+    expectPasswordToggles(registerForm);
+
+    fireEvent.click(within(registerForm).getByRole("tab", { name: "Thương hiệu" }));
+    expectPasswordToggles(registerForm);
+  });
+
+  it("updates the registration password strength label", () => {
+    renderLogin();
+
+    const registerForm = openRegisterForm();
+    const password = within(registerForm).getByPlaceholderText("Mật khẩu");
+
+    expect(within(registerForm).getByText("Dùng ít nhất 8 ký tự, gồm chữ hoa, số và ký tự đặc biệt")).toBeInTheDocument();
+
+    fireEvent.change(password, { target: { value: "abc" } });
+    expect(within(registerForm).getByText("Độ mạnh: Yếu")).toBeInTheDocument();
+
+    fireEvent.change(password, { target: { value: "Abcdef12!" } });
+    expect(within(registerForm).getByText("Độ mạnh: Mạnh")).toBeInTheDocument();
   });
 });
