@@ -5,3 +5,12 @@
 @import "./MenuManagementSpacingFix.scss";
 @import "./components/MenuItemModal/MenuItemModalToneLayoutSync.scss";
 @import "./components/MenuItemModal/MenuItemModalFinalSync.scss";
+
+/* The manager shell owns the page canvas; legacy menu layers only style inner surfaces. */
+.manager-layout--menu .mm-page-container {
+  background: transparent !important;
+}
+
+.manager-layout--menu .mm-page-container::before {
+  display: none !important;
+}
