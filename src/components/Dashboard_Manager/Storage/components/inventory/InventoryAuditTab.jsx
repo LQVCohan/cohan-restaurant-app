@@ -36,6 +36,15 @@ const documentStatusLabel = {
   missing: "Thiếu chứng từ",
 };
 
+const countStatusLabel = {
+  draft: "Đang kiểm",
+  closed: "Đã chốt",
+  cancelled: "Đã hủy",
+};
+
+const hasCountedQty = (value) =>
+  value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value));
+
 const formatQty = (value) =>
   Number(value || 0).toLocaleString("vi-VN", { maximumFractionDigits: 3 });
 
@@ -236,7 +245,7 @@ function InventoryAuditTab({
     return lines.reduce(
       (acc, line) => {
         acc.total += 1;
-        if (Number.isFinite(Number(line.countedQty))) acc.counted += 1;
+        if (hasCountedQty(line.countedQty)) acc.counted += 1;
         const variance = Number(line.variance || 0);
         if (variance !== 0) {
           acc.varianceLines += 1;
@@ -310,6 +319,10 @@ function InventoryAuditTab({
 
   const handleCloseCount = async () => {
     if (!activeCount) return;
+    if (countSummary.counted < countSummary.total) {
+      setFeedback("Cần nhập đủ số lượng thực tế trước khi chốt kỳ.");
+      return;
+    }
     if (!window.confirm(`Chốt kỳ ${activeCount.code}? Hệ thống sẽ tạo bút toán điều chỉnh tồn kho.`)) {
       return;
     }
@@ -457,7 +470,7 @@ function InventoryAuditTab({
               {counts.length ? (
                 counts.map((count) => (
                   <option key={count.id} value={count.id}>
-                    {count.code} • {documentStatusLabel[count.status] || count.status}
+                    {count.code} • {countStatusLabel[count.status] || count.status}
                   </option>
                 ))
               ) : (
@@ -509,7 +522,7 @@ function InventoryAuditTab({
                   {(activeCount.lines || []).slice(0, 80).map((line) => {
                     const draft = lineDraft(line);
                     const variance =
-                      Number.isFinite(Number(draft.countedQty))
+                      hasCountedQty(draft.countedQty)
                         ? Number(draft.countedQty) - Number(line.systemQty || 0)
                         : Number(line.variance || 0);
                     return (
@@ -548,7 +561,7 @@ function InventoryAuditTab({
                             type="button"
                             className="inv-small-btn"
                             onClick={() => handleSaveLine(line)}
-                            disabled={activeCount.status === "closed" || updatingLine}
+                            disabled={activeCount.status === "closed" || updatingLine || !hasCountedQty(draft.countedQty)}
                           >
                             Lưu
                           </button>
