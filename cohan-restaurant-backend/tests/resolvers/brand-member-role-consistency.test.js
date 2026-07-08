@@ -5,6 +5,7 @@ const modelMocks = vi.hoisted(() => ({
   Role: { findOne: vi.fn() },
   BrandMembership: {
     findById: vi.fn(),
+    findOne: vi.fn(),
     findByIdAndUpdate: vi.fn(),
     updateOne: vi.fn(),
   },
@@ -13,8 +14,6 @@ const modelMocks = vi.hoisted(() => ({
 const scopeMocks = vi.hoisted(() => ({
   canManageBrand: vi.fn().mockResolvedValue(true),
   getUserId: vi.fn((user) => user?.id),
-  isBrandOwner: vi.fn().mockResolvedValue(true),
-  isSystemAdmin: vi.fn().mockReturnValue(false),
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
@@ -41,8 +40,6 @@ describe("brand member role consistency", () => {
     vi.clearAllMocks();
     scopeMocks.canManageBrand.mockResolvedValue(true);
     scopeMocks.getUserId.mockImplementation((user) => user?.id);
-    scopeMocks.isBrandOwner.mockResolvedValue(true);
-    scopeMocks.isSystemAdmin.mockReturnValue(false);
     modelMocks.BrandMembership.updateOne.mockResolvedValue({ modifiedCount: 1 });
   });
 
@@ -78,7 +75,7 @@ describe("brand member role consistency", () => {
     ).resolves.toMatchObject({ role: { slug: "manager" } });
   });
 
-  it("soft-revokes an active legacy membership without changing the User account", async () => {
+  it("soft-revokes an active membership without changing the User account", async () => {
     const membership = {
       _id: "membership-1",
       brandId: "brand-1",
@@ -101,7 +98,7 @@ describe("brand member role consistency", () => {
     modelMocks.BrandMembership.findByIdAndUpdate.mockReturnValue(
       leanQuery(revokedMembership),
     );
-    const updateBrandMember = vi.fn().mockResolvedValue({ id: "membership-1" });
+    const updateBrandMember = vi.fn();
     const { guardBrandMemberRoleMutations } = await import(
       "../../graphql/resolvers/brand/memberRoleConsistency.js"
     );
@@ -121,7 +118,7 @@ describe("brand member role consistency", () => {
 
     expect(modelMocks.User.findById).not.toHaveBeenCalled();
     expect(modelMocks.User.updateOne).not.toHaveBeenCalled();
-    expect(updateBrandMember).toHaveBeenCalledTimes(1);
+    expect(updateBrandMember).not.toHaveBeenCalled();
     expect(modelMocks.BrandMembership.findByIdAndUpdate).toHaveBeenCalledWith(
       "membership-1",
       expect.objectContaining({
@@ -138,7 +135,7 @@ describe("brand member role consistency", () => {
     );
   });
 
-  it("rejects suspending the active Brand owner", async () => {
+  it("rejects revoking the active Brand owner", async () => {
     modelMocks.BrandMembership.findById.mockReturnValue(
       membershipQuery({
         _id: "membership-owner",
@@ -205,7 +202,6 @@ describe("brand member role consistency", () => {
   });
 
   it("requires the Brand owner to revoke another Brand administrator", async () => {
-    scopeMocks.isBrandOwner.mockResolvedValue(false);
     modelMocks.BrandMembership.findById.mockReturnValue(
       membershipQuery({
         _id: "membership-admin-2",
@@ -215,6 +211,7 @@ describe("brand member role consistency", () => {
         status: "active",
       }),
     );
+    modelMocks.BrandMembership.findOne.mockReturnValue(leanQuery(null));
     const { guardBrandMemberRoleMutations } = await import(
       "../../graphql/resolvers/brand/memberRoleConsistency.js"
     );
