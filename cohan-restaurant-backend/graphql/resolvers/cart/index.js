@@ -1,6 +1,6 @@
-// src/graphql/resolvers/cart/index.js
 import { CartQuery } from "./query.js";
 import { CartMutation } from "./mutation.js";
+import { CustomerCartMutation } from "./customerMutation.js";
 import { CartAvailabilityWatchMutation } from "./availabilityWatchMutation.js";
 import {
   CartFieldResolvers,
@@ -14,9 +14,9 @@ export default {
   },
   Mutation: {
     ...CartMutation,
+    ...CustomerCartMutation,
     ...CartAvailabilityWatchMutation,
   },
-
   Cart: {
     ...CartFieldResolvers,
   },
