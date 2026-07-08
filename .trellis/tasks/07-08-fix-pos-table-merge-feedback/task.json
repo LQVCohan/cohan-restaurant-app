@@ -3,23 +3,21 @@
   "name": "fix-pos-table-merge-feedback",
   "title": "Fix false POS table merge errors and missing split feedback",
   "description": "Separate successful merge/split mutations from table-list refresh failures and show accurate POS notifications for modal and drag-drop actions.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "bugfix",
   "scope": "pos-table-merge-feedback",
   "priority": "P0",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": null,
+  "completedAt": "2026-07-08",
   "branch": "main",
   "base_branch": "main",
-  "commit": null,
+  "commit": "f74bdda6214e5f3560c64b81c73e669220c20e74",
   "pr_url": null,
   "relatedFiles": [
     "src/hooks/useTableManagement.js",
-    "src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.jsx",
-    "src/components/Dashboard_Manager/POS/components/pos/LeftPanel.jsx",
     "src/hooks/useTableManagement.test.jsx"
   ],
-  "notes": "Root cause traced: mergeTables/splitTables await refetch after the backend mutation. A refresh rejection bubbles into POS catch handlers, so a committed merge is reported as failed. POS split handlers also omit success notifications."
+  "notes": "Fixed at the shared Apollo hook used by both POS modal and drag-drop. Merge/split success is now based only on the GraphQL mutation; follow-up refetch failures are logged without rejecting the completed action. The hook emits success notifications for merge and split. Added a regression test for refresh failure and real mutation failure. The targeted Vitest suite and frontend build were not run because the connected environment has no repository checkout or installed project dependencies; node --check passed for the copied regression test source."
 }
