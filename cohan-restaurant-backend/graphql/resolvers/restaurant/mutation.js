@@ -1,7 +1,12 @@
 // src/resolvers/restaurant.mutation.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Restaurant, RestaurantCategoryIndex, Customer } from "../../../models/index.js";
+import {
+  Restaurant,
+  RestaurantCategoryIndex,
+  Customer,
+  Warehouse,
+} from "../../../models/index.js";
 import { applyRecentRestaurant } from "../shared/customerIdentity.js";
 import { buildPublicRestaurantFilter } from "./publicRestaurantAccess.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
@@ -13,6 +18,12 @@ import {
   isBrandOwner,
   isSystemAdmin,
 } from "../../../src/services/auth/restaurantScope.service.js";
+
+const DEFAULT_WAREHOUSE = Object.freeze({
+  name: "Kho chính",
+  code: "MAIN",
+  isActive: true,
+});
 
 /* ========== Helpers chung cho Mutation ========== */
 function badInput(message) {
@@ -110,7 +121,22 @@ async function createRestaurant(_, { input }, ctx) {
     rest.address = normalizeRestaurantAddress(rest.address);
   }
 
-  const created = await Restaurant.create(rest);
+  const session = await mongoose.startSession();
+  let created;
+  try {
+    await session.withTransaction(async () => {
+      [created] = await Restaurant.create([rest], { session });
+      await Warehouse.create([
+        {
+          restaurantId: created._id,
+          ...DEFAULT_WAREHOUSE,
+        },
+      ], { session });
+    });
+  } finally {
+    session.endSession();
+  }
+
   return created.toObject();
 }
 
