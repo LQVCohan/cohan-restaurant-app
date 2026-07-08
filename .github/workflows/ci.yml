@@ -3,125 +3,115 @@ name: ci
 on:
   pull_request:
     branches: [main, develop]
+  push:
+    branches: [main, develop]
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  validate-brand-reinvite:
-    if: github.head_ref == 'feature/brand-member-invitation-flow'
+  frontend:
+    name: frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: .
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cohan-restaurant-backend/package-lock.json
 
-      - name: Patch cancelled invitation resend flow
-        shell: bash
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install backend schema dependencies
+        run: npm --prefix cohan-restaurant-backend ci
+
+      - name: Check unresolved conflict markers
+        run: npm run check:conflicts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Test Menu RBAC
+        run: npm run test:menu-rbac --if-present
+
+      - name: Component tests for changed code
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          python <<'PY'
-          from pathlib import Path
+          TEST_BASE="$(git merge-base HEAD "origin/${BASE_REF}")"
+          echo "Running component tests for changes since ${TEST_BASE} (origin/${BASE_REF})"
+          timeout --signal=TERM --kill-after=30s 15m \
+            npm run test:component -- \
+            --changed "${TEST_BASE}" \
+            --detectAsyncLeaks \
+            --maxWorkers=2
 
-          invitation_path = Path("cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js")
-          text = invitation_path.read_text(encoding="utf-8")
-          start = text.index("  resendBrandInvitation: async")
-          end = text.index("\n\n  acceptBrandInvitation:", start)
-          block = text[start:end]
+      - name: Full component tests
+        if: github.event_name != 'pull_request'
+        run: >-
+          timeout --signal=TERM --kill-after=30s 30m
+          npm run test:component --
+          --detectAsyncLeaks
+          --maxWorkers=2
 
-          old_status = '''    if (membership.status !== "invited") {
-                throw bad("Lời mời này không còn ở trạng thái chờ xác nhận.");
-              }'''.replace("              ", "")
-          if old_status not in block:
-              raise RuntimeError("resend status block not found")
-          block = block.replace(
-              old_status,
-              '''    const cancelledInvitation =
-                membership.status === "inactive" &&
-                membership.revokedFromStatus === "invited";
-              if (membership.status !== "invited" && !cancelledInvitation) {
-                throw bad("Lời mời này không còn ở trạng thái có thể gửi lại.");
-              }'''.replace("              ", ""),
-              1,
-          )
+      - name: Build
+        run: npm run build
 
-          old_token = '''    membership.inviteTokenHash = hash;
-              membership.inviteTokenExp = new Date(Date.now() + inviteTtlMs());
-              membership.invitedAt = new Date();
-              membership.invitedBy = oid(getUserId(ctx.user));
-              membership.updatedBy = oid(getUserId(ctx.user));'''.replace("              ", "")
-          if old_token not in block:
-              raise RuntimeError("resend token block not found")
-          block = block.replace(
-              old_token,
-              '''    membership.status = "invited";
-              membership.inviteTokenHash = hash;
-              membership.inviteTokenExp = new Date(Date.now() + inviteTtlMs());
-              membership.invitedAt = new Date();
-              membership.invitedBy = oid(getUserId(ctx.user));
-              membership.revokedAt = null;
-              membership.revokedBy = null;
-              membership.revokedReason = null;
-              membership.revokedFromStatus = null;
-              membership.updatedBy = oid(getUserId(ctx.user));'''.replace("              ", ""),
-              1,
-          )
-          invitation_path.write_text(text[:start] + block + text[end:], encoding="utf-8")
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
-          management_path = Path("src/components/Dashboard_Manager/Brand/BrandManagement.jsx")
-          management = management_path.read_text(encoding="utf-8")
-          query_anchor = "      role\n      status\n      user {"
-          if management.count(query_anchor) != 1:
-              raise RuntimeError(f"member query anchor count: {management.count(query_anchor)}")
-          management_path.write_text(
-              management.replace(
-                  query_anchor,
-                  "      role\n      status\n      revokedFromStatus\n      user {",
-                  1,
-              ),
-              encoding="utf-8",
-          )
+      - name: Smoke tests
+        run: npm run test:smoke
 
-          test_path = Path("src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx")
-          test = test_path.read_text(encoding="utf-8")
-          if 'source.includes("mutation ResendBrandInvitationAccess")' not in test:
-              anchor = '    if (source.includes("mutation RemoveBrandMemberAccess")) {'
-              if test.count(anchor) != 1:
-                  raise RuntimeError(f"resend test mapping anchor count: {test.count(anchor)}")
-              mapping = '''    if (source.includes("mutation ResendBrandInvitationAccess")) {
-                return [vi.fn().mockResolvedValue({ data: { resendBrandInvitation: {} } }), { loading: false }];
-              }
-              '''
-              test = test.replace(anchor, mapping + anchor, 1)
-              test_path.write_text(test, encoding="utf-8")
-          PY
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cohan-restaurant-backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Install dependencies without rewriting lockfiles
-        run: |
-          npm install --no-package-lock
-          npm --prefix cohan-restaurant-backend install --no-package-lock
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cohan-restaurant-backend/package-lock.json
 
-      - name: Run focused validation
-        run: |
-          node --check cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js
-          node --check cohan-restaurant-backend/graphql/resolvers/brand/memberRoleConsistency.js
-          npm --prefix cohan-restaurant-backend test -- tests/resolvers/brand-member-role-consistency.test.js tests/resolvers/brand-member-invitation-guards.test.js
-          npm run check:graphql
-          npx vitest run src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx
-          npm run build
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Commit validated resend flow
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js \
-            src/components/Dashboard_Manager/Brand/BrandManagement.jsx \
-            src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx
-          git commit -m "feat: allow resending cancelled Brand invitations"
-          git push origin HEAD:${{ github.head_ref }}
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Test
+        run: npm run test --if-present
+
+      - name: Test Menu RBAC
+        run: npm run test:menu-rbac --if-present
+
+      - name: Build
+        run: npm run build --if-present
