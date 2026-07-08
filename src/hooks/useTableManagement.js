@@ -20,7 +20,12 @@ const F_TABLE_MIN = gql`
     floorId
     floorLevel
     joinGroupId
+    mergedFromTableIds
+    mergeAnchorTableId
+    mergedAt
+    mergeDetails
     tags
+    notes
     vrUrl
     visualConfig
     restaurantId
@@ -112,6 +117,8 @@ const M_MERGE = gql`
       joinGroupId
       anchorId
       tableIds
+      mergedTableId
+      mergedTableCode
       __typename
     }
   }
@@ -222,74 +229,37 @@ export default function useTableManagement({ restaurantId }) {
     },
   });
   const [bulkUpsertMut] = useMutation(M_BULK_UPSERT);
-  const [mergeMut] = useMutation(M_MERGE, {
-    optimisticResponse: ({ input }) => ({
-      mergeTables: {
-        __typename: "MergeTablesPayload",
-        joinGroupId: `optim-${Date.now()}`,
-        anchorId: input.anchorId,
-        tableIds: input.tableIds,
-      },
-    }),
-    update(cache, { data }) {
-      const payload = data?.mergeTables;
-      if (!payload) return;
-      payload.tableIds.forEach((id) => {
-        cache.modify({
-          id: cache.identify({ __typename: "Table", id }),
-          fields: { joinGroupId: () => payload.joinGroupId },
-        });
-      });
-    },
-  });
-  const [splitMut] = useMutation(M_SPLIT, {
-    optimisticResponse: ({ input }) => ({
-      splitTables: {
-        __typename: "SplitTablesPayload",
-        ok: true,
-        unmergedTableIds: input.tableIds ?? [],
-      },
-    }),
-    update(cache, { data }) {
-      const payload = data?.splitTables;
-      if (!payload) return;
-      (payload.unmergedTableIds || []).forEach((id) => {
-        cache.modify({
-          id: cache.identify({ __typename: "Table", id }),
-          fields: { joinGroupId: () => null },
-        });
-      });
-    },
-  });
+  const [mergeMut] = useMutation(M_MERGE);
+  const [splitMut] = useMutation(M_SPLIT);
 
   const tables = useMemo(() => data?.tables ?? [], [data]);
 
   const createTable = useCallback(
     async (input) =>
       (await createMut({ variables: { input } }))?.data?.createTable,
-    [createMut]
+    [createMut],
   );
   const updateTable = useCallback(
     async (input) =>
       (await updateMut({ variables: { input } }))?.data?.updateTable,
-    [updateMut]
+    [updateMut],
   );
   const deleteTable = useCallback(
     async (id) =>
       (await deleteMut({ variables: { id } }))?.data?.deleteTable ?? false,
-    [deleteMut]
+    [deleteMut],
   );
   const setTableStatus = useCallback(
     async ({ id, status }) =>
       (await setStatusMut({ variables: { input: { id, status } } }))?.data
         ?.setTableStatus,
-    [setStatusMut]
+    [setStatusMut],
   );
   const moveTable = useCallback(
     async ({ id, floorId, position }) =>
       (await moveMut({ variables: { input: { id, floorId, position } } }))?.data
         ?.moveTable,
-    [moveMut]
+    [moveMut],
   );
   const swapTableCodes = useCallback(
     async ({ restaurantId, floorId, aId, bId }) =>
@@ -298,32 +268,38 @@ export default function useTableManagement({ restaurantId }) {
           variables: { input: { restaurantId, floorId, aId, bId } },
         })
       )?.data?.swapTableCodes ?? true,
-    [swapCodesMut]
+    [swapCodesMut],
   );
   const bulkUpsertTables = useCallback(
     async (input) =>
       (await bulkUpsertMut({ variables: { input } }))?.data?.bulkUpsertTables,
-    [bulkUpsertMut]
+    [bulkUpsertMut],
   );
   const mergeTables = useCallback(
-    async ({ tableIds, anchorId, joinGroupId }) =>
-      (
+    async ({ tableIds, anchorId, joinGroupId }) => {
+      const result = (
         await mergeMut({
           variables: {
             input: { restaurantId, tableIds, anchorId, joinGroupId },
           },
         })
-      )?.data?.mergeTables,
-    [mergeMut, restaurantId]
+      )?.data?.mergeTables;
+      await refetch();
+      return result;
+    },
+    [mergeMut, refetch, restaurantId],
   );
   const splitTables = useCallback(
-    async ({ joinGroupId, mode, tableIds }) =>
-      (
+    async ({ joinGroupId, mode, tableIds }) => {
+      const result = (
         await splitMut({
           variables: { input: { restaurantId, joinGroupId, mode, tableIds } },
         })
-      )?.data?.splitTables,
-    [splitMut, restaurantId]
+      )?.data?.splitTables;
+      await refetch();
+      return result;
+    },
+    [splitMut, refetch, restaurantId],
   );
 
   const fetchTableByCode = useCallback(
@@ -333,11 +309,11 @@ export default function useTableManagement({ restaurantId }) {
         tables.find(
           (t) =>
             (t.code || "").toLowerCase() === (code || "").toLowerCase() &&
-            String(t.restaurantId || "") === String(r)
+            String(t.restaurantId || "") === String(r),
         ) || null
       );
     },
-    [tables, restaurantId]
+    [tables, restaurantId],
   );
 
   return {
