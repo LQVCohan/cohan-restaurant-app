@@ -317,6 +317,25 @@ describe("BrandManagement", () => {
     expect(refetchMembersMock).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps a compatible selected account when the role changes", async () => {
+    render(<BrandManagement />);
+
+    fireEvent.change(
+      screen.getByLabelText("Tìm người cần thêm theo tên, email hoặc mã tài khoản"),
+      { target: { value: "Lê Thu Lan" } },
+    );
+
+    const accountSelect = screen.getByLabelText("Chọn tài khoản cần thêm");
+    await waitFor(() => expect(accountSelect).not.toBeDisabled());
+    fireEvent.change(accountSelect, { target: { value: "u-new-manager" } });
+
+    fireEvent.change(screen.getByLabelText("Vai trò trong chuỗi"), {
+      target: { value: "staff" },
+    });
+
+    expect(accountSelect).toHaveValue("u-new-manager");
+  });
+
 
 it("shows that an existing Customer is promoted only after accepting the email", async () => {
   render(<BrandManagement />);
