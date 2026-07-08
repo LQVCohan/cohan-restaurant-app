@@ -4,12 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import Table3DSimulatorModal from "./Table3DSimulatorModal";
 
 const mocks = vi.hoisted(() => ({
+  deleteCustomTableModel: vi.fn(),
   upsertCustomTableModel: vi.fn(),
   buildPreviewModelItemFromVisualConfig: vi.fn(),
   buildVisualConfigFromModel: vi.fn(),
 }));
 
 vi.mock("@/config/table3dCustomModelStorage", () => ({
+  deleteCustomTableModel: mocks.deleteCustomTableModel,
   upsertCustomTableModel: mocks.upsertCustomTableModel,
 }));
 
@@ -63,7 +65,7 @@ beforeEach(() => {
 });
 
 describe("Table3DSimulatorModal", () => {
-  it("rehydrates and saves the persisted uploaded model for an existing table", async () => {
+  it("prioritizes and saves the persisted uploaded model for an existing table", async () => {
     const onApply = vi.fn();
     const onClose = vi.fn();
     const onSaveArPosition = vi.fn().mockResolvedValue(undefined);
@@ -91,6 +93,10 @@ describe("Table3DSimulatorModal", () => {
       expect(screen.getByRole("button", { name: "Áp dụng mẫu test" })).toBeInTheDocument();
     });
 
+    expect(mocks.deleteCustomTableModel).toHaveBeenCalledWith(
+      "uploaded-table",
+      "COHAN Demo",
+    );
     expect(mocks.upsertCustomTableModel).toHaveBeenCalledWith(
       expect.objectContaining({
         key: "uploaded-table",
