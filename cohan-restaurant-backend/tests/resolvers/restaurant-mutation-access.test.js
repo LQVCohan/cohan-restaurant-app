@@ -1,9 +1,15 @@
+const sessionMocks = vi.hoisted(() => ({
+  withTransaction: vi.fn(async (callback) => callback()),
+  endSession: vi.fn(),
+}));
+
 const modelMocks = vi.hoisted(() => ({
   Restaurant: {
     findById: vi.fn(),
     deleteOne: vi.fn(),
     create: vi.fn(),
   },
+  Warehouse: { create: vi.fn() },
   RestaurantCategoryIndex: { findOneAndUpdate: vi.fn() },
   BrandMembership: { find: vi.fn() },
 }));
@@ -12,6 +18,7 @@ vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn((id) => /^valid-/.test(String(id))),
+    startSession: vi.fn(async () => sessionMocks),
     Types: {
       ObjectId: function ObjectId(id) {
         this._mockObjectId = String(id);
@@ -33,6 +40,7 @@ describe("restaurant mutation access hardening", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    sessionMocks.withTransaction.mockImplementation(async (callback) => callback());
     modelMocks.BrandMembership.find.mockReturnValue(membershipFindResult([]));
   });
 
@@ -249,13 +257,16 @@ describe("restaurant mutation access hardening", () => {
     });
   });
 
-  it("createRestaurant allows a Brand owner and never writes managerId", async () => {
+  it("createRestaurant creates Kho chính in the same transaction", async () => {
     modelMocks.BrandMembership.find.mockReturnValue(membershipFindResult([
       { brandId: "valid-b1", role: "owner", status: "active", restaurantIds: [] },
     ]));
-    modelMocks.Restaurant.create.mockResolvedValue({
+    const createdRestaurant = {
+      _id: "valid-r1",
       toObject: () => ({ _id: "valid-r1" }),
-    });
+    };
+    modelMocks.Restaurant.create.mockResolvedValue([createdRestaurant]);
+    modelMocks.Warehouse.create.mockResolvedValue([{ _id: "valid-wh1" }]);
 
     const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
     await RestaurantMutation.createRestaurant(
@@ -265,8 +276,42 @@ describe("restaurant mutation access hardening", () => {
     );
 
     expect(modelMocks.Restaurant.create).toHaveBeenCalledWith(
-      expect.not.objectContaining({ managerId: expect.anything() }),
+      [expect.not.objectContaining({ managerId: expect.anything() })],
+      { session: sessionMocks },
     );
+    expect(modelMocks.Warehouse.create).toHaveBeenCalledWith(
+      [{
+        restaurantId: "valid-r1",
+        name: "Kho chính",
+        code: "MAIN",
+        isActive: true,
+      }],
+      { session: sessionMocks },
+    );
+    expect(sessionMocks.withTransaction).toHaveBeenCalledTimes(1);
+    expect(sessionMocks.endSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("createRestaurant propagates default warehouse failure from the transaction", async () => {
+    modelMocks.BrandMembership.find.mockReturnValue(membershipFindResult([
+      { brandId: "valid-b1", role: "owner", status: "active", restaurantIds: [] },
+    ]));
+    modelMocks.Restaurant.create.mockResolvedValue([{
+      _id: "valid-r1",
+      toObject: () => ({ _id: "valid-r1" }),
+    }]);
+    modelMocks.Warehouse.create.mockRejectedValue(new Error("warehouse create failed"));
+
+    const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
+    await expect(
+      RestaurantMutation.createRestaurant(
+        null,
+        { input: { name: "R1", brandId: "valid-b1" } },
+        ctxFor("manager", "valid-owner-1"),
+      ),
+    ).rejects.toThrow("warehouse create failed");
+
+    expect(sessionMocks.endSession).toHaveBeenCalledTimes(1);
   });
 
   it("createRestaurant denies a non-admin without a manageable Brand", async () => {
@@ -281,6 +326,7 @@ describe("restaurant mutation access hardening", () => {
     ).rejects.toThrow("Admin only");
 
     expect(modelMocks.Restaurant.create).not.toHaveBeenCalled();
+    expect(modelMocks.Warehouse.create).not.toHaveBeenCalled();
   });
 
   it("does not export the legacy updateRestaurantManager mutation", async () => {
