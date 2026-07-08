@@ -1,0 +1,30 @@
+{
+  "id": "upgrade-reservation-modal",
+  "name": "upgrade-reservation-modal",
+  "title": "Upgrade customer reservation modal",
+  "description": "Polish the customer Reservation modal and correct its public-data, table-capacity, unlimited-time, and post-create behavior without changing reservation server rules.",
+  "status": "in_progress",
+  "dev_type": "feature",
+  "scope": "customer-reservation-ui",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Customer/TableBooking/TableBooking.jsx",
+    "src/components/Customer/BookingTableModal/BookingModal.jsx",
+    "src/components/Customer/BookingTableModal/BookingModal.scss",
+    "src/components/Customer/BookingTableModal/BookingModal.test.jsx"
+  ],
+  "notes": "Planning complete: the modal currently re-queries the protected restaurant field, owns an unsafe internal table switch path, accepts party size above table capacity until server rejection, and stores the checkbox event object instead of its checked value."
+}
