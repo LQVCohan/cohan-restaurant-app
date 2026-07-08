@@ -9,6 +9,8 @@ After PR #1272 merged, CI exposed four independent problems:
 3. The logout-cache regression test inspected source text with `readFileSync` instead of exercising `AuthProvider.logout`, so it failed independently of the actual Apollo cache behavior.
 4. Promotion-name normalization removed combining accents but did not map Vietnamese `đ` to `d`, so searching `uu dai` did not match `Ưu đãi`.
 
+Vitest was not stuck on the promotion test. By default it continues running the remaining files and prints the detailed failure summary at the end of the unit-test command, which made the GitHub Actions step look like it was running indefinitely.
+
 ## End-to-end flows
 
 - `package.json` + `package-lock.json` -> frontend/backend `npm ci` -> lint/tests/build.
@@ -52,5 +54,5 @@ After PR #1272 merged, CI exposed four independent problems:
 ## Out of scope
 
 - Changing staff creation behavior.
-- Resolving unrelated repository-wide test failures not listed in this task.
+- Adding fail-fast behavior to every local Vitest command.
 - Updating dependency versions beyond the already committed lockfile.
