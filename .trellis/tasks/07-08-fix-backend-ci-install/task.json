@@ -2,7 +2,7 @@
   "id": "07-08-fix-backend-ci-install",
   "name": "fix-backend-ci-install",
   "title": "Repair post-merge CI and reported tests",
-  "description": "Restore backend npm ci, align public search with normalized BrandMembership scope, and verify Apollo cache cleanup through AuthProvider behavior.",
+  "description": "Restore backend npm ci, align public search with normalized BrandMembership scope, verify Apollo cache cleanup, and fix Vietnamese accent-insensitive promotion filtering.",
   "status": "in_review",
   "dev_type": "fullstack",
   "scope": "ci-auth-search-regressions",
@@ -25,9 +25,11 @@
     "cohan-restaurant-backend/graphql/resolvers/search/query.js",
     "cohan-restaurant-backend/tests/resolvers/search-public-safety.test.js",
     "src/context/__tests__/AuthProvider.test.jsx",
-    "src/context/__tests__/AuthProvider.logout-cache.test.jsx"
+    "src/context/__tests__/AuthProvider.logout-cache.test.jsx",
+    "src/utils/installTablePromotionSearch.js",
+    "src/utils/installTablePromotionSearch.test.js"
   ],
-  "notes": "Backend manifest now matches the committed lockfile, so both CI install steps pass. The normalized search resolver/test changes from PR #1273 are included here. Targeted GitHub Actions passed search-public-safety.test.js and AuthProvider.test.jsx. The source-inspection logout test and all temporary diagnostic workflows were removed from the final diff.",
+  "notes": "Backend manifest now matches the committed lockfile. Normalized search tests and AuthProvider logout behavior pass. Promotion search now maps Vietnamese đ to d after Unicode diacritic removal; the focused installTablePromotionSearch test passes. All temporary diagnostic workflows were removed from the final diff.",
   "meta": {
     "skills": ["ponytail"]
   }
