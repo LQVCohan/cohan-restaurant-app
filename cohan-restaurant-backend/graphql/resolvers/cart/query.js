@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Cart, Warehouse } from "../../../models/index.js";
 import { checkAvailabilityForLinesTx } from "../../../src/services/inventory.service.js";
-import { resolveCustomerModifierSelection } from "../../../src/services/customerModifierSelection.service.js";
 
 const POLICY_MESSAGE =
   "Chính sách giữ chỗ tồn kho: mỗi lần thêm món sẽ giữ chỗ tối đa 5 phút. Hủy/thoát quá nhiều lần có thể bị cảnh báo hoặc tạm chặn.";
@@ -26,13 +25,11 @@ function singleFlight(store, key, load) {
 }
 
 async function resolveWarehouseIdOrDefault(restaurantId) {
-  const warehouse = await Warehouse.findOne({ restaurantId, isActive: true })
+  const wh = await Warehouse.findOne({ restaurantId, isActive: true })
     .sort({ createdAt: 1, _id: 1 })
     .lean();
-  if (!warehouse?._id) {
-    throw new GraphQLError("No warehouse found for this restaurant");
-  }
-  return warehouse._id;
+  if (!wh?._id) throw new GraphQLError("No warehouse found for this restaurant");
+  return wh._id;
 }
 
 function getServingKey(value) {
@@ -41,98 +38,37 @@ function getServingKey(value) {
 }
 
 function getActiveHoldExpiry(item, now) {
-  const holdExpiresAt = item?.holdExpiresAt
-    ? new Date(item.holdExpiresAt)
-    : null;
-  if (
-    !holdExpiresAt ||
-    Number.isNaN(holdExpiresAt.getTime()) ||
-    holdExpiresAt <= now
-  ) {
-    return null;
-  }
+  const holdExpiresAt = item?.holdExpiresAt ? new Date(item.holdExpiresAt) : null;
+  if (!holdExpiresAt || Number.isNaN(holdExpiresAt.getTime()) || holdExpiresAt <= now) return null;
   if (item?.holdStatus && item.holdStatus !== "active") return null;
   return holdExpiresAt;
 }
 
-function getMatchingHoldExpiry(
-  item,
-  {
-    restaurantId,
-    menuItemId,
-    servingKey,
-    modifierSelectionKey,
-    now,
-  },
-) {
+function getMatchingHoldExpiry(item, { restaurantId, menuItemId, servingKey, now }) {
   if (String(item?.restaurantId) !== String(restaurantId)) return null;
   if (String(item?.menuItemId) !== String(menuItemId)) return null;
-  if (
-    getServingKey(item?.servingKey || item?.servingVariantKey) !== servingKey
-  ) {
-    return null;
-  }
-  if (
-    String(item?.modifierSelectionKey || "") !==
-    String(modifierSelectionKey || "")
-  ) {
-    return null;
-  }
+  if (getServingKey(item?.servingKey || item?.servingVariantKey) !== servingKey) return null;
   return getActiveHoldExpiry(item, now);
 }
 
-function liveStateKey({
-  restaurantId,
-  menuItemId,
-  servingKey,
-  modifierSelectionKey = "",
-}) {
-  return `${restaurantId}:${menuItemId}:${servingKey}:${modifierSelectionKey}`;
+function liveStateKey({ restaurantId, menuItemId, servingKey }) {
+  return `${restaurantId}:${menuItemId}:${servingKey}`;
 }
 
-function readAvailability({
-  restaurantId,
-  menuItemId,
-  servingKey,
-  modifiers,
-  modifierSelectionKey,
-}) {
-  const key = liveStateKey({
-    restaurantId,
-    menuItemId,
-    servingKey,
-    modifierSelectionKey,
-  });
+function readAvailability({ restaurantId, menuItemId, servingKey }) {
+  const key = liveStateKey({ restaurantId, menuItemId, servingKey });
   return singleFlight(inFlightAvailabilityReads, key, async () => {
     const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
     return checkAvailabilityForLinesTx({
       restaurantId,
       warehouseId,
-      lines: [
-        {
-          menuItemId,
-          quantity: 1,
-          servingKey,
-          modifiers,
-        },
-      ],
+      lines: [{ menuItemId, quantity: 1, servingKey }],
     });
   });
 }
 
-function readReservedCartQty({
-  restaurantId,
-  menuItemId,
-  servingKey,
-  modifierSelectionKey,
-  now,
-}) {
-  const key = liveStateKey({
-    restaurantId,
-    menuItemId,
-    servingKey,
-    modifierSelectionKey,
-  });
+function readReservedCartQty({ restaurantId, menuItemId, servingKey, now }) {
+  const key = liveStateKey({ restaurantId, menuItemId, servingKey });
   return singleFlight(inFlightReservedHoldReads, key, async () => {
     const reservedCarts = await Cart.find({
       status: "active",
@@ -141,10 +77,7 @@ function readReservedCartQty({
           restaurantId,
           menuItemId,
           holdExpiresAt: { $gt: now },
-          $or: [
-            { holdStatus: "active" },
-            { holdStatus: { $exists: false } },
-          ],
+          $or: [{ holdStatus: "active" }, { holdStatus: { $exists: false } }],
         },
       },
     })
@@ -159,7 +92,6 @@ function readReservedCartQty({
           restaurantId,
           menuItemId,
           servingKey,
-          modifierSelectionKey,
           now,
         });
         if (!holdExpiry) continue;
@@ -171,15 +103,11 @@ function readReservedCartQty({
 }
 
 function unauthenticated() {
-  return new GraphQLError("Unauthorized", {
-    extensions: { code: "UNAUTHENTICATED" },
-  });
+  return new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHENTICATED" } });
 }
 
 function forbidden() {
-  return new GraphQLError("Forbidden", {
-    extensions: { code: "FORBIDDEN" },
-  });
+  return new GraphQLError("Forbidden", { extensions: { code: "FORBIDDEN" } });
 }
 
 function requireAuthUser(ctx) {
@@ -190,58 +118,35 @@ function requireAuthUser(ctx) {
 
 function resolveSelfUserId(inputUserId, ctx) {
   const authUserId = requireAuthUser(ctx);
-  if (inputUserId && String(inputUserId) !== String(authUserId)) {
-    throw forbidden();
-  }
+  if (inputUserId && String(inputUserId) !== String(authUserId)) throw forbidden();
   return authUserId;
+}
+
+function assertCartOwner(cart, ctx) {
+  const uid = requireAuthUser(ctx);
+  if (!cart || String(cart.userId) !== String(uid)) throw forbidden();
+  return uid;
 }
 
 export const CartQuery = {
   async myCart(_, { userId }, ctx) {
     const uid = resolveSelfUserId(userId, ctx);
-    return Cart.findOne({ userId: uid, status: "active" }).lean({
-      virtuals: true,
-    });
+
+    const cart = await Cart.findOne({ userId: uid, status: "active" }).lean({ virtuals: true });
+    return cart;
   },
 
   async menuItemLiveState(_, { input }, ctx) {
-    const {
-      itemType = "MENU_ITEM",
-      restaurantId,
-      menuItemId,
-      servingVariantKey,
-      selectedModifiers = [],
-      userId,
-    } = input || {};
+    const { restaurantId, menuItemId, servingVariantKey, userId } = input || {};
+    if (!mongoose.isValidObjectId(restaurantId)) throw new GraphQLError("Invalid restaurantId");
+    if (!mongoose.isValidObjectId(menuItemId)) throw new GraphQLError("Invalid menuItemId");
 
-    if (!mongoose.isValidObjectId(restaurantId)) {
-      throw new GraphQLError("Invalid restaurantId");
-    }
-    if (!mongoose.isValidObjectId(menuItemId)) {
-      throw new GraphQLError("Invalid menuItemId");
-    }
-
-    const normalizedItemType = String(itemType || "MENU_ITEM").toUpperCase();
-    if (normalizedItemType !== "MENU_ITEM") {
-      throw new GraphQLError("Unsupported itemType", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
-
-    const modifierSelection = await resolveCustomerModifierSelection({
-      restaurantId,
-      menuItemId,
-      selectedModifiers,
-      validateRequired: false,
-    });
     const normalizedServingKey = getServingKey(servingVariantKey);
     const now = new Date();
 
     let uid = null;
     if (userId) uid = resolveSelfUserId(userId, ctx);
-    else if (ctx?.user?.id && mongoose.isValidObjectId(ctx.user.id)) {
-      uid = ctx.user.id;
-    }
+    else if (ctx?.user?.id && mongoose.isValidObjectId(ctx.user.id)) uid = ctx.user.id;
 
     const cartPromise = uid
       ? Cart.findOne({ userId: uid, status: "active" })
@@ -255,15 +160,12 @@ export const CartQuery = {
         restaurantId,
         menuItemId,
         servingKey: normalizedServingKey,
-        modifierSelectionKey: modifierSelection.selectionKey,
         now,
       }),
       readAvailability({
         restaurantId,
         menuItemId,
         servingKey: normalizedServingKey,
-        modifiers: modifierSelection.modifiers,
-        modifierSelectionKey: modifierSelection.selectionKey,
       }),
     ]);
 
@@ -276,39 +178,28 @@ export const CartQuery = {
         restaurantId,
         menuItemId,
         servingKey: normalizedServingKey,
-        modifierSelectionKey: modifierSelection.selectionKey,
         now,
       });
       if (!holdExpiry) continue;
 
       myCartQty += Number(item?.quantity) || 0;
-      if (!myHoldExpiresAt || holdExpiry < myHoldExpiresAt) {
-        myHoldExpiresAt = holdExpiry;
-      }
+      if (!myHoldExpiresAt || holdExpiry < myHoldExpiresAt) myHoldExpiresAt = holdExpiry;
     }
 
-    const presenceKey = `${restaurantId}:${menuItemId}`;
-    const viewerCount = Number(
-      ctx?.menuPresenceStore?.get?.(presenceKey) || 0,
-    );
-    const blockedUntil = abuse?.blockedUntil
-      ? new Date(abuse.blockedUntil)
-      : null;
-    const blocked = Boolean(blockedUntil && blockedUntil > now);
-    const violationCount =
-      Number(abuse?.timeoutReleaseCount || 0) +
-      Number(abuse?.exitReleaseCount || 0);
+    const key = `${restaurantId}:${menuItemId}`;
+    const viewerCount = Number(ctx?.menuPresenceStore?.get?.(key) || 0);
+
+    const blockedUntil = abuse?.blockedUntil ? new Date(abuse.blockedUntil) : null;
+    const blocked = !!(blockedUntil && blockedUntil > now);
+
+    const violationCount = Number(abuse?.timeoutReleaseCount || 0) + Number(abuse?.exitReleaseCount || 0);
 
     return {
-      itemType: normalizedItemType,
       menuItemId,
       restaurantId,
       servingVariantKey: normalizedServingKey,
       viewerCount,
-      maxAvailableQty: Math.max(
-        0,
-        Number(availability?.maxAvailable || 0),
-      ),
+      maxAvailableQty: Math.max(0, Number(availability?.maxAvailable || 0)),
       outOfStock: !availability?.isAvailable,
       blocked,
       blockedUntil,
