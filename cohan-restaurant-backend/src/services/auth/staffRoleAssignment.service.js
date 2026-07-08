@@ -53,6 +53,10 @@ function actorScope(actor) {
 export function assertAssignableStaffRole({ actor, role }) {
   if (!role) throw new GraphQLError("Role not found", { extensions: { code: "BAD_USER_INPUT" } });
 
+  if (parentRoleSlug(role) !== "staff") {
+    throw forbidden("Only staff-derived roles can be assigned to staff");
+  }
+
   if (isProtectedSystemRoleSlug(roleSlug(role)) || isProtectedSystemRoleSlug(parentRoleSlug(role))) {
     throw forbidden("Protected system role cannot be assigned to staff");
   }
