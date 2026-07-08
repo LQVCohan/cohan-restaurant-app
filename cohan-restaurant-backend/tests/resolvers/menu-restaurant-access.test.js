@@ -158,6 +158,40 @@ describe("menu restaurant access guards", () => {
     expect(modelMocks.Restaurant.find).toHaveBeenCalledWith({});
   });
 
+  it("topMenuItems limits featured dishes to active menus for the requested time slot", async () => {
+    const query = (await import("../../graphql/resolvers/menu/query.js"))
+      .MenuQuery;
+    modelMocks.Restaurant.find.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue([
+          {
+            _id: "valid-r1",
+            status: "open",
+            orderPolicy: { allowWhenClosed: true },
+          },
+        ]),
+      }),
+    });
+    modelMocks.Menu.find.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue([{ _id: "valid-lunch-menu" }]),
+      }),
+    });
+
+    await query.topMenuItems(null, { limit: 5, timeSlot: "lunch" }, {});
+
+    expect(modelMocks.Menu.find).toHaveBeenCalledWith({
+      timeSlot: "lunch",
+      isActive: true,
+      restaurantId: { $in: ["valid-r1"] },
+    });
+    expect(modelMocks.MenuItem.find).toHaveBeenCalledWith({
+      restaurantId: { $in: ["valid-r1"] },
+      menuId: { $in: ["valid-lunch-menu"] },
+      status: "available",
+    });
+  });
+
   it("ensureMenu denied does not call Restaurant.exists or Menu.findOneAndUpdate", async () => {
     const mutation = (await import("../../graphql/resolvers/menu/mutation.js"))
       .MenuMutation;
