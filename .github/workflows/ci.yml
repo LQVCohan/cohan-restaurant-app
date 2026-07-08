@@ -113,12 +113,11 @@ jobs:
           npx vitest run src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx
           npm run build
 
-      - name: Commit validated test and restore CI
+      - name: Commit validated component test
         shell: bash
         run: |
-          git show HEAD^:.github/workflows/ci.yml > .github/workflows/ci.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/workflows/ci.yml src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx
+          git add src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx
           git commit -m "test: cover Brand access revocation UI"
           git push origin HEAD:${{ github.head_ref }}
