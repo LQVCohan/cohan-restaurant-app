@@ -613,3 +613,157 @@
 .reservationInfo > div > span { font-size:0.68rem; text-transform:uppercase; letter-spacing:.03em; color:#64748b; font-weight:800; }
 .actionsEnd { flex-wrap:wrap; }
 @media (max-width: 640px){ .reservationInfo{ grid-template-columns:1fr; } }
+
+.customerGroup {
+  gap: 1rem;
+  padding: 1.15rem;
+  border-color: #dbe4ef;
+  background:
+    linear-gradient(145deg, rgba(249, 115, 22, 0.04), transparent 36%),
+    #fff;
+}
+
+.customerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.customerIntro {
+  margin-top: 0.22rem;
+  color: var(--text-gray);
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.capacityBadge {
+  flex-shrink: 0;
+  padding: 0.38rem 0.68rem;
+  border: 1px solid var(--primary-border);
+  border-radius: var(--radius-pill);
+  background: var(--primary-light);
+  color: var(--primary-hover);
+  font-size: 0.76rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.customerGrid {
+  gap: 1rem;
+}
+
+.customerGrid .input,
+.customerGrid .select {
+  min-height: 44px;
+}
+
+.field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.fieldLabel {
+  color: var(--text-main);
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0.01em;
+}
+
+.fieldHint {
+  color: var(--text-gray);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.guestScheduleRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 0.9fr);
+  gap: 1rem;
+  align-items: stretch;
+  padding: 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  background: var(--bg-body);
+}
+
+.guestControl {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.guestMeta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.scheduleToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.72rem 0.82rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.9rem;
+  background: #fff;
+  color: var(--text-main);
+  cursor: pointer;
+
+  input {
+    width: 17px;
+    height: 17px;
+    accent-color: var(--primary);
+  }
+
+  span {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.12rem;
+  }
+
+  strong {
+    font-size: 0.82rem;
+    font-weight: 850;
+  }
+
+  small {
+    color: var(--text-gray);
+    font-size: 0.7rem;
+    font-weight: 650;
+    line-height: 1.35;
+  }
+}
+
+.scheduleGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .customerHeader {
+    flex-direction: column;
+  }
+
+  .capacityBadge {
+    align-self: flex-start;
+  }
+
+  .guestScheduleRow,
+  .scheduleGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .guestMeta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}
