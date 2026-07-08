@@ -116,6 +116,10 @@ type ModifierGroup {
   updatedAt: DateTime
 }
 
+extend type MenuItem {
+  ingredientNames: [String!]!
+}
+
 # =========================================================
 # INPUTS — CREATE / UPDATE
 # =========================================================
