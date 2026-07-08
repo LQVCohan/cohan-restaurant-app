@@ -108,7 +108,18 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Smoke tests
-        run: npm run test:smoke
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:smoke 2>&1 | tee /tmp/frontend-smoke.log
+
+      - name: Upload frontend smoke log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-smoke-log
+          path: /tmp/frontend-smoke.log
+          if-no-files-found: ignore
 
   backend:
     name: backend
