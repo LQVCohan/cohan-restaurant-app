@@ -296,9 +296,6 @@ const IngredientModal = ({
     if (!isEditing && canInitStock) {
       const qty = form.initialStockQty === "" ? 0 : Number(form.initialStockQty);
       if (!Number.isFinite(qty) || qty < 0) nextErrors.initialStockQty = "Số lượng ≥ 0";
-      if (Number.isFinite(qty) && qty !== Math.round(qty)) {
-        nextErrors.initialStockQty = "Phải là số nguyên";
-      }
     }
 
     setErrors(nextErrors);
@@ -568,6 +565,7 @@ const IngredientModal = ({
                     name="ingredientMinStock"
                     type="number"
                     min="0"
+                    step="any"
                     inputMode="decimal"
                     value={form.minStock}
                     onChange={(event) => set({ minStock: event.target.value })}
@@ -595,8 +593,8 @@ const IngredientModal = ({
                       name="ingredientInitialStock"
                       type="number"
                       min="0"
-                      step="1"
-                      inputMode="numeric"
+                      step="any"
+                      inputMode="decimal"
                       value={form.initialStockQty}
                       onChange={(event) => set({ initialStockQty: event.target.value })}
                       placeholder="Nhập số lượng hiện có…"

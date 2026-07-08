@@ -26,6 +26,7 @@ import { useNotification } from "@/hooks/useNotification";
 import { getInventoryActionErrorMessage } from "@/utils/inventorySupplySupplierPrintErrorMessages";
 import { useRestaurantCurrency } from "@/hooks/useRestaurantCurrency";
 import { hasAnyPermission } from "@/utils/frontendPermissionAccess";
+import { calculateStockReceipt } from "@/utils/unitConversion";
 import {
   Carrot,
   Package,
@@ -46,7 +47,7 @@ import {
   CREATE_WAREHOUSE,
   STOCK_ITEMS_QUERY,
   STOCK_MOVEMENTS_QUERY,
-  ADJUST_STOCK,
+  RECEIVE_STOCK,
 } from "./graphql/inventory.gql";
 
 const StorageManagement = () => {
@@ -99,6 +100,10 @@ const StorageManagement = () => {
   });
 
   const ingredients = useMemo(() => ingData?.ingredients || [], [ingData]);
+  const ingredientById = useMemo(
+    () => new Map(ingredients.map((ingredient) => [String(ingredient.id), ingredient])),
+    [ingredients],
+  );
 
   const {
     data: whData,
@@ -249,7 +254,7 @@ const StorageManagement = () => {
   }, [ingredients, restaurantReady, stockItems]);
 
   const [createWarehouseMu, { loading: creatingWarehouse }] = useMutation(CREATE_WAREHOUSE);
-  const [adjustStockMu] = useMutation(ADJUST_STOCK);
+  const [receiveStockMu] = useMutation(RECEIVE_STOCK);
   const [poOpen, setPoOpen] = useState(false);
   const [poEntries, setPoEntries] = useState([]);
 
@@ -575,25 +580,52 @@ const StorageManagement = () => {
         isOpen={poOpen}
         onClose={() => setPoOpen(false)}
         entries={poEntries}
+        ingredients={ingredients}
+        currency={activeCurrency}
+        usdToVndRate={usdToVndRate}
         onSubmit={async (rows) => {
           if (!warehouseFilterId) throw new Error("Vui lòng chọn kho cụ thể để nhập kho.");
           if (!rows?.length) throw new Error("Danh sách nhập kho đang trống.");
 
-          const results = await Promise.allSettled(rows.map((row) => adjustStockMu({
-            variables: {
-              restaurantId: currentRestaurant,
-              warehouseId: warehouseFilterId,
-              ingredientId: row.id,
-              qty: row.qty,
-              reason: buildReason(row),
-            },
-          })));
+          const results = await Promise.allSettled(
+            rows.map((row) => {
+              const ingredient = ingredientById.get(String(row.id));
+              if (!ingredient) throw new Error(`Không tìm thấy nguyên liệu ${row.name || row.id}.`);
+
+              const { qtyBase, costPerBaseUnit } = calculateStockReceipt({
+                qty: row.qty,
+                unit: row.unit || ingredient.baseUnit,
+                unitPrice: row.unitPrice,
+                baseUnit: ingredient.baseUnit,
+                conversions: ingredient.conversions || [],
+              });
+
+              return receiveStockMu({
+                variables: {
+                  restaurantId: currentRestaurant,
+                  warehouseId: warehouseFilterId,
+                  ingredientId: row.id,
+                  qty: qtyBase,
+                  costPerBaseUnit,
+                  reason: buildReason(row),
+                  lot: row.lot || null,
+                  expiry: row.expiry || null,
+                  supplierNote: row.supplier || null,
+                },
+              });
+            }),
+          );
 
           const failed = results.filter((item) => item.status === "rejected");
           const successCount = results.length - failed.length;
           if (successCount === 0) {
             const firstError = failed[0]?.reason;
-            throw new Error(getInventoryActionErrorMessage(firstError, `Nhập kho thất bại cho ${rows.length} nguyên liệu.`));
+            throw new Error(
+              getInventoryActionErrorMessage(
+                firstError,
+                `Nhập kho thất bại cho ${rows.length} nguyên liệu.`,
+              ),
+            );
           }
 
           await reloadIngredientsAndStock();
@@ -603,7 +635,10 @@ const StorageManagement = () => {
             return;
           }
 
-          showNotification(`⚠️ Nhập kho thành công ${successCount}/${rows.length} nguyên liệu. Vui lòng kiểm tra các dòng lỗi.`, "warning");
+          showNotification(
+            `⚠️ Nhập kho thành công ${successCount}/${rows.length} nguyên liệu. Vui lòng kiểm tra các dòng lỗi.`,
+            "warning",
+          );
         }}
       />
     </div>

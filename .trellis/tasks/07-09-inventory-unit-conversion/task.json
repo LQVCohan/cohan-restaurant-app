@@ -1,0 +1,42 @@
+{
+  "id": "07-09-inventory-unit-conversion",
+  "name": "inventory-unit-conversion",
+  "title": "Normalize inventory modal quantities to ingredient base units",
+  "description": "Use one bidirectional conversion path across stock receipt and recipe modals, preserve decimal quantities, and keep stock mutations aligned with ingredient base units.",
+  "status": "completed",
+  "dev_type": "fullstack",
+  "scope": "inventory-units",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-09",
+  "completedAt": "2026-07-09",
+  "branch": "fix/inventory-unit-conversion",
+  "base_branch": "main",
+  "commit": "ce505e7fc32bffecccfc0db6814141605bd05c55",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1309",
+  "relatedFiles": [
+    "src/utils/unitConversion.js",
+    "src/utils/unitConversion.test.js",
+    "src/hooks/useIngredients.js",
+    "src/components/Dashboard_Manager/Storage/StorageManagement.jsx",
+    "src/components/Dashboard_Manager/Storage/components/ingredients/IngredientModal.jsx",
+    "src/components/Dashboard_Manager/Storage/components/ingredients/QuickStockModal.jsx",
+    "src/components/Dashboard_Manager/Storage/components/ingredients/QuickStockModal.test.jsx",
+    "src/components/Dashboard_Manager/Storage/components/recipes/RecipeModal.jsx",
+    "src/components/Dashboard_Manager/Storage/components/supplies/SupplyList.jsx",
+    "src/components/Dashboard_Manager/Storage/graphql/inventory.gql.js",
+    "cohan-restaurant-backend/graphql/schema/inventory.graphql",
+    "cohan-restaurant-backend/models/stockItem.model.js",
+    "cohan-restaurant-backend/src/services/inventory.service.js",
+    "cohan-restaurant-backend/tests/models/stock-item-decimal-quantity.test.js"
+  ],
+  "notes": "Flow traced end to end. Backend/frontend lint, unit tests, changed component tests, builds, Menu RBAC checks and smoke tests passed in PR CI run 6922.",
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "web-design-guidelines"
+    ]
+  }
+}
