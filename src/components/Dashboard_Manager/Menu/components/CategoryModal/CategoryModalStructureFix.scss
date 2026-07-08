@@ -1,0 +1,180 @@
+// Final structure layer: one Modal shell, one header, one scroll owner.
+.modern-category-modal {
+  width: min(94vw, 720px) !important;
+  max-height: min(90dvh, 760px) !important;
+}
+
+.modern-category-modal > .modal-body.category-modal-body {
+  min-height: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.modern-category-modal .category-modal-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  height: min(76dvh, 660px);
+  min-height: 0;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(31, 106, 96, 0.08), transparent 22rem),
+    #f7f5f0;
+}
+
+.modern-category-modal .category-modal-content > .view-section {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+}
+
+.modern-category-modal > .modal-header .header-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.modern-category-modal > .modal-header.with-back {
+  justify-content: flex-start !important;
+}
+
+.modern-category-modal > .modal-header .btn-close-modal {
+  margin-left: auto;
+}
+
+.modern-category-modal .list-toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 12px !important;
+  padding: 14px 18px !important;
+}
+
+.modern-category-modal .list-toolbar .search-box {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  min-height: 44px !important;
+  padding: 0 10px 0 13px !important;
+  overflow: hidden !important;
+  border: 1px solid #d8d2c8 !important;
+  border-radius: 14px !important;
+  background: rgba(255, 253, 249, 0.98) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.88) !important;
+  cursor: text;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease !important;
+}
+
+.modern-category-modal .list-toolbar .search-box:focus-within {
+  border-color: rgba(31, 106, 96, 0.52) !important;
+  background: #ffffff !important;
+  box-shadow:
+    0 0 0 4px rgba(31, 106, 96, 0.12),
+    0 10px 24px rgba(48, 72, 61, 0.08) !important;
+}
+
+.modern-category-modal .list-toolbar .search-box .search-icon {
+  position: static !important;
+  flex: 0 0 auto !important;
+  transform: none !important;
+  color: #1f6a60 !important;
+  pointer-events: none;
+}
+
+.modern-category-modal .list-toolbar .search-box input {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: 42px !important;
+  padding: 0 9px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #24303f !important;
+  font-size: 0.88rem !important;
+  font-weight: 650 !important;
+}
+
+.modern-category-modal .list-toolbar .search-box input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.modern-category-modal .list-toolbar .search-box input::placeholder {
+  color: #8b938f !important;
+  font-weight: 550 !important;
+}
+
+.modern-category-modal .list-toolbar .search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: #edf5f1;
+  color: #536c61;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.modern-category-modal .list-toolbar .search-clear:hover {
+  background: #dfeee7;
+  color: #17554d;
+}
+
+.modern-category-modal .list-toolbar .search-clear:focus-visible,
+.modern-category-modal .btn-close-modal:focus-visible,
+.modern-category-modal .btn-back:focus-visible {
+  outline: 3px solid rgba(31, 106, 96, 0.24) !important;
+  outline-offset: 2px !important;
+}
+
+.modern-category-modal .form-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #17554d;
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.025em;
+}
+
+@media (max-width: 640px) {
+  .modern-category-modal {
+    width: 100% !important;
+    max-height: min(92dvh, 820px) !important;
+  }
+
+  .modern-category-modal .category-modal-content {
+    height: min(76dvh, 680px);
+  }
+
+  .modern-category-modal .list-toolbar {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .modern-category-modal .list-toolbar .btn-primary {
+    width: 100% !important;
+  }
+
+  .modern-category-modal .delete-confirm-card {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+  }
+
+  .modern-category-modal .delete-confirm-card__actions {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .modern-category-modal .delete-confirm-card__actions button {
+    flex: 1;
+  }
+}
