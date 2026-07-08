@@ -71,16 +71,27 @@ jobs:
 
       - name: Component tests for changed code
         if: github.event_name == 'pull_request'
+        shell: bash
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
+          set -o pipefail
           TEST_BASE="$(git merge-base HEAD "origin/${BASE_REF}")"
           echo "Running component tests for changes since ${TEST_BASE} (origin/${BASE_REF})"
           timeout --signal=TERM --kill-after=30s 15m \
             npm run test:component -- \
             --changed "${TEST_BASE}" \
             --detectAsyncLeaks \
-            --maxWorkers=2
+            --maxWorkers=2 \
+            2>&1 | tee /tmp/frontend-component.log
+
+      - name: Upload frontend component log
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-component-log
+          path: /tmp/frontend-component.log
+          if-no-files-found: ignore
 
       - name: Full component tests
         if: github.event_name != 'pull_request'
