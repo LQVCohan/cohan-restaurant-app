@@ -19,6 +19,14 @@ const ReservationSchema = BaseSchemaModel(
       required: true,
       index: true,
     },
+    sourceTableId: {
+      type: Types.ObjectId,
+      ref: "Table",
+      default: null,
+      index: true,
+    },
+    sourceTableCode: { type: String, trim: true, default: null },
+    tableMergeGroupId: { type: String, trim: true, default: null, index: true },
     userId: { type: Types.ObjectId, ref: "User", required: true, index: true },
 
     orderCode: { type: String, index: true },
