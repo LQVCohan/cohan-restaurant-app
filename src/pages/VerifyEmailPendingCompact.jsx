@@ -64,6 +64,8 @@ export default function VerifyEmailPendingCompact() {
     "";
   const [feedback, setFeedback] = React.useState("");
   const [feedbackType, setFeedbackType] = React.useState("success");
+  const mustChangePassword =
+    user?.forcePasswordChange || user?.status === "force_password_change";
 
   const [resendVerification, { loading }] = useMutation(RESEND_VERIFICATION, {
     errorPolicy: "none",
@@ -77,6 +79,11 @@ export default function VerifyEmailPendingCompact() {
     },
   });
 
+  React.useEffect(() => {
+    if (!mustChangePassword) return;
+    navigate("/verify-account/confirm?forcePasswordChange=1", { replace: true });
+  }, [mustChangePassword, navigate]);
+
   const handleResendEmail = () => {
     setFeedback("");
     setFeedbackType("success");
@@ -87,6 +94,8 @@ export default function VerifyEmailPendingCompact() {
     }
     resendVerification({ variables: { email } });
   };
+
+  if (mustChangePassword) return null;
 
   return (
     <main className="account-verification-page" aria-labelledby="account-verification-title">
