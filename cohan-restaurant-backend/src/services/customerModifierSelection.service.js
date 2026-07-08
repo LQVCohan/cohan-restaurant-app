@@ -28,7 +28,9 @@ const normalizeSelections = (selectedModifiers = []) => {
 };
 
 const getRequiredMinimum = (group) =>
-  group?.required ? Math.max(1, Number(group?.minSelected || 0)) : Number(group?.minSelected || 0);
+  group?.required
+    ? Math.max(1, Number(group?.minSelected || 0))
+    : Number(group?.minSelected || 0);
 
 const validateGroupSelection = (group, selectedOptionIds) => {
   const count = selectedOptionIds.length;
@@ -38,17 +40,23 @@ const validateGroupSelection = (group, selectedOptionIds) => {
     if (group.required && count < 1) {
       throw badInput(`Vui lòng chọn một lựa chọn cho ${group.name}.`);
     }
-    if (count > 1) throw badInput(`${group.name} chỉ cho phép chọn một lựa chọn.`);
+    if (count > 1) {
+      throw badInput(`${group.name} chỉ cho phép chọn một lựa chọn.`);
+    }
     return;
   }
 
   const minimum = getRequiredMinimum(group);
   const maximum = group?.maxSelected == null ? null : Number(group.maxSelected);
   if (count < minimum) {
-    throw badInput(`Vui lòng chọn ít nhất ${minimum} lựa chọn cho ${group.name}.`);
+    throw badInput(
+      `Vui lòng chọn ít nhất ${minimum} lựa chọn cho ${group.name}.`,
+    );
   }
   if (maximum != null && count > maximum) {
-    throw badInput(`Chỉ được chọn tối đa ${maximum} lựa chọn cho ${group.name}.`);
+    throw badInput(
+      `Chỉ được chọn tối đa ${maximum} lựa chọn cho ${group.name}.`,
+    );
   }
 };
 
@@ -79,6 +87,7 @@ export async function resolveCustomerModifierSelection({
   selectedModifiers = [],
   basePrice = 0,
   session,
+  validateRequired = true,
 }) {
   const normalizedRestaurantId = normalizeId(restaurantId, "Nhà hàng");
   const normalizedMenuItemId = normalizeId(menuItemId, "Món ăn");
@@ -95,11 +104,15 @@ export async function resolveCustomerModifierSelection({
   if (session) query = query.session(session);
   const groups = await query.lean({ virtuals: true });
 
-  const groupMap = new Map(groups.map((group) => [String(group._id), group]));
+  const groupMap = new Map(
+    groups.map((group) => [String(group._id), group]),
+  );
   const selectedByGroup = new Map();
   for (const selection of selections) {
     const group = groupMap.get(selection.groupId);
-    if (!group) throw badInput("Một nhóm tùy chọn không áp dụng cho món này.");
+    if (!group) {
+      throw badInput("Một nhóm tùy chọn không áp dụng cho món này.");
+    }
     selectedByGroup.set(selection.groupId, [
       ...(selectedByGroup.get(selection.groupId) || []),
       selection.optionId,
@@ -107,7 +120,10 @@ export async function resolveCustomerModifierSelection({
   }
 
   groups.forEach((group) => {
-    validateGroupSelection(group, selectedByGroup.get(String(group._id)) || []);
+    const selectedOptionIds = selectedByGroup.get(String(group._id)) || [];
+    if (validateRequired || selectedOptionIds.length) {
+      validateGroupSelection(group, selectedOptionIds);
+    }
   });
 
   const snapshots = [];
@@ -125,6 +141,7 @@ export async function resolveCustomerModifierSelection({
       if (!option || option.isActive === false) {
         throw badInput(`Một lựa chọn trong ${group.name} hiện không khả dụng.`);
       }
+
       const rule = option.priceRule?.rule || "DELTA";
       const amount = Number(option.priceRule?.amount || 0);
       if (!["DELTA", "SET"].includes(rule) || !Number.isFinite(amount)) {
@@ -145,7 +162,10 @@ export async function resolveCustomerModifierSelection({
     }
   }
 
-  if (snapshots.filter((modifier) => modifier.priceRule.rule === "SET").length > 1) {
+  if (
+    snapshots.filter((modifier) => modifier.priceRule.rule === "SET").length >
+    1
+  ) {
     throw badInput("Chỉ có thể chọn một tùy chọn đặt lại giá món.");
   }
   if (
@@ -157,18 +177,25 @@ export async function resolveCustomerModifierSelection({
   }
 
   const normalizedBasePrice = Number(basePrice || 0);
-  const setPrice = snapshots.find((modifier) => modifier.priceRule.rule === "SET")
-    ?.priceRule?.amount;
+  const setPrice = snapshots.find(
+    (modifier) => modifier.priceRule.rule === "SET",
+  )?.priceRule?.amount;
   const delta = snapshots
     .filter((modifier) => modifier.priceRule.rule === "DELTA")
-    .reduce((sum, modifier) => sum + Number(modifier.priceRule.amount || 0), 0);
+    .reduce(
+      (sum, modifier) => sum + Number(modifier.priceRule.amount || 0),
+      0,
+    );
   const unitPrice = Math.max(
     0,
     Number(setPrice == null ? normalizedBasePrice : setPrice) + delta,
   );
 
   return {
-    selectedModifiers: snapshots.map(({ groupId, optionId }) => ({ groupId, optionId })),
+    selectedModifiers: snapshots.map(({ groupId, optionId }) => ({
+      groupId,
+      optionId,
+    })),
     modifiers: snapshots,
     modifiersPrice: unitPrice - normalizedBasePrice,
     unitPrice,
