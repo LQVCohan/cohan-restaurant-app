@@ -190,7 +190,7 @@ type MenuItemLiveState {
 
 input MenuItemLiveStateInput {
   restaurantId: ID!
-  itemType: String!
+  itemType: String = "MENU_ITEM"
   menuItemId: ID
   comboId: ID
   comboSnapshot: JSON
