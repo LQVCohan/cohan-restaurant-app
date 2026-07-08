@@ -1,0 +1,32 @@
+{
+  "id": "table-3d-guided-five-photo-capture",
+  "name": "table-3d-guided-five-photo-capture",
+  "title": "Guide five-photo capture for AI table generation",
+  "description": "Replace the generic multi-file picker with a five-step guided capture flow and submit all five ordered reference images to Hi3D.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "manager-table-3d-ai-generation",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.jsx",
+    "src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx",
+    "cohan-restaurant-backend/src/server/plugins/upload.route.js",
+    "cohan-restaurant-backend/src/services/table3d/table3dAiGeneration.service.js",
+    "cohan-restaurant-backend/tests/services/table3dAiGeneration.service.test.js"
+  ],
+  "notes": "Use native capture=file inputs instead of adding camera dependencies. Preserve Meshy's existing 3-4 image constraint while allowing the configured Hi3D provider to receive five ordered multi_images.",
+  "meta": {}
+}
