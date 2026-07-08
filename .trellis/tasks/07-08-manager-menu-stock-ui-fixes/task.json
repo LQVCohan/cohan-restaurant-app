@@ -1,0 +1,27 @@
+{
+  "id": "07-08-manager-menu-stock-ui-fixes",
+  "title": "Hiển thị tồn món và sửa UI quản lý thực đơn",
+  "status": "planning",
+  "type": "frontend-bugfix",
+  "scope": [
+    "src/components/Dashboard_Manager/Menu/components/MenuItemCard/MenuItemCard.jsx",
+    "src/components/Dashboard_Manager/Menu/components/MenuItemCard/MenuItemCard.test.jsx",
+    "src/components/Dashboard_Manager/Menu/MenuManagementCardCompactFix.scss",
+    "src/components/Dashboard_Manager/Menu/components/CategoryModal/CategoryModal.jsx",
+    "src/components/Dashboard_Manager/Menu/components/CategoryModal/CategoryModalPolish.scss",
+    "src/components/Dashboard_Manager/Menu/components/Toolbar/Toolbar.jsx",
+    "src/components/Dashboard_Manager/Menu/components/Toolbar/Toolbar.scss",
+    "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModal.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "targeted MenuItemCard Vitest",
+      "npm run check:graphql",
+      "npm run build",
+      "desktop and mobile browser smoke"
+    ],
+    "completed": [],
+    "notRun": []
+  }
+}
