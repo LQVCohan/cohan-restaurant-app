@@ -1,6 +1,7 @@
 import { gql, useMutation, useQuery } from "@apollo/client";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useNotification } from "./useNotification";
+import { TABLE_CUSTOMER_SOCKET_EVENT } from "./useSocketOrder";
 
 /* ========= Fragments ========= */
 const F_TABLE_MIN = gql`
@@ -141,6 +142,32 @@ export default function useTableManagement({ restaurantId }) {
     skip: !restaurantId,
     fetchPolicy: "cache-and-network",
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !restaurantId) return undefined;
+
+    const handleTableCustomerUpdate = (event) => {
+      const socketEvent = event?.detail?.event;
+      if (socketEvent?.type !== "TABLE_CUSTOMER_UPDATED") return;
+      if (
+        String(socketEvent?.restaurantId || "") !== String(restaurantId || "")
+      ) {
+        return;
+      }
+      Promise.resolve(refetch()).catch(() => {});
+    };
+
+    window.addEventListener(
+      TABLE_CUSTOMER_SOCKET_EVENT,
+      handleTableCustomerUpdate,
+    );
+    return () => {
+      window.removeEventListener(
+        TABLE_CUSTOMER_SOCKET_EVENT,
+        handleTableCustomerUpdate,
+      );
+    };
+  }, [restaurantId, refetch]);
 
   /* ------ helpers for cache ------ */
   const readTable = (cache, id) =>
