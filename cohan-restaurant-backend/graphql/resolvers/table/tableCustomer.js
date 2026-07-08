@@ -232,7 +232,9 @@ async function upsertTableCustomer(_, { input }, _ctx) {
       dietaryNotes: dietaryNotes ?? null,
       customerPreferences: customerPreferences ?? null,
       partySize: partySize ?? null,
-      timeFrom: timeFrom ? new Date(timeFrom) : null,
+      ...(timeFrom !== undefined
+        ? { timeFrom: timeFrom ? new Date(timeFrom) : null }
+        : {}),
       timeTo: timeTo ? new Date(timeTo) : null,
 
       updatedAt: new Date(),
