@@ -73,6 +73,7 @@ export function sanitizeAuthUser(user) {
 
   return pickDefined({
     ...baseUserFields(source),
+    status: source.forcePasswordChange ? "force_password_change" : source.status,
     emailVerified:
       typeof source.emailVerified === "boolean" ? source.emailVerified : undefined,
     phoneVerified:

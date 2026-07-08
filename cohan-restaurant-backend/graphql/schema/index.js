@@ -128,10 +128,15 @@ const readSchemaFile = (fileName) => {
   }
 
   if (fileName === "staffResolverCompatibility.graphql") {
-    return `${staffResolverCompatibilityPrelude}\n${stripDomainOwnedStaffCompatibilityFields(source).replace(
-      "createMyWallet(input: CreateWalletInput!): Wallet",
-      "createMyWallet(input: CreateWalletInput!): User",
-    )}`;
+    return `${staffResolverCompatibilityPrelude}\n${stripDomainOwnedStaffCompatibilityFields(source)
+      .replace(
+        "createMyWallet(input: CreateWalletInput!): Wallet",
+        "createMyWallet(input: CreateWalletInput!): User",
+      )
+      .replace(
+        "updateUser(id: ID, input: UpdateUserInput!): User",
+        "updateUser(input: UpdateUserInput!): User",
+      )}`;
   }
 
   if (fileName !== "user.graphql") return source;
