@@ -164,6 +164,56 @@ const FieldIcon = ({ type }) => {
   );
 };
 
+const PasswordToggleButton = ({ visible, onToggle, label = "mật khẩu" }) => (
+  <button
+    type="button"
+    className="toggle-pw-btn"
+    aria-label={`${visible ? "Ẩn" : "Hiện"} ${label}`}
+    aria-pressed={visible}
+    onClick={onToggle}
+  >
+    <FieldIcon type={visible ? "eye" : "eyeOff"} />
+  </button>
+);
+
+function getPasswordStrength(password = "") {
+  if (!password) return { score: 0, tone: "empty", label: "Chưa nhập" };
+
+  const score = [
+    password.length >= 8,
+    /[a-z]/.test(password) && /[A-Z]/.test(password),
+    /\d/.test(password),
+    /[^A-Za-z0-9]/.test(password),
+  ].filter(Boolean).length;
+
+  if (score <= 1) return { score, tone: "weak", label: "Yếu" };
+  if (score <= 3) return { score, tone: "medium", label: "Trung bình" };
+  return { score, tone: "strong", label: "Mạnh" };
+}
+
+const PasswordStrengthMeter = ({ password, id }) => {
+  const strength = getPasswordStrength(password);
+  const helperText = password
+    ? `Độ mạnh: ${strength.label}`
+    : "Dùng ít nhất 8 ký tự, gồm chữ hoa, số và ký tự đặc biệt";
+
+  return (
+    <div
+      id={id}
+      className={`password-strength password-strength--${strength.tone}`}
+      role="status"
+      aria-live="polite"
+    >
+      <span className="password-strength__label">{helperText}</span>
+      <span className="password-strength__bars" aria-hidden="true">
+        {[0, 1, 2, 3].map((index) => (
+          <span key={index} className={index < strength.score ? "is-active" : ""} />
+        ))}
+      </span>
+    </div>
+  );
+};
+
 const FloatingFoodIcons = () => (
   <div className="floating-food-layer" aria-hidden="true">
     <span className="food-float food-float--1">VPOS</span>
@@ -270,6 +320,12 @@ const LoginPage = () => {
   const [registerForm, setRegisterForm] = useState(CUSTOMER_REGISTER_INITIAL);
   const [brandRegisterForm, setBrandRegisterForm] = useState(BRAND_REGISTER_INITIAL);
   const [showPassword, setShowPassword] = useState(false);
+  const [registerPasswordVisibility, setRegisterPasswordVisibility] = useState({
+    customer: false,
+    customerConfirm: false,
+    brand: false,
+    brandConfirm: false,
+  });
   const [captchaToken, setCaptchaToken] = useState("");
 
   const recaptchaLoginRef = useRef(null);
@@ -290,6 +346,13 @@ const LoginPage = () => {
   const switchRegisterMode = (mode) => {
     setRegisterMode(mode);
     resetCaptcha();
+  };
+
+  const toggleRegisterPasswordVisibility = (field) => {
+    setRegisterPasswordVisibility((current) => ({
+      ...current,
+      [field]: !current[field],
+    }));
   };
 
   useEffect(() => {
@@ -509,10 +572,21 @@ const LoginPage = () => {
                 <div className="input-wrapper"><FieldIcon type="user" /><input id="brand-register-phone" type="tel" placeholder="Số điện thoại" autoComplete="tel" value={brandRegisterForm.phone} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, phone: e.target.value })} /></div>
 
                 <label className="field-label" htmlFor="brand-register-password">Mật khẩu</label>
-                <div className="input-wrapper"><FieldIcon type="lock" /><input id="brand-register-password" type="password" placeholder="Mật khẩu" autoComplete="new-password" value={brandRegisterForm.password} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, password: e.target.value })} /></div>
+                <div className="password-field">
+                  <div className="input-wrapper">
+                    <FieldIcon type="lock" />
+                    <input id="brand-register-password" type={registerPasswordVisibility.brand ? "text" : "password"} placeholder="Mật khẩu" autoComplete="new-password" aria-describedby="brand-register-password-strength" value={brandRegisterForm.password} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, password: e.target.value })} />
+                    <PasswordToggleButton visible={registerPasswordVisibility.brand} onToggle={() => toggleRegisterPasswordVisibility("brand")} />
+                  </div>
+                  <PasswordStrengthMeter id="brand-register-password-strength" password={brandRegisterForm.password} />
+                </div>
 
                 <label className="field-label" htmlFor="brand-register-confirm-password">Nhập lại mật khẩu</label>
-                <div className="input-wrapper"><FieldIcon type="lock" /><input id="brand-register-confirm-password" type="password" placeholder="Nhập lại mật khẩu" autoComplete="new-password" value={brandRegisterForm.confirmPassword} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, confirmPassword: e.target.value })} /></div>
+                <div className="input-wrapper">
+                  <FieldIcon type="lock" />
+                  <input id="brand-register-confirm-password" type={registerPasswordVisibility.brandConfirm ? "text" : "password"} placeholder="Nhập lại mật khẩu" autoComplete="new-password" value={brandRegisterForm.confirmPassword} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, confirmPassword: e.target.value })} />
+                  <PasswordToggleButton visible={registerPasswordVisibility.brandConfirm} label="mật khẩu xác nhận" onToggle={() => toggleRegisterPasswordVisibility("brandConfirm")} />
+                </div>
 
                 <label className="field-label" htmlFor="brand-register-name">Tên thương hiệu</label>
                 <div className="input-wrapper"><FieldIcon type="user" /><input id="brand-register-name" type="text" placeholder="VD: Cohan Restaurant" autoComplete="organization" value={brandRegisterForm.brandName} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, brandName: e.target.value })} /></div>
@@ -534,10 +608,21 @@ const LoginPage = () => {
                 <div className="input-wrapper"><FieldIcon type="mail" /><input id="register-email" type="email" placeholder="Email" aria-label="Email" autoComplete="email" value={registerForm.email} onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })} /></div>
 
                 <label className="field-label" htmlFor="register-password">Mật khẩu</label>
-                <div className="input-wrapper"><FieldIcon type="lock" /><input id="register-password" type="password" placeholder="Mật khẩu" aria-label="Mật khẩu" autoComplete="new-password" value={registerForm.password} onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })} /></div>
+                <div className="password-field">
+                  <div className="input-wrapper">
+                    <FieldIcon type="lock" />
+                    <input id="register-password" type={registerPasswordVisibility.customer ? "text" : "password"} placeholder="Mật khẩu" aria-label="Mật khẩu" aria-describedby="register-password-strength" autoComplete="new-password" value={registerForm.password} onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })} />
+                    <PasswordToggleButton visible={registerPasswordVisibility.customer} onToggle={() => toggleRegisterPasswordVisibility("customer")} />
+                  </div>
+                  <PasswordStrengthMeter id="register-password-strength" password={registerForm.password} />
+                </div>
 
                 <label className="field-label" htmlFor="register-confirm-password">Nhập lại mật khẩu</label>
-                <div className="input-wrapper"><FieldIcon type="lock" /><input id="register-confirm-password" type="password" placeholder="Nhập lại mật khẩu" aria-label="Nhập lại mật khẩu" autoComplete="new-password" value={registerForm.confirmPassword} onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })} /></div>
+                <div className="input-wrapper">
+                  <FieldIcon type="lock" />
+                  <input id="register-confirm-password" type={registerPasswordVisibility.customerConfirm ? "text" : "password"} placeholder="Nhập lại mật khẩu" aria-label="Nhập lại mật khẩu" autoComplete="new-password" value={registerForm.confirmPassword} onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })} />
+                  <PasswordToggleButton visible={registerPasswordVisibility.customerConfirm} label="mật khẩu xác nhận" onToggle={() => toggleRegisterPasswordVisibility("customerConfirm")} />
+                </div>
 
                 <label className="check-card check-card--terms"><input type="checkbox" checked={registerForm.terms} onChange={(e) => setRegisterForm({ ...registerForm, terms: e.target.checked })} /><span>Tôi đồng ý với chính sách & điều khoản</span></label>
                 {renderCaptcha(recaptchaRegisterRef)}
@@ -557,7 +642,7 @@ const LoginPage = () => {
             <div className="input-wrapper"><FieldIcon type="user" /><input id="login-identifier" type="text" placeholder="Email / Username / SĐT" aria-label="Email, username hoặc số điện thoại" autoComplete="username" value={loginForm.identifier} onChange={(e) => setLoginForm({ ...loginForm, identifier: e.target.value })} /></div>
 
             <label className="field-label" htmlFor="login-password">Mật khẩu</label>
-            <div className="input-wrapper"><FieldIcon type="lock" /><input id="login-password" type={showPassword ? "text" : "password"} placeholder="Mật khẩu" aria-label="Mật khẩu" autoComplete="current-password" value={loginForm.password} onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} /><button type="button" className="toggle-pw-btn" aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"} onClick={() => setShowPassword(!showPassword)}><FieldIcon type={showPassword ? "eye" : "eyeOff"} /></button></div>
+            <div className="input-wrapper"><FieldIcon type="lock" /><input id="login-password" type={showPassword ? "text" : "password"} placeholder="Mật khẩu" aria-label="Mật khẩu" autoComplete="current-password" value={loginForm.password} onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} /><PasswordToggleButton visible={showPassword} onToggle={() => setShowPassword((current) => !current)} /></div>
 
             <button type="button" className="forgot-link" onClick={() => showNotification("Tính năng đặt lại mật khẩu đang được chuẩn bị. Vui lòng liên hệ hỗ trợ nếu cần đổi mật khẩu.", "info")}>Quên mật khẩu?</button>
             {renderCaptcha(recaptchaLoginRef)}
