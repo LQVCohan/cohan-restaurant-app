@@ -56,6 +56,26 @@ const storageSet = (key, value) => {
   }
 };
 
+export const openManagerDashboardForRestaurant = (restaurantId) => {
+  const nextRestaurantId = String(restaurantId || "");
+  if (
+    !nextRestaurantId ||
+    typeof window === "undefined" ||
+    window.location.hash !== "#brands"
+  ) {
+    return false;
+  }
+
+  window.dispatchEvent(new CustomEvent("manager:navigate", {
+    detail: {
+      page: "dashboard",
+      query: { restaurantId: nextRestaurantId },
+      source: "brand-management",
+    },
+  }));
+  return true;
+};
+
 const normalizeRestaurant = (restaurant) => ({
   ...restaurant,
   id: getId(restaurant),
@@ -175,7 +195,7 @@ export default function useBrandManagement(
     storageSet("manager.selectedBrandId", nextValue);
   }, []);
 
-  const setSelectedRestaurantId = useCallback((value) => {
+  const persistSelectedRestaurantId = useCallback((value) => {
     const nextValue = String(value || "");
     setSelectedRestaurantIdState(nextValue);
     storageSet("manager.selectedRestaurantId", nextValue);
@@ -201,6 +221,14 @@ export default function useBrandManagement(
     () => brands.flatMap((brand) => getScopedBrandRestaurants(brand, systemAdmin)),
     [brands, systemAdmin],
   );
+
+  const setSelectedRestaurantId = useCallback((value) => {
+    const nextValue = String(value || "");
+    persistSelectedRestaurantId(nextValue);
+    if (restaurantsInSelectedBrand.some((restaurant) => restaurant.id === nextValue)) {
+      openManagerDashboardForRestaurant(nextValue);
+    }
+  }, [persistSelectedRestaurantId, restaurantsInSelectedBrand]);
 
   const allManageableRestaurants = useMemo(() => {
     const seen = new Set();
