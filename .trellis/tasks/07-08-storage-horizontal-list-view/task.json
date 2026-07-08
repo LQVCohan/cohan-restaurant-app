@@ -13,14 +13,14 @@
       "vitest run src/components/Dashboard_Manager/Storage/layout/Tabs/Tabs.test.jsx",
       "npm run check:conflicts",
       "npm run build",
-      "desktop browser smoke for Ingredients and Recipes",
+      "desktop browser smoke for Ingredients, Supplies and Recipes",
       "mobile browser smoke at 390x844 and 430x932"
     ],
     "completed": [
-      "traced Ingredient and Recipe persistence, permission-checked resolvers, Apollo hooks, tabs, lists, cards, and pagination bridge",
-      "reviewed the final JSX, SCSS selectors, responsive fallback, and test assertions",
-      "confirmed the implementation does not change GraphQL, permissions, mutations, or inventory calculations",
-      "confirmed no GitHub Actions status or workflow run is attached to the final code commit"
+      "traced Ingredient, Supply and Recipe persistence, schemas, access-checked resolvers, Apollo hooks, tabs, lists, cards, and pagination bridge",
+      "reviewed the final JSX, SCSS selectors, legacy important overrides, responsive fallback, and test assertions",
+      "confirmed the implementation does not change GraphQL, permissions, mutations, stock operations, or inventory calculations",
+      "confirmed the shared native radio selection remains available across Ingredients, Supplies and Recipes"
     ],
     "notRun": [
       "targeted Vitest was unavailable in the GitHub connector environment",
