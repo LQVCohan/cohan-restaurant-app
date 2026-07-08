@@ -7,8 +7,10 @@ import { SESSION_ACCESS_TOKEN_KEY, setAuth } from "@/lib/authStorage";
 
 const navigateMock = vi.fn();
 const useQueryMock = vi.hoisted(() => vi.fn());
+const clearStoreMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 vi.mock("react-router-dom", async (i) => ({ ...(await i()), useNavigate: () => navigateMock }));
 vi.mock("@apollo/client/react", () => ({
+  useApolloClient: () => ({ clearStore: clearStoreMock }),
   useQuery: useQueryMock,
 }));
 
@@ -45,6 +47,7 @@ describe("AuthProvider", () => {
     sessionStorage.clear();
     setAuth({ token: null });
     navigateMock.mockReset();
+    clearStoreMock.mockClear();
     clearRefreshPromise();
     useQueryMock.mockImplementation(() => defaultQueryResult());
     global.fetch = vi.fn().mockResolvedValue({ ok: false });
@@ -106,6 +109,20 @@ describe("AuthProvider", () => {
     expect(localStorage.getItem("auth_token")).toBeNull();
     expect(sessionStorage.getItem("token")).toBeNull();
     expect(sessionStorage.getItem(SESSION_ACCESS_TOKEN_KEY)).toBe("abc");
+  });
+
+  it("clears Apollo account cache on logout", async () => {
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+
+    fireEvent.click(screen.getByText("login"));
+    fireEvent.click(screen.getByText("logout"));
+
+    await waitFor(() => expect(clearStoreMock).toHaveBeenCalledTimes(1));
+    expect(navigateMock).toHaveBeenCalledWith("/login", { replace: true });
   });
 
   it("applies token and user from a successful refresh response", async () => {
