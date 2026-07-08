@@ -137,7 +137,16 @@ export const CartQuery = {
   },
 
   async menuItemLiveState(_, { input }, ctx) {
-    const { restaurantId, menuItemId, servingVariantKey, userId } = input || {};
+    const {
+      restaurantId,
+      menuItemId,
+      servingVariantKey,
+      userId,
+      itemType = "MENU_ITEM",
+    } = input || {};
+    if (String(itemType).toUpperCase() !== "MENU_ITEM") {
+      throw new GraphQLError("Unsupported itemType");
+    }
     if (!mongoose.isValidObjectId(restaurantId)) throw new GraphQLError("Invalid restaurantId");
     if (!mongoose.isValidObjectId(menuItemId)) throw new GraphQLError("Invalid menuItemId");
 
@@ -195,6 +204,7 @@ export const CartQuery = {
     const violationCount = Number(abuse?.timeoutReleaseCount || 0) + Number(abuse?.exitReleaseCount || 0);
 
     return {
+      itemType: "MENU_ITEM",
       menuItemId,
       restaurantId,
       servingVariantKey: normalizedServingKey,

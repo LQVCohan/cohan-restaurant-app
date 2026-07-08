@@ -19,6 +19,7 @@ const GET_TOP_MENU_ITEMS_FOR_AVAILABILITY = gql`
 const MENU_ITEM_LIVE_STATE_FOR_AVAILABILITY = gql`
   query MenuItemLiveStateForAvailabilityPanel($input: MenuItemLiveStateInput!) {
     menuItemLiveState(input: $input) {
+      itemType
       maxAvailableQty
       outOfStock
     }
@@ -54,6 +55,7 @@ export default function FoodDetailAvailabilityGlobalMount() {
   const { data: liveData, refetch } = useQuery(MENU_ITEM_LIVE_STATE_FOR_AVAILABILITY, {
     variables: {
       input: {
+        itemType: "MENU_ITEM",
         restaurantId: food?.restaurantId,
         menuItemId: food?.id,
         servingVariantKey: servingKey,

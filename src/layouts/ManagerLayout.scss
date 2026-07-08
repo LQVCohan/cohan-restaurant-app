@@ -39,7 +39,7 @@ $manager-sidebar-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
     linear-gradient(180deg, $manager-bg-soft 0%, $manager-bg 52%, #f2f1ec 100%);
 
   &.sidebar-open {
-    --sidebar-width: #{$manager-sidebar-collapsed};
+    --sidebar-width: #{$manager-sidebar-expanded};
   }
 
   .sidebar {
