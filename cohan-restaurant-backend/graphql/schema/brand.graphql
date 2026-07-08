@@ -53,6 +53,8 @@ type BrandMembership {
   restaurantIds: [ID!]!
   restaurants: [Restaurant!]!
   status: String!
+  invitedAt: DateTime
+  acceptedAt: DateTime
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -158,6 +160,8 @@ extend type Mutation {
   archiveBrand(id: ID!): Boolean!
   addBrandMember(input: AddBrandMemberInput!): BrandMembership!
   updateBrandMember(input: UpdateBrandMemberInput!): BrandMembership!
+  resendBrandInvitation(id: ID!): BrandMembership!
+  acceptBrandInvitation(token: String!, password: String): BrandMembership!
   transferBrandOwnership(input: TransferBrandOwnershipInput!): TransferBrandOwnershipPayload!
   removeBrandMember(id: ID!): Boolean!
 }
