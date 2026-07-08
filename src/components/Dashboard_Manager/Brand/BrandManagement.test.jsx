@@ -117,6 +117,7 @@ const updateBrandMock = vi.fn();
 const createRestaurantMock = vi.fn();
 const addMemberMock = vi.fn();
 const updateMemberMock = vi.fn();
+const removeMemberMock = vi.fn();
 
 const operationSource = (operation) =>
   String(operation?.loc?.source?.body || operation || "");
@@ -136,6 +137,10 @@ beforeEach(() => {
   updateMemberMock.mockResolvedValue({
     data: { updateBrandMember: { id: "m1", role: "manager", status: "inactive" } },
   });
+    removeMemberMock.mockResolvedValue({
+      data: { removeBrandMember: true },
+    });
+    window.confirm = vi.fn(() => true);
 
   useBrandManagement.mockReturnValue({
     brands: [selectedBrand],
@@ -174,6 +179,9 @@ beforeEach(() => {
     if (source.includes("mutation UpdateBrandMember")) {
       return [updateMemberMock, { loading: false }];
     }
+    if (source.includes("mutation RemoveBrandMemberAccess")) {
+    return [removeMemberMock, { loading: false }];
+  }
     if (source.includes("mutation UpdateBrand")) {
       return [updateBrandMock, { loading: false }];
     }
@@ -352,6 +360,27 @@ it("shows that an existing Customer is promoted only after accepting the email",
     fireEvent.change(candidateSearch, { target: { value: "Người khác" } });
     expect(accountSelect).toHaveValue("");
   });
+
+
+it("revokes Brand access from the existing membership access panel", async () => {
+  render(<BrandManagement />);
+
+  fireEvent.click(screen.getByText("Đổi vai trò và phạm vi"));
+  fireEvent.change(screen.getByLabelText("Thành viên cần đổi quyền"), {
+    target: { value: "m1" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Tháo quyền Brand" }));
+
+  await waitFor(() => expect(removeMemberMock).toHaveBeenCalledTimes(1));
+  expect(window.confirm).toHaveBeenCalledWith(
+    "Tháo quyền Brand của thành viên này? Tài khoản và dữ liệu lịch sử vẫn được giữ.",
+  );
+  expect(removeMemberMock.mock.calls[0][0].variables).toEqual({
+    id: "m1",
+    reason: "Tháo quyền từ trang quản lý chuỗi",
+  });
+  expect(message.success).toHaveBeenCalledWith("Đã tháo quyền Brand");
+});
 
   it("searches by employee name or account ID and filters by role and branch", async () => {
     render(<BrandManagement />);
