@@ -2,43 +2,48 @@
 
 ## Current behavior and root cause
 
-The employee modal already submits `restaurantForStaff` through the existing `createStaff` mutation. The resolver creates a `Staff` document and stores `restaurantForStaff`, but it does not create the active `BrandMembership` required by runtime restaurant-scope guards. Staff management therefore shows the employee while Brand scope remains incomplete.
+The normalized Brand flow keeps the active business and restaurant in manager workspace state. `restaurantForStaff` is a legacy account fallback and may be absent, so it must not be the authority used to create Brand scope. The existing add-employee flow only sent account fields and therefore had no explicit active-business context for creating `BrandMembership`.
 
 ## End-to-end flow
 
-`Staff` / `BrandMembership` / `Restaurant` Mongoose models -> `createStaff` resolver -> `CreateStaff` Apollo mutation in `useStaffManagement` -> `EmployeeFormModal` submit action -> focused model test.
+Manager active Brand/restaurant selection -> `AddEmployeeModal` builds `staffBusinessContext` -> existing `CreateStaff` Apollo mutation -> staff resolver validates the restaurant against the active Brand and actor scope -> existing staff account creation -> active `BrandMembership` upsert -> focused frontend and resolver tests.
 
 ## Scope
 
-- When a new Staff document is created with `restaurantForStaff`, resolve the restaurant `brandId`.
-- Upsert one active `BrandMembership` with role `staff` and the selected restaurant ID.
-- Stop creation when the selected restaurant does not exist or has no Brand.
-- If membership synchronization fails after the Staff save, roll back the new Staff document.
-- Keep the existing GraphQL and frontend payload unchanged.
+- Send the active `brandId` and `restaurantId` as request-only `staffBusinessContext` when the user clicks create.
+- Remove `restaurantForStaff` from the normalized account payload in the add flow.
+- Validate that the active restaurant belongs to the supplied Brand and is accessible by the actor.
+- Create an active `BrandMembership` with role `staff` and the active restaurant ID.
+- Keep `restaurantForStaff` only as an internal compatibility fallback for existing staff modules and older clients.
+- Roll back the newly created Staff account if membership synchronization fails.
 
 ## Constraints
 
-- Reuse the existing `BrandMembership` model and its `staff` role/scope convention.
-- Do not add a second mutation, frontend request, dependency, or authorization source.
+- `BrandMembership` remains the runtime authorization source.
+- Do not infer the active Brand from fields stored on the new account when explicit business context is supplied.
+- Reuse the existing `createStaff` mutation and staff account creation logic.
+- Do not add a second network request, dependency, or parallel authorization source.
 - Do not include legacy data migration or multi-restaurant staff editing.
-- Run synchronization only for newly created Staff documents.
 
 ## Acceptance criteria
 
-1. Creating an employee for a restaurant in a Brand creates an active `BrandMembership` for the same user and Brand.
-2. The membership role is `staff` and `restaurantIds` contains the selected `restaurantForStaff`.
-3. A restaurant without a Brand does not leave a partial employee record.
-4. A membership write failure rolls back the new Staff document and returns the error.
-5. No GraphQL schema or frontend operation changes are required.
+1. The normalized add flow works when the account payload has no `restaurantForStaff`.
+2. Membership uses the Brand and restaurant active in manager workspace at submit time.
+3. A mismatched Brand/restaurant pair is rejected before creating the account.
+4. The membership role is `staff`, status is `active`, and `restaurantIds` contains the active restaurant.
+5. Membership failure removes the newly created Staff account.
+6. Older callers that only send `restaurantForStaff` continue through the compatibility fallback.
 
 ## Validation plan
 
-- Run the focused Vitest model test for Staff-to-BrandMembership synchronization.
-- Run the existing `staff-create-employee-code` and `staff-mutation-access` resolver tests.
-- Run the GraphQL schema check only if a contract file changes; no contract change is planned.
+- Run the focused frontend test for `AddEmployeeModal` business-context submission.
+- Run the focused resolver test for context validation and membership creation.
+- Run the existing staff create/access resolver tests.
+- Run the GraphQL schema validation check.
 
 ## Out of scope
 
 - Backfilling memberships for existing Staff records.
+- Removing `restaurantForStaff` from every legacy staff, payroll, and scheduling reader.
 - Moving an existing employee between Brands or synchronizing staff edits.
-- Redesigning Brand Management or Staff Management UI.
+- Redesigning the full Staff Management interface.
