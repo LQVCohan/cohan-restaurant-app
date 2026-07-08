@@ -153,7 +153,7 @@ describe("TableActionsModal customer snapshot", () => {
     expect(screen.getByLabelText("Số khách")).toHaveValue(3);
     expect(screen.getByLabelText("Ngày đặt")).toHaveValue("2026-08-07");
     expect(screen.getByLabelText("Giờ vào")).toHaveValue("18:00");
-    expect(screen.getByLabelText("Giờ đến")).toHaveValue("20:00");
+    expect(screen.getByLabelText("Giờ kết thúc")).toHaveValue("20:00");
     expect(screen.getByLabelText("Ghi chú")).toHaveValue(
       "Khách cần ghế gần cửa sổ",
     );
