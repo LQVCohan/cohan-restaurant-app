@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { upsertCustomTableModel } from "@/config/table3dCustomModelStorage";
+import {
+  deleteCustomTableModel,
+  upsertCustomTableModel,
+} from "@/config/table3dCustomModelStorage";
 import {
   buildPreviewModelItemFromVisualConfig,
   buildVisualConfigFromModel,
@@ -34,6 +37,7 @@ export default function Table3DSimulatorModal(props) {
 
   useEffect(() => {
     if (!open || !persistedModel || !persistedModelKey) return;
+    deleteCustomTableModel(persistedModel.key, customModelScope);
     upsertCustomTableModel(persistedModel, customModelScope);
     setHydratedModelKey(persistedModelKey);
   }, [customModelScope, open, persistedModel, persistedModelKey]);
