@@ -91,6 +91,12 @@ const TableSchema = BaseSchemaModel({
   mergedFromTableIds: [
     { type: mongoose.Schema.Types.ObjectId, ref: "Table" },
   ],
+  mergeAnchorTableId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Table",
+    default: null,
+  },
+  mergedAt: { type: Date, default: null },
   mergedIntoTableId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Table",
