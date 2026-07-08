@@ -117,7 +117,7 @@ export default function LeftPanel() {
     tables,
     currentTable,
     currentOrder,
-    refreshTables,
+    refetchTables: refreshTables,
     mergeTables,
     currentOrderType,
     setCurrentOrderType,
