@@ -1,0 +1,33 @@
+{
+  "id": "fix-recipe-save",
+  "name": "fix-recipe-save",
+  "title": "Fix recipe save action",
+  "description": "Normalize the recipe modal payload so the existing upsert flow receives servingVariants and the save action completes.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "manager-storage-recipes",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Storage/components/recipes/RecipeModal.jsx",
+    "src/components/Dashboard_Manager/Storage/components/recipes/RecipeList.jsx",
+    "src/hooks/useRecipes.js",
+    "src/components/Dashboard_Manager/Storage/graphql/recipe.gql.js",
+    "cohan-restaurant-backend/graphql/schema/inventory.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/inventory/recipe.mutation.js",
+    "cohan-restaurant-backend/models/recipe.model.js"
+  ],
+  "notes": "The modal emits variants while the shared Apollo hook, GraphQL input, resolver, and Mongoose model use servingVariants. Apply the smallest compatibility fix at the modal caller boundary."
+}
