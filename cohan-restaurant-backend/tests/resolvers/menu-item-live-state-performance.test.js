@@ -77,8 +77,29 @@ describe("menuItemLiveState read optimization", () => {
     availability.resolve({ isAvailable: true, maxAvailable: 8 });
 
     const [firstResult, secondResult] = await Promise.all([first, second]);
-    expect(firstResult.maxAvailableQty).toBe(8);
-    expect(secondResult.maxAvailableQty).toBe(8);
+    expect(firstResult).toMatchObject({ itemType: "MENU_ITEM", maxAvailableQty: 8 });
+    expect(secondResult).toMatchObject({ itemType: "MENU_ITEM", maxAvailableQty: 8 });
+  });
+
+  it("rejects unsupported item types before starting inventory reads", async () => {
+    await expect(
+      CartQuery.menuItemLiveState(
+        null,
+        {
+          input: {
+            itemType: "COMBO",
+            restaurantId,
+            menuItemId,
+            servingVariantKey: "portion",
+          },
+        },
+        {},
+      ),
+    ).rejects.toThrow("Unsupported itemType");
+
+    expect(model.Cart.find).not.toHaveBeenCalled();
+    expect(model.Warehouse.findOne).not.toHaveBeenCalled();
+    expect(inventory.checkAvailabilityForLinesTx).not.toHaveBeenCalled();
   });
 
   it("starts user cart, shared holds and availability work without waiting sequentially", async () => {
@@ -114,6 +135,7 @@ describe("menuItemLiveState read optimization", () => {
     availability.resolve({ isAvailable: true, maxAvailable: 5 });
 
     await expect(pending).resolves.toMatchObject({
+      itemType: "MENU_ITEM",
       maxAvailableQty: 5,
       reservedCartQty: 0,
       myCartQty: 0,
