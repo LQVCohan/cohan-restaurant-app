@@ -19,15 +19,19 @@
     "src/utils/unitConversion.js",
     "src/utils/unitConversion.test.js",
     "src/hooks/useIngredients.js",
-    "src/components/Dashboard_Manager/Storage/components/ingredients/QuickStockModal.jsx",
-    "src/components/Dashboard_Manager/Storage/components/recipes/RecipeModal.jsx",
     "src/components/Dashboard_Manager/Storage/StorageManagement.jsx",
+    "src/components/Dashboard_Manager/Storage/components/ingredients/IngredientModal.jsx",
+    "src/components/Dashboard_Manager/Storage/components/ingredients/QuickStockModal.jsx",
+    "src/components/Dashboard_Manager/Storage/components/ingredients/QuickStockModal.test.jsx",
+    "src/components/Dashboard_Manager/Storage/components/recipes/RecipeModal.jsx",
+    "src/components/Dashboard_Manager/Storage/components/supplies/SupplyList.jsx",
     "src/components/Dashboard_Manager/Storage/graphql/inventory.gql.js",
     "cohan-restaurant-backend/graphql/schema/inventory.graphql",
     "cohan-restaurant-backend/models/stockItem.model.js",
-    "cohan-restaurant-backend/src/services/inventory.service.js"
+    "cohan-restaurant-backend/src/services/inventory.service.js",
+    "cohan-restaurant-backend/tests/models/stock-item-decimal-quantity.test.js"
   ],
-  "notes": "Flow traced from Ingredient/StockItem schemas through inventory stock resolvers and inventory.service, Apollo mutations/useIngredients, QuickStockModal/RecipeModal and the low-stock receipt action.",
+  "notes": "Flow traced from Ingredient/StockItem schemas through inventory stock resolvers and inventory.service, Apollo mutations/useIngredients, QuickStockModal/RecipeModal, supply receipt, and the low-stock receipt action.",
   "meta": {
     "skills": [
       "ponytail",
