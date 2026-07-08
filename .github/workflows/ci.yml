@@ -37,12 +37,15 @@ jobs:
         run: |
           python <<'PY' > /tmp/customer-promotion-patch.log 2>&1
           from pathlib import Path
-          from textwrap import dedent
 
           workflow = Path('.github/workflows/temp-customer-brand-promotion.yml').read_text(encoding='utf-8')
           marker = "          python <<'PY'\n"
           script = workflow.split(marker, 1)[1].split("\n          PY", 1)[0]
-          exec(compile(dedent(script), 'customer-promotion-patch.py', 'exec'))
+          script = "\n".join(
+              line[10:] if line.startswith("          ") else line
+              for line in script.splitlines()
+          )
+          exec(compile(script, 'customer-promotion-patch.py', 'exec'))
           PY
 
       - name: Upload patch diagnostics
