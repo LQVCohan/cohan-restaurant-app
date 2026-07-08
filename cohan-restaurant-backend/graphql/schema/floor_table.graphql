@@ -120,6 +120,10 @@ type Table {
   cancelPolicy: String
   isJoinable: Boolean
   joinGroupId: String
+  mergedFromTableIds: [ID!]
+  mergeAnchorTableId: ID
+  mergedAt: DateTime
+  mergeDetails: JSON
   createdAt: DateTime
   updatedAt: DateTime
   viewLockUserId: ID
@@ -215,8 +219,8 @@ input GenerateTableAccessQrInput {
 
 input MergeTablesInput {
   restaurantId: ID!
-  tableIds: [ID!]! # các bàn sẽ vào 1 nhóm
-  anchorId: ID! # bàn đại diện (hiển thị & nhận order)
+  tableIds: [ID!]! # các bàn vật lý sẽ vào một bàn ghép mới
+  anchorId: ID! # bàn nguồn mặc định cho order mới nếu UI chưa chọn bàn con
   joinGroupId: String # nếu không truyền -> server tự sinh
 }
 
@@ -224,6 +228,8 @@ type MergeResult {
   joinGroupId: String!
   anchorId: ID!
   tableIds: [ID!]!
+  mergedTableId: ID!
+  mergedTableCode: String!
 }
 
 input SplitTablesInput {
