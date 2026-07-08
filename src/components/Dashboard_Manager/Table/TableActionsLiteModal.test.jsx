@@ -57,15 +57,17 @@ const table = {
   bookingPerks: [],
 };
 
-const renderModal = () =>
-  render(
+const renderModal = ({ tableOverrides = {}, actionOverrides = {}, onUpdated = vi.fn() } = {}) => {
+  const currentTable = { ...table, ...tableOverrides };
+
+  return render(
     <TableActionsLiteModal
       open
-      table={table}
+      table={currentTable}
       restaurantId={restaurantId}
       floors={[{ id: "floor-1", level: 1, name: "Tầng 1" }]}
       tables={[
-        table,
+        currentTable,
         {
           id: "table-a2",
           code: "A2",
@@ -99,11 +101,13 @@ const renderModal = () =>
         deleteTable: vi.fn(),
         fetchTableByCode: vi.fn(),
         getIdFromLevel: vi.fn(),
+        ...actionOverrides,
       }}
-      onUpdated={vi.fn()}
+      onUpdated={onUpdated}
       onClose={vi.fn()}
     />,
   );
+};
 
 describe("TableActionsLiteModal", () => {
   beforeEach(() => {
@@ -150,5 +154,50 @@ describe("TableActionsLiteModal", () => {
     ]);
     expect(payload.tables.map((item) => item.code)).toEqual(["A2"]);
     expect(await screen.findByText("Nên ghép với bàn A2.")).toBeInTheDocument();
+  });
+
+  it("saves table type and every persisted detail field on the table document", async () => {
+    const updateTable = vi.fn().mockResolvedValue({});
+    const onUpdated = vi.fn().mockResolvedValue();
+
+    renderModal({
+      tableOverrides: {
+        tags: ["VIP", "Yên tĩnh"],
+        vrUrl: "https://example.com/table-a1",
+        deposit: 200000,
+        promotionIds: ["promo-1"],
+        bookingPerks: ["Tặng nước"],
+        zone: "Sảnh VIP",
+        reservationHoldMinutes: 15,
+        minSpend: 500000,
+        cancelPolicy: "Hủy trước 2 giờ để được hoàn cọc.",
+      },
+      actionOverrides: { updateTable },
+      onUpdated,
+    });
+
+    const typeSelect = screen.getByText("Loại bàn").parentElement.querySelector("select");
+    fireEvent.change(typeSelect, { target: { value: "vip" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    await waitFor(() =>
+      expect(updateTable).toHaveBeenCalledWith({
+        id: "table-a1",
+        code: "A1",
+        capacity: 4,
+        type: "vip",
+        tags: ["VIP", "Yên tĩnh"],
+        vrUrl: "https://example.com/table-a1",
+        deposit: 200000,
+        promotionIds: ["promo-1"],
+        bookingPerks: ["Tặng nước"],
+        zone: "Sảnh VIP",
+        reservationHoldMinutes: 15,
+        minSpend: 500000,
+        cancelPolicy: "Hủy trước 2 giờ để được hoàn cọc.",
+      }),
+    );
+    expect(onUpdated).toHaveBeenCalled();
+    expect(mocks.clearDraft).toHaveBeenCalled();
   });
 });
