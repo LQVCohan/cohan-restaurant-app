@@ -2,6 +2,8 @@
 import mongoose from "mongoose";
 import BaseSchemaModel from "./baseSchemaModel.js";
 
+const isFiniteNumber = (value) => Number.isFinite(Number(value));
+
 const BatchSchema = new mongoose.Schema(
   {
     lot: { type: String },
@@ -10,8 +12,8 @@ const BatchSchema = new mongoose.Schema(
       required: true,
       min: 0,
       validate: {
-        validator: Number.isInteger,
-        message: "Batch.qty must be an integer in ingredient.baseUnit",
+        validator: isFiniteNumber,
+        message: "Batch.qty must be a finite number in the item base unit",
       },
     },
     expiry: { type: Date },
@@ -47,16 +49,16 @@ const StockItemSchema = BaseSchemaModel({
     type: Number,
     default: 0,
     validate: {
-      validator: Number.isInteger,
-      message: "onHand must be an integer in ingredient.baseUnit",
+      validator: isFiniteNumber,
+      message: "onHand must be a finite number in the item base unit",
     },
   },
   reserved: {
     type: Number,
     default: 0,
     validate: {
-      validator: Number.isInteger,
-      message: "reserved must be an integer in ingredient.baseUnit",
+      validator: isFiniteNumber,
+      message: "reserved must be a finite number in the item base unit",
     },
   },
 
