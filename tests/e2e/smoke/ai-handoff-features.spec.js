@@ -145,6 +145,7 @@ function buildHandoffGraphqlData(operationName, variables, mode) {
       return { me: MANAGER_USER };
 
     case "GetRestaurants":
+    case "AuthBusinessContext":
     case "ScopedRestaurants":
       return {
         refRestaurants: [],
