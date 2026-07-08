@@ -3,242 +3,115 @@ name: ci
 on:
   pull_request:
     branches: [main, develop]
+  push:
+    branches: [main, develop]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  finalize-customer-promotion:
+  frontend:
+    name: frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: .
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cohan-restaurant-backend/package-lock.json
 
-      - name: Apply deterministic cleanup
-        shell: bash
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install backend schema dependencies
+        run: npm --prefix cohan-restaurant-backend ci
+
+      - name: Check unresolved conflict markers
+        run: npm run check:conflicts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Test Menu RBAC
+        run: npm run test:menu-rbac --if-present
+
+      - name: Component tests for changed code
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          python <<'PY'
-          from pathlib import Path
-          from textwrap import dedent
+          TEST_BASE="$(git merge-base HEAD "origin/${BASE_REF}")"
+          echo "Running component tests for changes since ${TEST_BASE} (origin/${BASE_REF})"
+          timeout --signal=TERM --kill-after=30s 15m \
+            npm run test:component -- \
+            --changed "${TEST_BASE}" \
+            --detectAsyncLeaks \
+            --maxWorkers=2
 
-          def read(path):
-              return Path(path).read_text(encoding="utf-8")
+      - name: Full component tests
+        if: github.event_name != 'pull_request'
+        run: >-
+          timeout --signal=TERM --kill-after=30s 30m
+          npm run test:component --
+          --detectAsyncLeaks
+          --maxWorkers=2
 
-          def write(path, content):
-              Path(path).write_text(content, encoding="utf-8")
+      - name: Build
+        run: npm run build
 
-          def lines(*items):
-              return "\n".join(items)
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
-          invitation = "cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js"
-          text = read(invitation)
-          start = text.index("        const currentAccountRole = roleName(user);")
-          end = text.index('\n\n        if (membership.role === "manager") {', start)
-          account_block = lines(
-              "        const currentAccountRole = roleName(user);",
-              "        const promotesCustomer =",
-              '          user.userType === "CUSTOMER" && currentAccountRole === "customer";',
-              "        const isManagerAccount =",
-              '          user.userType === "MANAGER" && currentAccountRole === "manager";',
-              "        if (!promotesCustomer && !isManagerAccount) {",
-              "          throw bad(",
-              '            "Lời mời chỉ có thể được xác nhận bởi tài khoản Customer hoặc Manager hợp lệ.",',
-              "          );",
-              "        }",
-          )
-          text = text[:start] + account_block + text[end:]
+      - name: Smoke tests
+        run: npm run test:smoke
 
-          promotion_start = text.index("        if (promotesCustomer) {", end)
-          promotion_end = text.index('\n\n        membership.status = "active";', promotion_start)
-          promotion_block = lines(
-              "        if (promotesCustomer) {",
-              "          await promoteCustomerAccountToManager({ userId: user._id, session });",
-              "        }",
-          )
-          text = text[:promotion_start] + promotion_block + text[promotion_end:]
-          write(invitation, text)
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cohan-restaurant-backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-          ui = "src/components/Dashboard_Manager/Brand/BrandManagement.jsx"
-          text = read(ui)
-          start = text.index("  const rawCandidates = candidateSearchReady")
-          end = text.index("  const assignedManagerByRestaurant", start)
-          candidate_block = lines(
-              "  const rawCandidates = candidateSearchReady",
-              "    ? candidateData?.brandMemberCandidates || []",
-              "    : [];",
-              "  const candidates = rawCandidates.filter((candidate) =>",
-              '    member.role === "staff"',
-              '      ? candidate.userType !== "CUSTOMER"',
-              '      : ["CUSTOMER", "MANAGER"].includes(candidate.userType),',
-              "  );",
-              "  const selectedCandidate = candidates.find(",
-              "    (candidate) => String(candidate.id) === String(member.userId),",
-              "  );",
-              "",
-          )
-          text = text[:start] + candidate_block + text[end:]
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cohan-restaurant-backend/package-lock.json
 
-          picker_start_marker = lines(
-              "                    <small",
-              '                      className={candidateQueryError ? "brand-field__error" : undefined}',
-              "                    >",
-          )
-          picker_end_marker = lines(
-              '                <label className="brand-field">',
-              "                  <span>Vai trò trong chuỗi</span>",
-          )
-          start = text.index(picker_start_marker)
-          end = text.index(picker_end_marker, start)
-          picker_block = lines(
-              "                    <small",
-              '                      className={candidateQueryError ? "brand-field__error" : undefined}',
-              "                    >",
-              "                      {candidateQueryError",
-              '                        ? "Không thể tìm tài khoản. Vui lòng thử lại."',
-              "                        : selectedCandidate",
-              "                          ? `Đã chọn: ${getCandidateLabel(selectedCandidate)}`",
-              "                          : candidateSearch.trim().length < 2",
-              '                            ? "Nhập ít nhất 2 ký tự để tìm."',
-              "                            : candidatesLoading",
-              '                              ? "Đang tìm tài khoản phù hợp..."',
-              "                              : candidates.length",
-              "                                ? `${candidates.length} tài khoản có thể thêm.`",
-              '                                : "Không tìm thấy tài khoản chưa thuộc chuỗi."}',
-              "                    </small>",
-              "                  </label>",
-              '                  {selectedCandidate?.userType === "CUSTOMER" && member.role !== "staff" && (',
-              '                    <div className="brand-scope-note">',
-              "                      <strong>Tài khoản khách hàng hiện có</strong>",
-              "                      <span>",
-              "                        Quyền chỉ chuyển sang Manager sau khi người này xác nhận lời mời qua email.",
-              "                      </span>",
-              "                    </div>",
-              "                  )}",
-              "                </div>",
-              "",
-              '                <label className="brand-field">',
-              "                  <span>Vai trò trong chuỗi</span>",
-          )
-          text = text[:start] + picker_block + text[end + len(picker_end_marker):]
+      - name: Install dependencies
+        run: npm ci
 
-          button_start = text.index("                  {addingMember")
-          button_end = text.index("\n                </button>", button_start)
-          button_block = lines(
-              "                  {addingMember",
-              '                    ? member.role === "staff"',
-              '                      ? "Đang thêm..."',
-              '                      : "Đang gửi..."',
-              '                    : member.role === "staff"',
-              '                      ? "Thêm thành viên"',
-              '                      : "Gửi lời mời"}',
-          )
-          text = text[:button_start] + button_block + text[button_end:]
-          write(ui, text)
+      - name: Lint
+        run: npm run lint --if-present
 
-          frontend_test = "src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx"
-          text = read(frontend_test)
-          if 'id: "u-customer"' not in text:
-              manager_fixture = lines(
-                  "  {",
-                  '    id: "u-new-manager",',
-                  '    fullName: "Lê Thu Lan",',
-                  '    username: "thu.lan",',
-                  '    email: "lan@cohan.vn",',
-                  '    userType: "MANAGER",',
-                  '    status: "active",',
-                  "  },",
-              )
-              customer_fixture = manager_fixture + "\n" + lines(
-                  "  {",
-                  '    id: "u-customer",',
-                  '    fullName: "Phạm Minh Khôi",',
-                  '    username: "minh.khoi",',
-                  '    email: "khoi@example.com",',
-                  '    userType: "CUSTOMER",',
-                  '    status: "active",',
-                  "  },",
-              )
-              if text.count(manager_fixture) != 1:
-                  raise RuntimeError("Manager fixture anchor not found")
-              text = text.replace(manager_fixture, customer_fixture, 1)
+      - name: Test
+        run: npm run test --if-present
 
-          text = text.replace(
-              'data: { addBrandMember: { id: "m3", role: "manager", status: "active" } },',
-              'data: { addBrandMember: { id: "m3", role: "manager", status: "invited" } },',
-              1,
-          )
+      - name: Test Menu RBAC
+        run: npm run test:menu-rbac --if-present
 
-          if "shows that an existing Customer is promoted only after accepting the email" not in text:
-              customer_test = dedent('''
-                it("shows that an existing Customer is promoted only after accepting the email", async () => {
-                  render(<BrandManagement />);
-
-                  fireEvent.change(
-                    screen.getByLabelText("Tìm người cần thêm theo tên, email hoặc mã tài khoản"),
-                    { target: { value: "Phạm Minh Khôi" } },
-                  );
-                  const accountSelect = screen.getByLabelText("Chọn tài khoản cần thêm");
-                  await waitFor(() => expect(accountSelect).not.toBeDisabled());
-                  fireEvent.change(accountSelect, { target: { value: "u-customer" } });
-
-                  expect(screen.getByText("Tài khoản khách hàng hiện có")).toBeInTheDocument();
-                  expect(screen.getByText(/Quyền chỉ chuyển sang Manager/)).toBeInTheDocument();
-
-                  fireEvent.change(screen.getByLabelText("Chi nhánh phụ trách"), {
-                    target: { value: "r2" },
-                  });
-                  fireEvent.click(screen.getByRole("button", { name: "Gửi lời mời" }));
-
-                  await waitFor(() => expect(addMemberMock).toHaveBeenCalledTimes(1));
-                  expect(addMemberMock.mock.calls[0][0].variables.input).toEqual({
-                    brandId: "b1",
-                    userId: "u-customer",
-                    role: "manager",
-                    restaurantIds: ["r2"],
-                  });
-                  expect(message.success).toHaveBeenCalledWith("Đã gửi lời mời tham gia chuỗi");
-                });
-
-              ''')
-              anchor = '  it("clears a stale selected account when the candidate search changes", async () => {'
-              if text.count(anchor) != 1:
-                  raise RuntimeError("Customer UI test anchor not found")
-              text = text.replace(anchor, customer_test + anchor, 1)
-          write(frontend_test, text)
-          PY
-
-      - name: Install dependencies without changing lockfiles
-        run: |
-          npm install --no-package-lock
-          npm --prefix cohan-restaurant-backend install --no-package-lock
-
-      - name: Validate focused flow
-        run: |
-          node --check cohan-restaurant-backend/graphql/resolvers/brand/memberRoleConsistency.js
-          node --check cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js
-          node --check cohan-restaurant-backend/graphql/resolvers/brand/index.js
-          npm --prefix cohan-restaurant-backend test -- tests/resolvers/brand-member-invitation-guards.test.js
-          npm run check:graphql
-          npx vitest run src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx
-          npm run build
-
-      - name: Commit validated changes and restore workflow
-        shell: bash
-        run: |
-          rm -f .github/workflows/temp-finalize-customer-promotion.yml
-          git show HEAD^:.github/workflows/ci.yml > .github/workflows/ci.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "test: finalize invited Customer promotion flow"
-          git push origin HEAD:${{ github.head_ref }}
+      - name: Build
+        run: npm run build --if-present

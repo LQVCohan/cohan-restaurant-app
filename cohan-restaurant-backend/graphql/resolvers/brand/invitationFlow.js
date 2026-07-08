@@ -501,13 +501,13 @@ const Mutation = {
 
         const currentAccountRole = roleName(user);
         const promotesCustomer =
-user.userType === "CUSTOMER" && currentAccountRole === "customer";
+          user.userType === "CUSTOMER" && currentAccountRole === "customer";
         const isManagerAccount =
-user.userType === "MANAGER" && currentAccountRole === "manager";
+          user.userType === "MANAGER" && currentAccountRole === "manager";
         if (!promotesCustomer && !isManagerAccount) {
-throw bad(
-  "Lời mời chỉ có thể được xác nhận bởi tài khoản Customer hoặc Manager hợp lệ.",
-);
+          throw bad(
+            "Lời mời chỉ có thể được xác nhận bởi tài khoản Customer hoặc Manager hợp lệ.",
+          );
         }
 
         if (membership.role === "manager") {
@@ -538,7 +538,7 @@ throw bad(
         await user.save({ session });
 
         if (promotesCustomer) {
-await promoteCustomerAccountToManager({ userId: user._id, session });
+          await promoteCustomerAccountToManager({ userId: user._id, session });
         }
 
         membership.status = "active";

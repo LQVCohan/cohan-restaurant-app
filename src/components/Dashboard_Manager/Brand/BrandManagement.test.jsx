@@ -99,6 +99,14 @@ const memberCandidates = [
     userType: "MANAGER",
     status: "active",
   },
+  {
+    id: "u-customer",
+    fullName: "Phạm Minh Khôi",
+    username: "minh.khoi",
+    email: "khoi@example.com",
+    userType: "CUSTOMER",
+    status: "active",
+  },
 ];
 
 const setSelectedBrandIdMock = vi.fn();
@@ -123,7 +131,7 @@ beforeEach(() => {
     data: { createRestaurant: { id: "r3", name: "Cohan Nguyễn Huệ", brandId: "b1" } },
   });
   addMemberMock.mockResolvedValue({
-    data: { addBrandMember: { id: "m3", role: "manager", status: "active" } },
+    data: { addBrandMember: { id: "m3", role: "manager", status: "invited" } },
   });
   updateMemberMock.mockResolvedValue({
     data: { updateBrandMember: { id: "m1", role: "manager", status: "inactive" } },
@@ -297,6 +305,36 @@ describe("BrandManagement", () => {
     });
     expect(refetchMembersMock).toHaveBeenCalledTimes(1);
   });
+
+
+it("shows that an existing Customer is promoted only after accepting the email", async () => {
+  render(<BrandManagement />);
+
+  fireEvent.change(
+    screen.getByLabelText("Tìm người cần thêm theo tên, email hoặc mã tài khoản"),
+    { target: { value: "Phạm Minh Khôi" } },
+  );
+  const accountSelect = screen.getByLabelText("Chọn tài khoản cần thêm");
+  await waitFor(() => expect(accountSelect).not.toBeDisabled());
+  fireEvent.change(accountSelect, { target: { value: "u-customer" } });
+
+  expect(screen.getByText("Tài khoản khách hàng hiện có")).toBeInTheDocument();
+  expect(screen.getByText(/Quyền chỉ chuyển sang Manager/)).toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText("Chi nhánh phụ trách"), {
+    target: { value: "r2" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Gửi lời mời" }));
+
+  await waitFor(() => expect(addMemberMock).toHaveBeenCalledTimes(1));
+  expect(addMemberMock.mock.calls[0][0].variables.input).toEqual({
+    brandId: "b1",
+    userId: "u-customer",
+    role: "manager",
+    restaurantIds: ["r2"],
+  });
+  expect(message.success).toHaveBeenCalledWith("Đã gửi lời mời tham gia chuỗi");
+});
 
   it("clears a stale selected account when the candidate search changes", async () => {
     render(<BrandManagement />);

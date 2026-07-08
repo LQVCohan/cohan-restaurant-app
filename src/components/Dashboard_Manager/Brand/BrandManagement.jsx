@@ -296,14 +296,14 @@ export default function BrandManagement() {
   const members = memberData?.brandMembers || [];
   const restaurants = selectedBrand?.restaurants || [];
   const rawCandidates = candidateSearchReady
-  ? candidateData?.brandMemberCandidates || []
-  : [];
-const candidates = rawCandidates.filter((candidate) =>
-  member.role === "staff"
-    ? candidate.userType !== "CUSTOMER"
-    : ["CUSTOMER", "MANAGER"].includes(candidate.userType),
-);
-const selectedCandidate = candidates.find(
+    ? candidateData?.brandMemberCandidates || []
+    : [];
+  const candidates = rawCandidates.filter((candidate) =>
+    member.role === "staff"
+      ? candidate.userType !== "CUSTOMER"
+      : ["CUSTOMER", "MANAGER"].includes(candidate.userType),
+  );
+  const selectedCandidate = candidates.find(
     (candidate) => String(candidate.id) === String(member.userId),
   );
   const assignedManagerByRestaurant = useMemo(
@@ -933,15 +933,19 @@ const selectedCandidate = candidates.find(
                             : candidatesLoading
                               ? "Đang tìm tài khoản phù hợp..."
                               : candidates.length
-                                ? `${candidates.length} tài khoản có thể thêm.`
-{selectedCandidate?.userType === "CUSTOMER" && member.role !== "staff" && (
-  <div className="brand-scope-note">
-    <strong>Tài khoản khách hàng hiện có</strong>
-    <span>
-      Quyền chỉ chuyển sang Manager sau khi người này xác nhận lời mời qua email.
-    </span>
-  </div>
-)}
+                                ? `${candidates.length} tài khoản có thể thêm.`
+                                : "Không tìm thấy tài khoản chưa thuộc chuỗi."}
+                    </small>
+                  </label>
+                  {selectedCandidate?.userType === "CUSTOMER" && member.role !== "staff" && (
+                    <div className="brand-scope-note">
+                      <strong>Tài khoản khách hàng hiện có</strong>
+                      <span>
+                        Quyền chỉ chuyển sang Manager sau khi người này xác nhận lời mời qua email.
+                      </span>
+                    </div>
+                  )}
+                </div>
 
                 <label className="brand-field">
                   <span>Vai trò trong chuỗi</span>
@@ -973,8 +977,12 @@ const selectedCandidate = candidates.find(
                   disabled={addingMember}
                 >
                   {addingMember
-                    ? member.role === "staff" ? "Đang thêm..." : "Đang gửi..."
-                    : member.role === "staff" ? "Thêm thành viên" : "Gửi lời mời"}
+                    ? member.role === "staff"
+                      ? "Đang thêm..."
+                      : "Đang gửi..."
+                    : member.role === "staff"
+                      ? "Thêm thành viên"
+                      : "Gửi lời mời"}
                 </button>
               </div>
 
