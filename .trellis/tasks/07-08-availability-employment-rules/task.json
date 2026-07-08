@@ -1,7 +1,7 @@
 {
   "id": "07-08-availability-employment-rules",
   "title": "Validate availability by employment policy",
-  "status": "in_progress",
+  "status": "ready_for_review",
   "priority": "high",
   "branch": "fix-availability-employment-rules"
 }
