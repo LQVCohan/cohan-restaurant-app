@@ -1,0 +1,35 @@
+{
+  "id": "07-08-restaurant-default-warehouse",
+  "name": "restaurant-default-warehouse",
+  "title": "Create a default warehouse with every restaurant",
+  "description": "Make restaurant creation atomically create its first warehouse and give legacy restaurants a focused warehouse setup state in the manager inventory UI.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "restaurant-inventory",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "fix/restaurant-default-warehouse",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js",
+    "cohan-restaurant-backend/tests/resolvers/restaurant-mutation-access.test.js",
+    "src/components/Dashboard_Manager/Storage/graphql/inventory.gql.js",
+    "src/components/Dashboard_Manager/Storage/StorageManagement.jsx",
+    "src/components/Dashboard_Manager/Storage/StorageManagement.scss",
+    "src/components/Dashboard_Manager/Storage/StorageManagement.test.jsx"
+  ],
+  "notes": "Flow traced from Restaurant and Warehouse models through createRestaurant/createWarehouse, Apollo warehouse operations, StorageManagement and Header. The creation invariant is missing at the restaurant mutation boundary; the UI also has no recovery path when a legacy restaurant has zero warehouses.",
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "taste-ui-redesign",
+      "redesign-existing-projects"
+    ]
+  }
+}
