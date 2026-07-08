@@ -22,6 +22,7 @@ export { default as Supply } from "./supply.model.js";
 export { default as SupplyCategory } from "./supply-category.model.js";
 export { default as StockMovement } from "./stock-movement.model.js";
 export { default as StockItem } from "./stockItem.model.js";
+export { default as InventoryCount } from "./inventory-count.model.js";
 export { default as Supplier } from "./supplier.model.js";
 export { default as SupplierPayable } from "./supplier-payable.model.js";
 export { default as Reservation } from "./reservation.model.js";
@@ -40,10 +41,10 @@ export { default as AuthProviderLink } from "./auth-provider-link.model.js";
 export { default as RefreshToken } from "./refresh-token.model.js";
 export { default as Promotion } from "./promotion.model.js";
 export { default as EventPackage } from "./event-package.model.js";
-export { default as TableEvent } from "./table-event.model.js";
+export { default as TableEvent } from "./table_event.model.js";
 export { default as Coupon } from "./coupon.model.js";
 export { default as CouponRedemption } from "./coupon-redemption.model.js";
-export { default as UserCoupon } from "./user-coupon.model.js";
+export { default as UserCoupon } from "./user_coupon.model.js";
 export { default as VoucherPackage } from "./voucher-package.model.js";
 export { default as Shift } from "./shift.model.js";
 export { default as Timesheet } from "./timesheet.model.js";
@@ -123,5 +124,5 @@ export { default as AiChatbotKnowledgeSuggestion } from "./ai-chatbot-knowledge-
 
 export { default as AiChatbotAnswerFeedback } from "./ai-chatbot-answer-feedback.model.js";
 
-export { default as AiChatbotSafetyRule } from "./ai-chatbot-safety-rule.model.js";
-export { default as AiChatbotEvaluationCase } from "./ai-chatbot-evaluation-case.model.js";
+export { default as AiChatbotSafetyRule } from "./ai-chatbotSafetyRule.model.js";
+export { default as AiChatbotEvaluationCase } from "./ai-chatbotEvaluationCase.model.js";
