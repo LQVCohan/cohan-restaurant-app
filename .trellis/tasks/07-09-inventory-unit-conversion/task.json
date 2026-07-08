@@ -3,17 +3,17 @@
   "name": "inventory-unit-conversion",
   "title": "Normalize inventory modal quantities to ingredient base units",
   "description": "Use one bidirectional conversion path across stock receipt and recipe modals, preserve decimal quantities, and keep stock mutations aligned with ingredient base units.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack",
   "scope": "inventory-units",
   "priority": "P1",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-09",
-  "completedAt": null,
+  "completedAt": "2026-07-09",
   "branch": "fix/inventory-unit-conversion",
   "base_branch": "main",
-  "commit": "01ceecbb2e4f89667753c5701c8cc2e97bf9e5fa",
+  "commit": "ce505e7fc32bffecccfc0db6814141605bd05c55",
   "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1309",
   "relatedFiles": [
     "src/utils/unitConversion.js",
@@ -31,7 +31,7 @@
     "cohan-restaurant-backend/src/services/inventory.service.js",
     "cohan-restaurant-backend/tests/models/stock-item-decimal-quantity.test.js"
   ],
-  "notes": "Flow traced from Ingredient/StockItem schemas through inventory stock resolvers and inventory.service, Apollo mutations/useIngredients, QuickStockModal/RecipeModal, supply receipt, and the low-stock receipt action.",
+  "notes": "Flow traced end to end. Backend/frontend lint, unit tests, changed component tests, builds, Menu RBAC checks and smoke tests passed in PR CI run 6922.",
   "meta": {
     "skills": [
       "ponytail",
