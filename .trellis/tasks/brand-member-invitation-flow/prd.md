@@ -2,7 +2,7 @@
 
 ## Problem
 
-Business-owner registration currently activates and signs in the account immediately. The Brand screen can only attach an already compatible account by user ID, so a public Customer account cannot become a Brand administrator or branch manager through the intended flow.
+Business-owner registration currently activates and signs in the account immediately. The Brand screen can only attach an already compatible account by user ID, so a public Customer account cannot become a Brand administrator or branch manager through the intended flow. Brand access also needs an auditable removal path that does not delete the User or silently damage access to other Brands.
 
 ## Scope
 
@@ -12,6 +12,7 @@ Business-owner registration currently activates and signs in the account immedia
 - Existing Manager accounts and public Customer accounts can be invited.
 - A new manager-capable account can be created in `pending` state from an invitation email.
 - Accepting an invitation activates the membership; an existing Customer is promoted to global Manager only at that point, while a new account is verified and receives its chosen password.
+- Brand access is revoked by deactivating `BrandMembership`, retaining the User account and historical data.
 - Employee/staff creation and occupational roles are not changed.
 
 ## Invariants
@@ -24,6 +25,9 @@ Business-owner registration currently activates and signs in the account immedia
 - An active branch manager remains unique per restaurant.
 - Invitation tokens are stored as hashes, expire, and are single-use.
 - Brand membership is the relationship source of truth; no member array is added to Brand.
+- Revoking one membership never automatically changes the global User role or `userType`.
+- A Brand owner cannot be revoked; ownership must be transferred first.
+- A user cannot revoke their own active Brand membership.
 
 ## Flow
 
@@ -44,6 +48,15 @@ Business-owner registration currently activates and signs in the account immedia
 5. New account supplies a password; an existing Customer or Manager confirms the invitation.
 6. Backend verifies the token, promotes an existing Customer to global Manager only after confirmation, then activates the membership and activates/verifies a new account.
 
+### Brand access revocation
+
+1. An authorized actor revokes a non-owner membership.
+2. Backend changes only the membership to `inactive` and records `revokedAt`, `revokedBy`, `revokedReason`, and `revokedFromStatus`.
+3. If the membership was still `invited`, the invitation token and expiry are cleared immediately.
+4. The User account, global role, `userType`, and historical data remain unchanged.
+5. A previously accepted inactive membership may be restored after compatibility checks.
+6. A cancelled invitation cannot be activated directly; a new invitation must be issued.
+
 ## Validation
 
 - Allow Customer accounts for Brand admin/manager invitations but do not promote them before acceptance; reject operational Staff, HR, Accountant, and System Admin accounts.
@@ -51,6 +64,8 @@ Business-owner registration currently activates and signs in the account immedia
 - Reject manager invitation without exactly one Brand restaurant.
 - Reject an invitation that would replace an active manager implicitly.
 - Reject expired, invalid, or already-used invitation tokens.
+- Reject owner revocation, self-revocation, and Brand-admin revocation by a non-owner Brand administrator.
+- Reject a revocation reason longer than 500 characters.
 
 ## Tests
 
@@ -60,3 +75,5 @@ Business-owner registration currently activates and signs in the account immedia
 - New invited user is pending and becomes active after acceptance/password setup.
 - Existing compatible user becomes an active member after acceptance.
 - Existing Customer promotion occurs only on acceptance; operational-role incompatibility and manager-scope conflicts remain blocked.
+- Revoking access records audit data, invalidates invitation tokens, and does not update the User account.
+- Cancelled invitations cannot be activated directly.
