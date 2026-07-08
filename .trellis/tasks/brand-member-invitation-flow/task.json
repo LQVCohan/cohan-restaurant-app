@@ -3,7 +3,7 @@
   "name": "brand-member-invitation-flow",
   "title": "Add verified business-owner and Brand member invitation flow",
   "description": "Require email verification for new business owners and let Brand owners/admins invite Brand administrators or branch managers without changing the separate employee-creation workflow.",
-  "status": "in_progress",
+  "status": "review",
   "dev_type": "fullstack",
   "scope": "brand-owner-verification-and-member-invitations",
   "package": null,
@@ -15,8 +15,8 @@
   "branch": "feature/brand-member-invitation-flow",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": null,
+  "commit": "91b3cc3fdee2b8eeef1c9230e63c2af01e8b5c2e",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1275",
   "subtasks": [],
   "children": [],
   "parent": null,
@@ -25,9 +25,11 @@
     "cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js",
     "cohan-restaurant-backend/graphql/resolvers/brand/memberRoleConsistency.js",
     "cohan-restaurant-backend/models/brandMembership.model.js",
-    "src/pages/VerifyAccountConfirm.jsx"
+    "cohan-restaurant-backend/tests/resolvers/brand-member-invitation-guards.test.js",
+    "src/pages/VerifyAccountConfirm.jsx",
+    "src/pages/BrandInvitationAccept.css"
   ],
-  "notes": "Employee/staff account creation is explicitly out of scope because it is being implemented separately.",
+  "notes": "Employee/staff account creation is explicitly out of scope because it is being implemented separately. Targeted syntax, GraphQL, focused invitation tests and frontend build passed in temporary validation commit 3709da87f872e1ddd4231a469184637211275be9. Repository CI remains blocked before tests by the pre-existing backend package.json/package-lock dependency mismatch.",
   "meta": {
     "skills": ["ponytail", "taste-ui-redesign", "redesign-existing-projects"]
   }
