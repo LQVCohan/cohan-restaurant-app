@@ -13,6 +13,7 @@ import { withOrderRestaurantAccessGuards } from "./accessGuard.js";
 import { OrderResolvers } from "./types.js";
 import { OrderSubscription } from "./subscription.js";
 import { withMergedTableOrderLifecycle } from "./mergedTableLifecycle.js";
+import { withTableCustomerOrderLifecycle } from "./tableCustomerOrderLifecycle.js";
 import { withTablePaymentRequestLifecycle } from "./tablePaymentRequestLifecycle.js";
 import { withOrderConflictHardening } from "./orderConflictHardening.js";
 import { withCheckoutIdempotency } from "./checkoutIdempotency.js";
@@ -22,8 +23,11 @@ const PaymentGuardedOrderMutation = {
   ...OrderMutation,
   ...CustomerTrackingPaymentMutation,
 };
-const MergedTableOrderMutation = withMergedTableOrderLifecycle(
+const TableCustomerOrderMutation = withTableCustomerOrderLifecycle(
   PaymentGuardedOrderMutation,
+);
+const MergedTableOrderMutation = withMergedTableOrderLifecycle(
+  TableCustomerOrderMutation,
 );
 const LifecycleOrderMutation = withTablePaymentRequestLifecycle(
   MergedTableOrderMutation,
