@@ -1,18 +1,18 @@
-import React, { useState, useMemo, useEffect, useContext } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
-import MenuItemCard from "./MenuItemCard";
-import { useActiveMenuPromotions } from "../../../../hooks/useActiveMenuPromotions";
-import { shouldShowMenuItemToCustomer } from "../../../../utils/menuItemAvailability";
 import { AuthContext } from "../../../../context/AuthContext";
 import useFoodPreferences from "../../../../hooks/useFoodPreferences";
+import { useActiveMenuPromotions } from "../../../../hooks/useActiveMenuPromotions";
 import {
   analyzeMenuItemForFoodPreferences,
-  sortMenuItemsByFoodPreference,
   hasMeaningfulFoodPreferences,
+  sortMenuItemsByFoodPreference,
 } from "../../../../utils/foodPreferenceMatcher";
-import "../styles/MenuDetailView.scss";
 import { buildFoodDetailState } from "../../../../utils/customerFoodNavigation";
 import { getCannotOrderReason } from "../../../../utils/restaurantStatus";
+import { shouldShowMenuItemToCustomer } from "../../../../utils/menuItemAvailability";
+import MenuItemCard from "./MenuItemCard";
+import "../styles/MenuDetailView.scss";
 
 export const GET_CATEGORIES = gql`
   query GetCategoriesForCustomerMenu($restaurantId: ID!, $timeSlot: TimeSlot!) {
@@ -28,7 +28,7 @@ export const GET_CATEGORIES = gql`
 export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
   query GetMenuItemsForCustomerMenu(
     $filter: MenuItemFilter!
-    $limit: Int = 100
+    $limit: Int = 24
     $cursor: ID
   ) {
     menuItemsConnection(limit: $limit, cursor: $cursor, filter: $filter) {
@@ -37,6 +37,7 @@ export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
         hasNextPage
       }
       edges {
+        cursor
         node {
           id
           restaurantId
@@ -45,13 +46,17 @@ export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
           name
           description
           basePrice
+          defaultServingKey
           hasByWeightVariant
           thumbImage
           status
           avgPrepTimeMin
           inventoryStatus
+          maxAvailable
           stockWarnings
           labels
+          foodType
+          meatTypes
           dietTags
           allergenTags
           tasteProfile {
@@ -69,14 +74,13 @@ export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
             sellUnit
             name
             price
+            isDefault
           }
         }
       }
     }
   }
 `;
-
-const ITEMS_PER_PAGE = 8;
 
 const TIME_SLOTS = [
   { id: "breakfast", label: "Bữa sáng", icon: "🍳" },
@@ -85,15 +89,29 @@ const TIME_SLOTS = [
   { id: "late_night", label: "Ăn đêm", icon: "🦉" },
 ];
 
-const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail }) => {
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [loadMoreError, setLoadMoreError] = useState("");
+const SORT_OPTIONS = [
+  { value: "default", label: "Mặc định" },
+  { value: "name_asc", label: "Tên A–Z" },
+  { value: "price_asc", label: "Giá thấp đến cao" },
+  { value: "price_desc", label: "Giá cao đến thấp" },
+];
+
+const MenuDetailView = ({
+  restaurant,
+  canOrder = true,
+  onBack,
+  onOpenFoodDetail,
+}) => {
   const [timeSlot, setTimeSlot] = useState("lunch");
   const [activeCat, setActiveCat] = useState("all");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [sort, setSort] = useState("default");
   const [viewMode, setViewMode] = useState("grid");
-  const [currentPage, setCurrentPage] = useState(1);
   const [prioritizeFoodPreferences, setPrioritizeFoodPreferences] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState("");
+
   const { isAuthenticated } = useContext(AuthContext);
   const { preferences } = useFoodPreferences({ skip: !isAuthenticated });
   const hasFoodPreferences = hasMeaningfulFoodPreferences(preferences);
@@ -101,153 +119,164 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
   const { getPromotionForMenuItem, getPromotionLabel } =
     useActiveMenuPromotions(restaurantId);
 
-  const { data: categoriesData, loading: categoriesLoading, error: categoriesError } =
-    useQuery(GET_CATEGORIES, {
-      variables: { restaurantId, timeSlot },
-      skip: !restaurantId,
-      fetchPolicy: "network-only",
-    });
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setActiveCat("all");
+  }, [timeSlot]);
+
+  const {
+    data: categoriesData,
+    loading: categoriesLoading,
+    error: categoriesError,
+  } = useQuery(GET_CATEGORIES, {
+    variables: { restaurantId, timeSlot },
+    skip: !restaurantId,
+    fetchPolicy: "cache-and-network",
+  });
 
   const categories = useMemo(
     () =>
       [...(categoriesData?.customerMenuCategories || [])]
-        .filter((cat) => cat?.id && cat.isActive !== false)
-        .sort((a, b) => (a.order || 0) - (b.order || 0)),
+        .filter((category) => category?.id && category.isActive !== false)
+        .sort((left, right) =>
+          (left.order || 0) - (right.order || 0) ||
+          String(left.name || "").localeCompare(String(right.name || ""), "vi"),
+        ),
     [categoriesData?.customerMenuCategories],
   );
-
-  useEffect(() => {
-    setActiveCat("all");
-    setCurrentPage(1);
-  }, [timeSlot]);
 
   const menuItemFilter = useMemo(
     () => ({
       restaurantId,
       timeSlot,
       ...(activeCat !== "all" ? { categoryId: activeCat } : {}),
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      sort,
     }),
-    [activeCat, restaurantId, timeSlot],
+    [activeCat, debouncedSearch, restaurantId, sort, timeSlot],
   );
 
-  const { data: menuData, loading: menuLoading, error: menuError, fetchMore } = useQuery(
-    GET_MENU_ITEMS_FOR_CUSTOMER_MENU,
-    {
-      variables: {
-        filter: menuItemFilter,
-        limit: 100,
-        cursor: null,
-      },
-      skip: !restaurantId,
-      fetchPolicy: "network-only",
-    },
-  );
+  const {
+    data: menuData,
+    loading: menuLoading,
+    error: menuError,
+    fetchMore,
+    refetch,
+  } = useQuery(GET_MENU_ITEMS_FOR_CUSTOMER_MENU, {
+    variables: { filter: menuItemFilter, limit: 24, cursor: null },
+    skip: !restaurantId,
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
+  });
 
-  const rawMenuItems = useMemo(() => {
-    const edges = menuData?.menuItemsConnection?.edges || [];
-    return edges.map((edge) => edge.node).filter(Boolean);
-  }, [menuData]);
-
-  const menuPageInfo = menuData?.menuItemsConnection?.pageInfo;
-
-  const itemsWithPromotion = useMemo(
+  const rawItems = useMemo(
     () =>
-      rawMenuItems.map((item) => {
-        const activePromotion = getPromotionForMenuItem(item);
+      (menuData?.menuItemsConnection?.edges || [])
+        .map((edge) => edge?.node)
+        .filter(Boolean),
+    [menuData?.menuItemsConnection?.edges],
+  );
+  const pageInfo = menuData?.menuItemsConnection?.pageInfo;
+
+  const visibleItems = useMemo(() => {
+    const withMetadata = rawItems
+      .filter(shouldShowMenuItemToCustomer)
+      .map((item) => {
+        const promotion = getPromotionForMenuItem(item);
         return {
           ...item,
-          promotion: activePromotion,
-          promotionLabel: getPromotionLabel(activePromotion),
+          promotion,
+          promotionLabel: getPromotionLabel(promotion),
+          foodPreferenceMeta:
+            isAuthenticated && hasFoodPreferences
+              ? analyzeMenuItemForFoodPreferences(item, preferences)
+              : null,
         };
-      }),
-    [getPromotionForMenuItem, getPromotionLabel, rawMenuItems],
-  );
+      });
 
-  const itemsWithFoodPreferenceMeta = useMemo(() => {
-    return itemsWithPromotion.map((item) => ({
-      ...item,
-      foodPreferenceMeta: isAuthenticated && hasFoodPreferences
-        ? analyzeMenuItemForFoodPreferences(item, preferences)
-        : null,
-    }));
-  }, [hasFoodPreferences, isAuthenticated, itemsWithPromotion, preferences]);
-
-  const filteredItems = useMemo(() => {
-    const lowerSearch = search.trim().toLowerCase();
-    const baseItems = itemsWithFoodPreferenceMeta.filter((item) => {
-      if (!shouldShowMenuItemToCustomer(item)) return false;
-      if (activeCat !== "all" && item.categoryId !== activeCat) return false;
-      if (!lowerSearch) return true;
-      return String(item.name || "").toLowerCase().includes(lowerSearch);
-    });
-
-    if (!isAuthenticated || !hasFoodPreferences || !prioritizeFoodPreferences) {
-      return baseItems;
+    if (
+      sort !== "default" ||
+      !isAuthenticated ||
+      !hasFoodPreferences ||
+      !prioritizeFoodPreferences
+    ) {
+      return withMetadata;
     }
-
-    return sortMenuItemsByFoodPreference(baseItems, preferences);
+    return sortMenuItemsByFoodPreference(withMetadata, preferences);
   }, [
-    activeCat,
-    isAuthenticated,
+    getPromotionForMenuItem,
+    getPromotionLabel,
     hasFoodPreferences,
-    itemsWithFoodPreferenceMeta,
+    isAuthenticated,
     preferences,
     prioritizeFoodPreferences,
-    search,
+    rawItems,
+    sort,
   ]);
 
-  const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
-  const currentItems = filteredItems.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
-  );
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [timeSlot, activeCat, search, rawMenuItems.length]);
-
   const handleLoadMore = async () => {
-    if (!menuPageInfo?.hasNextPage || !menuPageInfo?.endCursor || isLoadingMore) return;
-
+    if (!pageInfo?.hasNextPage || !pageInfo?.endCursor || isLoadingMore) return;
     setIsLoadingMore(true);
     setLoadMoreError("");
-
     try {
       await fetchMore({
         variables: {
           filter: menuItemFilter,
-          limit: 100,
-          cursor: menuPageInfo.endCursor,
+          limit: 24,
+          cursor: pageInfo.endCursor,
         },
-        updateQuery: (prev, { fetchMoreResult }) => {
-          if (!fetchMoreResult?.menuItemsConnection) return prev;
-
-          const prevEdges = prev?.menuItemsConnection?.edges || [];
-          const nextEdges = fetchMoreResult.menuItemsConnection.edges || [];
-          const seen = new Set(prevEdges.map((edge) => edge?.node?.id).filter(Boolean));
-          const merged = [...prevEdges, ...nextEdges.filter((edge) => !seen.has(edge?.node?.id))];
-
+        updateQuery: (previous, { fetchMoreResult }) => {
+          const nextConnection = fetchMoreResult?.menuItemsConnection;
+          if (!nextConnection) return previous;
+          const previousEdges = previous?.menuItemsConnection?.edges || [];
+          const seen = new Set(
+            previousEdges.map((edge) => edge?.node?.id).filter(Boolean),
+          );
           return {
             menuItemsConnection: {
-              ...fetchMoreResult.menuItemsConnection,
-              edges: merged,
-              __typename:
-                prev?.menuItemsConnection?.__typename ||
-                fetchMoreResult.menuItemsConnection.__typename,
+              ...nextConnection,
+              edges: [
+                ...previousEdges,
+                ...(nextConnection.edges || []).filter(
+                  (edge) => !seen.has(edge?.node?.id),
+                ),
+              ],
             },
           };
         },
       });
-    } catch (_error) {
+    } catch {
       setLoadMoreError("Không thể tải thêm món. Vui lòng thử lại.");
     } finally {
       setIsLoadingMore(false);
     }
   };
 
-  const isLoading = menuLoading || (categoriesLoading && activeCat !== "all");
-  const renderMenuSkeletons = () => (
-    <div className={`menu-grid ${viewMode === "list" ? "list-view" : ""}`} aria-hidden="true">
+  const openDetail = (item) => {
+    onOpenFoodDetail?.(
+      item?.id,
+      buildFoodDetailState(item, {
+        restaurantId: item?.restaurantId || restaurantId,
+        timeSlot,
+        categoryId: item?.categoryId || null,
+        selectedVariantKey:
+          item?.defaultServingKey ||
+          item?.servingVariants?.find((variant) => variant?.isDefault)?.key ||
+          item?.servingVariants?.[0]?.key ||
+          null,
+      }),
+    );
+  };
+
+  const renderSkeletons = () => (
+    <div
+      className={`menu-grid ${viewMode === "list" ? "list-view" : ""}`}
+      aria-hidden="true"
+    >
       {Array.from({ length: 8 }).map((_, index) => (
         <article className="menu-item-skeleton" key={index}>
           <div className="skeleton-thumb" />
@@ -269,24 +298,39 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
             <button type="button" onClick={onBack} className="back-btn">
               <span aria-hidden="true">←</span> Quay lại
             </button>
+
             <div className="restaurant-title-block">
               <p className="restaurant-kicker">Thực đơn theo khung giờ</p>
               <h2>{restaurant?.name || "Thực đơn"}</h2>
               <div className="restaurant-meta">
-                {restaurant?.rating && <span>★ {restaurant.rating}</span>}
-                <span>{canOrder ? "Đang nhận đơn" : "Tạm dừng nhận đơn"}</span>
-                {restaurant?.address && <span>{restaurant.address}</span>}
+                {restaurant?.rating ? <span>★ {restaurant.rating}</span> : null}
+                <span>{canOrder ? "Đang nhận đơn" : "Đang tạm ngưng nhận đơn"}</span>
+                {restaurant?.address ? <span>{restaurant.address}</span> : null}
               </div>
             </div>
+
             <div className="header-actions">
               <label className="search-box">
-                <span aria-hidden="true">🔍</span>
+                <span aria-hidden="true">⌕</span>
                 <input
-                  placeholder="Tìm món trong thực đơn"
+                  type="search"
+                  placeholder="Tìm theo tên hoặc mô tả món"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(event) => setSearch(event.target.value)}
                 />
               </label>
+
+              <label className="menu-sort-control">
+                <span>Sắp xếp</span>
+                <select value={sort} onChange={(event) => setSort(event.target.value)}>
+                  {SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
               <div className="view-toggle" aria-label="Chọn kiểu hiển thị món">
                 <button
                   type="button"
@@ -309,6 +353,7 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
               </div>
             </div>
           </div>
+
           <nav className="tabs-row" aria-label="Chọn bữa ăn">
             {TIME_SLOTS.map((slot) => (
               <button
@@ -318,31 +363,35 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
                 aria-pressed={timeSlot === slot.id}
                 onClick={() => setTimeSlot(slot.id)}
               >
-                <span aria-hidden="true">{slot.icon}</span>{slot.label}
+                <span aria-hidden="true">{slot.icon}</span>
+                {slot.label}
               </button>
             ))}
           </nav>
-          {isAuthenticated && hasFoodPreferences && (
+
+          {isAuthenticated && hasFoodPreferences ? (
             <label className="food-preference-toggle">
               <input
                 type="checkbox"
                 checked={prioritizeFoodPreferences}
-                onChange={(e) => setPrioritizeFoodPreferences(e.target.checked)}
+                onChange={(event) =>
+                  setPrioritizeFoodPreferences(event.target.checked)
+                }
               />
-              <span>Ưu tiên khẩu vị của tôi</span>
+              <span>Ưu tiên món phù hợp khẩu vị của tôi</span>
             </label>
-          )}
+          ) : null}
         </div>
       </header>
 
       <section className="grid-container menu-detail-container">
         <nav className="category-filter" aria-label="Danh mục món ăn">
           <div className="pills">
-            {categoriesError && (
+            {categoriesError ? (
               <div className="category-warning" role="status">
-                Không tải được danh mục. Đang hiển thị theo "Tất cả".
+                Không tải được danh mục. Đang hiển thị tất cả món.
               </div>
-            )}
+            ) : null}
             <button
               type="button"
               className={activeCat === "all" ? "active" : ""}
@@ -350,88 +399,74 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
             >
               Tất cả
             </button>
-            {categories.map((cat) => (
+            {categories.map((category) => (
               <button
                 type="button"
-                key={cat.id}
-                className={activeCat === cat.id ? "active" : ""}
-                onClick={() => setActiveCat(cat.id)}
+                key={category.id}
+                className={activeCat === category.id ? "active" : ""}
+                onClick={() => setActiveCat(category.id)}
               >
-                {cat.name}
+                {category.name}
               </button>
             ))}
           </div>
         </nav>
 
-        {!canOrder && (
-          <div className="menu-inline-note">
+        {!canOrder ? (
+          <div className="menu-inline-note" role="status">
+            <strong>Bạn vẫn có thể xem chi tiết và chọn món trước.</strong>{" "}
             {getCannotOrderReason(restaurant?.openingStatus)}
           </div>
-        )}
-        {isLoading ? (
-          renderMenuSkeletons()
+        ) : null}
+
+        {menuLoading && !rawItems.length ? (
+          renderSkeletons()
         ) : menuError ? (
           <div className="menu-state menu-state--error" role="alert">
             <span>!</span>
             <h3>Không thể tải thực đơn</h3>
-            <p>Vui lòng thử lại sau ít phút hoặc chọn khung giờ khác.</p>
+            <p>Vui lòng kiểm tra kết nối rồi thử lại.</p>
+            <button type="button" onClick={() => refetch?.()}>
+              Tải lại
+            </button>
           </div>
-        ) : filteredItems.length === 0 ? (
-          <div className="menu-state">
+        ) : !visibleItems.length ? (
+          <div className="menu-state" role="status">
             <span>🍜</span>
-            <h3>{search.trim() ? "Chưa tìm thấy món phù hợp" : "Chưa có món trong mục này"}</h3>
-            <p>{search.trim() ? "Thử từ khóa ngắn hơn hoặc đổi danh mục để xem thêm món đã tải." : "Đổi bữa ăn hoặc danh mục khác để khám phá các lựa chọn đang mở bán."}</p>
+            <h3>
+              {debouncedSearch
+                ? "Chưa tìm thấy món phù hợp"
+                : "Chưa có món trong mục này"}
+            </h3>
+            <p>
+              {debouncedSearch
+                ? "Thử từ khóa ngắn hơn, đổi danh mục hoặc khung giờ."
+                : "Đổi bữa ăn hoặc danh mục khác để xem thêm món."}
+            </p>
           </div>
         ) : (
           <>
-            {menuPageInfo?.hasNextPage && (
-              <div className="menu-inline-note">Đang hiển thị tối đa 100 món đầu tiên cho bộ lọc hiện tại.</div>
-            )}
-            {loadMoreError && <div className="menu-inline-error">{loadMoreError}</div>}
             <div
               className={`menu-grid ${viewMode === "list" ? "list-view" : ""}`}
+              aria-live="polite"
             >
-              {currentItems.map((item) => (
+              {visibleItems.map((item) => (
                 <MenuItemCard
                   key={item.id}
                   item={item}
                   disabled={!canOrder}
-                  onClick={(clickedItem) => {
-                    if (!canOrder) return;
-                    onOpenFoodDetail?.(
-                      clickedItem?.id,
-                      buildFoodDetailState(clickedItem, {
-                        restaurantId: clickedItem?.restaurantId || restaurantId,
-                        timeSlot,
-                        categoryId: clickedItem?.categoryId || null,
-                      }),
-                    );
-                  }}
+                  onClick={openDetail}
                 />
               ))}
             </div>
-            {totalPages > 1 && (
-              <div className="pagination">
-                <button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)} aria-label="Trang trước">
-                  &lt;
-                </button>
-                {Array.from({ length: totalPages }).map((_, idx) => (
-                  <button
-                    type="button"
-                    key={idx}
-                    className={currentPage === idx + 1 ? "active" : ""}
-                    aria-current={currentPage === idx + 1 ? "page" : undefined}
-                    onClick={() => setCurrentPage(idx + 1)}
-                  >
-                    {idx + 1}
-                  </button>
-                ))}
-                <button type="button" disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)} aria-label="Trang sau">
-                  &gt;
-                </button>
+
+            {loadMoreError ? (
+              <div className="menu-inline-error" role="alert">
+                {loadMoreError}
               </div>
-            )}
-            {menuPageInfo?.hasNextPage && (
+            ) : null}
+
+            {pageInfo?.hasNextPage ? (
               <div className="menu-load-more-wrap">
                 <button
                   type="button"
@@ -439,12 +474,18 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
                   disabled={isLoadingMore}
                   aria-busy={isLoadingMore}
                 >
-                  {isLoadingMore ? "Đang tải thêm..." : "Tải thêm món"}
+                  {isLoadingMore ? "Đang tải thêm..." : "Xem thêm món"}
                 </button>
               </div>
-            )}
+            ) : null}
           </>
         )}
+
+        {categoriesLoading && !categories.length ? (
+          <div className="menu-inline-note" aria-live="polite">
+            Đang tải danh mục món...
+          </div>
+        ) : null}
       </section>
     </div>
   );
