@@ -1,0 +1,32 @@
+{
+  "id": "restaurant-ingredient-stock",
+  "name": "restaurant-ingredient-stock",
+  "title": "Seed ingredient stock for Cohan Restaurant",
+  "description": "Create an idempotent inbound stock seed for every active ingredient in restaurant 69ce9e2e8d8d711f12e251b1, using the first active warehouse and today's Vietnam date.",
+  "status": "in_progress",
+  "dev_type": "data-seed",
+  "scope": "inventory-stock",
+  "package": "cohan-restaurant-backend",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/scripts/seedRestaurantIngredientStock.js",
+    "cohan-restaurant-backend/package.json",
+    "cohan-restaurant-backend/models/ingredient.model.js",
+    "cohan-restaurant-backend/models/stockItem.model.js",
+    "cohan-restaurant-backend/models/stock-movement.model.js",
+    "cohan-restaurant-backend/graphql/resolvers/inventory/stock.mutation.js"
+  ],
+  "notes": "The seed follows the existing receiveStock contract: StockItem batch plus inbound StockMovement metadata. It validates by default and writes only with --apply."
+}
