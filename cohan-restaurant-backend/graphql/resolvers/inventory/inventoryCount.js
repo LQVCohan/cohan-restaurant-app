@@ -111,7 +111,7 @@ export default {
       ensureObjectId(restaurantId, "restaurantId");
       await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_READ);
 
-      const q = { restaurantId };
+      const q = { restaurantId, ingredientId: { $exists: true, $ne: null } };
       if (warehouseId) {
         ensureObjectId(warehouseId, "warehouseId");
         q.warehouseId = warehouseId;
