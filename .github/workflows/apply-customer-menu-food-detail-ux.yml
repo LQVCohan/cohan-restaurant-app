@@ -1,0 +1,60 @@
+name: Apply customer menu food detail UX
+
+on:
+  push:
+    branches:
+      - codex/customer-menu-food-detail-ux
+    paths:
+      - scripts/apply-customer-menu-food-detail-ux.mjs
+      - .github/workflows/apply-customer-menu-food-detail-ux.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: codex/customer-menu-food-detail-ux
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate and apply patch
+        run: |
+          node --check scripts/apply-customer-menu-food-detail-ux.mjs
+          node scripts/apply-customer-menu-food-detail-ux.mjs
+
+      - name: Validate changed JavaScript
+        run: |
+          node --check cohan-restaurant-backend/src/services/customerModifierSelection.service.js
+          node --check cohan-restaurant-backend/graphql/resolvers/cart/query.js
+          node --check cohan-restaurant-backend/graphql/resolvers/cart/mutation.js
+          node --check cohan-restaurant-backend/graphql/resolvers/modifier/query.js
+          node --check cohan-restaurant-backend/graphql/resolvers/inventory/types.js
+          node --check cohan-restaurant-backend/graphql/resolvers/menu/query.js
+          node --check cohan-restaurant-backend/graphql/resolvers/category/query.js
+          node --check cohan-restaurant-backend/src/services/inventory.service.js
+          node --check cohan-restaurant-backend/graphql/resolvers/order/mutation.js
+          node --check cohan-restaurant-backend/graphql/resolvers/order/orderConflictHardening.js
+          git diff --check
+
+      - name: Commit generated changes
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(customer): complete menu and food detail ordering UX"
+          git push origin HEAD:codex/customer-menu-food-detail-ux
