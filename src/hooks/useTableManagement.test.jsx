@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useMutation, useQuery } from "@apollo/client";
 import useTableManagement from "./useTableManagement";
+import { TABLE_CUSTOMER_SOCKET_EVENT } from "./useSocketOrder";
 
 const mocks = vi.hoisted(() => ({
   showNotification: vi.fn(),
@@ -27,7 +28,7 @@ const getOperationName = (document) =>
   document?.definitions?.find((definition) => definition?.name?.value)?.name
     ?.value;
 
-describe("useTableManagement merge and split feedback", () => {
+describe("useTableManagement merge, split and realtime refresh", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.refetch.mockImplementation(() => {
@@ -127,5 +128,42 @@ describe("useTableManagement merge and split feedback", () => {
 
     expect(mocks.showNotification).not.toHaveBeenCalled();
     expect(mocks.refetch).not.toHaveBeenCalled();
+  });
+
+  it("refetches only when the table customer update belongs to this restaurant", async () => {
+    mocks.refetch.mockResolvedValue({ data: { tables: [] } });
+    renderHook(() => useTableManagement({ restaurantId: "restaurant-1" }));
+
+    await act(async () => {
+      window.dispatchEvent(
+        new CustomEvent(TABLE_CUSTOMER_SOCKET_EVENT, {
+          detail: {
+            event: {
+              type: "TABLE_CUSTOMER_UPDATED",
+              restaurantId: "restaurant-1",
+            },
+          },
+        }),
+      );
+      await Promise.resolve();
+    });
+
+    expect(mocks.refetch).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      window.dispatchEvent(
+        new CustomEvent(TABLE_CUSTOMER_SOCKET_EVENT, {
+          detail: {
+            event: {
+              type: "TABLE_CUSTOMER_UPDATED",
+              restaurantId: "restaurant-2",
+            },
+          },
+        }),
+      );
+      await Promise.resolve();
+    });
+
+    expect(mocks.refetch).toHaveBeenCalledTimes(1);
   });
 });
