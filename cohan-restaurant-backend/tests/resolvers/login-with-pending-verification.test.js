@@ -55,7 +55,10 @@ function mockUserLookup(user) {
   });
   mocks.User.findById.mockReturnValue({
     populate: vi.fn().mockReturnValue({
-      lean: vi.fn().mockResolvedValue({ ...user, role: { slug: "manager" } }),
+      lean: vi.fn().mockImplementation(async () => ({
+        ...user,
+        role: { slug: "manager" },
+      })),
     }),
   });
 }
