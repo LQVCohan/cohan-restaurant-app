@@ -3,6 +3,7 @@ import Modal from "../../../../common/Modal";
 import {
   calculateStockReceipt,
   getConvertibleUnits,
+  toBaseQty,
 } from "../../../../../utils/unitConversion";
 import { formatPrice } from "../../../../../utils/formatters";
 import {
@@ -170,26 +171,32 @@ const QuickStockModal = ({
 
   const getDerivedPricing = (row) => {
     const ingredient = getIngredient(row);
-    if (!ingredient || !(Number(row.qty) > 0) || !(Number(row.unitPrice) > 0)) {
-      return null;
-    }
+    if (!ingredient || !(Number(row.qty) > 0)) return null;
 
-    try {
-      return calculateStockReceipt({
-        qty: row.qty,
-        unit: row.unit || ingredient.baseUnit,
-        unitPrice: convertCurrencyAmount(
-          Number(row.unitPrice),
-          activeCurrency,
-          "VND",
-          usdToVndRate,
-        ),
-        baseUnit: ingredient.baseUnit,
-        conversions: ingredient.conversions || [],
-      });
-    } catch {
-      return null;
-    }
+    const qtyBase = toBaseQty(
+      row.qty,
+      row.unit || ingredient.baseUnit,
+      ingredient.baseUnit,
+      ingredient.conversions || [],
+    );
+    if (!Number.isFinite(qtyBase) || qtyBase <= 0) return null;
+
+    const totalValue =
+      Number(row.unitPrice) > 0
+        ? convertCurrencyAmount(
+            Number(row.unitPrice),
+            activeCurrency,
+            "VND",
+            usdToVndRate,
+          )
+        : 0;
+
+    return {
+      qtyBase,
+      costPerBaseUnit: totalValue > 0 ? totalValue / qtyBase : 0,
+      totalValue,
+      baseUnit: ingredient.baseUnit,
+    };
   };
 
   const validate = () => {
@@ -447,24 +454,29 @@ const QuickStockModal = ({
                     {derived && (
                       <div className="qsm-meta">
                         Quy đổi: {Number(derived.qtyBase).toLocaleString("vi-VN")} {" "}
-                        {derived.baseUnit} • Giá/base: {" "}
-                        <b>
-                          {formatPrice(
-                            convertCurrencyAmount(
-                              derived.costPerBaseUnit,
-                              "VND",
-                              activeCurrency,
-                              usdToVndRate,
-                            ),
-                            { currency: activeCurrency },
-                          )}
-                        </b>{" "}
-                        • Tổng lô: {" "}
-                        <b>
-                          {formatPrice(Number(row.unitPrice) || 0, {
-                            currency: activeCurrency,
-                          })}
-                        </b>
+                        {derived.baseUnit}
+                        {derived.totalValue > 0 && (
+                          <>
+                            {" "}• Giá/base: {" "}
+                            <b>
+                              {formatPrice(
+                                convertCurrencyAmount(
+                                  derived.costPerBaseUnit,
+                                  "VND",
+                                  activeCurrency,
+                                  usdToVndRate,
+                                ),
+                                { currency: activeCurrency },
+                              )}
+                            </b>{" "}
+                            • Tổng lô: {" "}
+                            <b>
+                              {formatPrice(Number(row.unitPrice) || 0, {
+                                currency: activeCurrency,
+                              })}
+                            </b>
+                          </>
+                        )}
                       </div>
                     )}
                     {hint && derived && (
