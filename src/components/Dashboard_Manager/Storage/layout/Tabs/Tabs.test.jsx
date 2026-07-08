@@ -9,6 +9,7 @@ vi.mock("../../components/common/StorageGridPaginationBridge", () => ({
 
 const tabs = [
   { id: "ingredients", label: "Nguyên liệu" },
+  { id: "supplies", label: "Vật tư & Khác" },
   { id: "recipes", label: "Công thức" },
   { id: "inventory", label: "Kiểm kê" },
 ];
@@ -24,6 +25,10 @@ describe("Storage Tabs view mode", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: "Danh sách" }));
     expect(screen.getByRole("radio", { name: "Danh sách" })).toBeChecked();
+
+    rerender(<Tabs tabs={tabs} activeTab="supplies" onTabChange={onTabChange} />);
+    expect(screen.getByRole("radio", { name: "Danh sách" })).toBeChecked();
+    expect(container.querySelector(".sm-view-toggle")).not.toHaveClass("is-hidden");
 
     rerender(<Tabs tabs={tabs} activeTab="recipes" onTabChange={onTabChange} />);
     expect(screen.getByRole("radio", { name: "Danh sách" })).toBeChecked();
