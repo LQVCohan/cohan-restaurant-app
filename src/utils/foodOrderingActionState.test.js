@@ -70,6 +70,20 @@ describe("getFoodOrderingActionState", () => {
     });
   });
 
+  it("blocks ordering when restaurant data is unavailable", () => {
+    expect(
+      getFoodOrderingActionState({
+        ...readyState,
+        hasRestaurant: false,
+        restaurantCanOrder: false,
+      }),
+    ).toEqual({
+      disabled: true,
+      intent: FOOD_ORDER_ACTION.BLOCKED,
+      label: "Nhà hàng không khả dụng",
+    });
+  });
+
   it("does not redirect unauthenticated users when the restaurant is closed", () => {
     expect(
       getFoodOrderingActionState({
