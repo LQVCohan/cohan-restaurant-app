@@ -28,19 +28,21 @@ vi.mock("@/hooks/useNotification", () => ({
   useNotification: () => ({ showNotification: vi.fn() }),
 }));
 
-const renderPage = (roleName = "manager") =>
-  render(
+const renderPage = (roleName = "manager") => {
+  const activeRestaurant = { id: "restaurant-1", name: "Cohan Test" };
+  return render(
     <AuthContext.Provider
       value={{
-        user: {
-          roleName,
-          restaurantForStaff: { id: "restaurant-1", name: "Cohan Test" },
-        },
+        user: { roleName },
+        activeRestaurant,
+        activeRestaurantId: activeRestaurant.id,
+        restaurants: [activeRestaurant],
       }}
     >
       <StaffKitchenPage />
     </AuthContext.Provider>,
   );
+};
 
 const getSummaryValue = (label) => {
   const heading = screen
