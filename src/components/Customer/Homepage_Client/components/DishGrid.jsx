@@ -60,21 +60,6 @@ const ADD_CART_ITEM = gql`
   mutation AddCartItemFromHome($input: AddCartItemInput!) {
     addCartItem(input: $input) {
       id
-      totalQuantity
-      totalAmount
-      items {
-        id
-        restaurantId
-        menuItemId
-        name
-        price
-        quantity
-        thumbImage
-        note
-        servingVariantKey
-        holdExpiresAt
-        holdStatus
-      }
     }
   }
 `;
@@ -109,8 +94,6 @@ const fallbackDishSuggestions = [
   },
 ];
 
-const normalizeCartNote = (value) => String(value || "").trim();
-
 const getMutationErrorMessage = (error, fallback) =>
   error?.graphQLErrors?.[0]?.message ||
   error?.networkError?.result?.errors?.[0]?.message ||
@@ -128,7 +111,7 @@ const DishGrid = ({
     user?.roleName || user?.role?.slug || user?.role?.name || "",
   ).toLowerCase();
   const isCustomer = roleName === "customer";
-  const { addToCart } = useCart();
+  const { refetchServerCart } = useCart();
   const { showNotification } = useNotification();
   const [addCartItemMutation] = useMutation(ADD_CART_ITEM);
   const { data, loading, error } = useQuery(GET_TOP_MENU_ITEMS, {
@@ -261,11 +244,7 @@ const DishGrid = ({
       return;
     }
 
-    const method = getSelectedMethod(dish);
     const servingVariantKey = getSelectedVariantKey(dish);
-    const price = getEffectivePrice(dish.basePrice, method);
-    const selectedVariantName = method?.name || "Phần tiêu chuẩn";
-    const image = dish.thumbImage || defaultImg;
 
     setAddingDishId(dish.id);
     try {
@@ -275,57 +254,18 @@ const DishGrid = ({
             userId: user.id,
             restaurantId: String(dish.restaurantId),
             menuItemId: dish.id,
-            name: dish.name,
-            price,
             quantity: 1,
-            thumbImage: image,
             note: null,
             servingVariantKey,
           },
         },
       });
 
-      const targetNote = "";
-      const returnedItem = mutationData?.addCartItem?.items?.find((item) => {
-        const sameMenuItem = String(item?.menuItemId) === String(dish.id);
-        const sameServing =
-          String(item?.servingVariantKey || "portion") ===
-          String(servingVariantKey || "portion");
-        const sameNote = normalizeCartNote(item?.note) === targetNote;
-        return sameMenuItem && sameServing && sameNote;
-      });
-
-      const backendCartId = mutationData?.addCartItem?.id || null;
-      const backendCartItemId = returnedItem?.id || null;
-
-      if (!backendCartId || !backendCartItemId) {
-        showNotification(
-          "Không thể đồng bộ dòng giỏ hàng từ máy chủ. Vui lòng thêm lại món.",
-          "error",
-        );
-        return;
+      if (!mutationData?.addCartItem?.id) {
+        throw new Error("Không nhận được giỏ hàng đã cập nhật từ máy chủ.");
       }
 
-      addToCart({
-        id: `${dish.id}_${servingVariantKey}`,
-        dishId: dish.id,
-        restaurantId: String(dish.restaurantId),
-        menuId: dish.menuId || null,
-        categoryId: dish.categoryId || null,
-        variantKey: servingVariantKey,
-        servingVariantKey: returnedItem?.servingVariantKey || servingVariantKey,
-        name: dish.name,
-        price,
-        image,
-        method: selectedVariantName,
-        quantity: 1,
-        backendCartId,
-        backendCartItemId,
-        holdExpiresAt: returnedItem?.holdExpiresAt || null,
-        holdStatus: returnedItem?.holdStatus || null,
-        note: returnedItem?.note ?? null,
-      });
-
+      await refetchServerCart();
       showNotification("Đã thêm món vào giỏ hàng.", "success");
     } catch (mutationError) {
       showNotification(
