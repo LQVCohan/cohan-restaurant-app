@@ -1,7 +1,7 @@
 {
   "id": "07-08-fix-customer-menu-search-layout",
   "title": "Fix customer menu search layout",
-  "status": "verifying",
+  "status": "in_progress",
   "branch": "main",
   "createdAt": "2026-07-08",
   "scope": [
@@ -10,6 +10,7 @@
   "validation": [
     "npm run build",
     "visual check near 1068px viewport",
+    "visual check above and below the intermediate responsive breakpoint",
     "visual check at 900px and 640px responsive breakpoints"
   ]
 }
