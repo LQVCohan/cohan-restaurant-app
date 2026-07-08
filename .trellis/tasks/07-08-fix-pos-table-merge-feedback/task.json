@@ -2,22 +2,22 @@
   "id": "fix-pos-table-merge-feedback",
   "name": "fix-pos-table-merge-feedback",
   "title": "Fix false POS table merge errors and missing split feedback",
-  "description": "Separate successful merge/split mutations from table-list refresh failures and show accurate POS notifications for modal and drag-drop actions.",
-  "status": "completed",
+  "description": "Keep successful merge/split mutations independent from all table-list refresh side effects and show accurate POS notifications.",
+  "status": "in_progress",
   "dev_type": "bugfix",
   "scope": "pos-table-merge-feedback",
   "priority": "P0",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": "2026-07-08",
+  "completedAt": null,
   "branch": "main",
   "base_branch": "main",
-  "commit": "f74bdda6214e5f3560c64b81c73e669220c20e74",
+  "commit": null,
   "pr_url": null,
   "relatedFiles": [
     "src/hooks/useTableManagement.js",
     "src/hooks/useTableManagement.test.jsx"
   ],
-  "notes": "Fixed at the shared Apollo hook used by both POS modal and drag-drop. Merge/split success is now based only on the GraphQL mutation; follow-up refetch failures are logged without rejecting the completed action. The hook emits success notifications for merge and split. Added a regression test for refresh failure and real mutation failure. The targeted Vitest suite and frontend build were not run because the connected environment has no repository checkout or installed project dependencies; node --check passed for the copied regression test source."
+  "notes": "Follow-up reproduction shows the native POS failure alert still fires after a successful GraphQL merge. The remaining post-mutation path is the hook-owned refetch call. Calling refetch can throw synchronously before Promise.catch is attached, so the shared merge wrapper still rejects after the backend commit. Remove redundant hook-owned refresh; all real UI callers already refresh after success."
 }
