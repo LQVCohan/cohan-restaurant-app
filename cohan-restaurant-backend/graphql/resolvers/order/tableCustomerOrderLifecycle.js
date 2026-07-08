@@ -92,7 +92,9 @@ export function withTableCustomerOrderLifecycle(orderMutation) {
               updatedAt: new Date(),
             },
           },
-        );
+        ).catch(() => {
+          // The order already owns the guest identity; snapshot writeback is secondary.
+        });
       }
 
       return result;
