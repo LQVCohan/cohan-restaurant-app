@@ -1,0 +1,29 @@
+{
+  "id": "register-password-ui",
+  "name": "register-password-ui",
+  "title": "Polish registration password fields",
+  "description": "Add accessible password visibility controls and replace the fixed CSS-only password hint bar with an inline strength meter on customer and brand registration forms.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "authentication-ui",
+  "package": null,
+  "priority": "P2",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Login.jsx",
+    "src/components/LoginPolish.scss",
+    "src/components/Login.test.jsx"
+  ],
+  "notes": "Backend password policy remains authoritative; this task changes registration presentation and interaction only."
+}
