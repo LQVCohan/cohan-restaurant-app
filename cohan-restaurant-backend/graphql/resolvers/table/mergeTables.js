@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
+import Order from "../../../models/order.model.js";
+import Reservation from "../../../models/reservation.model.js";
 import Table from "../../../models/table.model.js";
 import TableCustomer from "../../../models/tableCustomer.model.js";
 import { logEvent } from "../../../src/services/eventLog.service.js";
@@ -10,15 +12,24 @@ import {
   hasActiveReservationsForTable,
 } from "../../../utils/tableStateGuards.js";
 
+const ACTIVE_ORDER_STATUSES = { $nin: ["completed", "cancelled", "failed"] };
+const ACTIVE_RESERVATION_STATUSES = [
+  "pending_payment",
+  "confirmed",
+  "seated",
+  "pending_change",
+];
+const MERGEABLE_STATUSES = new Set(["available", "occupied", "reserved"]);
+
 const businessError = (message, code) =>
   new GraphQLError(message, { extensions: { code } });
 
 const tableId = (value) => String(value?._id || value?.id || value || "");
-const MERGEABLE_STATUSES = new Set(["available", "occupied"]);
+const normalizeCode = (value) => String(value || "").trim();
 
 const mergedCodeFor = (tables) =>
   tables
-    .map((table) => String(table.code || "").trim())
+    .map((table) => normalizeCode(table.code))
     .filter(Boolean)
     .sort((a, b) =>
       a.localeCompare(b, "vi", { numeric: true, sensitivity: "base" }),
@@ -30,7 +41,7 @@ const uniqueTags = (tables) =>
     new Set(
       tables.flatMap((table) =>
         Array.isArray(table.tags)
-          ? table.tags.map((tag) => String(tag || "").trim()).filter(Boolean)
+          ? table.tags.map((tag) => normalizeCode(tag)).filter(Boolean)
           : [],
       ),
     ),
@@ -38,68 +49,65 @@ const uniqueTags = (tables) =>
 
 const hasCustomerIdentity = (row) =>
   Boolean(
-    String(row?.customerName || "").trim() ||
-      String(row?.customerPhone || "").trim() ||
-      String(row?.customerEmail || "").trim() ||
+    normalizeCode(row?.customerName) ||
+      normalizeCode(row?.customerPhone) ||
+      normalizeCode(row?.customerEmail) ||
       row?.customerUserId ||
       Number(row?.partySize || 0) > 0,
   );
 
-const assertTablesCanMerge = async (tables, restaurantId) => {
-  const unavailable = tables.find(
+const getCompositePosition = (tables, anchor) => {
+  const positioned = tables.filter(
     (table) =>
-      !MERGEABLE_STATUSES.has(String(table.status || "").toLowerCase()),
+      Number.isFinite(Number(table?.position?.x)) &&
+      Number.isFinite(Number(table?.position?.y)),
+  );
+  if (!positioned.length) return anchor?.position || null;
+
+  const left = Math.min(...positioned.map((table) => Number(table.position.x)));
+  const top = Math.min(...positioned.map((table) => Number(table.position.y)));
+  const right = Math.max(
+    ...positioned.map(
+      (table) => Number(table.position.x) + Math.max(1, Number(table.position.w) || 80),
+    ),
+  );
+  const bottom = Math.max(
+    ...positioned.map(
+      (table) => Number(table.position.y) + Math.max(1, Number(table.position.h) || 80),
+    ),
+  );
+
+  return {
+    x: left,
+    y: top,
+    w: Math.max(80, right - left),
+    h: Math.max(80, bottom - top),
+    rotation: 0,
+    shape: "rect",
+  };
+};
+
+const getOrderSessionKey = (order) =>
+  String(
+    order?.parentOrderId ||
+      order?.rootOrderId ||
+      (order?.orderKind === "table_session" ? order?._id : "") ||
+      order?.parentOrderCode ||
+      order?.orderCode ||
+      order?._id ||
+      "",
+  );
+
+const assertTableShapesCanMerge = (tables) => {
+  const unavailable = tables.find(
+    (table) => !MERGEABLE_STATUSES.has(String(table.status || "").toLowerCase()),
   );
   if (unavailable) {
     throw businessError(
-      `Bàn ${unavailable.code || "đã chọn"} không ở trạng thái có thể ghép. Chỉ hỗ trợ bàn trống hoặc đang có khách nhưng chưa phát sinh order/đặt chỗ.`,
+      `Bàn ${unavailable.code || "đã chọn"} không ở trạng thái có thể ghép. Chỉ hỗ trợ bàn trống, đã đặt hoặc đang có khách.`,
       "TABLE_NOT_AVAILABLE_FOR_MERGE",
     );
   }
-
-  const states = await Promise.all(
-    tables.map(async (table) => {
-      const [hasOrders, hasReservations] = await Promise.all([
-        hasActiveOrdersForTable({
-          restaurantId,
-          tableId: table._id,
-          tableCode: table.code,
-        }),
-        hasActiveReservationsForTable({
-          restaurantId,
-          tableId: table._id,
-        }),
-      ]);
-      return { table, hasOrders, hasReservations };
-    }),
-  );
-
-  const withOrders = states.find((state) => state.hasOrders);
-  if (withOrders) {
-    throw businessError(
-      `Bàn ${withOrders.table.code || "đã chọn"} đang có order hoạt động, không thể ghép.`,
-      "TABLE_HAS_ACTIVE_ORDERS",
-    );
-  }
-
-  const withReservation = states.find((state) => state.hasReservations);
-  if (withReservation) {
-    throw businessError(
-      `Bàn ${withReservation.table.code || "đã chọn"} đang có đặt chỗ hoạt động, không thể ghép.`,
-      "TABLE_HAS_ACTIVE_RESERVATION",
-    );
-  }
-};
-
-const rollbackMergedSources = async ({ restaurantId, mergedTableId }) => {
-  if (!mergedTableId) return;
-  await Table.updateMany(
-    { restaurantId, mergedIntoTableId: mergedTableId },
-    {
-      $set: { isJoinable: false },
-      $unset: { joinGroupId: "", mergedIntoTableId: "" },
-    },
-  ).catch(() => {});
 };
 
 const mergeTables = async (_parent, { input }, ctx) => {
@@ -128,157 +136,263 @@ const mergeTables = async (_parent, { input }, ctx) => {
 
   await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.TABLE_WRITE);
 
-  const tables = await Table.find({
-    _id: { $in: uniqueIds },
-    restaurantId,
-  }).lean();
+  const session = await mongoose.startSession();
+  let outcome = null;
 
-  if (tables.length !== uniqueIds.length) {
-    throw businessError(
-      "Có bàn không tồn tại hoặc không thuộc nhà hàng này.",
-      "TABLE_NOT_FOUND",
-    );
-  }
-
-  const floorIds = new Set(tables.map((table) => String(table.floorId || "")));
-  if (floorIds.size !== 1) {
-    throw businessError(
-      "Chỉ có thể ghép các bàn trong cùng một tầng.",
-      "TABLE_MERGE_CROSS_FLOOR",
-    );
-  }
-
-  const alreadyMerged = tables.find(
-    (table) =>
-      table.joinGroupId ||
-      table.mergedIntoTableId ||
-      (Array.isArray(table.mergedFromTableIds) && table.mergedFromTableIds.length > 0),
-  );
-  if (alreadyMerged) {
-    throw businessError(
-      `Bàn ${alreadyMerged.code || "đã chọn"} đang thuộc một nhóm ghép. Vui lòng tách bàn trước.`,
-      "TABLE_ALREADY_MERGED",
-    );
-  }
-
-  await assertTablesCanMerge(tables, restaurantId);
-
-  const sourceCodes = tables.map((table) => String(table.code || ""));
-  const customerRows = await TableCustomer.find({
-    restaurantId,
-    $or: [
-      { tableId: { $in: uniqueIds } },
-      { tableCode: { $in: sourceCodes } },
-    ],
-  })
-    .select({
-      customerName: 1,
-      customerPhone: 1,
-      customerEmail: 1,
-      customerUserId: 1,
-      partySize: 1,
-    })
-    .lean();
-  const customerProfileCount = customerRows.filter(hasCustomerIdentity).length;
-
-  const anchor = tables.find((table) => tableId(table) === String(anchorId));
-  const groupId = joinGroupId || new mongoose.Types.ObjectId().toString();
-  const mergedCode = mergedCodeFor(tables);
-  const capacity = tables.reduce(
-    (total, table) => total + Math.max(0, Number(table.capacity) || 0),
-    0,
-  );
-  const mergedStatus =
-    customerProfileCount > 0 ||
-    tables.some(
-      (table) => String(table.status || "").toLowerCase() === "occupied",
-    )
-      ? "occupied"
-      : "available";
-
-  if (!mergedCode || capacity < 2 || !anchor?.position) {
-    throw businessError(
-      "Dữ liệu bàn không hợp lệ để tạo bàn ghép.",
-      "TABLE_MERGE_INVALID_SOURCE",
-    );
-  }
-
-  let mergedTable = null;
   try {
-    mergedTable = await Table.create({
-      restaurantId,
-      floorId: anchor.floorId,
-      code: mergedCode,
-      type: anchor.type || "standard",
-      capacity,
-      position: anchor.position,
-      status: mergedStatus,
-      floorLevel: anchor.floorLevel ?? 1,
-      tags: uniqueTags(tables),
-      zone: anchor.zone,
-      deposit: anchor.deposit,
-      isJoinable: true,
-      joinGroupId: groupId,
-      mergedFromTableIds: uniqueIds,
-    });
-
-    const mergedTableId = mergedTable._id || mergedTable.id;
-    const updated = await Table.updateMany(
-      {
+    await session.withTransaction(async () => {
+      const tables = await Table.find({
         _id: { $in: uniqueIds },
         restaurantId,
-        joinGroupId: null,
-        mergedIntoTableId: null,
-      },
-      {
-        $set: {
-          isJoinable: true,
-          joinGroupId: groupId,
-          mergedIntoTableId: mergedTableId,
-        },
-      },
-    );
+      })
+        .session(session)
+        .lean();
 
-    if (
-      Number.isInteger(updated?.modifiedCount) &&
-      updated.modifiedCount !== uniqueIds.length
-    ) {
-      throw businessError(
-        "Danh sách bàn vừa thay đổi. Vui lòng tải lại và ghép lại.",
-        "TABLE_MERGE_WRITE_CONFLICT",
+      if (tables.length !== uniqueIds.length) {
+        throw businessError(
+          "Có bàn không tồn tại hoặc không thuộc nhà hàng này.",
+          "TABLE_NOT_FOUND",
+        );
+      }
+
+      const floorIds = new Set(tables.map((table) => String(table.floorId || "")));
+      if (floorIds.size !== 1) {
+        throw businessError(
+          "Chỉ có thể ghép các bàn trong cùng một tầng.",
+          "TABLE_MERGE_CROSS_FLOOR",
+        );
+      }
+
+      const alreadyMerged = tables.find(
+        (table) =>
+          table.joinGroupId ||
+          table.mergedIntoTableId ||
+          (Array.isArray(table.mergedFromTableIds) && table.mergedFromTableIds.length > 0),
       );
-    }
+      if (alreadyMerged) {
+        throw businessError(
+          `Bàn ${alreadyMerged.code || "đã chọn"} đang thuộc một nhóm ghép. Vui lòng tách bàn trước.`,
+          "TABLE_ALREADY_MERGED",
+        );
+      }
+
+      assertTableShapesCanMerge(tables);
+
+      const sourceCodes = tables.map((table) => normalizeCode(table.code));
+      const tableById = new Map(tables.map((table) => [tableId(table), table]));
+      const activeReservations = await Reservation.find({
+        restaurantId,
+        tableId: { $in: uniqueIds },
+        status: { $in: ACTIVE_RESERVATION_STATUSES },
+      })
+        .session(session)
+        .lean();
+
+      const reservationSourceIds = new Set(
+        activeReservations.map((reservation) => String(reservation.tableId)),
+      );
+      if (reservationSourceIds.size > 1) {
+        throw businessError(
+          "Không thể ghép hai bàn đang có hai đơn đặt bàn hoạt động khác nhau.",
+          "TABLE_MULTIPLE_ACTIVE_RESERVATIONS",
+        );
+      }
+
+      const activeOrders = await Order.find({
+        restaurantId,
+        tableId: { $in: uniqueIds },
+        orderType: "dine_in",
+        currentStatus: ACTIVE_ORDER_STATUSES,
+      })
+        .session(session)
+        .select({
+          _id: 1,
+          orderKind: 1,
+          parentOrderId: 1,
+          rootOrderId: 1,
+          parentOrderCode: 1,
+          orderCode: 1,
+          tableId: 1,
+          tableCode: 1,
+          totals: 1,
+        })
+        .lean();
+
+      const customerRows = await TableCustomer.find({
+        restaurantId,
+        $or: [
+          { tableId: { $in: uniqueIds } },
+          { tableCode: { $in: sourceCodes } },
+        ],
+      })
+        .session(session)
+        .select({
+          customerName: 1,
+          customerPhone: 1,
+          customerEmail: 1,
+          customerUserId: 1,
+          partySize: 1,
+        })
+        .lean();
+
+      const customerProfileCount = customerRows.filter(hasCustomerIdentity).length;
+      const anchor = tableById.get(String(anchorId));
+      const groupId = joinGroupId || new mongoose.Types.ObjectId().toString();
+      const mergedCode = mergedCodeFor(tables);
+      const capacity = tables.reduce(
+        (total, table) => total + Math.max(0, Number(table.capacity) || 0),
+        0,
+      );
+      const position = getCompositePosition(tables, anchor);
+      const hasSeatedReservation = activeReservations.some(
+        (reservation) => String(reservation.status).toLowerCase() === "seated",
+      );
+      const hasOccupiedSource = tables.some(
+        (table) => String(table.status || "").toLowerCase() === "occupied",
+      );
+      const hasReservation = activeReservations.length > 0;
+      const mergedStatus =
+        activeOrders.length > 0 ||
+        hasSeatedReservation ||
+        customerProfileCount > 0 ||
+        hasOccupiedSource
+          ? "occupied"
+          : hasReservation ||
+              tables.some(
+                (table) => String(table.status || "").toLowerCase() === "reserved",
+              )
+            ? "reserved"
+            : "available";
+
+      if (!mergedCode || capacity < 2 || !position || !anchor) {
+        throw businessError(
+          "Dữ liệu bàn không hợp lệ để tạo bàn ghép.",
+          "TABLE_MERGE_INVALID_SOURCE",
+        );
+      }
+
+      const [mergedTable] = await Table.create(
+        [
+          {
+            restaurantId,
+            floorId: anchor.floorId,
+            code: mergedCode,
+            type: anchor.type || "standard",
+            capacity,
+            position,
+            status: mergedStatus,
+            floorLevel: anchor.floorLevel ?? 1,
+            tags: uniqueTags(tables),
+            zone: anchor.zone,
+            deposit: anchor.deposit,
+            notes: `Bàn ghép từ ${sourceCodes.join(", ")}`,
+            isJoinable: true,
+            joinGroupId: groupId,
+            mergedFromTableIds: uniqueIds,
+            mergeAnchorTableId: anchorId,
+            mergedAt: new Date(),
+          },
+        ],
+        { session },
+      );
+
+      const mergedTableId = mergedTable._id || mergedTable.id;
+      const updated = await Table.updateMany(
+        {
+          _id: { $in: uniqueIds },
+          restaurantId,
+          joinGroupId: null,
+          mergedIntoTableId: null,
+        },
+        {
+          $set: {
+            isJoinable: true,
+            joinGroupId: groupId,
+            mergedIntoTableId: mergedTableId,
+          },
+        },
+        { session },
+      );
+
+      if (
+        Number.isInteger(updated?.modifiedCount) &&
+        updated.modifiedCount !== uniqueIds.length
+      ) {
+        throw businessError(
+          "Danh sách bàn vừa thay đổi. Vui lòng tải lại và ghép lại.",
+          "TABLE_MERGE_WRITE_CONFLICT",
+        );
+      }
+
+      for (const reservation of activeReservations) {
+        const source = tableById.get(String(reservation.tableId));
+        await Reservation.updateOne(
+          { _id: reservation._id, restaurantId },
+          {
+            $set: {
+              tableId: mergedTableId,
+              sourceTableId: reservation.sourceTableId || reservation.tableId,
+              sourceTableCode:
+                reservation.sourceTableCode || source?.code || null,
+              tableMergeGroupId: groupId,
+            },
+          },
+          { session },
+        );
+      }
+
+      outcome = {
+        joinGroupId: groupId,
+        anchorId: String(anchorId),
+        tableIds: uniqueIds,
+        mergedTableId: String(mergedTableId),
+        mergedTableCode: mergedCode,
+        floorId: anchor.floorId,
+        capacity,
+        status: mergedStatus,
+        sourceCodes,
+        customerProfileCount,
+        activeReservationCount: activeReservations.length,
+        activeOrderCount: activeOrders.filter(
+          (order) => order.orderKind !== "table_session",
+        ).length,
+        activeOrderSessionCount: new Set(activeOrders.map(getOrderSessionKey)).size,
+      };
+    });
   } catch (error) {
-    const mergedTableId = mergedTable?._id || mergedTable?.id;
-    await rollbackMergedSources({ restaurantId, mergedTableId });
-    if (mergedTableId) {
-      await Table.deleteOne({ _id: mergedTableId }).catch(() => {});
-    }
     if (error?.code === 11000) {
       throw businessError(
-        `Bàn ghép ${mergedCode} đã tồn tại. Vui lòng tải lại danh sách bàn.`,
+        "Mã bàn ghép đã tồn tại. Vui lòng tải lại danh sách bàn.",
         "TABLE_CODE_DUPLICATE",
       );
     }
     throw error;
+  } finally {
+    await session.endSession();
   }
 
-  const mergedTableId = mergedTable._id || mergedTable.id;
   await logEvent({
     restaurantId,
-    floorId: anchor.floorId,
-    tableId: mergedTableId,
+    floorId: outcome.floorId,
+    tableId: outcome.mergedTableId,
     verb: "table.merge",
-    object: { kind: "Table", id: mergedTableId, code: mergedCode },
+    object: {
+      kind: "Table",
+      id: outcome.mergedTableId,
+      code: outcome.mergedTableCode,
+    },
     meta: {
-      joinGroupId: groupId,
-      sourceTableIds: uniqueIds,
-      sourceCodes,
-      sourceAnchorId: anchorId,
-      mergedTableId,
-      capacity,
-      status: mergedStatus,
-      customerProfileCount,
+      joinGroupId: outcome.joinGroupId,
+      sourceTableIds: outcome.tableIds,
+      sourceCodes: outcome.sourceCodes,
+      sourceAnchorId: outcome.anchorId,
+      mergedTableId: outcome.mergedTableId,
+      capacity: outcome.capacity,
+      status: outcome.status,
+      customerProfileCount: outcome.customerProfileCount,
+      activeReservationCount: outcome.activeReservationCount,
+      activeOrderCount: outcome.activeOrderCount,
+      activeOrderSessionCount: outcome.activeOrderSessionCount,
     },
     actorUserId: ctx.user?.id,
     ip: ctx.req?.ip,
@@ -286,10 +400,38 @@ const mergeTables = async (_parent, { input }, ctx) => {
   });
 
   return {
-    joinGroupId: groupId,
-    anchorId,
-    tableIds: uniqueIds,
+    joinGroupId: outcome.joinGroupId,
+    anchorId: outcome.anchorId,
+    tableIds: outcome.tableIds,
+    mergedTableId: outcome.mergedTableId,
+    mergedTableCode: outcome.mergedTableCode,
   };
+};
+
+const resolveSourceStatus = ({ sourceId, activeOrders, reservations, customers }) => {
+  if (activeOrders.some((order) => String(order.tableId) === String(sourceId))) {
+    return "occupied";
+  }
+  const sourceReservations = reservations.filter(
+    (reservation) => String(reservation.tableId) === String(sourceId),
+  );
+  if (
+    sourceReservations.some(
+      (reservation) => String(reservation.status).toLowerCase() === "seated",
+    )
+  ) {
+    return "occupied";
+  }
+  if (
+    customers.some(
+      (customer) =>
+        String(customer.tableId || "") === String(sourceId) &&
+        hasCustomerIdentity(customer),
+    )
+  ) {
+    return "occupied";
+  }
+  return sourceReservations.length ? "reserved" : "available";
 };
 
 const splitCompositeTable = async ({
@@ -310,78 +452,155 @@ const splitCompositeTable = async ({
     );
   }
 
-  const [hasOrders, hasReservations] = await Promise.all([
-    hasActiveOrdersForTable({
-      restaurantId,
-      tableId: mergedTableId,
-      tableCode: mergedTable.code,
-    }),
-    hasActiveReservationsForTable({
-      restaurantId,
-      tableId: mergedTableId,
-    }),
-  ]);
-  if (hasOrders) {
-    throw businessError(
-      "Không thể tách bàn ghép đang có order hoạt động.",
-      "TABLE_HAS_ACTIVE_ORDERS",
-    );
-  }
-  if (hasReservations) {
-    throw businessError(
-      "Không thể tách bàn ghép đang có đặt chỗ hoạt động.",
-      "TABLE_HAS_ACTIVE_RESERVATION",
-    );
-  }
-
-  const restoreSources = () =>
-    Table.updateMany(
-      {
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const sourceTables = await Table.find({
         _id: { $in: sourceIds },
         restaurantId,
         mergedIntoTableId: mergedTableId,
-      },
-      {
-        $set: { isJoinable: false },
-        $unset: { joinGroupId: "", mergedIntoTableId: "" },
-      },
-    );
+      })
+        .session(session)
+        .lean();
+      if (sourceTables.length !== sourceIds.length) {
+        throw businessError(
+          "Không thể khôi phục đầy đủ các bàn gốc.",
+          "TABLE_SPLIT_WRITE_CONFLICT",
+        );
+      }
 
-  const hideSourcesAgain = () =>
-    Table.updateMany(
-      { _id: { $in: sourceIds }, restaurantId },
-      {
-        $set: {
-          isJoinable: true,
-          joinGroupId,
-          mergedIntoTableId: mergedTableId,
-        },
-      },
-    ).catch(() => {});
+      const sourceById = new Map(
+        sourceTables.map((table) => [tableId(table), table]),
+      );
+      const fallbackSourceId = String(
+        mergedTable.mergeAnchorTableId || sourceIds[0],
+      );
 
-  const restored = await restoreSources();
-  if (
-    Number.isInteger(restored?.modifiedCount) &&
-    restored.modifiedCount !== sourceIds.length
-  ) {
-    await hideSourcesAgain();
-    throw businessError(
-      "Không thể khôi phục đầy đủ các bàn gốc.",
-      "TABLE_SPLIT_WRITE_CONFLICT",
-    );
-  }
+      const movedReservations = await Reservation.find({
+        restaurantId,
+        tableMergeGroupId: joinGroupId,
+      })
+        .session(session)
+        .lean();
+      if (movedReservations.length) {
+        await Reservation.bulkWrite(
+          movedReservations.map((reservation) => {
+            const sourceId = String(
+              reservation.sourceTableId || fallbackSourceId,
+            );
+            const source = sourceById.get(sourceId) || sourceById.get(fallbackSourceId);
+            return {
+              updateOne: {
+                filter: { _id: reservation._id, restaurantId },
+                update: {
+                  $set: { tableId: source?._id || fallbackSourceId },
+                  $unset: {
+                    sourceTableId: "",
+                    sourceTableCode: "",
+                    tableMergeGroupId: "",
+                  },
+                },
+              },
+            };
+          }),
+          { session },
+        );
+      }
 
-  const deleted = await Table.deleteOne({
-    _id: mergedTableId,
-    restaurantId,
-    joinGroupId,
-  });
-  if (deleted.deletedCount !== 1) {
-    await hideSourcesAgain();
-    throw businessError(
-      "Không thể xóa bàn ghép để hoàn tất tách bàn.",
-      "TABLE_SPLIT_WRITE_CONFLICT",
-    );
+      const compositeOrders = await Order.find({
+        restaurantId,
+        tableId: mergedTableId,
+        orderType: "dine_in",
+        currentStatus: ACTIVE_ORDER_STATUSES,
+      })
+        .session(session)
+        .lean();
+      if (compositeOrders.length) {
+        await Order.bulkWrite(
+          compositeOrders.map((order) => {
+            const mergeMeta = order?.clientMeta?.tableMerge || {};
+            const sourceId = String(mergeMeta.sourceTableId || fallbackSourceId);
+            const source = sourceById.get(sourceId) || sourceById.get(fallbackSourceId);
+            const clientMeta = { ...(order.clientMeta || {}) };
+            delete clientMeta.tableMerge;
+            return {
+              updateOne: {
+                filter: { _id: order._id, restaurantId },
+                update: {
+                  $set: {
+                    tableId: source?._id || fallbackSourceId,
+                    tableCode: source?.code || mergeMeta.sourceTableCode,
+                    clientMeta,
+                  },
+                },
+              },
+            };
+          }),
+          { session },
+        );
+      }
+
+      const restoredReservations = await Reservation.find({
+        restaurantId,
+        tableId: { $in: sourceIds },
+        status: { $in: ACTIVE_RESERVATION_STATUSES },
+      })
+        .session(session)
+        .lean();
+      const activeOrders = await Order.find({
+        restaurantId,
+        tableId: { $in: sourceIds },
+        orderType: "dine_in",
+        currentStatus: ACTIVE_ORDER_STATUSES,
+      })
+        .session(session)
+        .select({ tableId: 1 })
+        .lean();
+      const customers = await TableCustomer.find({
+        restaurantId,
+        tableId: { $in: sourceIds },
+      })
+        .session(session)
+        .lean();
+
+      await Table.bulkWrite(
+        sourceTables.map((source) => ({
+          updateOne: {
+            filter: {
+              _id: source._id,
+              restaurantId,
+              mergedIntoTableId: mergedTableId,
+            },
+            update: {
+              $set: {
+                isJoinable: false,
+                status: resolveSourceStatus({
+                  sourceId: source._id,
+                  activeOrders,
+                  reservations: restoredReservations,
+                  customers,
+                }),
+              },
+              $unset: { joinGroupId: "", mergedIntoTableId: "" },
+            },
+          },
+        })),
+        { session },
+      );
+
+      const deleted = await Table.deleteOne(
+        { _id: mergedTableId, restaurantId, joinGroupId },
+        { session },
+      );
+      if (deleted.deletedCount !== 1) {
+        throw businessError(
+          "Không thể xóa bàn ghép để hoàn tất tách bàn.",
+          "TABLE_SPLIT_WRITE_CONFLICT",
+        );
+      }
+    });
+  } finally {
+    await session.endSession();
   }
 
   await logEvent({
@@ -436,7 +655,7 @@ const splitTables = async (_parent, { input }, ctx) => {
       table.mergedFromTableIds.length > 0,
   );
 
-  // Bàn ghép mới là một thực thể duy nhất, nên tách từ thực thể này luôn khôi phục cả nhóm.
+  // Bàn ghép là một thực thể duy nhất; tách từ thực thể này luôn trả cả nhóm.
   if (mergedTable) {
     return splitCompositeTable({
       restaurantId,
@@ -446,7 +665,7 @@ const splitTables = async (_parent, { input }, ctx) => {
     });
   }
 
-  // Tương thích với dữ liệu nhóm cũ chỉ có joinGroupId.
+  // Tương thích dữ liệu nhóm cũ chỉ có joinGroupId.
   const groupTableIds = groupedTables.map((table) => tableId(table));
   const requestedIds = new Set((tableIds || []).map(String));
   const requestedGroupTableIds =
