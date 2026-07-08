@@ -1,6 +1,8 @@
-// src/graphql/resolvers/cart/types.js
-import { User, Restaurant, MenuItem } from "../../../models/index.js";
-import { computeCartTotalAmount, resolveCartRestaurantId } from "../../../models/cartDerivedFields.js";
+import { MenuItem, Restaurant, User } from "../../../models/index.js";
+import {
+  computeCartTotalAmount,
+  resolveCartRestaurantId,
+} from "../../../models/cartDerivedFields.js";
 
 export const CartFieldResolvers = {
   user: async (parent) => {
@@ -17,29 +19,40 @@ export const CartFieldResolvers = {
   totalQuantity: (parent) => {
     if (typeof parent.totalQuantity === "number") return parent.totalQuantity;
     const items = Array.isArray(parent.items) ? parent.items : [];
-    return items.reduce((sum, i) => sum + (Number(i?.quantity) || 0), 0);
+    return items.reduce(
+      (sum, item) => sum + (Number(item?.quantity) || 0),
+      0,
+    );
   },
 
   totalAmount: (parent) => {
-    if (typeof parent.totalAmount === "number") return parent.totalAmount;
     const items = Array.isArray(parent.items) ? parent.items : [];
     return computeCartTotalAmount(items);
   },
 
   totalPrice: (parent) => {
-    if (typeof parent.totalPrice === "number") return parent.totalPrice;
     const items = Array.isArray(parent.items) ? parent.items : [];
     return computeCartTotalAmount(items);
   },
 };
 
 export const CartItemFieldResolvers = {
-  id: (parent) => (parent._id ? String(parent._id) : null),
+  id: (parent) =>
+    parent?._id ? String(parent._id) : parent?.id ? String(parent.id) : null,
+
+  itemType: (parent) => String(parent?.itemType || "MENU_ITEM"),
 
   servingVariantKey: (parent) => {
-    const key = String(parent?.servingKey || parent?.servingVariantKey || "").trim();
+    const key = String(
+      parent?.servingKey || parent?.servingVariantKey || "",
+    ).trim();
     return key || "portion";
   },
+
+  modifiers: (parent) =>
+    Array.isArray(parent?.modifiers) ? parent.modifiers : [],
+
+  modifiersPrice: (parent) => Number(parent?.modifiersPrice || 0),
 
   restaurant: async (parent) => {
     if (!parent.restaurantId) return null;
@@ -53,5 +66,6 @@ export const CartItemFieldResolvers = {
 };
 
 export const MenuAvailabilityWatchFieldResolvers = {
-  id: (parent) => (parent?._id ? String(parent._id) : parent?.id || null),
+  id: (parent) =>
+    parent?._id ? String(parent._id) : parent?.id || null,
 };
