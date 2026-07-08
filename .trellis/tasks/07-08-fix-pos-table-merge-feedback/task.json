@@ -1,0 +1,25 @@
+{
+  "id": "fix-pos-table-merge-feedback",
+  "name": "fix-pos-table-merge-feedback",
+  "title": "Fix false POS table merge errors and missing split feedback",
+  "description": "Separate successful merge/split mutations from table-list refresh failures and show accurate POS notifications for modal and drag-drop actions.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "pos-table-merge-feedback",
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "src/hooks/useTableManagement.js",
+    "src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.jsx",
+    "src/components/Dashboard_Manager/POS/components/pos/LeftPanel.jsx",
+    "src/hooks/useTableManagement.test.jsx"
+  ],
+  "notes": "Root cause traced: mergeTables/splitTables await refetch after the backend mutation. A refresh rejection bubbles into POS catch handlers, so a committed merge is reported as failed. POS split handlers also omit success notifications."
+}
