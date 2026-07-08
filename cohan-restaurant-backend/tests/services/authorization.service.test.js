@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  assertManagerAssignablePermissionCodes,
   getUserEffectivePermissions,
   hasPermission,
   requirePermission,
@@ -59,8 +60,25 @@ describe("authorization.service RBAC", () => {
     expect(codes).toEqual(["menu.read", "order.create", "order.read"]);
   });
 
-  it("does not give manager global role.write through legacy/default permissions", async () => {
-    expect(await hasPermission({ id: "manager-1", roleName: "manager" }, "role.write")).toBe(false);
+  it("allows manager to write lower staff roles but not permission definitions", async () => {
+    const manager = { id: "manager-1", roleName: "manager" };
+    expect(await hasPermission(manager, "role.write")).toBe(true);
+    expect(await hasPermission(manager, "permission.write")).toBe(false);
+  });
+
+  it("accepts permissions already used by seeded lower staff roles", () => {
+    expect(() => assertManagerAssignablePermissionCodes([
+      "table.write",
+      "staff.read",
+      "reservation.read",
+      "reservation.update",
+    ])).not.toThrow();
+  });
+
+  it("still rejects manager assignment of sensitive system permissions", () => {
+    expect(() => assertManagerAssignablePermissionCodes([
+      "permission.write",
+    ])).toThrow("Manager cannot assign permissions");
   });
 
   it("forbids staff from role/permission administration APIs", async () => {
