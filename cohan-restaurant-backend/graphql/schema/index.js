@@ -41,6 +41,10 @@ input AssignRoleToUserInput {
   roleId: ID!
 }
 
+extend input UpdateUserInput {
+  avatarUrl: String
+}
+
 input AdminUpdateUserInput {
   fullName: String
   username: String
@@ -142,6 +146,10 @@ const readSchemaFile = (fileName) => {
     .replace(
       "createUser(input: CreateUserInput!): User!",
       "createUser(input: CreateUserInput!): AuthPayload!",
+    )
+    .replace(
+      "updateUser(id: ID!, input: UpdateUserInput!): User!",
+      "updateUser(input: UpdateUserInput!): User!",
     )
     .replace(
       "updateCustomerMetrics(input: UpdateCustomerMetricsInput!): User!",
