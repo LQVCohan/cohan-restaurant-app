@@ -101,7 +101,9 @@ const QuickStockModal = ({
     setSubmitting(false);
     setPriceHintsByIngredient({});
     setPrevCurrency(activeCurrency);
-  }, [activeCurrency, isOpen, normalized]);
+    // activeCurrency intentionally omitted: changing currency converts the current draft below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, normalized]);
 
   useEffect(() => {
     if (!isOpen || prevCurrency === activeCurrency) return;
@@ -260,7 +262,7 @@ const QuickStockModal = ({
       note: row.note?.trim() || null,
       datetime: row.datetime ? new Date(row.datetime).toISOString() : null,
       lot: row.lot?.trim() || null,
-      expiry: row.expiry || null,
+      expiry: row.expiry ? parseLocalDateOnly(row.expiry)?.toISOString() || null : null,
     }));
     try {
       setSubmitting(true);
