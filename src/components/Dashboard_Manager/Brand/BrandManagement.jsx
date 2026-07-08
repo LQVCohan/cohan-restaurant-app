@@ -143,6 +143,11 @@ const getCandidateLabel = (candidate) => {
   return `${name} — ${identity} · ${source} · ID: ${candidate?.id}`;
 };
 
+const isCandidateEligibleForRole = (candidate, role) =>
+  role === "staff"
+    ? candidate?.userType !== "CUSTOMER"
+    : ["CUSTOMER", "MANAGER"].includes(candidate?.userType);
+
 const emptyBrandForm = {
   name: "",
   slug: "",
@@ -300,9 +305,7 @@ export default function BrandManagement() {
     ? candidateData?.brandMemberCandidates || []
     : [];
   const candidates = rawCandidates.filter((candidate) =>
-    member.role === "staff"
-      ? candidate.userType !== "CUSTOMER"
-      : ["CUSTOMER", "MANAGER"].includes(candidate.userType),
+    isCandidateEligibleForRole(candidate, member.role),
   );
   const selectedCandidate = candidates.find(
     (candidate) => String(candidate.id) === String(member.userId),
@@ -954,12 +957,22 @@ export default function BrandManagement() {
                     aria-label="Vai trò trong chuỗi"
                     value={member.role}
                     onChange={(event) => {
-                      setMember((current) => ({
-                        ...current,
-                        role: event.target.value,
-                        userId: "",
-                        restaurantIds: [],
-                      }));
+                      const nextRole = event.target.value;
+                      setMember((current) => {
+                        const currentCandidate = rawCandidates.find(
+                          (candidate) => String(candidate.id) === String(current.userId),
+                        );
+
+                        return {
+                          ...current,
+                          role: nextRole,
+                          userId:
+                            currentCandidate && isCandidateEligibleForRole(currentCandidate, nextRole)
+                              ? current.userId
+                              : "",
+                          restaurantIds: [],
+                        };
+                      });
                       setMemberFormError("");
                     }}
                   >
