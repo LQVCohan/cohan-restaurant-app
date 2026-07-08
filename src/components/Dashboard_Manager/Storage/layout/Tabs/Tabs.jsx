@@ -1,4 +1,5 @@
 import React from "react";
+import { LayoutGrid, List } from "lucide-react";
 import StorageGridPaginationBridge from "../../components/common/StorageGridPaginationBridge";
 import "./Tabs.scss";
 import "../../StorageExperiencePolish.css";
@@ -28,30 +29,63 @@ import "../../StorageRecipeModalPaletteBalance.css";
 import "../../StorageSageTone.scss";
 import "../../IngredientModalEnhancements.css";
 
-const Tabs = ({ tabs, activeTab, onTabChange }) => (
-  <>
-    <div className="sm-tabs-container" role="tablist" aria-label="Nhóm chức năng kho">
-      {tabs.map((tab) => {
-        const isActive = activeTab === tab.id;
-        return (
-          <button
-            key={tab.id}
-            className={`sm-tab-item ${isActive ? "active" : ""}`}
-            onClick={() => onTabChange(tab.id)}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            aria-current={isActive ? "page" : undefined}
-          >
-            {tab.icon && <span className="tab-icon">{tab.icon}</span>}
-            <span className="tab-label">{tab.label}</span>
-            {isActive && <span className="active-dot" />}
-          </button>
-        );
-      })}
-    </div>
-    <StorageGridPaginationBridge activeTab={activeTab} />
-  </>
-);
+const Tabs = ({ tabs, activeTab, onTabChange }) => {
+  const supportsViewToggle = activeTab === "ingredients" || activeTab === "recipes";
+
+  return (
+    <>
+      <div className="sm-tabs-container" role="tablist" aria-label="Nhóm chức năng kho">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              className={`sm-tab-item ${isActive ? "active" : ""}`}
+              onClick={() => onTabChange(tab.id)}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              aria-current={isActive ? "page" : undefined}
+            >
+              {tab.icon && <span className="tab-icon">{tab.icon}</span>}
+              <span className="tab-label">{tab.label}</span>
+              {isActive && <span className="active-dot" />}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        className={`sm-view-toggle ${supportsViewToggle ? "" : "is-hidden"}`}
+        role="radiogroup"
+        aria-label="Kiểu hiển thị danh sách"
+      >
+        <label className="sm-view-toggle__option" title="Hiển thị dạng thẻ">
+          <input
+            className="sm-view-toggle__input"
+            type="radio"
+            name="storage-view-mode"
+            value="grid"
+            defaultChecked
+          />
+          <LayoutGrid size={16} aria-hidden="true" />
+          <span>Thẻ</span>
+        </label>
+        <label className="sm-view-toggle__option" title="Hiển thị dạng danh sách ngang">
+          <input
+            className="sm-view-toggle__input"
+            type="radio"
+            name="storage-view-mode"
+            value="list"
+          />
+          <List size={16} aria-hidden="true" />
+          <span>Danh sách</span>
+        </label>
+      </div>
+
+      <StorageGridPaginationBridge activeTab={activeTab} />
+    </>
+  );
+};
 
 export default Tabs;
