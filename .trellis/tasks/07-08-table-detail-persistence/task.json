@@ -1,21 +1,31 @@
 {
   "id": "07-08-table-detail-persistence",
   "title": "Persist table detail modal fields",
-  "status": "planning",
+  "status": "implemented_unverified",
   "type": "full-stack-bugfix",
   "scope": [
     "cohan-restaurant-backend/graphql/resolvers/table/query.js",
-    "cohan-restaurant-backend/tests/resolvers/table-restaurant-access.test.js",
+    "cohan-restaurant-backend/tests/resolvers/table-detail-query-fields.test.js",
     "src/components/Dashboard_Manager/Table/TableActionsLiteModal.test.jsx"
   ],
   "validation": {
     "planned": [
-      "targeted backend resolver Vitest",
-      "targeted TableActionsLiteModal component Vitest",
+      "npm --prefix cohan-restaurant-backend test -- tests/resolvers/table-detail-query-fields.test.js",
+      "npx vitest run src/components/Dashboard_Manager/Table/TableActionsLiteModal.test.jsx",
       "npm run check:graphql",
       "npm run build"
     ],
-    "completed": [],
-    "notRun": []
+    "completed": [
+      "traced Table model -> GraphQL schema -> update/query resolvers -> TableMin fragment -> TableManagement -> TableActionsLiteModal",
+      "confirmed type and all detail fields are stored directly on the existing Table document",
+      "fixed the shared TABLE_SELECT projection used by manager and public table lists",
+      "added backend projection coverage and component mutation-payload coverage"
+    ],
+    "notRun": [
+      "targeted backend Vitest was unavailable in the GitHub connector environment",
+      "targeted component Vitest was unavailable in the GitHub connector environment",
+      "npm run check:graphql was not executable in the GitHub connector environment",
+      "npm run build was not executable in the GitHub connector environment"
+    ]
   }
 }
