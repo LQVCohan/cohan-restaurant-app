@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
+import Order from "../../../models/order.model.js";
 import Reservation from "../../../models/reservation.model.js";
 import Table from "../../../models/table.model.js";
+import { orderBatchOrLegacyFilter } from "../../../utils/orderLifecycle.js";
 
 const ACTIVE_RESERVATION_STATUSES = [
   "pending_payment",
@@ -143,6 +145,47 @@ export function withMergedTableOrderLifecycle(orderMutation) {
       }
 
       return result;
+    },
+
+    async requestPaymentForTable(parent, args, ctx, info) {
+      const requestedTable = await resolveRequestedTable(args?.input || {});
+      const sourceIds = Array.isArray(requestedTable?.mergedFromTableIds)
+        ? requestedTable.mergedFromTableIds.filter(Boolean)
+        : [];
+      if (!requestedTable || !sourceIds.length) {
+        return orderMutation.requestPaymentForTable.call(
+          this,
+          parent,
+          args,
+          ctx,
+          info,
+        );
+      }
+
+      const orders = await Order.find({
+        restaurantId: args.input.restaurantId,
+        tableId: { $in: [requestedTable._id, ...sourceIds] },
+        currentStatus: { $nin: ["cancelled", "completed", "failed"] },
+        ...orderBatchOrLegacyFilter(),
+      })
+        .select({ _id: 1 })
+        .lean();
+      if (!orders.length) {
+        throw new Error("Không tìm thấy đơn đang phục vụ của bàn ghép này.");
+      }
+
+      return orderMutation.requestPaymentForOrder.call(
+        this,
+        parent,
+        {
+          input: {
+            restaurantId: args.input.restaurantId,
+            orderIds: orders.map((order) => String(order._id)),
+          },
+        },
+        ctx,
+        info,
+      );
     },
   };
 }
