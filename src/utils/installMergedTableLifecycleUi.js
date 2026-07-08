@@ -47,24 +47,53 @@ const parseMergeDetails = (table) => {
   const details = table?.mergeDetails;
   if (!details || typeof details !== "object") return null;
 
+  const sources = Array.isArray(details.sources) ? details.sources : [];
   const sourceCodes = unique(
     details.sourceTableCodes ||
-      details.sources?.map((source) => source?.tableCode) ||
+      sources.map((source) => source?.tableCode) ||
       [],
   );
   const customerNames = unique(
     details.customerNames ||
-      details.sources?.map((source) => source?.customer?.name) ||
+      sources.map((source) => source?.customer?.name) ||
       [],
   );
   const orderSessions = Array.isArray(details.orderSessions)
     ? details.orderSessions
     : [];
+  const sourceSessionLabels = unique(
+    sources.flatMap((source) =>
+      (source?.orderSessions || []).map((session) => {
+        const sessionCode =
+          normalize(session?.sessionCode) ||
+          unique(session?.orderCodes || []).join(", ") ||
+          "Phiên đang mở";
+        return `${normalize(source?.tableCode) || "Bàn nguồn"}: ${sessionCode}`;
+      }),
+    ),
+  );
+  const reservationLabels = unique(
+    sources
+      .filter((source) => source?.reservation)
+      .map((source) => {
+        const reservation = source.reservation;
+        return [
+          normalize(source?.tableCode) || "Bàn nguồn",
+          normalize(reservation?.orderCode),
+          normalize(reservation?.customerName),
+        ]
+          .filter(Boolean)
+          .join(" · ");
+      }),
+  );
 
   return {
     ...details,
+    sources,
     sourceCodes,
     customerNames,
+    sourceSessionLabels,
+    reservationLabels,
     customerLabel:
       normalize(details.customerLabel) || customerNames.join(" + "),
     sourceCount: Number(details.sourceCount || sourceCodes.length || 0),
@@ -88,6 +117,19 @@ const makeLine = (className, label, value) => {
   return line;
 };
 
+const getSummarySignature = (table, details) =>
+  JSON.stringify({
+    id: table?.id,
+    code: table?.code,
+    sources: details?.sourceCodes,
+    customers: details?.customerNames,
+    reservations: details?.reservationLabels,
+    sessions: details?.sourceSessionLabels,
+    sessionCount: details?.activeOrderSessionCount,
+    orderCount: details?.activeOrderCount,
+    total: details?.totalOpenAmount,
+  });
+
 const renderCardSummary = (card, table) => {
   const details = parseMergeDetails(table);
   const isMerged =
@@ -110,14 +152,17 @@ const renderCardSummary = (card, table) => {
       ? `Bàn nguồn: ${details.sourceCodes.join(", ")}`
       : "",
     details?.customerLabel ? `Khách: ${details.customerLabel}` : "",
-    details?.activeOrderSessionCount
-      ? `${details.activeOrderSessionCount} phiên order đang mở`
+    details?.sourceSessionLabels.length
+      ? `Phiên order: ${details.sourceSessionLabels.join("; ")}`
       : "",
   ]
     .filter(Boolean)
     .join("\n");
 
   let summary = card.querySelector(`.${SUMMARY_CLASS}`);
+  const signature = getSummarySignature(table, details);
+  if (summary?.dataset.signature === signature) return;
+
   if (!summary) {
     summary = document.createElement("section");
     summary.className = SUMMARY_CLASS;
@@ -127,6 +172,7 @@ const renderCardSummary = (card, table) => {
     else card.appendChild(summary);
   }
 
+  summary.dataset.signature = signature;
   summary.replaceChildren();
   const sourceLabel = details?.sourceCodes.length
     ? details.sourceCodes.join(" · ")
@@ -145,6 +191,26 @@ const renderCardSummary = (card, table) => {
         `${SUMMARY_CLASS}__line ${SUMMARY_CLASS}__customers`,
         "Khách",
         details.customerLabel,
+      ),
+    );
+  }
+
+  if (details?.reservationLabels.length) {
+    summary.appendChild(
+      makeLine(
+        `${SUMMARY_CLASS}__line ${SUMMARY_CLASS}__reservations`,
+        "Đặt bàn",
+        details.reservationLabels.join(" · "),
+      ),
+    );
+  }
+
+  if (details?.sourceSessionLabels.length) {
+    summary.appendChild(
+      makeLine(
+        `${SUMMARY_CLASS}__line ${SUMMARY_CLASS}__sessions`,
+        "Phiên order",
+        details.sourceSessionLabels.join(" · "),
       ),
     );
   }
@@ -188,12 +254,18 @@ const renderPaymentCustomerLabel = (tablesByCode) => {
   const match = normalize(info.textContent).match(/Bàn:\s*([^|]+)/i);
   const table = tablesByCode.get(normalizeKey(match?.[1]));
   const details = parseMergeDetails(table);
+  const current = info.querySelector(`.${PAYMENT_CLASS}`);
 
-  info.querySelector(`.${PAYMENT_CLASS}`)?.remove();
-  if (!details?.customerLabel) return;
+  if (!details?.customerLabel) {
+    current?.remove();
+    return;
+  }
+  if (current?.dataset.customerLabel === details.customerLabel) return;
 
+  current?.remove();
   const label = document.createElement("span");
   label.className = PAYMENT_CLASS;
+  label.dataset.customerLabel = details.customerLabel;
   label.append(" · Khách: ");
   const strong = document.createElement("b");
   strong.textContent = details.customerLabel;
@@ -298,3 +370,9 @@ export function installMergedTableLifecycleUi() {
   else window.addEventListener("DOMContentLoaded", start, { once: true });
   window[OBSERVER_KEY] = observer;
 }
+
+export const __testables = {
+  OBSERVER_KEY,
+  SUMMARY_CLASS,
+  PAYMENT_CLASS,
+};
