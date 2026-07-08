@@ -117,7 +117,9 @@ describe("brandMemberCandidates", () => {
     expect(filter).toMatchObject({
       deletedAt: null,
       status: "active",
-      userType: { $in: ["STAFF", "MANAGER", "HR", "ACCOUNTANT", "ADMIN"] },
+      userType: {
+        $in: ["CUSTOMER", "STAFF", "MANAGER", "HR", "ACCOUNTANT", "ADMIN"],
+      },
       _id: { $nin: ["existing-1"] },
     });
     expect(filter.$or).toHaveLength(3);
