@@ -3,20 +3,26 @@
   "name": "table-customer-guest-lifecycle",
   "title": "Restore table customer guest lifecycle",
   "description": "Reserve a table when customer details are saved, then create or attach the guest customer when the first dine-in order is persisted.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "bugfix",
   "scope": "table-customer-order-identity",
   "priority": "P1",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
+  "completedAt": "2026-07-08",
   "branch": "main",
   "base_branch": "main",
+  "commit": "6a5db4e444ba725e36afb5fa22c92c45a2f79152",
   "relatedFiles": [
     "cohan-restaurant-backend/graphql/resolvers/table/tableCustomer.js",
-    "cohan-restaurant-backend/graphql/resolvers/order/mutation.js",
-    "src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.jsx",
+    "cohan-restaurant-backend/graphql/resolvers/order/tableCustomerOrderLifecycle.js",
+    "cohan-restaurant-backend/graphql/resolvers/order/index.js",
+    "src/hooks/useSocketOrder.js",
+    "src/hooks/useTableManagement.js",
     "cohan-restaurant-backend/tests/resolvers/table-customer-group.test.js",
-    "cohan-restaurant-backend/tests/resolvers/order-mutation-session-userid-scope.test.js"
-  ]
+    "cohan-restaurant-backend/tests/resolvers/table-customer-order-lifecycle.test.js",
+    "src/hooks/useTableManagement.test.jsx"
+  ],
+  "notes": "Saving meaningful customer data now conditionally transitions only available tables to reserved and emits a restaurant-scoped realtime event. The first persisted dine-in order hydrates identity from TableCustomer only when reservation/explicit customer data is absent, then reuses ensureUserForOrder for the existing 30-day guest flow and writes the resolved id back best-effort. The existing order mutation remains responsible for occupied status. Focused tests, GraphQL checks and build were not executed in the connected environment."
 }
