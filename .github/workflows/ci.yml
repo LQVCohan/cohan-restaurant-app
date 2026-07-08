@@ -31,9 +31,11 @@ jobs:
           node-version: 22
 
       - name: Apply focused patch
+        id: apply_patch
+        continue-on-error: true
         shell: bash
         run: |
-          python <<'PY'
+          python <<'PY' > /tmp/customer-promotion-patch.log 2>&1
           from pathlib import Path
           from textwrap import dedent
 
@@ -43,12 +45,26 @@ jobs:
           exec(compile(dedent(script), 'customer-promotion-patch.py', 'exec'))
           PY
 
+      - name: Upload patch diagnostics
+        if: steps.apply_patch.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-promotion-patch-error
+          path: /tmp/customer-promotion-patch.log
+          if-no-files-found: error
+
+      - name: Stop after patch failure
+        if: steps.apply_patch.outcome == 'failure'
+        run: exit 1
+
       - name: Install dependencies without changing lockfiles
+        if: steps.apply_patch.outcome == 'success'
         run: |
           npm install --no-package-lock
           npm --prefix cohan-restaurant-backend install --no-package-lock
 
       - name: Validate focused flow
+        if: steps.apply_patch.outcome == 'success'
         run: |
           node --check cohan-restaurant-backend/graphql/resolvers/brand/memberRoleConsistency.js
           node --check cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js
@@ -59,9 +75,9 @@ jobs:
           npm run build
 
       - name: Commit validated patch and remove temporary workflow
+        if: steps.apply_patch.outcome == 'success'
         shell: bash
         run: |
-          rm -f .trellis/tasks/brand-member-invitation-flow/patch-error.log
           rm .github/workflows/temp-customer-brand-promotion.yml
           git show HEAD^:.github/workflows/ci.yml > .github/workflows/ci.yml
           git config user.name "github-actions[bot]"
