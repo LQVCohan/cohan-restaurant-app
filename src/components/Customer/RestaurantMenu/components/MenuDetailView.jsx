@@ -8,7 +8,10 @@ import {
   hasMeaningfulFoodPreferences,
   sortMenuItemsByFoodPreference,
 } from "../../../../utils/foodPreferenceMatcher";
-import { buildFoodDetailState } from "../../../../utils/customerFoodNavigation";
+import {
+  buildFoodDetailPath,
+  buildFoodDetailState,
+} from "../../../../utils/customerFoodNavigation";
 import { getCannotOrderReason } from "../../../../utils/restaurantStatus";
 import { shouldShowMenuItemToCustomer } from "../../../../utils/menuItemAvailability";
 import MenuItemCard from "./MenuItemCard";
@@ -256,20 +259,23 @@ const MenuDetailView = ({
     }
   };
 
+  const getDetailNavigation = (item) => {
+    const state = buildFoodDetailState(item, {
+      restaurantId: item?.restaurantId || restaurantId,
+      timeSlot,
+      categoryId: item?.categoryId || null,
+      selectedVariantKey:
+        item?.defaultServingKey ||
+        item?.servingVariants?.find((variant) => variant?.isDefault)?.key ||
+        item?.servingVariants?.[0]?.key ||
+        null,
+    });
+    return { state, to: buildFoodDetailPath(item?.id, state) };
+  };
+
   const openDetail = (item) => {
-    onOpenFoodDetail?.(
-      item?.id,
-      buildFoodDetailState(item, {
-        restaurantId: item?.restaurantId || restaurantId,
-        timeSlot,
-        categoryId: item?.categoryId || null,
-        selectedVariantKey:
-          item?.defaultServingKey ||
-          item?.servingVariants?.find((variant) => variant?.isDefault)?.key ||
-          item?.servingVariants?.[0]?.key ||
-          null,
-      }),
-    );
+    const navigation = getDetailNavigation(item);
+    onOpenFoodDetail?.(item?.id, navigation.state);
   };
 
   const renderSkeletons = () => (
@@ -314,7 +320,9 @@ const MenuDetailView = ({
                 <span aria-hidden="true">⌕</span>
                 <input
                   type="search"
-                  placeholder="Tìm theo tên hoặc mô tả món"
+                  name="menuSearch"
+                  autoComplete="off"
+                  placeholder="Tìm theo tên hoặc mô tả món…"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                 />
@@ -322,7 +330,11 @@ const MenuDetailView = ({
 
               <label className="menu-sort-control">
                 <span>Sắp xếp</span>
-                <select value={sort} onChange={(event) => setSort(event.target.value)}>
+                <select
+                  name="menuSort"
+                  value={sort}
+                  onChange={(event) => setSort(event.target.value)}
+                >
                   {SORT_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -450,14 +462,19 @@ const MenuDetailView = ({
               className={`menu-grid ${viewMode === "list" ? "list-view" : ""}`}
               aria-live="polite"
             >
-              {visibleItems.map((item) => (
-                <MenuItemCard
-                  key={item.id}
-                  item={item}
-                  disabled={!canOrder}
-                  onClick={openDetail}
-                />
-              ))}
+              {visibleItems.map((item) => {
+                const navigation = getDetailNavigation(item);
+                return (
+                  <MenuItemCard
+                    key={item.id}
+                    item={item}
+                    to={navigation.to}
+                    state={navigation.state}
+                    disabled={!canOrder}
+                    onClick={openDetail}
+                  />
+                );
+              })}
             </div>
 
             {loadMoreError ? (
@@ -474,7 +491,7 @@ const MenuDetailView = ({
                   disabled={isLoadingMore}
                   aria-busy={isLoadingMore}
                 >
-                  {isLoadingMore ? "Đang tải thêm..." : "Xem thêm món"}
+                  {isLoadingMore ? "Đang tải thêm…" : "Xem thêm món"}
                 </button>
               </div>
             ) : null}

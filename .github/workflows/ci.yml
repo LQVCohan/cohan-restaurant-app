@@ -52,7 +52,11 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npm run test:unit 2>&1 | tee /tmp/frontend-unit.log
+          timeout --signal=TERM --kill-after=30s 20m \
+            npm run test:unit -- \
+            --detectAsyncLeaks \
+            --maxWorkers=2 \
+            2>&1 | tee /tmp/frontend-unit.log
 
       - name: Upload frontend unit log
         if: always()
@@ -67,16 +71,27 @@ jobs:
 
       - name: Component tests for changed code
         if: github.event_name == 'pull_request'
+        shell: bash
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
+          set -o pipefail
           TEST_BASE="$(git merge-base HEAD "origin/${BASE_REF}")"
           echo "Running component tests for changes since ${TEST_BASE} (origin/${BASE_REF})"
           timeout --signal=TERM --kill-after=30s 15m \
             npm run test:component -- \
             --changed "${TEST_BASE}" \
             --detectAsyncLeaks \
-            --maxWorkers=2
+            --maxWorkers=2 \
+            2>&1 | tee /tmp/frontend-component.log
+
+      - name: Upload frontend component log
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-component-log
+          path: /tmp/frontend-component.log
+          if-no-files-found: ignore
 
       - name: Full component tests
         if: github.event_name != 'pull_request'
@@ -93,7 +108,18 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Smoke tests
-        run: npm run test:smoke
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:smoke 2>&1 | tee /tmp/frontend-smoke.log
+
+      - name: Upload frontend smoke log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-smoke-log
+          path: /tmp/frontend-smoke.log
+          if-no-files-found: ignore
 
   backend:
     name: backend

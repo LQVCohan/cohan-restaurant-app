@@ -3,6 +3,7 @@ import path from "node:path";
 import React from "react";
 import { MockedProvider } from "@apollo/client/testing";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useActiveMenuPromotions } from "../../../../hooks/useActiveMenuPromotions";
 import MenuDetailView, {
@@ -53,7 +54,7 @@ describe("Customer menu promotion badge wiring", () => {
         },
         result: {
           data: {
-            categories: [
+            customerMenuCategories: [
               {
                 id: "cat_01",
                 name: "Món chính",
@@ -72,8 +73,9 @@ describe("Customer menu promotion badge wiring", () => {
             filter: {
               restaurantId: "res_01",
               timeSlot: "lunch",
+              sort: "default",
             },
-            limit: 100,
+            limit: 24,
             cursor: null,
           },
         },
@@ -87,6 +89,7 @@ describe("Customer menu promotion badge wiring", () => {
               },
               edges: [
                 {
+                  cursor: "lunch_02",
                   node: {
                     id: "lunch_02",
                     restaurantId: "res_01",
@@ -95,12 +98,28 @@ describe("Customer menu promotion badge wiring", () => {
                     name: "Cơm gà",
                     description: "Cơm gà test",
                     basePrice: 55000,
-                    byWeight: false,
+                    defaultServingKey: "portion",
+                    hasByWeightVariant: false,
                     thumbImage: "https://example.com/com-ga.jpg",
                     status: "available",
                     avgPrepTimeMin: 15,
                     inventoryStatus: "IN_STOCK",
+                    maxAvailable: 10,
                     stockWarnings: [],
+                    labels: [],
+                    foodType: "NON_VEGETARIAN",
+                    meatTypes: ["CHICKEN"],
+                    dietTags: [],
+                    allergenTags: [],
+                    tasteProfile: {
+                      containsOnion: false,
+                      containsCilantro: false,
+                      sugar: 0,
+                      spice: 0,
+                      __typename: "MenuItemTasteProfile",
+                    },
+                    rate: 4.5,
+                    orderCounter: 8,
                     servingVariants: [],
                     __typename: "MenuItem",
                   },
@@ -115,13 +134,16 @@ describe("Customer menu promotion badge wiring", () => {
     ];
 
     render(
-      <MockedProvider mocks={apolloMocks}>
-        <MenuDetailView
-          restaurant={{ id: "res_01", name: "Cơm Niêu Sài Gòn" }}
-          onBack={vi.fn()}
-          onOpenFoodDetail={vi.fn()}
-        />
-      </MockedProvider>,
+      <MemoryRouter>
+        <MockedProvider mocks={apolloMocks}>
+          <MenuDetailView
+            restaurant={{ id: "res_01", name: "Cơm Niêu Sài Gòn" }}
+            canOrder
+            onBack={vi.fn()}
+            onOpenFoodDetail={vi.fn()}
+          />
+        </MockedProvider>
+      </MemoryRouter>,
     );
 
     expect(useActiveMenuPromotions).toHaveBeenCalledWith("res_01");
@@ -131,20 +153,24 @@ describe("Customer menu promotion badge wiring", () => {
 
   it("renders promotion label and promotion name in MenuItemCard", () => {
     render(
-      <MenuItemCard
-        item={{
-          id: "item-1",
-          name: "Kem dừa",
-          description: "Kem dừa mát lạnh",
-          basePrice: 45000,
-          thumbImage: "https://example.com/kem-dua.jpg",
-          status: "active",
-          servingVariants: [],
-          promotionLabel: "-5%",
-          promotion: { name: "Ưu đãi mùa hè" },
-        }}
-        onClick={vi.fn()}
-      />,
+      <MemoryRouter>
+        <MenuItemCard
+          item={{
+            id: "item-1",
+            restaurantId: "res_01",
+            name: "Kem dừa",
+            description: "Kem dừa mát lạnh",
+            basePrice: 45000,
+            thumbImage: "https://example.com/kem-dua.jpg",
+            status: "available",
+            inventoryStatus: "IN_STOCK",
+            servingVariants: [],
+            promotionLabel: "-5%",
+            promotion: { name: "Ưu đãi mùa hè" },
+          }}
+          onClick={vi.fn()}
+        />
+      </MemoryRouter>,
     );
 
     expect(screen.getByText("-5%")).toBeInTheDocument();

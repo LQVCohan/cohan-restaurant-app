@@ -1,6 +1,11 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Clock3 } from "lucide-react";
 import { formatCurrency } from "../../../../utils/formatters";
+import {
+  buildFoodDetailPath,
+  buildFoodDetailState,
+} from "../../../../utils/customerFoodNavigation";
 import {
   canCustomerOrderMenuItem,
   getMenuItemAvailability,
@@ -22,27 +27,44 @@ export const getMenuItemPriceLabel = (item = {}) => {
     : `Từ ${formatCurrency(minimum)}`;
 };
 
-const MenuItemCard = ({ item, onClick, disabled = false }) => {
+const MenuItemCard = ({ item, to, state, onClick, disabled = false }) => {
   const foodPreferenceMeta = item?.foodPreferenceMeta;
   const availability = getMenuItemAvailability(item);
   const canOrderNow = canCustomerOrderMenuItem(item) && !disabled;
   const imageSrc = item?.thumbImage || MENU_ITEM_PLACEHOLDER;
+  const defaultState =
+    state ||
+    buildFoodDetailState(item, {
+      restaurantId: item?.restaurantId,
+      categoryId: item?.categoryId,
+      selectedVariantKey:
+        item?.defaultServingKey ||
+        item?.servingVariants?.find((variant) => variant?.isDefault)?.key ||
+        item?.servingVariants?.[0]?.key ||
+        null,
+    });
+  const detailPath =
+    to || buildFoodDetailPath(item?.id, defaultState) || "/cus-menu";
 
-  const handleOpen = () => onClick?.(item);
-  const handleKeyDown = (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      handleOpen();
-    }
+  const handleClick = (event) => {
+    const plainPrimaryClick =
+      event.button === 0 &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey;
+    if (!onClick || !plainPrimaryClick) return;
+
+    event.preventDefault();
+    onClick(item);
   };
 
   return (
-    <article
+    <Link
       className={`item-card ${!canOrderNow ? "inactive" : ""}`}
-      onClick={handleOpen}
-      onKeyDown={handleKeyDown}
-      role="button"
-      tabIndex={0}
+      to={detailPath}
+      state={defaultState}
+      onClick={handleClick}
       aria-label={`Xem chi tiết ${item.name}${
         canOrderNow ? "" : `, ${availability.label}`
       }`}
@@ -51,13 +73,18 @@ const MenuItemCard = ({ item, onClick, disabled = false }) => {
         <img
           src={imageSrc}
           alt={item.name || "Món ăn"}
+          width="800"
+          height="600"
           loading="lazy"
+          decoding="async"
           onError={(event) => {
             event.currentTarget.onerror = null;
             event.currentTarget.src = MENU_ITEM_PLACEHOLDER;
           }}
         />
-        {!canOrderNow ? <span className="badge">{availability.label}</span> : null}
+        {!canOrderNow ? (
+          <span className="badge">{availability.label}</span>
+        ) : null}
         {item.promotionLabel ? (
           <span
             className="menu-item-card__promo-badge"
@@ -71,7 +98,9 @@ const MenuItemCard = ({ item, onClick, disabled = false }) => {
       <div className="details">
         <h4 title={item.name}>{item.name}</h4>
         {item.promotion?.name ? (
-          <div className="menu-item-card__promo-name">{item.promotion.name}</div>
+          <div className="menu-item-card__promo-name">
+            {item.promotion.name}
+          </div>
         ) : null}
 
         {foodPreferenceMeta?.hasAllergyWarning ? (
@@ -118,7 +147,7 @@ const MenuItemCard = ({ item, onClick, disabled = false }) => {
           </span>
         </div>
       </div>
-    </article>
+    </Link>
   );
 };
 

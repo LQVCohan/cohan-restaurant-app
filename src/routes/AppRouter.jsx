@@ -68,12 +68,14 @@ import AddressPage from "@/components/Customer/AddressPage/AddressPage";
 import HelpPage from "@/components/Customer/HelpPage/HelpPage";
 import VRViewer from "@/components/Customer/VRViewer/VRViewer";
 import NotificationsPage from "@/components/Customer/NotifyModal/NotificationsPage";
-import FoodDetail from "@/components/Customer/Food/FoodDetailV2";
 import AiHandoffInbox from "@/components/communication/AiHandoffInbox";
 import { isAccountVerified } from "@/utils/accountVerification";
 
 const POSLayout = lazy(() =>
   import("@/components/Dashboard_Manager/POS/components/pos/POSLayout"),
+);
+const FoodDetail = lazy(() =>
+  import("@/components/Customer/Food/FoodDetailV2"),
 );
 
 const useAuth = () => {
@@ -487,7 +489,10 @@ const AppRouter = () => (
         path="/checkout"
         element={withPrivateRoute(<CheckoutPage />, ["customer"])}
       />
-      <Route path="/food/:foodId" element={<FoodDetail />} />
+      <Route
+        path="/food/:foodId"
+        element={withLazyRoute(<FoodDetail />)}
+      />
       <Route
         path="/vouchers/:id"
         element={<Navigate to="/restaurants" replace />}

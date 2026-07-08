@@ -14,6 +14,27 @@ const toId = (value) => new mongoose.Types.ObjectId(value);
 const badInput = (message) =>
   new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
 
+const toCustomerModifierGroup = (group) => ({
+  id: group?._id || group?.id,
+  name: group?.name,
+  selectionType: group?.selectionType,
+  required: Boolean(group?.required),
+  minSelected: Number(group?.minSelected || 0),
+  maxSelected:
+    group?.maxSelected == null ? null : Number(group.maxSelected),
+  options: (group?.options || [])
+    .filter((option) => option?.isActive !== false)
+    .map((option) => ({
+      id: option?._id || option?.id,
+      name: option?.name,
+      isDefault: Boolean(option?.isDefault),
+      priceRule: {
+        rule: option?.priceRule?.rule || "DELTA",
+        amount: Number(option?.priceRule?.amount || 0),
+      },
+    })),
+});
+
 export const ModifierQuery = {
   customerModifierGroups: async (_, { restaurantId, menuItemId }) => {
     if (!isValidId(restaurantId) || !isValidId(menuItemId)) {
@@ -53,12 +74,7 @@ export const ModifierQuery = {
       .lean({ virtuals: true });
 
     return groups
-      .map((group) => ({
-        ...group,
-        options: (group.options || []).filter(
-          (option) => option?.isActive !== false,
-        ),
-      }))
+      .map(toCustomerModifierGroup)
       .filter((group) => group.options.length > 0);
   },
 

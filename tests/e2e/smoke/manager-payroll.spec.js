@@ -184,6 +184,7 @@ const installPayrollMocks = async (page) => {
         data = { me: authUser };
         break;
       case "GetRestaurants":
+      case "AuthBusinessContext":
       case "ScopedRestaurants":
         data = {
           refRestaurants: [],
