@@ -66,7 +66,7 @@ const getScopedBrandRestaurants = (brand, systemAdmin) => {
 
 export default function useBrandManagement(
   additionalRestaurants = EMPTY_RESTAURANTS,
-  { skip = false, loadFullBrands = false } = {},
+  { skip = false, loadFullBrands = true } = {},
 ) {
   const {
     user,
