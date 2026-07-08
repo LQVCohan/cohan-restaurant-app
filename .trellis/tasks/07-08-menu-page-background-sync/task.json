@@ -1,0 +1,18 @@
+{
+  "id": "07-08-menu-page-background-sync",
+  "title": "Đồng bộ nền trang quản lý thực đơn",
+  "status": "in_progress",
+  "type": "frontend-redesign",
+  "scope": [
+    "src/components/Dashboard_Manager/Menu/MenuManagementPolish.scss"
+  ],
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "npm run build",
+      "visual review at desktop, 430x932 and 390x844"
+    ],
+    "completed": [],
+    "notRun": []
+  }
+}
