@@ -1,14 +1,15 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Cart, Warehouse } from "../../../models/index.js";
-import { checkAvailabilityForLinesTx } from "../../../src/services/inventoryWithModifiers.service.js";
+import { checkAvailabilityForLinesTx } from "../../../src/services/inventory.service.js";
 import { resolveCustomerModifierSelection } from "../../../src/services/customerModifierSelection.service.js";
 
 const POLICY_MESSAGE =
   "Chính sách giữ chỗ tồn kho: mỗi lần thêm món sẽ giữ chỗ tối đa 5 phút. Hủy/thoát quá nhiều lần có thể bị cảnh báo hoặc tạm chặn.";
 const HOLD_TTL_SECONDS = 5 * 60;
 
-const getServingKey = (value) => String(value || "portion").trim() || "portion";
+const getServingKey = (value) =>
+  String(value || "portion").trim() || "portion";
 
 const requireSelfUserId = (inputUserId, ctx) => {
   const authUserId = ctx?.user?.id;
@@ -100,14 +101,7 @@ export const CustomerCartQuery = {
       checkAvailabilityForLinesTx({
         restaurantId,
         warehouseId,
-        lines: [
-          {
-            menuItemId,
-            quantity: 1,
-            servingKey,
-            modifiers: modifierSelection.modifiers,
-          },
-        ],
+        lines: [{ menuItemId, quantity: 1, servingKey }],
       }),
       Cart.find({
         status: "active",
