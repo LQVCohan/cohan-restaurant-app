@@ -1,0 +1,29 @@
+{
+  "id": "07-08-customer-menu-food-detail-ux",
+  "title": "Complete customer menu and food detail ordering UX",
+  "status": "in_progress",
+  "branch": "codex/customer-menu-food-detail-ux",
+  "createdAt": "2026-07-08",
+  "scope": [
+    "cohan-restaurant-backend/models/cart.model.js",
+    "cohan-restaurant-backend/graphql/schema/cart.graphql",
+    "cohan-restaurant-backend/graphql/schema/menu.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/cart/query.js",
+    "cohan-restaurant-backend/graphql/resolvers/cart/mutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/modifier/query.js",
+    "cohan-restaurant-backend/graphql/resolvers/inventory/types.js",
+    "src/components/Customer/RestaurantMenu/components/MenuDetailView.jsx",
+    "src/components/Customer/RestaurantMenu/components/MenuItemCard.jsx",
+    "src/components/Customer/Food/FoodDetailV2.jsx",
+    "src/components/Customer/Food/FoodDetailV2.scss",
+    "src/routes/AppRouter.jsx",
+    "targeted frontend and backend tests"
+  ],
+  "validation": [
+    "npm run check:graphql",
+    "targeted Vitest backend resolver tests",
+    "targeted React component tests",
+    "npm run build",
+    "GitHub Actions CI"
+  ]
+}
