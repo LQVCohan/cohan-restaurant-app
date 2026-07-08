@@ -29,6 +29,9 @@ const TABLE_SELECT = {
   visualConfig: 1,
   isJoinable: 1,
   joinGroupId: 1,
+  mergedFromTableIds: 1,
+  mergeAnchorTableId: 1,
+  mergedAt: 1,
 };
 
 const getRestaurantModel = async () => {
