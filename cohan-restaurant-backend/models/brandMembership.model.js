@@ -23,6 +23,10 @@ const BrandMembershipSchema = BaseSchemaModel({
   inviteTokenExp: { type: Date, default: null },
   invitedAt: { type: Date, default: null },
   acceptedAt: { type: Date, default: null },
+  revokedAt: { type: Date, default: null },
+  revokedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+  revokedReason: { type: String, trim: true, maxlength: 500, default: null },
+  revokedFromStatus: { type: String, enum: ["active", "invited"], default: null },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 });
