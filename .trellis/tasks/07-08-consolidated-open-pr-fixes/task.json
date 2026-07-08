@@ -1,0 +1,20 @@
+{
+  "id": "consolidated-open-pr-fixes",
+  "title": "Consolidate remaining open PR fixes",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "scheduling-notifications-customer-manager-ui",
+  "priority": "P1",
+  "createdAt": "2026-07-08",
+  "branch": "fix/consolidate-open-pr-fixes",
+  "base_branch": "main",
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/scheduling/autoSchedule.service.js",
+    "cohan-restaurant-backend/src/services/menuAvailabilityWatch.service.js",
+    "cohan-restaurant-backend/graphql/resolvers/cart/query.js",
+    "src/context/CustomerNotificationContext.jsx",
+    "src/components/Customer/Food/FoodDetailAvailabilityGlobalMount.jsx",
+    "src/hooks/useBrandManagement.js",
+    "src/layouts/ManagerLayout.scss"
+  ]
+}
