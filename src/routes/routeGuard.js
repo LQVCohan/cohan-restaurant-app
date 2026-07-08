@@ -22,7 +22,7 @@ export const resolveRoleName = (me) => {
     typeof me === "object" &&
     (me.forcePasswordChange || me.status === "force_password_change")
   ) {
-    return "force_password_change";
+    return "pending_verification";
   }
   if (me && typeof me === "object" && !isAccountVerified(me)) {
     rememberPendingVerificationContact(me);
@@ -47,9 +47,6 @@ export const hasAllowedRole = (allowedRoles, roleName) => {
 
 export const getRoleHomeRoute = (roleName) => {
   const normalizedRole = normalizeRoleName(roleName);
-  if (normalizedRole === "force_password_change") {
-    return "/verify-account/confirm?forcePasswordChange=1";
-  }
   if (normalizedRole === "pending_verification") return "/verify-email";
   return getDefaultPathForRole(roleName);
 };
