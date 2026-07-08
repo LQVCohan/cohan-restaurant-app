@@ -1,12 +1,12 @@
 # COHAN — Xuất database Atlas và khôi phục về local
 
-Thư mục này dành cho file database bàn giao:
+Database mẫu của dự án được lưu tại:
 
 ```text
-cohan-defense.archive.gz
+handover/database/cohan-defense.archive.gz
 ```
 
-File archive chứa database và sample data. Người nhận restore file này vào MongoDB local; không cần quyền truy cập Atlas và không cần chạy seed.
+File archive chứa database `RestaurantDB` và sample data. Người dùng có thể restore file này vào MongoDB local mà không cần quyền truy cập Atlas và không cần chạy seed.
 
 ## 1. Chuẩn bị MongoDB Database Tools
 
@@ -19,7 +19,7 @@ mongorestore --version
 
 Nếu Windows không nhận lệnh, thêm thư mục `bin` của MongoDB Database Tools vào `PATH`, sau đó mở PowerShell mới.
 
-## 2. Xuất database từ Atlas
+## 2. Xuất lại database từ Atlas
 
 Không ghi URI Atlas thật vào README, source code hoặc lịch sử Git. Lưu URI thật vào biến môi trường PowerShell trên máy cá nhân:
 
@@ -27,14 +27,14 @@ Không ghi URI Atlas thật vào README, source code hoặc lịch sử Git. Lư
 $env:COHAN_ATLAS_URI="<URI Atlas của bạn>"
 ```
 
-Ví dụ database nguồn là `RestaurantDB_DefenseTest`:
+Tại thư mục gốc repository, chạy:
 
 ```powershell
 New-Item -ItemType Directory -Force -Path ".\handover\database" | Out-Null
 
 mongodump `
   --uri="$env:COHAN_ATLAS_URI" `
-  --db="RestaurantDB_DefenseTest" `
+  --db="RestaurantDB" `
   --archive=".\handover\database\cohan-defense.archive.gz" `
   --gzip
 ```
@@ -52,11 +52,11 @@ Get-Item ".\handover\database\cohan-defense.archive.gz" |
   Select-Object FullName, Length, LastWriteTime
 ```
 
-Chỉ bàn giao khi file tồn tại và `Length` lớn hơn `0`.
+File hợp lệ khi tồn tại và `Length` lớn hơn `0`.
 
 ## 3. Khôi phục vào MongoDB local
 
-Bảo đảm MongoDB local đang chạy. Nếu database trong archive đã tên là `RestaurantDB`:
+Bảo đảm MongoDB local đang chạy, sau đó thực hiện tại thư mục gốc repository:
 
 ```powershell
 mongorestore `
@@ -64,18 +64,6 @@ mongorestore `
   --archive=".\handover\database\cohan-defense.archive.gz" `
   --gzip `
   --drop
-```
-
-Nếu database nguồn là `RestaurantDB_DefenseTest` và muốn đổi thành `RestaurantDB` ở local:
-
-```powershell
-mongorestore `
-  --uri="mongodb://127.0.0.1:27017" `
-  --archive=".\handover\database\cohan-defense.archive.gz" `
-  --gzip `
-  --drop `
-  --nsFrom="RestaurantDB_DefenseTest.*" `
-  --nsTo="RestaurantDB.*"
 ```
 
 `--drop` xóa các collection đích trước khi khôi phục. Chỉ dùng với MongoDB local hoặc database thử nghiệm đã xác định đúng.
@@ -103,14 +91,13 @@ http://localhost:4000/health/live
 http://localhost:4000/health/ready
 ```
 
-Sau đó khởi động frontend và đăng nhập bằng tài khoản trong `../Account.md`.
+Sau đó khởi động frontend và đăng nhập bằng tài khoản trong [`../Account.md`](../Account.md).
 
-## 5. Kiểm tra trước khi bàn giao
+## 5. Kiểm tra sau khi restore
 
-- Restore thử archive vào một MongoDB local sạch.
 - Backend kết nối đúng database `RestaurantDB`.
 - Admin và Customer/User đăng nhập thành công.
-- Quan hệ Business, Restaurant và tài khoản vẫn hiển thị đúng.
+- Quan hệ Business, Restaurant và tài khoản hiển thị đúng.
 - File archive không chứa `.env`, URI Atlas hoặc thông tin truy cập Atlas.
 
 ## 6. Cấu trúc thư mục
@@ -127,5 +114,3 @@ cohan-restaurant-app/
 │     └─ cohan-defense.archive.gz
 └─ package.json
 ```
-
-File archive chưa được tạo trong repository ở bước cập nhật tài liệu này. Hãy thêm đúng tên file sau khi đã dump và restore thử thành công.
