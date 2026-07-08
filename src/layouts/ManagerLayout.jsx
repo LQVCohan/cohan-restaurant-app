@@ -21,6 +21,7 @@ const MenuManagement = lazy(() => import("../components/Dashboard_Manager/Menu/M
 const ComboManagement = lazy(() => import("../components/Dashboard_Manager/Combo/ComboManagement"));
 const ModifierManagement = lazy(() => import("../components/Dashboard_Manager/Modifier/ModifierManagement"));
 const TableManagement = lazy(() => import("../components/Dashboard_Manager/Table/TableManagement"));
+const TableTypeManagementPage = lazy(() => import("../components/Dashboard_Manager/Table/TableTypeManagementPage"));
 const TableQrManagementPage = lazy(() => import("../components/Dashboard_Manager/Table/TableQrManagementPage"));
 const CustomerManagement = lazy(() => import("../components/Dashboard_Manager/Customer/CustomerManagement"));
 const CustomerAnalyticsPage = lazy(() => import("../components/Dashboard_Manager/Customer/CustomerAnalyticsPage"));
@@ -49,7 +50,7 @@ const BACKUP_PAGE_PERMISSIONS = ["backup.read", "backup.write", "backup.export",
 const IS_TEST_ENV = import.meta.env.MODE === "test";
 
 const VALID_MANAGER_PAGES = new Set([
-  "dashboard", "brands", "tables", "table-qr", "orders", "menu", "modifiers", "combos", "inventory", "staff", "customers",
+  "dashboard", "brands", "tables", "table-types", "table-qr", "orders", "menu", "modifiers", "combos", "inventory", "staff", "customers",
   "customer-analytics", "analytics", "transactions", "transfer-review", "wallet", "reports", "schedules",
   "promotions", "finance", "payroll", "reviews", "settings", "rates", "setting",
   "backup", "print-management", "restaurant-info-management", "rbac", "system-users", "ai-handoff",
@@ -84,6 +85,7 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   combos: ["menu.read"],
   inventory: ["inventory.read", "stock.read"],
   tables: ["table.read"],
+  "table-types": ["table.write"],
   "table-qr": ["table.read"],
   "restaurant-info-management": ["restaurant.read"],
   staff: ["staff.read"],
@@ -117,6 +119,7 @@ const PAGE_CONFIG = {
   dashboard: page("Tổng quan", "Tổng quan hiệu suất và số liệu vận hành nhà hàng", "📊", ["overview", "thống kê", "kpi", "doanh thu", "dashboard"]),
   brands: page("Quản lý chuỗi", "Quản lý Brand, chi nhánh và chủ sở hữu", "🏢", ["brand", "chuỗi", "chi nhánh", "owner"]),
   tables: page("Quản lý bàn", "Theo dõi trạng thái bàn, sơ đồ tầng và đặt chỗ", "🪑", ["bàn", "table", "đặt bàn", "sơ đồ"]),
+  "table-types": page("Loại bàn", "Thống kê và cập nhật loại cho từng bàn", "🏷️", ["loại bàn", "table type", "vip", "booth", "bar"]),
   "table-qr": page("QR truy cập bàn", "Sinh QR để khách quét tại bàn và xem order hiện tại", "📱", ["qr", "bàn", "quét", "order", "khách"]),
   orders: page("Quản lý đơn hàng", "Xử lý đơn tại chỗ, mang đi, giao hàng và thanh toán", "🧾", ["order", "đơn", "timeline", "thanh toán"]),
   menu: page("Quản lý menu", "Quản lý món ăn, giá bán, danh mục và trạng thái phục vụ", "🍜", ["món", "menu", "giá", "danh mục"]),
@@ -393,6 +396,7 @@ const ManagerLayout = () => {
       case "dashboard": return <Dashboard />;
       case "brands": return <BrandManagement />;
       case "tables": return <TableManagement />;
+      case "table-types": return <TableTypeManagementPage />;
       case "table-qr": return <TableQrManagementPage />;
       case "orders": return <OrderManagement />;
       case "menu": return <MenuManagement />;
