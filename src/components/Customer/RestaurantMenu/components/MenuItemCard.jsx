@@ -3,6 +3,10 @@ import { Link } from "react-router-dom";
 import { Clock3 } from "lucide-react";
 import { formatCurrency } from "../../../../utils/formatters";
 import {
+  buildFoodDetailPath,
+  buildFoodDetailState,
+} from "../../../../utils/customerFoodNavigation";
+import {
   canCustomerOrderMenuItem,
   getMenuItemAvailability,
 } from "../../../../utils/menuItemAvailability";
@@ -23,18 +27,46 @@ export const getMenuItemPriceLabel = (item = {}) => {
     : `Từ ${formatCurrency(minimum)}`;
 };
 
-const MenuItemCard = ({ item, to, state, disabled = false }) => {
+const MenuItemCard = ({ item, to, state, onClick, disabled = false }) => {
   const foodPreferenceMeta = item?.foodPreferenceMeta;
   const availability = getMenuItemAvailability(item);
   const canOrderNow = canCustomerOrderMenuItem(item) && !disabled;
   const imageSrc = item?.thumbImage || MENU_ITEM_PLACEHOLDER;
-  const detailPath = to || (item?.id ? `/food/${encodeURIComponent(item.id)}` : "/cus-menu");
+  const defaultState =
+    state ||
+    buildFoodDetailState(item, {
+      restaurantId: item?.restaurantId,
+      categoryId: item?.categoryId,
+      selectedVariantKey:
+        item?.defaultServingKey ||
+        item?.servingVariants?.find((variant) => variant?.isDefault)?.key ||
+        item?.servingVariants?.[0]?.key ||
+        null,
+    });
+  const detailPath =
+    to ||
+    buildFoodDetailPath(item?.id, defaultState) ||
+    "/cus-menu";
+
+  const handleClick = (event) => {
+    const plainPrimaryClick =
+      event.button === 0 &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey;
+    if (!onClick || !plainPrimaryClick) return;
+
+    event.preventDefault();
+    onClick(item);
+  };
 
   return (
     <Link
       className={`item-card ${!canOrderNow ? "inactive" : ""}`}
       to={detailPath}
-      state={state}
+      state={defaultState}
+      onClick={handleClick}
       aria-label={`Xem chi tiết ${item.name}${
         canOrderNow ? "" : `, ${availability.label}`
       }`}
