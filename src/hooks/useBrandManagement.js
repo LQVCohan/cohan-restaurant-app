@@ -174,12 +174,13 @@ export default function useBrandManagement(
   }, []);
 
   useEffect(() => {
+    if (loading || restaurantsLoading) return;
     setSelectedRestaurantIdState((currentId) => {
       if (!activeRestaurantOptions.length) return "";
       if (currentId && activeRestaurantOptions.some((restaurant) => restaurant.id === currentId)) return currentId;
       return activeRestaurantOptions.length === 1 || !currentId ? activeRestaurantOptions[0].id : "";
     });
-  }, [activeRestaurantOptions]);
+  }, [activeRestaurantOptions, loading, restaurantsLoading]);
 
   const selectedRestaurant = useMemo(
     () => activeRestaurantOptions.find((restaurant) => restaurant.id === selectedRestaurantId) || null,
