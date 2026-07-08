@@ -1,0 +1,22 @@
+{
+  "id": "07-08-storage-horizontal-list-view",
+  "title": "Bổ sung danh sách ngang cho giao diện kho",
+  "status": "in_progress",
+  "type": "frontend-feature",
+  "scope": [
+    "src/components/Dashboard_Manager/Storage/StorageManagement.jsx",
+    "src/components/Dashboard_Manager/Storage/StorageManagement.scss",
+    "src/components/Dashboard_Manager/Storage/StorageManagement.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "vitest run src/components/Dashboard_Manager/Storage/StorageManagement.test.jsx",
+      "npm run check:conflicts",
+      "npm run build",
+      "desktop browser smoke for Ingredients and Recipes",
+      "mobile browser smoke at 390x844 and 430x932"
+    ],
+    "completed": [],
+    "notRun": []
+  }
+}
