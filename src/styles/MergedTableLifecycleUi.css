@@ -98,6 +98,21 @@
   color: #c2410c;
 }
 
+.cohan-merged-order-source {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0.38rem;
+  padding: 0.14rem 0.42rem;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.64rem;
+  font-weight: 900;
+  line-height: 1.15;
+  vertical-align: middle;
+}
+
 @media (max-width: 640px) {
   .cohan-merged-table-card {
     grid-column: 1 / -1;
