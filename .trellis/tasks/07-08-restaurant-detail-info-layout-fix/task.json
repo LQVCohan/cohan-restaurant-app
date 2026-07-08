@@ -1,7 +1,7 @@
 {
   "id": "07-08-restaurant-detail-info-layout-fix",
   "title": "Sắp xếp lại phần thông tin chi tiết nhà hàng",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-fix",
   "scope": [
     "src/components/Customer/RestaurantDetail/RestaurantDetail.complete.scss",
@@ -19,8 +19,15 @@
     ],
     "completed": [
       "traced model, GraphQL schema, public resolver, Apollo query, RestaurantInfo and sidebar callers",
-      "confirmed the root causes are client-side normalization and layout rules"
+      "confirmed the root causes are client-side normalization and layout rules",
+      "reviewed the final commit diffs for the amenity mapper, responsive card grid, policy layout, sidebar overflow and source-contract regression test",
+      "checked for commit-associated GitHub Actions runs; none were available"
     ],
-    "notRun": []
+    "notRun": [
+      "npm run check:conflicts",
+      "targeted Vitest",
+      "npm run build",
+      "desktop and mobile browser smoke tests"
+    ]
   }
 }
