@@ -1,14 +1,13 @@
 # Implement — Manager menu stock UI fixes
 
-## Thay đổi dự kiến
+## Thay đổi đã thực hiện
 
 1. `MenuItemCard.jsx`: chuẩn hóa inventory status, hiển thị số suất và class khi dropdown mở.
-2. `MenuItemCard.test.jsx`: kiểm tra số suất được render và handler trạng thái vẫn hoạt động.
-3. `MenuManagementCardCompactFix.scss`: bỏ clipping ở card, giữ clipping ở vùng con và nâng z-index khi menu mở.
-4. `CategoryModal.jsx`: chuyển sang `Modal.Header`/`Modal.Body`, thêm search semantics và nút xóa.
-5. `CategoryModalPolish.scss`: style outer modal/body thật, category content và search compound control.
-6. `Toolbar.jsx`/`Toolbar.scss`: thống nhất search control.
-7. `MenuItemModal.jsx`: dispatch điều hướng đến `inventory`.
+2. `MenuItemCard.test.jsx`: kiểm tra số suất, trạng thái hết nguyên liệu và handler trạng thái.
+3. `MenuManagementPolish.scss`: bỏ clipping ở card, nâng z-index menu và đồng bộ search control.
+4. `CategoryModal.jsx`: chuyển sang `Modal.Header`/`Modal.Body`, bỏ shell lồng, thêm search semantics và nút xóa.
+5. `CategoryModalStructureFix.scss`: sở hữu layout modal thật và compound search control.
+6. `main.jsx`: chuẩn hóa legacy hash `#storage` sang `#inventory`.
 
 ## Validation nhỏ nhất
 
