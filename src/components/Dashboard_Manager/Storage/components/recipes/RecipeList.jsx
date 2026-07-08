@@ -252,8 +252,12 @@ const RecipeList = ({
   };
 
   const handleSave = async (formData) => {
-    if (editingRecipe && hasRecipeData(editingRecipe)) await onUpdateRecipe?.(editingRecipe.id, formData);
-    else await onAddRecipe?.(formData);
+    const payload = {
+      ...formData,
+      servingVariants: formData?.servingVariants || formData?.variants || [],
+    };
+    if (editingRecipe && hasRecipeData(editingRecipe)) await onUpdateRecipe?.(editingRecipe.id, payload);
+    else await onAddRecipe?.(payload);
     setShowModal(false); setEditingRecipe(null); setSelectedMenuItem(null); await refetchTrash?.();
   };
 
