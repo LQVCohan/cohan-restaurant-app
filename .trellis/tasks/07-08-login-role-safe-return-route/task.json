@@ -1,0 +1,31 @@
+{
+  "id": "07-08-login-role-safe-return-route",
+  "name": "login-role-safe-return-route",
+  "title": "Prevent explicit logout from recording the previous protected route",
+  "description": "Navigate away from the protected portal before clearing authentication so a later account does not inherit the previous account's route.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "auth-routing",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "codex/fix-login-role-safe-return-route-v2",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/context/AuthProvider.jsx",
+    "src/context/__tests__/AuthProvider.logout-route-order.test.jsx"
+  ],
+  "notes": "The backend returns the new role correctly and Login may still restore legitimate protected destinations. The shared fix is to leave the old protected route before publishing the anonymous logout state.",
+  "meta": {
+    "skills": ["ponytail", "react-ui-performance"]
+  }
+}
