@@ -214,6 +214,7 @@ export const AuthProvider = ({ children }) => {
   const [refRestaurant, setRefRestaurant] = useState([]);
   const refreshRecoveryAttemptedRef = React.useRef(false);
   const refreshTimerRef = React.useRef(null);
+  const accountCacheResetRef = React.useRef(Promise.resolve());
   const applyRefreshedSession = useCallback((payload) => {
     if (!payload?.token) return false;
     setAuth({ token: payload.token });
@@ -497,7 +498,8 @@ export const AuthProvider = ({ children }) => {
   }, [token, applyRefreshedSession]);
 
   const login = useCallback(
-    (newToken, roleOrUser, avatar = null, options = {}) => {
+    async (newToken, roleOrUser, avatar = null, options = {}) => {
+      await accountCacheResetRef.current;
       const rawUser =
         typeof roleOrUser === "string" ? { roleName: roleOrUser } : roleOrUser;
       const newUser = normalizeUserModel(rawUser, null, avatar);
@@ -525,7 +527,7 @@ export const AuthProvider = ({ children }) => {
     setSessionWarning("");
     clearAuth();
     clearPersistedCart();
-    apolloClient.clearStore().catch(() => {});
+    accountCacheResetRef.current = apolloClient.clearStore().catch(() => {});
     navigate("/login", { replace: true });
   }, [apolloClient, navigate]);
 
