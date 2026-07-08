@@ -1,55 +1,67 @@
 # Restore table customer guest lifecycle
 
-## Current behavior
+## Previous behavior
 
-1. Saving customer details in `TableActionsModal` upserts `TableCustomer`, but the backend table can remain `available`.
-2. The first dine-in order calls `createOrderForTable` without a `customer` payload in manager POS and staff ordering flows.
-3. `createOrderForTable` only derives customer identity from an active reservation or the explicit input payload, so a previously saved `TableCustomer` snapshot is ignored.
-4. The order is still created and the table becomes `occupied`, but no guest Customer is created/attached and `TableCustomer.customerUserId` remains empty.
+1. Saving customer details in `TableActionsModal` upserted `TableCustomer`, but the backend table could remain `available`.
+2. The first dine-in order called `createOrderForTable` without a `customer` payload in manager POS and staff ordering flows.
+3. `createOrderForTable` derived customer identity only from an active reservation or explicit input, so the saved `TableCustomer` snapshot was ignored.
+4. The order was created and the table became `occupied`, but no guest Customer was created/attached and `TableCustomer.customerUserId` remained empty.
 
-## Root cause and flow
+## Root cause and preserved contracts
 
-Persistence and contract already support the intended lifecycle:
+The existing contracts were already correct:
 
 - `TableCustomer` stores name, phone, email and optional `customerUserId`.
 - `Customer` supports temporary guests with `isGuest`, `status: pending` and a 30-day `guestExpiresAt`.
 - `CreateOrderForTableInput` already supports `customer` and `userId`.
-- `ensureUserForOrder` already finds or creates the correct guest and keeps restaurant/customer scoping.
+- `ensureUserForOrder` already finds or creates the correct guest and preserves restaurant/customer scoping.
+- The existing dine-in mutation already changes the table to `occupied` after a successful first order.
 
-The missing boundary is the handoff from the saved table snapshot to `createOrderForTable`.
+The missing boundary was the handoff from the table snapshot to the first persisted order.
 
-Expected flow:
+## Restored flow
 
-1. Empty table + saved customer details -> persist `TableCustomer` and transition `available -> reserved`.
-2. Adding items only changes local cart state.
-3. Persisting the first order -> resolve customer from reservation, explicit input, or `TableCustomer` in that order.
-4. `ensureUserForOrder` finds/creates the guest.
-5. Save guest id to the parent session, order batch, and `TableCustomer.customerUserId`.
-6. Existing order flow transitions the table to `occupied`.
+1. Empty table + saved customer details -> persist `TableCustomer` and conditionally transition only `available -> reserved`.
+2. Emit `TABLE_CUSTOMER_UPDATED`; the existing restaurant socket distributes the event and table hooks refetch only the matching `restaurantId`.
+3. Adding items still changes only local cart state and does not create a Customer.
+4. Persisting the first order resolves identity in this priority order: active reservation -> explicit order input -> saved `TableCustomer`.
+5. The existing `ensureUserForOrder` flow finds a registered Customer, refreshes an existing guest, or creates the existing 30-day guest type.
+6. The resulting Customer id is saved to the parent table session/order batch and written back best-effort to `TableCustomer.customerUserId`.
+7. The existing order mutation changes the table from `reserved` to `occupied`.
 
-## Files to change
+## Files changed
 
 - `cohan-restaurant-backend/graphql/resolvers/table/tableCustomer.js`
-  - Transition only an `available` matching table to `reserved` after a successful customer upsert.
-- `cohan-restaurant-backend/graphql/resolvers/order/mutation.js`
-  - Read the table customer snapshot only when reservation/input customer data is absent.
-  - Reuse `ensureUserForOrder` and write the resulting id back to `TableCustomer`.
-- `src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.jsx`
-  - Reflect `reserved` locally and refetch tables after customer save.
+  - Reserves only an `available` matching table after a successful customer upsert.
+  - Emits `TABLE_CUSTOMER_UPDATED` only when that status transition actually occurred.
+- `cohan-restaurant-backend/graphql/resolvers/order/tableCustomerOrderLifecycle.js`
+  - Reuses the repository's resolver-wrapper pattern instead of enlarging `mutation.js`.
+  - Reads the saved table snapshot only when no explicit user/customer was supplied.
+  - Resolves by current phone/email before falling back to a stored id, preventing an expired 30-day guest id from blocking a new order.
+  - Writes the resolved id back without turning a secondary snapshot failure into a duplicate-order retry.
+- `cohan-restaurant-backend/graphql/resolvers/order/index.js`
+  - Installs the wrapper inside the existing merged-table/payment/conflict/access lifecycle.
+- `src/hooks/useSocketOrder.js`
+  - Broadcasts the table-customer socket event through the same browser-event pattern already used for menu availability.
+- `src/hooks/useTableManagement.js`
+  - Refetches tables only when the event belongs to the hook's current restaurant.
 - `cohan-restaurant-backend/tests/resolvers/table-customer-group.test.js`
-  - Prove customer upsert reserves an available table without overwriting other statuses.
-- `cohan-restaurant-backend/tests/resolvers/order-mutation-session-userid-scope.test.js`
-  - Lock the fallback and `customerUserId` write-back inside the dine-in mutation block.
+  - Covers the conditional reservation and emitted restaurant event.
+- `cohan-restaurant-backend/tests/resolvers/table-customer-order-lifecycle.test.js`
+  - Covers snapshot hydration, explicit-customer precedence, stale guest-id handling and best-effort writeback.
+- `src/hooks/useTableManagement.test.jsx`
+  - Covers restaurant-scoped realtime refetch without changing caller-owned merge/split behavior.
 
 ## Acceptance criteria
 
 - Saving customer information on an available table changes the table to `reserved`.
 - Saving customer information does not demote or overwrite `occupied`, `cleaning`, `offline`, or other statuses.
+- The table list refreshes for the correct restaurant after the reservation transition.
 - Merely adding items locally does not create a guest.
 - Persisting the first dine-in order uses `TableCustomer` only when no active reservation or explicit customer was supplied.
-- A customer with phone/email is found or created as the existing 30-day guest type.
-- The resulting guest id is stored in the order/session and `TableCustomer.customerUserId`.
-- Existing reservation priority, restaurant permission checks, inventory transaction, order events and `occupied` transition stay unchanged.
+- A customer with phone/email is found or created through the existing 30-day guest flow.
+- The resulting guest id is stored in the order/session and written back to `TableCustomer.customerUserId`.
+- Existing reservation priority, restaurant permission checks, inventory transaction, order events and `occupied` transition remain unchanged.
 
 ## Out of scope
 
@@ -60,6 +72,10 @@ Expected flow:
 
 ## Validation plan
 
-- `npx vitest run tests/resolvers/table-customer-group.test.js tests/resolvers/order-mutation-session-userid-scope.test.js` from `cohan-restaurant-backend`.
-- `npm run check:graphql` if available.
-- `npm run build` if available.
+- From `cohan-restaurant-backend`: `npx vitest run tests/resolvers/table-customer-group.test.js tests/resolvers/table-customer-order-lifecycle.test.js`.
+- From the frontend root: `npx vitest run src/hooks/useTableManagement.test.jsx`.
+- Run the repository GraphQL check and production build when an executable checkout is available.
+
+## Validation result
+
+The connected GitHub environment does not expose a runnable checkout, so the focused Vitest commands, GraphQL check and build were not executed here. No test/build pass is claimed.
