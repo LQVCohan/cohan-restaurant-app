@@ -194,9 +194,7 @@ function assertValidOverrideInput(input = {}) {
   }
 }
 
-function assertPreviewCanApply(preview, input = {}) {
-  if (input.allowPartialApply === true) return;
-
+function assertPreviewCanApply(preview) {
   if (preview?.canApply === false || Number(preview?.unresolvedCount || 0) > 0) {
     throw new Error(AUTO_SCHEDULE_PARTIAL_APPLY_ERROR);
   }
@@ -380,7 +378,7 @@ export async function buildAutoScheduleCreateInputs(input, ctx = {}) {
   if (selectedShiftKeySet && applyPreview.plannedAssignments.length === 0) {
     throw new Error(NO_SELECTED_ASSIGNMENTS_ERROR);
   }
-  assertPreviewCanApply(applyPreview, input);
+  assertPreviewCanApply(applyPreview);
 
   return applyPreview.plannedAssignments.map((item) => ({
     employeeId: item.employeeId,
