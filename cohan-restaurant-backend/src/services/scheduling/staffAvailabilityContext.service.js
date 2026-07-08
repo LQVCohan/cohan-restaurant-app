@@ -1,7 +1,4 @@
-import {
-  AvailabilityRegistrationWindow,
-  StaffAvailabilitySubmission,
-} from "../../../models/index.js";
+import { AvailabilityRegistrationWindow, StaffAvailabilitySubmission } from "../../../models/index.js";
 import { isFirstOperationalWeek } from "./schedulingPolicy.service.js";
 
 export const AVAILABILITY_RULE_CODES = {
@@ -10,21 +7,11 @@ export const AVAILABILITY_RULE_CODES = {
   FULL_TIME_UNAVAILABLE_EXCEPTION: "FULL_TIME_UNAVAILABLE_EXCEPTION",
   AVAILABILITY_PENDING_SUBMISSION: "AVAILABILITY_PENDING_SUBMISSION",
   LATE_AVAILABILITY_CHANGE_PENDING: "LATE_AVAILABILITY_CHANGE_PENDING",
-  FIRST_WEEK_GRACE_MISSING_AVAILABILITY:
-    "FIRST_WEEK_GRACE_MISSING_AVAILABILITY",
+  FIRST_WEEK_GRACE_MISSING_AVAILABILITY: "FIRST_WEEK_GRACE_MISSING_AVAILABILITY",
 };
 
-const PART_TIME_EMPLOYMENT_TYPES = new Set([
-  "part_time",
-  "seasonal",
-  "probation",
-  "contract",
-]);
-const ACTIVE_SUBMISSION_STATUSES = new Set([
-  "submitted",
-  "locked",
-  "approved",
-]);
+const PART_TIME_EMPLOYMENT_TYPES = new Set(["part_time", "seasonal", "probation", "contract"]);
+const ACTIVE_SUBMISSION_STATUSES = new Set(["submitted", "locked", "approved"]);
 const INACTIVE_SUBMISSION_STATUSES = new Set(["rejected", "cancelled"]);
 const SCHEDULING_TIMEZONE = "Asia/Ho_Chi_Minh";
 
@@ -157,16 +144,12 @@ function requiresSubmittedAvailability({ policy, employmentType, windowDoc }) {
   if (targets.includes(employmentType)) return true;
   if (
     Array.isArray(windowDoc?.targetEmploymentTypes) &&
-    windowDoc.targetEmploymentTypes
-      .map(normalizeEmploymentType)
-      .includes(employmentType)
+    windowDoc.targetEmploymentTypes.map(normalizeEmploymentType).includes(employmentType)
   ) {
     return true;
   }
 
-  return Boolean(
-    getEmploymentPolicy(policy, employmentType).requireAvailability,
-  );
+  return Boolean(getEmploymentPolicy(policy, employmentType).requireAvailability);
 }
 
 function shouldRespectAvailability(policy) {
@@ -296,10 +279,7 @@ export async function resolveStaffAvailabilityForShift({
     if (!hasUsableSubmission) {
       if (windowClosed) {
         const firstWeekGrace = isFirstOperationalWeek(policy, shiftDate);
-        if (
-          PART_TIME_EMPLOYMENT_TYPES.has(employmentType) &&
-          firstWeekGrace.active
-        ) {
+        if (PART_TIME_EMPLOYMENT_TYPES.has(employmentType) && firstWeekGrace.active) {
           return {
             status: "missing_required_submission_first_week_grace",
             issues: [
@@ -307,8 +287,7 @@ export async function resolveStaffAvailabilityForShift({
               toIssue({
                 code: AVAILABILITY_RULE_CODES.FIRST_WEEK_GRACE_MISSING_AVAILABILITY,
                 severity: "info",
-                message:
-                  "Nhân viên chưa có đăng ký availability do tuần đầu sử dụng hệ thống.",
+                message: "Nhân viên chưa có đăng ký availability do tuần đầu sử dụng hệ thống.",
                 suggestedAction:
                   "Có thể xếp tạm trong tuần đầu, nhưng nên mở đăng ký lịch cho tuần sau ngay.",
               }),
@@ -324,8 +303,7 @@ export async function resolveStaffAvailabilityForShift({
             toIssue({
               code: AVAILABILITY_RULE_CODES.PART_TIME_AVAILABILITY_REQUIRED,
               severity: "risk",
-              message:
-                "Nhan vien thuoc nhom bat buoc chua dang ky availability cho ky nay.",
+              message: "Nhan vien part-time chua dang ky availability cho ky nay.",
               suggestedAction:
                 "Chon nhan vien da dang ky ca, hoac override voi ly do neu van can xep.",
             }),
@@ -369,7 +347,7 @@ export async function resolveStaffAvailabilityForShift({
           toIssue({
             code: AVAILABILITY_RULE_CODES.OUTSIDE_SUBMITTED_AVAILABILITY,
             severity: "risk",
-            message: "Nhan vien chua dang ky available cho ca nay.",
+            message: "Nhan vien part-time chua dang ky ca nay.",
             suggestedAction:
               "Uu tien nhan vien da dang ky available cho ca nay; neu bat buoc xep thi can override co ly do.",
           }),
@@ -411,7 +389,7 @@ export async function resolveStaffAvailabilityForShift({
         toIssue({
           code: AVAILABILITY_RULE_CODES.FULL_TIME_UNAVAILABLE_EXCEPTION,
           severity: "warning",
-          message: "Nhan vien da bao khong kha dung.",
+          message: "Nhan vien full-time da bao khong kha dung.",
           suggestedAction:
             "Chon nhan vien khac hoac override co ly do neu van can xep ca.",
         }),
