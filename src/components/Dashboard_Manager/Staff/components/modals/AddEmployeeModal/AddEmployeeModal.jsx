@@ -10,40 +10,65 @@ const AddEmployeeModal = ({
   onSubmit,
   ...props
 }) => {
-  const restaurantId = normalizeId(defaultRestaurantId);
+  const activeRestaurantId = normalizeId(defaultRestaurantId);
   const activeRestaurant = useMemo(
     () =>
       restaurantList.find(
-        (restaurant) => normalizeId(restaurant) === restaurantId,
+        (restaurant) => normalizeId(restaurant) === activeRestaurantId,
       ) || null,
-    [restaurantId, restaurantList],
+    [activeRestaurantId, restaurantList],
   );
-  const brandId = normalizeId(activeRestaurant?.brandId);
+  const activeBrandId = normalizeId(activeRestaurant?.brandId);
+  const activeBusinessRestaurants = useMemo(
+    () =>
+      activeBrandId
+        ? restaurantList.filter(
+            (restaurant) =>
+              normalizeId(restaurant?.brandId) === activeBrandId,
+          )
+        : [],
+    [activeBrandId, restaurantList],
+  );
 
   const handleSubmit = useCallback(
     async (values) => {
-      if (!brandId || !restaurantId) {
+      const selectedRestaurantId =
+        normalizeId(values?.restaurantForStaff) || activeRestaurantId;
+      const selectedRestaurantBelongsToActiveBusiness =
+        activeBusinessRestaurants.some(
+          (restaurant) => normalizeId(restaurant) === selectedRestaurantId,
+        );
+
+      if (
+        !activeBrandId ||
+        !selectedRestaurantId ||
+        !selectedRestaurantBelongsToActiveBusiness
+      ) {
         throw new Error(
           "Chưa xác định được doanh nghiệp và nhà hàng đang hoạt động.",
         );
       }
 
+      // `restaurantForStaff` is only the legacy form control; do not send it as account scope.
       const accountInput = { ...(values || {}) };
       delete accountInput.restaurantForStaff;
 
       return onSubmit?.({
         ...accountInput,
-        staffBusinessContext: { brandId, restaurantId },
+        staffBusinessContext: {
+          brandId: activeBrandId,
+          restaurantId: selectedRestaurantId,
+        },
       });
     },
-    [brandId, onSubmit, restaurantId],
+    [activeBrandId, activeBusinessRestaurants, activeRestaurantId, onSubmit],
   );
 
   return (
     <EmployeeFormModal
       {...props}
-      restaurantList={activeRestaurant ? [activeRestaurant] : []}
-      defaultRestaurantId={restaurantId}
+      restaurantList={activeBusinessRestaurants}
+      defaultRestaurantId={activeRestaurantId}
       onSubmit={handleSubmit}
     />
   );
