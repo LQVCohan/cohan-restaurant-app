@@ -1,0 +1,21 @@
+name: verify-frontend-unit-fixes
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --silent
+      - run: npx vitest run src/context/__tests__/AuthProvider.test.jsx src/hooks/useDashboard.test.jsx src/utils/installTablePromotionSearch.test.js src/utils/installTableEmptyStateEnhancement.test.js --reporter=verbose
