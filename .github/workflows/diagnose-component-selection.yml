@@ -1,0 +1,59 @@
+name: diagnose-component-selection
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  changed-components:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cohan-restaurant-backend/package-lock.json
+      - run: npm ci --silent
+      - run: npm --prefix cohan-restaurant-backend ci --silent
+      - name: List changed component tests
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          TEST_BASE="$(git merge-base HEAD "origin/${BASE_REF}")"
+          echo "TEST_BASE=${TEST_BASE}" > component-files.log
+          npx vitest list src/components --filesOnly --changed "${TEST_BASE}" >> component-files.log 2>&1
+      - name: Run changed component tests and capture output
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          TEST_BASE="$(git merge-base HEAD "origin/${BASE_REF}")"
+          set +e
+          timeout --signal=TERM --kill-after=30s 12m \
+            npm run test:component -- \
+            --changed "${TEST_BASE}" \
+            --detectAsyncLeaks \
+            --maxWorkers=2 > component.log 2>&1
+          echo $? > component.status
+          set -e
+      - name: Upload component diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: changed-component-diagnostics
+          path: |
+            component-files.log
+            component.log
+            component.status
+      - name: Fail when changed component tests failed
+        run: test "$(cat component.status)" = "0"
