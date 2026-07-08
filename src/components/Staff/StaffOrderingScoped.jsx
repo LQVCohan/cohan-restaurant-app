@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from "react";
+import React, { useContext } from "react";
 import { AuthContext } from "@/context/AuthContext";
 import {
   resolveUserRoleName,
@@ -13,16 +13,6 @@ const extractRestaurantId = (value) => {
     return value.id || value._id || null;
   }
   return null;
-};
-
-const resolveStaffOrderingRestaurantId = ({ user, restaurants, role }) => {
-  const assignedRestaurantId = extractRestaurantId(user?.restaurantForStaff);
-
-  if (STAFF_OPERATIONAL_ROLES.has(role)) {
-    return assignedRestaurantId;
-  }
-
-  return assignedRestaurantId || extractRestaurantId(restaurants?.[0]);
 };
 
 const StaffOrderingEmptyState = ({ isStaffOperationalRole }) => (
@@ -47,43 +37,20 @@ const StaffOrderingEmptyState = ({ isStaffOperationalRole }) => (
 );
 
 const StaffOrderingScoped = () => {
-  const authState = useContext(AuthContext) || {};
-  const { user, restaurants } = authState;
+  const { user, activeRestaurantId, activeRestaurant, restaurants } =
+    useContext(AuthContext) || {};
   const role = resolveUserRoleName(user);
   const isStaffOperationalRole = STAFF_OPERATIONAL_ROLES.has(role);
-  const restaurantId = resolveStaffOrderingRestaurantId({
-    user,
-    restaurants,
-    role,
-  });
-
-  const scopedAuthState = useMemo(
-    () => ({
-      ...authState,
-      user: user
-        ? {
-            ...user,
-            restaurantForStaff: restaurantId,
-          }
-        : user,
-      restaurants: isStaffOperationalRole
-        ? []
-        : restaurantId
-          ? [{ ...(restaurants?.[0] || {}), id: restaurantId }]
-          : restaurants,
-    }),
-    [authState, isStaffOperationalRole, restaurantId, restaurants, user],
-  );
+  const restaurantId =
+    activeRestaurantId ||
+    extractRestaurantId(activeRestaurant) ||
+    extractRestaurantId(restaurants?.[0]);
 
   if (!restaurantId) {
     return <StaffOrderingEmptyState isStaffOperationalRole={isStaffOperationalRole} />;
   }
 
-  return (
-    <AuthContext.Provider value={scopedAuthState}>
-      <StaffOrdering />
-    </AuthContext.Provider>
-  );
+  return <StaffOrdering />;
 };
 
 export default StaffOrderingScoped;

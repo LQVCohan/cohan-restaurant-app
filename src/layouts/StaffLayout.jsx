@@ -1,6 +1,5 @@
 import React, { useContext, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import useCommunication from "@/hooks/useCommunication";
 import "./StaffLayout.scss";
@@ -13,17 +12,7 @@ import {
 import { hasAnyPermission } from "@/utils/frontendPermissionAccess";
 import { getStaffRoleDisplayLabel } from "@/utils/staffRoleOptions";
 
-const IS_TEST_ENV = import.meta.env.MODE === "test";
 const HANDOFF_PERMISSIONS = ["ai.chatbot.handoff", "ai.chatbot.moderate"];
-
-const STAFF_RESTAURANT_BASIC = gql`
-  query StaffRestaurantBasic($id: ID!) {
-    restaurant(id: $id) {
-      id
-      name
-    }
-  }
-`;
 
 const getDisplayName = (user) => {
   if (!user || typeof user !== "object") return null;
@@ -46,27 +35,6 @@ const getRoleLabel = (user, normalizedRole) => {
     normalizedRole
   );
 };
-
-const getRestaurantLabel = (user, restaurants, restaurantFromQuery) => {
-  return (
-    user?.restaurantName ||
-    user?.restaurantForStaffName ||
-    user?.restaurant?.name ||
-    restaurantFromQuery?.name ||
-    restaurants?.[0]?.name ||
-    "Chưa xác định cơ sở làm việc"
-  );
-};
-
-const getRestaurantId = (value) => {
-  if (!value) return null;
-  if (typeof value === "object") return value.id || value._id || null;
-  return value;
-};
-
-const resolveStaffRestaurantId = (user) =>
-  getRestaurantId(user?.restaurantForStaff) ||
-  getRestaurantId(user?.restaurantId);
 
 const isActivePath = (location, target) => {
   return location.pathname === target || (target !== "/staff/dashboard" && location.pathname.startsWith(target + "/"));
@@ -185,15 +153,14 @@ const getStaffPageMeta = (pathname) =>
   staffPageMeta.find((item) => pathname === item.path || pathname.startsWith(item.path + "/")) ||
   staffPageMeta[0];
 
-const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
-  const { user, restaurants } = useContext(AuthContext);
+export default function StaffLayout({ children }) {
+  const { user, activeRestaurant, activeRestaurantId } = useContext(AuthContext);
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const normalizedRole = useMemo(() => resolveUserRoleName(user), [user]);
   const displayName = getDisplayName(user);
   const roleLabel = getRoleLabel(user, normalizedRole);
-  const restaurantLabel = getRestaurantLabel(user, restaurants, restaurantFromQuery);
-  const restaurantId = resolveStaffRestaurantId(user);
+  const restaurantLabel = activeRestaurant?.name || "Chưa xác định cơ sở làm việc";
   const pageMeta = useMemo(() => getStaffPageMeta(location.pathname), [location.pathname]);
 
   const navItems = useMemo(
@@ -272,7 +239,7 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
                     >
                       {item.label}
                       {item.to === "/staff/ai-handoff" ? (
-                        <StaffHandoffUnreadCount restaurantId={restaurantId} />
+                        <StaffHandoffUnreadCount restaurantId={activeRestaurantId} />
                       ) : null}
                     </Link>
                   ))}
@@ -287,34 +254,5 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
         <div className="staff-shell__content">{children}</div>
       </main>
     </div>
-  );
-};
-
-const StaffLayoutWithRestaurantQuery = ({ children, restaurantId }) => {
-  const { data } = useQuery(STAFF_RESTAURANT_BASIC, {
-    variables: { id: restaurantId },
-    skip: !restaurantId,
-    fetchPolicy: "cache-first",
-  });
-
-  return (
-    <StaffLayoutShell restaurantFromQuery={data?.restaurant || null}>
-      {children}
-    </StaffLayoutShell>
-  );
-};
-
-export default function StaffLayout({ children }) {
-  const { user } = useContext(AuthContext);
-  const restaurantId = resolveStaffRestaurantId(user);
-
-  if (!restaurantId || IS_TEST_ENV) {
-    return <StaffLayoutShell>{children}</StaffLayoutShell>;
-  }
-
-  return (
-    <StaffLayoutWithRestaurantQuery restaurantId={restaurantId}>
-      {children}
-    </StaffLayoutWithRestaurantQuery>
   );
 }

@@ -95,7 +95,6 @@ export function sanitizeAuthUser(user) {
     loyaltyDurationScore: source.loyaltyDurationScore,
 
     wallet: safeWallet(source.wallet),
-    restaurantForStaff: source.restaurantForStaff,
     employmentType: source.employmentType,
     department: source.department,
     positionTitle: source.positionTitle,

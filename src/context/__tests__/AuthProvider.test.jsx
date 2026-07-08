@@ -31,8 +31,22 @@ function Consumer() {
       <div data-testid="session-state">{ctx?.sessionState || ""}</div>
       <div data-testid="loading">{String(ctx?.loading)}</div>
       <div data-testid="user-id">{ctx?.user?.id || ""}</div>
+      <div data-testid="legacy-restaurant">{ctx?.user?.restaurantForStaff || ""}</div>
+      <div data-testid="memberships">{String((ctx?.brandMemberships || []).length)}</div>
+      <div data-testid="active-restaurant">{ctx?.activeRestaurantId || ""}</div>
       <div data-testid="restaurants">{(ctx?.restaurants || []).map((item) => item.name).join(",")}</div>
-      <button onClick={() => ctx.login("abc", { roleName: "manager", emailVerified: true })}>login</button>
+      <button
+        onClick={() =>
+          ctx.login("abc", {
+            id: "manager-1",
+            roleName: "manager",
+            emailVerified: true,
+            restaurantForStaff: "legacy-restaurant",
+          })
+        }
+      >
+        login
+      </button>
       <button onClick={() => ctx.login("admin-token", { id: "admin-1", roleName: "admin", emailVerified: true })}>login-admin</button>
       <button onClick={() => ctx.logout()}>logout</button>
     </>
@@ -93,7 +107,7 @@ describe("AuthProvider", () => {
     await waitFor(() => expect(screen.getByTestId("is-auth")).toHaveTextContent("true"));
   });
 
-  it("login writes only the session-restorable access token and preserves emailVerified", async () => {
+  it("login writes only the session-restorable token and drops legacy restaurant fields", async () => {
     render(
       <AuthProvider>
         <Consumer />
@@ -103,9 +117,15 @@ describe("AuthProvider", () => {
     fireEvent.click(screen.getByText("login"));
     await waitFor(() => expect(screen.getByTestId("is-auth")).toHaveTextContent("true"));
     expect(screen.getByTestId("email-verified")).toHaveTextContent("true");
+    expect(screen.getByTestId("legacy-restaurant")).toHaveTextContent("");
     expect(localStorage.getItem("auth_token")).toBeNull();
     expect(sessionStorage.getItem("token")).toBeNull();
     expect(sessionStorage.getItem(SESSION_ACCESS_TOKEN_KEY)).toBe("abc");
+
+    const meQueryCall = useQueryMock.mock.calls.find(([query]) =>
+      getQueryText(query).includes("query Me"),
+    );
+    expect(getQueryText(meQueryCall?.[0])).not.toContain("restaurantForStaff");
   });
 
   it("applies token and user from a successful refresh response", async () => {
@@ -161,7 +181,7 @@ describe("AuthProvider", () => {
 
   it("pageshow persisted restores token and triggers session restore", async () => {
     const meRefetch = vi.fn().mockResolvedValue({ data: { me: { id: "u2", roleName: "admin" } } });
-    useQueryMock.mockImplementation((query, options = {}) => {
+    useQueryMock.mockImplementation((query) => {
       if (getQueryText(query).includes("query Me")) {
         return { ...defaultQueryResult(), refetch: meRefetch };
       }
@@ -185,23 +205,32 @@ describe("AuthProvider", () => {
     expect(meRefetch).toHaveBeenCalled();
   });
 
-
-  it("loads all restaurants for admin from the restaurants query instead of scopedRestaurants", async () => {
-    const adminRestaurantsResult = {
+  it("loads memberships and restaurants through the authenticated business context", async () => {
+    const businessContextResult = {
       ...defaultQueryResult(),
       data: {
-        restaurants: {
+        myBrandMemberships: [
+          {
+            id: "membership-1",
+            brandId: "brand-1",
+            role: "admin",
+            restaurantIds: [],
+            status: "active",
+            brand: { id: "brand-1", name: "Cohan", slug: "cohan" },
+          },
+        ],
+        scopedRestaurants: {
           edges: [
-            { node: { id: "res-1", name: "Cohan Quận 1" } },
-            { node: { id: "res-2", name: "Cohan Quận 3" } },
+            { node: { id: "res-1", name: "Cohan Quận 1", brandId: "brand-1" } },
+            { node: { id: "res-2", name: "Cohan Quận 3", brandId: "brand-1" } },
           ],
         },
       },
     };
     useQueryMock.mockImplementation((query, options = {}) => {
       const queryText = getQueryText(query);
-      if (queryText.includes("query AdminRestaurants") && !options.skip) {
-        return adminRestaurantsResult;
+      if (queryText.includes("query AuthBusinessContext") && !options.skip) {
+        return businessContextResult;
       }
       return defaultQueryResult();
     });
@@ -217,11 +246,13 @@ describe("AuthProvider", () => {
     await waitFor(() =>
       expect(screen.getByTestId("restaurants")).toHaveTextContent("Cohan Quận 1,Cohan Quận 3"),
     );
+    expect(screen.getByTestId("memberships")).toHaveTextContent("1");
+    expect(screen.getByTestId("active-restaurant")).toHaveTextContent("res-1");
 
-    const managerRestaurantCalls = useQueryMock.mock.calls.filter(([query]) =>
-      getQueryText(query).includes("query ScopedRestaurants"),
+    const businessCalls = useQueryMock.mock.calls.filter(([query]) =>
+      getQueryText(query).includes("query AuthBusinessContext"),
     );
-    expect(managerRestaurantCalls.every(([, options]) => options?.skip)).toBe(true);
+    expect(businessCalls.some(([, options]) => options?.skip === false)).toBe(true);
   });
 
   it("refresh timer triggers one refresh before expiry", async () => {

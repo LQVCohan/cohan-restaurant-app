@@ -1,0 +1,40 @@
+{
+  "id": "07-08-auth-brand-membership-context",
+  "name": "auth-brand-membership-context",
+  "title": "Load authenticated business scope from BrandMembership",
+  "description": "Stop exposing restaurantForStaff through auth/me and hydrate the authenticated frontend context from active BrandMembership and scopedRestaurants while preserving User.role for portal routing.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "auth-session-brand-scope",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "codex/auth-brand-membership-context",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "dec4e2d3b312c1d54becb510d4a8e7bfb4dbefc2",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1276",
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/security/userDtos.js",
+    "cohan-restaurant-backend/src/server/authUserResolver.js",
+    "cohan-restaurant-backend/tests/resolvers/user-auth-me.test.js",
+    "cohan-restaurant-backend/tests/server/auth-user-resolver.test.js",
+    "src/context/AuthProvider.jsx",
+    "src/context/__tests__/AuthProvider.test.jsx",
+    "src/layouts/StaffLayout.jsx",
+    "src/layouts/StaffLayout.test.jsx",
+    "src/components/Staff/StaffOrderingScoped.jsx",
+    "src/components/Staff/StaffKitchenPage.jsx",
+    "src/components/Staff/StaffKitchenPage.test.jsx"
+  ],
+  "notes": "Auth and request context no longer expose legacy restaurant scope fields; staff entry screens consume BrandMembership-scoped restaurant context.",
+  "meta": {
+    "skills": ["ponytail", "react-ui-performance"]
+  }
+}

@@ -34,6 +34,7 @@ const activeUserDoc = {
   refRestaurants: ["restaurant-1"],
   restaurantForStaff: "restaurant-1",
   restaurantId: "restaurant-1",
+  restaurantIds: ["restaurant-1"],
   role: {
     slug: "manager",
     name: "Manager",
@@ -70,7 +71,7 @@ describe("resolveAuthenticatedUserFromRequest", () => {
     expect(userMocks.User.findById).not.toHaveBeenCalled();
   });
 
-  it("hydrates role, parent role, and deduped effective permission codes", async () => {
+  it("hydrates role and permissions without legacy restaurant scope fields", async () => {
     jwtMocks.verify.mockReturnValue({ id: "user-1" });
     userMocks.User.findById.mockReturnValue(findByIdChain(activeUserDoc));
 
@@ -87,7 +88,9 @@ describe("resolveAuthenticatedUserFromRequest", () => {
     });
     expect(userMocks.User.findById).toHaveBeenCalledWith("user-1");
     expect(user.roleName).toBe("manager");
-    expect(user.restaurantId).toBe("restaurant-1");
+    expect(user.restaurantForStaff).toBeUndefined();
+    expect(user.restaurantId).toBeUndefined();
+    expect(user.restaurantIds).toBeUndefined();
     expect(user.emailVerified).toBe(true);
     expect(user.phoneVerified).toBe(true);
     expect(user.forcePasswordChange).toBe(false);

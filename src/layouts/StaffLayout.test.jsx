@@ -18,11 +18,19 @@ const baseUser = {
   fullName: "Nhân viên Test",
   roleSlug: "server",
 };
+const activeRestaurant = { id: "r1", name: "Cohan Test" };
 
 const renderStaffLayout = ({ user = baseUser, route = "/staff/dashboard" } = {}) =>
   render(
     <MemoryRouter initialEntries={[route]}>
-      <AuthContext.Provider value={{ user }}>
+      <AuthContext.Provider
+        value={{
+          user,
+          activeRestaurant,
+          activeRestaurantId: activeRestaurant.id,
+          restaurants: [activeRestaurant],
+        }}
+      >
         <StaffLayout>
           <p>Nội dung nhân viên</p>
         </StaffLayout>
@@ -36,10 +44,11 @@ describe("StaffLayout", () => {
     useCommunicationMock.mockReturnValue({ notifications: [] });
   });
 
-  it("renders the shell header, shared navigation, and active route", () => {
+  it("renders the shell header, scoped restaurant, shared navigation, and active route", () => {
     renderStaffLayout({ route: "/staff/schedule" });
 
     expect(screen.getByRole("heading", { name: "Vận hành ca làm" })).toBeInTheDocument();
+    expect(screen.getByText(/Cohan Test/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Tổng quan" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Lịch cá nhân" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Hồ sơ" })).toBeInTheDocument();
@@ -79,13 +88,15 @@ describe("StaffLayout", () => {
     renderStaffLayout({
       user: {
         ...baseUser,
-        restaurantForStaff: "r1",
         permissions: ["ai.chatbot.handoff"],
       },
     });
 
     expect(screen.getByRole("link", { name: /Bàn giao hỗ trợ/i })).toBeInTheDocument();
     expect(screen.getByLabelText("2 yêu cầu hỗ trợ chưa đọc")).toHaveTextContent("2");
+    expect(useCommunicationMock).toHaveBeenCalledWith(
+      expect.objectContaining({ restaurantId: "r1", notificationsEnabled: true }),
+    );
   });
 
   it("creates one staff main landmark", () => {
