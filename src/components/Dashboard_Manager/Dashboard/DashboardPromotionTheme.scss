@@ -19,12 +19,6 @@
   --dash-shadow-md: 0 14px 36px rgba(42, 36, 27, 0.075);
   --dash-shadow-lg: 0 20px 46px rgba(42, 36, 27, 0.1);
   color: var(--dash-text);
-  background:
-    radial-gradient(circle at 6% -8%, rgba(31, 106, 96, 0.1), transparent 30rem),
-    radial-gradient(circle at 96% 4%, rgba(168, 133, 95, 0.09), transparent 28rem),
-    linear-gradient(180deg, #f8f5ee 0%, #f5f4ef 54%, #f2f1ec 100%);
-  border-radius: 26px 26px 0 0;
-  padding: 18px;
 }
 
 .dashboard-compact-header,
@@ -239,11 +233,4 @@
   border-color: rgba(31, 106, 96, 0.16);
   background: #f2faf7;
   color: #17554d;
-}
-
-@media (max-width: 768px) {
-  .manager-dashboard {
-    padding: 12px;
-    border-radius: 20px 20px 0 0;
-  }
 }
