@@ -14,6 +14,12 @@ export const AVAILABILITY_RULE_CODES = {
     "FIRST_WEEK_GRACE_MISSING_AVAILABILITY",
 };
 
+const PART_TIME_EMPLOYMENT_TYPES = new Set([
+  "part_time",
+  "seasonal",
+  "probation",
+  "contract",
+]);
 const ACTIVE_SUBMISSION_STATUSES = new Set([
   "submitted",
   "locked",
@@ -141,6 +147,8 @@ function getEmploymentPolicy(policy, employmentType) {
 }
 
 function requiresSubmittedAvailability({ policy, employmentType, windowDoc }) {
+  if (PART_TIME_EMPLOYMENT_TYPES.has(employmentType)) return true;
+
   const registrationPolicy = policy?.availabilityRegistrationPolicy || {};
   const targets = Array.isArray(registrationPolicy.targetEmploymentTypes)
     ? registrationPolicy.targetEmploymentTypes.map(normalizeEmploymentType)
@@ -288,7 +296,10 @@ export async function resolveStaffAvailabilityForShift({
     if (!hasUsableSubmission) {
       if (windowClosed) {
         const firstWeekGrace = isFirstOperationalWeek(policy, shiftDate);
-        if (firstWeekGrace.active) {
+        if (
+          PART_TIME_EMPLOYMENT_TYPES.has(employmentType) &&
+          firstWeekGrace.active
+        ) {
           return {
             status: "missing_required_submission_first_week_grace",
             issues: [
