@@ -3,21 +3,21 @@
   "name": "fix-pos-table-merge-feedback",
   "title": "Fix false POS table merge errors and missing split feedback",
   "description": "Keep successful merge/split mutations independent from all table-list refresh side effects and show accurate POS notifications.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "bugfix",
   "scope": "pos-table-merge-feedback",
   "priority": "P0",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": null,
+  "completedAt": "2026-07-08",
   "branch": "main",
   "base_branch": "main",
-  "commit": null,
+  "commit": "985544cd6f6156a983941cccbe2153f456cb87cc",
   "pr_url": null,
   "relatedFiles": [
     "src/hooks/useTableManagement.js",
     "src/hooks/useTableManagement.test.jsx"
   ],
-  "notes": "Follow-up reproduction shows the native POS failure alert still fires after a successful GraphQL merge. The remaining post-mutation path is the hook-owned refetch call. Calling refetch can throw synchronously before Promise.catch is attached, so the shared merge wrapper still rejects after the backend commit. Remove redundant hook-owned refresh; all real UI callers already refresh after success."
+  "notes": "Removed all hook-owned refetch calls from merge/split wrappers. Mutation success can no longer be converted into a UI failure by synchronous or asynchronous refresh errors. Existing POS and manager callers already refresh after success. Added regression coverage with a refetch mock that throws synchronously and verified real mutation errors still reject. Targeted Vitest and build were not run because the connected environment could not clone the repository: github.com DNS resolution failed. No GitHub CI status was attached to the commit."
 }
