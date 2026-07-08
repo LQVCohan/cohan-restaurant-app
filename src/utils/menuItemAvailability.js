@@ -30,9 +30,10 @@ const STATUS_RULES = {
   out_of_stock: {
     label: "Hết món",
     badgeClassName: "out-of-stock",
-    visibility: MENU_ITEM_VISIBILITY.STAFF_ONLY,
+    visibility: MENU_ITEM_VISIBILITY.CUSTOMER_VISIBLE,
     orderability: MENU_ITEM_ORDERABILITY.BLOCKED,
-    customerMessage: "Món hiện đã hết và chưa thể đặt.",
+    customerMessage:
+      "Món hiện đã hết. Bạn vẫn có thể xem chi tiết hoặc đăng ký nhận nhắc khi món có lại.",
     staffMessage:
       "Món đã hết. Hãy kiểm tra tồn kho và định lượng nguyên liệu trước khi mở bán lại.",
   },
@@ -69,10 +70,13 @@ const getInventoryOverride = (item = {}) => {
     return {
       label: "Hết nguyên liệu",
       badgeClassName: "out-of-stock",
-      visibility: MENU_ITEM_VISIBILITY.STAFF_ONLY,
+      visibility: MENU_ITEM_VISIBILITY.CUSTOMER_VISIBLE,
       orderability: MENU_ITEM_ORDERABILITY.BLOCKED,
-      customerMessage: "Món tạm hết nguyên liệu và chưa thể đặt.",
-      staffMessage: stockWarnings[0] || "Không đủ nguyên liệu để tiếp tục bán món này.",
+      customerMessage:
+        "Món tạm hết nguyên liệu. Bạn vẫn có thể xem chi tiết hoặc đăng ký nhận nhắc khi món có lại.",
+      staffMessage:
+        stockWarnings[0] ||
+        "Không đủ nguyên liệu để tiếp tục bán món này.",
     };
   }
 
@@ -84,7 +88,8 @@ const getInventoryOverride = (item = {}) => {
       orderability: MENU_ITEM_ORDERABILITY.ORDERABLE,
       customerMessage: "Món vẫn có thể đặt nhưng số lượng còn ít.",
       staffMessage:
-        stockWarnings[0] || "Nguyên liệu của món đang gần mức tồn kho tối thiểu.",
+        stockWarnings[0] ||
+        "Nguyên liệu của món đang gần mức tồn kho tối thiểu.",
     };
   }
 
@@ -95,7 +100,9 @@ const getInventoryOverride = (item = {}) => {
       visibility: MENU_ITEM_VISIBILITY.STAFF_ONLY,
       orderability: MENU_ITEM_ORDERABILITY.NEEDS_STOCK_CHECK,
       customerMessage: "Cần kiểm tra tồn kho trước khi bán món này.",
-      staffMessage: stockWarnings[0] || "Hệ thống chưa xác định được tồn kho của món.",
+      staffMessage:
+        stockWarnings[0] ||
+        "Hệ thống chưa xác định được tồn kho của món.",
     };
   }
 
@@ -112,20 +119,19 @@ export const getMenuItemAvailability = (item = {}) => {
     Array.isArray(item?.servingVariants) && item.servingVariants.length > 0;
   const hasDefaultPrice = Number(item?.basePrice || 0) > 0;
   const hasSellableVariant = hasRecipeVariants
-    ? item.servingVariants.some((variant) => Number(variant?.price || 0) >= 0)
+    ? item.servingVariants.some(
+        (variant) => Number(variant?.price || 0) >= 0,
+      )
     : hasDefaultPrice;
 
   const warnings = [];
   const stockWarnings = normalizeStockWarnings(item);
-
   if (inventoryOverride && stockWarnings.length) {
     warnings.push(...stockWarnings.slice(0, 2));
   }
-
   if (status === "available" && !hasSellableVariant) {
     warnings.push("Món đang mở bán nhưng chưa có giá bán hợp lệ.");
   }
-
   if (status === "available" && !hasRecipeVariants) {
     warnings.push(
       "Món chưa có cách chế biến và định lượng nguyên liệu để kiểm tra tồn kho chính xác.",
