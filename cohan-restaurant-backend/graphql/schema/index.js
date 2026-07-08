@@ -64,10 +64,6 @@ input AdminUpdateUserInput {
   guestExpiresAt: DateTime
 }
 
-extend type User {
-  forcePasswordChange: Boolean
-}
-
 extend type Mutation {
   assignRoleToUser(input: AssignRoleToUserInput!): User
   createGuestUser(fullName: String, phone: String, expiresInDays: Int): User
