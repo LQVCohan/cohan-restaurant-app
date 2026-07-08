@@ -94,6 +94,14 @@ input ModifierOptionInput {
   inventoryRule: ModifierInventoryRuleInput!
 }
 
+"Public option shape. Internal inventory rules are intentionally omitted."
+type CustomerModifierOption {
+  id: ID!
+  name: String!
+  isDefault: Boolean
+  priceRule: ModifierPriceRule!
+}
+
 # =========================================================
 # GROUP
 # =========================================================
@@ -114,6 +122,17 @@ type ModifierGroup {
   isActive: Boolean
   createdAt: DateTime
   updatedAt: DateTime
+}
+
+"Public group shape used while customers configure a dish."
+type CustomerModifierGroup {
+  id: ID!
+  name: String!
+  selectionType: ModifierSelectionType!
+  required: Boolean
+  minSelected: Int
+  maxSelected: Int
+  options: [CustomerModifierOption!]!
 }
 
 extend type MenuItem {
@@ -174,7 +193,7 @@ extend type Query {
   customerModifierGroups(
     restaurantId: ID!
     menuItemId: ID!
-  ): [ModifierGroup!]!
+  ): [CustomerModifierGroup!]!
 
   modifierGroups(filter: ModifierGroupFilterInput!): [ModifierGroup!]!
   modifierGroup(id: ID!): ModifierGroup
