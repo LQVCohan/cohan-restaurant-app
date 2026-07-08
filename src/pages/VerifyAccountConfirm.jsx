@@ -1,10 +1,27 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
+import { gql } from "@apollo/client";
+import { useMutation } from "@apollo/client/react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { toApiUrl } from "@/lib/apiBaseUrl";
 import { getRoleHomeRoute, resolveRoleName } from "@/routes/routeGuard";
 import { isAccountVerified } from "@/utils/accountVerification";
 import "./AccountVerification.product.css";
+import "./BrandInvitationAccept.css";
+
+const ACCEPT_BRAND_INVITATION = gql`
+  mutation AcceptBrandInvitation($token: String!, $password: String) {
+    acceptBrandInvitation(token: $token, password: $password) {
+      id
+      role
+      status
+      brand {
+        id
+        name
+      }
+    }
+  }
+`;
 
 const pathChannel = (pathname) => {
   if (pathname.includes("verify-phone")) return "SMS";
@@ -12,11 +29,12 @@ const pathChannel = (pathname) => {
 };
 
 function resolveVerifyError(error) {
-  const code = String(error?.code || "").toUpperCase();
-  const message = error?.message || "";
+  const graphError = error?.graphQLErrors?.[0];
+  const code = String(graphError?.extensions?.code || error?.code || "").toUpperCase();
+  const message = graphError?.message || error?.message || "";
 
-  if (code === "BAD_USER_INPUT" || /expired|invalid/i.test(message)) {
-    return "Liên kết xác minh không hợp lệ hoặc đã hết hạn. Vui lòng quay lại trang đăng nhập để yêu cầu gửi lại email xác minh.";
+  if (code === "BAD_USER_INPUT" || /expired|invalid|hết hạn|không hợp lệ/i.test(message)) {
+    return message || "Liên kết xác minh không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu gửi lại email.";
   }
 
   if (code === "NETWORK_ERROR") {
@@ -54,6 +72,9 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const token = searchParams.get("token");
+  const invitationToken = searchParams.get("inviteToken");
+  const isBrandInvitation = Boolean(invitationToken);
+  const requiresInvitationPassword = isBrandInvitation && searchParams.get("new") === "1";
   const channel = useMemo(
     () => forcedChannel || String(searchParams.get("channel") || pathChannel(location.pathname)).toUpperCase(),
     [forcedChannel, location.pathname, searchParams],
@@ -66,14 +87,17 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
     isAuthenticated,
     loading: authLoading,
   } = useContext(AuthContext) || {};
-  const [status, setStatus] = useState(token ? "ready" : "checking-session");
+  const [acceptBrandInvitation] = useMutation(ACCEPT_BRAND_INVITATION);
+  const [status, setStatus] = useState(token || invitationToken ? "ready" : "checking-session");
   const [errorMessage, setErrorMessage] = useState("");
   const [redirectPath, setRedirectPath] = useState("/");
   const [verifying, setVerifying] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const isSms = channel === "SMS";
 
   useEffect(() => {
-    if (token) {
+    if (token || invitationToken) {
       setStatus((current) => (current === "error" || current === "checking-session" ? "ready" : current));
       return;
     }
@@ -92,47 +116,64 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
 
     setStatus("error");
     setErrorMessage("Thiếu mã xác minh trong liên kết. Vui lòng mở lại link từ email hoặc yêu cầu gửi lại email xác minh.");
-  }, [authLoading, isAuthenticated, token, user]);
+  }, [authLoading, invitationToken, isAuthenticated, token, user]);
 
-  const handleConfirm = async () => {
-    if (!token) {
-      setStatus("error");
-      setErrorMessage("Thiếu mã xác minh trong liên kết. Vui lòng mở lại link từ email hoặc yêu cầu gửi lại email xác minh.");
-      return;
+  const acceptInvitation = async () => {
+    if (!invitationToken) throw new Error("Thiếu mã lời mời.");
+    if (requiresInvitationPassword) {
+      if (!password) throw new Error("Vui lòng nhập mật khẩu mới.");
+      if (password !== confirmPassword) throw new Error("Mật khẩu xác nhận không khớp.");
     }
 
+    await acceptBrandInvitation({
+      variables: {
+        token: invitationToken,
+        password: requiresInvitationPassword ? password : null,
+      },
+    });
+    setRedirectPath("/login");
+    window.history.replaceState(null, "", "/verify-email/confirm");
+  };
+
+  const verifyAccount = async () => {
+    if (!token) throw new Error("Thiếu mã xác minh trong liên kết.");
+    const payload = await verifyAccountByToken({ token, channel });
+    const verifiedUser = payload?.user;
+    const issuedToken = payload?.token || currentToken;
+
+    if (issuedToken && verifiedUser) {
+      authLogin?.(issuedToken, verifiedUser, null, {
+        persistSession: true,
+        rememberIdentifier: true,
+        identifier: verifiedUser.email || verifiedUser.phone || verifiedUser.username,
+      });
+      setRedirectPath(getRoleHomeRoute(resolveRoleName(verifiedUser)));
+    } else if (currentToken && user) {
+      const fallbackUser = {
+        ...user,
+        status: "active",
+        emailVerified: channel === "EMAIL" ? true : user.emailVerified,
+        phoneVerified: channel === "SMS" ? true : user.phoneVerified,
+        verifiedAt: new Date().toISOString(),
+      };
+      authLogin?.(currentToken, fallbackUser, null, { persistSession: true });
+      setRedirectPath(getRoleHomeRoute(resolveRoleName(fallbackUser)));
+    } else {
+      setRedirectPath("/login");
+    }
+
+    window.history.replaceState(null, "", isSms ? "/verify-phone/confirm" : "/verify-email/confirm");
+  };
+
+  const handleConfirm = async () => {
     setVerifying(true);
     setStatus("verifying");
     setErrorMessage("");
 
     try {
-      const payload = await verifyAccountByToken({ token, channel });
-      const verifiedUser = payload?.user;
-      const issuedToken = payload?.token || currentToken;
-
-      if (issuedToken && verifiedUser) {
-        authLogin?.(issuedToken, verifiedUser, null, {
-          persistSession: true,
-          rememberIdentifier: true,
-          identifier: verifiedUser.email || verifiedUser.phone || verifiedUser.username,
-        });
-        setRedirectPath(getRoleHomeRoute(resolveRoleName(verifiedUser)));
-      } else if (currentToken && user) {
-        const fallbackUser = {
-          ...user,
-          status: "active",
-          emailVerified: channel === "EMAIL" ? true : user.emailVerified,
-          phoneVerified: channel === "SMS" ? true : user.phoneVerified,
-          verifiedAt: new Date().toISOString(),
-        };
-        authLogin?.(currentToken, fallbackUser, null, { persistSession: true });
-        setRedirectPath(getRoleHomeRoute(resolveRoleName(fallbackUser)));
-      } else {
-        setRedirectPath("/login");
-      }
-
+      if (isBrandInvitation) await acceptInvitation();
+      else await verifyAccount();
       setStatus("success");
-      window.history.replaceState(null, "", isSms ? "/verify-phone/confirm" : "/verify-email/confirm");
     } catch (err) {
       setStatus("error");
       setErrorMessage(resolveVerifyError(err));
@@ -157,18 +198,48 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
 
         {status === "ready" && (
           <>
-            <div className="account-verification-icon" aria-hidden="true">{isSms ? "📱" : "📧"}</div>
-            <h1 className="account-verification-title" id="account-verification-title">Xác nhận kích hoạt tài khoản</h1>
+            <div className="account-verification-icon" aria-hidden="true">{isBrandInvitation ? "🏢" : isSms ? "📱" : "📧"}</div>
+            <h1 className="account-verification-title" id="account-verification-title">
+              {isBrandInvitation ? "Xác nhận lời mời tham gia chuỗi" : "Xác nhận kích hoạt tài khoản"}
+            </h1>
             <p className="account-verification-text">
-              Cohan đã nhận được liên kết xác minh. Nhấn nút bên dưới để kiểm tra mã xác minh, kích hoạt tài khoản và đăng nhập tự động.
+              {isBrandInvitation
+                ? "Xác nhận lời mời để kích hoạt đúng vai trò và phạm vi chi nhánh đã được phân công."
+                : "Cohan đã nhận được liên kết xác minh. Nhấn nút bên dưới để kích hoạt tài khoản và đăng nhập tự động."}
             </p>
             <div className="account-verification-contact" aria-label="Thông tin liên kết xác minh">
-              <p><strong>Kênh xác minh:</strong> {isSms ? "Số điện thoại" : "Email"}</p>
+              <p><strong>Loại yêu cầu:</strong> {isBrandInvitation ? "Lời mời thành viên chuỗi" : isSms ? "Xác minh số điện thoại" : "Xác minh email"}</p>
               <p><strong>Hiệu lực:</strong> Liên kết chỉ dùng được một lần và có thời hạn.</p>
             </div>
+
+            {requiresInvitationPassword && (
+              <div className="brand-invitation-password" aria-label="Thiết lập mật khẩu tài khoản">
+                <label>
+                  <span>Mật khẩu mới</span>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Tối thiểu 8 ký tự, đủ mạnh"
+                  />
+                </label>
+                <label>
+                  <span>Nhập lại mật khẩu</span>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    placeholder="Nhập lại mật khẩu"
+                  />
+                </label>
+              </div>
+            )}
+
             <div className="account-verification-actions">
               <button type="button" className="account-verification-button is-primary" onClick={handleConfirm} disabled={verifying}>
-                {verifying ? "Đang xác minh..." : "Xác nhận & đăng nhập"}
+                {verifying ? "Đang xác nhận..." : isBrandInvitation ? "Xác nhận lời mời" : "Xác nhận & đăng nhập"}
               </button>
               <button type="button" className="account-verification-button is-muted" onClick={() => navigate("/login", { replace: true })}>
                 Để sau
@@ -180,10 +251,14 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
         {status === "verifying" && (
           <>
             <div className="account-verification-spinner" aria-hidden="true" />
-            <div className="account-verification-icon" aria-hidden="true">{isSms ? "📱" : "📧"}</div>
-            <h1 className="account-verification-title" id="account-verification-title">Đang xác minh tài khoản</h1>
+            <div className="account-verification-icon" aria-hidden="true">{isBrandInvitation ? "🏢" : isSms ? "📱" : "📧"}</div>
+            <h1 className="account-verification-title" id="account-verification-title">
+              {isBrandInvitation ? "Đang xác nhận lời mời" : "Đang xác minh tài khoản"}
+            </h1>
             <p className="account-verification-text">
-              Cohan đang kiểm tra mã xác minh, kích hoạt tài khoản và tạo phiên đăng nhập cho bạn.
+              {isBrandInvitation
+                ? "Cohan đang kích hoạt quyền thành viên trong chuỗi nhà hàng."
+                : "Cohan đang kiểm tra mã xác minh, kích hoạt tài khoản và tạo phiên đăng nhập cho bạn."}
             </p>
           </>
         )}
@@ -191,13 +266,17 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
         {status === "success" && (
           <>
             <div className="account-verification-icon is-success" aria-hidden="true">✓</div>
-            <h1 className="account-verification-title" id="account-verification-title">Xác minh thành công</h1>
+            <h1 className="account-verification-title" id="account-verification-title">
+              {isBrandInvitation ? "Đã tham gia chuỗi" : "Xác minh thành công"}
+            </h1>
             <p className="account-verification-text">
-              Tài khoản đã được kích hoạt và đăng nhập tự động trên thiết bị này.
+              {isBrandInvitation
+                ? "Quyền thành viên đã được kích hoạt. Hãy đăng nhập để vào đúng khu vực quản lý được phân công."
+                : "Tài khoản đã được kích hoạt và đăng nhập tự động trên thiết bị này."}
             </p>
             <div className="account-verification-actions">
               <button type="button" className="account-verification-button is-primary" onClick={() => navigate(redirectPath, { replace: true })}>
-                Vào Cohan ngay
+                {isBrandInvitation ? "Đến trang đăng nhập" : "Vào Cohan ngay"}
               </button>
             </div>
           </>
@@ -206,9 +285,11 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
         {status === "error" && (
           <>
             <div className="account-verification-icon is-error" aria-hidden="true">!</div>
-            <h1 className="account-verification-title" id="account-verification-title">Không thể xác minh</h1>
+            <h1 className="account-verification-title" id="account-verification-title">
+              {isBrandInvitation ? "Không thể xác nhận lời mời" : "Không thể xác minh"}
+            </h1>
             <p className="account-verification-text" role="alert">
-              {errorMessage || "Liên kết xác minh có thể đã hết hạn hoặc không đúng. Vui lòng quay lại đăng nhập để yêu cầu gửi lại xác minh."}
+              {errorMessage || "Liên kết có thể đã hết hạn hoặc không đúng. Vui lòng quay lại đăng nhập và thử lại."}
             </p>
             <div className="account-verification-actions">
               <button type="button" className="account-verification-button is-primary" onClick={() => navigate("/login")}>Quay lại đăng nhập</button>
