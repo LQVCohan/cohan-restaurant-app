@@ -28,6 +28,20 @@ describe("getFoodOrderingActionState", () => {
     });
   });
 
+  it("lets users reload modifier options after a request error", () => {
+    expect(
+      getFoodOrderingActionState({
+        ...readyState,
+        hasLiveState: false,
+        modifierLoadError: true,
+      }),
+    ).toEqual({
+      disabled: false,
+      intent: FOOD_ORDER_ACTION.RETRY_MODIFIERS,
+      label: "Tải lại tùy chọn",
+    });
+  });
+
   it("lets users retry after a stock request error", () => {
     expect(
       getFoodOrderingActionState({
