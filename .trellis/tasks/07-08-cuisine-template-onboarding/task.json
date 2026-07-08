@@ -1,0 +1,44 @@
+{
+  "id": "cuisine-template-onboarding",
+  "name": "cuisine-template-onboarding",
+  "title": "Bootstrap new restaurant branches from cuisine templates",
+  "description": "Show a first-run cuisine selector for new brand branches and clone a versioned starter profile, ingredients, menus, dishes and recipes into the selected restaurant.",
+  "status": "in_review",
+  "dev_type": "fullstack",
+  "scope": "restaurant-initial-setup",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "codex/cuisine-template-onboarding",
+  "base_branch": "main",
+  "commit": "53024db7d1a224174353931c683ce2bd79fc426d",
+  "relatedFiles": [
+    "cohan-restaurant-backend/models/restaurant.model.js",
+    "cohan-restaurant-backend/graphql/schema/index.js",
+    "cohan-restaurant-backend/graphql/schema/restaurantInitialSetup.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/restaurant/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/restaurant/initialSetup.js",
+    "cohan-restaurant-backend/src/data/restaurantCuisineTemplates.js",
+    "cohan-restaurant-backend/src/services/restaurantCuisineTemplate.service.js",
+    "cohan-restaurant-backend/tests/services/restaurant-cuisine-template.service.test.js",
+    "src/hooks/useBrandManagement.js",
+    "src/components/Dashboard_Manager/Header.jsx",
+    "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.jsx",
+    "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.scss",
+    "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.test.jsx"
+  ],
+  "notes": "Implemented seven versioned cuisine packages, optional first-run branch state, scoped GraphQL apply/skip operations, snapshot-based data cloning, manager-header onboarding, and targeted backend/frontend tests. A prior backend CI run completed lint, tests, Menu RBAC and build successfully; the final branch CI is running after the last review-only task update.",
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "redesign-existing-projects",
+      "taste-ui-redesign",
+      "react-ui-performance",
+      "web-design-guidelines",
+      "wcag-ui-audit"
+    ]
+  }
+}

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FiAlertTriangle, FiBell, FiCheckCircle, FiChevronDown, FiHelpCircle, FiInfo, FiLogOut, FiMoon, FiSettings, FiUser } from "react-icons/fi";
 import SearchBox from "../SearchBox/SearchBox";
 import ManagerAccountCenter from "./Account/ManagerAccountCenter";
+import RestaurantCuisineOnboarding from "./RestaurantSetup/RestaurantCuisineOnboarding";
 import "./Styles/Header.scss";
 import "./Styles/HeaderShellFix.scss";
 import "./Account/ManagerAccountOverlay.scss";
@@ -25,6 +26,11 @@ const readBadgePreference = () => {
   }
 };
 
+const readSelectedRestaurantId = () =>
+  typeof localStorage === "undefined"
+    ? ""
+    : localStorage.getItem("manager.selectedRestaurantId") || "";
+
 const Header = ({
   pageTitle = "Tổng quan",
   onToggleSidebar,
@@ -45,6 +51,7 @@ const Header = ({
   const [showBadge, setShowBadge] = useState(readBadgePreference);
   const [avatarImageFailed, setAvatarImageFailed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem("manager.darkMode") === "1");
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState(readSelectedRestaurantId);
   const notificationRef = useRef(null);
   const userMenuRef = useRef(null);
   const { user, logout } = useContext(AuthContext);
@@ -59,6 +66,12 @@ const Header = ({
   const roleTooltip = useMemo(() => getRoleTooltip({ user, activeBrand, membership }), [activeBrand, membership, user]);
   const avatarSrc = useMemo(() => resolveUserAvatarSrc(normalizedUser), [normalizedUser]);
   const avatarFallback = useMemo(() => getInitials(normalizedUser.fullName), [normalizedUser.fullName]);
+  const selectedRestaurant = useMemo(
+    () => (activeBrand?.restaurants || []).find(
+      (restaurant) => String(restaurant?.id || restaurant?._id || "") === selectedRestaurantId,
+    ) || null,
+    [activeBrand?.restaurants, selectedRestaurantId],
+  );
   const unreadCount = localNotifications.filter((item) => !item.read).length;
 
   useEffect(() => setLocalNotifications(Array.isArray(notifications) ? notifications : []), [notifications]);
@@ -76,6 +89,15 @@ const Header = ({
     const handler = (event) => setShowBadge(event.detail?.showBadge !== false);
     window.addEventListener("manager:notification-preferences", handler);
     return () => window.removeEventListener("manager:notification-preferences", handler);
+  }, []);
+  useEffect(() => {
+    const handler = (event) => {
+      if (event?.detail?.key === "manager.selectedRestaurantId") {
+        setSelectedRestaurantId(String(event.detail.value || ""));
+      }
+    };
+    window.addEventListener("manager:scope-selection", handler);
+    return () => window.removeEventListener("manager:scope-selection", handler);
   }, []);
   useEffect(() => {
     const handler = (event) => {
@@ -185,6 +207,12 @@ const Header = ({
         </div>
       </header>
       {accountTab && <ManagerAccountCenter initialTab={accountTab} onClose={() => setAccountTab(null)} />}
+      {selectedRestaurant?.initialSetup?.status === "pending" && (
+        <RestaurantCuisineOnboarding
+          key={selectedRestaurant.id || selectedRestaurant._id}
+          restaurant={selectedRestaurant}
+        />
+      )}
     </>
   );
 };
