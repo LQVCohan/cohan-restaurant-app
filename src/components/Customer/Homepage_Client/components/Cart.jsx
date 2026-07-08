@@ -1,30 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import "../../../../styles/Homepage/Cart.scss";
 import { useLocation, useNavigate } from "react-router-dom";
-import { gql, useQuery } from "@apollo/client";
 import { isHoldExpired } from "@/hooks/useCart";
+import "../../../../styles/Homepage/Cart.scss";
 
-const RESTAURANT_BY_ID = gql`
-  query RestaurantById($id: ID!) {
-    restaurant(id: $id) {
-      id
-      name
-    }
-  }
-`;
-
-function useRestaurantName(restaurantId) {
-  const { data } = useQuery(RESTAURANT_BY_ID, {
-    variables: { id: restaurantId },
-    skip: !restaurantId,
-  });
-  return data?.restaurant?.name;
-}
+const DEFAULT_DISH_IMAGE = "/default-dishes.jpg";
 
 const IconClose = () => (
   <svg
-    width="24"
-    height="24"
+    width="22"
+    height="22"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -38,10 +22,10 @@ const IconClose = () => (
   </svg>
 );
 
-const IconTrash = () => (
+const IconTrash = ({ size = 16 }) => (
   <svg
-    width="16"
-    height="16"
+    width={size}
+    height={size}
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -82,10 +66,9 @@ const IconEmpty = () => (
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    strokeWidth="1"
+    strokeWidth="1.3"
     strokeLinecap="round"
     strokeLinejoin="round"
-    style={{ opacity: 0.2 }}
     aria-hidden="true"
   >
     <circle cx="8" cy="21" r="1" />
@@ -99,6 +82,16 @@ export const formatHoldCountdown = (ms = 0) => {
   return `${String(Math.floor(totalSeconds / 60)).padStart(2, "0")}:${String(
     totalSeconds % 60,
   ).padStart(2, "0")}`;
+};
+
+export const formatServingLabel = (value) => {
+  const label = String(value || "").trim();
+  if (!label) return "";
+  const normalized = label.toLowerCase();
+  if (["portion", "standard", "default"].includes(normalized)) {
+    return "Phần tiêu chuẩn";
+  }
+  return label;
 };
 
 export const getHoldStatus = (item, now = Date.now()) => {
@@ -193,14 +186,23 @@ const Cart = ({
     const map = new Map();
     for (const item of cart || []) {
       const restaurantId = item.restaurantId || "unknown";
+      const restaurantName =
+        item.restaurantName ||
+        item.restaurant?.name ||
+        item.comboSnapshot?.restaurantName ||
+        null;
       if (!map.has(restaurantId)) {
         map.set(restaurantId, {
           restaurantId,
+          restaurantName,
           items: [],
           subtotal: 0,
         });
       }
       const group = map.get(restaurantId);
+      if (!group.restaurantName && restaurantName) {
+        group.restaurantName = restaurantName;
+      }
       group.items.push(item);
       group.subtotal += getCartItemLineTotal(item);
     }
@@ -318,15 +320,26 @@ const Cart = ({
       />
       <aside
         className={`cart-panel ${isOpen ? "open" : ""}`}
-        aria-label="Giỏ hàng"
+        role="dialog"
+        aria-modal={isOpen ? "true" : undefined}
+        aria-labelledby="cart-drawer-title"
         aria-hidden={!isOpen}
       >
-        <div className="cart-header">
+        <header className="cart-header">
           <div className="cart-header__top">
-            <h3 className="cart-header__title">
-              {bookingAddonMode ? "Giỏ món kèm đặt bàn" : "Giỏ hàng"}{" "}
-              <span className="cart-header__count">({itemCount})</span>
-            </h3>
+            <div className="cart-header__copy">
+              <div className="cart-header__title-row">
+                <h3 id="cart-drawer-title" className="cart-header__title">
+                  {bookingAddonMode ? "Món kèm đặt bàn" : "Giỏ hàng"}
+                </h3>
+                <span className="cart-header__count" aria-live="polite">
+                  {itemCount} món
+                </span>
+              </div>
+              <p className="cart-header__subtitle">
+                Kiểm tra món và thời gian giữ trước khi tiếp tục.
+              </p>
+            </div>
             <button
               type="button"
               onClick={onClose}
@@ -343,10 +356,11 @@ const Cart = ({
               onClick={() => onClearCart?.()}
               disabled={clearingBusy || globalBusy}
             >
-              Xóa tất cả
+              <IconTrash size={14} />
+              Xóa giỏ hàng
             </button>
           ) : null}
-        </div>
+        </header>
 
         <div className="cart-body">
           {!cart?.length ? (
@@ -354,13 +368,16 @@ const Cart = ({
               <div className="cart-empty__icon">
                 <IconEmpty />
               </div>
-              <p>Bạn chưa chọn món nào.</p>
+              <div className="cart-empty__copy">
+                <h4>Giỏ hàng đang trống</h4>
+                <p>Chọn món yêu thích để bắt đầu đơn hàng.</p>
+              </div>
               <button
                 type="button"
                 className="cart-empty__btn"
                 onClick={onClose}
               >
-                Tiếp tục xem món
+                Xem thực đơn
               </button>
             </div>
           ) : null}
@@ -384,17 +401,23 @@ const Cart = ({
         </div>
 
         {cart?.length ? (
-          <div className="cart-footer">
+          <footer className="cart-footer">
             <div className="cart-footer__row">
-              <span className="cart-footer__label">
-                {bookingAddonMode
-                  ? "Tạm tính món kèm"
-                  : "Tổng thanh toán"}
-              </span>
+              <div>
+                <span className="cart-footer__label">
+                  {bookingAddonMode ? "Tạm tính món kèm" : "Tạm tính"}
+                </span>
+                <span className="cart-footer__item-count">{itemCount} món</span>
+              </div>
               <span className="cart-footer__total">
                 {formatVND(total)}
               </span>
             </div>
+            <p className="cart-footer__note">
+              {bookingAddonMode
+                ? "Món đã chọn sẽ được thêm vào đơn đặt bàn."
+                : "Ưu đãi và khoản phí (nếu có) được xác nhận ở bước tiếp theo."}
+            </p>
             <button
               type="button"
               className="cart-checkout-btn"
@@ -409,33 +432,37 @@ const Cart = ({
               }
               title={
                 expiredHoldExists
-                  ? "Một số món đã hết thời gian giữ. Vui lòng xóa hoặc thêm lại món."
+                  ? "Một số món đã hết thời gian giữ. Hãy xóa hoặc thêm lại món."
                   : bookingAddonMode
-                    ? "Hoàn tất chọn món kèm và quay lại đặt bàn"
-                    : "Tiến hành đặt đơn"
+                    ? "Hoàn tất chọn món và quay lại đặt bàn"
+                    : "Sang bước thanh toán"
               }
             >
-              {bookingAddonMode
-                ? "Hoàn tất order kèm theo"
-                : "Đặt đơn ngay"}
+              <span>
+                {bookingAddonMode
+                  ? "Hoàn tất chọn món"
+                  : "Tiếp tục thanh toán"}
+              </span>
+              <span aria-hidden="true">→</span>
             </button>
             {hasWrongRestaurantItems ? (
               <p className="cart-footer__warning" role="alert">
-                Giỏ đang có món từ nhà hàng khác. Vui lòng xóa nhóm không thuộc
-                nhà hàng đặt bàn trước khi hoàn tất.
+                Giỏ có món từ nhà hàng khác. Hãy xóa nhóm đó trước khi hoàn tất
+                chọn món.
               </p>
             ) : null}
             {hasNoScopedItems ? (
               <p className="cart-footer__warning" role="alert">
-                Chưa có món nào của nhà hàng đang đặt bàn.
+                Bạn chưa chọn món của nhà hàng đang đặt bàn.
               </p>
             ) : null}
             {expiredHoldExists ? (
               <p className="cart-footer__warning" role="alert">
-                Một số món đã hết thời gian giữ. Vui lòng xóa hoặc thêm lại món.
+                Một số món đã hết thời gian giữ. Hãy xóa hoặc thêm lại trước khi
+                tiếp tục.
               </p>
             ) : null}
-          </div>
+          </footer>
         ) : null}
       </aside>
     </>
@@ -455,22 +482,27 @@ function RestaurantGroup({
   busyRestaurantIds,
   now,
 }) {
-  const name =
-    useRestaurantName(group.restaurantId) ||
-    `Nhà hàng ${group.restaurantId}`;
+  const name = group.restaurantName || "Nhà hàng đã chọn";
+  const headingId = `cart-group-${group.restaurantId}`;
 
   return (
-    <section className="cart-group" aria-label={`Món từ ${name}`}>
+    <section className="cart-group" aria-labelledby={headingId}>
       <div className="cart-group__header">
         <div className="cart-group__store-info">
-          <IconStore />
-          <span className="cart-group__name">{name}</span>
+          <span className="cart-group__store-icon">
+            <IconStore />
+          </span>
+          <div>
+            <span className="cart-group__eyebrow">Đặt món tại</span>
+            <h4 id={headingId} className="cart-group__name">
+              {name}
+            </h4>
+          </div>
         </div>
         <button
           type="button"
-          className="cart-group__remove"
+          className="cart-group__clear"
           onClick={() => onRemoveRestaurantItems?.(group.restaurantId)}
-          title="Xóa tất cả món của nhà hàng này"
           aria-label={`Xóa tất cả món của ${name}`}
           disabled={
             clearingBusy ||
@@ -478,7 +510,8 @@ function RestaurantGroup({
             Boolean(busyRestaurantIds?.[group.restaurantId])
           }
         >
-          <IconTrash />
+          <IconTrash size={14} />
+          <span>Xóa nhóm</span>
         </button>
       </div>
 
@@ -490,8 +523,8 @@ function RestaurantGroup({
             ? { state: "none", remainingMs: 0 }
             : getHoldStatus(item, now);
           const modifiers = item.modifiers || item.selectedModifiers || [];
-          const variantLabel = isCombo
-            ? "Combo"
+          const rawVariantLabel = isCombo
+            ? ""
             : item.servingVariantName ||
               item.servingName ||
               item.method ||
@@ -499,6 +532,7 @@ function RestaurantGroup({
               item.servingVariantLabel ||
               item.servingVariantKey ||
               item.servingKey;
+          const variantLabel = formatServingLabel(rawVariantLabel);
           const childItems = isCombo ? getComboChildItems(item) : [];
           const originalPrice = Number(
             item.comboSnapshot?.originalPrice || 0,
@@ -512,28 +546,58 @@ function RestaurantGroup({
             clearingBusy ||
             globalBusy ||
             Boolean(busyItemIds?.[item.cartLineKey || item.id]);
+          const image =
+            item.image ||
+            item.thumbImage ||
+            item.comboSnapshot?.imageUrl ||
+            DEFAULT_DISH_IMAGE;
 
           return (
             <article
-              key={item.cartLineKey || item.id}
+              key={item.cartLineKey || item.backendCartItemId || item.id}
               className={`cart-item ${isCombo ? "cart-item--combo" : ""} ${
                 hold.state === "expired" ? "is-expired" : ""
               }`}
             >
-              <div className="cart-item__main">
+              <div className="cart-item__product">
+                <img
+                  className="cart-item__image"
+                  src={image}
+                  alt={item.name || "Món ăn"}
+                  loading="lazy"
+                />
                 <div className="cart-item__info">
-                  <h6 className="cart-item__name">
-                    {item.name}
-                    {isCombo ? (
-                      <span className="cart-item__badge">Combo</span>
-                    ) : null}
-                  </h6>
+                  <div className="cart-item__heading">
+                    <h5 className="cart-item__name">
+                      {item.name || "Món ăn"}
+                      {isCombo ? (
+                        <span className="cart-item__badge">Combo</span>
+                      ) : null}
+                    </h5>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveItem?.(item)}
+                      className="cart-item__remove"
+                      title="Xóa món"
+                      aria-label={`Xóa ${item.name || "món ăn"}`}
+                      disabled={itemBusy}
+                    >
+                      <IconTrash size={15} />
+                    </button>
+                  </div>
+
                   <div className="cart-item__price-unit">
                     {formatVND(unitPrice)}
+                    <span> / {isCombo ? "combo" : "phần"}</span>
                   </div>
+
                   {variantLabel ? (
-                    <p className="cart-item__meta">Phần: {variantLabel}</p>
+                    <p className="cart-item__meta">
+                      <span>Khẩu phần</span>
+                      {variantLabel}
+                    </p>
                   ) : null}
+
                   {isCombo && childItems.length ? (
                     <ul
                       className="cart-item__combo-list"
@@ -547,20 +611,23 @@ function RestaurantGroup({
                       ))}
                     </ul>
                   ) : null}
+
                   {isCombo && unitSaving > 0 ? (
                     <p className="cart-item__combo-saving">
-                      Tiết kiệm{" "}
-                      {formatVND(
-                        unitSaving * Number(item.quantity || 1),
-                      )}
+                      Tiết kiệm {formatVND(unitSaving * Number(item.quantity || 1))}
                     </p>
                   ) : null}
+
                   {item.note && !isCombo ? (
-                    <p className="cart-item__meta">Ghi chú: {item.note}</p>
+                    <p className="cart-item__meta">
+                      <span>Ghi chú</span>
+                      {item.note}
+                    </p>
                   ) : null}
+
                   {modifiers.length ? (
                     <p className="cart-item__meta">
-                      Tùy chọn:{" "}
+                      <span>Tùy chọn</span>
                       {modifiers
                         .map((modifier) =>
                           getModifierLabel(modifier, formatVND),
@@ -568,9 +635,10 @@ function RestaurantGroup({
                         .join(", ")}
                     </p>
                   ) : null}
+
                   {hold.state === "active" ? (
                     <p className="cart-item__hold" role="status">
-                      Giữ món còn {formatHoldCountdown(hold.remainingMs)}
+                      Đang giữ món · còn {formatHoldCountdown(hold.remainingMs)}
                     </p>
                   ) : null}
                   {hold.state === "warning" ? (
@@ -578,8 +646,7 @@ function RestaurantGroup({
                       className="cart-item__hold cart-item__hold--warning"
                       role="alert"
                     >
-                      Sắp hết thời gian giữ món:{" "}
-                      {formatHoldCountdown(hold.remainingMs)}
+                      Sắp hết thời gian giữ · {formatHoldCountdown(hold.remainingMs)}
                     </p>
                   ) : null}
                   {hold.state === "expired" ? (
@@ -587,7 +654,7 @@ function RestaurantGroup({
                       className="cart-item__hold cart-item__hold--expired"
                       role="alert"
                     >
-                      Giữ món đã hết hạn
+                      Đã hết thời gian giữ
                     </p>
                   ) : null}
                 </div>
@@ -623,19 +690,10 @@ function RestaurantGroup({
                     +
                   </button>
                 </div>
-                <div className="cart-item__total-line">
-                  {formatVND(line)}
+                <div className="cart-item__line-summary">
+                  <span>Thành tiền</span>
+                  <strong>{formatVND(line)}</strong>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onRemoveItem?.(item)}
-                  className="cart-group__remove"
-                  title="Xóa món"
-                  aria-label={`Xóa ${item.name}`}
-                  disabled={itemBusy}
-                >
-                  <IconTrash />
-                </button>
               </div>
             </article>
           );
@@ -643,7 +701,7 @@ function RestaurantGroup({
       </div>
 
       <div className="cart-group__subtotal">
-        <span>Tạm tính ({name}):</span>
+        <span>Tạm tính tại nhà hàng</span>
         <strong>{formatVND(group.subtotal)}</strong>
       </div>
     </section>
