@@ -52,6 +52,18 @@ const mockRestaurant = (restaurant) => {
   });
 };
 
+const createArgs = {
+  input: {
+    fullName: "Nhân viên mới",
+    staffBusinessContext: {
+      brandId: "brand-active",
+      restaurantId: "restaurant-active",
+    },
+  },
+};
+
+const context = { user: { id: "manager-1" } };
+
 describe("createStaff active business context", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -60,6 +72,7 @@ describe("createStaff active business context", () => {
     mocks.BrandMembership.findOneAndUpdate.mockResolvedValue({
       id: "membership-1",
     });
+    mocks.Staff.deleteOne.mockResolvedValue({ deletedCount: 1 });
   });
 
   it("creates the membership from explicit business context without account restaurant data", async () => {
@@ -69,21 +82,13 @@ describe("createStaff active business context", () => {
 
     const created = await resolvers.Mutation.createStaff(
       null,
-      {
-        input: {
-          fullName: "Nhân viên mới",
-          staffBusinessContext: {
-            brandId: "brand-active",
-            restaurantId: "restaurant-active",
-          },
-        },
-      },
-      { user: { id: "manager-1" } },
+      createArgs,
+      context,
     );
 
     expect(created).toEqual({ id: "staff-1" });
     expect(mocks.requireRestaurantAccess).toHaveBeenCalledWith(
-      { user: { id: "manager-1" } },
+      context,
       "restaurant-active",
     );
     expect(mocks.legacyCreateStaff).toHaveBeenCalledWith(
@@ -94,7 +99,7 @@ describe("createStaff active business context", () => {
           restaurantForStaff: "restaurant-active",
         },
       },
-      { user: { id: "manager-1" } },
+      context,
       undefined,
     );
     expect(mocks.BrandMembership.findOneAndUpdate).toHaveBeenCalledWith(
@@ -122,22 +127,25 @@ describe("createStaff active business context", () => {
     ).default;
 
     await expect(
-      resolvers.Mutation.createStaff(
-        null,
-        {
-          input: {
-            fullName: "Nhân viên mới",
-            staffBusinessContext: {
-              brandId: "brand-active",
-              restaurantId: "restaurant-active",
-            },
-          },
-        },
-        { user: { id: "manager-1" } },
-      ),
+      resolvers.Mutation.createStaff(null, createArgs, context),
     ).rejects.toThrow("Nhà hàng không thuộc doanh nghiệp đang hoạt động");
 
     expect(mocks.legacyCreateStaff).not.toHaveBeenCalled();
     expect(mocks.BrandMembership.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("removes the new account when membership synchronization fails", async () => {
+    mocks.BrandMembership.findOneAndUpdate.mockRejectedValue(
+      new Error("MEMBERSHIP_WRITE_FAILED"),
+    );
+    const resolvers = (
+      await import("../../graphql/resolvers/staff/index.js")
+    ).default;
+
+    await expect(
+      resolvers.Mutation.createStaff(null, createArgs, context),
+    ).rejects.toThrow("MEMBERSHIP_WRITE_FAILED");
+
+    expect(mocks.Staff.deleteOne).toHaveBeenCalledWith({ _id: "staff-1" });
   });
 });
