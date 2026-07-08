@@ -409,8 +409,8 @@ const requestHi3dAccessToken = async (config) => {
 };
 
 const buildHi3dTaskForm = async ({ normalized, config }) => {
-  if (normalized.images.length < 3 || normalized.images.length > 4) {
-    throw new Error("Hi3D table generation requires 3 to 4 reference images");
+  if (normalized.images.length < 3 || normalized.images.length > 5) {
+    throw new Error("Hi3D table generation requires 3 to 5 reference images");
   }
 
   const form = new FormData();
