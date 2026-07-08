@@ -31,12 +31,9 @@ jobs:
           node-version: 22
 
       - name: Apply focused patch
-        id: apply_patch
-        continue-on-error: true
         shell: bash
         run: |
-          set +e
-          python <<'PY' > /tmp/customer-promotion-patch.log 2>&1
+          python <<'PY'
           from pathlib import Path
           from textwrap import dedent
 
@@ -45,33 +42,13 @@ jobs:
           script = workflow.split(marker, 1)[1].split("\n          PY", 1)[0]
           exec(compile(dedent(script), 'customer-promotion-patch.py', 'exec'))
           PY
-          status=$?
-          cat /tmp/customer-promotion-patch.log
-          echo "status=${status}" >> "$GITHUB_OUTPUT"
-          exit "$status"
-
-      - name: Record patch failure for inspection
-        if: steps.apply_patch.outputs.status != '0'
-        shell: bash
-        run: |
-          if [ ! -f .trellis/tasks/brand-member-invitation-flow/patch-error.log ]; then
-            cp /tmp/customer-promotion-patch.log .trellis/tasks/brand-member-invitation-flow/patch-error.log
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add .trellis/tasks/brand-member-invitation-flow/patch-error.log
-            git commit -m "chore: record customer promotion patch error"
-            git push origin HEAD:${{ github.head_ref }}
-          fi
-          exit 1
 
       - name: Install dependencies without changing lockfiles
-        if: steps.apply_patch.outputs.status == '0'
         run: |
           npm install --no-package-lock
           npm --prefix cohan-restaurant-backend install --no-package-lock
 
       - name: Validate focused flow
-        if: steps.apply_patch.outputs.status == '0'
         run: |
           node --check cohan-restaurant-backend/graphql/resolvers/brand/memberRoleConsistency.js
           node --check cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js
@@ -82,7 +59,6 @@ jobs:
           npm run build
 
       - name: Commit validated patch and remove temporary workflow
-        if: steps.apply_patch.outputs.status == '0'
         shell: bash
         run: |
           rm -f .trellis/tasks/brand-member-invitation-flow/patch-error.log
