@@ -1,0 +1,31 @@
+{
+  "id": "07-08-login-role-safe-return-route",
+  "name": "login-role-safe-return-route",
+  "title": "Redirect re-login to a route allowed for the new account",
+  "description": "Prevent a newly authenticated account from inheriting an inaccessible protected route recorded by the previous logged-out account.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "auth-routing",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "codex/fix-login-role-safe-return-route",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Login.jsx",
+    "src/components/Login.test.jsx"
+  ],
+  "notes": "The backend login payload already returns the new account role. The fix belongs at the frontend return-route boundary and reuses canAccessRoute/getRoleHomeRoute.",
+  "meta": {
+    "skills": ["ponytail", "react-ui-performance"]
+  }
+}
