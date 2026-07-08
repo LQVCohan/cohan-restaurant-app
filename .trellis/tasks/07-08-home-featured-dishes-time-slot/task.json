@@ -3,7 +3,7 @@
   "name": "home-featured-dishes-time-slot",
   "title": "Keep homepage featured dishes scoped to the current meal period",
   "description": "Verify and lock the existing homepage flow so featured dishes are returned only from active menus for the requested time slot.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack",
   "scope": "customer-homepage",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": null,
+  "completedAt": "2026-07-08",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "f4655837d197d456911f0fd85d30563b11abb926",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -29,5 +29,5 @@
     "src/components/Customer/Homepage_Client/components/DishGrid.jsx",
     "cohan-restaurant-backend/tests/resolvers/menu-restaurant-access.test.js"
   ],
-  "notes": "The runtime flow already passes timeSlot from Home to topMenuItems and filters MenuItem by active Menu ids. Add the narrow regression test instead of duplicating runtime filtering."
+  "notes": "The runtime flow already passes timeSlot from Home to topMenuItems and filters MenuItem by active Menu ids. Added a focused resolver regression test; no duplicate runtime filter was introduced. No local test or build was run because a runnable checkout was unavailable, and GitHub reported no workflow/status checks for the commit."
 }
