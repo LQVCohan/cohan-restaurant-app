@@ -54,9 +54,12 @@ export function withTableCustomerOrderLifecycle(orderMutation) {
         : null;
 
       const savedCustomer = buildCustomerInput(tableCustomer);
-      const savedUserId = tableCustomer?.customerUserId
-        ? String(tableCustomer.customerUserId)
-        : null;
+      // Contact resolution tolerates a guest record that already expired. Only fall
+      // back to the stored id when the snapshot has no usable contact information.
+      const savedUserId =
+        !savedCustomer && tableCustomer?.customerUserId
+          ? String(tableCustomer.customerUserId)
+          : null;
       const nextArgs =
         savedCustomer || savedUserId
           ? {
