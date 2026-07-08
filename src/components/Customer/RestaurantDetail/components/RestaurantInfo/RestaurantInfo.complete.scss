@@ -1,9 +1,16 @@
 .restaurant-info-complete {
   display: grid;
+  align-items: start;
   gap: 1rem;
 
   .info-card {
+    align-self: start;
     overflow: hidden;
+  }
+
+  .info-card--policy,
+  > .info-card:last-child {
+    grid-column: 1 / -1;
   }
 
   .info-card p,
@@ -156,8 +163,18 @@
     overflow-wrap: anywhere;
   }
 
+  .policy-list--complete {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem 1rem;
+  }
+
   .policy-list--complete .policy-item {
     align-items: flex-start;
+    min-width: 0;
+    padding: 0.7rem 0.8rem;
+    border-radius: 0.75rem;
+    background: #f8fafc;
   }
 
   .policy-list--complete .policy-badge {
@@ -208,9 +225,16 @@
   }
 }
 
+@media (min-width: 993px) and (max-width: 1180px) {
+  .restaurant-info-complete {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 680px) {
   .restaurant-info-complete {
-    .restaurant-fact-grid {
+    .restaurant-fact-grid,
+    .policy-list--complete {
       grid-template-columns: 1fr;
     }
 
