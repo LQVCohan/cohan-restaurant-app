@@ -1,23 +1,23 @@
 {
   "id": "fix-pos-table-merge-feedback",
   "name": "fix-pos-table-merge-feedback",
-  "title": "Fix false POS table merge errors and missing split feedback",
-  "description": "Keep successful merge/split mutations independent from all table-list refresh side effects and show accurate POS notifications.",
-  "status": "completed",
+  "title": "Fix false POS table merge errors and missing split refresh",
+  "description": "Wire the POS table refresh callback correctly so merge/split update immediately and successful merges do not fall into the failure alert.",
+  "status": "in_progress",
   "dev_type": "bugfix",
   "scope": "pos-table-merge-feedback",
   "priority": "P0",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": "2026-07-08",
+  "completedAt": null,
   "branch": "main",
   "base_branch": "main",
-  "commit": "985544cd6f6156a983941cccbe2153f456cb87cc",
+  "commit": null,
   "pr_url": null,
   "relatedFiles": [
-    "src/hooks/useTableManagement.js",
-    "src/hooks/useTableManagement.test.jsx"
+    "src/components/Dashboard_Manager/POS/components/pos/LeftPanel.jsx",
+    "src/components/Dashboard_Manager/POS/components/pos/LeftPanel.tableRefresh.test.jsx"
   ],
-  "notes": "Removed all hook-owned refetch calls from merge/split wrappers. Mutation success can no longer be converted into a UI failure by synchronous or asynchronous refresh errors. Existing POS and manager callers already refresh after success. Added regression coverage with a refetch mock that throws synchronously and verified real mutation errors still reject. Targeted Vitest and build were not run because the connected environment could not clone the repository: github.com DNS resolution failed. No GitHub CI status was attached to the commit."
+  "notes": "Root cause confirmed from the actual POS caller: PosContext exposes refetchTables, but LeftPanel destructures refreshTables. The undefined callback throws after a successful drag-drop merge and is passed as undefined to TableActionsModal, so both merge and split require manual refresh."
 }
