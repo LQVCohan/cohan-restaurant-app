@@ -10,7 +10,7 @@ vi.mock("../EmployeeFormModal/EmployeeFormModal", () => ({
       onClick={() =>
         onSubmit({
           fullName: "Nhân viên mới",
-          restaurantForStaff: "legacy-restaurant",
+          restaurantForStaff: "restaurant-other",
         })
       }
     >
@@ -20,7 +20,7 @@ vi.mock("../EmployeeFormModal/EmployeeFormModal", () => ({
 }));
 
 describe("AddEmployeeModal business context", () => {
-  it("submits the active manager scope instead of account fallback data", () => {
+  it("uses the active business while preserving restaurant selection", () => {
     const onSubmit = vi.fn().mockResolvedValue(null);
 
     render(
@@ -29,6 +29,7 @@ describe("AddEmployeeModal business context", () => {
         restaurantList={[
           { id: "restaurant-active", brandId: "brand-active" },
           { id: "restaurant-other", brandId: "brand-active" },
+          { id: "restaurant-foreign", brandId: "brand-foreign" },
         ]}
         onSubmit={onSubmit}
       />,
@@ -36,7 +37,7 @@ describe("AddEmployeeModal business context", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "restaurant-active:restaurant-active",
+        name: "restaurant-active:restaurant-active,restaurant-other",
       }),
     );
 
@@ -44,7 +45,7 @@ describe("AddEmployeeModal business context", () => {
       fullName: "Nhân viên mới",
       staffBusinessContext: {
         brandId: "brand-active",
-        restaurantId: "restaurant-active",
+        restaurantId: "restaurant-other",
       },
     });
     expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("restaurantForStaff");
