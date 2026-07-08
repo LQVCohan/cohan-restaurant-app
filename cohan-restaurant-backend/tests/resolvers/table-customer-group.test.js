@@ -252,4 +252,33 @@ describe("tableCustomerGroup", () => {
       }),
     );
   });
+
+  it("keeps the stored arrival time when an older caller omits timeFrom", async () => {
+    modelMocks.TableCustomer.findOneAndUpdate.mockReturnValue(
+      leanWrap({
+        _id: "valid-customer-1",
+        tableId: "valid-a1",
+        tableCode: "A1",
+      }),
+    );
+    const { TableCustomerMutation } = await import(
+      "../../graphql/resolvers/table/tableCustomer.js"
+    );
+
+    await TableCustomerMutation.upsertTableCustomer(
+      null,
+      {
+        input: {
+          restaurantId: "valid-r1",
+          tableId: "valid-a1",
+          tableCode: "A1",
+          note: "Cập nhật từ màn hình cũ",
+        },
+      },
+      { user: { id: "valid-manager" } },
+    );
+
+    const [, update] = modelMocks.TableCustomer.findOneAndUpdate.mock.calls[0];
+    expect(update.$set).not.toHaveProperty("timeFrom");
+  });
 });
