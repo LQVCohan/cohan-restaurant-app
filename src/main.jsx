@@ -62,6 +62,7 @@ import "./components/Dashboard_Manager/Table/TableManagementCanvasSync.css";
 import "./components/Dashboard_Manager/Table/TableManagementMergePickerFix.css";
 import "./components/Dashboard_Manager/Table/TableCustomerProfilesEnhancement.css";
 import "./styles/TableEmptyStatePremium.css";
+import "./styles/MergedTableLifecycleUi.css";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
 import { installRestaurantHoursEnhancement } from "./utils/installRestaurantHoursEnhancement";
@@ -69,6 +70,7 @@ import { installRestaurantInfoMapEnhancement } from "./utils/installRestaurantIn
 import { installTablePromotionSearch } from "./utils/installTablePromotionSearch";
 import { installTableMergePickerTrigger } from "./utils/installTableMergePickerTrigger";
 import { installMergedTableCustomerProfiles } from "./utils/installMergedTableCustomerProfiles";
+import { installMergedTableLifecycleUi } from "./utils/installMergedTableLifecycleUi";
 import { installTableEmptyStateEnhancement } from "./utils/installTableEmptyStateEnhancement";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 
@@ -79,6 +81,7 @@ installRestaurantInfoMapEnhancement();
 installTablePromotionSearch();
 installTableMergePickerTrigger();
 installMergedTableCustomerProfiles();
+installMergedTableLifecycleUi();
 installTableEmptyStateEnhancement();
 installAttendanceWordingTuning();
 
