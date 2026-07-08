@@ -3,7 +3,7 @@
   "name": "register-password-ui",
   "title": "Polish registration password fields",
   "description": "Add accessible password visibility controls and replace the fixed CSS-only password hint bar with an inline strength meter on customer and brand registration forms.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "bugfix",
   "scope": "authentication-ui",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": null,
+  "completedAt": "2026-07-08",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "df049f5750988bfefc00c5a7f0b64d1d4c7a0c67",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -25,5 +25,5 @@
     "src/components/LoginPolish.scss",
     "src/components/Login.test.jsx"
   ],
-  "notes": "Backend password policy remains authoritative; this task changes registration presentation and interaction only."
+  "notes": "Backend password policy remains authoritative. Component tests and build were not run in this session because no repository runner was available; no GitHub Actions run was created for the final commit."
 }
