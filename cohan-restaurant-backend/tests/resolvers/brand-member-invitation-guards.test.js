@@ -6,6 +6,10 @@ const modelMocks = vi.hoisted(() => ({
   },
   User: {
     findById: vi.fn(),
+    updateOne: vi.fn(),
+  },
+  Role: {
+    findOne: vi.fn(),
   },
 }));
 
@@ -52,6 +56,61 @@ describe("Brand invitation mutation guards", () => {
     ).rejects.toMatchObject({ extensions: { code: "FORBIDDEN" } });
 
     expect(updateBrandMember).not.toHaveBeenCalled();
+  });
+
+  it("allows a Customer invitation without promoting the account immediately", async () => {
+    const accountQuery = {
+      lean: vi.fn().mockResolvedValue({
+        _id: "customer-1",
+        userType: "CUSTOMER",
+        role: { slug: "customer" },
+      }),
+    };
+    accountQuery.populate = vi.fn().mockReturnValue(accountQuery);
+    modelMocks.User.findById.mockReturnValue(accountQuery);
+    const addBrandMember = vi.fn().mockResolvedValue({ status: "invited" });
+    const { guardBrandMemberRoleMutations } = await import(
+      "../../graphql/resolvers/brand/memberRoleConsistency.js"
+    );
+    const guarded = guardBrandMemberRoleMutations({ addBrandMember });
+    const input = {
+      brandId: "brand-1",
+      userId: "customer-1",
+      role: "manager",
+      restaurantIds: ["restaurant-1"],
+    };
+
+    await expect(
+      guarded.addBrandMember(null, { input }, { user: { id: "owner-1" } }, {}),
+    ).resolves.toEqual({ status: "invited" });
+
+    expect(modelMocks.User.updateOne).not.toHaveBeenCalled();
+    expect(addBrandMember).toHaveBeenCalledTimes(1);
+  });
+
+  it("promotes a Customer through the acceptance helper", async () => {
+    const roleQuery = {
+      lean: vi.fn().mockResolvedValue({ _id: "manager-role" }),
+    };
+    roleQuery.select = vi.fn().mockReturnValue(roleQuery);
+    modelMocks.Role.findOne.mockReturnValue(roleQuery);
+    modelMocks.User.updateOne.mockResolvedValue({ matchedCount: 1 });
+    const { promoteCustomerAccountToManager } = await import(
+      "../../graphql/resolvers/brand/memberRoleConsistency.js"
+    );
+
+    await expect(
+      promoteCustomerAccountToManager({ userId: "customer-1" }),
+    ).resolves.toBe("manager-role");
+
+    expect(modelMocks.User.updateOne).toHaveBeenCalledWith(
+      { _id: "customer-1", userType: "CUSTOMER" },
+      { $set: { userType: "MANAGER", role: "manager-role" } },
+      expect.objectContaining({
+        runValidators: true,
+        overwriteDiscriminatorKey: true,
+      }),
+    );
   });
 
   it("lets the invitation resolver create a new account from a synthetic email candidate", async () => {
