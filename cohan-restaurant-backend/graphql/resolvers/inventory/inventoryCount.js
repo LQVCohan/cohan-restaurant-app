@@ -11,6 +11,8 @@ import { requireRestaurantPermission } from "../../../src/services/auth/authoriz
 
 const DOCUMENT_STATUSES = new Set(["pending", "matched", "mismatch", "missing"]);
 
+const hasCountedQty = (value) => value !== null && value !== undefined && Number.isFinite(Number(value));
+
 const roundQty = (value, digits = 9) => {
   const number = Number(value);
   if (!Number.isFinite(number)) return 0;
@@ -181,7 +183,7 @@ export default {
       const count = await getCount(input?.countId);
       await requireRestaurantPermission(ctx, count.restaurantId, PERMISSIONS.STOCK_WRITE);
       if (count.status !== "draft") throw new GraphQLError("Inventory count is already closed");
-      if (count.lines.some((line) => !Number.isFinite(Number(line.countedQty)))) {
+      if (count.lines.some((line) => !hasCountedQty(line.countedQty))) {
         throw new GraphQLError("All count lines must have countedQty before closing");
       }
 
@@ -191,6 +193,9 @@ export default {
           const locked = await InventoryCount.findById(count._id).session(session);
           if (!locked || locked.status !== "draft") {
             throw new GraphQLError("Inventory count is already closed");
+          }
+          if (locked.lines.some((line) => !hasCountedQty(line.countedQty))) {
+            throw new GraphQLError("All count lines must have countedQty before closing");
           }
 
           for (const line of locked.lines) {
