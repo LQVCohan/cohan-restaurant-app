@@ -18,6 +18,10 @@ const MY_CART = gql`
       items {
         id
         restaurantId
+        restaurant {
+          id
+          name
+        }
         itemType
         menuItemId
         comboId
@@ -83,6 +87,7 @@ const mapServerCartItem = (cartId, item = {}) => ({
   comboId: item.comboId || null,
   comboSnapshot: item.comboSnapshot || null,
   restaurantId: item.restaurantId,
+  restaurantName: item.restaurant?.name || null,
   name: item.name || "Món ăn",
   price: Number(item.price || 0),
   modifiersPrice: Number(item.modifiersPrice || 0),
