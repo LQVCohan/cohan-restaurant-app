@@ -4,26 +4,28 @@
 
 ## Đăng nhập nhanh
 
-Các tài khoản trong database mẫu sử dụng cùng mật khẩu demo. Giá trị mặc định development được khai báo tại `DEFAULT_DEMO_PASSWORD` trong `cohan-restaurant-backend/scripts/lib/scriptSafety.js` và được ghi trong `handover/README.md`.
+**Mật khẩu chung:** `Demo@123456`
+
+Các tài khoản trong database mẫu sử dụng cùng mật khẩu demo. Giá trị mặc định development này được khai báo tại `DEFAULT_DEMO_PASSWORD` trong `cohan-restaurant-backend/scripts/lib/scriptSafety.js`.
 
 Có thể nhập email hoặc username tại màn hình đăng nhập.
 
-| Nhóm kiểm thử | Vai trò | Email | Username |
-| --- | --- | --- | --- |
-| Quản trị | System Admin + Brand Admin | `admin.demo@cohan.local` | `admin.demo` |
-| Doanh nghiệp | Business Owner | `business.owner.demo@cohan.local` | `business.owner.demo` |
-| Quản lý | Manager chi nhánh Thủ Đức | `manager.demo@cohan.local` | `manager.demo` |
-| Quản lý | Manager chi nhánh Quận 1 | `manager.branch2.demo@cohan.local` | `manager.branch2.demo` |
-| Người dùng | Customer/User | `customer.demo@cohan.local` | `customer.demo` |
-| Nhân viên | Staff/Server Thủ Đức | `staff.server.demo@cohan.local` | `staff.server.demo` |
-| Nhân viên | Staff/Server Quận 1 | `staff.branch2.demo@cohan.local` | `staff.branch2.demo` |
+| Nhóm kiểm thử | Vai trò | Email | Username | Mật khẩu |
+| --- | --- | --- | --- | --- |
+| Quản trị | System Admin + Brand Admin | `admin.demo@cohan.local` | `admin.demo` | `Demo@123456` |
+| Doanh nghiệp | Business Owner | `business.owner.demo@cohan.local` | `business.owner.demo` | `Demo@123456` |
+| Quản lý | Manager chi nhánh Thủ Đức | `manager.demo@cohan.local` | `manager.demo` | `Demo@123456` |
+| Quản lý | Manager chi nhánh Quận 1 | `manager.branch2.demo@cohan.local` | `manager.branch2.demo` | `Demo@123456` |
+| Người dùng | Customer/User | `customer.demo@cohan.local` | `customer.demo` | `Demo@123456` |
+| Nhân viên | Staff/Server Thủ Đức | `staff.server.demo@cohan.local` | `staff.server.demo` | `Demo@123456` |
+| Nhân viên | Staff/Server Quận 1 | `staff.branch2.demo@cohan.local` | `staff.branch2.demo` | `Demo@123456` |
 
 Tài khoản tối thiểu để kiểm tra hai nhóm quyền chính:
 
 ```text
 Admin: admin.demo@cohan.local
 User:  customer.demo@cohan.local
-Password: xem handover/README.md
+Password chung: Demo@123456
 ```
 
 ## Business và phạm vi truy cập
@@ -44,7 +46,7 @@ Password: xem handover/README.md
 
 ## Kiểm tra database mẫu
 
-Mật khẩu trong file database phải khớp với giá trị trong `handover/README.md`. Sau khi restore, nên đăng nhập thử bằng:
+Sau khi restore, nên đăng nhập thử bằng:
 
 1. `admin.demo@cohan.local`.
 2. `customer.demo@cohan.local`.
