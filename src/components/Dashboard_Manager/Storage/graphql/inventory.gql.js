@@ -288,6 +288,21 @@ export const WAREHOUSES_QUERY = gql`
   }
 `;
 
+export const CREATE_WAREHOUSE = gql`
+  mutation CreateWarehouse($input: CreateWarehouseInput!) {
+    createWarehouse(input: $input) {
+      id
+      restaurantId
+      name
+      code
+      address
+      isActive
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 export const STOCK_ITEMS_QUERY = gql`
   query StockItems($restaurantId: ID!, $warehouseId: ID, $limit: Int = 200) {
     stockItems(

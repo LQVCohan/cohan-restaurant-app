@@ -257,6 +257,84 @@ $sm-danger: #b54747;
     }
   }
 
+  .sm-warehouse-setup {
+    min-height: 420px;
+    padding: clamp(30px, 6vw, 72px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border: 1px solid rgba(128, 109, 83, 0.16);
+    border-radius: 26px;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(168, 133, 95, 0.13), transparent 20rem),
+      rgba(255, 252, 246, 0.82);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.86),
+      0 16px 44px rgba(48, 40, 30, 0.08);
+  }
+
+  .sm-warehouse-setup__icon {
+    width: 66px;
+    height: 66px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 18px;
+    border: 1px solid rgba($sm-accent, 0.22);
+    border-radius: 22px;
+    color: #735637;
+    background: #f4e8d7;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  }
+
+  .sm-warehouse-setup__eyebrow {
+    margin: 0 0 7px;
+    color: #80674f;
+    font-size: 0.74rem;
+    font-weight: 780;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .sm-warehouse-setup h2 {
+    margin: 0;
+    color: $sm-ink;
+    font-size: clamp(1.6rem, 3vw, 2.25rem);
+    line-height: 1.08;
+    letter-spacing: -0.045em;
+    text-wrap: balance;
+  }
+
+  .sm-warehouse-setup__description {
+    max-width: 58ch;
+    margin: 13px auto 0;
+    color: $sm-muted;
+    font-size: 0.98rem;
+    line-height: 1.65;
+    text-wrap: pretty;
+  }
+
+  .sm-warehouse-setup__action {
+    margin-top: 24px;
+    min-height: 44px;
+    padding-inline: 18px;
+  }
+
+  .sm-warehouse-setup__permission {
+    max-width: 54ch;
+    margin: 22px auto 0;
+    padding: 10px 13px;
+    border: 1px solid rgba($sm-warning, 0.22);
+    border-radius: 14px;
+    color: #7c4d1f;
+    background: #fbf1e3;
+    font-size: 0.86rem;
+    font-weight: 650;
+    line-height: 1.5;
+  }
+
   .sm-loading-state,
   .sm-error-state {
     min-height: 72dvh;
@@ -396,8 +474,18 @@ $sm-danger: #b54747;
     }
 
     .sm-toolbar-wrapper,
-    .sm-tab-content-wrapper {
+    .sm-tab-content-wrapper,
+    .sm-warehouse-setup {
       border-radius: 20px;
+    }
+
+    .sm-warehouse-setup {
+      min-height: 360px;
+      padding: 30px 18px;
+    }
+
+    .sm-warehouse-setup__action {
+      width: 100%;
     }
   }
 }
@@ -430,6 +518,7 @@ $sm-danger: #b54747;
 .storage-management .sm-kpi-card,
 .storage-management .sm-toolbar-wrapper,
 .storage-management .sm-tab-content-wrapper,
+.storage-management .sm-warehouse-setup,
 .storage-management .ing-storage-wrapper .il-toolbar,
 .storage-management .supply-list-container .sl-toolbar,
 .storage-management .inventory-audit-tab .inv-toolbar,
@@ -443,7 +532,8 @@ $sm-danger: #b54747;
 }
 
 .storage-management .sm-header-card,
-.storage-management .sm-tab-content-wrapper {
+.storage-management .sm-tab-content-wrapper,
+.storage-management .sm-warehouse-setup {
   border-radius: 24px !important;
 }
 
@@ -452,7 +542,8 @@ $sm-danger: #b54747;
   min-height: 112px !important;
 }
 
-.storage-management .sm-tab-content-wrapper {
+.storage-management .sm-tab-content-wrapper,
+.storage-management .sm-warehouse-setup {
   background: rgba(255, 252, 246, 0.78) !important;
 }
 

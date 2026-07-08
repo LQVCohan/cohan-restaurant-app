@@ -4,9 +4,11 @@ import React, {
   useEffect,
   useMemo,
   useCallback,
+  useContext,
 } from "react";
 import { useQuery, useMutation } from "@apollo/client";
 import useManagerRestaurantSelection from "../../../hooks/useManagerRestaurantSelection";
+import { AuthContext } from "@/context/AuthContext";
 
 // Components
 import Header from "./layout/Header/Header";
@@ -23,6 +25,7 @@ import { useRecipes } from "@/hooks/useRecipes";
 import { useNotification } from "@/hooks/useNotification";
 import { getInventoryActionErrorMessage } from "@/utils/inventorySupplySupplierPrintErrorMessages";
 import { useRestaurantCurrency } from "@/hooks/useRestaurantCurrency";
+import { hasAnyPermission } from "@/utils/frontendPermissionAccess";
 import {
   Carrot,
   Package,
@@ -40,12 +43,14 @@ import "./StorageManagement.scss";
 import {
   INGREDIENTS_QUERY,
   WAREHOUSES_QUERY,
+  CREATE_WAREHOUSE,
   STOCK_ITEMS_QUERY,
   STOCK_MOVEMENTS_QUERY,
   ADJUST_STOCK,
 } from "./graphql/inventory.gql";
 
 const StorageManagement = () => {
+  const { user } = useContext(AuthContext);
   const { showNotification } = useNotification();
   const [activeTab, setActiveTab] = useState("ingredients");
   const [selectedWarehouseId, setSelectedWarehouseId] = useState(undefined);
@@ -53,6 +58,11 @@ const StorageManagement = () => {
   const [ingredientActions, setIngredientActions] = useState(null);
   const [supplyActions, setSupplyActions] = useState(null);
   const [recipeActions, setRecipeActions] = useState(null);
+
+  const canWriteInventory = hasAnyPermission(user, [
+    "inventory.write",
+    "stock.write",
+  ]);
 
   const {
     restaurantOptions,
@@ -94,6 +104,7 @@ const StorageManagement = () => {
     data: whData,
     loading: whLoading,
     error: whError,
+    refetch: refetchWarehouses,
   } = useQuery(WAREHOUSES_QUERY, {
     variables: { restaurantId: currentRestaurant },
     skip: !restaurantReady,
@@ -103,12 +114,21 @@ const StorageManagement = () => {
   const warehouses = useMemo(() => whData?.warehouses || [], [whData]);
 
   useEffect(() => {
-    if (selectedWarehouseId === undefined && warehouses.length) {
-      setSelectedWarehouseId(warehouses[0].id);
+    if (!warehouses.length) {
+      if (selectedWarehouseId !== undefined) setSelectedWarehouseId(undefined);
+      return;
     }
+
+    const selectedWarehouseExists = warehouses.some(
+      (warehouse) => warehouse.id === selectedWarehouseId,
+    );
+    if (!selectedWarehouseExists) setSelectedWarehouseId(warehouses[0].id);
   }, [warehouses, selectedWarehouseId]);
 
-  const warehouseFilterId = selectedWarehouseId ? selectedWarehouseId : null;
+  const warehouseFilterId = selectedWarehouseId || null;
+  const needsWarehouseSetup = Boolean(
+    restaurantReady && !whLoading && !whError && whData && warehouses.length === 0,
+  );
 
   const shouldFetchStockForKpi = restaurantReady;
   const shouldFetchMovementsForAudit = restaurantReady && activeTab === "inventory";
@@ -209,7 +229,7 @@ const StorageManagement = () => {
       const available = onHand - reserved;
       availableByIngredient.set(
         ingId,
-        (availableByIngredient.get(ingId) || 0) + available
+        (availableByIngredient.get(ingId) || 0) + available,
       );
     });
 
@@ -228,9 +248,44 @@ const StorageManagement = () => {
       .filter((it) => it.currentStock <= it.minStock);
   }, [ingredients, restaurantReady, stockItems]);
 
+  const [createWarehouseMu, { loading: creatingWarehouse }] = useMutation(CREATE_WAREHOUSE);
   const [adjustStockMu] = useMutation(ADJUST_STOCK);
   const [poOpen, setPoOpen] = useState(false);
   const [poEntries, setPoEntries] = useState([]);
+
+  const handleCreateFirstWarehouse = useCallback(async () => {
+    if (!currentRestaurant || !canWriteInventory || creatingWarehouse) return;
+
+    try {
+      const { data } = await createWarehouseMu({
+        variables: {
+          input: {
+            restaurantId: currentRestaurant,
+            name: "Kho chính",
+            code: "MAIN",
+            isActive: true,
+          },
+        },
+      });
+      const refreshed = await refetchWarehouses?.();
+      const createdWarehouse = data?.createWarehouse;
+      const firstWarehouse = createdWarehouse || refreshed?.data?.warehouses?.[0];
+      if (firstWarehouse?.id) setSelectedWarehouseId(firstWarehouse.id);
+      showNotification("Đã tạo Kho chính cho nhà hàng.", "success");
+    } catch (error) {
+      showNotification(
+        getInventoryActionErrorMessage(error, "Không thể tạo kho đầu tiên."),
+        "error",
+      );
+    }
+  }, [
+    canWriteInventory,
+    createWarehouseMu,
+    creatingWarehouse,
+    currentRestaurant,
+    refetchWarehouses,
+    showNotification,
+  ]);
 
   const storageKpis = useMemo(() => {
     const outStockItems = lowStockItems.filter((item) => Number(item.currentStock) <= 0);
@@ -262,13 +317,13 @@ const StorageManagement = () => {
       {
         id: "warehouses",
         label: "Kho đang có",
-        value: warehouses.length || stockItems.length,
-        helper: warehouses.length ? "kho khả dụng" : "dòng tồn kho đã tải",
+        value: warehouses.length,
+        helper: warehouses.length ? "kho khả dụng" : "chưa khởi tạo kho",
         icon: <WarehouseIcon size={18} />,
         tone: "neutral",
       },
     ];
-  }, [ingredients.length, lowStockItems, stockItems.length, warehouses.length]);
+  }, [ingredients.length, lowStockItems, warehouses.length]);
 
   const activeStorageActions = useMemo(() => {
     if (activeTab === "ingredients") return ingredientActions;
@@ -438,40 +493,75 @@ const StorageManagement = () => {
         </section>
 
         <section className="sm-main-content" aria-label="Nội dung quản lý kho">
-          <div className="sm-toolbar-wrapper">
-            <div className="toolbar-left">
-              <Tabs
-                tabs={tabs}
-                activeTab={activeTab}
-                onTabChange={(t) => {
-                  setActiveTab(t);
-                  if (["inventory", "ingredients"].includes(t)) {
-                    refetchStock?.();
-                    if (t === "inventory") refetchMovements?.();
-                  }
-                  if (t === "recipes") refreshRecipes?.();
-                }}
-              />
+          {needsWarehouseSetup ? (
+            <div className="sm-warehouse-setup" aria-labelledby="warehouse-setup-title">
+              <div className="sm-warehouse-setup__icon" aria-hidden="true">
+                <WarehouseIcon size={30} />
+              </div>
+              <p className="sm-warehouse-setup__eyebrow">Khởi tạo vận hành kho</p>
+              <h2 id="warehouse-setup-title">Nhà hàng chưa có kho</h2>
+              <p className="sm-warehouse-setup__description">
+                Tạo kho đầu tiên để nhập nguyên liệu, vật tư, theo dõi tồn và thực hiện kiểm kê cho nhà hàng này.
+              </p>
+              {canWriteInventory ? (
+                <button
+                  type="button"
+                  className="sm-btn primary sm-warehouse-setup__action"
+                  onClick={handleCreateFirstWarehouse}
+                  disabled={creatingWarehouse}
+                >
+                  <WarehouseIcon size={17} />
+                  {creatingWarehouse ? "Đang tạo kho..." : "Tạo Kho chính"}
+                </button>
+              ) : (
+                <p className="sm-warehouse-setup__permission">
+                  Tài khoản cần quyền quản lý kho để thực hiện bước khởi tạo này.
+                </p>
+              )}
             </div>
+          ) : (
+            <>
+              <div className="sm-toolbar-wrapper">
+                <div className="toolbar-left">
+                  <Tabs
+                    tabs={tabs}
+                    activeTab={activeTab}
+                    onTabChange={(t) => {
+                      setActiveTab(t);
+                      if (["inventory", "ingredients"].includes(t)) {
+                        refetchStock?.();
+                        if (t === "inventory") refetchMovements?.();
+                      }
+                      if (t === "recipes") refreshRecipes?.();
+                    }}
+                  />
+                </div>
 
-            <div className="toolbar-right">
-              <WarehouseStatus
-                lowStockItems={lowStockItems}
-                onCreatePO={() => {
-                  if (!warehouseFilterId) {
-                    showNotification("Vui lòng chọn kho cụ thể trước khi nhập kho.", "warning");
-                    return;
-                  }
-                  setPoEntries(lowStockItems.map((it) => ({ id: it.id, type: "ingredient", name: it.name, unit: it.unit })));
-                  setPoOpen(true);
-                }}
-              />
-            </div>
-          </div>
+                <div className="toolbar-right">
+                  <WarehouseStatus
+                    lowStockItems={lowStockItems}
+                    onCreatePO={() => {
+                      if (!warehouseFilterId) {
+                        showNotification("Vui lòng chọn kho cụ thể trước khi nhập kho.", "warning");
+                        return;
+                      }
+                      setPoEntries(lowStockItems.map((it) => ({
+                        id: it.id,
+                        type: "ingredient",
+                        name: it.name,
+                        unit: it.unit,
+                      })));
+                      setPoOpen(true);
+                    }}
+                  />
+                </div>
+              </div>
 
-          <div className="sm-tab-content-wrapper">
-            {tabs.find((tab) => tab.id === activeTab)?.component}
-          </div>
+              <div className="sm-tab-content-wrapper">
+                {tabs.find((tab) => tab.id === activeTab)?.component}
+              </div>
+            </>
+          )}
 
           {whError && (
             <div className="sm-error-toast">
