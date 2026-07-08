@@ -1,27 +1,36 @@
 {
   "id": "07-08-manager-menu-stock-ui-fixes",
   "title": "Hiển thị tồn món và sửa UI quản lý thực đơn",
-  "status": "planning",
+  "status": "implemented_unverified",
   "type": "frontend-bugfix",
   "scope": [
     "src/components/Dashboard_Manager/Menu/components/MenuItemCard/MenuItemCard.jsx",
     "src/components/Dashboard_Manager/Menu/components/MenuItemCard/MenuItemCard.test.jsx",
-    "src/components/Dashboard_Manager/Menu/MenuManagementCardCompactFix.scss",
+    "src/components/Dashboard_Manager/Menu/MenuManagementPolish.scss",
     "src/components/Dashboard_Manager/Menu/components/CategoryModal/CategoryModal.jsx",
-    "src/components/Dashboard_Manager/Menu/components/CategoryModal/CategoryModalPolish.scss",
-    "src/components/Dashboard_Manager/Menu/components/Toolbar/Toolbar.jsx",
-    "src/components/Dashboard_Manager/Menu/components/Toolbar/Toolbar.scss",
-    "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModal.jsx"
+    "src/components/Dashboard_Manager/Menu/components/CategoryModal/CategoryModalStructureFix.scss",
+    "src/main.jsx"
   ],
   "validation": {
     "planned": [
       "npm run check:conflicts",
-      "targeted MenuItemCard Vitest",
+      "vitest run src/components/Dashboard_Manager/Menu/components/MenuItemCard/MenuItemCard.test.jsx",
       "npm run check:graphql",
       "npm run build",
       "desktop and mobile browser smoke"
     ],
-    "completed": [],
-    "notRun": []
+    "completed": [
+      "traced stock formula and confirmed MenuItem.maxAvailable is already queried by manager UI",
+      "reviewed final JSX and SCSS cascade",
+      "repository code search found no conflict marker outside the conflict-check script",
+      "confirmed no GitHub Actions run was attached to the final UI commit"
+    ],
+    "notRun": [
+      "local Vitest was unavailable in the GitHub connector environment",
+      "npm run check:conflicts was not executable locally",
+      "npm run check:graphql was not executable locally",
+      "npm run build was not executable locally",
+      "desktop and mobile browser smoke screenshots were unavailable"
+    ]
   }
 }
