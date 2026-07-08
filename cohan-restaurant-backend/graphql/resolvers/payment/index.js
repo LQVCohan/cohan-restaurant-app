@@ -4,6 +4,7 @@ import PaymentMutation from "./mutation.js";
 import ReconciliationPaymentConfirmationMutation from "./reconciliationPaymentConfirmationMutation.js";
 import FinanceOperationGuardMutation from "./financeOperationGuardMutation.js";
 import StrictOrderPaymentMutation from "./strictOrderPaymentMutation.js";
+import MergedTablePaymentMutation from "./mergedTablePaymentMutation.js";
 import TransferPaymentMutation from "./transferMutation.js";
 import { PaymentResolvers } from "./types.js";
 import publicTablePaymentMutation from "./publicTablePaymentMutation.js";
@@ -23,6 +24,7 @@ export default {
     ...TransferPaymentMutation,
     ...publicTablePaymentMutation,
     ...(wallet.Mutation || {}),
+    ...MergedTablePaymentMutation,
   },
   ...PaymentResolvers,
 };
