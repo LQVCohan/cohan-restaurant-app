@@ -24,6 +24,15 @@ input CreateWalletInput {
   provider: String
   currency: String
 }
+
+input StaffBusinessContextInput {
+  brandId: ID!
+  restaurantId: ID!
+}
+
+extend input CreateUserInput {
+  staffBusinessContext: StaffBusinessContextInput
+}
 `;
 
 const userMutationCompatibilitySchema = `
