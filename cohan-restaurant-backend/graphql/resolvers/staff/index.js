@@ -167,10 +167,14 @@ const createStaff = async (parent, args = {}, ctx, info) => {
     ctx,
     info,
   );
+  const createdId = created?.id || created?._id;
+  if (!createdId) {
+    throw new Error("Không xác định được tài khoản nhân viên vừa tạo");
+  }
 
   try {
     await BrandMembership.findOneAndUpdate(
-      { brandId: businessContext.brandId, userId: created.id },
+      { brandId: businessContext.brandId, userId: createdId },
       {
         $set: {
           role: "staff",
@@ -187,7 +191,7 @@ const createStaff = async (parent, args = {}, ctx, info) => {
     );
   } catch (error) {
     try {
-      if (created?.id) await Staff.deleteOne({ _id: created.id });
+      await Staff.deleteOne({ _id: createdId });
     } catch (cleanupError) {
       error.cleanupError = cleanupError;
     }
