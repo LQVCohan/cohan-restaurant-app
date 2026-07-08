@@ -5,21 +5,20 @@ const normalizeId = (value) =>
   String(value?.id ?? value?._id ?? value?.restaurantId ?? value ?? "");
 
 const AddEmployeeModal = ({
-  businessContext,
+  defaultRestaurantId,
   restaurantList = [],
   onSubmit,
   ...props
 }) => {
-  const brandId = normalizeId(businessContext?.brandId);
-  const restaurantId = normalizeId(businessContext?.restaurantId);
-
-  const activeRestaurantList = useMemo(
+  const restaurantId = normalizeId(defaultRestaurantId);
+  const activeRestaurant = useMemo(
     () =>
-      restaurantList.filter(
+      restaurantList.find(
         (restaurant) => normalizeId(restaurant) === restaurantId,
-      ),
+      ) || null,
     [restaurantId, restaurantList],
   );
+  const brandId = normalizeId(activeRestaurant?.brandId);
 
   const handleSubmit = useCallback(
     async (values) => {
@@ -43,7 +42,7 @@ const AddEmployeeModal = ({
   return (
     <EmployeeFormModal
       {...props}
-      restaurantList={activeRestaurantList}
+      restaurantList={activeRestaurant ? [activeRestaurant] : []}
       defaultRestaurantId={restaurantId}
       onSubmit={handleSubmit}
     />
