@@ -70,13 +70,6 @@ replaceOnce(
   "order action description id",
 );
 
-replaceOnce(
-  foodDetailPath,
-  `if (adding) return "Đang giữ món...";`,
-  `if (adding) return "Đang giữ món…";`,
-  "legacy loading punctuation guard",
-);
-
 const menuDetailPath =
   "src/components/Customer/RestaurantMenu/components/MenuDetailView.jsx";
 replaceOnce(
