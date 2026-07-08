@@ -1,0 +1,37 @@
+{
+  "id": "07-08-fix-frontend-unit-hangs",
+  "name": "fix-frontend-unit-hangs",
+  "title": "Repair frontend unit regressions and dashboard render loop",
+  "description": "Fix the remaining frontend unit failures on current main without duplicating the backend/search work in PR #1277.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "auth-dashboard-table-unit-tests",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "codex/fix-frontend-unit-hangs",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/context/__tests__/AuthProvider.test.jsx",
+    "src/context/__tests__/AuthProvider.logout-cache.test.jsx",
+    "src/hooks/useBrandManagement.js",
+    "src/hooks/useDashboard.js",
+    "src/hooks/useDashboard.test.jsx",
+    "src/utils/installTablePromotionSearch.js",
+    "src/utils/installTablePromotionSearch.test.js",
+    "src/utils/installTableEmptyStateEnhancement.test.js"
+  ],
+  "notes": "PR #1274 was closed and superseded by backend/search PR #1277. This task carries only the remaining frontend fixes from current main.",
+  "meta": {
+    "skills": ["ponytail"]
+  }
+}
