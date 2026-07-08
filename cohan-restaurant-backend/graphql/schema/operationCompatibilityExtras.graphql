@@ -14,6 +14,10 @@ type PayrollCompatibilityError {
   message: String
 }
 
+extend input LeaveRequestFilterInput {
+  search: String
+}
+
 extend type CompatibilityNode {
   absentCount: Int
   accountHolderName: String
