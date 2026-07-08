@@ -11,7 +11,7 @@ const TABLE_LIST_READ_PERMISSIONS = [
   PERMISSIONS.RESERVATION_READ,
 ];
 
-const TABLE_SELECT = {
+export const TABLE_SELECT = {
   viewLock: 1,
   status: 1,
   capacity: 1,
@@ -26,6 +26,12 @@ const TABLE_SELECT = {
   photos: 1,
   notes: 1,
   tags: 1,
+  zone: 1,
+  promotionIds: 1,
+  bookingPerks: 1,
+  reservationHoldMinutes: 1,
+  minSpend: 1,
+  cancelPolicy: 1,
   visualConfig: 1,
   isJoinable: 1,
   joinGroupId: 1,
