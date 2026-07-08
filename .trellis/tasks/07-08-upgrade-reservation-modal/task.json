@@ -2,8 +2,8 @@
   "id": "upgrade-reservation-modal",
   "name": "upgrade-reservation-modal",
   "title": "Upgrade customer reservation modal",
-  "description": "Polish the customer Reservation modal and correct its public-data, table-capacity, unlimited-time, and post-create behavior without changing reservation server rules.",
-  "status": "in_progress",
+  "description": "Polish the customer Reservation modal and correct its public-data, selected-table, capacity, unlimited-time, and confirmation behavior without weakening reservation server rules.",
+  "status": "completed",
   "dev_type": "feature",
   "scope": "customer-reservation-ui",
   "package": null,
@@ -11,20 +11,19 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": null,
+  "completedAt": "2026-07-08",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "79d860ec05e11034054e6823135067f779c2ad68",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": null,
   "relatedFiles": [
-    "src/components/Customer/TableBooking/TableBooking.jsx",
     "src/components/Customer/BookingTableModal/BookingModal.jsx",
     "src/components/Customer/BookingTableModal/BookingModal.scss",
     "src/components/Customer/BookingTableModal/BookingModal.test.jsx"
   ],
-  "notes": "Planning complete: the modal currently re-queries the protected restaurant field, owns an unsafe internal table switch path, accepts party size above table capacity until server rejection, and stores the checkbox event object instead of its checked value."
+  "notes": "The customer modal now uses publicRestaurant/publicTables instead of protected restaurant and event-management operations, keeps the parent-selected/view-locked table immutable inside the modal, validates table capacity and reservation time before mutation, stores the unlimited-time checkbox boolean correctly, and uses a responsive two-column desktop layout with a stable footer. Manager-only event-package/table-event controls were removed from the customer flow rather than weakening backend authorization. Focused component tests were added. No local Vitest, GraphQL validation, conflict check, build, browser smoke test, or screenshot comparison ran because the connected environment did not provide a runnable repository checkout; no PR-triggered workflow run was available for the implementation commit."
 }
