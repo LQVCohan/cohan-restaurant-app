@@ -38,6 +38,7 @@ const MEMBERS = gql`
       userId
       role
       status
+      revokedFromStatus
       user {
         id
         fullName
@@ -134,7 +135,12 @@ const getCandidateLabel = (candidate) => {
   const name =
     candidate?.fullName || candidate?.username || candidate?.email || "Tài khoản";
   const identity = candidate?.email || candidate?.username || candidate?.id;
-  return `${name} — ${identity} · ID: ${candidate?.id}`;
+  const source = String(candidate?.id || "").startsWith("invite:")
+    ? "Tài khoản mới"
+    : candidate?.userType === "CUSTOMER"
+      ? "Khách hàng hiện có"
+      : "Tài khoản quản lý";
+  return `${name} — ${identity} · ${source} · ID: ${candidate?.id}`;
 };
 
 const emptyBrandForm = {
@@ -290,9 +296,14 @@ export default function BrandManagement() {
 
   const members = memberData?.brandMembers || [];
   const restaurants = selectedBrand?.restaurants || [];
-  const candidates = candidateSearchReady
+  const rawCandidates = candidateSearchReady
     ? candidateData?.brandMemberCandidates || []
     : [];
+  const candidates = rawCandidates.filter((candidate) =>
+    member.role === "staff"
+      ? candidate.userType !== "CUSTOMER"
+      : ["CUSTOMER", "MANAGER"].includes(candidate.userType),
+  );
   const selectedCandidate = candidates.find(
     (candidate) => String(candidate.id) === String(member.userId),
   );
@@ -442,7 +453,11 @@ export default function BrandManagement() {
       setCandidateSearch("");
       setCandidateSearchTerm("");
       await refetchMembers?.();
-      message.success("Đã cập nhật thành viên trong chuỗi");
+      message.success(
+        member.role === "staff"
+          ? "Đã cập nhật thành viên trong chuỗi"
+          : "Đã gửi lời mời tham gia chuỗi",
+      );
     } catch (mutationError) {
       setMemberFormError(
         getErrorMessage(mutationError, "Không thể cập nhật thành viên."),
@@ -923,6 +938,14 @@ export default function BrandManagement() {
                                 : "Không tìm thấy tài khoản chưa thuộc chuỗi."}
                     </small>
                   </label>
+                  {selectedCandidate?.userType === "CUSTOMER" && member.role !== "staff" && (
+                    <div className="brand-scope-note">
+                      <strong>Tài khoản khách hàng hiện có</strong>
+                      <span>
+                        Quyền chỉ chuyển sang Manager sau khi người này xác nhận lời mời qua email.
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <label className="brand-field">
@@ -934,6 +957,7 @@ export default function BrandManagement() {
                       setMember((current) => ({
                         ...current,
                         role: event.target.value,
+                        userId: "",
                         restaurantIds: [],
                       }));
                       setMemberFormError("");
@@ -953,7 +977,13 @@ export default function BrandManagement() {
                   onClick={saveMember}
                   disabled={addingMember}
                 >
-                  {addingMember ? "Đang thêm..." : "Thêm thành viên"}
+                  {addingMember
+                    ? member.role === "staff"
+                      ? "Đang thêm..."
+                      : "Đang gửi..."
+                    : member.role === "staff"
+                      ? "Thêm thành viên"
+                      : "Gửi lời mời"}
                 </button>
               </div>
 

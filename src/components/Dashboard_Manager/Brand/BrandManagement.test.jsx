@@ -96,7 +96,15 @@ const memberCandidates = [
     fullName: "Lê Thu Lan",
     username: "thu.lan",
     email: "lan@cohan.vn",
-    userType: "STAFF",
+    userType: "MANAGER",
+    status: "active",
+  },
+  {
+    id: "u-customer",
+    fullName: "Phạm Minh Khôi",
+    username: "minh.khoi",
+    email: "khoi@example.com",
+    userType: "CUSTOMER",
     status: "active",
   },
 ];
@@ -109,6 +117,7 @@ const updateBrandMock = vi.fn();
 const createRestaurantMock = vi.fn();
 const addMemberMock = vi.fn();
 const updateMemberMock = vi.fn();
+const removeMemberMock = vi.fn();
 
 const operationSource = (operation) =>
   String(operation?.loc?.source?.body || operation || "");
@@ -123,11 +132,15 @@ beforeEach(() => {
     data: { createRestaurant: { id: "r3", name: "Cohan Nguyễn Huệ", brandId: "b1" } },
   });
   addMemberMock.mockResolvedValue({
-    data: { addBrandMember: { id: "m3", role: "manager", status: "active" } },
+    data: { addBrandMember: { id: "m3", role: "manager", status: "invited" } },
   });
   updateMemberMock.mockResolvedValue({
     data: { updateBrandMember: { id: "m1", role: "manager", status: "inactive" } },
   });
+    removeMemberMock.mockResolvedValue({
+      data: { removeBrandMember: true },
+    });
+    window.confirm = vi.fn(() => true);
 
   useBrandManagement.mockReturnValue({
     brands: [selectedBrand],
@@ -166,6 +179,12 @@ beforeEach(() => {
     if (source.includes("mutation UpdateBrandMember")) {
       return [updateMemberMock, { loading: false }];
     }
+    if (source.includes("mutation ResendBrandInvitationAccess")) {
+      return [vi.fn().mockResolvedValue({ data: { resendBrandInvitation: {} } }), { loading: false }];
+    }
+        if (source.includes("mutation RemoveBrandMemberAccess")) {
+    return [removeMemberMock, { loading: false }];
+  }
     if (source.includes("mutation UpdateBrand")) {
       return [updateBrandMock, { loading: false }];
     }
@@ -265,7 +284,7 @@ describe("BrandManagement", () => {
   it("searches, selects and adds a manager without entering a raw account ID", async () => {
     render(<BrandManagement />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Thêm thành viên" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gửi lời mời" }));
     expect(screen.getByText("Chọn tài khoản cần thêm.")).toBeInTheDocument();
 
     fireEvent.change(
@@ -277,7 +296,7 @@ describe("BrandManagement", () => {
     await waitFor(() => expect(accountSelect).not.toBeDisabled());
     fireEvent.change(accountSelect, { target: { value: "u-new-manager" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Thêm thành viên" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gửi lời mời" }));
     expect(
       screen.getByText("Quản lý chi nhánh phải phụ trách đúng một chi nhánh."),
     ).toBeInTheDocument();
@@ -286,7 +305,7 @@ describe("BrandManagement", () => {
     fireEvent.change(screen.getByLabelText("Chi nhánh phụ trách"), {
       target: { value: "r2" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Thêm thành viên" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gửi lời mời" }));
 
     await waitFor(() => expect(addMemberMock).toHaveBeenCalledTimes(1));
     expect(addMemberMock.mock.calls[0][0].variables.input).toEqual({
@@ -297,6 +316,36 @@ describe("BrandManagement", () => {
     });
     expect(refetchMembersMock).toHaveBeenCalledTimes(1);
   });
+
+
+it("shows that an existing Customer is promoted only after accepting the email", async () => {
+  render(<BrandManagement />);
+
+  fireEvent.change(
+    screen.getByLabelText("Tìm người cần thêm theo tên, email hoặc mã tài khoản"),
+    { target: { value: "Phạm Minh Khôi" } },
+  );
+  const accountSelect = screen.getByLabelText("Chọn tài khoản cần thêm");
+  await waitFor(() => expect(accountSelect).not.toBeDisabled());
+  fireEvent.change(accountSelect, { target: { value: "u-customer" } });
+
+  expect(screen.getByText("Tài khoản khách hàng hiện có")).toBeInTheDocument();
+  expect(screen.getByText(/Quyền chỉ chuyển sang Manager/)).toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText("Chi nhánh phụ trách"), {
+    target: { value: "r2" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Gửi lời mời" }));
+
+  await waitFor(() => expect(addMemberMock).toHaveBeenCalledTimes(1));
+  expect(addMemberMock.mock.calls[0][0].variables.input).toEqual({
+    brandId: "b1",
+    userId: "u-customer",
+    role: "manager",
+    restaurantIds: ["r2"],
+  });
+  expect(message.success).toHaveBeenCalledWith("Đã gửi lời mời tham gia chuỗi");
+});
 
   it("clears a stale selected account when the candidate search changes", async () => {
     render(<BrandManagement />);
@@ -314,6 +363,27 @@ describe("BrandManagement", () => {
     fireEvent.change(candidateSearch, { target: { value: "Người khác" } });
     expect(accountSelect).toHaveValue("");
   });
+
+
+it("revokes Brand access from the existing membership access panel", async () => {
+  render(<BrandManagement />);
+
+  fireEvent.click(screen.getByText("Đổi vai trò và phạm vi"));
+  fireEvent.change(screen.getByLabelText("Thành viên cần đổi quyền"), {
+    target: { value: "m1" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Tháo quyền Brand" }));
+
+  await waitFor(() => expect(removeMemberMock).toHaveBeenCalledTimes(1));
+  expect(window.confirm).toHaveBeenCalledWith(
+    "Tháo quyền Brand của thành viên này? Tài khoản và dữ liệu lịch sử vẫn được giữ.",
+  );
+  expect(removeMemberMock.mock.calls[0][0].variables).toEqual({
+    id: "m1",
+    reason: "Tháo quyền từ trang quản lý chuỗi",
+  });
+  expect(message.success).toHaveBeenCalledWith("Đã tháo quyền Brand");
+});
 
   it("searches by employee name or account ID and filters by role and branch", async () => {
     render(<BrandManagement />);

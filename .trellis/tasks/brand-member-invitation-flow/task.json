@@ -1,0 +1,45 @@
+{
+  "id": "brand-member-invitation-flow",
+  "name": "brand-member-invitation-flow",
+  "title": "Add verified business-owner and Brand member invitation flow",
+  "description": "Require email verification for new business owners, support verified Brand invitations, and revoke Brand access without changing the separate employee-creation workflow.",
+  "status": "review",
+  "dev_type": "fullstack",
+  "scope": "brand-owner-verification-member-invitations-and-revocation",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "feature/brand-member-invitation-flow",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "ff0d021540494f004def536ce1286b4305722520",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1275",
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/schema/brand.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js",
+    "cohan-restaurant-backend/graphql/resolvers/brand/memberRoleConsistency.js",
+    "cohan-restaurant-backend/models/brandMembership.model.js",
+    "cohan-restaurant-backend/tests/resolvers/brand-member-invitation-guards.test.js",
+    "cohan-restaurant-backend/tests/resolvers/brand-member-role-consistency.test.js",
+    "src/pages/VerifyAccountConfirm.jsx",
+    "src/pages/BrandInvitationAccept.css",
+    "cohan-restaurant-backend/graphql/resolvers/brand/index.js",
+    "src/components/Dashboard_Manager/Brand/BrandManagement.jsx",
+    "src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx",
+    "src/components/Dashboard_Manager/Brand/BrandOwnershipTransfer.jsx"
+  ],
+  "notes": "Employee/staff account creation remains out of scope. Brand access revocation is a soft membership revoke with audit metadata and invitation-token invalidation. The global User role and userType are not automatically demoted. Cancelled invitations can be sent again with a fresh token. Focused backend tests, GraphQL checks, BrandManagement component tests, and the frontend production build passed in GitHub Actions run 28920292784. The repository-wide backend CI remains subject to the existing mongoose-lean-virtuals package/lock mismatch and unrelated full-suite failures.",
+  "meta": {
+    "skills": [
+      "ponytail",
+      "taste-ui-redesign",
+      "redesign-existing-projects"
+    ]
+  }
+}

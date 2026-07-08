@@ -149,7 +149,7 @@ const Query = {
     const candidates = await User.find({
       deletedAt: null,
       status: "active",
-      userType: { $in: ["STAFF", "MANAGER", "HR", "ACCOUNTANT", "ADMIN"] },
+      userType: { $in: ["CUSTOMER", "STAFF", "MANAGER", "HR", "ACCOUNTANT", "ADMIN"] },
       _id: { $nin: existingUserIds },
       $or: searchConditions,
     })

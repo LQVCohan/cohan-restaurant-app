@@ -19,6 +19,14 @@ const BrandMembershipSchema = BaseSchemaModel({
   restaurantIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Restaurant" }],
   status: { type: String, enum: ["active", "inactive", "invited"], default: "active", index: true },
   invitedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  inviteTokenHash: { type: String, default: null },
+  inviteTokenExp: { type: Date, default: null },
+  invitedAt: { type: Date, default: null },
+  acceptedAt: { type: Date, default: null },
+  revokedAt: { type: Date, default: null },
+  revokedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+  revokedReason: { type: String, trim: true, maxlength: 500, default: null },
+  revokedFromStatus: { type: String, enum: ["active", "invited"], default: null },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 });
@@ -35,6 +43,7 @@ BrandMembershipSchema.pre("validate", function validateScope(next) {
 BrandMembershipSchema.index({ brandId: 1, userId: 1 }, { unique: true });
 BrandMembershipSchema.index({ userId: 1, status: 1 });
 BrandMembershipSchema.index({ brandId: 1, role: 1 });
+BrandMembershipSchema.index({ inviteTokenHash: 1 }, { sparse: true });
 BrandMembershipSchema.index(
   { brandId: 1, role: 1, status: 1, restaurantIds: 1 },
   { partialFilterExpression: { role: "manager", status: "active" } },

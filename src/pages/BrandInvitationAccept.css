@@ -1,0 +1,40 @@
+.brand-invitation-password {
+  display: grid;
+  gap: 14px;
+  margin: 20px 0 8px;
+  padding: 18px;
+  border: 1px solid rgba(92, 64, 51, 0.12);
+  border-radius: 20px;
+  background: #fffaf4;
+  text-align: left;
+}
+
+.brand-invitation-password label {
+  display: grid;
+  gap: 7px;
+}
+
+.brand-invitation-password span {
+  color: #292524;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.brand-invitation-password input {
+  width: 100%;
+  min-height: 46px;
+  box-sizing: border-box;
+  border: 1px solid rgba(92, 64, 51, 0.18);
+  border-radius: 14px;
+  padding: 11px 13px;
+  background: #ffffff;
+  color: #1e1915;
+  font: inherit;
+  font-weight: 700;
+  outline: none;
+}
+
+.brand-invitation-password input:focus {
+  border-color: rgba(255, 102, 0, 0.72);
+  box-shadow: 0 0 0 4px rgba(255, 102, 0, 0.12);
+}

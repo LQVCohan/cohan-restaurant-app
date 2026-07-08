@@ -16,6 +16,24 @@ const UPDATE_BRAND_MEMBER = gql`
   }
 `;
 
+const REMOVE_BRAND_MEMBER = gql`
+  mutation RemoveBrandMemberAccess($id: ID!, $reason: String) {
+    removeBrandMember(id: $id, reason: $reason)
+  }
+`;
+
+const RESEND_BRAND_INVITATION = gql`
+  mutation ResendBrandInvitationAccess($id: ID!) {
+    resendBrandInvitation(id: $id) {
+      id
+      role
+      status
+      restaurantIds
+      revokedFromStatus
+    }
+  }
+`;
+
 const TRANSFER_BRAND_OWNERSHIP = gql`
   mutation TransferBrandOwnership($input: TransferBrandOwnershipInput!) {
     transferBrandOwnership(input: $input) {
@@ -50,6 +68,15 @@ const getMemberLabel = (member) => {
   return `${name} — ${ROLE_LABELS[member?.role] || member?.role}`;
 };
 
+const getMemberStatusSuffix = (member) => {
+  if (member?.status === "invited") return " — đang chờ xác nhận";
+  if (member?.status === "inactive" && member?.revokedFromStatus === "invited") {
+    return " — lời mời đã hủy";
+  }
+  if (member?.status === "inactive") return " — đã tháo quyền";
+  return "";
+};
+
 const getErrorMessage = (error, fallback) =>
   error?.graphQLErrors?.[0]?.message || error?.message || fallback;
 
@@ -66,6 +93,20 @@ function BrandMembershipAccessForm({
     refetchQueries: ["BrandMembers"],
     awaitRefetchQueries: true,
   });
+  const [removeMember, { loading: removing }] = useMutation(
+    REMOVE_BRAND_MEMBER,
+    {
+      refetchQueries: ["BrandMembers"],
+      awaitRefetchQueries: true,
+    },
+  );
+  const [resendInvitation, { loading: resending }] = useMutation(
+    RESEND_BRAND_INVITATION,
+    {
+      refetchQueries: ["BrandMembers"],
+      awaitRefetchQueries: true,
+    },
+  );
 
   const editableMembers = useMemo(
     () =>
@@ -80,6 +121,10 @@ function BrandMembershipAccessForm({
   const selectedMember = editableMembers.find(
     (member) => String(member.id) === membershipId,
   );
+  const cancelledInvitation =
+    selectedMember?.status === "inactive" &&
+    selectedMember?.revokedFromStatus === "invited";
+  const actionLoading = loading || removing || resending;
 
   const selectMember = (nextMembershipId) => {
     const nextMember = editableMembers.find(
@@ -147,6 +192,56 @@ function BrandMembershipAccessForm({
     }
   };
 
+  const revokeAccess = async () => {
+    if (!selectedMember) {
+      setFormError("Chọn thành viên cần tháo quyền.");
+      return;
+    }
+    if (selectedMember.status === "inactive") {
+      setFormError("Thành viên này đã được tháo quyền.");
+      return;
+    }
+
+    const cancellingInvitation = selectedMember.status === "invited";
+    const confirmed = window.confirm(
+      cancellingInvitation
+        ? "Hủy lời mời này? Liên kết trong email sẽ không còn hiệu lực."
+        : "Tháo quyền Brand của thành viên này? Tài khoản và dữ liệu lịch sử vẫn được giữ.",
+    );
+    if (!confirmed) return;
+
+    setFormError("");
+    try {
+      await removeMember({
+        variables: {
+          id: selectedMember.id,
+          reason: cancellingInvitation
+            ? "Hủy lời mời từ trang quản lý chuỗi"
+            : "Tháo quyền từ trang quản lý chuỗi",
+        },
+      });
+      setMembershipId("");
+      setRole("staff");
+      setRestaurantIds([]);
+      message.success(
+        cancellingInvitation ? "Đã hủy lời mời" : "Đã tháo quyền Brand",
+      );
+    } catch (error) {
+      setFormError(getErrorMessage(error, "Không thể tháo quyền Brand."));
+    }
+  };
+
+  const resendCancelledInvitation = async () => {
+    if (!cancelledInvitation) return;
+    setFormError("");
+    try {
+      await resendInvitation({ variables: { id: selectedMember.id } });
+      message.success("Đã gửi lại lời mời tham gia chuỗi");
+    } catch (error) {
+      setFormError(getErrorMessage(error, "Không thể gửi lại lời mời."));
+    }
+  };
+
   return (
     <details className="brand-member-filter-panel brand-membership-actions">
       <summary className="brand-member-filter-panel__heading">
@@ -168,7 +263,7 @@ function BrandMembershipAccessForm({
                   {editableMembers.map((member) => (
                     <option key={member.id} value={member.id}>
                       {getMemberLabel(member)}
-                      {member.status !== "active" ? " — đang tạm ngưng" : ""}
+                      {getMemberStatusSuffix(member)}
                     </option>
                   ))}
                 </select>
@@ -192,10 +287,34 @@ function BrandMembershipAccessForm({
                 type="button"
                 className="brand-button brand-button--primary"
                 onClick={saveAccess}
-                disabled={loading || !selectedMember}
+                disabled={actionLoading || !selectedMember}
               >
                 {loading ? "Đang lưu quyền..." : "Lưu quyền thành viên"}
               </button>
+
+              {cancelledInvitation ? (
+                <button
+                  type="button"
+                  className="brand-button brand-button--secondary"
+                  onClick={resendCancelledInvitation}
+                  disabled={actionLoading}
+                >
+                  {resending ? "Đang gửi lại..." : "Mời lại"}
+                </button>
+              ) : selectedMember?.status !== "inactive" ? (
+                <button
+                  type="button"
+                  className="brand-button brand-button--secondary"
+                  onClick={revokeAccess}
+                  disabled={actionLoading}
+                >
+                  {removing
+                    ? "Đang xử lý..."
+                    : selectedMember?.status === "invited"
+                      ? "Hủy lời mời"
+                      : "Tháo quyền Brand"}
+                </button>
+              ) : null}
             </div>
 
             {selectedMember && role === "admin" && (
@@ -258,8 +377,9 @@ function BrandMembershipAccessForm({
             )}
 
             <p className="brand-membership-actions__hint">
-              Hủy hoặc khôi phục quyền truy cập bằng nút Tạm ngưng / Kích hoạt trên
-              thẻ thành viên. Quyền chủ chuỗi chỉ đổi ở phần chuyển quyền bên dưới.
+              Hủy lời mời hoặc tháo quyền tại đây. Lời mời đã hủy phải được gửi lại;
+              thành viên đã từng tham gia có thể được khôi phục bằng nút Kích hoạt
+              trên thẻ thành viên. Quyền chủ chuỗi chỉ thay đổi ở phần bên dưới.
             </p>
           </>
         ) : (
