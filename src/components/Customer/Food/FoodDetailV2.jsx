@@ -585,6 +585,7 @@ const FoodDetailV2 = () => {
     data: modifierData,
     loading: modifierLoading,
     error: modifierError,
+    refetch: refetchModifierGroups,
   } = useQuery(CUSTOMER_MODIFIER_GROUPS, {
     variables: {
       restaurantId: dish?.restaurantId,
@@ -711,6 +712,7 @@ const FoodDetailV2 = () => {
     !dish?.id ||
     !selectedVariant?.key ||
     modifierLoading ||
+    Boolean(modifierError) ||
     Boolean(modifierErrorMessage);
   const {
     data: liveData,
@@ -811,6 +813,7 @@ const FoodDetailV2 = () => {
     restaurantCanOrder,
     restaurantBlockedReason,
     modifierLoading,
+    modifierLoadError: Boolean(modifierError),
     modifierErrorMessage,
     hasSelectedVariant: Boolean(selectedVariant),
     liveLoading,
@@ -918,6 +921,11 @@ const FoodDetailV2 = () => {
       );
       modifierSection?.scrollIntoView({ behavior: "smooth", block: "center" });
       modifierSection?.querySelector("input")?.focus();
+      return false;
+    }
+    if (orderAction.intent === FOOD_ORDER_ACTION.RETRY_MODIFIERS) {
+      showNotification("Đang tải lại tùy chọn món…", "info");
+      await refetchModifierGroups?.();
       return false;
     }
     if (orderAction.intent === FOOD_ORDER_ACTION.RETRY_STOCK) {
@@ -1382,10 +1390,14 @@ const FoodDetailV2 = () => {
                 <div>
                   <span>Tình trạng hiện tại</span>
                   <strong>
-                    {liveError
-                      ? "Chưa kiểm tra được tồn kho"
-                      : liveLoading || !liveState
-                        ? "Đang kiểm tra..."
+                    {modifierError
+                      ? "Chưa tải được tùy chọn món"
+                      : modifierErrorMessage
+                        ? "Chọn đủ tùy chọn để kiểm tra tồn kho"
+                        : liveError
+                          ? "Chưa kiểm tra được tồn kho"
+                          : liveLoading || !liveState
+                            ? "Đang kiểm tra…"
                         : outOfStock
                           ? "Món hiện chưa khả dụng"
                           : `Còn có thể đặt ${maxAvailable} suất`}
