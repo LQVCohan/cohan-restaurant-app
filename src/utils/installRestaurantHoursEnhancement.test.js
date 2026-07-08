@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildRestaurantTimeOptions,
   installRestaurantHoursEnhancement,
@@ -35,14 +35,40 @@ const renderHoursForm = () => {
 };
 
 describe("restaurant hours enhancement", () => {
+  let documentListenerSpy;
+  let windowListenerSpy;
+
   beforeEach(() => {
     window.history.pushState({}, "", "/manager#restaurant-info-management");
     window.__restaurantHoursEnhancementInstalled = false;
-    window.requestAnimationFrame = (callback) => {
+    vi.stubGlobal("requestAnimationFrame", (callback) => {
       callback();
       return 1;
-    };
+    });
+    vi.stubGlobal(
+      "MutationObserver",
+      class MutationObserverStub {
+        observe() {}
+        disconnect() {}
+      },
+    );
+    documentListenerSpy = vi.spyOn(document, "addEventListener");
+    windowListenerSpy = vi.spyOn(window, "addEventListener");
     renderHoursForm();
+  });
+
+  afterEach(() => {
+    documentListenerSpy.mock.calls.forEach(([type, listener, options]) => {
+      document.removeEventListener(type, listener, options);
+    });
+    windowListenerSpy.mock.calls.forEach(([type, listener, options]) => {
+      window.removeEventListener(type, listener, options);
+    });
+    documentListenerSpy.mockRestore();
+    windowListenerSpy.mockRestore();
+    vi.unstubAllGlobals();
+    delete window.__restaurantHoursEnhancementInstalled;
+    document.body.innerHTML = "";
   });
 
   it("renders compact time selectors and blocks an incomplete hour pair", async () => {
