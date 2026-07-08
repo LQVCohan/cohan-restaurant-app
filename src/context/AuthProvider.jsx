@@ -61,6 +61,13 @@ const GET_AUTH_BUSINESS_CONTEXT = gql`
           name
           avatar
           brandId
+          initialSetup {
+            status
+            templateKey
+            templateVersion
+            completedAt
+            completedBy
+          }
           address {
             city
           }

@@ -11,9 +11,9 @@
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
   "completedAt": null,
-  "branch": "codex/cuisine-template-onboarding",
+  "branch": "fix/cuisine-onboarding-context",
   "base_branch": "main",
-  "commit": "53024db7d1a224174353931c683ce2bd79fc426d",
+  "commit": "e1564dd2bd672388e53ac4077594515f3881218d",
   "relatedFiles": [
     "cohan-restaurant-backend/models/restaurant.model.js",
     "cohan-restaurant-backend/graphql/schema/index.js",
@@ -23,13 +23,15 @@
     "cohan-restaurant-backend/src/data/restaurantCuisineTemplates.js",
     "cohan-restaurant-backend/src/services/restaurantCuisineTemplate.service.js",
     "cohan-restaurant-backend/tests/services/restaurant-cuisine-template.service.test.js",
+    "src/context/AuthProvider.jsx",
+    "src/context/__tests__/AuthProvider.test.jsx",
     "src/hooks/useBrandManagement.js",
     "src/components/Dashboard_Manager/Header.jsx",
     "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.jsx",
     "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.scss",
     "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.test.jsx"
   ],
-  "notes": "Implemented seven versioned cuisine packages, optional first-run branch state, scoped GraphQL apply/skip operations, snapshot-based data cloning, manager-header onboarding, and targeted backend/frontend tests. A prior backend CI run completed lint, tests, Menu RBAC and build successfully; the final branch CI is running after the last review-only task update.",
+  "notes": "Pre-test recheck confirmed MenuItem.menuId -> Menu, Recipe.menuItemId -> MenuItem, and recipe ingredientId -> Ingredient. Snapshot import order is menu/category/items, ingredients, then recipes. Fixed the missing initialSetup selection in AuthProvider.scopedRestaurants so the manager onboarding modal receives pending state without restoring the removed full-brand request.",
   "meta": {
     "skills": [
       "ponytail",
