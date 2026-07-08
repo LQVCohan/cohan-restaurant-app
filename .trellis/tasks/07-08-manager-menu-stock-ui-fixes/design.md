@@ -18,9 +18,9 @@ Card compact chuyển sang `overflow: visible`; các vùng ảnh và danh sách 
 
 Dùng trực tiếp `Modal.Header` và `Modal.Body`; bỏ `modal-container` và header lồng. Nội dung list/form vẫn giữ state và mutation hiện tại.
 
-### 5. Điều hướng kho dùng event hiện có
+### 5. Chuẩn hóa hash kho cũ tại boundary ứng dụng
 
-Nút định lượng dispatch `manager:navigate` với `page: inventory`, cùng pattern đang dùng trong repo. Không reload trang và không dùng hash id cũ.
+Nút định lượng hiện dùng hash cũ `#storage`, còn manager shell dùng page id `inventory`. `main.jsx` chuẩn hóa `#storage` thành `#inventory` trước khi Router đọc state và trên mỗi `hashchange`. Cách này sửa nút hiện tại đồng thời giữ các bookmark/link cũ hoạt động, không reload lại ứng dụng.
 
 ## Responsive và accessibility
 
