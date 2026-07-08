@@ -1,8 +1,8 @@
 name: diagnose-backend-test
 
 on:
-  push:
-    branches: [codex/diagnose-backend-799b053]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
