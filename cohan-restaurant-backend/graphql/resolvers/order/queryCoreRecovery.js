@@ -2,12 +2,12 @@ import mongoose from "mongoose";
 import { Order, Table, User } from "../../../models/index.js";
 import TableCustomer from "../../../models/tableCustomer.model.js";
 import { toId } from "../order/helper/orderUtils.js";
-import { resolveTableSafe } from "../order/helper/tableUtils.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import {
-  activeTableSessionLookupFilter,
-  childOrdersForSessionFilter,
+  ACTIVE_SESSION_STATUSES,
+  ORDER_KIND,
+  ORDER_PAYMENT_STATUS,
   orderBatchOrLegacyFilter,
   withOrderBatchOrLegacyFilter,
 } from "../../../utils/orderLifecycle.js";
@@ -25,6 +25,43 @@ async function requireQueryRestaurantAccess(ctx, restaurantId) {
 
 function getRootCode(order) {
   return order.parentOrderCode || order.orderCode || "unknown";
+}
+
+async function resolveTableScope({ rid, tableId, tableCode }) {
+  let table = null;
+  if (tableId && mongoose.isValidObjectId(tableId)) {
+    table = await Table.findOne({ _id: tableId, restaurantId: rid })
+      .select({
+        _id: 1,
+        code: 1,
+        mergedFromTableIds: 1,
+        mergeAnchorTableId: 1,
+      })
+      .lean();
+  } else if (tableCode) {
+    table = await Table.findOne({
+      restaurantId: rid,
+      code: String(tableCode).trim().toUpperCase(),
+      mergedIntoTableId: null,
+    })
+      .select({
+        _id: 1,
+        code: 1,
+        mergedFromTableIds: 1,
+        mergeAnchorTableId: 1,
+      })
+      .lean();
+  }
+  if (!table) return null;
+
+  const sourceIds = Array.isArray(table.mergedFromTableIds)
+    ? table.mergedFromTableIds.filter(Boolean)
+    : [];
+  return {
+    table,
+    tableIds: [table._id, ...sourceIds],
+    isMerged: sourceIds.length > 0,
+  };
 }
 
 async function attachCustomerInfoToOrders({ rid, orders }) {
@@ -84,6 +121,40 @@ async function attachCustomerInfoToOrders({ rid, orders }) {
   });
 }
 
+async function attachUsers(orders = []) {
+  const userIds = [
+    ...new Set(
+      orders
+        .map((order) => (order.userId ? String(order.userId) : null))
+        .filter(Boolean),
+    ),
+  ];
+  if (!userIds.length) return orders;
+
+  const users = await User.find({ _id: { $in: userIds } })
+    .select({ _id: 1, fullName: 1, email: 1, phone: 1 })
+    .lean();
+  const userMap = new Map(
+    users.map((user) => [
+      String(user._id),
+      {
+        id: String(user._id),
+        fullName: user.fullName || null,
+        email: user.email || null,
+        phone: user.phone || null,
+      },
+    ]),
+  );
+
+  return orders.map((order) => ({
+    ...order,
+    user:
+      (order.user && order.user.id && order.user) ||
+      (order.userId && userMap.get(String(order.userId))) ||
+      null,
+  }));
+}
+
 async function buildCursorConnection({ baseFilter, limit = 20, cursor, rid }) {
   const safeLimit = Math.max(1, Math.min(200, Number(limit) || 20));
   const query = Order.find(baseFilter).sort({ _id: 1 });
@@ -138,6 +209,17 @@ function groupOrdersByRootCode(orders = []) {
   });
 }
 
+async function loadActiveOrderBatches({ rid, tableIds }) {
+  return Order.find({
+    restaurantId: rid,
+    tableId: { $in: tableIds },
+    ...orderBatchOrLegacyFilter(),
+    currentStatus: { $nin: INACTIVE_STATUSES },
+  })
+    .sort({ createdAt: 1, _id: 1 })
+    .lean({ virtuals: true });
+}
+
 export const OrderCoreRecoveryQuery = {
   async ordersByRestaurantNow(_, { restaurantId, limit = 20, cursor }, ctx) {
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
@@ -156,13 +238,21 @@ export const OrderCoreRecoveryQuery = {
 
   async ordersByTableCode(_, { restaurantId, tableCode, limit = 50, offset = 0 }, ctx) {
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
-    const safeTableCode = String(tableCode || "").trim().toUpperCase();
+    const scope = await resolveTableScope({ rid, tableCode });
     const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
     const safeOffset = Math.max(0, Number(offset) || 0);
-    const query = withOrderBatchOrLegacyFilter({ restaurantId: rid, tableCode: safeTableCode });
+    if (!scope) return { items: [], totalCount: 0 };
 
+    const query = withOrderBatchOrLegacyFilter({
+      restaurantId: rid,
+      tableId: { $in: scope.tableIds },
+    });
     const [itemsRaw, totalCount] = await Promise.all([
-      Order.find(query).sort({ createdAt: -1, _id: -1 }).skip(safeOffset).limit(safeLimit).lean({ virtuals: true }),
+      Order.find(query)
+        .sort({ createdAt: -1, _id: -1 })
+        .skip(safeOffset)
+        .limit(safeLimit)
+        .lean({ virtuals: true }),
       Order.countDocuments(query),
     ]);
     const items = await attachCustomerInfoToOrders({ rid, orders: itemsRaw });
@@ -171,85 +261,53 @@ export const OrderCoreRecoveryQuery = {
 
   async ordersGroupedByTable(_, { restaurantId, tableId, tableCode }, ctx) {
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
-    let table = null;
-    if (tableId && mongoose.isValidObjectId(tableId)) {
-      table = await Table.findOne({ _id: tableId, restaurantId: rid }).select({ _id: 1, code: 1 }).lean();
-    } else if (tableCode) {
-      table = await resolveTableSafe(restaurantId, String(tableCode).trim().toUpperCase());
-    }
-    if (!table) return [];
+    const scope = await resolveTableScope({ rid, tableId, tableCode });
+    if (!scope) return [];
 
-    const safeCode = String(table.code || tableCode || "").toUpperCase();
-    const docs = await Order.find({
-      restaurantId: rid,
-      tableId: table._id,
-      tableCode: safeCode,
-      ...orderBatchOrLegacyFilter(),
-      currentStatus: { $nin: INACTIVE_STATUSES },
-    })
-      .sort({ createdAt: 1, _id: 1 })
-      .lean({ virtuals: true });
-
+    const docs = await loadActiveOrderBatches({ rid, tableIds: scope.tableIds });
     if (!docs.length) return [];
 
-    const userIds = [...new Set(docs.map((order) => order.userId ? String(order.userId) : null).filter(Boolean))];
-    let userMap = new Map();
-    if (userIds.length) {
-      const users = await User.find({ _id: { $in: userIds } }).select({ _id: 1, fullName: 1, email: 1, phone: 1 }).lean();
-      userMap = new Map(users.map((user) => [String(user._id), {
-        id: String(user._id),
-        fullName: user.fullName || null,
-        email: user.email || null,
-        phone: user.phone || null,
-      }]));
-    }
-
-    const docsWithUser = docs.map((order) => ({
-      ...order,
-      user: (order.user && order.user.id && order.user) || (order.userId && userMap.get(String(order.userId))) || null,
-    }));
-    const docsWithCustomer = await attachCustomerInfoToOrders({ rid, orders: docsWithUser });
+    const docsWithUser = await attachUsers(docs);
+    const docsWithCustomer = await attachCustomerInfoToOrders({
+      rid,
+      orders: docsWithUser,
+    });
     return groupOrdersByRootCode(docsWithCustomer);
   },
 
   async activeTableSessionOrders(_, { restaurantId, tableId }, ctx) {
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
-    if (!tableId || !mongoose.isValidObjectId(tableId)) throw new Error("Invalid tableId");
-
-    const table = await Table.findOne({ _id: tableId, restaurantId: rid }).select({ _id: 1, code: 1 }).lean();
-    if (!table) return { session: null, orders: [], tableId, tableCode: null };
-    const safeCode = String(table.code || "").toUpperCase();
-
-    const session = await Order.findOne(
-      activeTableSessionLookupFilter({ restaurantId: rid, tableId: table._id, tableCode: safeCode }),
-    ).sort({ openedAt: -1, createdAt: -1, _id: -1 }).lean({ virtuals: true });
-
-    const findLegacyTableOrders = async () =>
-      Order.find({
-        restaurantId: rid,
-        tableId: table._id,
-        tableCode: safeCode,
-        ...orderBatchOrLegacyFilter(),
-        currentStatus: { $nin: INACTIVE_STATUSES },
-      }).sort({ createdAt: 1, _id: 1 }).lean({ virtuals: true });
-
-    let orders = [];
-    if (session?._id) {
-      orders = await Order.find({
-        ...childOrdersForSessionFilter({ restaurantId: rid, parentOrderId: session._id }),
-        currentStatus: { $nin: INACTIVE_STATUSES },
-      }).sort({ createdAt: 1, _id: 1 }).lean({ virtuals: true });
-      if (!orders.length) orders = await findLegacyTableOrders();
-    } else {
-      orders = await findLegacyTableOrders();
+    if (!tableId || !mongoose.isValidObjectId(tableId)) {
+      throw new Error("Invalid tableId");
     }
 
+    const scope = await resolveTableScope({ rid, tableId });
+    if (!scope) return { session: null, orders: [], tableId, tableCode: null };
+
+    const sessions = await Order.find({
+      restaurantId: rid,
+      tableId: { $in: scope.tableIds },
+      orderKind: ORDER_KIND.TABLE_SESSION,
+      sessionStatus: { $in: ACTIVE_SESSION_STATUSES },
+      orderPaymentStatus: { $ne: ORDER_PAYMENT_STATUS.PAID },
+    })
+      .sort({ openedAt: 1, createdAt: 1, _id: 1 })
+      .lean({ virtuals: true });
+
+    const orders = await loadActiveOrderBatches({
+      rid,
+      tableIds: scope.tableIds,
+    });
     const docsWithCustomer = await attachCustomerInfoToOrders({ rid, orders });
+
     return {
-      session: session || null,
-      orders: docsWithCustomer.filter((order) => order?.orderKind !== "table_session"),
-      tableId: String(table._id),
-      tableCode: safeCode || null,
+      // Giữ field singular để tương thích client cũ; danh sách `orders` chứa mọi phiên nguồn.
+      session: sessions[sessions.length - 1] || null,
+      orders: docsWithCustomer.filter(
+        (order) => order?.orderKind !== ORDER_KIND.TABLE_SESSION,
+      ),
+      tableId: String(scope.table._id),
+      tableCode: String(scope.table.code || "").toUpperCase() || null,
     };
   },
 };
