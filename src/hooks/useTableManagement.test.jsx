@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useMutation, useQuery } from "@apollo/client";
 import useTableManagement from "./useTableManagement";
 
@@ -30,7 +30,9 @@ const getOperationName = (document) =>
 describe("useTableManagement merge and split feedback", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(console, "warn").mockImplementation(() => {});
+    mocks.refetch.mockImplementation(() => {
+      throw new Error("refetch must stay caller-owned");
+    });
 
     useQuery.mockReturnValue({
       data: { tables: [] },
@@ -46,12 +48,7 @@ describe("useTableManagement merge and split feedback", () => {
     });
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("keeps successful merge and split results when the follow-up refresh fails", async () => {
-    mocks.refetch.mockRejectedValue(new Error("refresh failed"));
+  it("returns successful merge and split results without invoking refetch", async () => {
     mocks.mergeMutation.mockResolvedValue({
       data: {
         mergeTables: {
@@ -109,7 +106,7 @@ describe("useTableManagement merge and split feedback", () => {
       "Đã tách bàn thành công.",
       "success",
     );
-    expect(mocks.refetch).toHaveBeenCalledTimes(2);
+    expect(mocks.refetch).not.toHaveBeenCalled();
   });
 
   it("still rejects a real merge mutation error without showing success", async () => {
