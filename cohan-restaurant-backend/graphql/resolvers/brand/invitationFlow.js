@@ -3,6 +3,7 @@ import process from "node:process";
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Brand, BrandMembership, Restaurant, Role, User } from "../../../models/index.js";
+import { generateRandomPassword } from "../../../models/user.model.js";
 import { mailer } from "../../../lib/mailer.js";
 import { validatePasswordStrong } from "../../../lib/passwordPolicy.js";
 import { sanitizeUserForClient } from "../../../src/security/sanitizeUserForClient.js";
@@ -78,32 +79,42 @@ function escapeHtml(value = "") {
     .replace(/'/g, "&#39;");
 }
 
-function buildInvitationMail({ user, brand, membership, token, requiresPassword }) {
-  const link = `${appPublicUrl()}/verify-email/confirm?inviteToken=${encodeURIComponent(token)}&new=${requiresPassword ? "1" : "0"}`;
+function buildInvitationMail({ user, brand, membership, token, temporaryPassword }) {
+  const email = normalizeEmail(user.email);
+  const link = `${appPublicUrl()}/verify-email/confirm?inviteToken=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}&auto=1&new=0`;
   const roleLabel = membership.role === "admin" ? "Quản trị chuỗi" : "Quản lý chi nhánh";
   const ttlHours = Math.round(inviteTtlMs() / 3600000);
   const name = user.fullName || user.username || user.email || "bạn";
+  const credentialLines = temporaryPassword
+    ? [
+        `Email đăng nhập: ${email}`,
+        `Mật khẩu tạm: ${temporaryPassword}`,
+        "Sau lần đăng nhập đầu tiên, hệ thống sẽ yêu cầu bạn đổi mật khẩu trước khi tiếp tục.",
+      ]
+    : ["Mở liên kết để xác nhận quyền tham gia chuỗi."];
   const text = [
     `Xin chào ${name},`,
     `Bạn được mời tham gia ${brand.name} với vai trò ${roleLabel}.`,
-    requiresPassword
-      ? "Mở liên kết để xác nhận email, đặt mật khẩu và kích hoạt tài khoản."
-      : "Mở liên kết để xác nhận tham gia chuỗi.",
+    ...credentialLines,
+    "Mở liên kết dưới đây để kích hoạt quyền và đến trang đăng nhập:",
     link,
     `Liên kết hết hạn sau ${ttlHours} giờ.`,
   ].join("\n\n");
+  const credentialHtml = temporaryPassword
+    ? `<div style="margin:18px 0;padding:16px;border-radius:14px;background:#fff7ed;border:1px solid #fed7aa"><p style="margin:0 0 8px"><strong>Email đăng nhập:</strong> ${escapeHtml(email)}</p><p style="margin:0 0 8px"><strong>Mật khẩu tạm:</strong> <code style="font-size:15px">${escapeHtml(temporaryPassword)}</code></p><p style="margin:0;color:#9a3412">Bạn bắt buộc đổi mật khẩu sau lần đăng nhập đầu tiên.</p></div>`
+    : "<p>Mở liên kết để xác nhận quyền tham gia chuỗi.</p>";
 
   return {
     to: user.email,
     subject: `Lời mời tham gia ${brand.name} trên Cohan`,
     text,
-    html: `<!doctype html><html lang="vi"><body style="margin:0;padding:28px;background:#fff7ed;font-family:Arial,sans-serif;color:#292524"><div style="max-width:620px;margin:auto;padding:30px;border:1px solid #fed7aa;border-radius:24px;background:#fff"><p style="margin:0 0 8px;color:#ea580c;font-weight:700">COHAN · LỜI MỜI THÀNH VIÊN</p><h1 style="margin:0 0 16px;font-size:26px">${escapeHtml(brand.name)}</h1><p>Xin chào <strong>${escapeHtml(name)}</strong>,</p><p>Bạn được mời tham gia chuỗi với vai trò <strong>${escapeHtml(roleLabel)}</strong>.</p><p>${requiresPassword ? "Xác nhận email và đặt mật khẩu để kích hoạt tài khoản." : "Xác nhận để kích hoạt quyền trong chuỗi."}</p><p style="margin:24px 0"><a href="${escapeHtml(link)}" style="display:inline-block;padding:13px 20px;border-radius:12px;background:#ff6600;color:#fff;text-decoration:none;font-weight:700">Xác nhận lời mời</a></p><p style="font-size:13px;color:#78716c">Liên kết hết hạn sau ${ttlHours} giờ và chỉ sử dụng được một lần.</p></div></body></html>`,
+    html: `<!doctype html><html lang="vi"><body style="margin:0;padding:28px;background:#fff7ed;font-family:Arial,sans-serif;color:#292524"><div style="max-width:620px;margin:auto;padding:30px;border:1px solid #fed7aa;border-radius:24px;background:#fff"><p style="margin:0 0 8px;color:#ea580c;font-weight:700">COHAN · LỜI MỜI THÀNH VIÊN</p><h1 style="margin:0 0 16px;font-size:26px">${escapeHtml(brand.name)}</h1><p>Xin chào <strong>${escapeHtml(name)}</strong>,</p><p>Bạn được mời tham gia chuỗi với vai trò <strong>${escapeHtml(roleLabel)}</strong>.</p>${credentialHtml}<p style="margin:24px 0"><a href="${escapeHtml(link)}" style="display:inline-block;padding:13px 20px;border-radius:12px;background:#ff6600;color:#fff;text-decoration:none;font-weight:700">Kích hoạt và đăng nhập</a></p><p style="font-size:13px;color:#78716c">Liên kết hết hạn sau ${ttlHours} giờ và chỉ sử dụng được một lần.</p></div></body></html>`,
   };
 }
 
-async function sendInvitation({ user, brand, membership, token, requiresPassword }) {
+async function sendInvitation({ user, brand, membership, token, temporaryPassword = null }) {
   const result = await mailer.sendMail(
-    buildInvitationMail({ user, brand, membership, token, requiresPassword }),
+    buildInvitationMail({ user, brand, membership, token, temporaryPassword }),
   );
   if (result?.skipped) {
     console.warn(`[BrandInvitation] Email provider is not configured for ${user.email}.`);
@@ -186,7 +197,7 @@ async function resolveInviteUser(input, session) {
     if (!existing.email) {
       throw bad("Tài khoản cần có email trước khi được mời vào chuỗi.");
     }
-    return { user: existing, created: false };
+    return { user: existing, created: false, temporaryPassword: null };
   }
 
   if (!isEmail(syntheticEmail)) throw bad("Email mời chưa đúng định dạng.");
@@ -195,12 +206,13 @@ async function resolveInviteUser(input, session) {
     if (!["active", "pending"].includes(existing.status)) {
       throw bad("Tài khoản đang bị khóa hoặc tạm ngưng nên không thể nhận lời mời.");
     }
-    return { user: existing, created: false };
+    return { user: existing, created: false, temporaryPassword: null };
   }
 
   const role = await managerRole(session);
   if (!role) throw bad("Manager role not found");
   const localPart = syntheticEmail.split("@")[0].replace(/[._-]+/g, " ").trim();
+  const temporaryPassword = generateRandomPassword(12);
   const user = new User({
     fullName: localPart || syntheticEmail,
     email: syntheticEmail,
@@ -211,8 +223,9 @@ async function resolveInviteUser(input, session) {
     emailVerified: false,
     forcePasswordChange: true,
   });
+  await user.setPassword(temporaryPassword);
   await user.save({ session });
-  return { user, created: true };
+  return { user, created: true, temporaryPassword };
 }
 
 async function createInvitation({ input, ctx }) {
@@ -238,7 +251,7 @@ async function createInvitation({ input, ctx }) {
         session,
       });
 
-      const { user, created } = await resolveInviteUser(input, session);
+      const { user, created, temporaryPassword } = await resolveInviteUser(input, session);
       await assertBrandMembershipAccountCompatibility({
         userId: user._id,
         membershipRole: input.role,
@@ -254,17 +267,22 @@ async function createInvitation({ input, ctx }) {
         throw forbidden("Không thể thay đổi Chủ chuỗi bằng luồng lời mời.");
       }
 
+      if (!created && user.userType === "CUSTOMER") {
+        await promoteCustomerAccountToManager({ userId: user._id, session });
+      }
+
+      const now = new Date();
       const membership = await BrandMembership.findOneAndUpdate(
         { brandId: oid(input.brandId), userId: user._id },
         {
           $set: {
             role: input.role,
             restaurantIds,
-            status: "invited",
-            inviteTokenHash: hash,
-            inviteTokenExp: new Date(Date.now() + inviteTtlMs()),
-            invitedAt: new Date(),
-            acceptedAt: null,
+            status: created ? "invited" : "active",
+            inviteTokenHash: created ? hash : null,
+            inviteTokenExp: created ? new Date(Date.now() + inviteTtlMs()) : null,
+            invitedAt: now,
+            acceptedAt: created ? null : now,
             invitedBy: actorId,
             updatedBy: actorId,
           },
@@ -278,6 +296,7 @@ async function createInvitation({ input, ctx }) {
         userId: user._id,
         brandId: brand._id,
         created,
+        temporaryPassword,
       };
     });
   } finally {
@@ -290,16 +309,18 @@ async function createInvitation({ input, ctx }) {
     Brand.findById(invitation.brandId).select("_id name").lean(),
   ]);
   if (!membership || !user || !brand) {
-    throw notFound("Không thể tải lại lời mời vừa tạo.");
+    throw notFound("Không thể tải lại thành viên vừa cập nhật.");
   }
 
-  await sendInvitation({
-    user,
-    brand,
-    membership,
-    token,
-    requiresPassword: invitation.created || user.forcePasswordChange || !user.passwordHash,
-  });
+  if (invitation.created) {
+    await sendInvitation({
+      user,
+      brand,
+      membership,
+      token,
+      temporaryPassword: invitation.temporaryPassword,
+    });
+  }
   return membership.toObject();
 }
 
@@ -463,6 +484,14 @@ const Mutation = {
     }
     if (!user.email) throw bad("Tài khoản được mời chưa có email.");
 
+    let temporaryPassword = null;
+    if (user.forcePasswordChange || !user.passwordHash) {
+      temporaryPassword = generateRandomPassword(12);
+      await user.setPassword(temporaryPassword);
+      user.forcePasswordChange = true;
+      await user.save();
+    }
+
     const { token, hash } = generateInvitationToken();
     membership.status = "invited";
     membership.inviteTokenHash = hash;
@@ -481,7 +510,7 @@ const Mutation = {
       brand,
       membership,
       token,
-      requiresPassword: user.forcePasswordChange || !user.passwordHash,
+      temporaryPassword,
     });
     return membership.toObject();
   },
@@ -528,8 +557,7 @@ const Mutation = {
           });
         }
 
-        const requiresPassword = user.forcePasswordChange || !user.passwordHash;
-        if (requiresPassword) {
+        if (!user.passwordHash) {
           const policy = validatePasswordStrong(password);
           if (!policy.ok) {
             throw bad(`Weak password: ${policy.reason || "Password does not meet requirements"}`);
