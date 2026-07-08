@@ -109,9 +109,13 @@ function TableActionsModalCore({
     fetchOrderByTable,
   } = usePos();
 
-  const { updateOrderCustomerByCode } =
-    useOrderManagement();
-  const { findConfirmedByTable, checkInReservation, approveReservationChange, rejectReservationChange } = useReservation();
+  const { updateOrderCustomerByCode } = useOrderManagement();
+  const {
+    findConfirmedByTable,
+    checkInReservation,
+    approveReservationChange,
+    rejectReservationChange,
+  } = useReservation();
   const [upsertTableCustomer] = useMutation(UPSERT_TABLE_CUSTOMER);
   const [
     loadTableCustomer,
@@ -131,7 +135,7 @@ function TableActionsModalCore({
   const guardState = useMemo(() => getTableGuardState(table), [table]);
   const deleteDisabledReason = useMemo(
     () => getTableActionDisabledReason(table, "delete"),
-    [table]
+    [table],
   );
   const [moveLevel, setMoveLevel] = useState(null);
   const [swapWithCode, setSwapWithCode] = useState("");
@@ -235,7 +239,7 @@ function TableActionsModalCore({
       setMergeCodes("");
       setTodayStr(getTodayLocal());
       setUseTimeslot(
-        table.status === "available" || table.status === "reserved"
+        table.status === "available" || table.status === "reserved",
       );
       setOrderCodeForTable(null);
       setActiveReservation(null);
@@ -332,9 +336,7 @@ function TableActionsModalCore({
         });
         if (requestId !== phoneSuggestionReqRef.current) return;
         const raw = Array.isArray(data?.customers) ? data.customers : [];
-        const next = raw
-          .map(normalizeSuggestion)
-          .filter((c) => c.phone);
+        const next = raw.map(normalizeSuggestion).filter((c) => c.phone);
         setPhoneSuggestions(next);
       } catch (e) {
         if (requestId !== phoneSuggestionReqRef.current) return;
@@ -368,9 +370,7 @@ function TableActionsModalCore({
         });
         if (requestId !== emailSuggestionReqRef.current) return;
         const raw = Array.isArray(data?.customers) ? data.customers : [];
-        const next = raw
-          .map(normalizeSuggestion)
-          .filter((c) => c.email);
+        const next = raw.map(normalizeSuggestion).filter((c) => c.email);
         setEmailSuggestions(next);
       } catch (e) {
         if (requestId !== emailSuggestionReqRef.current) return;
@@ -407,7 +407,15 @@ function TableActionsModalCore({
             restaurantId,
             tableId: table.id,
           });
-          const r = res?.data ?? res?.reservation ?? res?.result ?? res ?? null;
+          const hasResultEnvelope =
+            res &&
+            typeof res === "object" &&
+            Object.prototype.hasOwnProperty.call(res, "success");
+          const r = hasResultEnvelope
+            ? res.success
+              ? res.data || null
+              : null
+            : res?.data ?? res?.reservation ?? res?.result ?? res ?? null;
           activeReservationRecordRef.current = r || null;
           setActiveReservation(r || null);
           if (r && !cancelled) {
@@ -417,7 +425,9 @@ function TableActionsModalCore({
             const end =
               startDate && !Number.isNaN(startDate.getTime()) && durationMinutes
                 ? isoToDateTimeParts(
-                    new Date(startDate.getTime() + durationMinutes * 60000).toISOString()
+                    new Date(
+                      startDate.getTime() + durationMinutes * 60000,
+                    ).toISOString(),
                   )
                 : { date: "", time: "" };
             const nextCust = {
@@ -460,7 +470,7 @@ function TableActionsModalCore({
         try {
           const ores = await fetchOrderByTableRef.current?.(
             restaurantId,
-            table.code
+            table.code,
           );
           const groups = Array.isArray(ores?.data) ? ores.data : [];
           const firstGroup = groups[0] || null;
@@ -500,19 +510,26 @@ function TableActionsModalCore({
   ]);
 
   const mapReservationError = (message = "") => {
-    if (message.includes("TABLE_SESSION_CONFLICT")) return "Bàn đang có phiên phục vụ khác, không thể check-in.";
-    if (message.includes("TABLE_TIME_CONFLICT")) return "Khung giờ mới bị trùng với đặt bàn khác.";
-    if (message.includes("TABLE_SLOT_HELD")) return "Khung giờ này đang được giữ bởi khách khác.";
-    if (message.includes("TABLE_UNAVAILABLE")) return "Bàn chưa sẵn sàng để nhận khách.";
-    if (message.includes("CAPACITY_EXCEEDED")) return "Số khách vượt sức chứa bàn.";
-    if (message.includes("RESERVATION_CHANGE_NOT_PENDING")) return "Yêu cầu thay đổi không còn ở trạng thái chờ duyệt.";
-    if (message.includes("RESERVATION_NOT_CONFIRMED")) return "Chỉ reservation đã xác nhận mới được check-in.";
+    if (message.includes("TABLE_SESSION_CONFLICT"))
+      return "Bàn đang có phiên phục vụ khác, không thể check-in.";
+    if (message.includes("TABLE_TIME_CONFLICT"))
+      return "Khung giờ mới bị trùng với đặt bàn khác.";
+    if (message.includes("TABLE_SLOT_HELD"))
+      return "Khung giờ này đang được giữ bởi khách khác.";
+    if (message.includes("TABLE_UNAVAILABLE"))
+      return "Bàn chưa sẵn sàng để nhận khách.";
+    if (message.includes("CAPACITY_EXCEEDED"))
+      return "Số khách vượt sức chứa bàn.";
+    if (message.includes("RESERVATION_CHANGE_NOT_PENDING"))
+      return "Yêu cầu thay đổi không còn ở trạng thái chờ duyệt.";
+    if (message.includes("RESERVATION_NOT_CONFIRMED"))
+      return "Chỉ reservation đã xác nhận mới được check-in.";
     return message || "Thao tác reservation thất bại.";
   };
 
   const matchedTableCustomer = useMemo(
     () => tableCustomerData?.tableCustomer || null,
-    [tableCustomerData]
+    [tableCustomerData],
   );
 
   useEffect(() => {
@@ -524,7 +541,7 @@ function TableActionsModalCore({
     ) {
       return;
     }
-    if (activeReservationRecordRef.current) return;
+    if (activeReservationRecordRef.current?.id) return;
     if (table?.status === "occupied" && orderCodeForTable) return;
 
     const from = isoToDateTimeParts(matchedTableCustomer.timeFrom);
@@ -552,7 +569,7 @@ function TableActionsModalCore({
 
   const floorsSorted = useMemo(
     () => (floors || []).slice().sort((a, b) => a.level - b.level),
-    [floors]
+    [floors],
   );
   const canSplit = !!table?.joinGroupId;
 
@@ -588,11 +605,12 @@ function TableActionsModalCore({
   if (!reallyOpen || !table) return null;
 
   /* ================== HELPERS ================== */
-  const isEmail = (s) =>
-    !!String(s || "")
+  const isEmail = (value) =>
+    !!String(value || "")
       .toLowerCase()
       .match(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/);
-  const isPhoneVN = (s) => /^(0|\+84)\d{9,10}$/.test(String(s || ""));
+  const isPhoneVN = (value) =>
+    /^(0|\+84)\d{9,10}$/.test(String(value || ""));
   const combineDateTimeToISO = (dateStr, timeStr) => {
     if (!dateStr || !timeStr) return null;
     const [y, m, d] = dateStr.split("-").map((n) => Number(n));
@@ -611,10 +629,11 @@ function TableActionsModalCore({
     const b = toMinutes(toTime);
     if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
     const diff = b - a;
-    return diff > 0 ? diff : null; // ❌ không cho <= 0
+    return diff > 0 ? diff : null;
   };
 
-  const clampGuests = (val) => Math.max(0, Number.isFinite(val) ? val : 0);
+  const clampGuests = (val) =>
+    Math.max(0, Number.isFinite(val) ? val : 0);
   const incGuests = (delta) =>
     setCust((prev) => ({
       ...prev,
@@ -708,7 +727,7 @@ function TableActionsModalCore({
         return false;
       }
       if (!cust.checkinTime) {
-        alert("Vui lòng chọn giờ.");
+        alert("Vui lòng chọn giờ vào.");
         return false;
       }
       if (cust.checkinDate < todayStr) {
@@ -716,12 +735,12 @@ function TableActionsModalCore({
         return false;
       }
       if (!cust.checkinTimeTo) {
-        alert("Vui lòng chọn giờ đến.");
+        alert("Vui lòng chọn giờ kết thúc.");
         return false;
       }
       const dur = calcDurationMinutes(cust.checkinTime, cust.checkinTimeTo);
       if (!dur) {
-        alert("Giờ đến phải lớn hơn giờ vào.");
+        alert("Giờ kết thúc phải lớn hơn giờ vào.");
         return false;
       }
     }
@@ -740,10 +759,15 @@ function TableActionsModalCore({
         type: (type || "standard").trim(),
         tags: tags
           .split(",")
-          .map((t) => t.trim())
+          .map((tag) => tag.trim())
           .filter(Boolean),
       });
-      baselineTableRef.current = buildTableSnapshot({ code, capacity, type, tags });
+      baselineTableRef.current = buildTableSnapshot({
+        code,
+        capacity,
+        type,
+        tags,
+      });
       onUpdated?.();
       showNotification?.("Đã lưu thay đổi bàn.", "success");
     } catch (e) {
@@ -815,12 +839,12 @@ function TableActionsModalCore({
     const ids = Array.from(
       new Set(
         [table.code, ...raw.split(/[,\s]+/)]
-          .map((c) => c.trim())
+          .map((value) => value.trim())
           .filter(Boolean)
-          .map((c) => fetchTableByCode(c))
+          .map((value) => fetchTableByCode(value))
           .filter(Boolean)
-          .map((t) => t.id)
-      )
+          .map((candidate) => candidate.id),
+      ),
     );
     if (ids.length < 2) return alert("Cần > 1 bàn.");
     setBusyKey("merge", true);
@@ -863,14 +887,14 @@ function TableActionsModalCore({
       console.error(e);
       showNotification?.(
         mapTableMutationError(e, "Không thể xoá bàn."),
-        "error"
+        "error",
       );
     } finally {
       setBusyKey("delete", false);
     }
   };
 
-  const buildTableCustomerInput = (opts = {}) => {
+  const buildTableCustomerInput = () => {
     const identity = resolveCustomerIdentity();
     const timeFrom =
       useTimeslot && cust.checkinDate && cust.checkinTime
@@ -902,9 +926,9 @@ function TableActionsModalCore({
       selectedCustomer?.id
     );
 
-  const persistTableCustomer = async (opts = {}) => {
+  const persistTableCustomer = async () => {
     if (!restaurantId || !table?.code) return;
-    const input = buildTableCustomerInput(opts);
+    const input = buildTableCustomerInput();
     await upsertTableCustomer({ variables: { input } });
     if (refetchTableCustomer) {
       await refetchTableCustomer();
@@ -1019,7 +1043,7 @@ function TableActionsModalCore({
     if (phoneBlurTimerRef.current) clearTimeout(phoneBlurTimerRef.current);
     phoneBlurTimerRef.current = setTimeout(
       () => setPhoneSuggestionsOpen(false),
-      120
+      120,
     );
   };
   const handleEmailFocus = () => {
@@ -1030,18 +1054,16 @@ function TableActionsModalCore({
     if (emailBlurTimerRef.current) clearTimeout(emailBlurTimerRef.current);
     emailBlurTimerRef.current = setTimeout(
       () => setEmailSuggestionsOpen(false),
-      120
+      120,
     );
   };
 
   /* ================== RENDER ================== */
   return createPortal(
     <div className={s.backdrop} onClick={onClose}>
-      {/* Ẩn mũi tên input number cho stepper */}
       <style>{`input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; } input[type=number] { -moz-appearance: textfield; }`}</style>
 
-      <div className={s.modal} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
+      <div className={s.modal} onClick={(event) => event.stopPropagation()}>
         <div className={s.header}>
           <div className={s.headerLeft}>
             <h3 className={s.title}>
@@ -1054,7 +1076,6 @@ function TableActionsModalCore({
           </button>
         </div>
 
-        {/* Body */}
         <div className={s.body}>
           <div className={s.tableInfo}>
             <div className={s.kv}>
@@ -1079,20 +1100,20 @@ function TableActionsModalCore({
               <input
                 className={s.input}
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={(event) => setCode(event.target.value)}
                 placeholder="Mã bàn"
               />
               <input
                 className={s.input}
                 type="number"
                 value={capacity}
-                onChange={(e) => setCapacity(Number(e.target.value))}
+                onChange={(event) => setCapacity(Number(event.target.value))}
                 placeholder="Sức chứa"
               />
               <select
                 className={s.select}
                 value={type}
-                onChange={(e) => setType(e.target.value)}
+                onChange={(event) => setType(event.target.value)}
               >
                 <option value="standard">{typeLabels.standard}</option>
                 <option value="vip">{typeLabels.vip}</option>
@@ -1101,7 +1122,7 @@ function TableActionsModalCore({
               <input
                 className={s.input}
                 value={tags}
-                onChange={(e) => setTags(e.target.value)}
+                onChange={(event) => setTags(event.target.value)}
                 placeholder="Thẻ gắn..."
               />
             </div>
@@ -1120,17 +1141,17 @@ function TableActionsModalCore({
             <div className={s.label}>Trạng thái</div>
             <div className={s.chips}>
               {["available", "occupied", "reserved", "cleaning", "offline"].map(
-                (st) => (
+                (nextStatus) => (
                   <button
-                    key={st}
-                    className={`${s.chip} ${status === st ? s.active : ""}`}
-                    data-variant={st}
-                    onClick={() => handleChangeStatus(st)}
+                    key={nextStatus}
+                    className={`${s.chip} ${status === nextStatus ? s.active : ""}`}
+                    data-variant={nextStatus}
+                    onClick={() => handleChangeStatus(nextStatus)}
                     disabled={busy.status}
                   >
-                    {statusLabels[st] || st}
+                    {statusLabels[nextStatus] || nextStatus}
                   </button>
-                )
+                ),
               )}
             </div>
           </div>
@@ -1148,7 +1169,6 @@ function TableActionsModalCore({
             </div>
             {quickActionsOpen && (
               <div className={s.twoCols}>
-                {/* Move & Swap */}
                 <div>
                   <div className={s.hint} style={{ marginBottom: "0.5rem" }}>
                     Chuyển tầng
@@ -1157,11 +1177,11 @@ function TableActionsModalCore({
                     <select
                       className={s.select}
                       value={moveLevel ?? ""}
-                      onChange={(e) => setMoveLevel(e.target.value)}
+                      onChange={(event) => setMoveLevel(event.target.value)}
                     >
-                      {floorsSorted.map((f) => (
-                        <option key={f.id} value={f.level}>
-                          Tầng {f.level}
+                      {floorsSorted.map((floor) => (
+                        <option key={floor.id} value={floor.level}>
+                          Tầng {floor.level}
                         </option>
                       ))}
                     </select>
@@ -1183,7 +1203,7 @@ function TableActionsModalCore({
                       className={s.input}
                       placeholder="Mã đích"
                       value={swapWithCode}
-                      onChange={(e) => setSwapWithCode(e.target.value)}
+                      onChange={(event) => setSwapWithCode(event.target.value)}
                     />
                     <button
                       className={`${s.btn} ${s.ghost}`}
@@ -1194,7 +1214,6 @@ function TableActionsModalCore({
                     </button>
                   </div>
                 </div>
-                {/* Merge & Split */}
                 <div>
                   <div className={s.hint} style={{ marginBottom: "0.5rem" }}>
                     Gộp bàn
@@ -1204,7 +1223,7 @@ function TableActionsModalCore({
                       className={s.input}
                       placeholder="A1, A2..."
                       value={mergeCodes}
-                      onChange={(e) => setMergeCodes(e.target.value)}
+                      onChange={(event) => setMergeCodes(event.target.value)}
                     />
                     <button
                       className={`${s.btn} ${s.ghost}`}
@@ -1251,15 +1270,18 @@ function TableActionsModalCore({
                   className={s.input}
                   aria-label="Tên khách"
                   value={cust.name}
-                  onChange={(e) => {
+                  onChange={(event) => {
                     setSelectedCustomer(null);
-                    setCust({ ...cust, name: e.target.value });
+                    setCust({ ...cust, name: event.target.value });
                   }}
                   placeholder="Nhập tên người đại diện"
                 />
               </label>
               <div className={s.field}>
-                <label className={s.fieldLabel} htmlFor={`table-phone-${table.id}`}>
+                <label
+                  className={s.fieldLabel}
+                  htmlFor={`table-phone-${table.id}`}
+                >
                   Số điện thoại
                 </label>
                 <div className={s.inputGroup}>
@@ -1267,17 +1289,16 @@ function TableActionsModalCore({
                     id={`table-phone-${table.id}`}
                     className={s.input}
                     value={cust.phone}
-                    onChange={(e) => {
+                    onChange={(event) => {
                       setSelectedCustomer(null);
-                      setCust({ ...cust, phone: e.target.value });
+                      setCust({ ...cust, phone: event.target.value });
                     }}
                     onFocus={handlePhoneFocus}
                     onBlur={handlePhoneBlur}
                     placeholder="Ví dụ: 0908 123 456"
                   />
                   {phoneSuggestionsOpen &&
-                    (phoneSuggestionsLoading ||
-                      phoneSuggestions.length > 0) && (
+                    (phoneSuggestionsLoading || phoneSuggestions.length > 0) && (
                       <div className={s.suggestions}>
                         {phoneSuggestionsLoading && (
                           <div className={s.suggestionEmpty}>
@@ -1285,22 +1306,22 @@ function TableActionsModalCore({
                           </div>
                         )}
                         {!phoneSuggestionsLoading &&
-                          phoneSuggestions.map((c) => (
+                          phoneSuggestions.map((customer) => (
                             <button
-                              key={`phone-${c.id || c.phone}`}
+                              key={`phone-${customer.id || customer.phone}`}
                               type="button"
                               className={s.suggestionItem}
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                applyCustomerSuggestion(c);
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                applyCustomerSuggestion(customer);
                               }}
                             >
                               <span className={s.suggestionName}>
-                                {c.name || "Khách hàng"}
+                                {customer.name || "Khách hàng"}
                               </span>
                               <span className={s.suggestionMeta}>
-                                {c.phone}
-                                {c.email ? ` · ${c.email}` : ""}
+                                {customer.phone}
+                                {customer.email ? ` · ${customer.email}` : ""}
                               </span>
                             </button>
                           ))}
@@ -1310,7 +1331,10 @@ function TableActionsModalCore({
               </div>
 
               <div className={s.field}>
-                <label className={s.fieldLabel} htmlFor={`table-email-${table.id}`}>
+                <label
+                  className={s.fieldLabel}
+                  htmlFor={`table-email-${table.id}`}
+                >
                   Email
                 </label>
                 <div className={s.inputGroup}>
@@ -1318,17 +1342,16 @@ function TableActionsModalCore({
                     id={`table-email-${table.id}`}
                     className={s.input}
                     value={cust.email}
-                    onChange={(e) => {
+                    onChange={(event) => {
                       setSelectedCustomer(null);
-                      setCust({ ...cust, email: e.target.value });
+                      setCust({ ...cust, email: event.target.value });
                     }}
                     onFocus={handleEmailFocus}
                     onBlur={handleEmailBlur}
                     placeholder="Email khách nếu có"
                   />
                   {emailSuggestionsOpen &&
-                    (emailSuggestionsLoading ||
-                      emailSuggestions.length > 0) && (
+                    (emailSuggestionsLoading || emailSuggestions.length > 0) && (
                       <div className={s.suggestions}>
                         {emailSuggestionsLoading && (
                           <div className={s.suggestionEmpty}>
@@ -1336,22 +1359,22 @@ function TableActionsModalCore({
                           </div>
                         )}
                         {!emailSuggestionsLoading &&
-                          emailSuggestions.map((c) => (
+                          emailSuggestions.map((customer) => (
                             <button
-                              key={`email-${c.id || c.email}`}
+                              key={`email-${customer.id || customer.email}`}
                               type="button"
                               className={s.suggestionItem}
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                applyCustomerSuggestion(c);
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                applyCustomerSuggestion(customer);
                               }}
                             >
                               <span className={s.suggestionName}>
-                                {c.name || "Khách hàng"}
+                                {customer.name || "Khách hàng"}
                               </span>
                               <span className={s.suggestionMeta}>
-                                {c.email}
-                                {c.phone ? ` · ${c.phone}` : ""}
+                                {customer.email}
+                                {customer.phone ? ` · ${customer.phone}` : ""}
                               </span>
                             </button>
                           ))}
@@ -1384,8 +1407,11 @@ function TableActionsModalCore({
                       min="0"
                       max={Number(table.capacity || 0) || undefined}
                       value={cust.guests}
-                      onChange={(e) =>
-                        setCust({ ...cust, guests: Number(e.target.value) })
+                      onChange={(event) =>
+                        setCust({
+                          ...cust,
+                          guests: Number(event.target.value),
+                        })
                       }
                     />
                     <button
@@ -1402,7 +1428,7 @@ function TableActionsModalCore({
                   <input
                     type="checkbox"
                     checked={useTimeslot}
-                    onChange={(e) => setUseTimeslot(e.target.checked)}
+                    onChange={(event) => setUseTimeslot(event.target.checked)}
                     disabled={
                       !(status === "available" || status === "reserved")
                     }
@@ -1425,8 +1451,11 @@ function TableActionsModalCore({
                         type="date"
                         min={todayStr}
                         value={cust.checkinDate}
-                        onChange={(e) =>
-                          setCust({ ...cust, checkinDate: e.target.value })
+                        onChange={(event) =>
+                          setCust({
+                            ...cust,
+                            checkinDate: event.target.value,
+                          })
                         }
                       />
                     </label>
@@ -1436,15 +1465,14 @@ function TableActionsModalCore({
                         className={s.select}
                         aria-label="Giờ vào"
                         value={cust.checkinTime}
-                        onChange={(e) => {
-                          const v = e.target.value;
+                        onChange={(event) => {
+                          const value = event.target.value;
                           setCust((prev) => ({
                             ...prev,
-                            checkinTime: v,
-                            // ✅ nếu giờ đến đang <= giờ vào thì reset để user chọn lại
+                            checkinTime: value,
                             checkinTimeTo: calcDurationMinutes(
-                              v,
-                              prev.checkinTimeTo
+                              value,
+                              prev.checkinTimeTo,
                             )
                               ? prev.checkinTimeTo
                               : "",
@@ -1457,37 +1485,41 @@ function TableActionsModalCore({
                         {(cust.checkinDate
                           ? visibleTimeSlots(cust.checkinDate)
                           : buildTimeSlots
-                        ).map((t) => (
-                          <option key={t} value={t}>
-                            {t}
+                        ).map((slot) => (
+                          <option key={slot} value={slot}>
+                            {slot}
                           </option>
                         ))}
                       </select>
                     </label>
 
                     <label className={s.field}>
-                      <span className={s.fieldLabel}>Giờ đến</span>
+                      <span className={s.fieldLabel}>Giờ kết thúc</span>
                       <select
                         className={s.select}
-                        aria-label="Giờ đến"
+                        aria-label="Giờ kết thúc"
                         value={cust.checkinTimeTo}
-                        onChange={(e) =>
-                          setCust({ ...cust, checkinTimeTo: e.target.value })
+                        onChange={(event) =>
+                          setCust({
+                            ...cust,
+                            checkinTimeTo: event.target.value,
+                          })
                         }
                         disabled={!cust.checkinTime}
                       >
                         <option value="" disabled>
-                          Chọn giờ đến
+                          Chọn giờ kết thúc
                         </option>
                         {(cust.checkinDate
                           ? visibleTimeSlots(cust.checkinDate)
                           : buildTimeSlots
                         )
-                          // ✅ chỉ show giờ "đến" > giờ "vào"
-                          .filter((t) => calcDurationMinutes(cust.checkinTime, t))
-                          .map((t) => (
-                            <option key={t} value={t}>
-                              {t}
+                          .filter((slot) =>
+                            calcDurationMinutes(cust.checkinTime, slot),
+                          )
+                          .map((slot) => (
+                            <option key={slot} value={slot}>
+                              {slot}
                             </option>
                           ))}
                       </select>
@@ -1500,7 +1532,9 @@ function TableActionsModalCore({
                   className={`${s.input} ${s.textarea}`}
                   aria-label="Ghi chú"
                   value={cust.note}
-                  onChange={(e) => setCust({ ...cust, note: e.target.value })}
+                  onChange={(event) =>
+                    setCust({ ...cust, note: event.target.value })
+                  }
                   placeholder="Dị ứng, vị trí ngồi hoặc lưu ý phục vụ..."
                 />
               </label>
@@ -1522,62 +1556,141 @@ function TableActionsModalCore({
             <div className={s.label}>Đặt bàn / Reservation</div>
             {activeReservation ? (
               <div className={s.reservationInfo}>
-                <div><span>Mã</span><b>{activeReservation.orderCode || activeReservation.id}</b></div>
-                <div><span>Khách</span>{activeReservation.customerName || "-"}</div>
-                <div><span>SĐT</span>{activeReservation.customerPhone || "-"}</div>
-                <div><span>Số khách</span>{activeReservation.partySize || "-"}</div>
-                <div><span>Giờ đặt</span>{activeReservation.timeTo ? new Date(activeReservation.timeTo).toLocaleString("vi-VN") : "-"}</div>
-                <div><span>Trạng thái</span>{activeReservation.status || "-"}</div>
-                <div><span>Yêu cầu đổi</span>{activeReservation.changeRequestType || "-"} / {activeReservation.changeRequestStatus || "-"}</div>
+                <div>
+                  <span>Mã</span>
+                  <b>{activeReservation.orderCode || activeReservation.id}</b>
+                </div>
+                <div>
+                  <span>Khách</span>
+                  {activeReservation.customerName || "-"}
+                </div>
+                <div>
+                  <span>SĐT</span>
+                  {activeReservation.customerPhone || "-"}
+                </div>
+                <div>
+                  <span>Số khách</span>
+                  {activeReservation.partySize || "-"}
+                </div>
+                <div>
+                  <span>Giờ đặt</span>
+                  {activeReservation.timeTo
+                    ? new Date(activeReservation.timeTo).toLocaleString("vi-VN")
+                    : "-"}
+                </div>
+                <div>
+                  <span>Trạng thái</span>
+                  {activeReservation.status || "-"}
+                </div>
+                <div>
+                  <span>Yêu cầu đổi</span>
+                  {activeReservation.changeRequestType || "-"} /{" "}
+                  {activeReservation.changeRequestStatus || "-"}
+                </div>
               </div>
             ) : (
-              <div className={s.hint}>Chưa có đặt bàn đang hoạt động cho bàn này.</div>
+              <div className={s.hint}>
+                Chưa có đặt bàn đang hoạt động cho bàn này.
+              </div>
             )}
             <div className={s.actionsEnd}>
               {activeReservation?.status === "confirmed" && (
-                <button className={`${s.btn} ${s.primary}`} disabled={busy.checkInReservation} onClick={async () => {
-                  setBusyKey("checkInReservation", true);
-                  const res = await checkInReservation(activeReservation.id);
-                  setBusyKey("checkInReservation", false);
-                  if (!res?.success) return showNotification?.(mapReservationError(res?.message), "error");
-                  setActiveReservation(res.data || activeReservation);
-                  const latest = await findConfirmedByTableRef.current?.({ restaurantId, tableId: table.id });
-                  if (latest?.success) setActiveReservation(latest.data || null);
-                  showNotification?.("Nhận bàn thành công.", "success");
-                  onUpdated?.();
-                }}>Nhận bàn</button>
+                <button
+                  className={`${s.btn} ${s.primary}`}
+                  disabled={busy.checkInReservation}
+                  onClick={async () => {
+                    setBusyKey("checkInReservation", true);
+                    const res = await checkInReservation(activeReservation.id);
+                    setBusyKey("checkInReservation", false);
+                    if (!res?.success)
+                      return showNotification?.(
+                        mapReservationError(res?.message),
+                        "error",
+                      );
+                    setActiveReservation(res.data || activeReservation);
+                    const latest = await findConfirmedByTableRef.current?.({
+                      restaurantId,
+                      tableId: table.id,
+                    });
+                    if (latest?.success)
+                      setActiveReservation(latest.data || null);
+                    showNotification?.("Nhận bàn thành công.", "success");
+                    onUpdated?.();
+                  }}
+                >
+                  Nhận bàn
+                </button>
               )}
-              {(activeReservation?.status === "pending_change" || activeReservation?.changeRequestStatus === "requested") && (
+              {(activeReservation?.status === "pending_change" ||
+                activeReservation?.changeRequestStatus === "requested") && (
                 <>
-                  <button className={`${s.btn} ${s.ghost}`} disabled={busy.approveReservationChange} onClick={async () => {
-                    setBusyKey("approveReservationChange", true);
-                    const res = await approveReservationChange(activeReservation.id);
-                    setBusyKey("approveReservationChange", false);
-                    if (!res?.success) return showNotification?.(mapReservationError(res?.message), "error");
-                    setActiveReservation(res.data || activeReservation);
-                    const latest = await findConfirmedByTableRef.current?.({ restaurantId, tableId: table.id });
-                    if (latest?.success) setActiveReservation(latest.data || null);
-                    onUpdated?.();
-                    showNotification?.("Đã duyệt thay đổi đặt bàn.", "success");
-                  }}>Duyệt thay đổi</button>
-                  <button className={`${s.btn} ${s.danger}`} disabled={busy.rejectReservationChange} onClick={async () => {
-                    setBusyKey("rejectReservationChange", true);
-                    const res = await rejectReservationChange(activeReservation.id, "Nhà hàng chưa thể đáp ứng thay đổi này.");
-                    setBusyKey("rejectReservationChange", false);
-                    if (!res?.success) return showNotification?.(mapReservationError(res?.message), "error");
-                    setActiveReservation(res.data || activeReservation);
-                    const latest = await findConfirmedByTableRef.current?.({ restaurantId, tableId: table.id });
-                    if (latest?.success) setActiveReservation(latest.data || null);
-                    onUpdated?.();
-                    showNotification?.("Đã từ chối thay đổi đặt bàn.", "success");
-                  }}>Từ chối thay đổi</button>
+                  <button
+                    className={`${s.btn} ${s.ghost}`}
+                    disabled={busy.approveReservationChange}
+                    onClick={async () => {
+                      setBusyKey("approveReservationChange", true);
+                      const res = await approveReservationChange(
+                        activeReservation.id,
+                      );
+                      setBusyKey("approveReservationChange", false);
+                      if (!res?.success)
+                        return showNotification?.(
+                          mapReservationError(res?.message),
+                          "error",
+                        );
+                      setActiveReservation(res.data || activeReservation);
+                      const latest = await findConfirmedByTableRef.current?.({
+                        restaurantId,
+                        tableId: table.id,
+                      });
+                      if (latest?.success)
+                        setActiveReservation(latest.data || null);
+                      onUpdated?.();
+                      showNotification?.(
+                        "Đã duyệt thay đổi đặt bàn.",
+                        "success",
+                      );
+                    }}
+                  >
+                    Duyệt thay đổi
+                  </button>
+                  <button
+                    className={`${s.btn} ${s.danger}`}
+                    disabled={busy.rejectReservationChange}
+                    onClick={async () => {
+                      setBusyKey("rejectReservationChange", true);
+                      const res = await rejectReservationChange(
+                        activeReservation.id,
+                        "Nhà hàng chưa thể đáp ứng thay đổi này.",
+                      );
+                      setBusyKey("rejectReservationChange", false);
+                      if (!res?.success)
+                        return showNotification?.(
+                          mapReservationError(res?.message),
+                          "error",
+                        );
+                      setActiveReservation(res.data || activeReservation);
+                      const latest = await findConfirmedByTableRef.current?.({
+                        restaurantId,
+                        tableId: table.id,
+                      });
+                      if (latest?.success)
+                        setActiveReservation(latest.data || null);
+                      onUpdated?.();
+                      showNotification?.(
+                        "Đã từ chối thay đổi đặt bàn.",
+                        "success",
+                      );
+                    }}
+                  >
+                    Từ chối thay đổi
+                  </button>
                 </>
               )}
             </div>
           </div>
         </div>
 
-        {/* Footer */}
         <div className={s.footer}>
           <button
             className={`${s.btn} ${s.danger}`}
@@ -1587,7 +1700,9 @@ function TableActionsModalCore({
           >
             <IconTrash /> Xoá bàn
           </button>
-          {deleteDisabledReason && <div className={s.hint}>{deleteDisabledReason}</div>}
+          {deleteDisabledReason && (
+            <div className={s.hint}>{deleteDisabledReason}</div>
+          )}
           <div className={s.actions}>
             <button className={s.btn} onClick={onClose}>
               Đóng
@@ -1603,7 +1718,7 @@ function TableActionsModalCore({
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }
 
