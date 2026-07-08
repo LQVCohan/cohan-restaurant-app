@@ -1,0 +1,28 @@
+{
+  "id": "07-08-pos-table-customer-persistence-ui",
+  "name": "pos-table-customer-persistence-ui",
+  "title": "Fix POS table customer persistence and form clarity",
+  "description": "Make the POS table customer form explicit, refresh table status immediately after save, and restore all saved customer and schedule fields when reopening the modal.",
+  "status": "in_progress",
+  "dev_type": "bugfix-ui",
+  "scope": "pos-table-customer",
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/models/tableCustomer.model.js",
+    "cohan-restaurant-backend/graphql/schema/tableCustomer.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/table/tableCustomer.js",
+    "cohan-restaurant-backend/tests/resolvers/table-customer-group.test.js",
+    "src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.jsx",
+    "src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.module.scss",
+    "src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.customer.test.jsx"
+  ],
+  "notes": "Root causes: the party-size stepper has no label; the non-order save path does not invoke onUpdated; reserved tables skip TableCustomer hydration even when no active reservation exists; and TableCustomer persists only timeTo, so check-in start time cannot survive reopening."
+}
