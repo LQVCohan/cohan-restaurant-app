@@ -5,6 +5,7 @@ const readSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8"
 
 const detailSource = readSource("./RestaurantDetail.jsx");
 const detailStyles = readSource("./RestaurantDetail.complete.scss");
+const fallbackStyles = readSource("./RestaurantDetail.fallbacks.scss");
 const infoSource = readSource("./components/RestaurantInfo/RestaurantInfo.jsx");
 const infoStyles = readSource("./components/RestaurantInfo/RestaurantInfo.complete.scss");
 const menuSource = readSource("./components/MenuSection/MenuSection.jsx");
@@ -27,9 +28,12 @@ describe("Restaurant detail complete UX contract", () => {
     ].forEach((field) => expect(detailSource).toContain(field));
   });
 
-  it("does not present third-party stock photos as restaurant or dish photos", () => {
+  it("uses clearly labeled temporary media only for the missing restaurant profile state", () => {
     expect(detailSource).not.toContain("DETAIL_FALLBACK_COVERS");
-    expect(detailSource).not.toContain("images.unsplash.com/photo-");
+    expect(fallbackStyles).toContain("images.unsplash.com/photo-1517248135467-4c7edcad34c5");
+    expect(fallbackStyles).toContain("ui-avatars.com/api/");
+    expect(fallbackStyles).toContain('content: "Ảnh minh họa"');
+    expect(fallbackStyles).toContain("strong,\n    small");
     expect(menuSource).not.toContain("DISH_FALLBACK_IMAGES");
     expect(menuSource).toContain("Ảnh đang cập nhật");
   });
