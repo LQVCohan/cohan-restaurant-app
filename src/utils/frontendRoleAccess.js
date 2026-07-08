@@ -112,6 +112,9 @@ export const hasStaffKitchenAccess = (role) =>
 
 export const getDefaultPathForRole = (userOrRole) => {
   const normalized = resolveUserRoleName(userOrRole);
+  if (normalized === "force_password_change") {
+    return "/verify-account/confirm?forcePasswordChange=1";
+  }
   if (normalized === "pending_verification") return "/verify-email";
   if (isAdminRole(normalized)) return "/manager";
   if (isManagerRole(normalized)) return "/manager";
@@ -198,7 +201,7 @@ export const MENU_MANAGEMENT_ACTIONS = {
   CREATE_MENU: "menu.create_menu",
   UPDATE_MENU: "menu.update_menu",
   DELETE_MENU: "menu.delete_menu",
-  TOGGLE_MENU: "menu.toggle_menu",
+  TOGGLE_MENU: "menu.update_menu",
   COPY_MENU: "menu.copy_menu",
   SYNC_INVENTORY: "menu.inventory.sync",
   VIEW_AUDIT: "menu.audit.read",
@@ -221,7 +224,7 @@ const MENU_ACTION_PERMISSION_MAP = {
   [MENU_MANAGEMENT_ACTIONS.TOGGLE_MENU]: ["menu.update", "menu.write"],
   [MENU_MANAGEMENT_ACTIONS.COPY_MENU]: ["menu.copy", "menu.write"],
   [MENU_MANAGEMENT_ACTIONS.SYNC_INVENTORY]: ["menu.inventory.sync", "menu.write", "inventory.write"],
-  [MENU_MANAGEMENT_ACTIONS.VIEW_AUDIT]: ["menu.audit.read", "menu.read", "menu.write", "log.read"],
+  [MENU_MANAGEMENT_ACTIONS.VIEW_AUDIT]: ["menu.audit.read", "menu.read", "menu.write"],
 };
 
 const getUserPermissionCodes = (userOrRole, explicit = []) => {
