@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const modelMocks = vi.hoisted(() => ({
   BrandMembership: {
     findById: vi.fn(),
+    findByIdAndUpdate: vi.fn(),
+    updateOne: vi.fn(),
   },
   User: {
     findById: vi.fn(),
@@ -16,6 +18,8 @@ const modelMocks = vi.hoisted(() => ({
 const scopeMocks = vi.hoisted(() => ({
   canManageBrand: vi.fn(),
   getUserId: vi.fn((user) => user?.id),
+  isBrandOwner: vi.fn().mockResolvedValue(true),
+  isSystemAdmin: vi.fn().mockReturnValue(false),
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
@@ -31,6 +35,8 @@ describe("Brand invitation mutation guards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     scopeMocks.canManageBrand.mockResolvedValue(true);
+    scopeMocks.isBrandOwner.mockResolvedValue(true);
+    scopeMocks.isSystemAdmin.mockReturnValue(false);
   });
 
   it("requires an invited member to accept the email link before activation", async () => {
