@@ -1,0 +1,31 @@
+{
+  "id": "07-08-auth-restaurant-context-login-race",
+  "name": "auth-restaurant-context-login-race",
+  "title": "Keep restaurant context loading after rapid account switch",
+  "description": "Prevent an Apollo cache reset started by logout from cancelling the authenticated business-context query of the next login.",
+  "status": "completed",
+  "dev_type": "frontend",
+  "scope": "auth-session-brand-scope",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": "2026-07-08",
+  "branch": "codex/fix-auth-restaurant-context-login-race",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "a09d3ced0496d01116472c7ae478f346886236c1",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1294",
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/context/AuthProvider.jsx",
+    "src/context/__tests__/AuthProvider.login-race.test.jsx"
+  ],
+  "notes": "Backend restaurant scope remains authoritative through active BrandMembership and scopedRestaurants. CI passed conflict checks, lint, unit tests, changed component tests, backend tests, and frontend/backend builds. The repository smoke suite still failed at its existing Playwright smoke step, matching an unrelated concurrent PR run.",
+  "meta": {
+    "skills": ["ponytail", "react-ui-performance"]
+  }
+}

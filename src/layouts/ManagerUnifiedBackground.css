@@ -74,6 +74,13 @@
     ) !important;
 }
 
+/* Route components provide structure; the manager shell owns the page canvas. */
+.manager-layout.manager-layout[class*="manager-layout--"]
+  .manager-page-shell__body
+  > :is(div, main, section) {
+  background: transparent !important;
+}
+
 .manager-layout .manager-layout__content {
   isolation: isolate;
 }

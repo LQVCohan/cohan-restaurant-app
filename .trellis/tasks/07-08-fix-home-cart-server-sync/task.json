@@ -1,0 +1,16 @@
+{
+  "id": "07-08-fix-home-cart-server-sync",
+  "title": "Fix homepage cart server sync false error",
+  "status": "in_progress",
+  "branch": "main",
+  "createdAt": "2026-07-08",
+  "scope": [
+    "src/components/Customer/Homepage_Client/components/DishGrid.jsx",
+    "src/components/Customer/Homepage_Client/components/DishGrid.comboCta.test.js"
+  ],
+  "validation": [
+    "targeted Vitest DishGrid regression test",
+    "npm run check:graphql",
+    "npm run build"
+  ]
+}

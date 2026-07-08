@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { message } from "antd";
@@ -187,7 +188,7 @@ export default function RestaurantCuisineOnboarding({ restaurant }) {
     }
   };
 
-  return (
+  return createPortal(
     <div className="cuisine-onboarding" role="presentation">
       <div
         ref={dialogRef}
@@ -290,6 +291,7 @@ export default function RestaurantCuisineOnboarding({ restaurant }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

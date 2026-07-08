@@ -481,7 +481,18 @@ export default function BrandManagement() {
   };
 
   const toggleMemberStatus = async (currentMember) => {
-    const nextStatus = currentMember.status === "active" ? "inactive" : "active";
+    const cancellingInvitation = currentMember.status === "invited";
+    if (
+      cancellingInvitation &&
+      !window.confirm("Hủy lời mời này? Liên kết trong email sẽ không còn hiệu lực.")
+    ) {
+      return;
+    }
+
+    const nextStatus =
+      currentMember.status === "active" || cancellingInvitation
+        ? "inactive"
+        : "active";
     setChangingMemberId(currentMember.id);
     try {
       await updateMember({
@@ -491,13 +502,20 @@ export default function BrandManagement() {
       });
       await refetchMembers?.();
       message.success(
-        nextStatus === "active"
-          ? "Đã kích hoạt thành viên"
-          : "Đã tạm ngưng thành viên",
+        cancellingInvitation
+          ? "Đã hủy lời mời"
+          : nextStatus === "active"
+            ? "Đã kích hoạt thành viên"
+            : "Đã tạm ngưng thành viên",
       );
     } catch (mutationError) {
       message.error(
-        getErrorMessage(mutationError, "Không thể đổi trạng thái thành viên."),
+        getErrorMessage(
+          mutationError,
+          cancellingInvitation
+            ? "Không thể hủy lời mời."
+            : "Không thể đổi trạng thái thành viên.",
+        ),
       );
     } finally {
       setChangingMemberId("");
@@ -1101,8 +1119,12 @@ export default function BrandManagement() {
                     restaurants,
                     selectedBrand.name,
                   );
-                  const statusLabel =
-                    MEMBER_STATUS_LABELS[currentMember.status] || "Không xác định";
+                  const cancelledInvitation =
+                    currentMember.status === "inactive" &&
+                    currentMember.revokedFromStatus === "invited";
+                  const statusLabel = cancelledInvitation
+                    ? "Lời mời đã hủy"
+                    : MEMBER_STATUS_LABELS[currentMember.status] || "Không xác định";
 
                   return (
                     <article className="brand-member-card" key={currentMember.id}>
@@ -1125,18 +1147,22 @@ export default function BrandManagement() {
                         >
                           {statusLabel}
                         </span>
-                        <button
-                          type="button"
-                          className="brand-link-button"
-                          onClick={() => toggleMemberStatus(currentMember)}
-                          disabled={changingMemberId === currentMember.id}
-                        >
-                          {changingMemberId === currentMember.id
-                            ? "Đang xử lý..."
-                            : currentMember.status === "active"
-                              ? "Tạm ngưng"
-                              : "Kích hoạt"}
-                        </button>
+                        {!cancelledInvitation && (
+                          <button
+                            type="button"
+                            className="brand-link-button"
+                            onClick={() => toggleMemberStatus(currentMember)}
+                            disabled={changingMemberId === currentMember.id}
+                          >
+                            {changingMemberId === currentMember.id
+                              ? "Đang xử lý..."
+                              : currentMember.status === "active"
+                                ? "Tạm ngưng"
+                                : currentMember.status === "invited"
+                                  ? "Hủy lời mời"
+                                  : "Kích hoạt"}
+                          </button>
+                        )}
                       </div>
                     </article>
                   );
