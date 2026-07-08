@@ -12,7 +12,7 @@
 
 - Keep `User.role` and `roleName` unchanged for portal and occupational routing.
 - Remove `restaurantForStaff` from the auth DTO used by login, refresh, and `me`.
-- Replace the split `me` and restaurant queries in `AuthProvider` with one authenticated session query that loads `me`, active `myBrandMemberships`, and `scopedRestaurants`.
+- Keep `me` as the identity/session validation query and add one authenticated business-context query that loads active `myBrandMemberships` and `scopedRestaurants`.
 - Expose active `brandMemberships` and membership-scoped `restaurants` through `AuthContext`.
 - Update Staff shell, Order, and Kitchen to read the first scoped restaurant instead of `user.restaurantForStaff` so the initial migration does not break operational routes.
 - Keep backend authorization on existing BrandMembership guards; do not reintroduce frontend-derived access.
