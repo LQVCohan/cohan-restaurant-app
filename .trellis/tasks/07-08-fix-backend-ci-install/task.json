@@ -3,7 +3,7 @@
   "name": "fix-backend-ci-install",
   "title": "Restore CI dependency installation after staff PR merge",
   "description": "Align the backend dependency manifest with its existing lockfile so frontend and backend CI jobs can reach their test steps.",
-  "status": "in_progress",
+  "status": "in_review",
   "dev_type": "ci",
   "scope": "backend-dependency-manifest",
   "package": "cohan-restaurant-backend",
@@ -16,7 +16,7 @@
   "base_branch": "main",
   "worktree_path": null,
   "commit": null,
-  "pr_url": null,
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1274",
   "subtasks": [],
   "children": [],
   "parent": null,
@@ -25,7 +25,7 @@
     "cohan-restaurant-backend/package-lock.json",
     ".github/workflows/ci.yml"
   ],
-  "notes": "Both CI jobs stop at backend npm ci before lint or tests because package.json declares mongoose-lean-virtuals ^0.8.0 while package-lock.json records ^2.0.0. Keep the existing lockfile and align the stale manifest entry.",
+  "notes": "Both CI jobs stopped at backend npm ci before lint or tests because package.json declared mongoose-lean-virtuals ^0.8.0 while package-lock.json records ^2.0.0. PR #1274 keeps the existing lockfile and aligns the stale manifest entry. CI is the runnable verification for npm ci and subsequent tests.",
   "meta": {
     "skills": ["ponytail"]
   }
