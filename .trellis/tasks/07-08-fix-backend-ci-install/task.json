@@ -29,7 +29,7 @@
     "src/utils/installTablePromotionSearch.js",
     "src/utils/installTablePromotionSearch.test.js"
   ],
-  "notes": "Backend manifest now matches the committed lockfile. Normalized search tests and AuthProvider logout behavior pass. Promotion search now maps Vietnamese đ to d after Unicode diacritic removal; the focused installTablePromotionSearch test passes. All temporary diagnostic workflows were removed from the final diff.",
+  "notes": "Backend manifest now matches the committed lockfile. Normalized search tests and AuthProvider logout behavior pass. Promotion search now maps Vietnamese đ to d after Unicode diacritic removal; the focused installTablePromotionSearch test passes. Vitest was not hung: it continued the remaining unit files before printing the final failure summary. All temporary diagnostic workflows were removed from the final diff.",
   "meta": {
     "skills": ["ponytail"]
   }
