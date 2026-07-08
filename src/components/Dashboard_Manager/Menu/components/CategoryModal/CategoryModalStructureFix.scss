@@ -42,14 +42,14 @@
   margin-left: auto;
 }
 
-.modern-category-modal .list-toolbar {
+.modern-category-modal .category-modal-content .list-toolbar {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) auto !important;
   gap: 12px !important;
   padding: 14px 18px !important;
 }
 
-.modern-category-modal .list-toolbar .search-box {
+.modern-category-modal .category-modal-content .list-toolbar .search-box {
   position: relative !important;
   display: flex !important;
   align-items: center !important;
@@ -68,7 +68,7 @@
     background 0.18s ease !important;
 }
 
-.modern-category-modal .list-toolbar .search-box:focus-within {
+.modern-category-modal .category-modal-content .list-toolbar .search-box:focus-within {
   border-color: rgba(31, 106, 96, 0.52) !important;
   background: #ffffff !important;
   box-shadow:
@@ -76,7 +76,7 @@
     0 10px 24px rgba(48, 72, 61, 0.08) !important;
 }
 
-.modern-category-modal .list-toolbar .search-box .search-icon {
+.modern-category-modal .category-modal-content .list-toolbar .search-box .search-icon {
   position: static !important;
   flex: 0 0 auto !important;
   transform: none !important;
@@ -84,7 +84,7 @@
   pointer-events: none;
 }
 
-.modern-category-modal .list-toolbar .search-box input {
+.modern-category-modal .category-modal-content .list-toolbar .search-box input {
   flex: 1 1 auto !important;
   width: auto !important;
   min-width: 0 !important;
@@ -100,16 +100,16 @@
   font-weight: 650 !important;
 }
 
-.modern-category-modal .list-toolbar .search-box input::-webkit-search-cancel-button {
+.modern-category-modal .category-modal-content .list-toolbar .search-box input::-webkit-search-cancel-button {
   display: none;
 }
 
-.modern-category-modal .list-toolbar .search-box input::placeholder {
+.modern-category-modal .category-modal-content .list-toolbar .search-box input::placeholder {
   color: #8b938f !important;
   font-weight: 550 !important;
 }
 
-.modern-category-modal .list-toolbar .search-clear {
+.modern-category-modal .category-modal-content .list-toolbar .search-clear {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -125,12 +125,12 @@
   transition: background 0.18s ease, color 0.18s ease;
 }
 
-.modern-category-modal .list-toolbar .search-clear:hover {
+.modern-category-modal .category-modal-content .list-toolbar .search-clear:hover {
   background: #dfeee7;
   color: #17554d;
 }
 
-.modern-category-modal .list-toolbar .search-clear:focus-visible,
+.modern-category-modal .category-modal-content .list-toolbar .search-clear:focus-visible,
 .modern-category-modal .btn-close-modal:focus-visible,
 .modern-category-modal .btn-back:focus-visible {
   outline: 3px solid rgba(31, 106, 96, 0.24) !important;
@@ -156,11 +156,11 @@
     height: min(76dvh, 680px);
   }
 
-  .modern-category-modal .list-toolbar {
+  .modern-category-modal .category-modal-content .list-toolbar {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
-  .modern-category-modal .list-toolbar .btn-primary {
+  .modern-category-modal .category-modal-content .list-toolbar .btn-primary {
     width: 100% !important;
   }
 
