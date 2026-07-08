@@ -293,6 +293,7 @@ async function payOrdersByTableId(parent, args, ctx, info) {
         .map(String),
     ),
   ].map(toId).filter(Boolean);
+  const invoiceId = result.invoice._id || result.invoice.id;
   const now = new Date();
 
   if (parentSessionIds.length) {
@@ -320,19 +321,21 @@ async function payOrdersByTableId(parent, args, ctx, info) {
     { _id: { $in: scope.tableIds }, restaurantId: scope.restaurantId },
     { $set: { status: "available" } },
   );
-  await Invoice.updateOne(
-    { _id: result.invoice._id, restaurantId: scope.restaurantId },
-    {
-      $set: {
-        tableCode: scope.table.code,
-        "meta.tableMerge": {
-          mergedTableId: String(scope.table._id),
-          mergedTableCode: scope.table.code,
-          sourceTableIds: scope.sourceIds.map(String),
+  if (invoiceId) {
+    await Invoice.updateOne(
+      { _id: invoiceId, restaurantId: scope.restaurantId },
+      {
+        $set: {
+          tableCode: scope.table.code,
+          "meta.tableMerge": {
+            mergedTableId: String(scope.table._id),
+            mergedTableCode: scope.table.code,
+            sourceTableIds: scope.sourceIds.map(String),
+          },
         },
       },
-    },
-  );
+    );
+  }
   result.invoice.tableCode = scope.table.code;
 
   await logEvent({
@@ -345,7 +348,7 @@ async function payOrdersByTableId(parent, args, ctx, info) {
       orderIds: orders.map((order) => String(order._id)),
       parentSessionIds: parentSessionIds.map(String),
       sourceTableIds: scope.sourceIds.map(String),
-      invoiceId: String(result.invoice._id),
+      invoiceId: invoiceId ? String(invoiceId) : null,
     },
     ip: ctx?.req?.ip,
     userAgent: ctx?.req?.headers?.["user-agent"],
