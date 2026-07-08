@@ -145,17 +145,22 @@ const formatNextOpening = (value) => {
   });
 };
 
+const normalizeAmenityLabel = (item) => {
+  const text = String(item || "").trim();
+  return CORE_AMENITY_LABELS[text] || text;
+};
+
 const normalizeAmenities = (value, extraAmenities = []) => {
   const items = [];
   if (Array.isArray(value)) {
-    items.push(...value.map((item) => String(item || "").trim()).filter(Boolean));
+    items.push(...value.map(normalizeAmenityLabel).filter(Boolean));
   } else if (value && typeof value === "object") {
     Object.entries(value).forEach(([key, enabled]) => {
-      if (enabled) items.push(CORE_AMENITY_LABELS[key] || key);
+      if (enabled) items.push(normalizeAmenityLabel(key));
     });
   }
   if (Array.isArray(extraAmenities)) {
-    items.push(...extraAmenities.map((item) => String(item || "").trim()).filter(Boolean));
+    items.push(...extraAmenities.map(normalizeAmenityLabel).filter(Boolean));
   }
   return [...new Set(items)];
 };
