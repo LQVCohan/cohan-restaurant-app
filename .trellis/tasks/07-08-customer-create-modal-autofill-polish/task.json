@@ -1,0 +1,35 @@
+{
+  "id": "07-08-customer-create-modal-autofill-polish",
+  "name": "customer-create-modal-autofill-polish",
+  "title": "Fix customer create modal autofill and polish",
+  "description": "Prevent manager credentials from being autofilled into the new-customer form and improve the modal hierarchy, accessibility, and responsive presentation.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-customer-create-modal",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "fix/customer-create-modal-autofill-polish",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1296",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Customer/AddCustomerModal.jsx",
+    "src/components/Dashboard_Manager/Customer/AddCustomerModal.scss",
+    "src/components/Dashboard_Manager/Customer/AddCustomerModal.test.jsx"
+  ],
+  "notes": "Flow traced from Customer discriminator and user GraphQL mutations through useUserManagement to AddCustomerModal. Backend contracts are correct; the defect is browser/password-manager autofill caused by missing form field metadata. The branch is based on the latest main and inherits the current auth and smoke-test fixes instead of duplicating them.",
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "taste-ui-redesign",
+      "redesign-existing-projects",
+      "react-ui-performance",
+      "web-design-guidelines",
+      "wcag-ui-audit"
+    ]
+  }
+}
