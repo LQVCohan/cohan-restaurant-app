@@ -1,0 +1,36 @@
+{
+  "id": "07-08-auth-brand-membership-context",
+  "name": "auth-brand-membership-context",
+  "title": "Load authenticated business scope from BrandMembership",
+  "description": "Stop exposing restaurantForStaff through auth/me and hydrate the authenticated frontend context from active BrandMembership and scopedRestaurants while preserving User.role for portal routing.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "auth-session-brand-scope",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "codex/auth-brand-membership-context",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/security/userDtos.js",
+    "src/context/AuthProvider.jsx",
+    "src/layouts/StaffLayout.jsx",
+    "src/components/Staff/StaffOrderingScoped.jsx",
+    "src/components/Staff/StaffKitchenPage.jsx",
+    "cohan-restaurant-backend/tests/resolvers/user-auth-me.test.js",
+    "src/context/__tests__/AuthProvider.test.jsx"
+  ],
+  "notes": "",
+  "meta": {
+    "skills": ["ponytail", "react-ui-performance"]
+  }
+}
