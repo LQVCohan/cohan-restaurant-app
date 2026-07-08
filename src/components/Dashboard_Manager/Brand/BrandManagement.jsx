@@ -304,11 +304,13 @@ export default function BrandManagement() {
   const rawCandidates = candidateSearchReady
     ? candidateData?.brandMemberCandidates || []
     : [];
-  const candidates = rawCandidates.filter((candidate) =>
-    isCandidateEligibleForRole(candidate, member.role),
-  );
-  const selectedCandidate = candidates.find(
+  const selectedCandidate = rawCandidates.find(
     (candidate) => String(candidate.id) === String(member.userId),
+  );
+  const candidates = rawCandidates.filter(
+    (candidate) =>
+      isCandidateEligibleForRole(candidate, member.role) ||
+      String(candidate.id) === String(member.userId),
   );
   const assignedManagerByRestaurant = useMemo(
     () => getAssignedManagerByRestaurant(members),
@@ -422,6 +424,12 @@ export default function BrandManagement() {
 
   const validateMember = () => {
     if (!member.userId.trim()) return "Chọn tài khoản cần thêm.";
+    if (
+      selectedCandidate &&
+      !isCandidateEligibleForRole(selectedCandidate, member.role)
+    ) {
+      return "Tài khoản đã chọn không phù hợp với vai trò này. Hãy chọn tài khoản nhân sự phù hợp.";
+    }
     if (member.role === "manager" && member.restaurantIds.length !== 1) {
       return "Quản lý chi nhánh phải phụ trách đúng một chi nhánh.";
     }
@@ -957,22 +965,11 @@ export default function BrandManagement() {
                     aria-label="Vai trò trong chuỗi"
                     value={member.role}
                     onChange={(event) => {
-                      const nextRole = event.target.value;
-                      setMember((current) => {
-                        const currentCandidate = rawCandidates.find(
-                          (candidate) => String(candidate.id) === String(current.userId),
-                        );
-
-                        return {
-                          ...current,
-                          role: nextRole,
-                          userId:
-                            currentCandidate && isCandidateEligibleForRole(currentCandidate, nextRole)
-                              ? current.userId
-                              : "",
-                          restaurantIds: [],
-                        };
-                      });
+                      setMember((current) => ({
+                        ...current,
+                        role: event.target.value,
+                        restaurantIds: [],
+                      }));
                       setMemberFormError("");
                     }}
                   >
