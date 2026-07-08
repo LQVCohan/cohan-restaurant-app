@@ -1,7 +1,6 @@
 import React from "react";
 import { LayoutGrid, List } from "lucide-react";
 import StorageGridPaginationBridge from "../../components/common/StorageGridPaginationBridge";
-import "./Tabs.scss";
 import "../../StorageExperiencePolish.css";
 import "../../StorageBackgroundUnify.css";
 import "../../StoragePremiumNine.css";
@@ -28,6 +27,7 @@ import "../../StorageRecipeModalSummaryHide.css";
 import "../../StorageRecipeModalPaletteBalance.css";
 import "../../StorageSageTone.scss";
 import "../../IngredientModalEnhancements.css";
+import "./Tabs.scss";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
   const supportsViewToggle = activeTab === "ingredients" || activeTab === "recipes";
