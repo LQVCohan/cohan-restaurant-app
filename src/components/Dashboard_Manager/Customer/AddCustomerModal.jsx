@@ -1,9 +1,27 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  LocateFixed,
+  ShieldCheck,
+  UserPlus,
+  Zap,
+} from "lucide-react";
 import Modal from "../../common/Modal";
 import useUserManagement from "../../../hooks/useUserManagement";
 import { useVnAddressLazy } from "../../../hooks/useVnAddressLazy";
 import { useNotification } from "../../../hooks/useNotification";
 import "./AddCustomerModal.scss";
+
+const CUSTOMER_FORM_ID = "add-customer-form";
+const NO_AUTOFILL_PROPS = {
+  autoComplete: "off",
+  "data-lpignore": "true",
+  "data-1p-ignore": "true",
+};
+const NEW_PASSWORD_PROPS = {
+  autoComplete: "new-password",
+  "data-lpignore": "true",
+  "data-1p-ignore": "true",
+};
 
 /* ===== Map VN label -> enum BE ===== */
 const VN_TO_ENUM = (v) => {
@@ -19,7 +37,7 @@ const normalizePhoneVN = (v) => {
   if (!v) return "";
   let s = String(v).replace(/\s+/g, "");
   s = s.replace(/^\+84/, "0");
-  if (/^84/.test(s)) s = "0" + s.slice(2);
+  if (/^84/.test(s)) s = `0${s.slice(2)}`;
   return s;
 };
 const isPhoneVN = (v) =>
@@ -53,38 +71,40 @@ async function reverseGeocodeOSM(lat, lng) {
 }
 
 /* ===== UI atoms ===== */
-const Input = ({ label, required = false, error, children, hint, icon }) => (
+const Input = ({ label, required = false, error, children, hint }) => (
   <label className={`acm-field ${error ? "acm-field--error" : ""}`}>
     <div className="acm-field__top">
       <span className="acm-field__label">
-        {icon ? <span className="acm-field__icon">{icon}</span> : null}
         {label}
         {required && <span className="acm-field__required">*</span>}
       </span>
       {hint ? <span className="acm-field__hint">{hint}</span> : null}
     </div>
     <div className="acm-field__input">{children}</div>
-    {error ? <div className="acm-field__error">{error}</div> : null}
+    {error ? (
+      <div className="acm-field__error" role="alert">
+        {error}
+      </div>
+    ) : null}
   </label>
 );
 
 const Section = ({ title, children, badge }) => (
-  <div className="acm-section">
+  <section className="acm-section">
     <div className="acm-section__header">
-      <h4 className="acm-section__title">{title}</h4>
+      <h3 className="acm-section__title">{title}</h3>
       {badge ? <span className="acm-section__badge">{badge}</span> : null}
     </div>
     <div className="acm-section__content">{children}</div>
-  </div>
+  </section>
 );
 
 const AddCustomerModal = ({ onClose, onCreated }) => {
   const { roleList, createUser, createGuest, creating, creatingGuest } =
-    useUserManagement(); // dùng đúng flags để disable nút
+    useUserManagement();
   const { showNotification } = useNotification();
   const submitting = creating || creatingGuest;
 
-  // role "customer" mặc định
   const defaultCustomerRoleId = useMemo(() => {
     const found =
       (roleList || []).find(
@@ -134,11 +154,11 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
     },
   });
 
-  const selectedWard = useMemo(() => {
-    return (
-      (wards || []).find((w) => String(w.code) === String(wardKey)) || null
-    );
-  }, [wards, wardKey]);
+  const selectedWard = useMemo(
+    () =>
+      (wards || []).find((w) => String(w.code) === String(wardKey)) || null,
+    [wards, wardKey],
+  );
 
   useEffect(() => {
     if (asGuest) return;
@@ -165,7 +185,15 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
     selectedProvince?.name,
   ]);
 
-  const onChange = (field, value) => setForm((f) => ({ ...f, [field]: value }));
+  const onChange = (field, value) =>
+    setForm((current) => ({ ...current, [field]: value }));
+
+  const handleModeChange = (nextAsGuest) => {
+    setAsGuest(nextAsGuest);
+    setErrors({});
+    setSubmitError("");
+  };
+
   const handleProvinceChange = (code) => {
     setProvince?.(code);
     setForm((prev) => ({
@@ -175,10 +203,12 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
       wardKey: "",
     }));
   };
+
   const handleDistrictChange = async (code) => {
     await setDistrict?.(code);
     setForm((prev) => ({ ...prev, districtKey: code, wardKey: "" }));
   };
+
   const handleWardChange = (code) => {
     setWard?.(code);
     setForm((prev) => ({ ...prev, wardKey: code }));
@@ -190,6 +220,7 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
       showNotification("Trình duyệt không hỗ trợ định vị.", "warning");
       return;
     }
+
     setLocating(true);
     try {
       const pos = await new Promise((resolve, reject) => {
@@ -207,9 +238,9 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
       let displayName = "";
       let addr = null;
       try {
-        const r = await reverseGeocodeOSM(lat, lng);
-        displayName = safeStr(r?.display_name);
-        addr = r?.address || null;
+        const result = await reverseGeocodeOSM(lat, lng);
+        displayName = safeStr(result?.display_name);
+        addr = result?.address || null;
       } catch {
         displayName = "";
         addr = null;
@@ -236,6 +267,7 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
           provinces.find((p) =>
             safeStr(p.name).toLowerCase().includes(provName),
           );
+
         if (foundProv?.code) {
           handleProvinceChange(String(foundProv.code));
           setTimeout(async () => {
@@ -249,6 +281,7 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
               (foundProv.districts || []).find((d) =>
                 safeStr(d.name).toLowerCase().includes(distName),
               );
+
             if (foundDist?.code) {
               await handleDistrictChange(String(foundDist.code));
               setTimeout(() => {
@@ -266,7 +299,9 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
                   (wards || []).find((w) =>
                     safeStr(w.name).toLowerCase().includes(wardName),
                   );
-                if (foundWard?.code) handleWardChange(String(foundWard.code));
+                if (foundWard?.code) {
+                  handleWardChange(String(foundWard.code));
+                }
               }, 160);
             }
           }, 160);
@@ -284,7 +319,7 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
   };
 
   const validate = () => {
-    const e = {};
+    const nextErrors = {};
     setSubmitError("");
 
     const fullName = (form.fullName || "").trim();
@@ -293,31 +328,37 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
     const pwd = form.password || "";
     const confirm = form.confirmPassword || "";
 
-    if (!fullName) e.fullName = "Vui lòng nhập họ tên";
+    if (!fullName) nextErrors.fullName = "Vui lòng nhập họ tên";
 
     if (asGuest) {
-      if (!phone) e.phone = "Vui lòng nhập số điện thoại";
-      else if (!isPhoneVN(phone)) e.phone = "Số điện thoại không hợp lệ";
+      if (!phone) nextErrors.phone = "Vui lòng nhập số điện thoại";
+      else if (!isPhoneVN(phone)) {
+        nextErrors.phone = "Số điện thoại không hợp lệ";
+      }
     } else {
-      if (!email && !phone)
-        e.contact = "Vui lòng nhập ít nhất Email hoặc Số điện thoại";
-      if (email && !isEmail(email)) e.email = "Email không hợp lệ";
-      if (phone && !isPhoneVN(phone)) e.phone = "Số điện thoại không hợp lệ";
-
-      if (!strongPassword(pwd))
-        e.password = "Mật khẩu tối thiểu 8 ký tự, gồm chữ và số";
-      if (pwd !== confirm) e.confirmPassword = "Mật khẩu nhập lại không khớp";
+      if (!email && !phone) {
+        nextErrors.contact = "Vui lòng nhập ít nhất email hoặc số điện thoại";
+      }
+      if (email && !isEmail(email)) nextErrors.email = "Email không hợp lệ";
+      if (phone && !isPhoneVN(phone)) {
+        nextErrors.phone = "Số điện thoại không hợp lệ";
+      }
+      if (!strongPassword(pwd)) {
+        nextErrors.password = "Mật khẩu tối thiểu 8 ký tự, gồm chữ và số";
+      }
+      if (pwd !== confirm) {
+        nextErrors.confirmPassword = "Mật khẩu nhập lại không khớp";
+      }
     }
 
-    setErrors(e);
-    return Object.keys(e).length === 0;
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleSubmit = async () => {
     if (submitting) return;
     if (!validate()) {
-      // vừa giữ alert inline, vừa bắn toast
-      const msg = "Vui lòng kiểm tra lại các trường bôi đỏ.";
+      const msg = "Vui lòng kiểm tra lại các trường được đánh dấu.";
       setSubmitError(msg);
       showNotification(msg, "warning");
       return;
@@ -330,18 +371,14 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
           phone: normalizePhoneVN(form.phone),
           expiresInDays: 30,
         });
-        let syncResult = null;
-        if (typeof onCreated === "function") {
-          syncResult = await onCreated();
-        }
-        if (syncResult?.visibleInCurrentList === false) {
-          showNotification(
-            "Tạo khách vãng lai thành công. Bản ghi mới không thuộc bộ lọc/tìm kiếm hiện tại.",
-            "success",
-          );
-        } else {
-          showNotification("Tạo khách vãng lai thành công.", "success");
-        }
+        const syncResult =
+          typeof onCreated === "function" ? await onCreated() : null;
+        showNotification(
+          syncResult?.visibleInCurrentList === false
+            ? "Tạo khách vãng lai thành công. Bản ghi mới không thuộc bộ lọc hiện tại."
+            : "Tạo khách vãng lai thành công.",
+          "success",
+        );
         onClose?.();
         return;
       }
@@ -371,40 +408,32 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
             : undefined,
       });
       const createdUser = created?.data?.createUser?.user || null;
-      let syncResult = null;
-      if (typeof onCreated === "function") {
-        syncResult = await onCreated(createdUser);
-      }
+      const syncResult =
+        typeof onCreated === "function" ? await onCreated(createdUser) : null;
 
-      if (syncResult?.visibleInCurrentList === false) {
-        showNotification(
-          "Tạo khách hàng thành công. Khách hàng mới không nằm trong bộ lọc/tìm kiếm hiện tại.",
-          "success",
-        );
-      } else {
-        showNotification("Tạo khách hàng thành công.", "success");
-      }
+      showNotification(
+        syncResult?.visibleInCurrentList === false
+          ? "Tạo khách hàng thành công. Khách hàng mới không nằm trong bộ lọc hiện tại."
+          : "Tạo khách hàng thành công.",
+        "success",
+      );
       onClose?.();
     } catch (err) {
-      // Ưu tiên thông điệp BE
-      const gErr = err?.graphQLErrors?.[0];
+      const graphError = err?.graphQLErrors?.[0];
       let msg =
-        gErr?.message ||
+        graphError?.message ||
         err?.message ||
-        "Không thể tạo khách hàng. Thử lại sau.";
-
-      // Chuẩn hóa 1 số tình huống thường gặp
-      const lower = (msg || "").toLowerCase();
+        "Không thể tạo khách hàng. Vui lòng thử lại.";
+      const lower = msg.toLowerCase();
       if (
         lower.includes("already in use") ||
         lower.includes("duplicate") ||
         lower.includes("exists")
       ) {
-        msg = "Email/Phone/Username already in use";
+        msg = "Email, số điện thoại hoặc tên đăng nhập đã được sử dụng.";
       }
-
-      setSubmitError(msg); // hiển thị trong modal
-      showNotification(msg, "error"); // bắn toast
+      setSubmitError(msg);
+      showNotification(msg, "error");
     }
   };
 
@@ -412,81 +441,130 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
     <Modal
       isOpen
       onClose={onClose}
-      title="➕ Thêm khách hàng"
+      title="Thêm khách hàng"
       size="lg"
       closeOnOverlayClick
       closeOnEscape
     >
-      <div className="add-customer-modal">
-        {/* Toggle kiểu tạo */}
-        <div className="acm-toggle">
+      <form
+        id={CUSTOMER_FORM_ID}
+        className="add-customer-modal"
+        autoComplete="off"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleSubmit();
+        }}
+      >
+        <div className="acm-intro">
+          <span className="acm-intro__icon" aria-hidden="true">
+            <UserPlus size={21} strokeWidth={2.1} />
+          </span>
+          <div className="acm-intro__copy">
+            <strong>Tạo hồ sơ khách hàng mới</strong>
+            <span>
+              Biểu mẫu luôn bắt đầu trống và không dùng lại thông tin tài khoản
+              quản trị đang đăng nhập.
+            </span>
+          </div>
+          <span className="acm-intro__status">
+            <ShieldCheck size={15} aria-hidden="true" />
+            Không tự điền
+          </span>
+        </div>
+
+        <div className="acm-toggle" role="group" aria-label="Kiểu khách hàng">
           <button
             type="button"
-            onClick={() => setAsGuest(false)}
+            onClick={() => handleModeChange(false)}
             className={`acm-toggle__btn ${!asGuest ? "is-active" : ""}`}
+            aria-pressed={!asGuest}
           >
-            📇 Tài khoản đầy đủ
+            <UserPlus size={17} aria-hidden="true" />
+            <span>
+              <strong>Tài khoản khách hàng</strong>
+              <small>Đầy đủ thông tin đăng nhập</small>
+            </span>
           </button>
           <button
             type="button"
-            onClick={() => setAsGuest(true)}
+            onClick={() => handleModeChange(true)}
             className={`acm-toggle__btn ${asGuest ? "is-active" : ""}`}
+            aria-pressed={asGuest}
           >
-            🟡 Guest nhanh
+            <Zap size={17} aria-hidden="true" />
+            <span>
+              <strong>Khách vãng lai</strong>
+              <small>Tạo nhanh bằng họ tên và SĐT</small>
+            </span>
           </button>
         </div>
 
-        {/* Error summary */}
-        {submitError && (
-          <div className="acm-alert acm-alert--error">
-            <span>⚠️ {submitError}</span>
+        {submitError ? (
+          <div className="acm-alert acm-alert--error" role="alert">
+            {submitError}
           </div>
-        )}
+        ) : null}
 
-        {/* Form */}
         {!asGuest ? (
           <>
             <Section title="Thông tin cơ bản" badge="Bắt buộc">
               <div className="acm-grid">
-                <Input
-                  label="Họ và tên"
-                  required
-                  error={errors.fullName}
-                  icon="👤"
-                >
+                <Input label="Họ và tên" required error={errors.fullName}>
                   <input
+                    {...NO_AUTOFILL_PROPS}
                     className="acm-input"
+                    name="new-customer-full-name"
                     placeholder="Nguyễn Văn A"
                     value={form.fullName}
-                    onChange={(e) => onChange("fullName", e.target.value)}
+                    required
+                    aria-invalid={Boolean(errors.fullName)}
+                    onChange={(event) =>
+                      onChange("fullName", event.target.value)
+                    }
                   />
                 </Input>
 
-                <Input label="Tên đăng nhập" icon="🏷️">
+                <Input label="Tên đăng nhập">
                   <input
+                    {...NO_AUTOFILL_PROPS}
                     className="acm-input"
+                    name="new-customer-username"
                     placeholder="an.nguyen"
                     value={form.username}
-                    onChange={(e) => onChange("username", e.target.value)}
+                    spellCheck={false}
+                    onChange={(event) =>
+                      onChange("username", event.target.value)
+                    }
                   />
                 </Input>
 
-                <Input label="Email" error={errors.email} icon="📧">
+                <Input label="Email" error={errors.email}>
                   <input
+                    {...NO_AUTOFILL_PROPS}
                     className="acm-input"
+                    name="new-customer-email"
                     type="email"
+                    inputMode="email"
                     placeholder="an.nguyen@email.com"
                     value={form.email}
-                    onChange={(e) => onChange("email", e.target.value)}
+                    spellCheck={false}
+                    aria-invalid={Boolean(errors.email)}
+                    onChange={(event) => onChange("email", event.target.value)}
                   />
                 </Input>
 
-                <Input label="Số điện thoại" error={errors.phone} icon="📱">
+                <Input label="Số điện thoại" error={errors.phone}>
                   <input
+                    {...NO_AUTOFILL_PROPS}
                     className="acm-input"
+                    name="new-customer-phone"
+                    type="tel"
+                    inputMode="tel"
                     placeholder="0901234567"
                     value={form.phone}
-                    onChange={(e) => onChange("phone", e.target.value)}
+                    aria-invalid={Boolean(errors.phone)}
+                    onChange={(event) => onChange("phone", event.target.value)}
                   />
                 </Input>
 
@@ -494,15 +572,21 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
                   label="Mật khẩu"
                   required
                   error={errors.password}
-                  icon="🔒"
                   hint="Tối thiểu 8 ký tự, gồm chữ và số"
                 >
                   <input
+                    {...NEW_PASSWORD_PROPS}
                     className="acm-input"
+                    name="new-customer-password"
                     type="password"
                     placeholder="••••••••"
                     value={form.password}
-                    onChange={(e) => onChange("password", e.target.value)}
+                    required
+                    spellCheck={false}
+                    aria-invalid={Boolean(errors.password)}
+                    onChange={(event) =>
+                      onChange("password", event.target.value)
+                    }
                   />
                 </Input>
 
@@ -510,40 +594,51 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
                   label="Nhập lại mật khẩu"
                   required
                   error={errors.confirmPassword}
-                  icon="✅"
                 >
                   <input
+                    {...NEW_PASSWORD_PROPS}
                     className="acm-input"
+                    name="new-customer-password-confirmation"
                     type="password"
                     placeholder="••••••••"
                     value={form.confirmPassword}
-                    onChange={(e) =>
-                      onChange("confirmPassword", e.target.value)
+                    required
+                    spellCheck={false}
+                    aria-invalid={Boolean(errors.confirmPassword)}
+                    onChange={(event) =>
+                      onChange("confirmPassword", event.target.value)
                     }
                   />
                 </Input>
 
-                {errors.contact && (
+                {errors.contact ? (
                   <div className="acm-col-2">
-                    <div className="acm-field__error acm-field__error--block">
+                    <div
+                      className="acm-field__error acm-field__error--block"
+                      role="alert"
+                    >
                       {errors.contact}
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
             </Section>
 
             <Section title="Phân loại khách hàng">
-              <div className="acm-grid">
-                <Input label="Loại khách hàng" icon="🎯">
+              <div className="acm-grid acm-grid--single">
+                <Input label="Loại khách hàng">
                   <select
+                    {...NO_AUTOFILL_PROPS}
                     className="acm-input"
+                    name="new-customer-type"
                     value={form.customerTypeVN}
-                    onChange={(e) => onChange("customerTypeVN", e.target.value)}
+                    onChange={(event) =>
+                      onChange("customerTypeVN", event.target.value)
+                    }
                   >
-                    <option value="Mới">🆕 Mới</option>
-                    <option value="Thường xuyên">🔥 Thường xuyên</option>
-                    <option value="VIP">⭐ VIP</option>
+                    <option value="Mới">Mới</option>
+                    <option value="Thường xuyên">Thường xuyên</option>
+                    <option value="VIP">VIP</option>
                   </select>
                 </Input>
               </div>
@@ -553,83 +648,102 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
               <div className="acm-grid">
                 <div className="acm-col-2">
                   <div className="acm-address-head">
-                    <span className="acm-address-title">Địa chỉ nhận diện</span>
+                    <div>
+                      <span className="acm-address-title">Địa chỉ nhận diện</span>
+                      <small>Không bắt buộc, có thể bổ sung sau.</small>
+                    </div>
                     <button
                       type="button"
                       className="acm-btn-locate"
                       onClick={handleGetCurrentAddress}
                       disabled={addressLoading || locating}
                     >
-                      {locating ? "Đang lấy..." : "Lấy địa chỉ hiện tại"}
+                      <LocateFixed size={15} aria-hidden="true" />
+                      {locating ? "Đang lấy địa chỉ..." : "Lấy địa chỉ hiện tại"}
                     </button>
                   </div>
                 </div>
 
-                <Input label="Tỉnh/Thành phố" icon="🏙️">
+                <Input label="Tỉnh/Thành phố">
                   <select
+                    {...NO_AUTOFILL_PROPS}
                     className="acm-input"
+                    name="new-customer-province"
                     value={provinceKey || ""}
-                    onChange={(e) => handleProvinceChange(e.target.value)}
+                    onChange={(event) =>
+                      handleProvinceChange(event.target.value)
+                    }
                     disabled={addressLoading}
                   >
                     <option value="">Chọn tỉnh/thành</option>
-                    {(provinces || []).map((p) => (
-                      <option key={p.code} value={p.code}>
-                        {p.name}
+                    {(provinces || []).map((province) => (
+                      <option key={province.code} value={province.code}>
+                        {province.name}
                       </option>
                     ))}
                   </select>
                 </Input>
 
-                <Input label="Quận/Huyện" icon="🏘️">
+                <Input label="Quận/Huyện">
                   <select
+                    {...NO_AUTOFILL_PROPS}
                     className="acm-input"
+                    name="new-customer-district"
                     value={districtKey || ""}
-                    onChange={(e) => handleDistrictChange(e.target.value)}
+                    onChange={(event) =>
+                      handleDistrictChange(event.target.value)
+                    }
                     disabled={!provinceKey || addressLoading}
                   >
                     <option value="">Chọn quận/huyện</option>
-                    {(districts || []).map((d) => (
-                      <option key={d.code} value={d.code}>
-                        {d.name}
+                    {(districts || []).map((district) => (
+                      <option key={district.code} value={district.code}>
+                        {district.name}
                       </option>
                     ))}
                   </select>
                 </Input>
 
-                <Input label="Phường/Xã" icon="🧭">
+                <Input label="Phường/Xã">
                   <select
+                    {...NO_AUTOFILL_PROPS}
                     className="acm-input"
+                    name="new-customer-ward"
                     value={wardKey || ""}
-                    onChange={(e) => handleWardChange(e.target.value)}
+                    onChange={(event) => handleWardChange(event.target.value)}
                     disabled={!districtKey || addressLoading}
                   >
                     <option value="">Chọn phường/xã</option>
-                    {(wards || []).map((w) => (
-                      <option key={w.code} value={w.code}>
-                        {w.name}
+                    {(wards || []).map((ward) => (
+                      <option key={ward.code} value={ward.code}>
+                        {ward.name}
                       </option>
                     ))}
                   </select>
                 </Input>
 
                 <div className="acm-col-2">
-                  <Input label="Chi tiết địa chỉ" icon="📍">
+                  <Input label="Chi tiết địa chỉ">
                     <input
+                      {...NO_AUTOFILL_PROPS}
                       className="acm-input"
+                      name="new-customer-address-detail"
                       placeholder="Số nhà, tên đường, tòa nhà..."
                       value={form.addressDetail}
-                      onChange={(e) =>
-                        onChange("addressDetail", e.target.value)
+                      onChange={(event) =>
+                        onChange("addressDetail", event.target.value)
                       }
                     />
                   </Input>
-                  <div className="acm-address-preview">
-                    <span>Địa chỉ hiển thị:</span>
-                    <strong>{previewAddress || "—"}</strong>
+                  <div className="acm-address-preview" aria-live="polite">
+                    <span>Địa chỉ hiển thị</span>
+                    <strong>{previewAddress || "Chưa có địa chỉ"}</strong>
                   </div>
                   {addressError ? (
-                    <div className="acm-field__error acm-field__error--block">
+                    <div
+                      className="acm-field__error acm-field__error--block"
+                      role="alert"
+                    >
                       {addressError}
                     </div>
                   ) : null}
@@ -638,48 +752,48 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
             </Section>
           </>
         ) : (
-          <>
-            <Section title="Guest nhanh" badge="Tối giản">
-              <div className="acm-grid">
-                <Input
-                  label="Họ và tên"
+          <Section title="Khách vãng lai" badge="Tạo nhanh">
+            <div className="acm-grid">
+              <Input label="Họ và tên" required error={errors.fullName}>
+                <input
+                  {...NO_AUTOFILL_PROPS}
+                  className="acm-input"
+                  name="new-guest-full-name"
+                  placeholder="Khách vãng lai"
+                  value={form.fullName}
                   required
-                  error={errors.fullName}
-                  icon="👤"
-                >
-                  <input
-                    className="acm-input"
-                    placeholder="Khách vãng lai"
-                    value={form.fullName}
-                    onChange={(e) => onChange("fullName", e.target.value)}
-                  />
-                </Input>
+                  aria-invalid={Boolean(errors.fullName)}
+                  onChange={(event) =>
+                    onChange("fullName", event.target.value)
+                  }
+                />
+              </Input>
 
-                <Input
-                  label="Số điện thoại"
+              <Input label="Số điện thoại" required error={errors.phone}>
+                <input
+                  {...NO_AUTOFILL_PROPS}
+                  className="acm-input"
+                  name="new-guest-phone"
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="0901234567"
+                  value={form.phone}
                   required
-                  error={errors.phone}
-                  icon="📱"
-                >
-                  <input
-                    className="acm-input"
-                    placeholder="090..."
-                    value={form.phone}
-                    onChange={(e) => onChange("phone", e.target.value)}
-                  />
-                </Input>
+                  aria-invalid={Boolean(errors.phone)}
+                  onChange={(event) => onChange("phone", event.target.value)}
+                />
+              </Input>
 
-                <div className="acm-col-2">
-                  <div className="acm-note">
-                    Tạo nhanh <b>Guest</b> chỉ cần họ tên &amp; SĐT. Tài khoản
-                    tự hết hạn sau 30 ngày (thiết lập tại BE).
-                  </div>
+              <div className="acm-col-2">
+                <div className="acm-note">
+                  Hồ sơ khách vãng lai chỉ lưu họ tên và số điện thoại, tự hết
+                  hạn sau 30 ngày theo cấu hình hiện tại.
                 </div>
               </div>
-            </Section>
-          </>
+            </div>
+          </Section>
         )}
-      </div>
+      </form>
 
       <Modal.Footer>
         <button
@@ -691,12 +805,16 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
           Hủy
         </button>
         <button
-          type="button"
+          type="submit"
+          form={CUSTOMER_FORM_ID}
           className="btn btn--primary"
-          onClick={handleSubmit}
           disabled={submitting}
         >
-          {asGuest ? "🟡 Tạo khách vãng lai" : "💾 Lưu khách hàng"}
+          {submitting
+            ? "Đang lưu..."
+            : asGuest
+              ? "Tạo khách vãng lai"
+              : "Lưu khách hàng"}
         </button>
       </Modal.Footer>
     </Modal>
