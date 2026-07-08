@@ -30,12 +30,11 @@ jobs:
         with:
           node-version: 22
 
-      - name: Apply focused patch
-        id: apply_patch
+      - name: Apply prepared patch prefix
         continue-on-error: true
         shell: bash
         run: |
-          python <<'PY' > /tmp/customer-promotion-patch.log 2>&1
+          python <<'PY'
           from pathlib import Path
 
           workflow = Path('.github/workflows/temp-customer-brand-promotion.yml').read_text(encoding='utf-8')
@@ -48,26 +47,170 @@ jobs:
           exec(compile(script, 'customer-promotion-patch.py', 'exec'))
           PY
 
-      - name: Upload patch diagnostics
-        if: steps.apply_patch.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: customer-promotion-patch-error
-          path: /tmp/customer-promotion-patch.log
-          if-no-files-found: error
+      - name: Complete remaining patch
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import json
+          import re
 
-      - name: Stop after patch failure
-        if: steps.apply_patch.outcome == 'failure'
-        run: exit 1
+          def read(path):
+              return Path(path).read_text(encoding="utf-8")
+
+          def write(path, content):
+              Path(path).write_text(content, encoding="utf-8")
+
+          def replace_once(path, old, new, label):
+              text = read(path)
+              if text.count(old) != 1:
+                  raise RuntimeError(f"{label}: expected one match, found {text.count(old)}")
+              write(path, text.replace(old, new, 1))
+
+          def sub_once(path, pattern, replacement, label, flags=0):
+              text = read(path)
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=flags)
+              if count != 1:
+                  raise RuntimeError(f"{label}: expected one match, found {count}")
+              write(path, updated)
+
+          invitation = "cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js"
+          sub_once(
+              invitation,
+              r'(        if \(!\["active", "pending"\]\.includes\(user\.status\)\) \{\n          throw forbidden\("Tài khoản đang bị khóa hoặc tạm ngưng\."\);\n        \}\n\n)(        if \(membership\.role === "manager"\) \{)',
+              r'''\1        const currentAccountRole = roleName(user);
+                  const promotesCustomer =
+                    user.userType === "CUSTOMER" && currentAccountRole === "customer";
+                  const isManagerAccount =
+                    user.userType === "MANAGER" && currentAccountRole === "manager";
+                  if (!promotesCustomer && !isManagerAccount) {
+                    throw bad(
+                      "Lời mời chỉ có thể được xác nhận bởi tài khoản Customer hoặc Manager hợp lệ.",
+                    );
+                  }
+
+          \2'''.replace("          ", ""),
+              "accept account validation",
+          )
+          sub_once(
+              invitation,
+              r'(        await user\.save\(\{ session \}\);\n\n)(        membership\.status = "active";)',
+              r'''\1        if (promotesCustomer) {
+                    await promoteCustomerAccountToManager({ userId: user._id, session });
+                  }
+
+          \2'''.replace("          ", ""),
+              "accept customer promotion",
+          )
+
+          brand_resolver = "cohan-restaurant-backend/graphql/resolvers/brand/index.js"
+          replace_once(
+              brand_resolver,
+              'userType: { $in: ["STAFF", "MANAGER", "HR", "ACCOUNTANT", "ADMIN"] },',
+              'userType: { $in: ["CUSTOMER", "STAFF", "MANAGER", "HR", "ACCOUNTANT", "ADMIN"] },',
+              "customer candidate query",
+          )
+
+          ui = "src/components/Dashboard_Manager/Brand/BrandManagement.jsx"
+          candidate_label = '''const getCandidateLabel = (candidate) => {
+            const name =
+              candidate?.fullName || candidate?.username || candidate?.email || "Tài khoản";
+            const identity = candidate?.email || candidate?.username || candidate?.id;
+            const source = String(candidate?.id || "").startsWith("invite:")
+              ? "Tài khoản mới"
+              : candidate?.userType === "CUSTOMER"
+                ? "Khách hàng hiện có"
+                : "Tài khoản quản lý";
+            return `${name} — ${identity} · ${source} · ID: ${candidate?.id}`;
+          };
+
+          const emptyBrandForm'''.replace("          ", "")
+          sub_once(
+              ui,
+              r'const getCandidateLabel = \(candidate\) => \{.*?\n\};\n\nconst emptyBrandForm',
+              candidate_label,
+              "candidate label",
+              re.DOTALL,
+          )
+          candidate_filter = '''  const rawCandidates = candidateSearchReady
+            ? candidateData?.brandMemberCandidates || []
+            : [];
+          const candidates = rawCandidates.filter((candidate) =>
+            member.role === "staff"
+              ? candidate.userType !== "CUSTOMER"
+              : ["CUSTOMER", "MANAGER"].includes(candidate.userType),
+          );
+          const selectedCandidate = candidates.find('''.replace("          ", "")
+          sub_once(
+              ui,
+              r'  const candidates = candidateSearchReady\n    \? candidateData\?\.brandMemberCandidates \|\| \[\]\n    : \[\];\n  const selectedCandidate = candidates\.find\(',
+              candidate_filter,
+              "candidate role filter",
+          )
+          replace_once(
+              ui,
+              '      message.success("Đã cập nhật thành viên trong chuỗi");',
+              '      message.success(\n        member.role === "staff"\n          ? "Đã cập nhật thành viên trong chuỗi"\n          : "Đã gửi lời mời tham gia chuỗi",\n      );',
+              "invitation success wording",
+          )
+          sub_once(
+              ui,
+              r'(                        role: event\.target\.value,\n)(                        restaurantIds: \[\],)',
+              r'\1                        userId: "",\n\2',
+              "clear selected candidate",
+          )
+          replace_once(
+              ui,
+              '{addingMember ? "Đang thêm..." : "Thêm thành viên"}',
+              '{addingMember\n                    ? member.role === "staff" ? "Đang thêm..." : "Đang gửi..."\n                    : member.role === "staff" ? "Thêm thành viên" : "Gửi lời mời"}',
+              "invite button wording",
+          )
+          notice = '''\1
+                    {selectedCandidate?.userType === "CUSTOMER" && member.role !== "staff" && (
+                      <div className="brand-scope-note">
+                        <strong>Tài khoản khách hàng hiện có</strong>
+                        <span>
+                          Quyền chỉ chuyển sang Manager sau khi người này xác nhận lời mời qua email.
+                        </span>
+                      </div>
+                    )}\2'''.replace("          ", "")
+          sub_once(
+              ui,
+              r'(\s+: "Không tìm thấy tài khoản chưa thuộc chuỗi\."\}\n\s+</small>\n\s+</label>)(\n\s+</div>)',
+              notice,
+              "customer promotion notice",
+          )
+
+          frontend_test = "src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx"
+          replace_once(frontend_test, '    userType: "STAFF",', '    userType: "MANAGER",', "manager test fixture")
+          write(frontend_test, read(frontend_test).replace('name: "Thêm thành viên"', 'name: "Gửi lời mời"'))
+
+          prd = ".trellis/tasks/brand-member-invitation-flow/prd.md"
+          replace_once(prd, "- Existing compatible manager-capable accounts can be invited.", "- Existing Manager accounts and public Customer accounts can be invited.", "prd account scope")
+          replace_once(prd, "- Accepting an invitation activates the membership and, for a new account, verifies email and sets the chosen password.", "- Accepting an invitation activates the membership; an existing Customer is promoted to global Manager only at that point, while a new account is verified and receives its chosen password.", "prd acceptance")
+          replace_once(prd, "5. New account supplies a password; existing account only confirms.\n6. Backend verifies token, activates membership, and activates/verifies a new account.", "5. New account supplies a password; an existing Customer or Manager confirms the invitation.\n6. Backend verifies the token, promotes an existing Customer to global Manager only after confirmation, then activates the membership and activates/verifies a new account.", "prd flow")
+          replace_once(prd, "- Reject Customer or operational staff accounts for Brand admin/manager invitations.", "- Allow Customer accounts for Brand admin/manager invitations but do not promote them before acceptance; reject operational Staff, HR, Accountant, and System Admin accounts.", "prd validation")
+          replace_once(prd, "- Customer/staff incompatibility and manager-scope conflicts remain blocked.", "- Existing Customer promotion occurs only on acceptance; operational-role incompatibility and manager-scope conflicts remain blocked.", "prd tests")
+
+          task_path = ".trellis/tasks/brand-member-invitation-flow/task.json"
+          task = json.loads(read(task_path))
+          for related in [
+              "cohan-restaurant-backend/graphql/resolvers/brand/index.js",
+              "src/components/Dashboard_Manager/Brand/BrandManagement.jsx",
+              "src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx",
+          ]:
+              if related not in task["relatedFiles"]:
+                  task["relatedFiles"].append(related)
+          task["notes"] = "Employee/staff account creation remains explicitly out of scope. Existing Customer accounts can receive Brand admin/manager invitations, but role and userType are changed atomically only after email acceptance. Customer-specific fields remain stored. Focused tests, GraphQL checks and frontend build must pass before commit. Repository CI may remain blocked by the pre-existing backend dependency lock mismatch."
+          write(task_path, json.dumps(task, ensure_ascii=False, indent=2) + "\n")
+          PY
 
       - name: Install dependencies without changing lockfiles
-        if: steps.apply_patch.outcome == 'success'
         run: |
           npm install --no-package-lock
           npm --prefix cohan-restaurant-backend install --no-package-lock
 
       - name: Validate focused flow
-        if: steps.apply_patch.outcome == 'success'
         run: |
           node --check cohan-restaurant-backend/graphql/resolvers/brand/memberRoleConsistency.js
           node --check cohan-restaurant-backend/graphql/resolvers/brand/invitationFlow.js
@@ -78,7 +221,6 @@ jobs:
           npm run build
 
       - name: Commit validated patch and remove temporary workflow
-        if: steps.apply_patch.outcome == 'success'
         shell: bash
         run: |
           rm .github/workflows/temp-customer-brand-promotion.yml
