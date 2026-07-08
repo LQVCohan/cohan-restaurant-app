@@ -3,8 +3,6 @@ import { BrandMembership, Role, User } from "../../../models/index.js";
 import {
   canManageBrand,
   getUserId,
-  isBrandOwner,
-  isSystemAdmin,
 } from "../../../src/services/auth/restaurantScope.service.js";
 
 const bad = (message) => new GraphQLError(message, {
@@ -16,12 +14,17 @@ const forbidden = (message) => new GraphQLError(message, {
 });
 
 const roleSlug = (role) =>
-  String(role?.slug || role?.name || "").trim().toLowerCase();
+  String(typeof role === "string" ? role : role?.slug || role?.name || "")
+    .trim()
+    .toLowerCase();
 
 const accountRoleOf = (user) => roleSlug(user?.role);
 const sameId = (left, right) =>
   Boolean(left && right && String(left) === String(right));
 const isSyntheticInviteId = (value) => String(value || "").startsWith("invite:");
+const isSystemAdminAccount = (user) =>
+  roleSlug(user?.roleName || user?.role) === "admin" ||
+  String(user?.userType || "").toUpperCase() === "ADMIN";
 
 async function loadAccount(userId, session = null) {
   const query = User.findById(userId)
@@ -36,6 +39,17 @@ async function loadMembership(id) {
     .lean();
 }
 
+async function isBrandOwnerAccount(user, brandId) {
+  if (isSystemAdminAccount(user)) return true;
+  const ownerMembership = await BrandMembership.findOne({
+    brandId,
+    userId: getUserId(user),
+    role: "owner",
+    status: "active",
+  }).select("_id").lean();
+  return Boolean(ownerMembership);
+}
+
 async function assertCanRevokeMembership(membership, ctx) {
   if (membership.role === "owner") {
     throw forbidden(
@@ -47,8 +61,7 @@ async function assertCanRevokeMembership(membership, ctx) {
   }
   if (
     membership.role === "admin" &&
-    !isSystemAdmin(ctx.user) &&
-    !await isBrandOwner(ctx.user, membership.brandId)
+    !await isBrandOwnerAccount(ctx.user, membership.brandId)
   ) {
     throw forbidden("Chỉ Chủ chuỗi mới có thể tháo quyền Quản trị chuỗi.");
   }
@@ -218,7 +231,6 @@ export function guardBrandMemberRoleMutations(mutations = {}) {
         input.status === "inactive" && membership.status !== "inactive";
       if (suspendsMembership) {
         await assertCanRevokeMembership(membership, ctx);
-        await mutations.updateBrandMember(root, { input }, ctx, info);
         return revokeMembership({
           membership,
           actorId: getUserId(ctx.user),
