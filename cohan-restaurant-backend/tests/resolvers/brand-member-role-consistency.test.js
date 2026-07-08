@@ -211,7 +211,7 @@ describe("brand member role consistency", () => {
         status: "active",
       }),
     );
-    modelMocks.BrandMembership.findOne.mockReturnValue(leanQuery(null));
+    modelMocks.BrandMembership.findOne.mockReturnValue(membershipQuery(null));
     const { guardBrandMemberRoleMutations } = await import(
       "../../graphql/resolvers/brand/memberRoleConsistency.js"
     );
