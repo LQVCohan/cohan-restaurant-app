@@ -16,7 +16,19 @@ export const MY_BRANDS_QUERY = gql`
       businessPhone
       ownerId
       restaurantCount
-      restaurants(limit: 100) { id name brandId avatar }
+      restaurants(limit: 100) {
+        id
+        name
+        brandId
+        avatar
+        initialSetup {
+          status
+          templateKey
+          templateVersion
+          completedAt
+          completedBy
+        }
+      }
     }
     myBrandMemberships {
       id

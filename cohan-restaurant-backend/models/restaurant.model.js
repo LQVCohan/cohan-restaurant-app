@@ -14,8 +14,6 @@ const addressSchema = new mongoose.Schema({
   lng: Number,
 });
 
-
-
 const locationSchema = new mongoose.Schema(
   {
     type: {
@@ -82,6 +80,18 @@ const reservationSettingsSchema = new mongoose.Schema({
   changeTableFee: { type: Number, default: 0, min: 0 },
   vatRate: { type: Number, default: 0, min: 0, max: 1 },
   serviceFee: { type: Number, default: 0, min: 0 },
+}, { _id: false });
+
+const restaurantInitialSetupSchema = new mongoose.Schema({
+  status: {
+    type: String,
+    enum: ["pending", "applying", "completed", "skipped"],
+    required: true,
+  },
+  templateKey: { type: String, default: null, trim: true },
+  templateVersion: { type: Number, default: null, min: 1 },
+  completedAt: { type: Date, default: null },
+  completedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
 }, { _id: false });
 
 const AI_CHATBOT_DEFAULT_WELCOME = "Xin chào, mình là trợ lý A.I của Cohan Restaurant App. Mình có thể hỗ trợ bạn về menu, đặt bàn, đơn hàng, coupon và hướng dẫn sử dụng hệ thống.";
@@ -162,6 +172,7 @@ const restaurantSchema = BaseSchemaModel({
   defaultCurrency: { type: String, enum: ["VND", "USD"], default: "VND" },
   manualUsdToVndRate: { type: Number, default: 26000, min: 1 },
   brandId: { type: mongoose.Schema.Types.ObjectId, ref: "Brand", index: true },
+  initialSetup: { type: restaurantInitialSetupSchema, default: undefined },
 });
 
 restaurantSchema.index({ status: 1, avgRating: -1 });
@@ -174,6 +185,13 @@ restaurantSchema.index({ cuisineType: 1 });
 restaurantSchema.index({ "address.lat": 1, "address.lng": 1 });
 restaurantSchema.index({ location: "2dsphere" });
 
+restaurantSchema.pre("validate", function initializeBrandRestaurantSetup(next) {
+  if (this.isNew && this.brandId && !this.initialSetup) {
+    this.initialSetup = { status: "pending" };
+    this.publicationStatus = "draft";
+  }
+  next();
+});
 
 restaurantSchema.pre("validate", function syncLocationFromAddress(next) {
   const lat = Number(this?.address?.lat);

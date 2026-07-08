@@ -1,0 +1,45 @@
+type RestaurantInitialSetup {
+  status: String!
+  templateKey: String
+  templateVersion: Int
+  completedAt: DateTime
+  completedBy: ID
+}
+
+type RestaurantCuisineTemplate {
+  key: String!
+  version: Int!
+  name: String!
+  cuisineType: String!
+  description: String!
+  ingredientCount: Int!
+  menuCount: Int!
+  menuItemCount: Int!
+  featuredItems: [String!]!
+}
+
+type RestaurantCuisineTemplateApplyResult {
+  success: Boolean!
+  restaurant: Restaurant!
+  ingredientCount: Int!
+  menuCount: Int!
+  menuItemCount: Int!
+  warnings: [String!]!
+}
+
+extend type Restaurant {
+  initialSetup: RestaurantInitialSetup
+}
+
+extend type Query {
+  restaurantCuisineTemplates: [RestaurantCuisineTemplate!]!
+}
+
+extend type Mutation {
+  applyRestaurantCuisineTemplate(
+    restaurantId: ID!
+    templateKey: String!
+  ): RestaurantCuisineTemplateApplyResult!
+
+  skipRestaurantCuisineSetup(restaurantId: ID!): Restaurant!
+}
