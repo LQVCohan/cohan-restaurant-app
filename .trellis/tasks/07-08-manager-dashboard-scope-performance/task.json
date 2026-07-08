@@ -15,7 +15,7 @@
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "a835bf5aca54942a39502ff434a128df24bcce5c",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -25,11 +25,10 @@
     "src/hooks/useBrandManagement.js",
     "src/hooks/useManagerRestaurantSelection.js",
     "src/hooks/useDashboard.js",
-    "src/components/Dashboard_Manager/Brand/BrandManagement.jsx",
     "src/hooks/useBrandManagement.scope.test.jsx",
     "src/hooks/useDashboard.test.jsx"
   ],
-  "notes": "BrandMembership and scopedRestaurants are already loaded by AuthProvider; manager selection should reuse that context instead of issuing MyBrands again.",
+  "notes": "Implementation is committed on main. Focused Vitest/build remain pending because this connector session has no checked-out repository/runtime and GitHub exposed no workflow run for the commit.",
   "meta": {
     "skills": ["ponytail", "react-ui-performance"]
   }
