@@ -317,7 +317,7 @@ describe("BrandManagement", () => {
     expect(refetchMembersMock).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps a compatible selected account when the role changes", async () => {
+  it("keeps a selected manager when changing to another compatible role", async () => {
     render(<BrandManagement />);
 
     fireEvent.change(
@@ -330,13 +330,13 @@ describe("BrandManagement", () => {
     fireEvent.change(accountSelect, { target: { value: "u-new-manager" } });
 
     fireEvent.change(screen.getByLabelText("Vai trò trong chuỗi"), {
-      target: { value: "staff" },
+      target: { value: "admin" },
     });
 
     expect(accountSelect).toHaveValue("u-new-manager");
   });
 
-  it("keeps an incompatible selected account visible and reports the role mismatch", async () => {
+  it("hides the staff role after selecting a Customer account", async () => {
     render(<BrandManagement />);
 
     fireEvent.change(
@@ -348,18 +348,12 @@ describe("BrandManagement", () => {
     await waitFor(() => expect(accountSelect).not.toBeDisabled());
     fireEvent.change(accountSelect, { target: { value: "u-customer" } });
 
-    fireEvent.change(screen.getByLabelText("Vai trò trong chuỗi"), {
-      target: { value: "staff" },
-    });
-
-    expect(accountSelect).toHaveValue("u-customer");
-    fireEvent.click(screen.getByRole("button", { name: "Thêm thành viên" }));
+    const roleSelect = screen.getByLabelText("Vai trò trong chuỗi");
+    expect(within(roleSelect).getByRole("option", { name: "Quản trị chuỗi" })).toBeInTheDocument();
+    expect(within(roleSelect).getByRole("option", { name: "Quản lý chi nhánh" })).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Tài khoản đã chọn không phù hợp với vai trò này. Hãy chọn tài khoản nhân sự phù hợp.",
-      ),
-    ).toBeInTheDocument();
-    expect(addMemberMock).not.toHaveBeenCalled();
+      within(roleSelect).queryByRole("option", { name: "Nhân viên chi nhánh" }),
+    ).not.toBeInTheDocument();
   });
 
 
