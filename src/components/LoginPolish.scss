@@ -115,36 +115,67 @@
     border-color: rgba(255, 102, 0, 0.22);
   }
 
-  .auth-form--register #register-password:not(:placeholder-shown) {
-    padding-bottom: 13px;
+  .password-field {
+    display: grid;
+    gap: 6px;
+    margin: 4px 0 8px;
+
+    .input-wrapper {
+      margin: 0;
+    }
   }
 
-  .auth-form--register .input-wrapper:has(#register-password:not(:placeholder-shown)) {
-    margin-bottom: 18px;
+  .password-strength {
+    display: grid;
+    gap: 6px;
+    min-height: 22px;
+    padding: 0 4px 2px;
+    color: rgba(117, 109, 98, 0.9);
+    font-size: 0.68rem;
+    font-weight: 800;
+    line-height: 1.3;
+  }
 
-    &::after {
-      content: "Gợi ý: dùng 8+ ký tự, có chữ hoa, số và ký tự đặc biệt";
-      position: absolute;
-      left: 4px;
-      right: 4px;
-      bottom: -16px;
-      color: #a16207;
-      font-size: 0.68rem;
-      font-weight: 800;
-      line-height: 1.2;
-    }
+  .password-strength__label {
+    text-wrap: pretty;
+  }
 
-    &::before {
-      content: "";
-      position: absolute;
-      left: 4px;
-      right: 4px;
-      bottom: -5px;
+  .password-strength__bars {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+
+    > span {
       height: 4px;
       border-radius: 999px;
-      background:
-        linear-gradient(90deg, #f97316 0 33%, #facc15 33% 66%, #22c55e 66% 100%);
-      opacity: 0.86;
+      background: rgba(117, 109, 98, 0.18);
+      transition:
+        background-color 180ms ease,
+        transform 180ms ease;
+    }
+  }
+
+  .password-strength--weak {
+    color: #b42318;
+
+    .password-strength__bars > .is-active {
+      background: #dc2626;
+    }
+  }
+
+  .password-strength--medium {
+    color: #9a5b07;
+
+    .password-strength__bars > .is-active {
+      background: #d97706;
+    }
+  }
+
+  .password-strength--strong {
+    color: #137a3d;
+
+    .password-strength__bars > .is-active {
+      background: #16a34a;
     }
   }
 
@@ -303,6 +334,10 @@
     .food-float,
     button.btn-primary:disabled::after {
       animation: none !important;
+    }
+
+    .password-strength__bars > span {
+      transition: none;
     }
   }
 }
