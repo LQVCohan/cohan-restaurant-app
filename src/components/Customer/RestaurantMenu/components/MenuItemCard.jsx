@@ -4,23 +4,27 @@ import { formatCurrency } from "../../../../utils/formatters";
 import { canCustomerOrderMenuItem, getMenuItemAvailability } from "../../../../utils/menuItemAvailability";
 import "../styles/MenuItemCard.scss";
 
-const MENU_ITEM_PLACEHOLDER = "https://placehold.co/720x480/f5eadb/9a4f08?text=Cohan+Food";
+const MENU_ITEM_PLACEHOLDER = "/default-dishes.jpg";
 
 const MenuItemCard = ({ item, onClick, disabled = false }) => {
   const foodPreferenceMeta = item?.foodPreferenceMeta;
   const availability = getMenuItemAvailability(item);
   const isOrderable = canCustomerOrderMenuItem(item) && !disabled;
   const imageSrc = item?.thumbImage || MENU_ITEM_PLACEHOLDER;
+  const variantPrices = (item?.servingVariants || [])
+    .map((variant) => Number(variant?.price))
+    .filter(Number.isFinite);
+  const displayPrice = variantPrices.length
+    ? Math.min(...variantPrices)
+    : Number(item?.basePrice || 0);
+  const hasPriceRange = variantPrices.length > 1 && new Set(variantPrices).size > 1;
 
   const handleImageError = (event) => {
     event.currentTarget.onerror = null;
     event.currentTarget.src = MENU_ITEM_PLACEHOLDER;
   };
 
-  const handleOpen = () => {
-    if (!isOrderable) return;
-    onClick(item);
-  };
+  const handleOpen = () => onClick?.(item);
 
   const handleKeyDown = (event) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -35,9 +39,8 @@ const MenuItemCard = ({ item, onClick, disabled = false }) => {
       onClick={handleOpen}
       onKeyDown={handleKeyDown}
       role="button"
-      tabIndex={isOrderable ? 0 : -1}
-      aria-disabled={!isOrderable}
-      aria-label={`Xem chi tiết ${item.name}`}
+      tabIndex={0}
+      aria-label={`Xem chi tiết ${item.name}${isOrderable ? "" : `, ${availability.label.toLowerCase()}`}`}
     >
       <div className="thumb">
         <img
@@ -76,18 +79,20 @@ const MenuItemCard = ({ item, onClick, disabled = false }) => {
             ✨ Phù hợp khẩu vị
           </div>
         ) : null}
-        <p title={item.description}>{item.description}</p>
+        <p title={item.description}>{item.description || "Thông tin món đang được cập nhật."}</p>
         {item.servingVariants?.length > 0 && (
           <div className="variants">
-            {item.servingVariants.map((v, i) => (
-              <span key={i}>{v.name}</span>
+            {item.servingVariants.map((variant) => (
+              <span key={variant.key || variant.name}>{variant.name}</span>
             ))}
           </div>
         )}
         <div className="bottom">
-          <span className="price">{formatCurrency(item.basePrice)}</span>
+          <span className="price">
+            {hasPriceRange ? "Từ " : ""}{formatCurrency(displayPrice)}
+          </span>
           <span className="add-btn" aria-hidden="true">
-            Xem
+            Xem chi tiết
           </span>
         </div>
       </div>
