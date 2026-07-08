@@ -81,7 +81,7 @@ describe("TableActionsModal customer snapshot", () => {
       tableId: table.id,
       tableCode: table.code,
       customerName: "Toàn",
-      customerPhone: "090080909",
+      customerPhone: "0900809090",
       customerEmail: "toan@cohan.local",
       note: "Khách cần ghế gần cửa sổ",
       partySize: 3,
@@ -148,7 +148,7 @@ describe("TableActionsModal customer snapshot", () => {
     );
 
     expect(await screen.findByLabelText("Tên khách")).toHaveValue("Toàn");
-    expect(screen.getByLabelText("Số điện thoại")).toHaveValue("090080909");
+    expect(screen.getByLabelText("Số điện thoại")).toHaveValue("0900809090");
     expect(screen.getByLabelText("Email")).toHaveValue("toan@cohan.local");
     expect(screen.getByLabelText("Số khách")).toHaveValue(3);
     expect(screen.getByLabelText("Ngày đặt")).toHaveValue("2026-08-07");
@@ -186,7 +186,7 @@ describe("TableActionsModal customer snapshot", () => {
         tableId: table.id,
         tableCode: table.code,
         customerName: "Toàn",
-        customerPhone: "090080909",
+        customerPhone: "0900809090",
         customerEmail: "toan@cohan.local",
         partySize: 3,
         note: "Cập nhật ghi chú",
