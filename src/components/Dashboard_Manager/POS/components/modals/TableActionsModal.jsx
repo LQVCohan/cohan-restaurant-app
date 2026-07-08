@@ -30,6 +30,7 @@ const Q_TABLE_CUSTOMER = gql`
       customerEmail
       note
       partySize
+      timeFrom
       timeTo
       createdAt
       updatedAt
@@ -48,6 +49,7 @@ const UPSERT_TABLE_CUSTOMER = gql`
       customerEmail
       note
       partySize
+      timeFrom
       timeTo
     }
   }
@@ -214,6 +216,7 @@ function TableActionsModalCore({
   }, [fetchOrderByTable]);
 
   const hydratedReservationFor = useRef(null);
+  const activeReservationRecordRef = useRef(null);
   const hydratedOrderFor = useRef(null);
   const hydratedTableCustomerFor = useRef(null);
   const loadedTableCustomerFor = useRef(null);
@@ -235,6 +238,8 @@ function TableActionsModalCore({
         table.status === "available" || table.status === "reserved"
       );
       setOrderCodeForTable(null);
+      setActiveReservation(null);
+      activeReservationRecordRef.current = null;
       setSelectedCustomer(null);
       setPhoneSuggestions([]);
       setEmailSuggestions([]);
@@ -403,16 +408,26 @@ function TableActionsModalCore({
             tableId: table.id,
           });
           const r = res?.data ?? res?.reservation ?? res?.result ?? res ?? null;
+          activeReservationRecordRef.current = r || null;
           setActiveReservation(r || null);
           if (r && !cancelled) {
-            const { date, time } = isoToDateTimeParts(r.timeTo);
+            const start = isoToDateTimeParts(r.timeTo);
+            const durationMinutes = Math.max(0, Number(r.durationMinutes) || 0);
+            const startDate = r.timeTo ? new Date(r.timeTo) : null;
+            const end =
+              startDate && !Number.isNaN(startDate.getTime()) && durationMinutes
+                ? isoToDateTimeParts(
+                    new Date(startDate.getTime() + durationMinutes * 60000).toISOString()
+                  )
+                : { date: "", time: "" };
             const nextCust = {
               name: r.customerName ?? r.name ?? "",
               phone: r.customerPhone ?? r.phone ?? "",
               email: r.customerEmail ?? r.email ?? "",
               guests: Number(r.partySize || 0),
-              checkinDate: date || getTodayLocal(),
-              checkinTime: time || "",
+              checkinDate: start.date || getTodayLocal(),
+              checkinTime: start.time || "",
+              checkinTimeTo: end.time || "",
               note: r.note ?? "",
             };
             setCustIfChanged(nextCust);
@@ -503,17 +518,25 @@ function TableActionsModalCore({
   useEffect(() => {
     if (!reallyOpen || !table?.id || !matchedTableCustomer) return;
     if (hydratedTableCustomerFor.current === table.id) return;
-    if (table?.status === "reserved") return;
+    if (
+      table?.status === "reserved" &&
+      hydratedReservationFor.current !== table.id
+    ) {
+      return;
+    }
+    if (activeReservationRecordRef.current) return;
     if (table?.status === "occupied" && orderCodeForTable) return;
 
-    const { date, time } = isoToDateTimeParts(matchedTableCustomer.timeTo);
+    const from = isoToDateTimeParts(matchedTableCustomer.timeFrom);
+    const to = isoToDateTimeParts(matchedTableCustomer.timeTo);
     const nextCust = {
       name: matchedTableCustomer.customerName ?? "",
       phone: matchedTableCustomer.customerPhone ?? "",
       email: matchedTableCustomer.customerEmail ?? "",
       guests: Number(matchedTableCustomer.partySize || 0),
-      checkinDate: date || getTodayLocal(),
-      checkinTimeTo: time || "",
+      checkinDate: from.date || to.date || getTodayLocal(),
+      checkinTime: from.time || "",
+      checkinTimeTo: to.time || "",
       note: matchedTableCustomer.note ?? "",
     };
     setCustIfChanged(nextCust);
@@ -849,6 +872,10 @@ function TableActionsModalCore({
 
   const buildTableCustomerInput = (opts = {}) => {
     const identity = resolveCustomerIdentity();
+    const timeFrom =
+      useTimeslot && cust.checkinDate && cust.checkinTime
+        ? combineDateTimeToISO(cust.checkinDate, cust.checkinTime)
+        : null;
     const timeTo =
       useTimeslot && cust.checkinDate && cust.checkinTimeTo
         ? combineDateTimeToISO(cust.checkinDate, cust.checkinTimeTo)
@@ -862,6 +889,7 @@ function TableActionsModalCore({
       customerEmail: identity.email ? identity.email.toLowerCase() : null,
       note: cust.note || null,
       partySize: Number(cust.guests || 0) || null,
+      timeFrom,
       timeTo,
     };
   };
@@ -921,7 +949,7 @@ function TableActionsModalCore({
         baselineCustRef.current = buildCustSnapshot(cust);
         if (res?.success) {
           showNotification?.("Đã cập nhật đơn hàng.", "success");
-          onUpdated?.();
+          await onUpdated?.();
         } else {
           showNotification?.("Lỗi cập nhật đơn hàng.", "error");
         }
@@ -973,6 +1001,7 @@ function TableActionsModalCore({
       }
       await persistTableCustomer();
       baselineCustRef.current = buildCustSnapshot(cust);
+      await onUpdated?.();
       showNotification?.("Đã lưu thông tin khách.", "success");
     } catch (e) {
       console.error(e);
@@ -1203,135 +1232,173 @@ function TableActionsModalCore({
             )}
           </div>
 
-          <div className={s.group}>
-            <div className={s.label}>Khách hàng & Đặt bàn</div>
-            <div className={s.twoCols}>
-              <input
-                className={s.input}
-                value={cust.name}
-                onChange={(e) => {
-                  setSelectedCustomer(null);
-                  setCust({ ...cust, name: e.target.value });
-                }}
-                placeholder="Tên khách"
-              />
-              <div className={s.inputGroup}>
-                <input
-                  className={s.input}
-                  value={cust.phone}
-                  onChange={(e) => {
-                    setSelectedCustomer(null);
-                    setCust({ ...cust, phone: e.target.value });
-                  }}
-                  onFocus={handlePhoneFocus}
-                  onBlur={handlePhoneBlur}
-                  placeholder="Số điện thoại"
-                />
-                {phoneSuggestionsOpen &&
-                  (phoneSuggestionsLoading ||
-                    phoneSuggestions.length > 0) && (
-                    <div className={s.suggestions}>
-                      {phoneSuggestionsLoading && (
-                        <div className={s.suggestionEmpty}>
-                          Đang tìm kiếm...
-                        </div>
-                      )}
-                      {!phoneSuggestionsLoading &&
-                        phoneSuggestions.map((c) => (
-                          <button
-                            key={`phone-${c.id || c.phone}`}
-                            type="button"
-                            className={s.suggestionItem}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              applyCustomerSuggestion(c);
-                            }}
-                          >
-                            <span className={s.suggestionName}>
-                              {c.name || "Khách hàng"}
-                            </span>
-                            <span className={s.suggestionMeta}>
-                              {c.phone}
-                              {c.email ? ` · ${c.email}` : ""}
-                            </span>
-                          </button>
-                        ))}
-                    </div>
-                  )}
-              </div>
-
-              <div className={s.inputGroup}>
-                <input
-                  className={s.input}
-                  value={cust.email}
-                  onChange={(e) => {
-                    setSelectedCustomer(null);
-                    setCust({ ...cust, email: e.target.value });
-                  }}
-                  onFocus={handleEmailFocus}
-                  onBlur={handleEmailBlur}
-                  placeholder="Email"
-                />
-                {emailSuggestionsOpen &&
-                  (emailSuggestionsLoading ||
-                    emailSuggestions.length > 0) && (
-                    <div className={s.suggestions}>
-                      {emailSuggestionsLoading && (
-                        <div className={s.suggestionEmpty}>
-                          Đang tìm kiếm...
-                        </div>
-                      )}
-                      {!emailSuggestionsLoading &&
-                        emailSuggestions.map((c) => (
-                          <button
-                            key={`email-${c.id || c.email}`}
-                            type="button"
-                            className={s.suggestionItem}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              applyCustomerSuggestion(c);
-                            }}
-                          >
-                            <span className={s.suggestionName}>
-                              {c.name || "Khách hàng"}
-                            </span>
-                            <span className={s.suggestionMeta}>
-                              {c.email}
-                              {c.phone ? ` · ${c.phone}` : ""}
-                            </span>
-                          </button>
-                        ))}
-                    </div>
-                  )}
-              </div>
-
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "1rem" }}
-              >
-                <div className={s.stepper}>
-                  <button className={s.btnIcon} onClick={() => incGuests(-1)}>
-                    −
-                  </button>
-                  <input
-                    className={s.inputCenter}
-                    type="number"
-                    value={cust.guests}
-                    onChange={(e) =>
-                      setCust({ ...cust, guests: Number(e.target.value) })
-                    }
-                  />
-                  <button className={s.btnIcon} onClick={() => incGuests(1)}>
-                    +
-                  </button>
+          <div className={`${s.group} ${s.customerGroup}`}>
+            <div className={s.customerHeader}>
+              <div>
+                <div className={s.label}>Khách hàng & đặt bàn</div>
+                <div className={s.customerIntro}>
+                  Lưu thông tin người đại diện và thời gian sử dụng bàn.
                 </div>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    fontSize: "0.9rem",
+              </div>
+              <span className={s.capacityBadge}>
+                Tối đa {Number(table.capacity || 0)} khách
+              </span>
+            </div>
+            <div className={`${s.twoCols} ${s.customerGrid}`}>
+              <label className={s.field}>
+                <span className={s.fieldLabel}>Tên khách</span>
+                <input
+                  className={s.input}
+                  aria-label="Tên khách"
+                  value={cust.name}
+                  onChange={(e) => {
+                    setSelectedCustomer(null);
+                    setCust({ ...cust, name: e.target.value });
                   }}
-                >
+                  placeholder="Nhập tên người đại diện"
+                />
+              </label>
+              <div className={s.field}>
+                <label className={s.fieldLabel} htmlFor={`table-phone-${table.id}`}>
+                  Số điện thoại
+                </label>
+                <div className={s.inputGroup}>
+                  <input
+                    id={`table-phone-${table.id}`}
+                    className={s.input}
+                    value={cust.phone}
+                    onChange={(e) => {
+                      setSelectedCustomer(null);
+                      setCust({ ...cust, phone: e.target.value });
+                    }}
+                    onFocus={handlePhoneFocus}
+                    onBlur={handlePhoneBlur}
+                    placeholder="Ví dụ: 0908 123 456"
+                  />
+                  {phoneSuggestionsOpen &&
+                    (phoneSuggestionsLoading ||
+                      phoneSuggestions.length > 0) && (
+                      <div className={s.suggestions}>
+                        {phoneSuggestionsLoading && (
+                          <div className={s.suggestionEmpty}>
+                            Đang tìm kiếm...
+                          </div>
+                        )}
+                        {!phoneSuggestionsLoading &&
+                          phoneSuggestions.map((c) => (
+                            <button
+                              key={`phone-${c.id || c.phone}`}
+                              type="button"
+                              className={s.suggestionItem}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                applyCustomerSuggestion(c);
+                              }}
+                            >
+                              <span className={s.suggestionName}>
+                                {c.name || "Khách hàng"}
+                              </span>
+                              <span className={s.suggestionMeta}>
+                                {c.phone}
+                                {c.email ? ` · ${c.email}` : ""}
+                              </span>
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                </div>
+              </div>
+
+              <div className={s.field}>
+                <label className={s.fieldLabel} htmlFor={`table-email-${table.id}`}>
+                  Email
+                </label>
+                <div className={s.inputGroup}>
+                  <input
+                    id={`table-email-${table.id}`}
+                    className={s.input}
+                    value={cust.email}
+                    onChange={(e) => {
+                      setSelectedCustomer(null);
+                      setCust({ ...cust, email: e.target.value });
+                    }}
+                    onFocus={handleEmailFocus}
+                    onBlur={handleEmailBlur}
+                    placeholder="Email khách nếu có"
+                  />
+                  {emailSuggestionsOpen &&
+                    (emailSuggestionsLoading ||
+                      emailSuggestions.length > 0) && (
+                      <div className={s.suggestions}>
+                        {emailSuggestionsLoading && (
+                          <div className={s.suggestionEmpty}>
+                            Đang tìm kiếm...
+                          </div>
+                        )}
+                        {!emailSuggestionsLoading &&
+                          emailSuggestions.map((c) => (
+                            <button
+                              key={`email-${c.id || c.email}`}
+                              type="button"
+                              className={s.suggestionItem}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                applyCustomerSuggestion(c);
+                              }}
+                            >
+                              <span className={s.suggestionName}>
+                                {c.name || "Khách hàng"}
+                              </span>
+                              <span className={s.suggestionMeta}>
+                                {c.email}
+                                {c.phone ? ` · ${c.phone}` : ""}
+                              </span>
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                </div>
+              </div>
+
+              <div className={`${s.guestScheduleRow} ${s.spanFull}`}>
+                <div className={s.guestControl}>
+                  <div className={s.guestMeta}>
+                    <span className={s.fieldLabel}>Số khách</span>
+                    <span className={s.fieldHint}>
+                      Sức chứa bàn: {Number(table.capacity || 0)}
+                    </span>
+                  </div>
+                  <div className={s.stepper}>
+                    <button
+                      type="button"
+                      className={s.btnIcon}
+                      aria-label="Giảm số khách"
+                      onClick={() => incGuests(-1)}
+                    >
+                      −
+                    </button>
+                    <input
+                      className={s.inputCenter}
+                      aria-label="Số khách"
+                      type="number"
+                      min="0"
+                      max={Number(table.capacity || 0) || undefined}
+                      value={cust.guests}
+                      onChange={(e) =>
+                        setCust({ ...cust, guests: Number(e.target.value) })
+                      }
+                    />
+                    <button
+                      type="button"
+                      className={s.btnIcon}
+                      aria-label="Tăng số khách"
+                      onClick={() => incGuests(1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                <label className={s.scheduleToggle}>
                   <input
                     type="checkbox"
                     checked={useTimeslot}
@@ -1339,87 +1406,104 @@ function TableActionsModalCore({
                     disabled={
                       !(status === "available" || status === "reserved")
                     }
-                  />{" "}
-                  Đặt lịch
+                  />
+                  <span>
+                    <strong>Đặt lịch</strong>
+                    <small>Lưu ngày và khung giờ giữ bàn</small>
+                  </span>
                 </label>
               </div>
 
               {useTimeslot &&
                 (status === "available" || status === "reserved") && (
-                  <>
-                    <input
-                      className={s.input}
-                      type="date"
-                      min={todayStr}
-                      value={cust.checkinDate}
-                      onChange={(e) =>
-                        setCust({ ...cust, checkinDate: e.target.value })
-                      }
-                    />
-                    <select
-                      className={s.select}
-                      value={cust.checkinTime}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setCust((prev) => ({
-                          ...prev,
-                          checkinTime: v,
-                          // ✅ nếu giờ đến đang <= giờ vào thì reset để user chọn lại
-                          checkinTimeTo: calcDurationMinutes(
-                            v,
-                            prev.checkinTimeTo
-                          )
-                            ? prev.checkinTimeTo
-                            : "",
-                        }));
-                      }}
-                    >
-                      <option value="" disabled>
-                        Vào lúc --:--
-                      </option>
-                      {(cust.checkinDate
-                        ? visibleTimeSlots(cust.checkinDate)
-                        : buildTimeSlots
-                      ).map((t) => (
-                        <option key={t} value={t}>
-                          {t}
+                  <div className={`${s.scheduleGrid} ${s.spanFull}`}>
+                    <label className={s.field}>
+                      <span className={s.fieldLabel}>Ngày đặt</span>
+                      <input
+                        className={s.input}
+                        aria-label="Ngày đặt"
+                        type="date"
+                        min={todayStr}
+                        value={cust.checkinDate}
+                        onChange={(e) =>
+                          setCust({ ...cust, checkinDate: e.target.value })
+                        }
+                      />
+                    </label>
+                    <label className={s.field}>
+                      <span className={s.fieldLabel}>Giờ vào</span>
+                      <select
+                        className={s.select}
+                        aria-label="Giờ vào"
+                        value={cust.checkinTime}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setCust((prev) => ({
+                            ...prev,
+                            checkinTime: v,
+                            // ✅ nếu giờ đến đang <= giờ vào thì reset để user chọn lại
+                            checkinTimeTo: calcDurationMinutes(
+                              v,
+                              prev.checkinTimeTo
+                            )
+                              ? prev.checkinTimeTo
+                              : "",
+                          }));
+                        }}
+                      >
+                        <option value="" disabled>
+                          Chọn giờ vào
                         </option>
-                      ))}
-                    </select>
-
-                    <select
-                      className={s.select}
-                      value={cust.checkinTimeTo}
-                      onChange={(e) =>
-                        setCust({ ...cust, checkinTimeTo: e.target.value })
-                      }
-                      disabled={!cust.checkinTime}
-                    >
-                      <option value="" disabled>
-                        Đến --:--
-                      </option>
-                      {(cust.checkinDate
-                        ? visibleTimeSlots(cust.checkinDate)
-                        : buildTimeSlots
-                      )
-                        // ✅ chỉ show giờ "đến" > giờ "vào"
-                        .filter((t) => calcDurationMinutes(cust.checkinTime, t))
-                        .map((t) => (
+                        {(cust.checkinDate
+                          ? visibleTimeSlots(cust.checkinDate)
+                          : buildTimeSlots
+                        ).map((t) => (
                           <option key={t} value={t}>
                             {t}
                           </option>
                         ))}
-                    </select>
-                  </>
+                      </select>
+                    </label>
+
+                    <label className={s.field}>
+                      <span className={s.fieldLabel}>Giờ đến</span>
+                      <select
+                        className={s.select}
+                        aria-label="Giờ đến"
+                        value={cust.checkinTimeTo}
+                        onChange={(e) =>
+                          setCust({ ...cust, checkinTimeTo: e.target.value })
+                        }
+                        disabled={!cust.checkinTime}
+                      >
+                        <option value="" disabled>
+                          Chọn giờ đến
+                        </option>
+                        {(cust.checkinDate
+                          ? visibleTimeSlots(cust.checkinDate)
+                          : buildTimeSlots
+                        )
+                          // ✅ chỉ show giờ "đến" > giờ "vào"
+                          .filter((t) => calcDurationMinutes(cust.checkinTime, t))
+                          .map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  </div>
                 )}
-              <div className={s.spanFull}>
+              <label className={`${s.field} ${s.spanFull}`}>
+                <span className={s.fieldLabel}>Ghi chú</span>
                 <textarea
                   className={`${s.input} ${s.textarea}`}
+                  aria-label="Ghi chú"
                   value={cust.note}
                   onChange={(e) => setCust({ ...cust, note: e.target.value })}
-                  placeholder="Ghi chú..."
+                  placeholder="Dị ứng, vị trí ngồi hoặc lưu ý phục vụ..."
                 />
-              </div>
+              </label>
             </div>
             <div className={s.actionsEnd}>
               <button
