@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Clock3 } from "lucide-react";
 import { formatCurrency } from "../../../../utils/formatters";
 import {
@@ -22,27 +23,18 @@ export const getMenuItemPriceLabel = (item = {}) => {
     : `Từ ${formatCurrency(minimum)}`;
 };
 
-const MenuItemCard = ({ item, onClick, disabled = false }) => {
+const MenuItemCard = ({ item, to, state, disabled = false }) => {
   const foodPreferenceMeta = item?.foodPreferenceMeta;
   const availability = getMenuItemAvailability(item);
   const canOrderNow = canCustomerOrderMenuItem(item) && !disabled;
   const imageSrc = item?.thumbImage || MENU_ITEM_PLACEHOLDER;
-
-  const handleOpen = () => onClick?.(item);
-  const handleKeyDown = (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      handleOpen();
-    }
-  };
+  const detailPath = to || (item?.id ? `/food/${encodeURIComponent(item.id)}` : "/cus-menu");
 
   return (
-    <article
+    <Link
       className={`item-card ${!canOrderNow ? "inactive" : ""}`}
-      onClick={handleOpen}
-      onKeyDown={handleKeyDown}
-      role="button"
-      tabIndex={0}
+      to={detailPath}
+      state={state}
       aria-label={`Xem chi tiết ${item.name}${
         canOrderNow ? "" : `, ${availability.label}`
       }`}
@@ -51,7 +43,10 @@ const MenuItemCard = ({ item, onClick, disabled = false }) => {
         <img
           src={imageSrc}
           alt={item.name || "Món ăn"}
+          width="800"
+          height="600"
           loading="lazy"
+          decoding="async"
           onError={(event) => {
             event.currentTarget.onerror = null;
             event.currentTarget.src = MENU_ITEM_PLACEHOLDER;
@@ -118,7 +113,7 @@ const MenuItemCard = ({ item, onClick, disabled = false }) => {
           </span>
         </div>
       </div>
-    </article>
+    </Link>
   );
 };
 
