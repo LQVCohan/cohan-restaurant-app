@@ -1,7 +1,5 @@
 import mongoose from "mongoose";
 import User from "./user.model.js";
-import Restaurant from "./restaurant.model.js";
-import BrandMembership from "./brandMembership.model.js";
 
 const staffSchema = new mongoose.Schema(
   {
@@ -104,59 +102,6 @@ const staffSchema = new mongoose.Schema(
   }
 );
 
-export async function syncCreatedStaffBrandMembership(staff) {
-  const restaurantId = staff?.restaurantForStaff;
-  if (!restaurantId) {
-    throw new Error("Staff phải được gán nhà hàng trước khi tạo");
-  }
-
-  const restaurant = await Restaurant.findById(restaurantId)
-    .select("_id brandId")
-    .lean();
-  if (!restaurant) {
-    throw new Error("Không tìm thấy nhà hàng được gán cho nhân viên");
-  }
-  if (!restaurant.brandId) {
-    throw new Error("Nhà hàng phải thuộc Brand trước khi thêm nhân viên");
-  }
-
-  return BrandMembership.findOneAndUpdate(
-    { brandId: restaurant.brandId, userId: staff._id },
-    {
-      $set: {
-        role: "staff",
-        restaurantIds: [restaurant._id || restaurantId],
-        status: "active",
-      },
-    },
-    {
-      new: true,
-      upsert: true,
-      runValidators: true,
-      setDefaultsOnInsert: true,
-    },
-  );
-}
-
-staffSchema.pre("save", function markNewStaffForBrandMembershipSync() {
-  this.$locals ||= {};
-  this.$locals.syncBrandMembershipAfterCreate = this.isNew;
-});
-
-staffSchema.post("save", async function syncNewStaffBrandMembership(staff) {
-  if (!staff.$locals?.syncBrandMembershipAfterCreate) return;
-
-  try {
-    await syncCreatedStaffBrandMembership(staff);
-  } catch (error) {
-    try {
-      await staff.deleteOne();
-    } catch (cleanupError) {
-      error.cleanupError = cleanupError;
-    }
-    throw error;
-  }
-});
 
 export const Staff =
   mongoose.models.Staff || User.discriminator("Staff", staffSchema, "STAFF");
