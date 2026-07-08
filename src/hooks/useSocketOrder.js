@@ -5,6 +5,7 @@ import { getToken } from "@/lib/authStorage";
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
 export const MENU_AVAILABILITY_SOCKET_EVENT = "menu-availability:socket-event";
+export const TABLE_CUSTOMER_SOCKET_EVENT = "table-customer:socket-event";
 
 function broadcastMenuAvailabilityEvent(evt, channel = "inventory") {
   if (typeof window === "undefined" || !evt?.type) return;
@@ -14,6 +15,15 @@ function broadcastMenuAvailabilityEvent(evt, channel = "inventory") {
         channel,
         event: evt,
       },
+    }),
+  );
+}
+
+function broadcastTableCustomerEvent(evt) {
+  if (typeof window === "undefined" || !evt?.type) return;
+  window.dispatchEvent(
+    new CustomEvent(TABLE_CUSTOMER_SOCKET_EVENT, {
+      detail: { event: evt },
     }),
   );
 }
@@ -91,6 +101,10 @@ export default function useSocketOrder(restaurantId, handlers = {}, options = {}
       h.onAny?.(evt);
 
       switch (evt.type) {
+        case "TABLE_CUSTOMER_UPDATED":
+          broadcastTableCustomerEvent(evt);
+          h.onTableCustomerUpdated?.(evt);
+          break;
         case "TABLE_CUSTOMER_REQUEST_CREATED":
           (h.onTableCustomerRequestCreated || h.onCustomerStaffCallRequested)?.(evt);
           break;
