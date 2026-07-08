@@ -1,47 +1,4 @@
 .restaurant-detail-page {
-  .hero-cover.fallback-cover {
-    background:
-      radial-gradient(circle at 18% 25%, rgba(249, 115, 22, 0.2), transparent 34%),
-      radial-gradient(circle at 82% 68%, rgba(180, 83, 9, 0.16), transparent 36%),
-      linear-gradient(135deg, #fff7ed 0%, #f8fafc 48%, #ffedd5 100%);
-  }
-
-  .hero-cover.fallback-cover .overlay {
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.22));
-  }
-
-  .fallback-cover-copy {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.45rem;
-    padding: 4rem 1.5rem 6rem;
-    color: #431407;
-    text-align: center;
-  }
-
-  .fallback-cover-copy span {
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.22em;
-  }
-
-  .fallback-cover-copy strong {
-    max-width: 32rem;
-    font-size: clamp(1.5rem, 4vw, 3rem);
-    line-height: 1.05;
-    text-wrap: balance;
-  }
-
-  .fallback-cover-copy small {
-    color: #7c2d12;
-    font-size: 0.86rem;
-  }
-
   .res-meta .rating {
     color: #b45309;
   }
@@ -153,10 +110,6 @@
 
 @media (max-width: 767px) {
   .restaurant-detail-page {
-    .fallback-cover-copy {
-      padding-bottom: 5rem;
-    }
-
     .profile-summary {
       flex-wrap: nowrap;
       overflow-x: auto;
