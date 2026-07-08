@@ -3,6 +3,8 @@ import { BrandMembership, Role, User } from "../../../models/index.js";
 import {
   canManageBrand,
   getUserId,
+  isBrandOwner,
+  isSystemAdmin,
 } from "../../../src/services/auth/restaurantScope.service.js";
 
 const bad = (message) => new GraphQLError(message, {
@@ -26,6 +28,73 @@ async function loadAccount(userId, session = null) {
     .populate({ path: "role", populate: { path: "parentRole" } });
   if (session) query.session(session);
   return query.lean();
+}
+
+async function loadMembership(id) {
+  return BrandMembership.findById(id)
+    .select("brandId userId role status revokedFromStatus")
+    .lean();
+}
+
+async function assertCanRevokeMembership(membership, ctx) {
+  if (membership.role === "owner") {
+    throw forbidden(
+      "Không thể tháo quyền Chủ chuỗi. Hãy chuyển quyền sở hữu trước.",
+    );
+  }
+  if (sameId(membership.userId, getUserId(ctx.user))) {
+    throw forbidden("Bạn không thể tự tháo quyền Brand của mình.");
+  }
+  if (
+    membership.role === "admin" &&
+    !isSystemAdmin(ctx.user) &&
+    !await isBrandOwner(ctx.user, membership.brandId)
+  ) {
+    throw forbidden("Chỉ Chủ chuỗi mới có thể tháo quyền Quản trị chuỗi.");
+  }
+}
+
+async function revokeMembership({ membership, actorId, reason }) {
+  const normalizedReason = String(reason || "").trim();
+  if (normalizedReason.length > 500) {
+    throw bad("Lý do thu hồi tối đa 500 ký tự.");
+  }
+
+  return BrandMembership.findByIdAndUpdate(
+    membership._id,
+    {
+      $set: {
+        status: "inactive",
+        revokedAt: new Date(),
+        revokedBy: actorId,
+        revokedReason: normalizedReason || (
+          membership.status === "invited"
+            ? "Hủy lời mời từ trang quản lý chuỗi"
+            : "Tháo quyền từ trang quản lý chuỗi"
+        ),
+        revokedFromStatus: membership.status,
+        inviteTokenHash: null,
+        inviteTokenExp: null,
+        updatedBy: actorId,
+      },
+    },
+    { new: true },
+  ).lean();
+}
+
+async function clearRevocationAudit(membershipId) {
+  await BrandMembership.updateOne(
+    { _id: membershipId },
+    {
+      $set: {
+        revokedAt: null,
+        revokedBy: null,
+        revokedReason: null,
+        revokedFromStatus: null,
+      },
+    },
+  );
+  return BrandMembership.findById(membershipId).lean();
 }
 
 export async function assertBrandMembershipAccountCompatibility({
@@ -115,13 +184,14 @@ export function guardBrandMemberRoleMutations(mutations = {}) {
           allowCustomerPromotion: ["admin", "manager"].includes(input.role),
         });
       }
-      return mutations.addBrandMember(root, { input }, ctx, info);
+
+      const membership = await mutations.addBrandMember(root, { input }, ctx, info);
+      const membershipId = membership?._id || membership?.id;
+      return membershipId ? clearRevocationAudit(membershipId) : membership;
     },
 
     updateBrandMember: async (root, { input }, ctx, info) => {
-      const membership = await BrandMembership.findById(input.id)
-        .select("brandId userId role status")
-        .lean();
+      const membership = await loadMembership(input.id);
 
       if (
         !membership ||
@@ -136,18 +206,23 @@ export function guardBrandMemberRoleMutations(mutations = {}) {
           "Thành viên phải tự xác nhận liên kết trong email trước khi quyền được kích hoạt.",
         );
       }
+      if (
+        membership.status === "inactive" &&
+        membership.revokedFromStatus === "invited" &&
+        input.status === "active"
+      ) {
+        throw bad("Lời mời đã hủy phải được gửi lại; không thể kích hoạt trực tiếp.");
+      }
 
       const suspendsMembership =
         input.status === "inactive" && membership.status !== "inactive";
-      if (suspendsMembership && membership.role === "owner") {
-        throw forbidden(
-          "Không thể tạm ngưng Chủ chuỗi. Hãy chuyển quyền sở hữu trước nếu cần thay đổi tài khoản chủ.",
-        );
-      }
-      if (suspendsMembership && sameId(membership.userId, getUserId(ctx.user))) {
-        throw forbidden(
-          "Bạn không thể tự tạm ngưng quyền của mình. Hãy nhờ Chủ chuỗi hoặc một Quản trị chuỗi khác thực hiện.",
-        );
+      if (suspendsMembership) {
+        await assertCanRevokeMembership(membership, ctx);
+        await mutations.updateBrandMember(root, { input }, ctx, info);
+        return revokeMembership({
+          membership,
+          actorId: getUserId(ctx.user),
+        });
       }
 
       const nextStatus = input.status || membership.status;
@@ -158,7 +233,31 @@ export function guardBrandMemberRoleMutations(mutations = {}) {
         });
       }
 
-      return mutations.updateBrandMember(root, { input }, ctx, info);
+      const result = await mutations.updateBrandMember(root, { input }, ctx, info);
+      if (membership.status === "inactive" && input.status === "active") {
+        return clearRevocationAudit(input.id);
+      }
+      return result;
+    },
+
+    removeBrandMember: async (root, { id, reason }, ctx, info) => {
+      const membership = await loadMembership(id);
+      if (
+        !membership ||
+        !ctx?.user ||
+        !await canManageBrand(ctx.user, membership.brandId)
+      ) {
+        return mutations.removeBrandMember(root, { id, reason }, ctx, info);
+      }
+      if (membership.status === "inactive") return true;
+
+      await assertCanRevokeMembership(membership, ctx);
+      await revokeMembership({
+        membership,
+        actorId: getUserId(ctx.user),
+        reason,
+      });
+      return true;
     },
   };
 }
