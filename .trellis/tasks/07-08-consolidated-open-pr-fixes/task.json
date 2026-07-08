@@ -1,7 +1,7 @@
 {
   "id": "consolidated-open-pr-fixes",
   "title": "Consolidate remaining open PR fixes",
-  "status": "in_progress",
+  "status": "ready_for_review",
   "dev_type": "bugfix",
   "scope": "scheduling-notifications-customer-manager-ui",
   "priority": "P1",
@@ -16,5 +16,12 @@
     "src/components/Customer/Food/FoodDetailAvailabilityGlobalMount.jsx",
     "src/hooks/useBrandManagement.js",
     "src/layouts/ManagerLayout.scss"
+  ],
+  "validation": [
+    "GitHub Actions CI",
+    "targeted backend tests",
+    "targeted manager selection test",
+    "GraphQL checks",
+    "frontend build"
   ]
 }
