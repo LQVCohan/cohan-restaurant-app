@@ -1,0 +1,114 @@
+.cohan-merged-table-card {
+  grid-column: span 2;
+  min-height: 154px !important;
+  border-width: 2px !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12) !important;
+}
+
+.cohan-merged-table-card::after {
+  content: "BÀN GHÉP";
+  position: absolute;
+  top: 0.42rem;
+  right: 2.8rem;
+  padding: 0.18rem 0.42rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #fff;
+  font-size: 0.56rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+
+.cohan-merged-table-summary {
+  display: grid;
+  gap: 0.38rem;
+  margin-top: 0.62rem;
+  padding: 0.58rem;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 0.78rem;
+  background: rgba(255, 255, 255, 0.72);
+  text-align: left;
+}
+
+.cohan-merged-table-summary__line {
+  display: grid;
+  grid-template-columns: minmax(68px, auto) 1fr;
+  gap: 0.42rem;
+  align-items: baseline;
+  min-width: 0;
+  font-size: 0.69rem;
+  line-height: 1.3;
+  color: #475569;
+}
+
+.cohan-merged-table-summary__line strong {
+  color: #0f172a;
+  font-size: 0.65rem;
+  font-weight: 900;
+}
+
+.cohan-merged-table-summary__line span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 750;
+}
+
+.cohan-merged-table-summary__customers span {
+  color: #9a3412;
+  font-weight: 900;
+}
+
+.cohan-merged-table-summary__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding-top: 0.38rem;
+  border-top: 1px dashed rgba(148, 163, 184, 0.45);
+}
+
+.cohan-merged-table-summary__metrics span,
+.cohan-merged-table-summary__metrics strong {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0.18rem 0.44rem;
+  border-radius: 999px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 0.61rem;
+  font-weight: 850;
+}
+
+.cohan-merged-table-summary__metrics strong {
+  margin-left: auto;
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #c2410c;
+}
+
+.cohan-merged-payment-customers {
+  color: #475569;
+}
+
+.cohan-merged-payment-customers b {
+  color: #c2410c;
+}
+
+@media (max-width: 640px) {
+  .cohan-merged-table-card {
+    grid-column: 1 / -1;
+  }
+
+  .cohan-merged-table-summary__line {
+    grid-template-columns: 1fr;
+    gap: 0.1rem;
+  }
+
+  .cohan-merged-table-summary__metrics strong {
+    margin-left: 0;
+  }
+}
