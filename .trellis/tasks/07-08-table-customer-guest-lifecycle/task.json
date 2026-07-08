@@ -1,0 +1,22 @@
+{
+  "id": "table-customer-guest-lifecycle",
+  "name": "table-customer-guest-lifecycle",
+  "title": "Restore table customer guest lifecycle",
+  "description": "Reserve a table when customer details are saved, then create or attach the guest customer when the first dine-in order is persisted.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "table-customer-order-identity",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/resolvers/table/tableCustomer.js",
+    "cohan-restaurant-backend/graphql/resolvers/order/mutation.js",
+    "src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.jsx",
+    "cohan-restaurant-backend/tests/resolvers/table-customer-group.test.js",
+    "cohan-restaurant-backend/tests/resolvers/order-mutation-session-userid-scope.test.js"
+  ]
+}
