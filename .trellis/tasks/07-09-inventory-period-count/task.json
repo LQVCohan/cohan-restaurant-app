@@ -1,0 +1,36 @@
+{
+  "id": "07-09-inventory-period-count",
+  "name": "inventory-period-count",
+  "title": "Add period inventory count and document reconciliation",
+  "description": "Create end-of-period count sessions, reconcile counted stock with system stock, post closing adjustments, and mark inbound/outbound documents as reconciled.",
+  "status": "completed",
+  "dev_type": "fullstack",
+  "scope": "inventory-audit",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-09",
+  "completedAt": "2026-07-09",
+  "branch": "fix/inventory-period-count",
+  "base_branch": "main",
+  "commit": "84522f58a30b22fdeb12f50f8b1c238ceb93fea4",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1311",
+  "relatedFiles": [
+    "cohan-restaurant-backend/models/inventory-count.model.js",
+    "cohan-restaurant-backend/models/index.js",
+    "cohan-restaurant-backend/graphql/schema/inventoryCount.graphql",
+    "cohan-restaurant-backend/graphql/schema/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/inventory/inventoryCount.js",
+    "cohan-restaurant-backend/graphql/resolvers/inventory/index.js",
+    "cohan-restaurant-backend/tests/models/inventory-count.model.test.js",
+    "src/components/Dashboard_Manager/Storage/graphql/inventoryAudit.gql.js",
+    "src/components/Dashboard_Manager/Storage/StorageManagement.jsx",
+    "src/components/Dashboard_Manager/Storage/components/inventory/InventoryAuditTab.jsx",
+    "src/components/Dashboard_Manager/Storage/components/inventory/InventoryAuditTab.scss",
+    "src/components/Dashboard_Manager/Storage/components/inventory/InventoryAuditTab.test.jsx"
+  ],
+  "notes": "Trace: inventory schema -> stock/movement resolver -> InventoryAuditTab query props -> UI actions for count closing and document reconciliation. CI run 6929 passed backend lint/test/Menu RBAC/build and frontend lint/unit/component/build/smoke.",
+  "meta": {
+    "skills": ["ponytail", "frontend-design", "web-design-guidelines"]
+  }
+}

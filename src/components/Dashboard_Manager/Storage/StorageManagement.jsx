@@ -406,12 +406,17 @@ const StorageManagement = () => {
       icon: <ClipboardList size={18} />,
       component: (
         <InventoryAuditTab
+          restaurantId={currentRestaurant}
+          warehouseId={warehouseFilterId}
           ingredients={ingredients}
           stockItems={stockItems}
           movements={movements}
           warehouses={warehouses}
           loading={stockLoading || movementLoading}
           error={stockError || movementError}
+          onReload={async () => {
+            await Promise.allSettled([reloadIngredientsAndStock(), refetchMovements?.()]);
+          }}
         />
       ),
     },

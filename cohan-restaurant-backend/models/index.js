@@ -22,6 +22,7 @@ export { default as Supply } from "./supply.model.js";
 export { default as SupplyCategory } from "./supply-category.model.js";
 export { default as StockMovement } from "./stock-movement.model.js";
 export { default as StockItem } from "./stockItem.model.js";
+export { default as InventoryCount } from "./inventory-count.model.js";
 export { default as Supplier } from "./supplier.model.js";
 export { default as SupplierPayable } from "./supplier-payable.model.js";
 export { default as Reservation } from "./reservation.model.js";
