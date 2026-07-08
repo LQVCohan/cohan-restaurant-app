@@ -119,14 +119,14 @@ describe("useTableManagement merge and split feedback", () => {
       useTableManagement({ restaurantId: "restaurant-1" }),
     );
 
-    await expect(
-      act(async () =>
+    await act(async () => {
+      await expect(
         result.current.mergeTables({
           tableIds: ["table-a1", "table-a2"],
           anchorId: "table-a1",
         }),
-      ),
-    ).rejects.toThrow("merge rejected");
+      ).rejects.toThrow("merge rejected");
+    });
 
     expect(mocks.showNotification).not.toHaveBeenCalled();
     expect(mocks.refetch).not.toHaveBeenCalled();
