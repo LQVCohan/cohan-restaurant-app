@@ -1,6 +1,6 @@
 // src/graphql/resolvers/search/query.js
 
-import { User, Staff, MenuItem, Restaurant } from "../../../models/index.js";
+import { User, Staff, BrandMembership, MenuItem, Restaurant } from "../../../models/index.js";
 
 const MAX_SEARCH_LENGTH = 80;
 const CHEF_TITLE_REGEX = /(?:bếp trưởng|bep truong|head chef|executive chef|chef)/i;
@@ -540,20 +540,77 @@ async function findOwnerSuggestions(query, limit) {
       userType: { $in: ["MANAGER", "ADMIN"] },
       $or: searchConditions,
     },
-    { fullName: 1, phone: 1, email: 1, refRestaurants: 1 },
+    { fullName: 1, phone: 1, email: 1 },
   )
     .limit(clampLimit(limit, 5, 20))
     .lean();
+  const counts = await managedRestaurantCountMap(users);
 
   return users.map((user) => ({
     id: user._id.toString(),
     fullName: user.fullName || null,
     phone: user.phone || null,
     email: user.email || null,
-    managedRestaurantCount: Array.isArray(user.refRestaurants)
-      ? user.refRestaurants.length
-      : 0,
+    managedRestaurantCount: counts.get(user._id.toString()) || 0,
   }));
+}
+
+async function managedRestaurantCountMap(users = []) {
+  const userIds = users.map((user) => user?._id).filter(Boolean);
+  const counts = new Map(userIds.map((id) => [id.toString(), new Set()]));
+  if (!userIds.length) return new Map();
+
+  const memberships = await BrandMembership.find({
+    userId: { $in: userIds },
+    status: "active",
+  })
+    .select("userId role brandId restaurantIds")
+    .lean();
+
+  const brandIds = [
+    ...new Set(
+      memberships
+        .filter((membership) => ["owner", "admin"].includes(membership.role))
+        .map((membership) => membership.brandId?.toString())
+        .filter(Boolean),
+    ),
+  ];
+  const restaurantsByBrand = new Map();
+
+  if (brandIds.length) {
+    const restaurants = await Restaurant.find(
+      { brandId: { $in: brandIds } },
+      { _id: 1, brandId: 1 },
+    ).lean();
+
+    restaurants.forEach((restaurant) => {
+      const brandId = restaurant.brandId?.toString();
+      if (!brandId) return;
+      if (!restaurantsByBrand.has(brandId)) restaurantsByBrand.set(brandId, []);
+      restaurantsByBrand.get(brandId).push(restaurant._id.toString());
+    });
+  }
+
+  memberships.forEach((membership) => {
+    const userId = membership.userId?.toString();
+    const set = counts.get(userId);
+    if (!set) return;
+
+    if (["owner", "admin"].includes(membership.role)) {
+      (restaurantsByBrand.get(membership.brandId?.toString()) || []).forEach((id) =>
+        set.add(id),
+      );
+      return;
+    }
+
+    if (membership.role === "manager") {
+      (membership.restaurantIds || []).forEach((id) => {
+        if (id) set.add(id.toString());
+      });
+    }
+  });
+
+  return new Map([...counts].map(([userId, restaurantIds]) => [userId, restaurantIds.size]));
 }
 
 async function findLocationSuggestions(query, limit) {
@@ -697,16 +754,21 @@ async function findOwners(query, limit, offset) {
     searchConditions.push({ phone: phoneRegexCondition(phoneDigits) });
   }
 
-  return User.find(
+  const owners = await User.find(
     {
       userType: { $in: ["MANAGER", "ADMIN"] },
       $or: searchConditions,
     },
-    { fullName: 1, phone: 1, email: 1, refRestaurants: 1 },
+    { fullName: 1, phone: 1, email: 1 },
   )
     .limit(clampLimit(limit, 20, 50))
     .skip(clampOffset(offset))
     .lean();
+  const counts = await managedRestaurantCountMap(owners);
+  return owners.map((owner) => ({
+    ...owner,
+    managedRestaurantCount: counts.get(owner._id.toString()) || 0,
+  }));
 }
 
 async function fullSearch(query, filter = {}, limit, offset, ctx) {
@@ -788,10 +850,7 @@ async function fullSearch(query, filter = {}, limit, offset, ctx) {
   owners.forEach((owner) => {
     items.push({
       type: "OWNER",
-      score:
-        (Array.isArray(owner.refRestaurants)
-          ? owner.refRestaurants.length
-          : 0) + 1,
+      score: (owner.managedRestaurantCount || 0) + 1,
       owner: {
         id: owner._id.toString(),
         fullName: owner.fullName || null,
