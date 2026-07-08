@@ -1,9 +1,11 @@
+import mongoose from "mongoose";
 import staffQuery from "./query.js";
 import payrollReadinessQuery from "./payrollReadiness.query.js";
 import staffMutation from "./mutation.js";
 import staffPhotoActions from "./staffAvatar.mutation.js";
 import payrollFinalizeReadinessMutation from "./payrollFinalizeReadiness.mutation.js";
 import payrollProtectedAttendanceMutation from "./payrollProtectedAttendance.mutation.js";
+import { BrandMembership, Restaurant, Staff } from "../../../models/index.js";
 import { requireAuth, requireRestaurantAccess } from "../../guards.js";
 
 const toFiniteNumber = (value, fallback = 0) => {
@@ -110,6 +112,95 @@ const staffPerformanceSnapshots = async (parent, args = {}, ctx, info) => {
   );
 };
 
+const resolveCreateStaffBusinessContext = async (input = {}, ctx) => {
+  const businessContext = input.staffBusinessContext || {};
+  const restaurantId =
+    businessContext.restaurantId || input.restaurantForStaff || null;
+  const requestedBrandId = businessContext.brandId || null;
+
+  if (!mongoose.isValidObjectId(restaurantId)) {
+    throw new Error("Chưa chọn nhà hàng đang hoạt động để tạo nhân viên");
+  }
+  if (requestedBrandId && !mongoose.isValidObjectId(requestedBrandId)) {
+    throw new Error("Doanh nghiệp đang hoạt động không hợp lệ");
+  }
+
+  await requireRestaurantAccess(ctx, restaurantId);
+  const restaurant = await Restaurant.findById(restaurantId)
+    .select("_id brandId")
+    .lean();
+  if (!restaurant) {
+    throw new Error("Không tìm thấy nhà hàng đang hoạt động");
+  }
+
+  const brandId = requestedBrandId || restaurant.brandId;
+  if (!brandId) {
+    throw new Error("Nhà hàng đang hoạt động chưa thuộc doanh nghiệp");
+  }
+  if (
+    requestedBrandId &&
+    String(restaurant.brandId || "") !== String(requestedBrandId)
+  ) {
+    throw new Error("Nhà hàng không thuộc doanh nghiệp đang hoạt động");
+  }
+
+  return {
+    brandId,
+    restaurantId: restaurant._id || restaurantId,
+  };
+};
+
+const createStaff = async (parent, args = {}, ctx, info) => {
+  const input = args.input || {};
+  const businessContext = await resolveCreateStaffBusinessContext(input, ctx);
+  const { staffBusinessContext: _ignoredContext, ...accountInput } = input;
+
+  const created = await staffMutation.createStaff(
+    parent,
+    {
+      input: {
+        ...accountInput,
+        // ponytail: legacy staff modules still read this fallback; scope comes from BrandMembership.
+        restaurantForStaff: businessContext.restaurantId,
+      },
+    },
+    ctx,
+    info,
+  );
+  const createdId = created?.id || created?._id;
+  if (!createdId) {
+    throw new Error("Không xác định được tài khoản nhân viên vừa tạo");
+  }
+
+  try {
+    await BrandMembership.findOneAndUpdate(
+      { brandId: businessContext.brandId, userId: createdId },
+      {
+        $set: {
+          role: "staff",
+          restaurantIds: [businessContext.restaurantId],
+          status: "active",
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      },
+    );
+  } catch (error) {
+    try {
+      await Staff.deleteOne({ _id: createdId });
+    } catch (cleanupError) {
+      error.cleanupError = cleanupError;
+    }
+    throw error;
+  }
+
+  return created;
+};
+
 const operationKey = ["Mut", "ation"].join("");
 
 const resolvers = {
@@ -121,6 +212,7 @@ const resolvers = {
   },
   [operationKey]: {
     ...staffMutation,
+    createStaff,
     ...staffPhotoActions,
     ...payrollFinalizeReadinessMutation,
     ...payrollProtectedAttendanceMutation,
