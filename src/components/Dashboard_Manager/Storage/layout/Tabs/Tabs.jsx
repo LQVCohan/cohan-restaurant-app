@@ -30,7 +30,7 @@ import "../../IngredientModalEnhancements.css";
 import "./Tabs.scss";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
-  const supportsViewToggle = activeTab === "ingredients" || activeTab === "recipes";
+  const supportsViewToggle = ["ingredients", "supplies", "recipes"].includes(activeTab);
 
   return (
     <>
