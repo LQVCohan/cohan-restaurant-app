@@ -111,12 +111,14 @@ describe("RestaurantCuisineOnboarding", () => {
   });
 
   it("selects and applies a cuisine package", async () => {
-    render(
+    const { container } = render(
       <RestaurantCuisineOnboarding
         restaurant={{ id: "r1", name: "Cohan Quận 1", initialSetup: { status: "pending" } }}
       />,
     );
 
+    expect(container).toBeEmptyDOMElement();
+    expect(document.body.querySelector(".cuisine-onboarding")).toBeInTheDocument();
     expect(screen.getByRole("dialog", { name: /chọn mô hình ẩm thực/i })).toBeInTheDocument();
     const radios = screen.getAllByRole("radio");
     fireEvent.click(radios[1]);
