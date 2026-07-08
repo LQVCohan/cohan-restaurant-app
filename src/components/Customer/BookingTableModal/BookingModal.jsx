@@ -1,25 +1,23 @@
-import React, { useState, useEffect, useContext, useMemo } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql } from "@apollo/client";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery } from "@apollo/client/react";
 import {
-  X,
-  User,
-  Phone,
-  Mail,
-  Calendar,
-  Clock,
-  MapPin,
-  Store,
-  Users,
-  ChevronRight,
-  Check,
   AlertCircle,
-  Sparkles,
-  Video,
+  Calendar,
+  Check,
+  ChevronRight,
+  Clock,
   Info,
+  Mail,
+  MapPin,
+  Phone,
   Receipt,
-  ArrowUpRight,
-  Gift,
+  Sparkles,
+  Store,
+  User,
+  Users,
+  Video,
+  X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../../context/AuthContext";
@@ -29,10 +27,9 @@ import { useNotification } from "../../../hooks/useNotification";
 import { formatCurrency, formatDateTime } from "../../../utils/formatters";
 import "./BookingModal.scss";
 
-/* ───────────────── GraphQL ───────────────── */
-const GET_RESTAURANT = gql`
-  query Restaurant($id: ID!) {
-    restaurant(id: $id) {
+export const GET_PUBLIC_BOOKING_RESTAURANT = gql`
+  query PublicBookingRestaurant($id: ID!) {
+    publicRestaurant(id: $id) {
       id
       name
       openingHours
@@ -45,122 +42,140 @@ const GET_RESTAURANT = gql`
         city
         country
       }
+      reservationSettings {
+        baseDepositAmount
+        menuDepositPercent
+      }
     }
   }
 `;
 
-const GET_TABLES_BY_RESTAURANT = gql`
-  query TablesByRestaurant(
-    $restaurantId: ID!
-    $status: TableStatus
-    $limit: Int
-  ) {
-    tables(restaurantId: $restaurantId, status: $status, limit: $limit) {
+export const GET_PUBLIC_BOOKING_TABLES = gql`
+  query PublicBookingTables($restaurantId: ID!, $limit: Int) {
+    publicTables(restaurantId: $restaurantId, limit: $limit) {
       id
       code
       capacity
       status
       floorId
+      floorLevel
       deposit
       type
       vrUrl
+      bookingPerks
+      reservationHoldMinutes
+      minSpend
+      cancelPolicy
     }
   }
 `;
 
-const GET_EVENT_PACKAGES = gql`
-  query EventPackagesByRestaurant($restaurantId: ID!, $activeOnly: Boolean) {
-    eventPackagesByRestaurant(
-      restaurantId: $restaurantId
-      activeOnly: $activeOnly
-    ) {
-      id
-      name
-      description
-      promotionId
-      promotionCode
-      price
-      items {
-        menuItemId
-        name
-        menuId
-        categoryId
-        image
-        servingKey
-        unitPrice
-        quantity
-        note
-      }
-    }
-  }
-`;
+const BASIC_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const BASIC_PHONE_REGEX = /^(0|\+?84)\d{9,10}$/;
+const SPECIAL_REQUESTS = [
+  "Bàn gần cửa sổ",
+  "Ghế trẻ em",
+  "Không gian yên tĩnh",
+  "Ăn chay",
+  "Dị ứng hải sản",
+];
 
-const CREATE_TABLE_EVENT = gql`
-  mutation CreateTableEvent($input: CreateTableEventInput!) {
-    createTableEvent(input: $input) {
-      id
-      eventName
-      promotionCode
-      orderId
-      orderCode
-    }
-  }
-`;
-
-const CREATE_ORDER_FOR_TABLE = gql`
-  mutation CreateOrderForTable($input: CreateOrderForTableInput!) {
-    createOrderForTable(input: $input) {
-      isNewOrder
-      order {
-        id
-        orderCode
-        restaurantId
-      }
-    }
-  }
-`;
-
-/* ───────────────── Utils Helpers ───────────────── */
-function addressToText(addr) {
-  if (!addr) return "—";
-  return [addr.line1, addr.line2, addr.ward, addr.district, addr.city]
+function addressToText(address) {
+  if (!address) return "Địa chỉ đang được cập nhật";
+  return [
+    address.line1,
+    address.line2,
+    address.ward,
+    address.district,
+    address.city,
+  ]
     .filter(Boolean)
-    .join(", ");
+    .join(", ") || "Địa chỉ đang được cập nhật";
 }
 
-function getDepositFromTable(table, partySize) {
-  if (typeof table?.deposit === "number") return table.deposit;
-  const per = 50000;
-  const cap = 200000;
-  const size = Math.max(1, Number(partySize || table?.capacity || 2));
-  return Math.min(cap, per * size);
+function parseClock(value, fallback = null) {
+  const normalized = String(value || "").trim().toLowerCase();
+  const match = normalized.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+  if (!match) return fallback;
+
+  let hour = Number(match[1]);
+  const minute = Number(match[2] || 0);
+  const suffix = match[3];
+  if (!Number.isFinite(hour) || !Number.isFinite(minute) || minute > 59) {
+    return fallback;
+  }
+  if (suffix === "pm" && hour !== 12) hour += 12;
+  if (suffix === "am" && hour === 12) hour = 0;
+  if (hour > 23) return fallback;
+  return hour * 60 + minute;
 }
 
-function localDateTimeToISO(d, t) {
-  if (!d || !t) return null;
-  const iso = new Date(`${d}T${t}:00`);
-  return isNaN(iso.getTime()) ? null : iso.toISOString();
+function formatClock(totalMinutes) {
+  const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+  const hour = String(Math.floor(normalized / 60)).padStart(2, "0");
+  const minute = String(normalized % 60).padStart(2, "0");
+  return `${hour}:${minute}`;
+}
+
+function generateSlots(startValue, endValue, selectedDate, includeEnd = false) {
+  const start = parseClock(startValue, 7 * 60);
+  let end = parseClock(endValue, 22 * 60);
+  if (end <= start) end += 24 * 60;
+
+  const slots = [];
+  const boundary = includeEnd ? end : end - 1;
+  for (let current = start; current <= boundary; current += 30) {
+    slots.push(formatClock(current));
+  }
+
+  if (!selectedDate || selectedDate !== new Date().toLocaleDateString("en-CA")) {
+    return slots;
+  }
+
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  return slots.filter((slot) => {
+    const slotMinutes = parseClock(slot, 0);
+    return slotMinutes > nowMinutes;
+  });
 }
 
 function calculateDurationMinutes(date, timeIn, timeOut) {
   if (!date || !timeIn || !timeOut) return 0;
   const start = new Date(`${date}T${timeIn}:00`);
   const end = new Date(`${date}T${timeOut}:00`);
-  const diffMs = end - start;
-  return Math.floor(diffMs / 60000);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+  if (end <= start) end.setDate(end.getDate() + 1);
+  return Math.floor((end - start) / 60000);
 }
 
-const POLICY_ITEMS = [
-  "Vui lòng đến đúng giờ; được phép trễ tối đa 15 phút.",
-  "Sau 15 phút không có thông báo, hệ thống tự hủy bàn.",
-  "Không hoàn tiền khi huỷ muộn hoặc không đến; tài khoản bị hạn chế đặt bàn 30 ngày.",
-  "Nếu có vấn đề, vui lòng gọi số 1900-888-999 hoặc nhắn chatbot để được hỗ trợ.",
-];
+function localDateTimeToISO(date, time) {
+  if (!date || !time) return null;
+  const value = new Date(`${date}T${time}:00`);
+  return Number.isNaN(value.getTime()) ? null : value.toISOString();
+}
 
-const BASIC_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const BASIC_PHONE_REGEX = /^(0|\+?84)\d{9,10}$/;
+function tableTypeLabel(value) {
+  const labels = {
+    standard: "Tiêu chuẩn",
+    booth: "Booth",
+    vip: "VIP",
+    outdoor: "Ngoài trời",
+    bar: "Quầy bar",
+    private: "Phòng riêng",
+  };
+  return labels[String(value || "standard").toLowerCase()] || "Tiêu chuẩn";
+}
 
-/* ───────────────── Main Component ───────────────── */
+function nextDefaultTime(time, closingHours) {
+  const start = parseClock(time, null);
+  if (start == null) return "";
+  let close = parseClock(closingHours, 22 * 60);
+  if (close <= start) close += 24 * 60;
+  if (close - start < 30) return "";
+  return formatClock(Math.min(start + 60, close));
+}
+
 const BookingModal = ({
   isOpen,
   onClose,
@@ -172,62 +187,11 @@ const BookingModal = ({
   onBookingConfirmed,
 }) => {
   const { user } = useContext(AuthContext) || {};
-  const canUseUnlimitedTime = ["silver", "gold", "platinum"].includes(String(user?.loyaltyRank || "basic").toLowerCase());
   const navigate = useNavigate();
   const { cart } = useCart();
   const { createBooking, isLoading } = useBookingTable();
   const { showNotification } = useNotification();
-  const [createTableEvent] = useMutation(CREATE_TABLE_EVENT);
-  const [createOrderForTable] = useMutation(CREATE_ORDER_FOR_TABLE);
-  const [showVirtualTour, setShowVirtualTour] = useState(false);
 
-  // Khóa scroll body khi modal mở
-  useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "unset";
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isOpen]);
-
-  // --- Data Fetching ---
-  const { data: rData } = useQuery(GET_RESTAURANT, {
-    variables: { id: restaurantId },
-    skip: !restaurantId,
-    fetchPolicy: "cache-first",
-  });
-  const restaurant = rData?.restaurant;
-
-  const needPickTable = useMemo(() => !tableId, [tableId]);
-
-  const { data: tablesData, loading: tablesLoading } = useQuery(
-    GET_TABLES_BY_RESTAURANT,
-    {
-      variables: {
-        restaurantId,
-        status: showVirtualTour ? null : "available",
-        limit: 200,
-      },
-      skip: !restaurantId || (!needPickTable && !showVirtualTour),
-      fetchPolicy: "network-only",
-    }
-  );
-  const tables = useMemo(() => tablesData?.tables ?? [], [tablesData]);
-  const selectableTables = useMemo(
-    () => tables.filter((t) => t.status === "available"),
-    [tables]
-  );
-  const { data: eventPackageData } = useQuery(GET_EVENT_PACKAGES, {
-    variables: { restaurantId, activeOnly: true },
-    skip: !restaurantId,
-    fetchPolicy: "network-only",
-  });
-  const eventPackages = useMemo(
-    () => eventPackageData?.eventPackagesByRestaurant ?? [],
-    [eventPackageData]
-  );
-
-  // --- State ---
-  const [pickedTable, setPickedTable] = useState(null);
   const [formData, setFormData] = useState({
     customerName: "",
     customerPhone: "",
@@ -239,1029 +203,882 @@ const BookingModal = ({
     openEnded: false,
     notes: "",
   });
-  const [selectedPackageId, setSelectedPackageId] = useState(null);
   const [selectedRequests, setSelectedRequests] = useState([]);
-  const [eventNote, setEventNote] = useState("");
   const [errors, setErrors] = useState({});
   const [showSummary, setShowSummary] = useState(false);
-  const [timeWarning, setTimeWarning] = useState(null);
 
-  // --- PREFILL DATA ---
-  useEffect(() => {
-    if (!isOpen) return;
-    setErrors({});
-    setShowSummary(false);
-    setTimeWarning(null);
-    const today = new Date().toLocaleDateString("en-CA");
-
-    const preTable = needPickTable
-      ? null
-      : {
-          id: tableId,
-          code: tableCode || tableId,
-          capacity: tableCapacity || 4,
-        };
-    setPickedTable(preTable);
-
-    const autoName = user?.fullName || user?.name || "";
-    const autoPhone = user?.phone || user?.phoneNumber || "";
-    const autoEmail = user?.email || "";
-
-    setFormData((prev) => ({
-      ...prev,
-      date: today,
-      partySize: Math.min(2, preTable?.capacity || 4),
-      time: "",
-      timeOut: "",
-      openEnded: false,
-      customerName: autoName,
-      customerPhone: autoPhone,
-      customerEmail: autoEmail,
-    }));
-    setSelectedPackageId(null);
-    setEventNote("");
-    setSelectedRequests([]);
-    setShowVirtualTour(false);
-  }, [isOpen, needPickTable, tableId, tableCapacity, user]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    if (needPickTable && selectableTables.length > 0 && !pickedTable?.id) {
-      setPickedTable(selectableTables[0]);
-    }
-  }, [isOpen, needPickTable, selectableTables, pickedTable]);
-
-  const capacity = pickedTable?.capacity || tableCapacity || 4;
-  const tableType = pickedTable?.type || (capacity >= 8 ? "VIP" : "Standard");
-  const selectedPackage = useMemo(
-    () => eventPackages.find((pkg) => pkg.id === selectedPackageId) || null,
-    [eventPackages, selectedPackageId]
+  const canUseUnlimitedTime = ["silver", "gold", "platinum"].includes(
+    String(user?.loyaltyRank || "basic").toLowerCase(),
   );
-  const deposit = useMemo(
-    () => getDepositFromTable(pickedTable, formData.partySize),
-    [pickedTable, formData.partySize]
-  );
+
+  const {
+    data: restaurantData,
+    loading: restaurantLoading,
+    error: restaurantError,
+  } = useQuery(GET_PUBLIC_BOOKING_RESTAURANT, {
+    variables: { id: restaurantId },
+    skip: !isOpen || !restaurantId,
+    fetchPolicy: "cache-first",
+  });
+
+  const {
+    data: tablesData,
+    loading: tableLoading,
+    error: tableError,
+  } = useQuery(GET_PUBLIC_BOOKING_TABLES, {
+    variables: { restaurantId, limit: 200 },
+    skip: !isOpen || !restaurantId || !tableId,
+    fetchPolicy: "cache-first",
+  });
+
+  const restaurant = restaurantData?.publicRestaurant || null;
+  const selectedTable = useMemo(() => {
+    const publicTable = (tablesData?.publicTables || []).find(
+      (table) => String(table.id) === String(tableId),
+    );
+    return publicTable || {
+      id: tableId,
+      code: tableCode || tableId,
+      capacity: tableCapacity || 1,
+      floorLevel: tableFloor,
+      status: "available",
+      deposit: null,
+      type: "standard",
+      bookingPerks: [],
+    };
+  }, [tablesData, tableId, tableCode, tableCapacity, tableFloor]);
+
+  const capacity = Math.max(1, Number(selectedTable?.capacity || tableCapacity || 1));
+  const tableDeposit = Number(selectedTable?.deposit);
+  const policyDeposit = Number(restaurant?.reservationSettings?.baseDepositAmount);
+  const deposit = Number.isFinite(tableDeposit)
+    ? Math.max(0, tableDeposit)
+    : Number.isFinite(policyDeposit)
+      ? Math.max(0, policyDeposit)
+      : 0;
+
   const restaurantCartItems = useMemo(
-    () => (cart || []).filter((item) => item.restaurantId === restaurantId),
-    [cart, restaurantId]
+    () =>
+      (cart || []).filter(
+        (item) => String(item.restaurantId) === String(restaurantId),
+      ),
+    [cart, restaurantId],
   );
   const menuSubtotal = useMemo(
     () =>
       restaurantCartItems.reduce(
-        (sum, item) => sum + (item.price || 0) * (item.quantity || 1),
-        0
+        (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1),
+        0,
       ),
-    [restaurantCartItems]
+    [restaurantCartItems],
   );
-  const menuDeposit = Math.round(menuSubtotal * 0.5);
+  const menuDepositPercent = Math.max(
+    0,
+    Number(restaurant?.reservationSettings?.menuDepositPercent ?? 50),
+  );
+  const menuDeposit = Math.round(menuSubtotal * (menuDepositPercent / 100));
   const totalDeposit = deposit + menuDeposit;
-  const packagePrice = Number(selectedPackage?.price || 0);
-  const totalDuePreview = totalDeposit;
 
-  // --- Handlers ---
-  const checkTimeWarning = (dateStr, timeStr) => {
-    if (!dateStr || !timeStr) {
-      setTimeWarning(null);
-      return;
-    }
-    const now = new Date();
-    const selected = new Date(`${dateStr}T${timeStr}:00`);
-    const diffMinutes = Math.floor((selected - now) / 60000);
+  const timeSlots = useMemo(
+    () =>
+      generateSlots(
+        restaurant?.openingHours,
+        restaurant?.closingHours,
+        formData.date,
+      ),
+    [restaurant?.openingHours, restaurant?.closingHours, formData.date],
+  );
 
-    if (diffMinutes < 0) setTimeWarning("Đã qua.");
-    else if (diffMinutes < 30) setTimeWarning("Sát giờ!");
-    else setTimeWarning(null);
-  };
+  const timeOutSlots = useMemo(() => {
+    if (!formData.time || formData.openEnded) return [];
+    const start = parseClock(formData.time, null);
+    if (start == null) return [];
+    return generateSlots(
+      formatClock(start + 30),
+      restaurant?.closingHours,
+      null,
+      true,
+    );
+  }, [formData.time, formData.openEnded, restaurant?.closingHours]);
 
-  const handleChange = (field, value) => {
-    setFormData((prev) => {
-      const newData = { ...prev, [field]: value };
-      if (field === "date") {
-        newData.time = "";
-        newData.timeOut = "";
-      }
-      if (field === "time") {
-        checkTimeWarning(newData.date, value);
-        if (!newData.openEnded && value) {
-          const [h,m]=String(value).split(":").map(Number);
-          const total=(h*60+m+60)%(24*60);
-          const nh=String(Math.floor(total/60)).padStart(2,"0");
-          const nm=String(total%60).padStart(2,"0");
-          newData.timeOut = `${nh}:${nm}`;
-        }
-      }
-      if (field === "openEnded") {
-        newData.timeOut = value ? "" : newData.timeOut;
-      }
-      return newData;
-    });
-    if (errors[field] || errors.contact) {
-      setErrors((prev) => ({
-        ...prev,
-        [field]: null,
-        contact: null,
-      }));
-    }
-  };
-
-  const handlePartyBtn = (delta) => {
-    const next = Math.max(1, Math.min(20, Number(formData.partySize) + delta));
-    setFormData((prev) => ({ ...prev, partySize: next }));
-  };
-
-  const validate = () => {
-    const errs = {};
-    const trimmedName = formData.customerName?.trim() || "";
-    const trimmedPhone = formData.customerPhone?.trim() || "";
-    const trimmedEmail = formData.customerEmail?.trim() || "";
-    const normalizedPhone = trimmedPhone.replace(/\s+/g, "");
-    const normalizedEmail = trimmedEmail.toLowerCase();
-
-    if (!trimmedName) errs.customerName = "Vui lòng nhập tên";
-    if (!trimmedPhone && !trimmedEmail) {
-      errs.contact = "Vui lòng nhập email hoặc số điện thoại để nhà hàng xác nhận đặt bàn.";
-    }
-    if (trimmedPhone && !BASIC_PHONE_REGEX.test(normalizedPhone)) {
-      errs.customerPhone = "Số điện thoại không hợp lệ.";
-    }
-    if (trimmedEmail && !BASIC_EMAIL_REGEX.test(normalizedEmail)) {
-      errs.customerEmail = "Email không hợp lệ.";
-    }
-    if (!pickedTable?.id) errs.table = "Vui lòng chọn bàn";
-    if (!formData.date) errs.date = "Chọn ngày";
-    if (!formData.time) errs.time = "Chọn giờ vào";
-    if (!formData.openEnded && !formData.timeOut)
-      errs.timeOut = "Chọn giờ ra";
-    if (formData.openEnded && !canUseUnlimitedTime)
-      errs.openEnded = "Tài khoản của bạn không có quyền chọn không giới hạn thời gian";
-    if (timeWarning === "Đã qua.") errs.time = "Giờ không hợp lệ";
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleConfirm = async () => {
-    if (!validate()) return;
-    const durationMinutes = formData.openEnded
-      ? 0
-      : calculateDurationMinutes(formData.date, formData.time, formData.timeOut) || 60;
-    const timeToISO = localDateTimeToISO(formData.date, formData.time);
-
-    if (!formData.openEnded && durationMinutes < 30) {
-      showNotification("Thời gian dùng bữa tối thiểu 30 phút.", "error");
-      return;
-    }
-
-    try {
-      const noteParts = [
-        formData.notes,
-        selectedRequests.length
-          ? `Yêu cầu: ${selectedRequests.join(", ")}`
-          : "",
-        selectedPackage
-          ? `Gói sự kiện: ${selectedPackage?.name} (${
-              selectedPackage?.promotionCode || "N/A"
-            })`
-          : "",
-        selectedPackage && eventNote ? `Ghi chú sự kiện: ${eventNote}` : "",
-        formData.openEnded
-          ? "Không xác định giờ ra (bàn sẽ giữ cho đến khi set trống)."
-          : "",
-        menuSubtotal > 0
-          ? `Có đặt món trước: ${formatCurrency(
-              menuSubtotal
-            )} (cọc món 50%)`
-          : "",
-      ].filter(Boolean);
-      const input = {
-        restaurantId,
-        tableId: pickedTable.id,
-        timeTo: timeToISO,
-        durationMinutes: durationMinutes || 0,
-        partySize: Number(formData.partySize),
-        note: noteParts.join(" | "),
-        customerName: formData.customerName?.trim(),
-        customerPhone: formData.customerPhone?.trim() || null,
-        customerEmail: formData.customerEmail?.trim() || null,
-        depositAmount: totalDeposit,
-        linkedMenuSubtotal: menuSubtotal,
-        isUnlimitedTime: !!formData.openEnded,
-        paymentMethod: "momo",
-      };
-
-      const reservation = await createBooking(input);
-      if (reservation) {
-        let createdOrder = null;
-        if (selectedPackage && selectedPackage.items?.length) {
-          const invalidItem = selectedPackage.items.find(
-            (item) => !item.servingKey
-          );
-          if (invalidItem) {
-            showNotification(
-              "Gói sự kiện thiếu servingKey cho món đi kèm, vui lòng cập nhật trong event management.",
-              "warning"
-            );
-          } else {
-            const orderItems = selectedPackage.items.map((item) => ({
-              dishId: item.menuItemId,
-              menuId: item.menuId,
-              categoryId: item.categoryId,
-              name: item.name,
-              unit: "phần",
-              image: item.image,
-              basePrice: Number(item.unitPrice || 0),
-              servingKey: item.servingKey,
-              quantity: Number(item.quantity || 1),
-              note: item.note || null,
-            }));
-            const orderPayload = {
-              restaurantId,
-              tableId: pickedTable.id,
-              tableCode: pickedTable.code || tableCode || pickedTable.id,
-              parentOrderCode: reservation.orderCode || null,
-              items: orderItems,
-              note: `Order từ gói sự kiện: ${selectedPackage.name}`,
-              customer: {
-                fullName: formData.customerName?.trim(),
-                phone: formData.customerPhone?.trim() || null,
-                email: formData.customerEmail?.trim() || null,
-              },
-              clientMeta: {
-                source: "reservation_event_package",
-                reservationId: reservation.id,
-                promotionId: selectedPackage.promotionId || null,
-                promotionCode: selectedPackage.promotionCode || null,
-              },
-            };
-            const { data } = await createOrderForTable({
-              variables: { input: orderPayload },
-            });
-            createdOrder = data?.createOrderForTable?.order || null;
-          }
-        }
-
-        if (selectedPackage) {
-          await createTableEvent({
-            variables: {
-              input: {
-                restaurantId,
-                tableId: pickedTable.id,
-                tableCode: pickedTable.code || tableCode || pickedTable.id,
-                eventPackageId: selectedPackage.id,
-                eventName: selectedPackage.name,
-                promotionId: selectedPackage.promotionId || null,
-                promotionCode: selectedPackage.promotionCode || null,
-                orderId: createdOrder?.id || null,
-                orderCode: createdOrder?.orderCode || null,
-                items: (selectedPackage.items || []).map((item) => ({
-                  menuItemId: item.menuItemId,
-                  name: item.name,
-                  quantity: item.quantity || 1,
-                  unitPrice: item.unitPrice || 0,
-                })),
-                note: eventNote || null,
-              },
-            },
-          });
-        }
-        onBookingConfirmed?.(reservation);
-        onClose?.();
-      }
-    } catch (e) {
-      showNotification(e?.message || "Lỗi đặt bàn.", "error");
-    }
-  };
-
-  if (!isOpen) return null;
   const durationPreview = formData.openEnded
     ? 0
     : calculateDurationMinutes(formData.date, formData.time, formData.timeOut);
 
+  const selectedDateTime = useMemo(() => {
+    if (!formData.date || !formData.time) return null;
+    const value = new Date(`${formData.date}T${formData.time}:00`);
+    return Number.isNaN(value.getTime()) ? null : value;
+  }, [formData.date, formData.time]);
+
+  const bookingPerks = Array.isArray(selectedTable?.bookingPerks)
+    ? selectedTable.bookingPerks.filter(Boolean)
+    : [];
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleEscape = (event) => {
+      if (event.key === "Escape" && !isLoading) onClose?.();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isOpen, isLoading, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const today = new Date().toLocaleDateString("en-CA");
+    setFormData({
+      customerName: user?.fullName || user?.name || "",
+      customerPhone: user?.phone || user?.phoneNumber || "",
+      customerEmail: user?.email || "",
+      partySize: Math.min(2, capacity),
+      date: today,
+      time: "",
+      timeOut: "",
+      openEnded: false,
+      notes: "",
+    });
+    setSelectedRequests([]);
+    setErrors({});
+    setShowSummary(false);
+  }, [isOpen, user, capacity]);
+
+  useEffect(() => {
+    setFormData((current) => {
+      const nextPartySize = Math.min(
+        capacity,
+        Math.max(1, Number(current.partySize) || 1),
+      );
+      return nextPartySize === current.partySize
+        ? current
+        : { ...current, partySize: nextPartySize };
+    });
+  }, [capacity]);
+
+  const clearError = (...keys) => {
+    setErrors((current) => {
+      const next = { ...current };
+      keys.forEach((key) => delete next[key]);
+      return next;
+    });
+  };
+
+  const handleChange = (field, value) => {
+    setFormData((current) => {
+      const next = { ...current, [field]: value };
+      if (field === "date") {
+        next.time = "";
+        next.timeOut = "";
+      }
+      if (field === "time") {
+        next.timeOut = nextDefaultTime(value, restaurant?.closingHours);
+      }
+      if (field === "openEnded") {
+        next.timeOut = value
+          ? ""
+          : nextDefaultTime(current.time, restaurant?.closingHours);
+      }
+      return next;
+    });
+    clearError(field, "contact", "form");
+  };
+
+  const handlePartyChange = (delta) => {
+    setFormData((current) => ({
+      ...current,
+      partySize: Math.min(
+        capacity,
+        Math.max(1, Number(current.partySize || 1) + delta),
+      ),
+    }));
+    clearError("partySize", "form");
+  };
+
+  const toggleRequest = (request) => {
+    setSelectedRequests((current) =>
+      current.includes(request)
+        ? current.filter((item) => item !== request)
+        : [...current, request],
+    );
+  };
+
+  const validate = () => {
+    const nextErrors = {};
+    const customerName = String(formData.customerName || "").trim();
+    const customerPhone = String(formData.customerPhone || "")
+      .replace(/\s+/g, "")
+      .trim();
+    const customerEmail = String(formData.customerEmail || "").trim().toLowerCase();
+
+    if (!restaurant && !restaurantLoading) {
+      nextErrors.form = "Nhà hàng hiện không khả dụng để đặt bàn.";
+    }
+    if (!selectedTable?.id || tableError) {
+      nextErrors.form = "Không thể xác nhận bàn đã chọn. Vui lòng đóng và chọn lại bàn.";
+    }
+    if (selectedTable?.status && selectedTable.status !== "available") {
+      nextErrors.form = "Bàn này không còn ở trạng thái trống. Vui lòng chọn lại bàn.";
+    }
+    if (!customerName) nextErrors.customerName = "Vui lòng nhập họ và tên.";
+    if (!customerPhone && !customerEmail) {
+      nextErrors.contact = "Nhập email hoặc số điện thoại để nhà hàng xác nhận.";
+    }
+    if (customerPhone && !BASIC_PHONE_REGEX.test(customerPhone)) {
+      nextErrors.customerPhone = "Số điện thoại không hợp lệ.";
+    }
+    if (customerEmail && !BASIC_EMAIL_REGEX.test(customerEmail)) {
+      nextErrors.customerEmail = "Email không hợp lệ.";
+    }
+    if (!formData.date) nextErrors.date = "Vui lòng chọn ngày.";
+    if (!formData.time) nextErrors.time = "Vui lòng chọn giờ đến.";
+    if (!formData.openEnded && !formData.timeOut) {
+      nextErrors.timeOut = "Vui lòng chọn giờ kết thúc.";
+    }
+    if (selectedDateTime && selectedDateTime <= new Date()) {
+      nextErrors.time = "Thời gian đặt bàn phải ở tương lai.";
+    }
+    if (
+      !Number.isFinite(Number(formData.partySize)) ||
+      Number(formData.partySize) < 1 ||
+      Number(formData.partySize) > capacity
+    ) {
+      nextErrors.partySize = `Bàn này phục vụ tối đa ${capacity} khách.`;
+    }
+    if (formData.openEnded && !canUseUnlimitedTime) {
+      nextErrors.openEnded = "Tùy chọn này chỉ dành cho thành viên Silver trở lên.";
+    }
+    if (!formData.openEnded && formData.time && formData.timeOut && durationPreview < 30) {
+      nextErrors.timeOut = "Thời gian dùng bàn tối thiểu 30 phút.";
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleContinue = () => {
+    if (validate()) setShowSummary(true);
+  };
+
+  const handleConfirm = async () => {
+    if (!validate()) {
+      setShowSummary(false);
+      return;
+    }
+
+    const noteParts = [
+      formData.notes?.trim(),
+      selectedRequests.length ? `Yêu cầu: ${selectedRequests.join(", ")}` : "",
+      menuSubtotal > 0
+        ? `Có đặt món trước: ${formatCurrency(menuSubtotal)} (cọc món ${menuDepositPercent}%)`
+        : "",
+      formData.openEnded ? "Không xác định giờ ra." : "",
+    ].filter(Boolean);
+
+    try {
+      const reservation = await createBooking({
+        restaurantId,
+        tableId: selectedTable.id,
+        timeTo: localDateTimeToISO(formData.date, formData.time),
+        durationMinutes: formData.openEnded ? 0 : durationPreview,
+        partySize: Number(formData.partySize),
+        note: noteParts.join(" | "),
+        customerName: formData.customerName.trim(),
+        customerPhone: formData.customerPhone.trim() || null,
+        customerEmail: formData.customerEmail.trim() || null,
+        depositAmount: totalDeposit,
+        linkedMenuSubtotal: menuSubtotal,
+        isUnlimitedTime: formData.openEnded,
+        paymentMethod: "momo",
+      });
+
+      if (!reservation) {
+        throw new Error("Không nhận được kết quả đặt bàn.");
+      }
+
+      onBookingConfirmed?.(reservation);
+      onClose?.();
+    } catch (error) {
+      showNotification(error?.message || "Không thể đặt bàn. Vui lòng thử lại.", "error");
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const dataUnavailable = Boolean(restaurantError || tableError || (!restaurant && !restaurantLoading));
+  const floorLabel = selectedTable?.floorLevel ?? tableFloor;
+
   return (
-    <div className="bkm-backdrop" onClick={onClose}>
-      <div className="bkm-container" onClick={(e) => e.stopPropagation()}>
-        {/* --- Header --- */}
-        <div className="bkm-header">
-          <div className="header-content">
-            <h2 className="bkm-title">Reservation</h2>
-            <span className="bkm-subtitle">Đặt chỗ trước</span>
+    <div
+      className="bkm-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !isLoading) onClose?.();
+      }}
+    >
+      <section
+        className="bkm-container"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bkm-title"
+        aria-describedby="bkm-description"
+      >
+        <header className="bkm-header">
+          <div>
+            <span className="bkm-eyebrow">Đặt chỗ trước</span>
+            <h2 id="bkm-title">Hoàn tất đặt bàn</h2>
+            <p id="bkm-description">
+              Kiểm tra thông tin khách, thời gian và vị trí trước khi xác nhận.
+            </p>
           </div>
-          <button className="bkm-close-btn" onClick={onClose}>
-            <X size={24} />
+          <button
+            type="button"
+            className="bkm-close-btn"
+            onClick={onClose}
+            disabled={isLoading}
+            aria-label="Đóng cửa sổ đặt bàn"
+          >
+            <X size={20} aria-hidden="true" />
           </button>
-        </div>
+        </header>
 
-        {/* --- Body --- */}
         <div className="bkm-body">
-          <RestaurantInfo restaurant={restaurant} />
-
-          {/* Form Section */}
-          <div className="bkm-section-title">Thông tin khách hàng</div>
-          <div className="bkm-compact-form">
-            <InputGroup
-              label="Họ và tên"
-              error={errors.customerName}
-              icon={<User size={16} />}
-            >
-              <input
-                type="text"
-                placeholder="Nhập tên của bạn"
-                value={formData.customerName}
-                onChange={(e) => handleChange("customerName", e.target.value)}
-              />
-            </InputGroup>
-
-            <div className="bkm-row">
-              <InputGroup
-                label="Số điện thoại"
-                error={errors.customerPhone || errors.contact}
-                icon={<Phone size={16} />}
-              >
-                <input
-                  type="tel"
-                  placeholder="09xx..."
-                  value={formData.customerPhone}
-                  onChange={(e) =>
-                    handleChange("customerPhone", e.target.value)
-                  }
-                />
-              </InputGroup>
-              <InputGroup
-                label="Email nhận vé"
-                error={errors.customerEmail}
-                icon={<Mail size={16} />}
-              >
-                <input
-                  type="email"
-                  placeholder="name@mail.com"
-                  value={formData.customerEmail}
-                  onChange={(e) =>
-                    handleChange("customerEmail", e.target.value)
-                  }
-                />
-              </InputGroup>
+          {(errors.form || dataUnavailable) && (
+            <div className="bkm-alert" role="alert">
+              <AlertCircle size={18} aria-hidden="true" />
+              <span>
+                {errors.form ||
+                  "Không tải đủ dữ liệu đặt bàn. Vui lòng đóng cửa sổ và thử lại."}
+              </span>
             </div>
-          </div>
-
-          <div className="bkm-divider"></div>
-
-          {/* Table Section */}
-          <div className="bkm-section-title">Chọn vị trí</div>
-          {needPickTable ? (
-            <TablePicker
-              loading={tablesLoading}
-              tables={selectableTables}
-              pickedTable={pickedTable}
-              onPick={setPickedTable}
-              error={errors.table}
-            />
-          ) : (
-            <SelectedTable
-              tableCode={tableCode || pickedTable?.code}
-              capacity={capacity}
-              floor={tableFloor}
-            />
           )}
 
-          <div className="bkm-table-details">
-            <div className="details-row">
-              <div className="detail-card">
-                <span className="detail-label">Sức chứa tối đa</span>
-                <span className="detail-value">{capacity} khách</span>
-              </div>
-              <div className="detail-card">
-                <span className="detail-label">Loại bàn</span>
-                <span className="detail-value">{tableType}</span>
-              </div>
-              <div className="detail-card">
-                <span className="detail-label">Cọc bàn</span>
-                <span className="detail-value">
-                  {formatCurrency(deposit)}
-                </span>
-              </div>
-            </div>
-            <div className="detail-card highlight">
-              <div>
-                <div className="detail-label">Ưu đãi kèm theo</div>
-                <div className="detail-value">
-                  Miễn phí nước suối · Tặng 5% hóa đơn cho nhóm từ 6 khách
-                </div>
-              </div>
-              <button
-                type="button"
-                className="bkm-btn bkm-btn-ghost"
-                onClick={() => setShowVirtualTour(true)}
-              >
-                <Video size={16} /> Xem bàn (VR)
-              </button>
-            </div>
-          </div>
+          <RestaurantCard
+            restaurant={restaurant}
+            loading={restaurantLoading}
+            error={restaurantError}
+          />
 
-          {showVirtualTour && (
-            <div className="bkm-virtual-tour">
-              <div className="tour-header">
-                <div>
-                  <h4>Trải nghiệm bàn 360°</h4>
-                  <p>
-                    Chạm chọn bàn ngay trong lúc xem. Bàn không khả dụng sẽ tô
-                    đỏ.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="bkm-btn bkm-btn-ghost"
-                  onClick={() => setShowVirtualTour(false)}
-                >
-                  <X size={16} /> Đóng
-                </button>
-              </div>
-              <div className="tour-body">
-                <div className="tour-preview">
-                  <div className="tour-screen">
-                    <span className="tour-badge">360°</span>
-                    <span className="tour-title">
-                      View bàn {pickedTable?.code || tableCode || "—"}
-                    </span>
-                    <span className="tour-sub">
-                      Mô phỏng góc nhìn quanh bàn · kéo để xoay
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className="tour-action"
-                    onClick={() => {
-                      const target = pickedTable?.vrUrl;
-                      if (target) {
-                        window.open(target, "_blank", "noopener,noreferrer");
-                        return;
-                      }
-                      showNotification(
-                        "Bàn chưa có link VR, vui lòng chọn bàn khác.",
-                        "warning"
-                      );
-                    }}
+          <div className="bkm-layout">
+            <main className="bkm-main-column">
+              {!showSummary ? (
+                <>
+                  <FormSection
+                    number="01"
+                    title="Thông tin liên hệ"
+                    description="Nhà hàng dùng thông tin này để xác nhận lịch đặt."
                   >
-                    <ArrowUpRight size={16} /> Mở toàn cảnh
-                  </button>
-                </div>
-                <div className="tour-table-list">
-                  {(tables.length ? tables : [pickedTable])
-                    .filter(Boolean)
-                    .map((t) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        className={`tour-table ${
-                          t.status !== "available" ? "unavailable" : ""
-                        } ${pickedTable?.id === t.id ? "active" : ""}`}
-                        onClick={() => {
-                          if (t.status !== "available") return;
-                          setPickedTable(t);
-                          showNotification(`Đã chọn bàn ${t.code}`, "success");
-                        }}
+                    <InputGroup
+                      label="Họ và tên"
+                      icon={<User size={17} />}
+                      error={errors.customerName}
+                    >
+                      <input
+                        type="text"
+                        autoComplete="name"
+                        placeholder="Nhập họ và tên"
+                        value={formData.customerName}
+                        onChange={(event) =>
+                          handleChange("customerName", event.target.value)
+                        }
+                      />
+                    </InputGroup>
+                    <div className="bkm-form-grid bkm-form-grid--two">
+                      <InputGroup
+                        label="Số điện thoại"
+                        icon={<Phone size={17} />}
+                        error={errors.customerPhone || errors.contact}
                       >
-                        <span>Bàn {t.code}</span>
-                        <span className="status">
-                          {t.status === "available"
-                            ? "Trống"
-                            : "Không khả dụng"}
-                        </span>
-                      </button>
-                    ))}
-                </div>
-              </div>
-            </div>
-          )}
+                        <input
+                          type="tel"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          placeholder="09xx xxx xxx"
+                          value={formData.customerPhone}
+                          onChange={(event) =>
+                            handleChange("customerPhone", event.target.value)
+                          }
+                        />
+                      </InputGroup>
+                      <InputGroup
+                        label="Email nhận xác nhận"
+                        icon={<Mail size={17} />}
+                        error={errors.customerEmail}
+                      >
+                        <input
+                          type="email"
+                          autoComplete="email"
+                          placeholder="ten@email.com"
+                          value={formData.customerEmail}
+                          onChange={(event) =>
+                            handleChange("customerEmail", event.target.value)
+                          }
+                        />
+                      </InputGroup>
+                    </div>
+                  </FormSection>
 
-          {/* Time & Party Section */}
-          <div className="bkm-row-grid">
-            <PartySize
-              value={formData.partySize}
-              onButtonChange={handlePartyBtn}
-            />
-            <TimeLogicSelection
-              date={formData.date}
-              time={formData.time}
-              timeOut={formData.timeOut}
-              openEnded={formData.openEnded}
-              openingHours={restaurant?.openingHours}
-              closingHours={restaurant?.closingHours}
-              onChange={handleChange}
-              errors={errors}
-              warning={timeWarning}
-            />
-          </div>
+                  <FormSection
+                    number="02"
+                    title="Thời gian dùng bàn"
+                    description={`Khung giờ phục vụ ${restaurant?.openingHours || "07:00"}–${restaurant?.closingHours || "22:00"}.`}
+                  >
+                    <div className="bkm-form-grid bkm-form-grid--schedule">
+                      <div className={`bkm-control ${errors.partySize ? "has-error" : ""}`}>
+                        <label>
+                          <Users size={16} /> Số khách
+                        </label>
+                        <div className="bkm-stepper">
+                          <button
+                            type="button"
+                            onClick={() => handlePartyChange(-1)}
+                            disabled={formData.partySize <= 1}
+                            aria-label="Giảm số khách"
+                          >
+                            −
+                          </button>
+                          <span aria-live="polite">{formData.partySize}</span>
+                          <button
+                            type="button"
+                            onClick={() => handlePartyChange(1)}
+                            disabled={formData.partySize >= capacity}
+                            aria-label="Tăng số khách"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <small>Tối đa {capacity} khách</small>
+                        {errors.partySize && <em>{errors.partySize}</em>}
+                      </div>
 
-          <label className="bkm-checkbox">
-            <input
-              type="checkbox"
-              checked={formData.openEnded}
-              onChange={(checked) => handleChange("openEnded", checked)}
-            />
-            <span>
-              Không xác định giờ ra (giữ bàn đến khi set trống)
-            </span>
-          </label>
+                      <div className={`bkm-control ${errors.date ? "has-error" : ""}`}>
+                        <label htmlFor="bkm-date">
+                          <Calendar size={16} /> Ngày
+                        </label>
+                        <input
+                          id="bkm-date"
+                          type="date"
+                          min={new Date().toLocaleDateString("en-CA")}
+                          value={formData.date}
+                          onChange={(event) => handleChange("date", event.target.value)}
+                        />
+                        {errors.date && <em>{errors.date}</em>}
+                      </div>
 
-          <div className="bkm-note-area">
-            <textarea
-              rows="2"
-              value={formData.notes}
-              onChange={(e) => handleChange("notes", e.target.value)}
-              placeholder="Ghi chú đặc biệt (dị ứng, trang trí sinh nhật...)"
-            />
-          </div>
+                      <div className={`bkm-control ${errors.time ? "has-error" : ""}`}>
+                        <label htmlFor="bkm-time-in">
+                          <Clock size={16} /> Giờ đến
+                        </label>
+                        <select
+                          id="bkm-time-in"
+                          value={formData.time}
+                          onChange={(event) => handleChange("time", event.target.value)}
+                          disabled={!formData.date || restaurantLoading}
+                        >
+                          <option value="">Chọn giờ</option>
+                          {timeSlots.map((slot) => (
+                            <option key={slot} value={slot}>
+                              {slot}
+                            </option>
+                          ))}
+                        </select>
+                        {errors.time && <em>{errors.time}</em>}
+                      </div>
 
-          <div className="bkm-requests">
-            <div className="bkm-section-title">Yêu cầu thêm</div>
-            <div className="request-grid">
-              {[
-                "Bàn gần cửa sổ",
-                "Ghế trẻ em",
-                "Không gian yên tĩnh",
-                "Ăn chay",
-                "Dị ứng hải sản",
-              ].map((req) => (
-                <label key={req} className="request-chip">
-                  <input
-                    type="checkbox"
-                    checked={selectedRequests.includes(req)}
-                    onChange={() =>
-                      setSelectedRequests((prev) =>
-                        prev.includes(req)
-                          ? prev.filter((r) => r !== req)
-                          : [...prev, req]
-                      )
-                    }
-                  />
-                  <span>{req}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+                      <div className={`bkm-control ${errors.timeOut ? "has-error" : ""}`}>
+                        <label htmlFor="bkm-time-out">
+                          <Clock size={16} /> Giờ kết thúc
+                        </label>
+                        <select
+                          id="bkm-time-out"
+                          value={formData.timeOut}
+                          onChange={(event) => handleChange("timeOut", event.target.value)}
+                          disabled={!formData.time || formData.openEnded}
+                        >
+                          <option value="">Chọn giờ</option>
+                          {timeOutSlots.map((slot) => (
+                            <option key={slot} value={slot}>
+                              {slot}
+                            </option>
+                          ))}
+                        </select>
+                        {errors.timeOut && <em>{errors.timeOut}</em>}
+                      </div>
+                    </div>
 
-          <div className="bkm-section-title">Gói sự kiện</div>
-          <div className="bkm-packages">
-            {eventPackages.length === 0 ? (
-              <div className="package-empty">
-                <Gift size={18} /> Chưa có gói sự kiện được cấu hình.
-              </div>
-            ) : (
-              eventPackages.map((pkg) => (
-                <button
-                  key={pkg.id}
-                  type="button"
-                  className={`package-card ${
-                    selectedPackageId === pkg.id ? "active" : ""}
-                  `}
-                  onClick={() =>
-                    setSelectedPackageId((prev) =>
-                      prev === pkg.id ? null : pkg.id
-                    )
-                  }
-                >
-                  <div className="pkg-header">
-                    <span className="pkg-title">{pkg.name}</span>
-                    <span className="pkg-price">
-                      {formatCurrency(pkg.price || 0)}
-                    </span>
-                  </div>
-                  <p className="pkg-desc">{pkg.description}</p>
-                  {pkg.promotionCode && (
-                    <span className="pkg-code">
-                      Mã khuyến mãi: {pkg.promotionCode}
-                    </span>
-                  )}
-                </button>
-              ))
-            )}
-            <button
-              type="button"
-              className={`package-card ${!selectedPackageId ? "active" : ""}`}
-              onClick={() => {
-                setSelectedPackageId(null);
-                setEventNote("");
-              }}
-            >
-              <div className="pkg-header">
-                <span className="pkg-title">Không chọn gói</span>
-                <span className="pkg-price">0đ</span>
-              </div>
-              <p className="pkg-desc">Tôi chỉ cần đặt bàn cơ bản</p>
-            </button>
-          </div>
+                    <label className={`bkm-unlimited ${errors.openEnded ? "has-error" : ""}`}>
+                      <input
+                        type="checkbox"
+                        checked={formData.openEnded}
+                        disabled={!canUseUnlimitedTime}
+                        onChange={(event) =>
+                          handleChange("openEnded", event.target.checked)
+                        }
+                      />
+                      <span>
+                        <strong>Không giới hạn giờ kết thúc</strong>
+                        <small>
+                          {canUseUnlimitedTime
+                            ? "Bàn được giữ đến khi nhà hàng kết thúc phiên phục vụ."
+                            : "Dành cho thành viên Silver, Gold và Platinum."}
+                        </small>
+                      </span>
+                    </label>
+                    {errors.openEnded && <div className="bkm-field-error">{errors.openEnded}</div>}
+                  </FormSection>
 
-          {selectedPackage && (
-            <div className="bkm-package-fields">
-              <div className="package-items">
-                <div className="items-title">Món đi kèm</div>
-                {selectedPackage.items?.length ? (
+                  <FormSection
+                    number="03"
+                    title="Yêu cầu thêm"
+                    description="Chọn nhanh hoặc ghi rõ điều nhà hàng cần chuẩn bị."
+                  >
+                    <div className="bkm-request-grid">
+                      {SPECIAL_REQUESTS.map((request) => {
+                        const checked = selectedRequests.includes(request);
+                        return (
+                          <button
+                            key={request}
+                            type="button"
+                            className={checked ? "is-selected" : ""}
+                            onClick={() => toggleRequest(request)}
+                            aria-pressed={checked}
+                          >
+                            {checked && <Check size={14} aria-hidden="true" />}
+                            {request}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <label className="bkm-notes">
+                      <span>Ghi chú cho nhà hàng</span>
+                      <textarea
+                        rows="3"
+                        value={formData.notes}
+                        onChange={(event) => handleChange("notes", event.target.value)}
+                        placeholder="Ví dụ: trang trí sinh nhật, vị trí xe lăn, dị ứng khác..."
+                      />
+                    </label>
+                  </FormSection>
+                </>
+              ) : (
+                <BookingSummaryPreview
+                  restaurantName={restaurant?.name}
+                  formData={formData}
+                  tableCode={selectedTable?.code || tableCode}
+                  floor={floorLabel}
+                  tableDeposit={deposit}
+                  menuDeposit={menuDeposit}
+                  totalDeposit={totalDeposit}
+                  duration={durationPreview}
+                  requests={selectedRequests}
+                />
+              )}
+            </main>
+
+            <aside className="bkm-summary-column" aria-label="Tóm tắt bàn đã chọn">
+              <SelectedTableCard
+                table={selectedTable}
+                code={selectedTable?.code || tableCode}
+                capacity={capacity}
+                floor={floorLabel}
+                type={tableTypeLabel(selectedTable?.type)}
+                deposit={deposit}
+                loading={tableLoading}
+              />
+
+              {bookingPerks.length > 0 && (
+                <div className="bkm-side-card bkm-perks">
+                  <span className="bkm-side-label">Quyền lợi tại bàn</span>
                   <ul>
-                    {selectedPackage.items.map((item) => (
-                      <li key={item.menuItemId}>
-                        {item.name} · {item.quantity || 1} món ·{" "}
-                        {formatCurrency(item.unitPrice || 0)}
+                    {bookingPerks.map((perk) => (
+                      <li key={perk}>
+                        <Check size={14} aria-hidden="true" /> {perk}
                       </li>
                     ))}
                   </ul>
-                ) : (
-                  <p className="pkg-note">
-                    Gói này chưa có món đi kèm được cấu hình.
-                  </p>
-                )}
-              </div>
-              <div className="field-item">
-                <label>Ghi chú gói sự kiện</label>
-                <input
-                  type="text"
-                  value={eventNote}
-                  onChange={(e) => setEventNote(e.target.value)}
-                  placeholder="Ví dụ: ghi tên lên bánh, bố trí bóng bay..."
-                />
-              </div>
-            </div>
-          )}
+                </div>
+              )}
 
-          <div className="bkm-section-title">Đặt món kèm</div>
-          <div className="bkm-order-block">
-            <div className="order-info">
-              <div className="order-title">
-                <Receipt size={16} /> Giỏ món hiện tại
+              <div className="bkm-side-card bkm-order-card">
+                <div>
+                  <span className="bkm-side-label">Đặt món trước</span>
+                  <strong>
+                    {restaurantCartItems.length
+                      ? `${restaurantCartItems.length} món · ${formatCurrency(menuSubtotal)}`
+                      : "Chưa có món trong giỏ"}
+                  </strong>
+                  <small>
+                    Cọc món {menuDepositPercent}%: {formatCurrency(menuDeposit)}
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      `/cus-menu?restaurantId=${encodeURIComponent(
+                        restaurantId || "",
+                      )}&returnTo=booking`,
+                    )
+                  }
+                >
+                  <Sparkles size={15} aria-hidden="true" /> Chọn món
+                </button>
               </div>
-              <p>
-                {menuSubtotal > 0
-                  ? `Có ${restaurantCartItems.length} món · Tạm tính ${formatCurrency(
-                      menuSubtotal
-                    )}`
-                  : "Chưa có món trong giỏ của nhà hàng này."}
-              </p>
-              <div className="order-deposit">
-                Cọc món (50%): <strong>{formatCurrency(menuDeposit)}</strong>
+
+              {selectedTable?.vrUrl && (
+                <a
+                  className="bkm-vr-link"
+                  href={selectedTable.vrUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Video size={17} aria-hidden="true" /> Xem vị trí bàn 360°
+                </a>
+              )}
+
+              <div className="bkm-side-card bkm-policy">
+                <div className="bkm-policy-title">
+                  <Info size={16} aria-hidden="true" /> Chính sách giữ chỗ
+                </div>
+                <ul>
+                  <li>
+                    Bàn được giữ trong {selectedTable?.reservationHoldMinutes || 15} phút
+                    kể từ giờ đặt.
+                  </li>
+                  <li>
+                    {selectedTable?.cancelPolicy ||
+                      "Liên hệ nhà hàng sớm nếu cần thay đổi hoặc hủy lịch."}
+                  </li>
+                  {Number(selectedTable?.minSpend || 0) > 0 && (
+                    <li>
+                      Chi tiêu tối thiểu: {formatCurrency(selectedTable.minSpend)}.
+                    </li>
+                  )}
+                </ul>
               </div>
-            </div>
-            <button
-              type="button"
-              className="bkm-btn bkm-btn-gold"
-              onClick={() =>
-                navigate(
-                  `/cus-menu?restaurantId=${encodeURIComponent(
-                    restaurantId || ""
-                  )}&returnTo=booking`
-                )
-              }
-            >
-              <Sparkles size={16} /> Order món
-            </button>
+            </aside>
           </div>
-
-          <div className="bkm-policy">
-            <div className="policy-title">
-              <Info size={16} /> Chính sách & lưu ý
-            </div>
-            <ul>
-              {POLICY_ITEMS.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-
-          {showSummary && (
-            <BookingSummaryPreview
-              formData={formData}
-              tableCode={pickedTable?.code || pickedTable?.id}
-              deposit={totalDeposit}
-              menuDeposit={menuDeposit}
-              packagePrice={packagePrice}
-              totalDue={totalDuePreview}
-              duration={durationPreview}
-            />
-          )}
         </div>
 
-        {/* --- Footer --- */}
-        <div className="bkm-footer">
+        <footer className="bkm-footer">
+          <div className="bkm-footer-total">
+            <span>{showSummary ? "Cần thanh toán cọc" : "Tổng tiền cọc dự kiến"}</span>
+            <strong>{formatCurrency(totalDeposit)}</strong>
+          </div>
           {!showSummary ? (
             <button
-              className="bkm-btn bkm-btn-gold full-width"
-              onClick={() => {
-                if (validate()) setShowSummary(true);
-              }}
+              type="button"
+              className="bkm-primary-btn"
+              onClick={handleContinue}
+              disabled={restaurantLoading || tableLoading || dataUnavailable}
             >
-              Tiếp tục <ChevronRight size={18} />
+              Kiểm tra thông tin <ChevronRight size={18} aria-hidden="true" />
             </button>
           ) : (
             <div className="bkm-footer-actions">
               <button
-                className="bkm-btn bkm-btn-ghost"
+                type="button"
+                className="bkm-secondary-btn"
                 onClick={() => setShowSummary(false)}
+                disabled={isLoading}
               >
-                Quay lại
+                Chỉnh sửa
               </button>
               <button
-                className="bkm-btn bkm-btn-confirm flex-grow"
+                type="button"
+                className="bkm-primary-btn"
                 onClick={handleConfirm}
                 disabled={isLoading}
               >
-                {isLoading ? "Đang xử lý..." : "Xác nhận đặt bàn"}
+                {isLoading ? "Đang xác nhận..." : "Xác nhận đặt bàn"}
               </button>
             </div>
           )}
-        </div>
-      </div>
+        </footer>
+      </section>
     </div>
   );
 };
 
-/* ──────── Sub-Components ──────── */
+const RestaurantCard = ({ restaurant, loading, error }) => (
+  <div className={`bkm-restaurant-card ${loading ? "is-loading" : ""}`}>
+    <div className="bkm-restaurant-icon">
+      <Store size={22} aria-hidden="true" />
+    </div>
+    <div>
+      <span>Nhà hàng</span>
+      <strong>
+        {loading
+          ? "Đang tải thông tin nhà hàng"
+          : error
+            ? "Không tải được thông tin nhà hàng"
+            : restaurant?.name || "Nhà hàng không khả dụng"}
+      </strong>
+      <p>
+        <MapPin size={14} aria-hidden="true" />
+        {loading ? "Đang xác định địa chỉ..." : addressToText(restaurant?.address)}
+      </p>
+    </div>
+  </div>
+);
 
-const generateSlots = (
-  startStr,
-  endStr,
-  selectedDate = null,
-  includeEnd = false
-) => {
-  const parse = (str) => {
-    if (!str) return null;
-    const t = str.trim().toLowerCase();
-    const [timePart] = t.split(" ");
-    let [h, m] = timePart.replace(/[a-z]/g, "").split(":").map(Number);
-    if (isNaN(h) || isNaN(m)) return null;
-    if (t.includes("pm") && h !== 12) h += 12;
-    if (t.includes("am") && h === 12) h = 0;
-    return { h, m, total: h * 60 + m };
-  };
-  const startObj = parse(startStr) || { h: 7, m: 0, total: 420 };
-  const endObj = parse(endStr) || { h: 22, m: 0, total: 1320 };
-  let curTotal = startObj.total;
-  const endTotal = endObj.total;
-  let slots = [];
-  while (curTotal < endTotal) {
-    const h = Math.floor(curTotal / 60);
-    const m = curTotal % 60;
-    slots.push(
-      `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`
-    );
-    curTotal += 30;
-  }
-  if (includeEnd) {
-    const h = Math.floor(endTotal / 60);
-    const m = endTotal % 60;
-    slots.push(
-      `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`
-    );
-  }
-  if (selectedDate) {
-    const now = new Date();
-    const todayStr = now.toLocaleDateString("en-CA");
-    if (selectedDate === todayStr) {
-      const nowTotal = now.getHours() * 60 + now.getMinutes();
-      slots = slots.filter((s) => {
-        const [h, m] = s.split(":").map(Number);
-        return h * 60 + m > nowTotal;
-      });
-    }
-  }
-  return slots;
-};
-
-const TimeLogicSelection = ({
-  date,
-  time,
-  timeOut,
-  openEnded,
-  openingHours,
-  closingHours,
-  onChange,
-  errors,
-  warning,
-}) => {
-  const timeSlots = useMemo(() => {
-    return generateSlots(openingHours, closingHours, date);
-  }, [date, openingHours, closingHours]);
-
-  const timeOutSlots = useMemo(() => {
-    if (!time || openEnded) return [];
-    const [h, m] = time.split(":").map(Number);
-    let nextTotal = h * 60 + m + 30;
-    const nextH = Math.floor(nextTotal / 60);
-    const nextM = nextTotal % 60;
-    const nextStartStr = `${nextH.toString().padStart(2, "0")}:${nextM
-      .toString()
-      .padStart(2, "0")}`;
-    return generateSlots(nextStartStr, closingHours, null, true);
-  }, [time, closingHours]);
-
-  return (
-    <>
-      <div className="bkm-control-box">
-        <label>
-          <Calendar size={14} /> Ngày
-        </label>
-        <input
-          type="date"
-          className={errors.date ? "err-border" : ""}
-          value={date}
-          onChange={(e) => onChange("date", e.target.value)}
-          min={new Date().toLocaleDateString("en-CA")}
-        />
+const FormSection = ({ number, title, description, children }) => (
+  <section className="bkm-form-section">
+    <div className="bkm-section-heading">
+      <span>{number}</span>
+      <div>
+        <h3>{title}</h3>
+        <p>{description}</p>
       </div>
-      <div className="bkm-control-box">
-        <label>
-          <Clock size={14} /> Giờ vào{" "}
-          {warning && (
-            <span className="warn-badge">
-              <AlertCircle size={12} />
-            </span>
-          )}
-        </label>
-        <div className="select-wrapper">
-          <select
-            className={errors.time ? "err-border" : ""}
-            value={time}
-            onChange={(e) => onChange("time", e.target.value)}
-            disabled={!date}
-          >
-            <option value="">--:--</option>
-            {timeSlots.length > 0 ? (
-              timeSlots.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))
-            ) : (
-              <option disabled>Hết giờ</option>
-            )}
-          </select>
-        </div>
-      </div>
-      <div className="bkm-control-box">
-        <label>
-          <Clock size={14} /> Giờ ra
-        </label>
-        <div className="select-wrapper">
-          <select
-            className={errors.timeOut ? "err-border" : ""}
-            value={timeOut}
-            onChange={(e) => onChange("timeOut", e.target.value)}
-            disabled={!time || openEnded}
-          >
-            <option value="">--:--</option>
-            {timeOutSlots.length > 0 ? (
-              timeOutSlots.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))
-            ) : (
-              <option disabled>N/A</option>
-            )}
-          </select>
-        </div>
-      </div>
-      {warning && <div className="bkm-full-width-warn">{warning}</div>}
-    </>
-  );
-};
+    </div>
+    <div className="bkm-section-content">{children}</div>
+  </section>
+);
 
-const InputGroup = ({ label, children, error, className = "", icon }) => (
-  <div className={`bkm-input-wrap ${className} ${error ? "has-error" : ""}`}>
-    <label>{label}</label>
-    <div className="input-inner">
-      {icon && <span className="input-icon">{icon}</span>}
+const InputGroup = ({ label, icon, error, children }) => (
+  <label className={`bkm-input-group ${error ? "has-error" : ""}`}>
+    <span>{label}</span>
+    <div>
+      {icon}
       {children}
     </div>
-    {error && <span className="error-text">{error}</span>}
-  </div>
+    {error && <em>{error}</em>}
+  </label>
 );
 
-const RestaurantInfo = ({ restaurant }) => (
-  <div className="bkm-res-card">
-    <div className="icon-box">
-      <Store size={24} strokeWidth={1.5} />
+const SelectedTableCard = ({
+  table,
+  code,
+  capacity,
+  floor,
+  type,
+  deposit,
+  loading,
+}) => (
+  <div className="bkm-table-card">
+    <div className="bkm-table-card-top">
+      <div>
+        <span>Bàn đã chọn</span>
+        <strong>{loading ? "..." : code || "—"}</strong>
+      </div>
+      <span className="bkm-table-status">
+        <Check size={14} aria-hidden="true" /> Đã giữ lựa chọn
+      </span>
     </div>
-    <div className="text-info">
-      <h3 className="name">{restaurant?.name || "Đang tải..."}</h3>
-      <div className="addr-row">
-        <MapPin size={14} />
-        <span className="addr">{addressToText(restaurant?.address)}</span>
+    <div className="bkm-table-meta">
+      <div>
+        <Users size={16} aria-hidden="true" />
+        <span>Sức chứa</span>
+        <strong>{capacity} khách</strong>
+      </div>
+      <div>
+        <MapPin size={16} aria-hidden="true" />
+        <span>Vị trí</span>
+        <strong>{floor != null ? `Tầng ${floor}` : "Theo sơ đồ"}</strong>
+      </div>
+      <div>
+        <Receipt size={16} aria-hidden="true" />
+        <span>Loại bàn</span>
+        <strong>{type}</strong>
       </div>
     </div>
-  </div>
-);
-
-const SelectedTable = ({ tableCode, capacity, floor }) => (
-  <div className="bkm-selected-table">
-    <div className="left">
-      <span className="label">Bàn đã chọn</span>
-      <span className="code">{tableCode}</span>
+    <div className="bkm-table-deposit">
+      <span>Cọc giữ bàn</span>
+      <strong>{formatCurrency(deposit)}</strong>
     </div>
-    <div className="right">
-      <div className="detail">
-        <Users size={14} /> {capacity} Ghế
-      </div>
-      <div className="detail">
-        <MapPin size={14} /> Tầng {floor || "G"}
-      </div>
-    </div>
-    <div className="status-icon">
-      <Check size={18} />
-    </div>
-  </div>
-);
-
-const TablePicker = ({ loading, tables, pickedTable, onPick, error }) => (
-  <div className="bkm-table-picker">
-    {loading ? (
-      <span className="loading-text">Đang tải danh sách bàn...</span>
-    ) : (
-      <div className="chips-grid">
-        {tables.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={`chip-btn ${pickedTable?.id === t.id ? "active" : ""}`}
-            onClick={() => onPick(t)}
-            disabled={t.status !== "available"}
-          >
-            {t.code}
-          </button>
-        ))}
+    {table?.status && table.status !== "available" && (
+      <div className="bkm-table-warning" role="alert">
+        Bàn vừa thay đổi trạng thái. Vui lòng chọn lại bàn.
       </div>
     )}
-    {error && <span className="err-text">{error}</span>}
-  </div>
-);
-
-const PartySize = ({ value, onButtonChange }) => (
-  <div className="bkm-control-box">
-    <label>
-      <Users size={14} /> Số khách
-    </label>
-    <div className="stepper-luxury">
-      <button
-        type="button"
-        onClick={() => onButtonChange(-1)}
-        disabled={value <= 1}
-      >
-        −
-      </button>
-      <span className="value">{value}</span>
-      <button
-        type="button"
-        onClick={() => onButtonChange(1)}
-        disabled={value >= 20}
-      >
-        +
-      </button>
-    </div>
   </div>
 );
 
 const BookingSummaryPreview = ({
+  restaurantName,
   formData,
   tableCode,
-  deposit,
+  floor,
+  tableDeposit,
   menuDeposit,
-  packagePrice,
-  totalDue,
+  totalDeposit,
   duration,
+  requests,
 }) => (
-  <div className="bkm-receipt-preview">
-    <div className="receipt-header">Xác nhận thông tin</div>
-    <div className="receipt-row">
-      <span>Khách hàng:</span>
-      <strong>{formData.customerName}</strong>
-    </div>
-    <div className="receipt-row">
-      <span>Thời gian:</span>
-      <strong>
-        {formatDateTime(formData.date, formData.time)}{" "}
-        {formData.openEnded ? "(Không giờ ra)" : `(${duration}p)`}
-      </strong>
-    </div>
-    <div className="receipt-row">
-      <span>Vị trí:</span>
-      <strong>Bàn {tableCode}</strong>
-    </div>
-    <div className="receipt-divider"></div>
-    <div className="receipt-row">
-      <span>Tiền cọc bàn:</span>
-      <span>{formatCurrency(deposit - menuDeposit)}</span>
-    </div>
-    <div className="receipt-row">
-      <span>Tiền cọc món:</span>
-      <span>{formatCurrency(menuDeposit)}</span>
-    </div>
-    {packagePrice > 0 && (
-      <div className="receipt-row">
-        <span>Gói sự kiện (tính vào order):</span>
-        <span>{formatCurrency(packagePrice)}</span>
+  <section className="bkm-confirmation">
+    <div className="bkm-confirmation-heading">
+      <span>
+        <Check size={18} aria-hidden="true" />
+      </span>
+      <div>
+        <h3>Kiểm tra lần cuối</h3>
+        <p>Thông tin sẽ được gửi đến nhà hàng sau khi bạn xác nhận.</p>
       </div>
-    )}
-    <div className="receipt-row total">
-      <span>Tổng cần thanh toán:</span>
-      <span className="money">{formatCurrency(totalDue)}</span>
     </div>
-  </div>
+
+    <dl>
+      <div>
+        <dt>Nhà hàng</dt>
+        <dd>{restaurantName || "—"}</dd>
+      </div>
+      <div>
+        <dt>Khách hàng</dt>
+        <dd>{formData.customerName}</dd>
+      </div>
+      <div>
+        <dt>Liên hệ</dt>
+        <dd>{formData.customerPhone || formData.customerEmail}</dd>
+      </div>
+      <div>
+        <dt>Thời gian</dt>
+        <dd>
+          {formatDateTime(formData.date, formData.time)}
+          {formData.openEnded ? " · Không giới hạn" : ` · ${duration} phút`}
+        </dd>
+      </div>
+      <div>
+        <dt>Vị trí</dt>
+        <dd>
+          Bàn {tableCode}
+          {floor != null ? ` · Tầng ${floor}` : ""}
+        </dd>
+      </div>
+      <div>
+        <dt>Số khách</dt>
+        <dd>{formData.partySize} khách</dd>
+      </div>
+      {requests.length > 0 && (
+        <div>
+          <dt>Yêu cầu</dt>
+          <dd>{requests.join(", ")}</dd>
+        </div>
+      )}
+      {formData.notes && (
+        <div>
+          <dt>Ghi chú</dt>
+          <dd>{formData.notes}</dd>
+        </div>
+      )}
+    </dl>
+
+    <div className="bkm-payment-breakdown">
+      <div>
+        <span>Cọc bàn</span>
+        <strong>{formatCurrency(tableDeposit)}</strong>
+      </div>
+      <div>
+        <span>Cọc món</span>
+        <strong>{formatCurrency(menuDeposit)}</strong>
+      </div>
+      <div className="is-total">
+        <span>Tổng cần thanh toán</span>
+        <strong>{formatCurrency(totalDeposit)}</strong>
+      </div>
+    </div>
+  </section>
 );
 
 export default BookingModal;
