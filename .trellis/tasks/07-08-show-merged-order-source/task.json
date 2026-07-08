@@ -3,7 +3,7 @@
   "name": "show-merged-order-source",
   "title": "Show source table for merged POS orders",
   "description": "Use the existing merged-table UI enhancer and mergeDetails contract to label each POS order batch with its physical source table.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "bugfix",
   "scope": "pos-merged-table-ui",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": null,
+  "completedAt": "2026-07-08",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "750a9406790b5e44a0e3125f7c8fe8a0e25bef51",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -25,5 +25,5 @@
     "src/styles/MergedTableLifecycleUi.css",
     "src/utils/installMergedTableLifecycleUi.test.js"
   ],
-  "notes": "Direct main update requested by the user. Reuses the existing mergeDetails-powered UI enhancer instead of duplicating merged-table mapping inside the POS hook/component."
+  "notes": "Direct main update requested by the user. The existing mergeDetails-powered UI enhancer now maps shortened order codes to physical source tables, avoids ambiguous cross-source matches, renders one source badge per POS batch, and removes stale labels outside merged tables. Added a focused DOM test. No local Vitest, frontend build, browser smoke test, screenshot comparison, or CI workflow ran because the connected environment has no repository checkout and the commit has no attached status checks/workflow runs."
 }
