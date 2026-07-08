@@ -9,28 +9,41 @@ Bất kỳ ai muốn tải source code và chạy dự án có thể bắt đầ
 - Hướng dẫn cài, restore database và chạy project: [`handover/README.md`](handover/README.md)
 - Tài khoản Admin/User và các vai trò kiểm thử: [`handover/Account.md`](handover/Account.md)
 - Hướng dẫn xuất Atlas và restore về MongoDB local: [`handover/database/README.md`](handover/database/README.md)
-- File database có sample data sẽ được đặt tại `handover/database/cohan-defense.archive.gz`
+- Database có sample data: `handover/database/cohan-defense.archive.gz`
 
-Dự án có thể được khởi động từ **source code + database backup đã chứa sample data**. Khi file database đã được cung cấp, người dùng không cần chạy seed để sử dụng dữ liệu mẫu.
+Dự án có thể được khởi động từ **source code + database backup đã chứa sample data**. Người dùng không cần chạy seed để sử dụng dữ liệu mẫu đã cung cấp.
 
 ## Quick start (local development)
 
-### 1) Tạo env local
+### 1) Tải source code
 
 ```bash
+git clone https://github.com/LQVCohan/cohan-restaurant-app.git
+cd cohan-restaurant-app
+```
+
+### 2) Cài dependencies và tạo env local
+
+```bash
+npm install
+npm install --prefix cohan-restaurant-backend
 npm run env:local
 ```
 
-### 2) Chạy frontend
+### 3) Restore database mẫu
 
-```bash
-npm run dev
-```
+Làm theo [`handover/database/README.md`](handover/database/README.md).
 
-### 3) Chạy backend
+### 4) Chạy backend
 
 ```bash
 npm run dev --prefix cohan-restaurant-backend
+```
+
+### 5) Chạy frontend
+
+```bash
+npm run dev
 ```
 
 ## Tài liệu
