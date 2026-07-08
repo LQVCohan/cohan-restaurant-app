@@ -138,10 +138,10 @@ describe("AuthProvider account cache reset", () => {
     );
 
     fireEvent.click(screen.getByText("login-old"));
-    await waitFor(() =>
-      expect(screen.getByTestId("user-id")).toHaveTextContent("old-manager"),
-    );
-    expect(screen.getByTestId("restaurants")).toHaveTextContent("COHAN Quận 1");
+    await waitFor(() => {
+      expect(screen.getByTestId("user-id")).toHaveTextContent("old-manager");
+      expect(screen.getByTestId("restaurants")).toHaveTextContent("COHAN Quận 1");
+    });
 
     fireEvent.click(screen.getByText("logout"));
     fireEvent.click(screen.getByText("login-new"));
@@ -156,10 +156,10 @@ describe("AuthProvider account cache reset", () => {
       await Promise.resolve();
     });
 
-    await waitFor(() =>
-      expect(screen.getByTestId("user-id")).toHaveTextContent("new-manager"),
-    );
-    expect(screen.getByTestId("token")).toHaveTextContent("new-token");
-    expect(screen.getByTestId("restaurants")).toHaveTextContent("COHAN Quận 1");
+    await waitFor(() => {
+      expect(screen.getByTestId("user-id")).toHaveTextContent("new-manager");
+      expect(screen.getByTestId("token")).toHaveTextContent("new-token");
+      expect(screen.getByTestId("restaurants")).toHaveTextContent("COHAN Quận 1");
+    });
   });
 });
