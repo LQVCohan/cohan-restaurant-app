@@ -1,0 +1,36 @@
+{
+  "id": "07-08-manager-dashboard-scope-performance",
+  "name": "manager-dashboard-scope-performance",
+  "title": "Reuse authenticated Brand scope on manager dashboard",
+  "description": "Remove the duplicate MyBrands request waterfall for authenticated Brand owners and keep dashboard restaurant selection on the shared manager scope hook.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-dashboard-brand-scope",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/context/AuthProvider.jsx",
+    "src/hooks/useBrandManagement.js",
+    "src/hooks/useManagerRestaurantSelection.js",
+    "src/hooks/useDashboard.js",
+    "src/components/Dashboard_Manager/Brand/BrandManagement.jsx",
+    "src/hooks/useBrandManagement.scope.test.jsx",
+    "src/hooks/useDashboard.test.jsx"
+  ],
+  "notes": "BrandMembership and scopedRestaurants are already loaded by AuthProvider; manager selection should reuse that context instead of issuing MyBrands again.",
+  "meta": {
+    "skills": ["ponytail", "react-ui-performance"]
+  }
+}
