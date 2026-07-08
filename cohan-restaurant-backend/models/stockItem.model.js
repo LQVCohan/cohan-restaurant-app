@@ -2,7 +2,7 @@
 import mongoose from "mongoose";
 import BaseSchemaModel from "./baseSchemaModel.js";
 
-const isFiniteNumber = (value) => Number.isFinite(Number(value));
+const isFiniteNumber = (value) => typeof value === "number" && Number.isFinite(value);
 
 const BatchSchema = new mongoose.Schema(
   {
