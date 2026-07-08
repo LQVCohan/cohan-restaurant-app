@@ -1,10 +1,9 @@
 {
   "id": "07-08-restaurant-detail-info-layout-fix",
   "title": "Sắp xếp lại phần thông tin chi tiết nhà hàng",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-fix",
   "scope": [
-    "src/components/Customer/RestaurantDetail/RestaurantDetail.jsx",
     "src/components/Customer/RestaurantDetail/RestaurantDetail.fallbacks.scss",
     "src/components/Customer/RestaurantDetail/RestaurantDetail.complete.scss",
     "src/components/Customer/RestaurantDetail/components/RestaurantInfo/RestaurantInfo.jsx",
@@ -22,8 +21,16 @@
     "completed": [
       "traced model, GraphQL schema, public resolver, Apollo query, RestaurantInfo, hero media fallback and sidebar callers",
       "confirmed backend data contracts remain correct",
-      "confirmed the new visual defect comes from the gradient/text fallback path when avatar and coverImage are absent"
+      "replaced the missing-media gradient presentation with a temporary online cover and avatar image while retaining CSS gradient fallbacks",
+      "reduced the fallback copy to a small 'Ảnh minh họa' badge and removed the later SCSS overrides that recreated the old large placeholder",
+      "reviewed the final diffs and added a source-contract regression check",
+      "checked the latest commit status; no CI statuses were available"
     ],
-    "notRun": []
+    "notRun": [
+      "npm run check:conflicts",
+      "targeted Vitest",
+      "npm run build",
+      "desktop and mobile browser smoke tests"
+    ]
   }
 }
