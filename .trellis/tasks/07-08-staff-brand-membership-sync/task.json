@@ -1,10 +1,10 @@
 {
   "id": "07-08-staff-brand-membership-sync",
   "name": "staff-brand-membership-sync",
-  "title": "Synchronize new staff with BrandMembership",
-  "description": "Ensure the existing createStaff flow creates an active BrandMembership staff scope for the selected restaurant Brand without changing the frontend contract.",
+  "title": "Synchronize new staff with active business context",
+  "description": "Create the staff BrandMembership from the manager workspace Brand and restaurant active at submit time; keep restaurantForStaff as compatibility data only.",
   "status": "in_review",
-  "dev_type": "backend",
+  "dev_type": "fullstack",
   "scope": "staff-brand-membership-create-flow",
   "package": null,
   "priority": "P1",
@@ -21,14 +21,14 @@
   "children": [],
   "parent": null,
   "relatedFiles": [
-    "cohan-restaurant-backend/models/staff.model.js",
-    "cohan-restaurant-backend/models/brandMembership.model.js",
-    "cohan-restaurant-backend/graphql/resolvers/staff/mutation.js",
-    "src/hooks/useStaffManagement.js",
-    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.jsx",
-    "cohan-restaurant-backend/tests/models/staff-brand-membership-sync.test.js"
+    "cohan-restaurant-backend/graphql/schema/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/staff/index.js",
+    "cohan-restaurant-backend/tests/resolvers/staff-create-business-context.test.js",
+    "src/components/Dashboard_Manager/Staff/components/modals/index.js",
+    "src/components/Dashboard_Manager/Staff/components/modals/AddEmployeeModal/AddEmployeeModal.jsx",
+    "src/components/Dashboard_Manager/Staff/components/modals/AddEmployeeModal/AddEmployeeModal.test.jsx"
   ],
-  "notes": "Frontend already sends restaurantForStaff through CreateStaff. The Staff creation boundary now creates the required BrandMembership and rolls back the new Staff record if synchronization fails. node --check passed for the changed model and focused test file; Vitest and build were not available in this connector session.",
+  "notes": "The normalized add flow sends request-only staffBusinessContext from the active manager restaurant and its Brand. The account payload no longer supplies restaurantForStaff as the source of Brand scope; backend fallback remains only for older callers. Focused CI checks are pending.",
   "meta": {
     "skills": ["ponytail"]
   }
