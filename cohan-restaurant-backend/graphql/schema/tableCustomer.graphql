@@ -14,6 +14,7 @@ type TableCustomer {
   dietaryNotes: String
   customerPreferences: String
   partySize: Int
+  timeFrom: DateTime
   timeTo: DateTime
 
   createdAt: DateTime
@@ -48,6 +49,7 @@ input UpsertTableCustomerInput {
   dietaryNotes: String
   customerPreferences: String
   partySize: Int
+  timeFrom: DateTime
   timeTo: DateTime
 }
 
