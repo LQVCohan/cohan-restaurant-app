@@ -3,17 +3,17 @@
   "name": "pos-table-customer-persistence-ui",
   "title": "Fix POS table customer persistence and form clarity",
   "description": "Make the POS table customer form explicit, refresh table status immediately after save, and restore all saved customer and schedule fields when reopening the modal.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "bugfix-ui",
   "scope": "pos-table-customer",
   "priority": "P0",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": null,
+  "completedAt": "2026-07-08",
   "branch": "main",
   "base_branch": "main",
-  "commit": null,
+  "commit": "b4302064f146b16558227aedc9f5633dcf38f565",
   "pr_url": null,
   "relatedFiles": [
     "cohan-restaurant-backend/models/tableCustomer.model.js",
@@ -24,5 +24,5 @@
     "src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.module.scss",
     "src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.customer.test.jsx"
   ],
-  "notes": "Root causes: the party-size stepper has no label; the non-order save path does not invoke onUpdated; reserved tables skip TableCustomer hydration even when no active reservation exists; and TableCustomer persists only timeTo, so check-in start time cannot survive reopening."
+  "notes": "Completed the schema-to-UI flow. The party-size control is explicitly labeled, customer save awaits the POS table refetch callback, the modal distinguishes a missing reservation envelope from a real reservation and falls back to TableCustomer, and both arrival/end times are persisted and restored. Legacy callers that omit timeFrom no longer erase it. Added backend and frontend regression tests. Targeted Vitest, GraphQL check, frontend build, and browser smoke test were not run because the connected environment has no repository checkout/dependencies and cannot resolve github.com. No combined GitHub status was attached to the latest test commit."
 }
