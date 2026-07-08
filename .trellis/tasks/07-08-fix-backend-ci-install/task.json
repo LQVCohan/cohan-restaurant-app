@@ -25,7 +25,7 @@
     "cohan-restaurant-backend/package-lock.json",
     ".github/workflows/ci.yml"
   ],
-  "notes": "Both CI jobs stopped at backend npm ci before lint or tests because package.json declared mongoose-lean-virtuals ^0.8.0 while package-lock.json records ^2.0.0. PR #1274 keeps the existing lockfile and aligns the stale manifest entry. CI is the runnable verification for npm ci and subsequent tests.",
+  "notes": "Both CI jobs previously stopped at backend npm ci because package.json declared mongoose-lean-virtuals ^0.8.0 while package-lock.json records ^2.0.0. PR #1274 aligns the stale manifest entry. CI now passes both backend install steps and lint. A temporary targeted run proved staff-create-business-context.test.js and AddEmployeeModal.test.jsx both pass, then the diagnostic workflow was removed. The full backend suite still reports a separate failure outside those two focused tests; frontend unit execution remains outside this task's one-line dependency fix.",
   "meta": {
     "skills": ["ponytail"]
   }
