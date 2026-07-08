@@ -1,7 +1,7 @@
 {
   "id": "07-08-fix-home-cart-server-sync",
   "title": "Fix homepage cart server sync false error",
-  "status": "in_progress",
+  "status": "verifying",
   "branch": "main",
   "createdAt": "2026-07-08",
   "scope": [
@@ -12,5 +12,6 @@
     "targeted Vitest DishGrid regression test",
     "npm run check:graphql",
     "npm run build"
-  ]
+  ],
+  "validationStatus": "not_run_local_environment_could_not_resolve_github"
 }
