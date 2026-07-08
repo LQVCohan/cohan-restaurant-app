@@ -18,6 +18,14 @@ const makeFindOneResult = (row) => ({
   })),
 });
 
+const tableCustomerRow = {
+  _id: "table-customer-1",
+  customerName: "Nguyễn An",
+  customerPhone: "0901000001",
+  customerEmail: "an@example.com",
+  customerUserId: null,
+};
+
 describe("withTableCustomerOrderLifecycle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -26,13 +34,7 @@ describe("withTableCustomerOrderLifecycle", () => {
 
   it("hydrates a dine-in order from TableCustomer and writes the guest id back", async () => {
     modelMocks.TableCustomer.findOne.mockReturnValue(
-      makeFindOneResult({
-        _id: "table-customer-1",
-        customerName: "Nguyễn An",
-        customerPhone: "0901000001",
-        customerEmail: "an@example.com",
-        customerUserId: null,
-      }),
+      makeFindOneResult(tableCustomerRow),
     );
     const createOrderForTable = vi.fn().mockResolvedValue({
       order: { userId: "guest-1" },
@@ -108,5 +110,27 @@ describe("withTableCustomerOrderLifecycle", () => {
       {},
       undefined,
     );
+  });
+
+  it("keeps the created order successful when snapshot writeback fails", async () => {
+    modelMocks.TableCustomer.findOne.mockReturnValue(
+      makeFindOneResult(tableCustomerRow),
+    );
+    modelMocks.TableCustomer.updateOne.mockRejectedValue(
+      new Error("temporary writeback failure"),
+    );
+    const createOrderForTable = vi.fn().mockResolvedValue({
+      order: { userId: "guest-1" },
+    });
+    const { withTableCustomerOrderLifecycle } = await import(
+      "../../graphql/resolvers/order/tableCustomerOrderLifecycle.js"
+    );
+    const wrapped = withTableCustomerOrderLifecycle({ createOrderForTable });
+
+    await expect(
+      wrapped.createOrderForTable(null, {
+        input: { restaurantId: "restaurant-1", tableCode: "A1", items: [{}] },
+      }),
+    ).resolves.toEqual({ order: { userId: "guest-1" } });
   });
 });
