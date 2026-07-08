@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { MenuAvailabilityWatch, MenuItem, Warehouse } from "../../models/index.js";
 import { checkAvailabilityForLinesTx } from "./inventory.service.js";
+import { createNotificationOnce } from "./notification/notificationWorkflow.service.js";
 
 const DEFAULT_WATCH_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -43,6 +44,55 @@ function resolveExpiresAt(value) {
   const parsed = value ? new Date(value) : null;
   if (parsed && !Number.isNaN(parsed.getTime()) && parsed > new Date()) return parsed;
   return new Date(Date.now() + DEFAULT_WATCH_TTL_MS);
+}
+
+function buildFoodDetailUrl(menuItemId, restaurantId) {
+  return `/food/${encodeURIComponent(String(menuItemId))}?restaurantId=${encodeURIComponent(String(restaurantId))}`;
+}
+
+export function buildMenuAvailabilityNotificationPayload({
+  watch,
+  menuItem,
+  restaurantId,
+  menuItemId,
+  servingKey,
+}) {
+  const itemName = String(menuItem?.name || "Món bạn quan tâm").trim();
+  const message = `${itemName} hiện đã có thể đặt lại. Hệ thống không tự giữ món, vui lòng đặt lại nếu bạn vẫn muốn dùng.`;
+
+  return {
+    title: "Món đã có lại",
+    messagePreview: `${itemName} hiện đã có thể đặt lại.`,
+    message,
+    restaurantId: String(restaurantId),
+    menuItemId: String(menuItemId),
+    servingVariantKey: normalizeServingKey(servingKey),
+    desiredQuantity: Number(watch?.desiredQuantity || 1),
+    watchId: String(watch?._id || watch?.id || ""),
+    imageUrl: menuItem?.thumbImage || null,
+    actionUrl: buildFoodDetailUrl(menuItemId, restaurantId),
+  };
+}
+
+async function persistAvailabilityNotification({ io, watch, menuItem, restaurantId, menuItemId, servingKey }) {
+  if (!watch?.userId) return null;
+
+  return createNotificationOnce({
+    toUserId: watch.userId,
+    toRole: "CUSTOMER",
+    restaurantId,
+    type: "menu_availability",
+    payload: buildMenuAvailabilityNotificationPayload({
+      watch,
+      menuItem,
+      restaurantId,
+      menuItemId,
+      servingKey,
+    }),
+    sourceType: "menu_availability_watch",
+    sourceId: watch._id,
+    io,
+  });
 }
 
 async function resolveDefaultWarehouseId(restaurantId, session = null) {
@@ -98,11 +148,21 @@ export async function registerMenuAvailabilityWatch(input = {}, ctx = {}) {
   if (!restaurantId) throw new Error("restaurantId is required");
   if (!menuItemId) throw new Error("menuItemId is required");
 
-  const userId = toId(input.userId || ctx?.user?.id || ctx?.user?._id);
+  const contextUserId = toId(ctx?.user?.id || ctx?.user?._id);
+  const requestedUserId = toId(input.userId);
+  if (input.userId && !requestedUserId) throw new Error("userId is invalid");
+  if (
+    requestedUserId &&
+    (!contextUserId || String(requestedUserId) !== String(contextUserId))
+  ) {
+    throw new Error("Không thể đăng ký nhắc món cho tài khoản khác.");
+  }
+
+  const userId = contextUserId;
   const tableId = toId(input.tableId);
   const tableCode = normalizeTableCode(input.tableCode);
   if (!userId && !tableId && !tableCode) {
-    throw new Error("Cần userId hoặc tableId/tableCode để gửi nhắc khi món có lại.");
+    throw new Error("Cần đăng nhập hoặc có tableId/tableCode để gửi nhắc khi món có lại.");
   }
 
   const servingKey = normalizeServingKey(input.servingKey);
@@ -236,6 +296,12 @@ export async function notifyAvailabilityWatchersForMenuItem({ io, restaurantId, 
     .limit(Math.max(1, Number(maxWatchers || 50)))
     .lean({ virtuals: true });
 
+  if (!watchers.length) return { notified: 0, skipped: 0 };
+
+  const menuItem = await MenuItem.findOne({ _id: mid, restaurantId: rid })
+    .select({ name: 1, thumbImage: 1 })
+    .lean();
+
   let notified = 0;
   let skipped = 0;
   for (const watch of watchers) {
@@ -271,6 +337,29 @@ export async function notifyAvailabilityWatchersForMenuItem({ io, restaurantId, 
       source,
       message: "Món bạn quan tâm hiện đã có thể đặt lại. Hệ thống không tự giữ món, vui lòng đặt lại nếu vẫn muốn dùng.",
     };
+
+    try {
+      await persistAvailabilityNotification({
+        io,
+        watch: updated,
+        menuItem,
+        restaurantId: rid,
+        menuItemId: mid,
+        servingKey: normalizedServingKey,
+      });
+    } catch (error) {
+      await MenuAvailabilityWatch.updateOne(
+        { _id: updated._id, status: "notified" },
+        { $set: { status: "watching", notifiedAt: null } },
+      );
+      console.warn(
+        "[MenuAvailabilityWatch] Failed to persist customer notification",
+        error?.message || error,
+      );
+      skipped += 1;
+      continue;
+    }
+
     emitAvailabilityNotification(io, updated, payload);
     notified += 1;
   }
