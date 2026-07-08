@@ -1,0 +1,30 @@
+{
+  "id": "manager-transparent-page-roots",
+  "name": "manager-transparent-page-roots",
+  "title": "Unify manager page canvas",
+  "description": "Remove page-local cream canvases so every manager route uses the shared sage workspace background.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-layout-all-pages",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/layouts/ManagerLayout.jsx",
+    "src/layouts/ManagerUnifiedBackground.css",
+    "src/components/Dashboard_Manager/Customer/CustomerManagement.scss",
+    "src/components/Dashboard_Manager/Menu/MenuManagement.scss"
+  ],
+  "notes": "Visual-only shared layout fix. No schema, resolver, GraphQL, permission, state, or UI-action changes."
+}
