@@ -1,0 +1,11 @@
+{
+  "id": "07-10-local-db-runner",
+  "title": "Add local MongoDB npm runner",
+  "status": "in_progress",
+  "scope": "developer-experience",
+  "createdAt": "2026-07-10",
+  "files": [
+    "package.json",
+    "scripts/start-local-mongo.mjs"
+  ]
+}
