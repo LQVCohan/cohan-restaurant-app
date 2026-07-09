@@ -20,27 +20,40 @@ const DashboardSynchronized = () => {
   const shellRef = useRef(null);
   const [portalTarget, setPortalTarget] = useState(null);
   const { restaurants = [] } = useContext(AuthContext) || {};
-  const fallbackRestaurantId = useMemo(
+  const accessibleRestaurantIds = useMemo(
     () =>
-      (Array.isArray(restaurants) ? restaurants : [])
-        .map(getRestaurantId)
-        .find(Boolean) || "",
+      new Set(
+        (Array.isArray(restaurants) ? restaurants : [])
+          .map(getRestaurantId)
+          .filter(Boolean),
+      ),
     [restaurants],
   );
-  const [restaurantId, setRestaurantId] = useState(
-    () => readDashboardRestaurantId() || fallbackRestaurantId,
+  const fallbackRestaurantId = useMemo(
+    () => accessibleRestaurantIds.values().next().value || "",
+    [accessibleRestaurantIds],
   );
+  const resolveAccessibleRestaurantId = (candidateRestaurantId) => {
+    const normalizedRestaurantId = String(candidateRestaurantId || "");
+    return normalizedRestaurantId && accessibleRestaurantIds.has(normalizedRestaurantId)
+      ? normalizedRestaurantId
+      : fallbackRestaurantId;
+  };
+  const [restaurantId, setRestaurantId] = useState(() => readDashboardRestaurantId());
+  const activeRestaurantId = resolveAccessibleRestaurantId(restaurantId);
 
   useEffect(() => {
-    if (!restaurantId && fallbackRestaurantId) {
-      setRestaurantId(fallbackRestaurantId);
+    const nextRestaurantId = resolveAccessibleRestaurantId(
+      restaurantId || readDashboardRestaurantId(),
+    );
+    if (nextRestaurantId !== restaurantId) {
+      setRestaurantId(nextRestaurantId);
     }
-  }, [fallbackRestaurantId, restaurantId]);
+  }, [accessibleRestaurantIds, fallbackRestaurantId, restaurantId]);
 
   useEffect(() => {
     const handleRestaurantChanged = (event) => {
-      const nextRestaurantId = String(event?.detail?.restaurantId || "");
-      setRestaurantId(nextRestaurantId || fallbackRestaurantId);
+      setRestaurantId(resolveAccessibleRestaurantId(event?.detail?.restaurantId));
     };
 
     window.addEventListener(
@@ -52,11 +65,11 @@ const DashboardSynchronized = () => {
         DASHBOARD_RESTAURANT_CHANGED_EVENT,
         handleRestaurantChanged,
       );
-  }, [fallbackRestaurantId]);
+  }, [accessibleRestaurantIds, fallbackRestaurantId]);
 
   useEffect(() => {
     setPortalTarget(null);
-    if (!restaurantId) return undefined;
+    if (!activeRestaurantId) return undefined;
 
     const shell = shellRef.current;
     const sideStack = shell?.querySelector(".dashboard-side-stack");
@@ -81,7 +94,7 @@ const DashboardSynchronized = () => {
       mountNode.remove();
       setPortalTarget(null);
     };
-  }, [restaurantId]);
+  }, [activeRestaurantId]);
 
   const openStaffPage = () => {
     window.dispatchEvent(
@@ -97,10 +110,10 @@ const DashboardSynchronized = () => {
   return (
     <div ref={shellRef} className="dashboard-synchronized-shell">
       <Dashboard />
-      {portalTarget && restaurantId
+      {portalTarget && activeRestaurantId
         ? createPortal(
             <DashboardStaffRoster
-              restaurantId={restaurantId}
+              restaurantId={activeRestaurantId}
               onOpenStaff={openStaffPage}
             />,
             portalTarget,
