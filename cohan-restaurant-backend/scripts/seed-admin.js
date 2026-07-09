@@ -20,10 +20,10 @@ export function buildAdminUserPayload({ email, passwordHash, adminRoleId }) {
 
 async function main() {
   const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
-  const DB_NAME = process.env.MONGO_DB || "foodhub";
+  const DB_NAME = process.env.MONGO_DB || "RestaurantDB";
 
   await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
-  console.log("✅ Connected Mongo");
+  console.log("✅ Connected Mongo", { dbName: mongoose.connection.name });
 
   const adminRole = await Role.findOne({ slug: "admin" });
   if (!adminRole) {
