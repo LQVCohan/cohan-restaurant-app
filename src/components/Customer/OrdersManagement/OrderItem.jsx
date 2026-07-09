@@ -44,6 +44,10 @@ const OrderItem = ({
   const displayRestaurantName = restaurantName || "Nhà hàng";
   const visibleActions = actions
     .filter((action) => {
+      if (kind !== "reservation") return true;
+      return action?.label !== "Xóa";
+    })
+    .filter((action) => {
       if (normalizedStatus !== "pending_change") return true;
       return !["Đổi giờ", "Đổi bàn"].includes(action?.label);
     })
