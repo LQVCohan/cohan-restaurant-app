@@ -13,6 +13,8 @@
     "test": "npm run test:unit && npm run test:api",
     "test:menu-rbac": "vitest run src/utils/frontendRoleAccess.test.js",
     "env:local": "node scripts/setup-local-env.mjs",
+    "db": "node scripts/start-local-mongo.mjs",
+    "db:test": "npm --prefix cohan-restaurant-backend run test:db",
     "seed:defense": "npm --prefix cohan-restaurant-backend run seed:defense --",
     "test:frontend": "vitest run",
     "test:customer-manager": "vitest run src/components/Dashboard_Manager/Customer/CustomerList.test.jsx",
