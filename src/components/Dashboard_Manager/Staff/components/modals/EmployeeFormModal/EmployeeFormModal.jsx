@@ -48,7 +48,7 @@ const toDraftComparableForm = (
   startDate: value?.startDate || fallbackStartDate,
   emergencyRelation: normalizeDraftText(value?.emergencyRelation),
   notes: normalizeDraftText(value?.notes),
-  restaurantForStaff: value?.restaurantForStaff || fallbackRestaurantId || "",
+  restaurantId: value?.restaurantId || fallbackRestaurantId || "",
   userType: value?.userType || "STAFF",
   employmentType: value?.employmentType || "FULL_TIME",
 });
@@ -66,7 +66,7 @@ const createBaselineForm = (fallbackStartDate, fallbackRestaurantId) =>
       startDate: fallbackStartDate,
       emergencyRelation: "",
       notes: "",
-      restaurantForStaff: fallbackRestaurantId || "",
+      restaurantId: fallbackRestaurantId || "",
       userType: "STAFF",
       employmentType: "FULL_TIME",
     },
@@ -106,7 +106,7 @@ const EmployeeFormModal = ({
     emergencyPhone: "",
     emergencyRelation: "",
     notes: "",
-    restaurantForStaff: defaultRestaurantId || "",
+    restaurantId: defaultRestaurantId || "",
     userType: "STAFF",
     employmentType: "FULL_TIME",
     password: "",
@@ -154,7 +154,7 @@ const EmployeeFormModal = ({
       emergencyPhone: "",
       emergencyRelation: "",
       notes: "",
-      restaurantForStaff: defaultRestaurantId || "",
+      restaurantId: defaultRestaurantId || "",
       userType: "STAFF",
       employmentType: "FULL_TIME",
       password: "",
@@ -368,8 +368,8 @@ const EmployeeFormModal = ({
       }
       if (!formData.positionTitle.trim())
         newErrors.positionTitle = "Vui lòng nhập tên hiển thị/chức danh";
-      if (!formData.restaurantForStaff)
-        newErrors.restaurantForStaff = "Chọn nhà hàng";
+      if (!formData.restaurantId)
+        newErrors.restaurantId = "Chọn nhà hàng";
     }
 
     // --- STEP 2 ---
@@ -687,7 +687,7 @@ const EmployeeFormModal = ({
         roleSlug: formData.roleSlug || undefined,
         positionTitle: formData.positionTitle.trim(),
         department: formData.department,
-        restaurantForStaff: formData.restaurantForStaff || undefined,
+        restaurantId: formData.restaurantId || undefined,
         employmentType: formData.employmentType,
         shiftType: formData.shift || undefined,
         dateJoined,
@@ -770,11 +770,11 @@ const EmployeeFormModal = ({
           <select
             aria-label="Nhà hàng chính"
             className={`form-input form-select ${
-              errors.restaurantForStaff ? "error" : ""
+              errors.restaurantId ? "error" : ""
             }`}
-            value={formData.restaurantForStaff}
+            value={formData.restaurantId}
             onChange={(e) =>
-              handleInputChange("restaurantForStaff", e.target.value)
+              handleInputChange("restaurantId", e.target.value)
             }
           >
             <option value="">-- Chọn nhà hàng --</option>
@@ -784,8 +784,8 @@ const EmployeeFormModal = ({
               </option>
             ))}
           </select>
-          {errors.restaurantForStaff && (
-            <span className="error-msg">{errors.restaurantForStaff}</span>
+          {errors.restaurantId && (
+            <span className="error-msg">{errors.restaurantId}</span>
           )}
         </div>
       </div>

@@ -399,7 +399,6 @@ const ME_QUERY = gql`
     me {
       id
       roleName
-      restaurantForStaff
       refRestaurants {
         id
         name

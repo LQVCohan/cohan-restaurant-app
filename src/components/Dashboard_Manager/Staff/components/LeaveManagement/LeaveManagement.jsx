@@ -70,6 +70,7 @@ const LeaveManagement = ({ restaurantId }) => {
           </p>
           <LeaveRequestForm
             staffList={staffList}
+            restaurantId={restaurantId}
             onSubmit={submitLeaveRequest}
             disabled={isMutating}
             loading={loading}

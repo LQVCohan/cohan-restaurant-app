@@ -243,9 +243,6 @@ const StaffManagement = () => {
     if (!staffList) return [];
     let result = staffList;
 
-    if (selectedRestaurant) {
-      result = result.filter((staff) => hasRestaurantMatch(staff, selectedRestaurant));
-    }
     if (debouncedSearchQuery) {
       result = result.filter((staff) => matchesEmployeeSearch(staff, debouncedSearchQuery));
     }

@@ -117,6 +117,10 @@ import {
   resolveUserRoles,
   userCanAccessRestaurant,
 } from "../../../src/services/scheduling/schedulingPermission.service.js";
+import {
+  getStaffRestaurantIds,
+  staffBelongsToRestaurantByMembership,
+} from "../../../src/services/auth/restaurantScope.service.js";
 import { syncAttendancePerformanceIncidents } from "../../../src/services/performance/attendancePerformanceIntegration.service.js";
 import { syncKitchenShiftRosterSnapshotsForPublication } from "../../../src/services/kitchen/kitchenShiftRosterSnapshot.service.js";
 import { runAttendanceExceptionDetectionJob } from "../../../src/jobs/attendanceException.job.js";
@@ -334,11 +338,6 @@ function assertAcknowledgementCanRespond(doc, employeeId) {
   if (doc.status === "cancelled")
     throw new Error("SHIFT_ACKNOWLEDGEMENT_CANCELLED");
 }
-function staffBelongsToRestaurant(staff, restaurantId) {
-  const rid = String(restaurantId);
-  return String(staff?.restaurantForStaff || "") === rid;
-}
-
 function isSelf(ctx, employeeId) {
   const actorId = ctx?.user?.id || ctx?.user?._id;
   return actorId && String(actorId) === String(employeeId);
@@ -350,7 +349,6 @@ async function loadStaffForRestaurant(employeeId, restaurantId) {
       _id: 1,
       userType: 1,
       deletedAt: 1,
-      restaurantForStaff: 1,
       fullName: 1,
       employeeCode: 1,
     })
@@ -358,7 +356,7 @@ async function loadStaffForRestaurant(employeeId, restaurantId) {
   if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
     throw new Error("Staff not found");
   }
-  if (!staffBelongsToRestaurant(staff, restaurantId)) {
+  if (!(await staffBelongsToRestaurantByMembership(staff._id, restaurantId))) {
     throw new Error("Staff does not belong to this restaurant");
   }
   return staff;
@@ -1071,7 +1069,7 @@ async function logStaffEvent({
   try {
     const actorUserId = ctx?.user?.id || ctx?.user?._id || null;
 
-    const restaurantId = staff.restaurantForStaff || null;
+    const restaurantId = meta.restaurantId || null;
 
     await EventLog.create({
       restaurantId,
@@ -1141,10 +1139,6 @@ export const __testables = {
   formatEmployeeCode,
   getNextEmployeeCode,
 };
-function resolveStaffRestaurantId(staff) {
-  return staff?.restaurantForStaff || null;
-}
-
 async function loadStaffScope(staffId) {
   if (!mongoose.isValidObjectId(staffId)) return null;
   return Staff.findById(staffId)
@@ -1152,8 +1146,6 @@ async function loadStaffScope(staffId) {
       _id: 1,
       userType: 1,
       deletedAt: 1,
-      restaurantForStaff: 1,
-      refRestaurants: 1,
       role: 1,
       employmentStatus: 1,
     })
@@ -1166,7 +1158,7 @@ async function requireStaffMutationAccess(ctx, staffId) {
   if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
     throw new Error("Staff not found");
   }
-  const restaurantId = resolveStaffRestaurantId(staff);
+  const [restaurantId] = await getStaffRestaurantIds(staff._id);
   if (!restaurantId) throw new Error("STAFF_RESTAURANT_NOT_FOUND");
   await requireRestaurantAccess(ctx, restaurantId);
   return { staff, restaurantId };
@@ -1381,6 +1373,7 @@ const mutationResolvers = {
         userType: staff.userType,
         department: staff.department || null,
         verificationDispatch,
+        restaurantId: restaurantAccessId,
       },
     });
 
@@ -1404,16 +1397,17 @@ const mutationResolvers = {
     }
     if (Object.prototype.hasOwnProperty.call(input, "refRestaurantIds")) {
       const err = new Error(
-        "refRestaurantIds is not allowed for staff; use restaurantForStaff",
+        "refRestaurantIds is not allowed for staff; use BrandMembership",
       );
       err.extensions = { code: "BAD_USER_INPUT" };
       throw err;
     }
-    if (input.restaurantForStaff) {
-      if (!mongoose.isValidObjectId(input.restaurantForStaff)) {
-        throw new Error("Invalid restaurantForStaff");
-      }
-      targetRestaurantIds.push(input.restaurantForStaff);
+    if (Object.prototype.hasOwnProperty.call(input, "restaurantForStaff")) {
+      const err = new Error(
+        "restaurantForStaff has been removed; use BrandMembership staff assignment",
+      );
+      err.extensions = { code: "BAD_USER_INPUT" };
+      throw err;
     }
     for (const rid of [...new Set(targetRestaurantIds.map(String))]) {
       if (String(rid) !== String(currentRestaurantId)) {
@@ -1448,24 +1442,12 @@ const mutationResolvers = {
       )
     ) {
       await assertNoLockedPayrollPeriodOverlap({
-        restaurantId: staff.restaurantForStaff,
+        restaurantId: currentRestaurantId,
         employeeId: staff._id,
         startDate: staff.dateJoined || new Date("2000-01-01"),
         endDate: new Date(),
         action: "update_staff",
       });
-    }
-
-    const hasRestaurantForStaffInput = Object.prototype.hasOwnProperty.call(
-      input,
-      "restaurantForStaff",
-    );
-    if (
-      hasRestaurantForStaffInput &&
-      input.restaurantForStaff &&
-      !mongoose.isValidObjectId(input.restaurantForStaff)
-    ) {
-      throw new Error("Invalid restaurantForStaff");
     }
 
     // Chuẩn hoá enum giống như createStaff
@@ -1536,7 +1518,7 @@ const mutationResolvers = {
       },
     });
 
-    return sanitizeStaffPrivateProfile(staff, ctx, { restaurantId: staff.restaurantForStaff, skipAuthorization: true });
+    return sanitizeStaffPrivateProfile(staff, ctx, { restaurantId: currentRestaurantId, skipAuthorization: true });
   },
 
   // =========================
@@ -1544,7 +1526,7 @@ const mutationResolvers = {
   // =========================
   deleteStaff: async (_, { userId }, ctx) => {
     requireAuth(ctx);
-    await requireStaffMutationAccess(ctx, userId);
+    const { restaurantId: currentRestaurantId } = await requireStaffMutationAccess(ctx, userId);
     const staff = await Staff.findById(userId);
 
     if (!staff || staff.userType !== "STAFF") {
@@ -1555,7 +1537,7 @@ const mutationResolvers = {
     // Enum trong User.js: "working", "on_leave", "resigned", "suspended"
     staff.employmentStatus = "resigned";
     await assertNoLockedPayrollPeriodOverlap({
-      restaurantId: staff.restaurantForStaff,
+      restaurantId: currentRestaurantId,
       employeeId: staff._id,
       startDate: staff.dateJoined || new Date("2000-01-01"),
       endDate: new Date(),
@@ -1578,7 +1560,7 @@ const mutationResolvers = {
   // =========================
   setStaffEmploymentStatus: async (_, { userId, employmentStatus }, ctx) => {
     requireAuth(ctx);
-    await requireStaffMutationAccess(ctx, userId);
+    const { restaurantId: currentRestaurantId } = await requireStaffMutationAccess(ctx, userId);
     const staff = await Staff.findById(userId);
 
     if (!staff || staff.userType !== "STAFF") {
@@ -1595,7 +1577,7 @@ const mutationResolvers = {
 
     staff.employmentStatus = normalizedStatus;
     await assertNoLockedPayrollPeriodOverlap({
-      restaurantId: staff.restaurantForStaff,
+      restaurantId: currentRestaurantId,
       employeeId: staff._id,
       startDate: staff.dateJoined || new Date("2000-01-01"),
       endDate: new Date(),
@@ -1619,7 +1601,7 @@ const mutationResolvers = {
       },
     });
 
-    return sanitizeStaffPrivateProfile(staff, ctx, { restaurantId: staff.restaurantForStaff, skipAuthorization: true });
+    return sanitizeStaffPrivateProfile(staff, ctx, { restaurantId: currentRestaurantId, skipAuthorization: true });
   },
 
   publishSchedule: async (_, { input }, ctx) => {
@@ -3096,15 +3078,14 @@ const mutationResolvers = {
         _id: 1,
         userType: 1,
         deletedAt: 1,
-        restaurantForStaff: 1,
-        refRestaurants: 1,
       })
       .lean();
     if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
       throw new Error("Staff not found");
     }
-    const restaurantId = input.restaurantId || resolveStaffRestaurantId(staff);
-    if (!restaurantId || !staffBelongsToRestaurant(staff, restaurantId)) {
+    const [membershipRestaurantId] = await getStaffRestaurantIds(staff._id);
+    const restaurantId = input.restaurantId || membershipRestaurantId;
+    if (!restaurantId || !(await staffBelongsToRestaurantByMembership(staff._id, restaurantId))) {
       throw new Error("Staff does not belong to this restaurant");
     }
     await requireRestaurantAccess(ctx, restaurantId);
@@ -3124,8 +3105,9 @@ const mutationResolvers = {
     requireAuth(ctx);
     assertPayrollPermission(ctx, "payroll.period.create");
     const actor = ctx?.user || {};
+    const [actorRestaurantId] = await getStaffRestaurantIds(actor.id || actor._id);
     const rid = payrollToObjectId(
-      input.restaurantId || actor.restaurantForStaff || null,
+      input.restaurantId || actorRestaurantId || null,
     );
     if (!rid) throw new Error("Restaurant is required");
     await requireRestaurantAccess(ctx, rid);
@@ -3524,8 +3506,9 @@ const mutationResolvers = {
     requireAuth(ctx);
     assertPayrollPermission(ctx, "payroll.settings.update");
     const actor = ctx?.user || {};
+    const [actorRestaurantId] = await getStaffRestaurantIds(actor.id || actor._id);
     const rid = payrollToObjectId(
-      input.restaurantId || actor.restaurantForStaff || null,
+      input.restaurantId || actorRestaurantId || null,
     );
     if (!rid) throw new Error("Restaurant is required");
     await requireRestaurantAccess(ctx, rid);
@@ -3649,14 +3632,12 @@ const mutationResolvers = {
         _id: 1,
         userType: 1,
         deletedAt: 1,
-        restaurantForStaff: 1,
-        refRestaurants: 1,
       })
       .lean();
     if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
       throw new Error("Staff not found");
     }
-    if (!staffBelongsToRestaurant(staff, period.restaurantId)) {
+    if (!(await staffBelongsToRestaurantByMembership(staff._id, period.restaurantId))) {
       throw new Error("Staff does not belong to this restaurant");
     }
 
@@ -4270,8 +4251,6 @@ ${reviewLine}`
         _id: 1,
         userType: 1,
         deletedAt: 1,
-        restaurantForStaff: 1,
-        refRestaurants: 1,
         fullName: 1,
         employeeCode: 1,
         positionTitle: 1,
@@ -4284,11 +4263,12 @@ ${reviewLine}`
     if (!employee || employee.userType !== "STAFF" || employee.deletedAt)
       throw new Error("Staff not found");
 
+    const [membershipRestaurantId] = await getStaffRestaurantIds(employee._id);
     const restaurantId = toObjectId(
-      input.restaurantId || resolveStaffRestaurantId(employee),
+      input.restaurantId || membershipRestaurantId,
     );
     if (!restaurantId) throw new Error("Invalid employeeId or restaurantId");
-    if (!staffBelongsToRestaurant(employee, restaurantId)) {
+    if (!(await staffBelongsToRestaurantByMembership(employee._id, restaurantId))) {
       throw new Error("Staff does not belong to restaurant");
     }
     const actorIsSelf = isSelf(ctx, employeeId);
@@ -4582,10 +4562,7 @@ ${reviewLine}`
       requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
       await requireRestaurantAccess(ctx, request.restaurantId);
     } else {
-      const actorStaff = await Staff.findById(actorId)
-        .select({ restaurantForStaff: 1, refRestaurants: 1 })
-        .lean();
-      if (!staffBelongsToRestaurant(actorStaff, request.restaurantId)) {
+      if (!(await staffBelongsToRestaurantByMembership(actorId, request.restaurantId))) {
         throw new Error("FORBIDDEN");
       }
     }

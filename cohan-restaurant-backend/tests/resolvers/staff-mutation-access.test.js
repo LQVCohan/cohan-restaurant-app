@@ -7,6 +7,11 @@ const guards = vi.hoisted(() => ({
   requireRestaurantScope: vi.fn(),
 }));
 
+const scopeMocks = vi.hoisted(() => ({
+  getStaffRestaurantIds: vi.fn(),
+  staffBelongsToRestaurantByMembership: vi.fn(async () => true),
+}));
+
 const modelMocks = vi.hoisted(() => ({
   Staff: vi.fn(),
   Role: { findById: vi.fn(), findOne: vi.fn() },
@@ -18,6 +23,7 @@ const modelMocks = vi.hoisted(() => ({
 
 vi.mock("../../graphql/guards.js", () => guards);
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", () => scopeMocks);
 vi.mock("../../lib/mailer.js", () => ({ mailer: { sendMail: vi.fn(async () => ({})) } }));
 vi.mock("../../src/services/payroll/payrollPermission.service.js", () => ({ assertPayrollPermission: vi.fn() }));
 vi.mock("../../src/services/payroll/payrollLockGuard.service.js", () => ({ assertNoLockedPayrollPeriodOverlap: vi.fn(async () => {}) }));
@@ -29,7 +35,6 @@ function makeStaffDoc(data = {}) {
   return {
     _id: data._id || "staff-1",
     userType: "STAFF",
-        restaurantForStaff: "r1",
     deletedAt: null,
     setPassword: vi.fn(async () => {}),
     save: vi.fn(async function save() { return this; }),
@@ -44,6 +49,8 @@ describe("staff mutation access hardening", () => {
     vi.resetModules();
     vi.clearAllMocks();
     guards.requireRestaurantAccess.mockResolvedValue(true);
+    scopeMocks.getStaffRestaurantIds.mockResolvedValue(["r1"]);
+    scopeMocks.staffBelongsToRestaurantByMembership.mockResolvedValue(true);
     modelMocks.Role.findOne.mockReturnValue({ populate: vi.fn().mockResolvedValue({ _id: "role-staff", slug: "staff" }) });
     modelMocks.Staff.findById = vi.fn(async () => null);
     modelMocks.Staff.mockImplementation(function Staff(data) { return makeStaffDoc(data); });
@@ -52,7 +59,7 @@ describe("staff mutation access hardening", () => {
   it("createStaff denies before writes when restaurant scope forbidden", async () => {
     guards.requireRestaurantAccess.mockRejectedValueOnce(new Error("FORBIDDEN_SCOPE"));
     const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
-    await expect(mutation.createStaff(null, { input: { fullName: "A", restaurantForStaff: "r1" } }, { user: { id: "u1" } })).rejects.toThrow("FORBIDDEN_SCOPE");
+    await expect(mutation.createStaff(null, { input: { fullName: "A", businessRestaurantId: "r1" } }, { user: { id: "u1" } })).rejects.toThrow("FORBIDDEN_SCOPE");
     expect(modelMocks.Role.findById).not.toHaveBeenCalled();
     expect(modelMocks.EmployeeCodeCounter.findOneAndUpdate).not.toHaveBeenCalled();
     expect(modelMocks.Staff).not.toHaveBeenCalled();
@@ -61,40 +68,38 @@ describe("staff mutation access hardening", () => {
   it("createStaff with roleId requires admin", async () => {
     guards.requireRoles.mockImplementationOnce(() => { throw new Error("FORBIDDEN"); });
     const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
-    await expect(mutation.createStaff(null, { input: { fullName: "A", restaurantForStaff: "r1", roleId: "role-1" } }, { user: { id: "u1" } })).rejects.toThrow("FORBIDDEN");
+    await expect(mutation.createStaff(null, { input: { fullName: "A", businessRestaurantId: "r1", roleId: "role-1" } }, { user: { id: "u1" } })).rejects.toThrow("FORBIDDEN");
     expect(guards.requireRoles).toHaveBeenCalledWith({ user: { id: "u1" } }, ["ADMIN"]);
     expect(modelMocks.Staff).not.toHaveBeenCalled();
   });
 
-  it("createStaff creates staff using restaurantForStaff only", async () => {
+  it("createStaff creates staff without restaurantForStaff", async () => {
     const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
-    await mutation.createStaff(null, { input: { fullName: "A", restaurantForStaff: "r1" } }, { user: { id: "u1" } });
+    await mutation.createStaff(null, { input: { fullName: "A", businessRestaurantId: "r1" } }, { user: { id: "u1" } });
     const createdInput = modelMocks.Staff.mock.calls[0][0];
-    expect(createdInput.restaurantForStaff).toBe("r1");
+    expect(createdInput.restaurantForStaff).toBeUndefined();
   });
 
   it("createStaff rejects primaryRestaurantId legacy input", async () => {
     const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
     await expect(
       mutation.createStaff(null, { input: { fullName: "A", primaryRestaurantId: "r1" } }, { user: { id: "u1" } }),
-    ).rejects.toThrow("primaryRestaurantId has been removed; use restaurantForStaff");
+    ).rejects.toThrow("primaryRestaurantId has been removed; use staffBusinessContext");
   });
 
-  it("updateStaff requires access to old and new restaurants", async () => {
-    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", refRestaurants: [] };
+  it("updateStaff rejects restaurantForStaff assignment input", async () => {
+    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null };
     modelMocks.Staff.findById = vi
       .fn()
       .mockReturnValueOnce({ select: vi.fn(() => ({ lean: vi.fn(async () => scoped) })) })
       .mockResolvedValueOnce(makeStaffDoc({ _id: "staff-1" }));
-    guards.requireRestaurantAccess.mockResolvedValueOnce(true).mockRejectedValueOnce(new Error("FORBIDDEN_SCOPE"));
     const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
-    await expect(mutation.updateStaff(null, { userId: "staff-1", input: { restaurantForStaff: "r2" } }, { user: { id: "u1" } })).rejects.toThrow("FORBIDDEN_SCOPE");
-    expect(guards.requireRestaurantAccess).toHaveBeenNthCalledWith(1, { user: { id: "u1" } }, "r1");
-    expect(guards.requireRestaurantAccess).toHaveBeenNthCalledWith(2, { user: { id: "u1" } }, "r2");
+    await expect(mutation.updateStaff(null, { userId: "staff-1", input: { restaurantForStaff: "r2" } }, { user: { id: "u1" } })).rejects.toThrow("restaurantForStaff has been removed; use BrandMembership staff assignment");
+    expect(modelMocks.Staff.findById).toHaveBeenCalledTimes(1);
   });
 
   it("updateStaff strips userType and enforces baseSalary admin-only", async () => {
-    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", refRestaurants: [] };
+    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null };
     const doc = makeStaffDoc({ _id: "staff-1" });
     modelMocks.Staff.findById = vi
       .fn()
@@ -107,7 +112,7 @@ describe("staff mutation access hardening", () => {
   });
 
   it("updateStaff rejects primaryRestaurantId legacy input", async () => {
-    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", restaurantForStaff: "r1" };
+    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null };
     modelMocks.Staff.findById = vi
       .fn()
       .mockReturnValueOnce({ select: vi.fn(() => ({ lean: vi.fn(async () => scoped) })) })
@@ -115,15 +120,14 @@ describe("staff mutation access hardening", () => {
     const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
     await expect(
       mutation.updateStaff(null, { userId: "staff-1", input: { primaryRestaurantId: "r2" } }, { user: { id: "u1" } }),
-    ).rejects.toThrow("primaryRestaurantId has been removed; use restaurantForStaff");
+    ).rejects.toThrow("primaryRestaurantId has been removed; use staffBusinessContext");
   });
 
   it("setStaffEmploymentStatus returns a sanitized StaffPrivateProfile", async () => {
-    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", refRestaurants: [] };
+    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null };
     const doc = makeStaffDoc({
       _id: "staff-1",
       fullName: "Staff One",
-      restaurantForStaff: "r1",
       baseSalary: 500,
       passwordHash: "hidden",
     });
@@ -149,7 +153,7 @@ describe("staff mutation access hardening", () => {
   });
 
   it("deleteStaff denied before save when scope forbidden", async () => {
-    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", refRestaurants: [] };
+    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null };
     const doc = makeStaffDoc({ _id: "staff-1" });
     modelMocks.Staff.findById = vi
       .fn()
@@ -164,8 +168,8 @@ describe("staff mutation access hardening", () => {
   it("setStaffEmploymentStatus is blocked by locked payroll guard before save", async () => {
     const { assertNoLockedPayrollPeriodOverlap } = await import("../../src/services/payroll/payrollLockGuard.service.js");
     assertNoLockedPayrollPeriodOverlap.mockRejectedValueOnce(new Error("PAYROLL_PERIOD_LOCKED"));
-    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", refRestaurants: [] };
-    const doc = makeStaffDoc({ _id: "staff-1", restaurantForStaff: "r1", dateJoined: new Date("2026-01-01") });
+    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null };
+    const doc = makeStaffDoc({ _id: "staff-1", dateJoined: new Date("2026-01-01") });
     modelMocks.Staff.findById = vi
       .fn()
       .mockReturnValueOnce({ select: vi.fn(() => ({ lean: vi.fn(async () => scoped) })) })
@@ -180,8 +184,8 @@ describe("staff mutation access hardening", () => {
   it("deleteStaff is blocked by locked payroll guard before save", async () => {
     const { assertNoLockedPayrollPeriodOverlap } = await import("../../src/services/payroll/payrollLockGuard.service.js");
     assertNoLockedPayrollPeriodOverlap.mockRejectedValueOnce(new Error("PAYROLL_PERIOD_LOCKED"));
-    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", refRestaurants: [] };
-    const doc = makeStaffDoc({ _id: "staff-1", restaurantForStaff: "r1", dateJoined: new Date("2026-01-01") });
+    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null };
+    const doc = makeStaffDoc({ _id: "staff-1", dateJoined: new Date("2026-01-01") });
     modelMocks.Staff.findById = vi
       .fn()
       .mockReturnValueOnce({ select: vi.fn(() => ({ lean: vi.fn(async () => scoped) })) })

@@ -10,7 +10,7 @@ vi.mock("../EmployeeFormModal/EmployeeFormModal", () => ({
       onClick={() =>
         onSubmit({
           fullName: "Nhân viên mới",
-          restaurantForStaff: "restaurant-other",
+          restaurantId: "restaurant-other",
         })
       }
     >

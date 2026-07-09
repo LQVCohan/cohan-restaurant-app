@@ -89,13 +89,14 @@ export async function canAccessRestaurant(user, restaurantId) {
 export async function getStaffRestaurantIds(userId, { roles = ["staff"] } = {}) {
   const uid = toObjectId(userId);
   if (!uid || typeof BrandMembership?.find !== "function") return [];
-  const memberships = await BrandMembership.find({
+  const membershipQuery = BrandMembership.find({
     userId: uid,
     status: "active",
     role: { $in: roles },
-  })
-    .select?.("brandId restaurantIds role status")
-    .lean();
+  });
+  const memberships = typeof membershipQuery?.select === "function"
+    ? await membershipQuery.select("brandId restaurantIds role status").lean()
+    : await membershipQuery;
   const pairs = (memberships || []).flatMap((membership) =>
     (membership.restaurantIds || []).map((restaurantId) => ({
       brandId: membership.brandId,

@@ -31,7 +31,7 @@ const createAttendanceHookData = (overrides = {}) => ({
 });
 
 vi.mock("@/context/AuthContext", () => ({
-  AuthContext: React.createContext({ user: { restaurantForStaff: "r1" } }),
+  AuthContext: React.createContext({ user: {} }),
 }));
 
 vi.mock("./OvertimePanel", () => ({
@@ -193,7 +193,7 @@ describe("AttendancePage readiness navigation", () => {
     expect(useAttendanceManagementMock).toHaveBeenLastCalledWith(
       expect.objectContaining({
         search: "",
-        restaurantId: "r1",
+        restaurantId: null,
       }),
     );
   });

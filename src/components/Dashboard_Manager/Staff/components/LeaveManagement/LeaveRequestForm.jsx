@@ -36,6 +36,7 @@ const resolveRoleCandidate = (user) => {
 const LeaveRequestForm = ({
   onSubmit,
   staffList = [],
+  restaurantId = "",
   disabled = false,
   loading = false,
   error = null,
@@ -148,9 +149,9 @@ const LeaveRequestForm = ({
       return;
     }
 
-    const restaurantId = selectedEmployee?.restaurantForStaff;
+    const selectedRestaurantId = restaurantId || selectedEmployee?.restaurantId || "";
 
-    if (!restaurantId) {
+    if (!selectedRestaurantId) {
       alert("Không xác định được nhà hàng của nhân sự.");
       return;
     }
@@ -158,7 +159,7 @@ const LeaveRequestForm = ({
     try {
       await onSubmit({
         employeeId: formData.employee,
-        restaurantId,
+        restaurantId: selectedRestaurantId,
         leaveType: formData.leaveType,
         startDate: formData.startDate,
         endDate: formData.endDate,
