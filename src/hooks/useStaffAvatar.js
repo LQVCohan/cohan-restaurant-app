@@ -11,7 +11,6 @@ const operationSource = [
   "    fullName",
   "    avatarUrl",
   "    employeeCode",
-  "    restaurantForStaff",
   "  }",
   "}",
 ].join("\n");
@@ -81,7 +80,6 @@ const useStaffAvatar = () => {
       emitStaffDataChanged({
         action: updated.avatarUrl ? "avatar-updated" : "avatar-removed",
         employeeId: updated.id,
-        restaurantId: updated.restaurantForStaff || "",
         avatarUrl: updated.avatarUrl || "",
       });
 

@@ -1226,22 +1226,22 @@ const mutationResolvers = {
 
     if (Object.prototype.hasOwnProperty.call(input, "primaryRestaurantId")) {
       const err = new Error(
-        "primaryRestaurantId has been removed; use restaurantForStaff",
+        "primaryRestaurantId has been removed; use staffBusinessContext",
       );
       err.extensions = { code: "BAD_USER_INPUT" };
       throw err;
     }
     if (Object.prototype.hasOwnProperty.call(input, "refRestaurantIds")) {
       const err = new Error(
-        "refRestaurantIds is not allowed for staff; use restaurantForStaff",
+        "refRestaurantIds is not allowed for staff; use BrandMembership",
       );
       err.extensions = { code: "BAD_USER_INPUT" };
       throw err;
     }
-    const restaurantAccessId = input.restaurantForStaff || null;
+    const restaurantAccessId = input.businessRestaurantId || null;
     if (!mongoose.isValidObjectId(restaurantAccessId)) {
       throw new Error(
-        "restaurantForStaff is required and must be a valid ObjectId",
+        "staffBusinessContext.restaurantId is required and must be a valid ObjectId",
       );
     }
     await requireRestaurantAccess(ctx, restaurantAccessId);
@@ -1270,7 +1270,7 @@ const mutationResolvers = {
 
     const roleId = roleDoc._id;
 
-    const { password, employeeCode: _ignoredEmployeeCode, ...rest } = input;
+    const { password, employeeCode: _ignoredEmployeeCode, businessRestaurantId: _businessRestaurantId, restaurantForStaff: _legacyRestaurantForStaff, ...rest } = input;
 
     const doc = {
       ...rest,
@@ -1303,14 +1303,12 @@ const mutationResolvers = {
     // DepartmentType đã là lowercase (service, kitchen, ...) -> không cần đổi
 
     // Gán nhà hàng
-    const sequenceRestaurantId = input.restaurantForStaff || null;
+    const sequenceRestaurantId = restaurantAccessId;
     if (!sequenceRestaurantId) {
       throw new Error(
-        "restaurantForStaff is required to generate employee code",
+        "staffBusinessContext.restaurantId is required to generate employee code",
       );
     }
-
-    doc.restaurantForStaff = sequenceRestaurantId;
 
     let staff = null;
     let lastCreateError = null;
@@ -1386,7 +1384,7 @@ const mutationResolvers = {
       },
     });
 
-    return sanitizeStaffPrivateProfile(staff, ctx, { restaurantId: staff.restaurantForStaff, skipAuthorization: true });
+    return sanitizeStaffPrivateProfile(staff, ctx, { restaurantId: restaurantAccessId, skipAuthorization: true });
   },
 
   // =========================
@@ -1399,7 +1397,7 @@ const mutationResolvers = {
     const targetRestaurantIds = [];
     if (Object.prototype.hasOwnProperty.call(input, "primaryRestaurantId")) {
       const err = new Error(
-        "primaryRestaurantId has been removed; use restaurantForStaff",
+        "primaryRestaurantId has been removed; use staffBusinessContext",
       );
       err.extensions = { code: "BAD_USER_INPUT" };
       throw err;

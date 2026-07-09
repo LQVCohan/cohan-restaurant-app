@@ -90,24 +90,6 @@ const normalizeId = (value) => {
   return String(value);
 };
 
-// Legacy staff assignment fields; Brand role/scope should use BrandMembership.restaurantIds.
-const hasRestaurantMatch = (staff, restaurantIds) => {
-  const allowedIds = (Array.isArray(restaurantIds) ? restaurantIds : [restaurantIds])
-    .map(normalizeId)
-    .filter(Boolean);
-  if (!allowedIds.length) return true;
-
-  const staffRestaurantIds = [
-    staff.restaurantForStaff,
-    ...(Array.isArray(staff.refRestaurants) ? staff.refRestaurants : []),
-  ]
-    .map(normalizeId)
-    .filter(Boolean);
-
-  if (!staffRestaurantIds.length) return true;
-  return staffRestaurantIds.some((id) => allowedIds.includes(id));
-};
-
 const getActionErrorMessage = (error, fallback) =>
   error?.graphQLErrors?.[0]?.message ||
   error?.networkError?.result?.errors?.[0]?.message ||
@@ -310,8 +292,6 @@ const StaffManagement = () => {
           shift: staff.shiftType || "Ca xoay",
           baseSalary: staff.baseSalary ?? null,
           salary: staff.baseSalary ?? null,
-          restaurantForStaff: staff.restaurantForStaff,
-          refRestaurants: staff.refRestaurants || [],
           address: staff.address
             ? [staff.address.line1, staff.address.ward, staff.address.district, staff.address.city]
                 .filter(Boolean)

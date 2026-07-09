@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const scopeMocks = vi.hoisted(() => ({
+  getStaffMembershipRestaurantFilter: vi.fn(),
+  getStaffRestaurantIds: vi.fn(),
+  isSystemAdmin: vi.fn(() => false),
+}));
+
 const modelMocks = vi.hoisted(() => ({
   Staff: {
     find: vi.fn(),
@@ -22,6 +28,7 @@ const modelMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", () => scopeMocks);
 vi.mock("../../graphql/guards.js", () => ({
   requireAuth: vi.fn(),
   requireRestaurantAccess: vi.fn(),
@@ -70,9 +77,10 @@ describe("staffList restaurant filter", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    scopeMocks.getStaffMembershipRestaurantFilter.mockResolvedValue({ _id: { $in: ["staff-1"] } });
   });
 
-  it("filters by restaurantForStaff when filtering by restaurant", async () => {
+  it("filters by BrandMembership when filtering by restaurant", async () => {
     const findChain = createFindChain();
     modelMocks.Staff.find.mockReturnValue(findChain);
 
@@ -83,12 +91,7 @@ describe("staffList restaurant filter", () => {
       userType: "STAFF",
       deletedAt: null,
       $and: [
-        {
-          $or: [
-            { restaurantForStaff: { __oid: "restaurant-1" } },
-            { restaurantForStaff: "restaurant-1" },
-          ],
-        },
+        { _id: { $in: ["staff-1"] } },
       ],
     });
     expect(findChain.populate).toHaveBeenCalledWith("role");
@@ -109,12 +112,7 @@ describe("staffList restaurant filter", () => {
     const filter = modelMocks.Staff.find.mock.calls[0][0];
     expect(filter.$or).toBeUndefined();
     expect(filter.$and).toHaveLength(2);
-    expect(filter.$and[0]).toEqual({
-      $or: [
-        { restaurantForStaff: { __oid: "restaurant-1" } },
-        { restaurantForStaff: "restaurant-1" },
-      ],
-    });
+    expect(filter.$and[0]).toEqual({ _id: { $in: ["staff-1"] } });
     expect(filter.$and[1].$or).toEqual(
       expect.arrayContaining([
         { fullName: expect.any(RegExp) },

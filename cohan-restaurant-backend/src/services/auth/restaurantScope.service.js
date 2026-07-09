@@ -86,6 +86,58 @@ export async function canAccessRestaurant(user, restaurantId) {
   );
 }
 
+export async function getStaffRestaurantIds(userId, { roles = ["staff"] } = {}) {
+  const uid = toObjectId(userId);
+  if (!uid || typeof BrandMembership?.find !== "function") return [];
+  const memberships = await BrandMembership.find({
+    userId: uid,
+    status: "active",
+    role: { $in: roles },
+  })
+    .select?.("brandId restaurantIds role status")
+    .lean();
+  const pairs = (memberships || []).flatMap((membership) =>
+    (membership.restaurantIds || []).map((restaurantId) => ({
+      brandId: membership.brandId,
+      restaurantId,
+    })),
+  );
+  if (!pairs.length || typeof Restaurant?.find !== "function") return [];
+  const restaurants = await Restaurant.find({
+    $or: pairs.map(({ brandId, restaurantId }) => ({ _id: restaurantId, brandId })),
+  })
+    .select("_id")
+    .lean();
+  return uniqueIds(restaurants.map((restaurant) => restaurant._id)).map(String);
+}
+
+export async function staffBelongsToRestaurantByMembership(userId, restaurantId, options = {}) {
+  const rid = toObjectId(restaurantId);
+  if (!rid) return false;
+  const ids = await getStaffRestaurantIds(userId, options);
+  return ids.some((id) => String(id) === String(rid));
+}
+
+export async function getStaffMembershipRestaurantFilter(restaurantId, options = {}) {
+  const rid = toObjectId(restaurantId);
+  if (!rid || typeof BrandMembership?.find !== "function") return emptyFilter();
+  const roles = options.roles || ["staff"];
+  const memberships = await BrandMembership.find({
+    status: "active",
+    role: { $in: roles },
+    restaurantIds: rid,
+  })
+    .select("userId brandId restaurantIds")
+    .lean();
+  if (!memberships?.length) return emptyFilter();
+  const restaurant = await Restaurant.findById(rid).select("_id brandId").lean();
+  if (!restaurant) return emptyFilter();
+  const userIds = memberships
+    .filter((membership) => String(membership.brandId) === String(restaurant.brandId))
+    .map((membership) => membership.userId);
+  return userIds.length ? { _id: { $in: uniqueIds(userIds) } } : emptyFilter();
+}
+
 export async function canReadBrand(user, brandId) {
   if (!user || !mongoose.isValidObjectId(brandId)) return false;
   if (isSystemAdmin(user)) return true;

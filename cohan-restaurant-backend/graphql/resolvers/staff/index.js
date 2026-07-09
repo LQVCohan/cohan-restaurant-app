@@ -114,8 +114,7 @@ const staffPerformanceSnapshots = async (parent, args = {}, ctx, info) => {
 
 const resolveCreateStaffBusinessContext = async (input = {}, ctx) => {
   const businessContext = input.staffBusinessContext || {};
-  const restaurantId =
-    businessContext.restaurantId || input.restaurantForStaff || null;
+  const restaurantId = businessContext.restaurantId || null;
   const requestedBrandId = businessContext.brandId || null;
 
   if (!mongoose.isValidObjectId(restaurantId)) {
@@ -160,8 +159,7 @@ const createStaff = async (parent, args = {}, ctx, info) => {
     {
       input: {
         ...accountInput,
-        // ponytail: legacy staff modules still read this fallback; scope comes from BrandMembership.
-        restaurantForStaff: businessContext.restaurantId,
+        businessRestaurantId: businessContext.restaurantId,
       },
     },
     ctx,

@@ -3,6 +3,8 @@ import { sanitizeUserForClient } from "../../src/security/sanitizeUserForClient.
 
 const restaurantScopeMocks = vi.hoisted(() => ({
   canAccessRestaurant: vi.fn(),
+  staffBelongsToRestaurantByMembership: vi.fn(),
+  getStaffRestaurantIds: vi.fn(),
 }));
 
 vi.mock("../../models/index.js", async (importOriginal) => {
@@ -18,6 +20,8 @@ vi.mock("../../models/index.js", async (importOriginal) => {
 vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
   ...(await importOriginal()),
   canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+  staffBelongsToRestaurantByMembership: restaurantScopeMocks.staffBelongsToRestaurantByMembership,
+  getStaffRestaurantIds: restaurantScopeMocks.getStaffRestaurantIds,
 }));
 
 describe("sanitizeUserForClient", () => {
@@ -107,6 +111,12 @@ describe("user DTO sanitizers", () => {
   beforeEach(() => {
     restaurantScopeMocks.canAccessRestaurant.mockReset();
     restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
+    restaurantScopeMocks.staffBelongsToRestaurantByMembership.mockImplementation(
+      (userId, restaurantId) => String(userId) === "staff-a" && String(restaurantId) === "restaurant-a",
+    );
+    restaurantScopeMocks.getStaffRestaurantIds.mockImplementation((userId) =>
+      String(userId) === "staff-a" ? ["restaurant-a"] : ["restaurant-b"],
+    );
   });
 
   const sensitiveUser = {
@@ -235,10 +245,13 @@ describe("user DTO sanitizers", () => {
     expect(out.verificationLastStatus).toBeUndefined();
   });
 
-  it("recognizes only assigned staff restaurant membership", () => {
-    expect(staffBelongsToRestaurant({ restaurantForStaff: "restaurant-1" }, "restaurant-1")).toBe(true);
-    expect(staffBelongsToRestaurant({ restaurantForStaff: "restaurant-2" }, "restaurant-1")).toBe(false);
-    expect(staffBelongsToRestaurant({ refRestaurants: [{ _id: "restaurant-1" }] }, "restaurant-1")).toBe(false);
+  it("recognizes only assigned staff restaurant membership", async () => {
+    restaurantScopeMocks.staffBelongsToRestaurantByMembership.mockImplementation(
+      (userId, restaurantId) => String(userId) === "staff-1" && String(restaurantId) === "restaurant-1",
+    );
+    await expect(staffBelongsToRestaurant({ _id: "staff-1" }, "restaurant-1")).resolves.toBe(true);
+    await expect(staffBelongsToRestaurant({ _id: "staff-2" }, "restaurant-1")).resolves.toBe(false);
+    await expect(staffBelongsToRestaurant({ refRestaurants: [{ _id: "restaurant-1" }] }, "restaurant-1")).resolves.toBe(false);
   });
 
   it("does not authorize against a caller supplied restaurant unrelated to target staff", async () => {
@@ -282,6 +295,12 @@ describe("staff private profile authorization", () => {
   beforeEach(() => {
     restaurantScopeMocks.canAccessRestaurant.mockReset();
     restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
+    restaurantScopeMocks.staffBelongsToRestaurantByMembership.mockImplementation(
+      (userId, restaurantId) => String(userId) === "staff-a" && String(restaurantId) === "restaurant-a",
+    );
+    restaurantScopeMocks.getStaffRestaurantIds.mockImplementation((userId) =>
+      String(userId) === "staff-a" ? ["restaurant-a"] : ["restaurant-b"],
+    );
   });
 
   it("requires staff.read permission after restaurant access", async () => {
