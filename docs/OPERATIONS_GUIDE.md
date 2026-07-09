@@ -21,7 +21,14 @@ Chạy MongoDB local bằng lệnh:
 npm run db
 ```
 
-Lệnh này tự tìm `mongod` đã cài trên máy, mở MongoDB ở `127.0.0.1:27017` và dùng thư mục dữ liệu mặc định `C:\data\db` trên Windows. Log mặc định được ghi vào `C:\data\mongod.log` để terminal VS Code không bị lag vì phải render quá nhiều log. Nếu port đã có MongoDB chạy sẵn, lệnh sẽ báo thành công và thoát.
+Lệnh này tự tìm `mongod` đã cài trên máy, mở MongoDB ở `127.0.0.1:27017`, bật replica set local `rs0`, và dùng thư mục dữ liệu mặc định `C:\data\db` trên Windows. Log mặc định được ghi vào `C:\data\mongod.log` để terminal VS Code không bị lag vì phải render quá nhiều log. Nếu port đã có MongoDB chạy sẵn, lệnh sẽ báo thành công và thoát.
+
+Backend local nên dùng URI replica set:
+
+```env
+MONGO_URI=mongodb://127.0.0.1:27017/RestaurantDB?replicaSet=rs0
+MONGO_DB=RestaurantDB
+```
 
 Có thể ép binary, thư mục dữ liệu hoặc bật log trực tiếp ra terminal khi cần:
 
