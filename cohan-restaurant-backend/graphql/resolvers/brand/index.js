@@ -26,6 +26,13 @@ const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$
 const roleName = (user) => String(user?.roleName || user?.role?.slug || user?.role || "").toLowerCase();
 const userId = getUserId;
 const parentId = (parent) => parent._id || parent.id;
+const sessionOptions = (session) => (session ? { session } : {});
+const withOptionalSession = (query, session) => (session ? query.session(session) : query);
+
+function supportsMongoTransactions() {
+  const topologyType = mongoose.connection?.client?.topology?.description?.type;
+  return ["ReplicaSetWithPrimary", "Sharded", "LoadBalanced"].includes(topologyType);
+}
 
 function needsRestaurantScope(role) {
   return ["manager", "staff"].includes(role);
@@ -58,8 +65,8 @@ async function ensureSingleActiveManager({ brandId, role, restaurantIds, status 
   if (existing) throw bad("Nhà hàng này đã có quản lý. Vui lòng đổi quản lý hiện tại trước.");
 }
 
-async function ownerRole() {
-  return Role.findOne({ $or: [{ slug: "manager" }, { name: /^manager$/i }] });
+async function ownerRole(session) {
+  return withOptionalSession(Role.findOne({ $or: [{ slug: "manager" }, { name: /^manager$/i }] }), session);
 }
 
 const publicUser = async (id) => {
@@ -183,60 +190,68 @@ const Mutation = {
       throw bad("email, password and brandName are required");
     }
 
-    const session = await mongoose.startSession();
-    let result;
-    try {
-      await session.withTransaction(async () => {
-        const normalizedEmail = String(input.email).trim().toLowerCase();
-        if (await User.findOne({ email: normalizedEmail }).session(session)) {
-          throw bad("Email already exists");
-        }
+    const createBusinessOwner = async (session = null) => {
+      const normalizedEmail = String(input.email).trim().toLowerCase();
+      if (await withOptionalSession(User.findOne({ email: normalizedEmail }), session)) {
+        throw bad("Email already exists");
+      }
 
-        const role = await ownerRole();
-        if (!role) throw bad("Manager role not found");
+      const role = await ownerRole(session);
+      if (!role) throw bad("Manager role not found");
 
-        const user = new User({
-          fullName: input.fullName,
-          email: input.email,
-          phone: input.phone,
-          role: role._id,
-          userType: "MANAGER",
-          status: "active",
-        });
-        await user.setPassword(input.password);
-        await user.save({ session });
-
-        const [brand] = await Brand.create([{
-          name: input.brandName,
-          slug: slugify(input.brandSlug || input.brandName),
-          ownerId: user._id,
-          businessName: input.businessName,
-          businessTaxCode: input.businessTaxCode,
-          businessEmail: input.businessEmail,
-          businessPhone: input.businessPhone,
-          address: input.firstRestaurantAddress,
-          createdBy: user._id,
-        }], { session });
-
-        await BrandMembership.create([{
-          brandId: brand._id,
-          userId: user._id,
-          role: "owner",
-          createdBy: user._id,
-        }], { session });
-
-        const [restaurant] = input.createFirstRestaurant === false
-          ? [null]
-          : await Restaurant.create([{
-              name: input.firstRestaurantName || input.brandName,
-              address: input.firstRestaurantAddress,
-              brandId: brand._id,
-            }], { session });
-
-        result = { userId: user._id, brand, restaurant };
+      const user = new User({
+        fullName: input.fullName,
+        email: input.email,
+        phone: input.phone,
+        role: role._id,
+        userType: "MANAGER",
+        status: "active",
       });
-    } finally {
-      await session.endSession();
+      await user.setPassword(input.password);
+      await user.save(sessionOptions(session));
+
+      const [brand] = await Brand.create([{
+        name: input.brandName,
+        slug: slugify(input.brandSlug || input.brandName),
+        ownerId: user._id,
+        businessName: input.businessName,
+        businessTaxCode: input.businessTaxCode,
+        businessEmail: input.businessEmail,
+        businessPhone: input.businessPhone,
+        address: input.firstRestaurantAddress,
+        createdBy: user._id,
+      }], sessionOptions(session));
+
+      await BrandMembership.create([{
+        brandId: brand._id,
+        userId: user._id,
+        role: "owner",
+        createdBy: user._id,
+      }], sessionOptions(session));
+
+      const [restaurant] = input.createFirstRestaurant === false
+        ? [null]
+        : await Restaurant.create([{
+            name: input.firstRestaurantName || input.brandName,
+            address: input.firstRestaurantAddress,
+            brandId: brand._id,
+          }], sessionOptions(session));
+
+      return { userId: user._id, brand, restaurant };
+    };
+
+    let result;
+    if (supportsMongoTransactions()) {
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          result = await createBusinessOwner(session);
+        });
+      } finally {
+        await session.endSession();
+      }
+    } else {
+      result = await createBusinessOwner();
     }
 
     const user = await publicUser(result.userId);
