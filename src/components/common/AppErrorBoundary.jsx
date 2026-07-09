@@ -14,7 +14,7 @@ export const getFriendlyAppError = (error) => {
       code: "UI-LOAD",
       title: "Không thể tải trang vừa chọn",
       description:
-        "Một tệp giao diện chưa tải được. Trường hợp này thường xảy ra sau khi ứng dụng vừa được cập nhật hoặc kết nối bị gián đoạn.",
+        "Một phần giao diện chưa tải được. Trường hợp này thường xảy ra sau khi ứng dụng vừa được cập nhật hoặc kết nối bị gián đoạn.",
     };
   }
 
@@ -83,13 +83,6 @@ class AppErrorBoundary extends React.Component {
               Về trang chính
             </button>
           </div>
-
-          {import.meta.env.DEV ? (
-            <details className="app-error-boundary__details">
-              <summary>Chi tiết kỹ thuật</summary>
-              <code>{String(error?.message || error)}</code>
-            </details>
-          ) : null}
         </section>
       </main>
     );
