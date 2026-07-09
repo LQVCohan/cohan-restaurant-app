@@ -24,14 +24,14 @@ const DEFAULT_CHECKLIST = {
 };
 
 const DEFAULT_SCOPE = {
-  ordersAndPayments: true,
+  ordersAndPayments: false,
   tablesAndFloorPlan: true,
   menuAndPricing: true,
   inventory: true,
-  staffAndPermissions: true,
+  staffAndPermissions: false,
   schedules: true,
   customersAndPromotions: true,
-  reportsAndReconciliation: true,
+  reportsAndReconciliation: false,
 };
 
 const RISK_DEFS = [
@@ -66,14 +66,14 @@ function normalizeChecklist(checklist = {}) {
 
 function normalizeScope(scope = {}) {
   return {
-    ordersAndPayments: Boolean(scope.ordersAndPayments ?? true),
-    tablesAndFloorPlan: Boolean(scope.tablesAndFloorPlan ?? true),
-    menuAndPricing: Boolean(scope.menuAndPricing ?? true),
-    inventory: Boolean(scope.inventory ?? true),
-    staffAndPermissions: Boolean(scope.staffAndPermissions ?? true),
-    schedules: Boolean(scope.schedules ?? true),
-    customersAndPromotions: Boolean(scope.customersAndPromotions ?? true),
-    reportsAndReconciliation: Boolean(scope.reportsAndReconciliation ?? true),
+    ordersAndPayments: Boolean(scope.ordersAndPayments ?? DEFAULT_SCOPE.ordersAndPayments),
+    tablesAndFloorPlan: Boolean(scope.tablesAndFloorPlan ?? DEFAULT_SCOPE.tablesAndFloorPlan),
+    menuAndPricing: Boolean(scope.menuAndPricing ?? DEFAULT_SCOPE.menuAndPricing),
+    inventory: Boolean(scope.inventory ?? DEFAULT_SCOPE.inventory),
+    staffAndPermissions: Boolean(scope.staffAndPermissions ?? DEFAULT_SCOPE.staffAndPermissions),
+    schedules: Boolean(scope.schedules ?? DEFAULT_SCOPE.schedules),
+    customersAndPromotions: Boolean(scope.customersAndPromotions ?? DEFAULT_SCOPE.customersAndPromotions),
+    reportsAndReconciliation: Boolean(scope.reportsAndReconciliation ?? DEFAULT_SCOPE.reportsAndReconciliation),
   };
 }
 
@@ -112,7 +112,7 @@ function buildRisks(checklist) {
     label,
     severity: "warning",
     resolved: Boolean(checklist[field]),
-    description: checklist[field] ? "Đã hoàn tất." : "Cần hoàn tất trước khi chốt checklist backup.",
+    description: checklist[field] ? "Đã hoàn tất." : "Cần hoàn tất trước khi chốt checklist sao lưu cấu hình.",
   }));
 }
 
