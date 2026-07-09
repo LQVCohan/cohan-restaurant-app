@@ -7,6 +7,14 @@ import React, {
 } from "react";
 import { NotificationContext } from "./NotificationContext";
 
+const ALERT_FALLBACK_MESSAGE = "Có thông báo mới từ hệ thống.";
+
+const toAlertMessage = (message) => {
+  if (message == null) return ALERT_FALLBACK_MESSAGE;
+  if (message instanceof Error) return message.message || ALERT_FALLBACK_MESSAGE;
+  return String(message) || ALERT_FALLBACK_MESSAGE;
+};
+
 /**
  * UI-only toast/local notification provider.
  *
@@ -43,6 +51,23 @@ const NotificationProvider = ({ children }) => {
     },
     []
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const nativeAlert = window.alert;
+    const notifyAlert = (message) => {
+      showNotification(toAlertMessage(message), "error");
+    };
+
+    window.alert = notifyAlert;
+
+    return () => {
+      if (window.alert === notifyAlert) {
+        window.alert = nativeAlert;
+      }
+    };
+  }, [showNotification]);
 
   const removeNotification = useCallback((id) => {
     setNotifications((prev) => prev.filter((x) => x.id !== id));
