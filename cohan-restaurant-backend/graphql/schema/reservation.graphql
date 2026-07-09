@@ -120,7 +120,8 @@ extend type Mutation {
   updateReservation(input: UpdateReservationInput!): Reservation!
   updateReservationStatus(input: UpdateReservationStatusInput!): Reservation!
   cancelReservation(id: ID!): Reservation!
-  deleteReservation(id: ID!): Reservation!
+  markReservationNoShow(id: ID!): Reservation!
+  deleteReservation(id: ID!): Reservation! @deprecated(reason: "Use markReservationNoShow. This marks the reservation as no_show and does not delete the record.")
   submitReservationPayment(input: SubmitReservationPaymentInput!): Reservation!
   requestReservationChange(input: RequestReservationChangeInput!): Reservation!
   approveReservationChange(input: ApproveReservationChangeInput!): Reservation!
