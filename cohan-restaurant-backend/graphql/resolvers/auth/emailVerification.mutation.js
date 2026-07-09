@@ -135,7 +135,7 @@ export async function issueAndSendVerificationForUser(user, options = {}) {
   });
 }
 
-export default {
+const mutations = {
   // Mutation: requestEmailVerification(email: String!): Boolean!
   requestEmailVerification: async (_root, { email }, ctx) => {
     if (!enabled("ENABLE_EMAIL_VERIFICATION", true)) return true;
@@ -205,3 +205,6 @@ export default {
     return cancelContactChangeOtpService({ user: ctx.user, target, ctx });
   },
 };
+
+export const resendSmsVerification = mutations.resendSmsVerification;
+export default mutations;
