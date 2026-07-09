@@ -16,7 +16,7 @@ function maskPhone(phone = "") {
 
 export function isSmsConfigured() {
   const provider = providerName();
-  if (provider === "mock") return nodeEnv() !== "production";
+  if (provider === "mock") return nodeEnv() === "test";
   if (provider === "http") return Boolean(process.env.SMS_API_URL && process.env.SMS_API_KEY);
   if (provider === "twilio") {
     // Twilio SDK/REST adapter is intentionally not enabled yet.
@@ -61,12 +61,15 @@ export async function sendSms({ to, text }) {
   const provider = providerName();
 
   if (provider === "mock") {
-    if (nodeEnv() === "production") {
+    if (!isSmsConfigured()) {
+      if (nodeEnv() !== "production") {
+        console.info(`[SMS mock] to=${maskPhone(to)} message=${text}`);
+      }
       return {
         provider,
         sent: false,
         skipped: true,
-        error: "SMS_PROVIDER_NOT_CONFIGURED",
+        error: nodeEnv() === "production" ? "SMS_PROVIDER_NOT_CONFIGURED" : "SMS_PROVIDER_MOCK_ONLY",
       };
     }
     console.info(`[SMS mock] to=${maskPhone(to)} message=${text}`);
