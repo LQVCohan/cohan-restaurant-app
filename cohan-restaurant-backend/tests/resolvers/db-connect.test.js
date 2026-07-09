@@ -31,7 +31,7 @@ describe('connectDB', () => {
 
     expect(mongooseMock.connect).toHaveBeenCalledWith(
       'mongodb://127.0.0.1:27017/appdb',
-      {},
+      { retryWrites: false },
     );
   });
 
@@ -43,7 +43,7 @@ describe('connectDB', () => {
 
     expect(mongooseMock.connect).toHaveBeenCalledWith(
       'mongodb://127.0.0.1:27017/appdb',
-      { dbName: 'customdb' },
+      { dbName: 'customdb', retryWrites: false },
     );
   });
 });
