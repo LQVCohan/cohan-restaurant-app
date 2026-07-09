@@ -70,7 +70,9 @@ export const PermissionMutation = {
       });
     }
 
+    const before = typeof p.toObject === "function" ? p.toObject({ virtuals: true }) : { ...p };
     await Permission.findByIdAndDelete(id);
+    await logRbacAudit({ ctx, action: "PERMISSION_DELETED", targetType: "Permission", targetId: p._id, targetName: p.name || p.code, before });
     return true;
   },
 };
