@@ -6,11 +6,36 @@
 npm install
 npm install --prefix cohan-restaurant-backend
 npm run env:local
+npm run db
 npm run dev
 npm run dev --prefix cohan-restaurant-backend
 ```
 
 Frontend mặc định chạy qua Vite; backend chạy Fastify/Mercurius. Khi đổi host/port local, cập nhật biến Vite (`VITE_DEV_*`) và backend env tương ứng.
+
+### Local MongoDB runner
+
+Chạy MongoDB local bằng lệnh:
+
+```bash
+npm run db
+```
+
+Lệnh này tự tìm `mongod` đã cài trên máy, mở MongoDB ở `127.0.0.1:27017` và dùng thư mục dữ liệu mặc định `C:\data\db` trên Windows. Nếu port đã có MongoDB chạy sẵn, lệnh sẽ báo thành công và thoát.
+
+Có thể ép binary hoặc thư mục dữ liệu khi cần:
+
+```powershell
+$env:MONGOD_BIN="C:\Program Files\MongoDB\Server\7.0\bin\mongod.exe"
+$env:MONGO_DBPATH="C:\data\db"
+npm run db
+```
+
+Mở terminal khác để kiểm tra backend kết nối DB:
+
+```bash
+npm run db:test
+```
 
 ## Environment checklist
 
