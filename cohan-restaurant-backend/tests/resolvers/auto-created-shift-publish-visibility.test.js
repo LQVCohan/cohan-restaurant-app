@@ -102,7 +102,7 @@ vi.mock("../../src/services/kitchen/kitchenShiftRosterSnapshot.service.js", () =
 vi.mock("../../src/jobs/attendanceException.job.js", () => ({ runAttendanceExceptionDetectionJob: vi.fn() }));
 vi.mock("../../src/services/performance/performanceIncident.service.js", () => ({ createPerformanceIncidentOnce: vi.fn(), applyPerformanceIncidentScore: vi.fn(), getPerformanceIncidentById: vi.fn(), markPerformanceIncidentEligible: vi.fn(), reviewPerformanceIncident: vi.fn(), waivePerformanceIncident: vi.fn() }));
 vi.mock("../../src/services/performance/performanceAppeal.service.js", () => ({ createPerformanceIncidentAppeal: vi.fn(), cancelPerformanceIncidentAppeal: vi.fn(), getPerformanceIncidentAppealById: vi.fn(), reviewPerformanceIncidentAppeal: vi.fn(), reverseScoreForAcceptedAppeal: vi.fn() }));
-vi.mock("mongoose", () => ({ default: { isValidObjectId: vi.fn(() => true), Types: { ObjectId: function ObjectId(value) { return value; } } } }));
+vi.mock("mongoose", () => ({ default: { isValidObjectId: vi.fn(() => true), Types: { ObjectId: function ObjectId(value) { this.value = value; } } } }));
 
 const queryResult = (value) => ({
   select: vi.fn().mockReturnThis(),
