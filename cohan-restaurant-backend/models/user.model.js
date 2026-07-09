@@ -122,6 +122,13 @@ const userSchema = BaseSchemaModel(
       default: "local",
     },
 
+    googleId: {
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true,
+    },
+
     status: {
       type: String,
       enum: ["active", "inactive", "blocked", "pending"],
@@ -236,6 +243,10 @@ userSchema.pre("validate", function (next) {
     this.username = this.username.trim().toLowerCase();
   }
 
+  if (this.googleId) {
+    this.googleId = this.googleId.trim();
+  }
+
   if (this.taxCode) {
     this.taxCode = this.taxCode.trim();
   }
@@ -296,6 +307,7 @@ userSchema.index({ emailVerifyTokenExp: 1 });
 userSchema.index({ phoneVerifyTokenExp: 1 });
 userSchema.index({ emailVerified: 1 });
 userSchema.index({ phoneVerified: 1 });
+userSchema.index({ googleId: 1 }, { unique: true, sparse: true });
 userSchema.index({ restaurantForStaff: 1, employeeCode: 1 }, {
   unique: true,
   partialFilterExpression: {
