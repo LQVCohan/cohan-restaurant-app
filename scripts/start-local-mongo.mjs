@@ -11,11 +11,12 @@ const dataDir = path.resolve(
   process.env.MONGO_DBPATH ||
     (isWindows ? 'C:\\data\\db' : path.join(os.homedir(), '.cohan', 'mongodb', 'data')),
 );
+const replicaSet = String(process.env.MONGO_REPLSET || 'rs0').trim();
 const defaultLogPath = isWindows
   ? 'C:\\data\\mongod.log'
   : path.join(os.homedir(), '.cohan', 'mongodb', 'mongod.log');
 const requestedLogPath = process.env.MONGO_LOGPATH ?? defaultLogPath;
-const logToConsole = ['0', 'false', 'stdout', 'console'].includes(String(requestedLogPath).toLowerCase());
+const logToConsole = ['0', 'stdout', 'console'].includes(String(requestedLogPath).toLowerCase());
 const extraArgs = process.argv.slice(2).filter((arg) => arg !== '--');
 
 function isPortOpen(targetHost, targetPort) {
@@ -102,8 +103,8 @@ function validateMongod(candidate, { explicit = false } = {}) {
   if (result.status === 0) return true;
 
   const reason = result.error?.message || result.stderr?.trim() || `exit code ${result.status}`;
-  const prefix = explicit ? '❌' : '⚠️ ';
-  console.warn(`${prefix} MongoDB binary is not runnable: ${candidate}`);
+  const prefix = explicit ? 'ERROR' : 'WARN';
+  console.warn(`${prefix}: MongoDB binary is not runnable: ${candidate}`);
   console.warn(`   ${reason}`);
   return false;
 }
@@ -132,24 +133,30 @@ function getLogArgs() {
   return args;
 }
 
+function getReplicaSetArgs() {
+  if (!replicaSet || hasOption(extraArgs, ['--replSet'])) return [];
+  return ['--replSet', replicaSet];
+}
+
 if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-  console.error(`❌ Invalid MONGO_PORT: ${process.env.MONGO_PORT}`);
+  console.error(`Invalid MONGO_PORT: ${process.env.MONGO_PORT}`);
   process.exit(1);
 }
 
 if (await isPortOpen(host, port)) {
-  console.log(`✅ MongoDB already running at ${host}:${port}`);
+  console.log(`MongoDB already running at ${host}:${port}`);
   process.exit(0);
 }
 
 const mongodBin = findRunnableMongod();
 if (!mongodBin) {
-  console.error('❌ Cannot find a runnable mongod binary. Install MongoDB Server or set MONGOD_BIN.');
+  console.error('Cannot find a runnable mongod binary. Install MongoDB Server or set MONGOD_BIN.');
   process.exit(1);
 }
 
 fs.mkdirSync(dataDir, { recursive: true });
 const logArgs = getLogArgs();
+const replicaSetArgs = getReplicaSetArgs();
 
 const args = [
   '--dbpath',
@@ -158,25 +165,27 @@ const args = [
   host,
   '--port',
   String(port),
+  ...replicaSetArgs,
   ...logArgs,
   ...extraArgs,
 ];
 
-console.log(`▶️  Starting MongoDB: ${mongodBin}`);
-console.log(`📁 Data directory: ${dataDir}`);
-if (logArgs.length) console.log(`📝 Log file: ${logArgs[1]}`);
-console.log(`🌐 Listening: ${host}:${port}`);
+console.log(`Starting MongoDB: ${mongodBin}`);
+console.log(`Data directory: ${dataDir}`);
+if (replicaSetArgs.length) console.log(`Replica set: ${replicaSetArgs[1]}`);
+if (logArgs.length) console.log(`Log file: ${logArgs[1]}`);
+console.log(`Listening: ${host}:${port}`);
 console.log('Press Ctrl+C to stop MongoDB.');
 
 const child = spawn(mongodBin, args, { stdio: 'inherit' });
 child.on('error', (error) => {
-  console.error(`❌ Failed to start MongoDB: ${error.message}`);
+  console.error(`Failed to start MongoDB: ${error.message}`);
   process.exit(1);
 });
 child.on('exit', (code, signal) => {
   if (signal) process.exit(0);
   if (code !== 0) {
-    console.error(`❌ MongoDB stopped before it could be used (exit code: ${code}).`);
+    console.error(`MongoDB stopped before it could be used (exit code: ${code}).`);
   }
   process.exit(code ?? 0);
 });
