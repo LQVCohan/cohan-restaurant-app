@@ -44,16 +44,18 @@ const SystemUserManagement = lazy(() => import("@/components/Dashboard_Manager/S
 const ManagerRestaurantInfoManagement = lazy(() => import("@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx").then((module) => ({ default: module.ManagerRestaurantInfoManagement })));
 const AiHandoffInbox = lazy(() => import("@/components/communication/AiHandoffInbox"));
 const BrandManagement = lazy(() => import("@/components/Dashboard_Manager/Brand/BrandManagement.jsx"));
+const SystemLogsPage = lazy(() => import("@/components/Dashboard_Manager/SystemLogs/SystemLogsPage"));
 
 const MANAGER_CANONICAL_PATH = "/manager";
 const BACKUP_PAGE_PERMISSIONS = ["backup.read", "backup.write", "backup.export", "backup.import", "system.manage"];
+const LOG_PAGE_PERMISSIONS = ["log.read", "admin.audit.read", "system.manage", "menu.audit.read"];
 const IS_TEST_ENV = import.meta.env.MODE === "test";
 
 const VALID_MANAGER_PAGES = new Set([
   "dashboard", "brands", "tables", "table-types", "table-qr", "orders", "menu", "modifiers", "combos", "inventory", "staff", "customers",
   "customer-analytics", "analytics", "transactions", "transfer-review", "wallet", "reports", "schedules",
   "promotions", "finance", "payroll", "reviews", "settings", "rates", "setting",
-  "backup", "print-management", "restaurant-info-management", "rbac", "system-users", "ai-handoff",
+  "backup", "logs", "print-management", "restaurant-info-management", "rbac", "system-users", "ai-handoff",
   "ai-chatbot-analytics", "ai-chatbot-settings", "ai-chatbot-knowledge",
 ]);
 
@@ -104,6 +106,7 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   rates: ["system.manage"],
   setting: ["system.manage"],
   backup: BACKUP_PAGE_PERMISSIONS,
+  logs: LOG_PAGE_PERMISSIONS,
   "print-management": ["print.read", "report.read"],
   rbac: ["role.read", "permission.read", "staff.write"],
   "system-users": ["system.manage"],
@@ -143,6 +146,7 @@ const PAGE_CONFIG = {
   "restaurant-info-management": page("Thông tin nhà hàng", "Cập nhật hồ sơ nhà hàng, giờ mở cửa và thông tin liên hệ", "🏪", ["nhà hàng", "restaurant", "địa chỉ", "liên hệ"]),
   rbac: page("Phân quyền nhân viên", "Quản lý vai trò, quyền hạn và gán vai trò cho nhân viên", "🛡️", ["phân quyền", "vai trò", "quyền hạn", "rbac", "nhân viên"]),
   "system-users": page("Quản lý người dùng hệ thống", "Quản lý Admin, Manager và các tài khoản không thuộc nhóm Staff", "👤", ["admin", "manager", "người dùng", "tài khoản", "system user", "khóa tài khoản"]),
+  logs: page("Check log", "Theo dõi audit log quản trị và event log vận hành", "🧾", ["log", "audit", "event", "nhật ký", "truy vết"]),
   "ai-handoff": page("Hỗ trợ từ AI", "Tiếp nhận các cuộc trò chuyện cần nhân viên hỗ trợ", "🤖", ["handoff", "chatbot", "support", "hỗ trợ"]),
   "ai-chatbot-analytics": page("Báo cáo Chatbot AI", "Theo dõi chất lượng tư vấn và nhu cầu chuyển nhân viên", "📡", ["ai", "chatbot", "analytics", "handoff"]),
   "ai-chatbot-settings": page("Cài đặt Chatbot AI", "Quản lý lời chào, gợi ý nhanh và chuyển nhân viên", "⚙️", ["ai", "chatbot", "settings", "handoff"]),
@@ -416,6 +420,7 @@ const ManagerLayout = () => {
       case "rates":
       case "setting": return <SettingsManagement />;
       case "backup": return <BackupManagement />;
+      case "logs": return <SystemLogsPage restaurantId={requestedRestaurantId || brandSelection.selectedRestaurantId || null} isAdmin={isAdminUser} />;
       case "schedules": return <ScheduleManagementPage />;
       case "promotions": return <PromotionManagement />;
       case "payroll": return <PayrollManagement />;
