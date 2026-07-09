@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const restaurantScopeMocks = vi.hoisted(() => ({
   canAccessRestaurant: vi.fn(async () => true),
+  staffBelongsToRestaurantByMembership: vi.fn(async () => true),
 }));
 const modelMocks = vi.hoisted(() => ({
   Role: { findById: vi.fn() },
@@ -14,6 +15,7 @@ vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
   ...(await importOriginal()),
   canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+  staffBelongsToRestaurantByMembership: restaurantScopeMocks.staffBelongsToRestaurantByMembership,
 }));
 
 function roleQuery(role) {
@@ -29,7 +31,6 @@ function staffDoc(overrides = {}) {
     _id: "staff-1",
     userType: "STAFF",
     deletedAt: null,
-    restaurantForStaff: "restaurant-1",
     role: null,
     save: vi.fn().mockResolvedValue(true),
     populate: vi.fn().mockResolvedValue(true),
@@ -42,6 +43,7 @@ describe("staffRoleAssignment.service", () => {
     vi.resetModules();
     vi.clearAllMocks();
     restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
+    restaurantScopeMocks.staffBelongsToRestaurantByMembership.mockResolvedValue(true);
     modelMocks.AuditLog.create.mockResolvedValue({ _id: "audit-1" });
     modelMocks.Restaurant.exists.mockResolvedValue(true);
   });
@@ -172,6 +174,7 @@ describe("staffRoleAssignment.service", () => {
       vi.resetModules();
       vi.clearAllMocks();
       restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
+      restaurantScopeMocks.staffBelongsToRestaurantByMembership.mockResolvedValue(true);
       modelMocks.AuditLog.create.mockResolvedValue({ _id: "audit-1" });
     }
   });
@@ -198,7 +201,8 @@ describe("staffRoleAssignment.service", () => {
   });
 
   it("blocks manager from assigning staff in another restaurant", async () => {
-    modelMocks.Staff.findById.mockResolvedValue(staffDoc({ restaurantForStaff: "restaurant-2" }));
+    restaurantScopeMocks.staffBelongsToRestaurantByMembership.mockResolvedValue(false);
+    modelMocks.Staff.findById.mockResolvedValue(staffDoc());
     modelMocks.Role.findById.mockReturnValue(roleQuery({
       _id: "role-server",
       slug: "server",
