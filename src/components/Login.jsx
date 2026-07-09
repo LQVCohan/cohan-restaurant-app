@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef, useEffect } from "react";
+import React, { useState, useContext, useRef, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { gql, useMutation } from "@apollo/client";
 import { AuthContext } from "../context/AuthContext";
@@ -16,6 +16,9 @@ const CAPTCHA_ENABLED =
   "false";
 const shouldRenderCaptcha = CAPTCHA_ENABLED && Boolean(CAPTCHA_SITE_KEY);
 const captchaConfigMissing = CAPTCHA_ENABLED && !CAPTCHA_SITE_KEY;
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+const GOOGLE_IDENTITY_SCRIPT_SRC = "https://accounts.google.com/gsi/client";
+let googleIdentityScriptPromise;
 
 const LOGIN_MUTATION = gql`
   mutation login(
@@ -32,6 +35,37 @@ const LOGIN_MUTATION = gql`
       password: $password
       captchaToken: $captchaToken
     ) {
+      token
+      user {
+        id
+        fullName
+        username
+        email
+        phone
+        roleName
+        role {
+          id
+          slug
+          name
+        }
+        status
+        emailVerified
+        phoneVerified
+        avatarUrl
+        wallet {
+          provider
+          status
+          balance
+          currency
+        }
+      }
+    }
+  }
+`;
+
+const LOGIN_WITH_GOOGLE_MUTATION = gql`
+  mutation LoginWithGoogle($idToken: String!) {
+    loginWithGoogle(idToken: $idToken) {
       token
       user {
         id
@@ -110,6 +144,30 @@ const BRAND_REGISTER_INITIAL = {
   address: "",
   terms: false,
 };
+
+function loadGoogleIdentityScript() {
+  if (typeof window === "undefined") return Promise.reject(new Error("Google Identity is browser-only"));
+  if (window.google?.accounts?.id) return Promise.resolve(window.google);
+  if (googleIdentityScriptPromise) return googleIdentityScriptPromise;
+
+  googleIdentityScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${GOOGLE_IDENTITY_SCRIPT_SRC}"]`);
+    const script = existing || document.createElement("script");
+
+    script.src = GOOGLE_IDENTITY_SCRIPT_SRC;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve(window.google);
+    script.onerror = () => {
+      googleIdentityScriptPromise = null;
+      reject(new Error("Google Identity script failed to load"));
+    };
+
+    if (!existing) document.head.appendChild(script);
+  });
+
+  return googleIdentityScriptPromise;
+}
 
 const FieldIcon = ({ type }) => {
   const paths = {
@@ -346,6 +404,7 @@ const LoginPage = () => {
 
   const recaptchaLoginRef = useRef(null);
   const recaptchaRegisterRef = useRef(null);
+  const googleButtonRef = useRef(null);
 
   const resetCaptcha = () => {
     setCaptchaToken("");
@@ -411,6 +470,67 @@ const LoginPage = () => {
       showNotification(`Chào mừng ${loggedInUser.fullName || loggedInUser.username}.`, "success");
     },
   });
+
+  const [loginWithGoogle, { loading: googleLoginLoading }] = useMutation(LOGIN_WITH_GOOGLE_MUTATION, {
+    errorPolicy: "none",
+    onError: (error) => showNotification(resolveLoginErrorMessage(error), "error"),
+    onCompleted: (data) => {
+      const token = data?.loginWithGoogle?.token;
+      const loggedInUser = data?.loginWithGoogle?.user;
+      if (!token || !loggedInUser) {
+        showNotification("Đăng nhập Google không thành công. Vui lòng thử lại.", "error");
+        return;
+      }
+      authLogin(token, loggedInUser, null, {
+        rememberIdentifier: true,
+        identifier: loggedInUser.email || "",
+      });
+      showNotification(`Chào mừng ${loggedInUser.fullName || loggedInUser.email}.`, "success");
+    },
+  });
+
+  const handleGoogleCredential = useCallback(
+    (response) => {
+      const idToken = response?.credential;
+      if (!idToken) {
+        showNotification("Google không trả về mã đăng nhập. Vui lòng thử lại.", "error");
+        return;
+      }
+      loginWithGoogle({ variables: { idToken } });
+    },
+    [loginWithGoogle, showNotification],
+  );
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || mobileMode !== "login" || isRightPanelActive) return undefined;
+    let cancelled = false;
+
+    loadGoogleIdentityScript()
+      .then((google) => {
+        if (cancelled || !google?.accounts?.id || !googleButtonRef.current) return;
+        google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredential,
+          ux_mode: "popup",
+        });
+        googleButtonRef.current.innerHTML = "";
+        google.accounts.id.renderButton(googleButtonRef.current, {
+          theme: "outline",
+          size: "large",
+          text: "continue_with",
+          shape: "rectangular",
+          logo_alignment: "left",
+          width: 300,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) showNotification("Không tải được Google Sign-In. Vui lòng thử lại sau.", "error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [handleGoogleCredential, isRightPanelActive, mobileMode, showNotification]);
 
   const [registerMutation, { loading: registerLoading }] = useMutation(CREATE_USER_MUTATION, {
     errorPolicy: "none",
@@ -663,6 +783,14 @@ const LoginPage = () => {
             {renderCaptcha(recaptchaLoginRef)}
             <div className="remember-card"><label className="check-row"><input type="checkbox" checked={loginForm.rememberIdentifier} onChange={(e) => setLoginForm({ ...loginForm, rememberIdentifier: e.target.checked })} /><span>Ghi nhớ tài khoản trên thiết bị này (chỉ lưu email/số điện thoại)</span></label></div>
             <button type="submit" className="btn-primary" disabled={loginLoading || captchaConfigMissing}>{loginLoading ? "Đang xử lý..." : "Đăng nhập"}</button>
+            <div className="google-login-row" aria-label="Đăng nhập bằng Google">
+              <div className="google-login-divider"><span>Hoặc</span></div>
+              {GOOGLE_CLIENT_ID ? (
+                <div ref={googleButtonRef} className="google-login-button" aria-busy={googleLoginLoading} />
+              ) : (
+                <button type="button" className="google-login-fallback" disabled>Google chưa cấu hình</button>
+              )}
+            </div>
           </form>
         </div>
 
