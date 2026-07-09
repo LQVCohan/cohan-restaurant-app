@@ -1,7 +1,7 @@
 {
   "id": "07-10-sms-mock-delivery",
   "title": "Make mock SMS not report real delivery",
-  "status": "in_progress",
+  "status": "implemented",
   "createdAt": "2026-07-10",
   "scope": [
     "Account verification SMS resend",
