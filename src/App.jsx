@@ -28,6 +28,8 @@ import AppErrorBoundary from "./components/common/AppErrorBoundary";
 function ScopedAiChatbotWidget() {
   const location = useLocation();
   if (
+    location.pathname.startsWith("/login") ||
+    location.pathname.startsWith("/business/register") ||
     location.pathname.startsWith("/manager") ||
     location.pathname.startsWith("/preview/")
   ) {
