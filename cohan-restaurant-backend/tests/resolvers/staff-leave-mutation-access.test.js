@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const guards = vi.hoisted(() => ({ requireAuth: vi.fn(), requireRestaurantAccess: vi.fn(async () => true), requireRoles: vi.fn(), requireRestaurantScope: vi.fn() }));
+const scopeMocks = vi.hoisted(() => ({
+  getStaffRestaurantIds: vi.fn(),
+  staffBelongsToRestaurantByMembership: vi.fn(),
+}));
 const modelMocks = vi.hoisted(() => ({
   Staff: { findById: vi.fn() }, LeaveRequest: { findById: vi.fn(), create: vi.fn(), findByIdAndUpdate: vi.fn() }, LeaveBalance: { findOne: vi.fn(), create: vi.fn() }, EventLog: {}, Notification: {},
   Role: {}, Shift: {}, Timesheet: {}, PayrollSetting: {}, PayrollPeriod: {}, PayrollItem: {}, PayrollAdjustment: {}, EmployeeCodeCounter: {}, SchedulePublication: {}, ShiftAcknowledgement: {}, ScheduleAcknowledgement: {}, AttendanceCorrectionRequest: {}, OvertimeRequest: {}
@@ -8,6 +12,7 @@ const modelMocks = vi.hoisted(() => ({
 
 vi.mock("../../graphql/guards.js", () => guards);
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", () => scopeMocks);
 vi.mock("../../lib/mailer.js", () => ({ mailer: { sendMail: vi.fn(async () => ({})) } }));
 vi.mock("../../src/services/payroll/payrollLockGuard.service.js", () => ({ assertNoLockedPayrollPeriodOverlap: vi.fn(async () => true) }));
 vi.mock("../../src/services/scheduling/schedulingPermission.service.js", () => ({ ATTENDANCE_REVIEW_ROLES: ["ADMIN", "MANAGER"], ATTENDANCE_OPERATION_ROLES: [], ATTENDANCE_SELF_ROLES: [], SCHEDULE_WRITE_ROLES: [], SHIFT_ACK_ADMIN_ROLES: [], resolveUserRoles: vi.fn(() => []), userCanAccessRestaurant: vi.fn(() => true) }));
@@ -19,7 +24,9 @@ const d = (v) => ({ ...v, save: vi.fn(async () => v), toObject: () => v, auditLo
 describe("staff leave mutation access", () => {
   beforeEach(() => {
     vi.resetModules(); vi.clearAllMocks();
-    modelMocks.Staff.findById.mockReturnValue(q({ _id: "e1", userType: "STAFF", primaryRestaurant: { _id: "r1" }, restaurantForStaff: "r1", refRestaurants: [], department: "ops", positionTitle: "staff", roleName: "staff" }));
+    scopeMocks.getStaffRestaurantIds.mockResolvedValue(["r1"]);
+    scopeMocks.staffBelongsToRestaurantByMembership.mockResolvedValue(true);
+    modelMocks.Staff.findById.mockReturnValue(q({ _id: "e1", userType: "STAFF", department: "ops", positionTitle: "staff", roleName: "staff" }));
     modelMocks.LeaveRequest.create.mockResolvedValue({ _id: "lr1" });
     modelMocks.LeaveRequest.findById.mockReturnValue(q({ _id: "lr1", employeeId: "e1", restaurantId: "r1", status: "pending", replacementStatus: "not_required", startDate: new Date(), endDate: new Date(), quotaImpact: {}, auditLogs: [] }));
   });
@@ -39,14 +46,15 @@ describe("staff leave mutation access", () => {
   });
 
   it("createLeaveRequest rejects staff not in restaurant", async () => {
-    modelMocks.Staff.findById.mockReturnValueOnce(q({ _id: "e1", userType: "STAFF", primaryRestaurant: "r2", refRestaurants: [] }));
+    scopeMocks.staffBelongsToRestaurantByMembership.mockResolvedValueOnce(false);
+    modelMocks.Staff.findById.mockReturnValueOnce(q({ _id: "e1", userType: "STAFF" }));
     const m = (await import("../../graphql/resolvers/staff/mutation.js")).default;
     await expect(m.createLeaveRequest(null, { input: { employeeId: "e1", restaurantId: "r1", leaveType: "ANNUAL", startDate: "2026-05-10", endDate: "2026-05-10", startSession: "FULL_DAY", endSession: "FULL_DAY" } }, { user: { id: "e1" } })).rejects.toThrow("Staff does not belong to restaurant");
     expect(modelMocks.LeaveRequest.create).not.toHaveBeenCalled();
   });
 
   it("createLeaveRequest allows manager leave without replacement", async () => {
-    modelMocks.Staff.findById.mockReturnValueOnce(q({ _id: "e1", userType: "STAFF", restaurantForStaff: "r1", refRestaurants: [], department: "management", positionTitle: "Manager", roleName: "manager" }));
+    modelMocks.Staff.findById.mockReturnValueOnce(q({ _id: "e1", userType: "STAFF", department: "management", positionTitle: "Manager", roleName: "manager" }));
     const m = (await import("../../graphql/resolvers/staff/mutation.js")).default;
     await m.createLeaveRequest(null, { input: { employeeId: "e1", restaurantId: "r1", leaveType: "ANNUAL", startDate: "2026-05-10", endDate: "2026-05-10", startSession: "FULL_DAY", endSession: "FULL_DAY" } }, { user: { id: "e1" } });
 

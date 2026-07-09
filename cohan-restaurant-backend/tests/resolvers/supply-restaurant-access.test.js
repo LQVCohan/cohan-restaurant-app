@@ -35,6 +35,9 @@ const mockSession = {
 };
 
 vi.mock("../../graphql/guards.js", () => ({ requireRestaurantAccess }));
+vi.mock("../../src/services/auth/authorization.service.js", () => ({
+  requireRestaurantPermission: vi.fn((ctx, restaurantId) => requireRestaurantAccess(ctx, restaurantId)),
+}));
 vi.mock("../../graphql/resolvers/supply/category-ai.js", () => ({ listSupplyCategories, suggestSupplyCategory }));
 vi.mock("../../graphql/resolvers/supply/mutation.support.js", () => ({ findOrCreateSupplyCategory, isValidObjectId, toEnglishCategoryName }));
 vi.mock("../../models/index.js", () => ({ Supply, StockItem, StockMovement, SupplyCategory }));
