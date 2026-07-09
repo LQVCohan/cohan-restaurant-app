@@ -2,6 +2,7 @@ import { User as UserModel } from "../../../models/index.js";
 import { UserQuery } from "./query.js";
 import { UserMutation } from "./mutation.js";
 import { loginWithPendingVerification } from "./loginWithPendingVerification.mutation.js";
+import { loginWithGoogle } from "./loginWithGoogle.mutation.js";
 import User from "./types.js";
 import customerAccountSecurity from "./customerAccountSecurity.js";
 import customerArchive from "./customerArchive.js";
@@ -29,6 +30,7 @@ export default {
     ...customerArchive.Mutation,
     changeMyPassword,
     login: loginWithPendingVerification,
+    loginWithGoogle,
   },
   ...User,
 };
