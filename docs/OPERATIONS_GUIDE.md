@@ -21,13 +21,14 @@ Chạy MongoDB local bằng lệnh:
 npm run db
 ```
 
-Lệnh này tự tìm `mongod` đã cài trên máy, mở MongoDB ở `127.0.0.1:27017` và dùng thư mục dữ liệu mặc định `C:\data\db` trên Windows. Nếu port đã có MongoDB chạy sẵn, lệnh sẽ báo thành công và thoát.
+Lệnh này tự tìm `mongod` đã cài trên máy, mở MongoDB ở `127.0.0.1:27017` và dùng thư mục dữ liệu mặc định `C:\data\db` trên Windows. Log mặc định được ghi vào `C:\data\mongod.log` để terminal VS Code không bị lag vì phải render quá nhiều log. Nếu port đã có MongoDB chạy sẵn, lệnh sẽ báo thành công và thoát.
 
-Có thể ép binary hoặc thư mục dữ liệu khi cần:
+Có thể ép binary, thư mục dữ liệu hoặc bật log trực tiếp ra terminal khi cần:
 
 ```powershell
 $env:MONGOD_BIN="C:\Program Files\MongoDB\Server\7.0\bin\mongod.exe"
 $env:MONGO_DBPATH="C:\data\db"
+$env:MONGO_LOGPATH="console"
 npm run db
 ```
 
