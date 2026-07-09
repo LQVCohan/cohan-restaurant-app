@@ -120,6 +120,13 @@ const inRange = (date, filter = {}) => {
   return (!filter.$gte || time >= new Date(filter.$gte).getTime()) && (!filter.$lte || time <= new Date(filter.$lte).getTime());
 };
 
+const matchesShift = (shift, filter = {}) => {
+  if (filter.restaurantId && idOf(shift.restaurantId) !== idOf(filter.restaurantId)) return false;
+  if (filter.startTime && !inRange(shift.startTime, filter.startTime)) return false;
+  if (filter.status?.$ne && shift.status === filter.status.$ne) return false;
+  return true;
+};
+
 describe("auto-created shift publish and staff visibility regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -137,12 +144,12 @@ describe("auto-created shift publish and staff visibility regression", () => {
     scopeMocks.staffBelongsToRestaurantByMembership.mockResolvedValue(true);
     modelMocks.Staff.findById.mockImplementation((id) => queryResult(db.staff.find((row) => idOf(row._id) === idOf(id)) || null));
     modelMocks.Shift.create.mockImplementation(async (input) => {
-      const shift = { _id: `shift-${db.nextShift++}`, ...input };
+      const shift = { _id: `shift-${db.nextShift++}`, status: "scheduled", ...input };
       db.shifts.push(shift);
       return shift;
     });
-    modelMocks.Shift.countDocuments.mockImplementation(async (filter = {}) => db.shifts.filter((shift) => idOf(shift.restaurantId) === idOf(filter.restaurantId) && inRange(shift.startTime, filter.startTime)).length);
-    modelMocks.Shift.find.mockImplementation((filter = {}) => queryResult(db.shifts.filter((shift) => idOf(shift.restaurantId) === idOf(filter.restaurantId) && inRange(shift.startTime, filter.startTime))));
+    modelMocks.Shift.countDocuments.mockImplementation(async (filter = {}) => db.shifts.filter((shift) => matchesShift(shift, filter)).length);
+    modelMocks.Shift.find.mockImplementation((filter = {}) => queryResult(db.shifts.filter((shift) => matchesShift(shift, filter))));
     modelMocks.SchedulePublication.findOne.mockReturnValue(queryResult(db.publications[0]));
     modelMocks.SchedulePublication.findOneAndUpdate.mockImplementation((_filter, update = {}) => {
       Object.assign(db.publications[0], update.$set || {});
