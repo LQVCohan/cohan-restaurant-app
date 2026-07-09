@@ -24,13 +24,20 @@ describe("NotificationProvider alert bridge", () => {
     expect(bridgedAlert).not.toBe(nativeAlert);
 
     act(() => {
-      window.alert("Vai trò hiện tại không có quyền thực hiện thao tác này.");
+      alert("Vai trò hiện tại không có quyền thực hiện thao tác này.");
+      window.alert("Đã sao chép link vào clipboard!");
     });
 
     expect(nativeAlert).not.toHaveBeenCalled();
     expect(
       screen.getByText("Vai trò hiện tại không có quyền thực hiện thao tác này.")
     ).toBeInTheDocument();
+    expect(screen.getByText("Đã sao chép link vào clipboard!")).toBeInTheDocument();
+    expect(
+      screen
+        .getByText("Đã sao chép link vào clipboard!")
+        .closest(".app-toast")
+    ).toHaveClass("app-toast--success");
 
     view.unmount();
     expect(window.alert).toBe(nativeAlert);
