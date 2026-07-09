@@ -50,28 +50,18 @@ async function main() {
   const passwordPolicy = validatePasswordStrong(password);
   if (!passwordPolicy.ok) throw new Error(`ADMIN_PASSWORD does not satisfy policy: ${passwordPolicy.reason || "invalid password"}`);
 
-  let user = await User.findOne({ email });
-  if (!user) {
-    const passwordHash = await bcrypt.hash(password, 10);
-    user = await User.create(buildAdminUserPayload({ email, passwordHash, adminRoleId: adminRole._id }));
-    console.log("✅ Created admin:", email);
-  } else {
-    user.role = adminRole._id;
-    user.status = "active";
-    user.provider = "local";
-    user.userType = "ADMIN";
-    user.emailVerified = true;
-    user.emailVerifiedAt ||= new Date();
-    user.verifiedAt ||= new Date();
-    user.verificationLastChannel = "email";
-    user.verificationLastStatus = "verified";
-    user.forcePasswordChange = false;
-    if (!user.passwordHash) {
-      user.passwordHash = await bcrypt.hash(password, 10);
-    }
-    await user.save();
-    console.log("ℹ️ Admin existed, normalized login fields:", email);
-  }
+  const passwordHash = await bcrypt.hash(password, 10);
+  const payload = buildAdminUserPayload({ email, passwordHash, adminRoleId: adminRole._id });
+  const user = await User.findOneAndUpdate(
+    { email },
+    { $set: payload },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true,
+      overwriteDiscriminatorKey: true,
+    },
+  );
 
   console.log("🎉 DONE. Admin account is ready for:", email, String(user._id));
   await mongoose.disconnect();
