@@ -62,6 +62,10 @@ const ReviewReservationMutation = {
 
 const SafeReservationMutation = withSafeReservationStatusMutation(ReviewReservationMutation);
 const RealtimeReservationMutation = withReservationRealtimeEvents(SafeReservationMutation);
+const ReservationMutationWithAliases = {
+  ...RealtimeReservationMutation,
+  markReservationNoShow: RealtimeReservationMutation.deleteReservation,
+};
 
 export default {
   Reservation: ReservationType,
@@ -70,7 +74,7 @@ export default {
     ...ReservationCustomerHistoryQuery,
   },
   Mutation: {
-    ...RealtimeReservationMutation,
+    ...ReservationMutationWithAliases,
     ...ReservationCustomerHistoryMutation,
   },
 };
