@@ -1,0 +1,8 @@
+{
+  "id": "07-10-non-blocking-alert-toasts",
+  "title": "Replace blocking alert feedback with toast bridge",
+  "status": "in_progress",
+  "created": "2026-07-10",
+  "scope": "frontend",
+  "owner": "codex"
+}
