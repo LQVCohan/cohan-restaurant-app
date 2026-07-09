@@ -2,6 +2,7 @@ import "dotenv/config.js";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import process from "process";
+import { pathToFileURL } from "node:url";
 
 import { User, Role } from "../models/index.js";
 import { validatePasswordStrong } from "../lib/passwordPolicy.js";
@@ -23,6 +24,10 @@ export function buildAdminUserPayload({ email, passwordHash, adminRoleId }) {
     verificationLastStatus: "verified",
     forcePasswordChange: false,
   };
+}
+
+export function isDirectExecution(metaUrl = import.meta.url, argvPath = process.argv[1]) {
+  return Boolean(argvPath) && metaUrl === pathToFileURL(argvPath).href;
 }
 
 async function main() {
@@ -72,7 +77,7 @@ async function main() {
   await mongoose.disconnect();
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isDirectExecution()) {
   main().catch((err) => {
     console.error(err);
     process.exit(1);
