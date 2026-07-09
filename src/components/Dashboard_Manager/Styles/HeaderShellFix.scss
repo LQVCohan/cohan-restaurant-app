@@ -338,9 +338,14 @@
 
 @media (max-width: 768px) {
   .manager-layout__header {
+    --manager-header-height: 108px;
+    --manager-control-height: 40px;
+
     > .header .header__content {
       grid-template-columns: auto minmax(0, 1fr) auto;
-      width: calc(100% - 1.5rem);
+      grid-template-rows: 44px 40px;
+      align-content: center;
+      width: calc(100% - max(1rem, env(safe-area-inset-left)) - max(1rem, env(safe-area-inset-right)));
       gap: 0.5rem;
     }
 
@@ -356,13 +361,37 @@
     }
 
     .header__center {
-      display: none;
+      display: block;
+      grid-column: 1 / -1;
+      grid-row: 2;
+      justify-self: stretch;
+      width: 100%;
     }
 
     .header__right {
       grid-column: 3;
       grid-row: 1;
       justify-self: end;
+    }
+
+    .header__center .search-container,
+    .header__center .search-box {
+      height: var(--manager-control-height);
+    }
+
+    .notification-btn,
+    .user-menu-btn {
+      min-height: var(--manager-control-height);
+    }
+
+    .notification-btn {
+      width: var(--manager-control-height);
+      height: var(--manager-control-height);
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
     }
   }
 }
