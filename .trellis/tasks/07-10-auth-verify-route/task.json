@@ -1,0 +1,26 @@
+{
+  "id": "auth-verify-route",
+  "name": "auth-verify-route",
+  "title": "Fix account verification REST route",
+  "description": "Move POST /api/auth/verify-account into the auth route boundary so email verification links do not return Route not found.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "auth-verification",
+  "package": "cohan-restaurant-backend",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/server/createServer.js",
+    "cohan-restaurant-backend/src/server/plugins/upload.route.js",
+    "cohan-restaurant-backend/tests/server/auth-cookie-endpoints.test.js"
+  ],
+  "notes": "Root cause: the account verification REST endpoint is an auth route, but it was registered inside the upload plugin. The frontend posts /api/auth/verify-account from VerifyAccountConfirm; when the plugin route is unavailable or stale, Fastify falls through to Route not found. Register the endpoint directly with the other auth REST routes and keep upload.route.js upload/chatbot focused."
+}
