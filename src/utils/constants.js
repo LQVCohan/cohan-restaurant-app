@@ -27,7 +27,7 @@ export const PRICE_DIRECTIONS = {
   DECREASE: "decrease",
 };
 
-export const FOODHUB_DESIGN_TOKENS = {
+export const COHAN_DESIGN_TOKENS = {
   colors: {
     primary: "#0284c7",
     primaryHover: "#0369a1",
@@ -68,12 +68,10 @@ export const COUPON_CATEGORIES = {
   shipping: "Coupon shipping",
 };
 
-
 export const COUPON_DISCOUNT_TYPES = {
   percent: "Giảm %",
   fixed: "Giảm tiền",
 };
-
 
 export const STATUS_TYPES = {
   active: "Đang hoạt động",

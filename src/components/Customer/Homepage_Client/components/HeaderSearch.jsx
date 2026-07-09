@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useSearchSuggestions } from "../../../../hooks/useSearchSuggestions";
 import { debounce } from "../../../../utils/debounce";
 
-const HISTORY_KEY = "foodhub_search_history_v1";
+const HISTORY_KEY = "cohan_search_history_v1";
 const HISTORY_LIMIT = 5;
 
 function loadHistory() {
@@ -22,7 +22,7 @@ function saveHistory(list) {
   try {
     localStorage.setItem(
       HISTORY_KEY,
-      JSON.stringify(list.slice(0, HISTORY_LIMIT))
+      JSON.stringify(list.slice(0, HISTORY_LIMIT)),
     );
   } catch {
     // ignore localStorage write errors
@@ -220,7 +220,7 @@ export default function HeaderSearch() {
       if (idleTimer.current) clearTimeout(idleTimer.current);
       cancel();
     },
-    [cancel]
+    [cancel],
   );
 
   const flatItems = useMemo(() => {
@@ -228,21 +228,19 @@ export default function HeaderSearch() {
 
     const list = [];
     suggestions.restaurants?.forEach((restaurant) =>
-      list.push({ type: "RESTAURANT", data: restaurant })
+      list.push({ type: "RESTAURANT", data: restaurant }),
     );
     suggestions.menuItems
       ?.slice(0, 3)
-      .forEach((menuItem) =>
-        list.push({ type: "MENU_ITEM", data: menuItem })
-      );
+      .forEach((menuItem) => list.push({ type: "MENU_ITEM", data: menuItem }));
     suggestions.chefs
       ?.slice(0, 3)
       .forEach((chef) => list.push({ type: "CHEF", data: chef }));
     suggestions.owners?.forEach((owner) =>
-      list.push({ type: "OWNER", data: owner })
+      list.push({ type: "OWNER", data: owner }),
     );
     suggestions.locations?.forEach((location) =>
-      list.push({ type: "LOCATION", data: location })
+      list.push({ type: "LOCATION", data: location }),
     );
 
     return list;
@@ -301,8 +299,8 @@ export default function HeaderSearch() {
       pushHistory(item.data.name);
       navigate(
         `/cus-menu?restaurantId=${encodeURIComponent(
-          item.data.restaurantId
-        )}&menuItemId=${encodeURIComponent(item.data.id)}`
+          item.data.restaurantId,
+        )}&menuItemId=${encodeURIComponent(item.data.id)}`,
       );
     } else if (item.type === "CHEF") {
       pushHistory(item.data.fullName || item.data.restaurantName);
@@ -341,12 +339,12 @@ export default function HeaderSearch() {
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setActiveIndex((previous) =>
-        previous + 1 >= flatItems.length ? 0 : previous + 1
+        previous + 1 >= flatItems.length ? 0 : previous + 1,
       );
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
       setActiveIndex((previous) =>
-        previous - 1 < 0 ? flatItems.length - 1 : previous - 1
+        previous - 1 < 0 ? flatItems.length - 1 : previous - 1,
       );
     }
   };
@@ -453,9 +451,7 @@ export default function HeaderSearch() {
                   <button
                     type="button"
                     className="header-search__remove-history-item"
-                    onMouseDown={(event) =>
-                      removeHistoryItem(event, item)
-                    }
+                    onMouseDown={(event) => removeHistoryItem(event, item)}
                     aria-label={`Xóa ${item} khỏi lịch sử`}
                   >
                     ✕
@@ -504,9 +500,7 @@ export default function HeaderSearch() {
                         )}
                       </div>
                       {subText && (
-                        <div className="header-search__item-sub">
-                          {subText}
-                        </div>
+                        <div className="header-search__item-sub">{subText}</div>
                       )}
                     </div>
                   </div>

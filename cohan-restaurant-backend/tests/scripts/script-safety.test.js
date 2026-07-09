@@ -14,11 +14,15 @@ afterEach(() => {
 
 describe("script safety helpers", () => {
   it("maskMongoUri hides username/password", () => {
-    expect(maskMongoUri("mongodb+srv://user:pass@cluster/db")).toBe("mongodb+srv://***:***@cluster/db");
+    expect(maskMongoUri("mongodb+srv://user:pass@cluster/db")).toBe(
+      "mongodb+srv://***:***@cluster/db",
+    );
   });
 
   it("maskMongoUri handles plain local Mongo URI", () => {
-    expect(maskMongoUri("mongodb://localhost:27017/foodhub")).toBe("mongodb://localhost:27017/foodhub");
+    expect(maskMongoUri("mongodb://localhost:27017/cohan")).toBe(
+      "mongodb://localhost:27017/cohan",
+    );
   });
 
   it("assertDemoScriptAllowed allows development", () => {
@@ -29,7 +33,9 @@ describe("script safety helpers", () => {
   it("assertDemoScriptAllowed blocks production by default", () => {
     process.env.NODE_ENV = "production";
     delete process.env.ALLOW_DEMO_SEED_IN_PRODUCTION;
-    expect(() => assertDemoScriptAllowed("demo.js")).toThrow("demo.js is blocked in production-like environments");
+    expect(() => assertDemoScriptAllowed("demo.js")).toThrow(
+      "demo.js is blocked in production-like environments",
+    );
   });
 
   it("assertDemoScriptAllowed allows production with explicit override", () => {
@@ -48,13 +54,15 @@ describe("script safety helpers", () => {
   it("getDemoPassword rejects Demo@123456 in production-like env", () => {
     process.env.NODE_ENV = "production";
     process.env.DEMO_PASSWORD = "Demo@123456";
-    expect(() => getDemoPassword()).toThrow("DEMO_PASSWORD is too weak for production-like environments");
+    expect(() => getDemoPassword()).toThrow(
+      "DEMO_PASSWORD is too weak for production-like environments",
+    );
   });
 
   it("safeDbInfo never returns raw password", () => {
-    process.env.MONGO_URI = "mongodb://alice:secretpass@example.net/foodhub";
+    process.env.MONGO_URI = "mongodb://alice:secretpass@example.net/cohan";
     const info = safeDbInfo();
-    expect(info.mongoUri).toBe("mongodb://***:***@example.net/foodhub");
+    expect(info.mongoUri).toBe("mongodb://***:***@example.net/cohan");
     expect(info.mongoUri).not.toContain("secretpass");
   });
 });

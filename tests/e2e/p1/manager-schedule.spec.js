@@ -24,7 +24,12 @@ const STAFF_USER = {
   employeeCode: "ST-001",
   department: "service",
   roleName: "staff",
-  role: { id: "role-server", slug: "server", name: "Phục vụ", department: "service" },
+  role: {
+    id: "role-server",
+    slug: "server",
+    name: "Phục vụ",
+    department: "service",
+  },
   positionTitle: "Nhân viên phục vụ",
   employmentStatus: "WORKING",
   employmentType: "full_time",
@@ -58,7 +63,14 @@ const makeSchedulingPolicy = () => ({
   id: "schedule-policy-p1",
   restaurantId: TEST_RESTAURANT.id,
   shiftTemplates: [
-    { key: "morning", label: "Ca sáng", startTime: "08:00", endTime: "16:00", enabled: true, allowCrossDay: false },
+    {
+      key: "morning",
+      label: "Ca sáng",
+      startTime: "08:00",
+      endTime: "16:00",
+      enabled: true,
+      allowCrossDay: false,
+    },
   ],
   laborRules: {
     respectWorkingDays: true,
@@ -83,7 +95,11 @@ const makeSchedulingPolicy = () => ({
   mandatoryShiftRoles: [],
   employmentTypePolicy: {},
   schedulingOperationalStartAt: null,
-  firstWeekGracePolicy: { enabled: false, strategy: "none", appliedUntil: null },
+  firstWeekGracePolicy: {
+    enabled: false,
+    strategy: "none",
+    appliedUntil: null,
+  },
   availabilityRegistrationPolicy: {
     availabilityRegistrationMode: "optional",
     availabilityOpenDayOffset: 7,
@@ -168,7 +184,7 @@ const installManagerScheduleMocks = async (page) => {
   };
 
   await page.addInitScript((accessToken) => {
-    window.sessionStorage.setItem("foodhub_access_token", accessToken);
+    window.sessionStorage.setItem("cohan_access_token", accessToken);
   }, token);
 
   await page.route("**/auth/refresh**", async (route) => {
@@ -178,7 +194,11 @@ const installManagerScheduleMocks = async (page) => {
 
   await page.route("**/auth/logout**", async (route) => {
     if (route.request().method() === "OPTIONS") return fulfillOptions(route);
-    return route.fulfill({ status: 204, headers: corsHeadersFor(route), body: "" });
+    return route.fulfill({
+      status: 204,
+      headers: corsHeadersFor(route),
+      body: "",
+    });
   });
 
   await page.route("**/graphql**", async (route) => {
@@ -272,7 +292,11 @@ const installManagerScheduleMocks = async (page) => {
           publishedAt: "2026-06-30T02:00:00.000Z",
           publishedBy: MANAGER_USER.id,
           lastChangedAt: "2026-06-30T02:00:00.000Z",
-          permissions: { ...schedulePermissions, canPublish: false, canReopen: true },
+          permissions: {
+            ...schedulePermissions,
+            canPublish: false,
+            canReopen: true,
+          },
         };
         data = { publishSchedule: publication };
         break;
@@ -287,7 +311,11 @@ const installManagerScheduleMocks = async (page) => {
           reopenReason: input.reason || "P1 mở lại lịch để chỉnh sửa",
           reopenCount: Number(publication.reopenCount || 0) + 1,
           lastChangedAt: "2026-06-30T03:00:00.000Z",
-          permissions: { ...schedulePermissions, canPublish: true, canReopen: false },
+          permissions: {
+            ...schedulePermissions,
+            canPublish: true,
+            canReopen: false,
+          },
         };
         data = { reopenSchedule: publication };
         break;
@@ -316,7 +344,9 @@ const openManagerSchedulePage = async (page) => {
       }),
     );
   });
-  await expect(page.getByRole("heading", { name: "Lịch làm việc" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Lịch làm việc" }),
+  ).toBeVisible();
 };
 
 const createOneShift = async (page) => {
@@ -324,7 +354,9 @@ const createOneShift = async (page) => {
   await expect(page.getByText("Thêm ca làm việc")).toBeVisible();
   await page.locator(".staff-item", { hasText: STAFF_USER.fullName }).click();
   await page.getByRole("button", { name: "Tạo ca làm việc" }).click();
-  await expect(page.getByRole("status")).toContainText("Đã tạo ca cho 1 nhân viên.");
+  await expect(page.getByRole("status")).toContainText(
+    "Đã tạo ca cho 1 nhân viên.",
+  );
 };
 
 const publishCreatedSchedule = async (page) => {
@@ -334,11 +366,16 @@ const publishCreatedSchedule = async (page) => {
   await expect(dialog).toBeVisible();
   await dialog.locator('input[type="checkbox"]').check();
   await dialog.getByRole("button", { name: "Công bố lịch" }).click();
-  await expect(page.getByRole("status")).toContainText("Đã công bố lịch làm việc và thông báo đến nhân viên liên quan.");
+  await expect(page.getByRole("status")).toContainText(
+    "Đã công bố lịch làm việc và thông báo đến nhân viên liên quan.",
+  );
 };
 
 test.describe("P1 manager schedule", () => {
-  test("manager opens schedule workspace without hidden backend errors", async ({ page, backendGuard }) => {
+  test("manager opens schedule workspace without hidden backend errors", async ({
+    page,
+    backendGuard,
+  }) => {
     await installManagerScheduleMocks(page);
     await openManagerSchedulePage(page);
 
@@ -347,22 +384,32 @@ test.describe("P1 manager schedule", () => {
     backendGuard.assertNoBackendErrors("manager schedule workspace");
   });
 
-  test("manager opens create shift modal and selects staff without hidden backend errors", async ({ page, backendGuard }) => {
+  test("manager opens create shift modal and selects staff without hidden backend errors", async ({
+    page,
+    backendGuard,
+  }) => {
     await installManagerScheduleMocks(page);
     await openManagerSchedulePage(page);
 
     await page.getByRole("button", { name: /Tạo ca/ }).click();
     await expect(page.getByText("Thêm ca làm việc")).toBeVisible();
 
-    const staffRow = page.locator(".staff-item", { hasText: STAFF_USER.fullName });
+    const staffRow = page.locator(".staff-item", {
+      hasText: STAFF_USER.fullName,
+    });
     await expect(staffRow).toBeVisible();
     backendGuard.clear();
     await staffRow.click();
-    await expect(page.locator(".staff-item.selected", { hasText: STAFF_USER.fullName })).toBeVisible();
+    await expect(
+      page.locator(".staff-item.selected", { hasText: STAFF_USER.fullName }),
+    ).toBeVisible();
     backendGuard.assertNoBackendErrors("manager schedule create shift modal");
   });
 
-  test("manager sees validation before creating a shift without selected staff", async ({ page, backendGuard }) => {
+  test("manager sees validation before creating a shift without selected staff", async ({
+    page,
+    backendGuard,
+  }) => {
     await installManagerScheduleMocks(page);
     await openManagerSchedulePage(page);
 
@@ -371,32 +418,49 @@ test.describe("P1 manager schedule", () => {
 
     backendGuard.clear();
     await page.getByRole("button", { name: "Tạo ca làm việc" }).click();
-    await expect(page.locator(".submit-error")).toContainText("Cần chọn ít nhất một nhân viên cho ca làm.");
-    backendGuard.assertNoBackendErrors("manager schedule empty create shift validation");
+    await expect(page.locator(".submit-error")).toContainText(
+      "Cần chọn ít nhất một nhân viên cho ca làm.",
+    );
+    backendGuard.assertNoBackendErrors(
+      "manager schedule empty create shift validation",
+    );
   });
 
-  test("manager creates a shift and sees it after refetch without hidden backend errors", async ({ page, backendGuard }) => {
+  test("manager creates a shift and sees it after refetch without hidden backend errors", async ({
+    page,
+    backendGuard,
+  }) => {
     await installManagerScheduleMocks(page);
     await openManagerSchedulePage(page);
 
     backendGuard.clear();
     await createOneShift(page);
-    await expect(page.locator(".shift-card", { hasText: "1 nhân sự" })).toBeVisible();
+    await expect(
+      page.locator(".shift-card", { hasText: "1 nhân sự" }),
+    ).toBeVisible();
     backendGuard.assertNoBackendErrors("manager schedule create shift success");
   });
 
-  test("manager publishes a created schedule without hidden backend errors", async ({ page, backendGuard }) => {
+  test("manager publishes a created schedule without hidden backend errors", async ({
+    page,
+    backendGuard,
+  }) => {
     await installManagerScheduleMocks(page);
     await openManagerSchedulePage(page);
     await createOneShift(page);
 
     backendGuard.clear();
     await publishCreatedSchedule(page);
-    await expect(page.locator(".schedule-status-badge")).toContainText("Đã công bố");
+    await expect(page.locator(".schedule-status-badge")).toContainText(
+      "Đã công bố",
+    );
     backendGuard.assertNoBackendErrors("manager schedule publish");
   });
 
-  test("manager reopens a published schedule without hidden backend errors", async ({ page, backendGuard }) => {
+  test("manager reopens a published schedule without hidden backend errors", async ({
+    page,
+    backendGuard,
+  }) => {
     await installManagerScheduleMocks(page);
     await openManagerSchedulePage(page);
     await createOneShift(page);
@@ -405,12 +469,18 @@ test.describe("P1 manager schedule", () => {
     backendGuard.clear();
     await page.getByRole("button", { name: "Mở lại để chỉnh sửa" }).click();
 
-    const dialog = page.getByRole("dialog", { name: "Mở lại lịch đã công bố?" });
+    const dialog = page.getByRole("dialog", {
+      name: "Mở lại lịch đã công bố?",
+    });
     await expect(dialog).toBeVisible();
-    await dialog.getByPlaceholder("Nhập lý do mở lại lịch để chỉnh sửa...").fill("P1 cần chỉnh lịch sau khi công bố");
+    await dialog
+      .getByPlaceholder("Nhập lý do mở lại lịch để chỉnh sửa...")
+      .fill("P1 cần chỉnh lịch sau khi công bố");
     await dialog.getByRole("button", { name: "Xác nhận mở lại" }).click();
 
-    await expect(page.getByRole("status")).toContainText("Đã mở lại lịch để chỉnh sửa. Các thay đổi sẽ được gửi khi công bố lại.");
+    await expect(page.getByRole("status")).toContainText(
+      "Đã mở lại lịch để chỉnh sửa. Các thay đổi sẽ được gửi khi công bố lại.",
+    );
     await expect(page.locator(".btn-publish")).toContainText("Công bố lại");
     backendGuard.assertNoBackendErrors("manager schedule reopen");
   });

@@ -93,21 +93,24 @@ const makeLeaveRequest = (overrides = {}) => ({
   ...overrides,
 });
 
-const makeSelfReviewRequest = (overrides = {}) => makeLeaveRequest({
-  id: "leave-self-review-p1",
-  employeeId: MANAGER_USER.id,
-  employeeName: MANAGER_USER.fullName,
-  employeeCode: "MG-001",
-  employeeRole: "Quản lý nhà hàng",
-  reason: "P1 self review must be hidden",
-  status: "PENDING",
-  ...overrides,
-});
+const makeSelfReviewRequest = (overrides = {}) =>
+  makeLeaveRequest({
+    id: "leave-self-review-p1",
+    employeeId: MANAGER_USER.id,
+    employeeName: MANAGER_USER.fullName,
+    employeeCode: "MG-001",
+    employeeRole: "Quản lý nhà hàng",
+    reason: "P1 self review must be hidden",
+    status: "PENDING",
+    ...overrides,
+  });
 
 const filterLeaveRequests = (requests, filter = {}) => {
-  const expectedStatus = filter?.status && filter.status !== "all" ? filter.status : null;
+  const expectedStatus =
+    filter?.status && filter.status !== "all" ? filter.status : null;
   return requests.filter((request) => {
-    if (filter?.restaurantId && request.restaurantId !== filter.restaurantId) return false;
+    if (filter?.restaurantId && request.restaurantId !== filter.restaurantId)
+      return false;
     if (expectedStatus && request.status !== expectedStatus) return false;
     return true;
   });
@@ -142,7 +145,7 @@ const installManagerLeaveMocks = async (page, initialRequests) => {
   const token = jwtLikeToken(MANAGER_USER.roleName);
 
   await page.addInitScript((accessToken) => {
-    window.sessionStorage.setItem("foodhub_access_token", accessToken);
+    window.sessionStorage.setItem("cohan_access_token", accessToken);
   }, token);
 
   await page.route("**/api/auth/refresh**", async (route) => {
@@ -152,7 +155,11 @@ const installManagerLeaveMocks = async (page, initialRequests) => {
 
   await page.route("**/api/auth/logout**", async (route) => {
     if (route.request().method() === "OPTIONS") return fulfillOptions(route);
-    await route.fulfill({ status: 204, headers: corsHeadersFor(route), body: "" });
+    await route.fulfill({
+      status: 204,
+      headers: corsHeadersFor(route),
+      body: "",
+    });
   });
 
   await page.route("**/graphql**", async (route) => {
@@ -205,7 +212,11 @@ const installManagerLeaveMocks = async (page, initialRequests) => {
               }
             : request,
         );
-        data = { approveLeaveRequest: requests.find((request) => request.id === requestId) };
+        data = {
+          approveLeaveRequest: requests.find(
+            (request) => request.id === requestId,
+          ),
+        };
         break;
       }
       case "RejectLeave": {
@@ -224,7 +235,11 @@ const installManagerLeaveMocks = async (page, initialRequests) => {
               }
             : request,
         );
-        data = { rejectLeaveRequest: requests.find((request) => request.id === requestId) };
+        data = {
+          rejectLeaveRequest: requests.find(
+            (request) => request.id === requestId,
+          ),
+        };
         break;
       }
       default:
@@ -250,8 +265,13 @@ const openManagerLeavePage = async (page) => {
 };
 
 test.describe("P1 manager leave review", () => {
-  test("manager approves a pending leave request without hidden backend errors", async ({ page, backendGuard }) => {
-    await installManagerLeaveMocks(page, [makeLeaveRequest({ id: "leave-approve-p1" })]);
+  test("manager approves a pending leave request without hidden backend errors", async ({
+    page,
+    backendGuard,
+  }) => {
+    await installManagerLeaveMocks(page, [
+      makeLeaveRequest({ id: "leave-approve-p1" }),
+    ]);
     await openManagerLeavePage(page);
 
     const row = page.locator("tr.hover-row", { hasText: STAFF_USER.fullName });
@@ -268,8 +288,13 @@ test.describe("P1 manager leave review", () => {
     await expect(row).toContainText("Đã duyệt");
   });
 
-  test("manager rejects a pending leave request without hidden backend errors", async ({ page, backendGuard }) => {
-    await installManagerLeaveMocks(page, [makeLeaveRequest({ id: "leave-reject-p1" })]);
+  test("manager rejects a pending leave request without hidden backend errors", async ({
+    page,
+    backendGuard,
+  }) => {
+    await installManagerLeaveMocks(page, [
+      makeLeaveRequest({ id: "leave-reject-p1" }),
+    ]);
     await openManagerLeavePage(page);
 
     const row = page.locator("tr.hover-row", { hasText: STAFF_USER.fullName });
@@ -288,8 +313,18 @@ test.describe("P1 manager leave review", () => {
     page.on("dialog", handleDialog);
     try {
       await row.locator(".btn-icon.reject").click();
-      await expect.poll(() => dialogMessages.some((message) => message.includes("Lý do từ chối"))).toBe(true);
-      await expect.poll(() => dialogMessages.some((message) => message.includes("Từ chối đơn thành công"))).toBe(true);
+      await expect
+        .poll(() =>
+          dialogMessages.some((message) => message.includes("Lý do từ chối")),
+        )
+        .toBe(true);
+      await expect
+        .poll(() =>
+          dialogMessages.some((message) =>
+            message.includes("Từ chối đơn thành công"),
+          ),
+        )
+        .toBe(true);
     } finally {
       page.off("dialog", handleDialog);
     }
@@ -298,15 +333,22 @@ test.describe("P1 manager leave review", () => {
     await expect(row).toContainText("Từ chối");
   });
 
-  test("manager cannot review own leave request from the UI", async ({ page, backendGuard }) => {
+  test("manager cannot review own leave request from the UI", async ({
+    page,
+    backendGuard,
+  }) => {
     await installManagerLeaveMocks(page, [makeSelfReviewRequest()]);
     await openManagerLeavePage(page);
 
-    const row = page.locator("tr.hover-row", { hasText: MANAGER_USER.fullName });
+    const row = page.locator("tr.hover-row", {
+      hasText: MANAGER_USER.fullName,
+    });
     await expect(row).toContainText("Chờ duyệt");
     await expect(row.locator(".btn-icon.approve")).toHaveCount(0);
     await expect(row.locator(".btn-icon.reject")).toHaveCount(0);
     await expect(row).toContainText("Theo dõi");
-    backendGuard.assertNoBackendErrors("manager self leave review actions hidden");
+    backendGuard.assertNoBackendErrors(
+      "manager self leave review actions hidden",
+    );
   });
 });

@@ -122,7 +122,9 @@ async function loadContext() {
 
   const restaurantId = new mongoose.Types.ObjectId(RESTAURANT_ID);
   const roster = await findExistingRoster(restaurantId);
-  const employeeIds = [...new Set(roster.shifts.map((shift) => String(shift.employeeId)))];
+  const employeeIds = [
+    ...new Set(roster.shifts.map((shift) => String(shift.employeeId))),
+  ];
   const staff = await Staff.find({
     _id: { $in: employeeIds },
     userType: "STAFF",
@@ -161,10 +163,7 @@ async function removeLegacyDuplicateRoster(restaurantId) {
 
   const timesheetResult = await Timesheet.deleteMany({
     restaurantId,
-    $or: [
-      { shiftId: { $in: shiftIds } },
-      { note: LEGACY_TAG_PATTERN },
-    ],
+    $or: [{ shiftId: { $in: shiftIds } }, { note: LEGACY_TAG_PATTERN }],
   });
   const shiftResult = await Shift.deleteMany({ _id: { $in: shiftIds } });
 
@@ -223,9 +222,10 @@ async function updateExistingRoster(context) {
     const timesheet = await Timesheet.findOne({ shiftId: shift._id }).lean();
     if (!timesheet) continue;
 
-    const oldPlannedMinutes = timesheet.plannedStartTime && timesheet.plannedEndTime
-      ? durationMinutes(timesheet.plannedStartTime, timesheet.plannedEndTime)
-      : durationMinutes(shift.startTime, shift.endTime);
+    const oldPlannedMinutes =
+      timesheet.plannedStartTime && timesheet.plannedEndTime
+        ? durationMinutes(timesheet.plannedStartTime, timesheet.plannedEndTime)
+        : durationMinutes(shift.startTime, shift.endTime);
     const oldWorkedMinutes = Number(timesheet.workedMinutes || 0);
     const workedMinutes = timesheet.actualCheckInAt
       ? Math.min(
@@ -277,7 +277,9 @@ async function updateExistingRoster(context) {
       timesheetId: timesheet._id,
     }).lean();
     for (const request of overtimeRequests) {
-      const plannedOvertimeMinutes = Number(request.plannedOvertimeMinutes || 0);
+      const plannedOvertimeMinutes = Number(
+        request.plannedOvertimeMinutes || 0,
+      );
       const actualOvertimeMinutes = Number(request.actualOvertimeMinutes || 0);
       await OvertimeRequest.updateOne(
         { _id: request._id },
@@ -304,7 +306,7 @@ async function main() {
   assertDemoScriptAllowed("applySharedRosterHoursDemo.js");
   console.log("Connecting with DB settings:", safeDbInfo());
   await mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017", {
-    dbName: process.env.MONGO_DB || "foodhub",
+    dbName: process.env.MONGO_DB || "cohan",
   });
 
   const context = await loadContext();

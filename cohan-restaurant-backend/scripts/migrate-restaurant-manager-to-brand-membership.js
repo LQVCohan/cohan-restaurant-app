@@ -12,7 +12,7 @@ import {
 } from "../models/index.js";
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
-const DB_NAME = process.env.MONGO_DB || "foodhub";
+const DB_NAME = process.env.MONGO_DB || "cohan";
 const id = (value) => String(value?._id || value?.id || value || "");
 
 const emptyReport = () => ({
@@ -36,7 +36,11 @@ async function backupLegacyData(payload) {
   const filePath = path.join(directory, `brand-scope-cleanup-${stamp}.json`);
   await fs.writeFile(
     filePath,
-    JSON.stringify({ createdAt: new Date().toISOString(), ...payload }, null, 2),
+    JSON.stringify(
+      { createdAt: new Date().toISOString(), ...payload },
+      null,
+      2,
+    ),
     "utf8",
   );
   return filePath;
@@ -59,18 +63,28 @@ export async function migrateRestaurantManagersToBrandMembership({
   const [brands, restaurants, users, roles, memberships] = await Promise.all([
     models.Brand.find({}).select("_id ownerId name").lean(),
     models.Restaurant.find({}).select("_id brandId managerId name").lean(),
-    models.User.find({}).select("_id role roleName userType restaurantId restaurantIds restaurants").lean(),
+    models.User.find({})
+      .select(
+        "_id role roleName userType restaurantId restaurantIds restaurants",
+      )
+      .lean(),
     models.Role.find({}).select("_id slug name").lean(),
-    models.BrandMembership.find({}).select("_id brandId userId role status restaurantIds").lean(),
+    models.BrandMembership.find({})
+      .select("_id brandId userId role status restaurantIds")
+      .lean(),
   ]);
 
   const onlyBrandId = brands.length === 1 ? brands[0]._id : null;
   const missingBrandAssignments = [];
   const managerRole = roles.find((role) =>
-    [role.slug, role.name].some((value) => /^manager$/i.test(String(value || ""))),
+    [role.slug, role.name].some((value) =>
+      /^manager$/i.test(String(value || "")),
+    ),
   );
   const ownerRoles = roles.filter((role) =>
-    [role.slug, role.name].some((value) => /^owner$/i.test(String(value || ""))),
+    [role.slug, role.name].some((value) =>
+      /^owner$/i.test(String(value || "")),
+    ),
   );
   const ownerRoleIds = new Set(ownerRoles.map((role) => id(role._id)));
   const existingByKey = new Map(
@@ -82,7 +96,8 @@ export async function migrateRestaurantManagersToBrandMembership({
   const managerByRestaurant = new Map();
 
   for (const membership of memberships) {
-    if (membership.status !== "active" || membership.role !== "manager") continue;
+    if (membership.status !== "active" || membership.role !== "manager")
+      continue;
     for (const restaurantId of membership.restaurantIds || []) {
       managerByRestaurant.set(id(restaurantId), id(membership.userId));
     }
@@ -173,7 +188,9 @@ export async function migrateRestaurantManagersToBrandMembership({
   logger.log(JSON.stringify({ dryRun, ...report }, null, 2));
   if (dryRun || report.conflicts.length) {
     if (!dryRun && report.conflicts.length) {
-      throw new Error(`Cleanup blocked by ${report.conflicts.length} conflict(s).`);
+      throw new Error(
+        `Cleanup blocked by ${report.conflicts.length} conflict(s).`,
+      );
     }
     return report;
   }
@@ -191,10 +208,7 @@ export async function migrateRestaurantManagersToBrandMembership({
     const result = await models.Restaurant.collection.updateMany(
       {
         _id: { $in: missingBrandAssignments.map((item) => item.restaurantId) },
-        $or: [
-          { brandId: { $exists: false } },
-          { brandId: null },
-        ],
+        $or: [{ brandId: { $exists: false } }, { brandId: null }],
       },
       { $set: { brandId: onlyBrandId } },
     );
@@ -210,7 +224,8 @@ export async function migrateRestaurantManagersToBrandMembership({
         $set: {
           role: candidate.role,
           status: "active",
-          restaurantIds: candidate.role === "manager" ? candidate.restaurantIds : [],
+          restaurantIds:
+            candidate.role === "manager" ? candidate.restaurantIds : [],
         },
         $setOnInsert: { createdBy: candidate.userId },
       },
@@ -254,7 +269,8 @@ export async function migrateRestaurantManagersToBrandMembership({
 
   const indexes = await models.Restaurant.collection.indexes();
   for (const index of indexes) {
-    if (!Object.prototype.hasOwnProperty.call(index.key || {}, "managerId")) continue;
+    if (!Object.prototype.hasOwnProperty.call(index.key || {}, "managerId"))
+      continue;
     await models.Restaurant.collection.dropIndex(index.name);
     report.droppedIndexes.push(index.name);
   }

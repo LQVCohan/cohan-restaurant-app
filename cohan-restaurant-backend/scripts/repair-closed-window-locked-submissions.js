@@ -1,11 +1,14 @@
 import "dotenv/config";
 import mongoose from "mongoose";
 import process from "process";
-import { AvailabilityRegistrationWindow, StaffAvailabilitySubmission } from "../models/index.js";
+import {
+  AvailabilityRegistrationWindow,
+  StaffAvailabilitySubmission,
+} from "../models/index.js";
 
 async function run() {
   await mongoose.connect(process.env.MONGO_URI, {
-    dbName: process.env.MONGO_DB || "foodhub",
+    dbName: process.env.MONGO_DB || "cohan",
   });
 
   const closedWindows = await AvailabilityRegistrationWindow.find(

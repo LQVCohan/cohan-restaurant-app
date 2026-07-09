@@ -10,7 +10,8 @@ import {
 } from "../models/index.js";
 import { assertDemoScriptAllowed, safeDbInfo } from "./lib/scriptSafety.js";
 
-const RESTAURANT_ID = process.env.DEMO_RESTAURANT_ID?.trim() || "69ce9e2e8d8d711f12e251b1";
+const RESTAURANT_ID =
+  process.env.DEMO_RESTAURANT_ID?.trim() || "69ce9e2e8d8d711f12e251b1";
 const WEEK_TAG_PATTERN = /demo-staff-performance-weeks-2026-07/;
 const STAFF_EMAILS = [
   "staff.server.demo@cohan.local",
@@ -25,7 +26,7 @@ const STAFF_EMAILS = [
 async function main() {
   assertDemoScriptAllowed("prepareStaffPerformanceDemoPeriods.js");
   const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017";
-  const dbName = process.env.MONGO_DB || "foodhub";
+  const dbName = process.env.MONGO_DB || "cohan";
   console.log("Connecting with DB settings:", safeDbInfo());
   await mongoose.connect(mongoUri, { dbName });
 
@@ -74,10 +75,7 @@ async function main() {
       restaurantId,
       employeeId: { $in: employeeIds },
       workDate: workDateFilter,
-      $or: [
-        { shiftId: { $in: oldWeekShiftIds } },
-        { note: WEEK_TAG_PATTERN },
-      ],
+      $or: [{ shiftId: { $in: oldWeekShiftIds } }, { note: WEEK_TAG_PATTERN }],
     }),
   ]);
   const [shiftResult, snapshotResult, reviewResult] = await Promise.all([

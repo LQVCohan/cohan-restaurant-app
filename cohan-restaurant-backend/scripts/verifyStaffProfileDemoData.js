@@ -3,7 +3,8 @@ import mongoose from "mongoose";
 import { Staff } from "../models/index.js";
 import { assertDemoScriptAllowed, safeDbInfo } from "./lib/scriptSafety.js";
 
-const RESTAURANT_ID = process.env.DEMO_RESTAURANT_ID?.trim() || "69ce9e2e8d8d711f12e251b1";
+const RESTAURANT_ID =
+  process.env.DEMO_RESTAURANT_ID?.trim() || "69ce9e2e8d8d711f12e251b1";
 const EMAILS = [
   "staff.bartender.demo@cohan.local",
   "staff.cashier.demo@cohan.local",
@@ -34,11 +35,12 @@ const check = (condition, message) => {
 
 async function run() {
   assertDemoScriptAllowed("verifyStaffProfileDemoData.js");
-  if (!mongoose.isValidObjectId(RESTAURANT_ID)) throw new Error("DEMO_RESTAURANT_ID_INVALID");
+  if (!mongoose.isValidObjectId(RESTAURANT_ID))
+    throw new Error("DEMO_RESTAURANT_ID_INVALID");
 
   console.log("Connecting with DB settings:", safeDbInfo());
   await mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017", {
-    dbName: process.env.MONGO_DB || "foodhub",
+    dbName: process.env.MONGO_DB || "cohan",
   });
 
   const rows = await Staff.find({
@@ -55,7 +57,10 @@ async function run() {
   for (const row of rows) {
     check(Boolean(row.employeeCode), `${row.email} has employeeCode`);
     check(Boolean(row.phone), `${row.email} has phone`);
-    check(Boolean(row.address?.line1 && row.address?.city), `${row.email} has display address`);
+    check(
+      Boolean(row.address?.line1 && row.address?.city),
+      `${row.email} has display address`,
+    );
     check(Boolean(row.dateJoined), `${row.email} has dateJoined`);
     check(Number(row.baseSalary || 0) > 0, `${row.email} has baseSalary`);
     check(Boolean(row.shiftType), `${row.email} has shiftType`);
@@ -63,7 +68,10 @@ async function run() {
     check(row.phoneVerified === true, `${row.email} has verified phone`);
     check(Boolean(row.verifiedAt), `${row.email} has verifiedAt`);
     check(row.status === "active", `${row.email} account is active`);
-    check(row.employmentStatus === "working", `${row.email} employment is working`);
+    check(
+      row.employmentStatus === "working",
+      `${row.email} employment is working`,
+    );
 
     if (row.phone) phones.add(row.phone);
     if (row.employeeCode) employeeCodes.add(row.employeeCode);
@@ -72,8 +80,13 @@ async function run() {
   check(phones.size === 14, "all demo staff phone numbers are unique");
   check(employeeCodes.size === 14, "all demo staff employee codes are unique");
 
-  const missingEmails = EMAILS.filter((email) => !rows.some((row) => row.email === email));
-  check(missingEmails.length === 0, "all expected demo staff emails are present");
+  const missingEmails = EMAILS.filter(
+    (email) => !rows.some((row) => row.email === email),
+  );
+  check(
+    missingEmails.length === 0,
+    "all expected demo staff emails are present",
+  );
 
   console.log(`\nSummary: PASS=${state.pass} FAIL=${state.fail}`);
   return state.fail ? 1 : 0;

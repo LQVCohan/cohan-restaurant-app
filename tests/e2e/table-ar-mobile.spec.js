@@ -153,8 +153,18 @@ async function mockBackend(page) {
       ScopedRestaurants: {
         scopedRestaurants: {
           __typename: "RestaurantConnection",
-          edges: [{ __typename: "RestaurantEdge", cursor: "restaurant-1", node: restaurant }],
-          pageInfo: { __typename: "PageInfo", endCursor: null, hasNextPage: false },
+          edges: [
+            {
+              __typename: "RestaurantEdge",
+              cursor: "restaurant-1",
+              node: restaurant,
+            },
+          ],
+          pageInfo: {
+            __typename: "PageInfo",
+            endCursor: null,
+            hasNextPage: false,
+          },
         },
       },
       GetRestaurantFull: { restaurant },
@@ -175,7 +185,7 @@ test.use({ ...devices["Pixel 5"] });
 test.describe("manager table AR mobile smoke", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
-      window.sessionStorage.setItem("foodhub_access_token", "e2e-token");
+      window.sessionStorage.setItem("cohan_access_token", "e2e-token");
       window.__lastClipboardText = "";
       Object.defineProperty(navigator, "clipboard", {
         configurable: true,
@@ -197,23 +207,35 @@ test.describe("manager table AR mobile smoke", () => {
     await mockBackend(page);
   });
 
-  test("opens the table manager and copies an AR diagnostic report from the 3D modal", async ({ page }) => {
+  test("opens the table manager and copies an AR diagnostic report from the 3D modal", async ({
+    page,
+  }) => {
     await page.goto("/manager#tables");
 
-    await expect(page.getByRole("heading", { name: /Quản lý bàn/i })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Quản lý bàn/i }),
+    ).toBeVisible();
     await expect(page.getByText("A1")).toBeVisible();
     await expect(page.getByText("VIP-02")).toBeVisible();
 
     await page.getByRole("button", { name: /Mô phỏng 3D/i }).click();
 
-    await expect(page.getByRole("heading", { name: /Xem thử và bố trí bàn 3D/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Báo cáo test/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Chưa chọn bàn/i })).toBeDisabled();
+    await expect(
+      page.getByRole("heading", { name: /Xem thử và bố trí bàn 3D/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Báo cáo test/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Chưa chọn bàn/i }),
+    ).toBeDisabled();
 
     await page.getByRole("button", { name: /Báo cáo test/i }).click();
     await expect(page.getByText("Đã copy báo cáo")).toBeVisible();
 
-    const report = await page.evaluate(() => JSON.parse(window.__lastClipboardText));
+    const report = await page.evaluate(() =>
+      JSON.parse(window.__lastClipboardText),
+    );
     expect(report.title).toBe("COHAN AR/3D mobile test report");
     expect(report.appState.restaurant).toContain("COHAN");
     expect(report.browser.mediaDevices).toBe(true);
@@ -225,9 +247,13 @@ test.describe("manager table AR mobile smoke", () => {
     await expect(page.getByText("A1")).toBeVisible();
 
     const tableCard = page.locator("article", { hasText: "A1" }).first();
-    await tableCard.getByRole("button", { name: /Mở cấu hình bàn A1/i }).click();
+    await tableCard
+      .getByRole("button", { name: /Mở cấu hình bàn A1/i })
+      .click();
 
-    await expect(page.getByRole("heading", { name: /Cấu hình bàn ăn/i })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Cấu hình bàn ăn/i }),
+    ).toBeVisible();
     await expect(page.getByText("Mã bàn:")).toBeVisible();
     await expect(page.getByText("A1").first()).toBeVisible();
   });

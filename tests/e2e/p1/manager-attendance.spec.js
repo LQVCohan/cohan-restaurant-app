@@ -114,7 +114,7 @@ const installManagerAttendanceMocks = async (page) => {
   const token = jwtLikeToken(MANAGER_USER.roleName);
 
   await page.addInitScript((accessToken) => {
-    window.sessionStorage.setItem("foodhub_access_token", accessToken);
+    window.sessionStorage.setItem("cohan_access_token", accessToken);
   }, token);
 
   await page.route("**/auth/refresh**", async (route) => {
@@ -124,7 +124,11 @@ const installManagerAttendanceMocks = async (page) => {
 
   await page.route("**/auth/logout**", async (route) => {
     if (route.request().method() === "OPTIONS") return fulfillOptions(route);
-    return route.fulfill({ status: 204, headers: corsHeadersFor(route), body: "" });
+    return route.fulfill({
+      status: 204,
+      headers: corsHeadersFor(route),
+      body: "",
+    });
   });
 
   await page.route("**/graphql**", async (route) => {
@@ -197,45 +201,73 @@ const openManagerAttendancePage = async (page) => {
   await page.evaluate(() => {
     window.dispatchEvent(
       new CustomEvent("manager:navigate", {
-        detail: { page: "staff", query: { staffPage: "attendance" }, source: "p1" },
+        detail: {
+          page: "staff",
+          query: { staffPage: "attendance" },
+          source: "p1",
+        },
       }),
     );
   });
-  await expect(page.getByRole("heading", { name: "Quản lý chấm công" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Quản lý chấm công" }),
+  ).toBeVisible();
 };
 
 test.describe("P1 manager attendance", () => {
-  test("manager quick check-in records attendance without hidden backend errors", async ({ page, backendGuard }) => {
+  test("manager quick check-in records attendance without hidden backend errors", async ({
+    page,
+    backendGuard,
+  }) => {
     await installManagerAttendanceMocks(page);
     await openManagerAttendancePage(page);
 
     await page.locator("select.quick-select").selectOption(STAFF_USER.id);
-    await page.getByPlaceholder("VD: Quên thẻ, đổi ca, máy vân tay lỗi...").fill("P1 ghi nhận vào ca tại quầy");
+    await page
+      .getByPlaceholder("VD: Quên thẻ, đổi ca, máy vân tay lỗi...")
+      .fill("P1 ghi nhận vào ca tại quầy");
 
     backendGuard.clear();
-    await page.getByRole("button", { name: "Chấm công vào ca cho nhân viên đã chọn" }).click();
-    await expect(page.getByRole("status")).toContainText("Đã lưu chấm công VÀO CA thành công");
+    await page
+      .getByRole("button", { name: "Chấm công vào ca cho nhân viên đã chọn" })
+      .click();
+    await expect(page.getByRole("status")).toContainText(
+      "Đã lưu chấm công VÀO CA thành công",
+    );
     backendGuard.assertNoBackendErrors("manager quick attendance check-in");
 
-    const row = page.locator(".attendance-table tbody tr", { hasText: STAFF_USER.fullName });
+    const row = page.locator(".attendance-table tbody tr", {
+      hasText: STAFF_USER.fullName,
+    });
     await expect(row).toBeVisible();
     await expect(row).toContainText("Đang làm");
     await expect(row).toContainText("quick");
   });
 
-  test("manager quick check-out records attendance without hidden backend errors", async ({ page, backendGuard }) => {
+  test("manager quick check-out records attendance without hidden backend errors", async ({
+    page,
+    backendGuard,
+  }) => {
     await installManagerAttendanceMocks(page);
     await openManagerAttendancePage(page);
 
     await page.locator("select.quick-select").selectOption(STAFF_USER.id);
-    await page.getByPlaceholder("VD: Quên thẻ, đổi ca, máy vân tay lỗi...").fill("P1 ghi nhận tan ca tại quầy");
+    await page
+      .getByPlaceholder("VD: Quên thẻ, đổi ca, máy vân tay lỗi...")
+      .fill("P1 ghi nhận tan ca tại quầy");
 
     backendGuard.clear();
-    await page.getByRole("button", { name: "Chấm công tan ca cho nhân viên đã chọn" }).click();
-    await expect(page.getByRole("status")).toContainText("Đã lưu chấm công TAN CA thành công");
+    await page
+      .getByRole("button", { name: "Chấm công tan ca cho nhân viên đã chọn" })
+      .click();
+    await expect(page.getByRole("status")).toContainText(
+      "Đã lưu chấm công TAN CA thành công",
+    );
     backendGuard.assertNoBackendErrors("manager quick attendance check-out");
 
-    const row = page.locator(".attendance-table tbody tr", { hasText: STAFF_USER.fullName });
+    const row = page.locator(".attendance-table tbody tr", {
+      hasText: STAFF_USER.fullName,
+    });
     await expect(row).toBeVisible();
     await expect(row).toContainText("Hoàn thành");
     await expect(row).toContainText("quick");

@@ -127,11 +127,11 @@ async function resolveWarehouse({ restaurantId, warehouseId }) {
 }
 
 async function main() {
-  assertDemoScriptAllowed('seed-demo-ingredient-stock.js');
+  assertDemoScriptAllowed("seed-demo-ingredient-stock.js");
   const args = parseArgs(process.argv.slice(2));
 
   const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017";
-  const dbName = process.env.MONGO_DB || "foodhub";
+  const dbName = process.env.MONGO_DB || "cohan";
 
   const restaurantIdArg = args.restaurantId || process.env.RESTAURANT_ID;
   const warehouseIdArg = args.warehouseId || process.env.WAREHOUSE_ID;

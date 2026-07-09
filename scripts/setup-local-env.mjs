@@ -1,12 +1,14 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 
 const root = process.cwd();
-const recaptchaTestKey = ['6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ', '_MXjiZKhI'].join('');
-const localJwtSecret = ['dev', 'jwt', 'secret', 'change', 'me'].join('_');
+const recaptchaTestKey = ["6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ", "_MXjiZKhI"].join(
+  "",
+);
+const localJwtSecret = ["dev", "jwt", "secret", "change", "me"].join("_");
 const files = [
   {
-    target: path.join(root, '.env'),
+    target: path.join(root, ".env"),
     content: `VITE_RECAPTCHA_SITE_KEY=${recaptchaTestKey}
 VITE_API_URL=http://localhost:4000/graphql
 VITE_API_WS=ws://localhost:4000/graphql
@@ -22,7 +24,7 @@ VITE_DEV_ALLOWED_HOSTS=localhost
 `,
   },
   {
-    target: path.join(root, 'cohan-restaurant-backend/.env'),
+    target: path.join(root, "cohan-restaurant-backend/.env"),
     content: `NODE_ENV=development
 PORT=4000
 HOST=0.0.0.0
@@ -48,7 +50,7 @@ APP_PUBLIC_URL=http://localhost:5173
 ENABLE_PASSWORD_POLICY=true
 SMTP_USER=your-email@example.com
 SMTP_PASS=replace_with_smtp_app_password
-MAIL_FROM="Cohan <no-reply@foodhub.local>"
+MAIL_FROM="Cohan <no-reply@cohan.local>"
 UPLOAD_DIR=./uploads
 UPLOAD_MAX_BYTES=5242880
 UPLOAD_ALLOWED_MIME=image/jpeg,image/png,image/webp,image/avif
@@ -63,8 +65,8 @@ for (const file of files) {
     console.log(`⏭️  Skip existing: ${path.relative(root, file.target)}`);
     continue;
   }
-  fs.writeFileSync(file.target, file.content, 'utf8');
+  fs.writeFileSync(file.target, file.content, "utf8");
   console.log(`✅ Created: ${path.relative(root, file.target)}`);
 }
 
-console.log('\nDone. Edit secrets in .env files before production use.');
+console.log("\nDone. Edit secrets in .env files before production use.");

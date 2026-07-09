@@ -2,9 +2,15 @@ export type AuthPayload = { token: string | null; user?: any };
 
 let accessToken: string | null = null;
 
-export const SESSION_ACCESS_TOKEN_KEY = "foodhub_access_token";
+export const SESSION_ACCESS_TOKEN_KEY = "cohan_access_token";
 
-const LEGACY_KEYS = ["auth_token", "auth_user", "auth_remember", "token", "auth_remember_until"];
+const LEGACY_KEYS = [
+  "auth_token",
+  "auth_user",
+  "auth_remember",
+  "token",
+  "auth_remember_until",
+];
 const MANAGER_WORKSPACE_KEYS = [
   "manager.currentPage",
   "manager.selectedBrandId",
@@ -42,8 +48,12 @@ export function getToken(): string | null {
 }
 
 export function clearLegacyAuthStorage() {
-  const storages = [getLocalStorage(), getSessionStorage()].filter(Boolean) as Storage[];
-  storages.forEach((storage) => LEGACY_KEYS.forEach((key) => storage.removeItem(key)));
+  const storages = [getLocalStorage(), getSessionStorage()].filter(
+    Boolean,
+  ) as Storage[];
+  storages.forEach((storage) =>
+    LEGACY_KEYS.forEach((key) => storage.removeItem(key)),
+  );
 }
 
 export function clearManagerWorkspaceStorage() {

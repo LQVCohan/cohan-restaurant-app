@@ -12,12 +12,15 @@ import { assertDemoScriptAllowed, safeDbInfo } from "./lib/scriptSafety.js";
 const DEFAULT_RESTAURANT_ID = "69ce9e2e8d8d711f12e251b1";
 const RESTAURANT_ID =
   process.env.PROMOTION_DEMO_RESTAURANT_ID?.trim() ||
-  process.argv.find((arg) => arg.startsWith("--restaurantId="))?.split("=")[1]?.trim() ||
+  process.argv
+    .find((arg) => arg.startsWith("--restaurantId="))
+    ?.split("=")[1]
+    ?.trim() ||
   DEFAULT_RESTAURANT_ID;
 const DEMO_TAG = "promotion-manager-demo-2026";
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
-const DB_NAME = process.env.MONGO_DB || "foodhub";
+const DB_NAME = process.env.MONGO_DB || "cohan";
 
 function nowPlusDays(days, hour = 10) {
   const date = new Date();
@@ -48,7 +51,9 @@ function normalizeText(value) {
 
 async function resolveRestaurant(restaurantId) {
   assertValidObjectId(restaurantId);
-  const restaurant = await Restaurant.findById(restaurantId).select("_id name status").lean();
+  const restaurant = await Restaurant.findById(restaurantId)
+    .select("_id name status")
+    .lean();
   if (!restaurant) throw new Error(`RESTAURANT_NOT_FOUND: ${restaurantId}`);
   return restaurant;
 }
@@ -102,7 +107,10 @@ async function seedCoupons(restaurantId) {
         perUserLimit: 1,
         orderTypes: ["dine_in", "takeaway", "delivery"],
         paymentMethods: ["cash", "card", "bank_transfer", "e_wallet"],
-        conditions: ["Chỉ áp dụng cho đơn đầu tiên", "Không áp dụng cùng coupon độc quyền"],
+        conditions: [
+          "Chỉ áp dụng cho đơn đầu tiên",
+          "Không áp dụng cùng coupon độc quyền",
+        ],
       },
     },
     {
@@ -211,7 +219,10 @@ async function seedCoupons(restaurantId) {
         stackable: true,
         combinableWithPromotions: true,
         priority: 3,
-        conditions: ["Demo cảnh báo giảm sâu", "Demo cảnh báo dùng chồng nhiều lớp"],
+        conditions: [
+          "Demo cảnh báo giảm sâu",
+          "Demo cảnh báo dùng chồng nhiều lớp",
+        ],
       },
     },
     {
@@ -276,7 +287,9 @@ async function upsertPromotion(restaurantId, promotion) {
 
 async function seedPromotions(restaurantId, menuItems) {
   const firstItem = menuItems[0];
-  const secondItem = menuItems.find((item) => String(item._id) !== String(firstItem?._id));
+  const secondItem = menuItems.find(
+    (item) => String(item._id) !== String(firstItem?._id),
+  );
   const categoryItem = menuItems.find((item) => item.categoryId);
 
   const promotions = [
@@ -387,7 +400,10 @@ async function seedPromotions(restaurantId, menuItems) {
       usageLimit: 50,
       usageCount: 6,
       targetAudience: "all",
-      conditions: ["Demo cảnh báo giảm quá sâu", "Demo cảnh báo thiếu đơn tối thiểu"],
+      conditions: [
+        "Demo cảnh báo giảm quá sâu",
+        "Demo cảnh báo thiếu đơn tối thiểu",
+      ],
       startAt: nowPlusDays(-1),
       endAt: nowPlusDays(9),
       isActive: true,
@@ -474,7 +490,10 @@ async function seedPromotions(restaurantId, menuItems) {
       usageLimit: 80,
       usageCount: 11,
       targetAudience: "all",
-      conditions: ["Mua món chính nhận món tặng", "Số lượng tặng theo tồn kho thực tế"],
+      conditions: [
+        "Mua món chính nhận món tặng",
+        "Số lượng tặng theo tồn kho thực tế",
+      ],
       startAt: nowPlusDays(-1),
       endAt: nowPlusDays(18),
       isActive: true,
@@ -498,7 +517,10 @@ async function seedPromotions(restaurantId, menuItems) {
       usageLimit: 100,
       usageCount: 17,
       targetAudience: "all",
-      conditions: ["Phải có đủ món trong combo", "Không tách combo sau khi áp dụng"],
+      conditions: [
+        "Phải có đủ món trong combo",
+        "Không tách combo sau khi áp dụng",
+      ],
       startAt: nowPlusDays(-3),
       endAt: nowPlusDays(33),
       isActive: true,
@@ -516,7 +538,8 @@ async function seedPromotions(restaurantId, menuItems) {
 
 async function seedVoucherPackages(restaurantId, coupons) {
   const couponByCode = new Map(coupons.map((coupon) => [coupon.code, coupon]));
-  const getIds = (...codes) => codes.map((code) => couponByCode.get(code)?._id).filter(Boolean);
+  const getIds = (...codes) =>
+    codes.map((code) => couponByCode.get(code)?._id).filter(Boolean);
 
   const packages = [
     {
@@ -528,7 +551,10 @@ async function seedVoucherPackages(restaurantId, coupons) {
       endAt: nowPlusDays(30),
       publishAt: nowPlusDays(-2),
       isActive: true,
-      conditions: ["Phát cho khách mới sau khi tạo tài khoản", "Mỗi khách chỉ nhận 1 lần"],
+      conditions: [
+        "Phát cho khách mới sau khi tạo tài khoản",
+        "Mỗi khách chỉ nhận 1 lần",
+      ],
       restaurantId,
     },
     {
@@ -559,11 +585,13 @@ async function seedVoucherPackages(restaurantId, coupons) {
 
   const saved = [];
   for (const voucherPackage of packages) {
-    saved.push(await VoucherPackage.findOneAndUpdate(
-      { code: voucherPackage.code },
-      { $set: voucherPackage },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
-    ));
+    saved.push(
+      await VoucherPackage.findOneAndUpdate(
+        { code: voucherPackage.code },
+        { $set: voucherPackage },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      ),
+    );
   }
   return saved;
 }
@@ -583,10 +611,16 @@ async function main() {
   console.log("Promotion management demo data seeded successfully.");
   console.log(`Restaurant: ${restaurant._id} - ${restaurant.name}`);
   console.log(`Coupons: ${coupons.map((coupon) => coupon.code).join(", ")}`);
-  console.log(`Promotions: ${promotions.map((promotion) => promotion.code).join(", ")}`);
-  console.log(`Voucher packages: ${voucherPackages.map((item) => item.code).join(", ")}`);
+  console.log(
+    `Promotions: ${promotions.map((promotion) => promotion.code).join(", ")}`,
+  );
+  console.log(
+    `Voucher packages: ${voucherPackages.map((item) => item.code).join(", ")}`,
+  );
   if (menuItems.length < 2) {
-    console.log("Note: BOGO/COMBO item-based promotions need at least 2 menu items. Current seed skipped those if unavailable.");
+    console.log(
+      "Note: BOGO/COMBO item-based promotions need at least 2 menu items. Current seed skipped those if unavailable.",
+    );
   }
 
   await mongoose.disconnect();

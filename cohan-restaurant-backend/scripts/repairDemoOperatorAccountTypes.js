@@ -35,7 +35,9 @@ async function repairDemoOperatorAccountTypes() {
   const missingRoles = roleSlugs.filter((slug) => !roleBySlug.has(slug));
 
   if (missingUsers.length) {
-    throw new Error(`DEMO_OPERATOR_ACCOUNTS_MISSING: ${missingUsers.join(", ")}`);
+    throw new Error(
+      `DEMO_OPERATOR_ACCOUNTS_MISSING: ${missingUsers.join(", ")}`,
+    );
   }
   if (missingRoles.length) {
     throw new Error(`DEMO_OPERATOR_ROLES_MISSING: ${missingRoles.join(", ")}`);
@@ -82,7 +84,7 @@ async function repairDemoOperatorAccountTypes() {
 async function main() {
   assertDemoScriptAllowed("repairDemoOperatorAccountTypes.js");
   const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017";
-  const dbName = process.env.MONGO_DB || "foodhub";
+  const dbName = process.env.MONGO_DB || "cohan";
   console.log("Connecting with DB settings:", safeDbInfo());
   await mongoose.connect(mongoUri, { dbName });
 

@@ -24,9 +24,12 @@ import { canAccessRestaurant } from "../src/services/auth/restaurantScope.servic
 import { assertDemoScriptAllowed, safeDbInfo } from "./lib/scriptSafety.js";
 
 const TAG = "[demo-staff-performance-2026-07]";
-const BRAND_ID = process.env.DEMO_BRAND_ID?.trim() || "6a447f6bea9844b4c8544c49";
-const RESTAURANT_ID = process.env.DEMO_RESTAURANT_ID?.trim() || "69ce9e2e8d8d711f12e251b1";
-const MANAGER_ID = process.env.DEMO_MANAGER_ID?.trim() || "69f7162dab80d0aaef80d5c8";
+const BRAND_ID =
+  process.env.DEMO_BRAND_ID?.trim() || "6a447f6bea9844b4c8544c49";
+const RESTAURANT_ID =
+  process.env.DEMO_RESTAURANT_ID?.trim() || "69ce9e2e8d8d711f12e251b1";
+const MANAGER_ID =
+  process.env.DEMO_MANAGER_ID?.trim() || "69f7162dab80d0aaef80d5c8";
 
 const CURRENT_PERIOD = {
   start: new Date("2026-07-01T00:00:00.000Z"),
@@ -142,13 +145,18 @@ const objectId = (value, fieldName) => {
 const atUtc = (year, monthIndex, day, hour = 0, minute = 0) =>
   new Date(Date.UTC(year, monthIndex, day, hour, minute, 0, 0));
 
-const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegExp = (value) =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const tagRegex = new RegExp(escapeRegExp(TAG));
 const currentShiftDays = [1, 2, 3, 4];
 const previousShiftDays = [2, 3, 4, 5];
-const roundScore = (value) => Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+const roundScore = (value) =>
+  Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
 
-function buildOrderItem(menuItem, { status = "served", voidRequests = [], returnRequests = [] } = {}) {
+function buildOrderItem(
+  menuItem,
+  { status = "served", voidRequests = [], returnRequests = [] } = {},
+) {
   const price = Number(menuItem.basePrice || 0);
   return {
     dishId: menuItem._id,
@@ -186,14 +194,24 @@ async function resolveContext() {
   const [restaurant, manager, membership] = await Promise.all([
     Restaurant.findById(restaurantId).lean(),
     User.findById(managerId).populate("role", "slug name").lean(),
-    BrandMembership.findOne({ brandId, userId: managerId, status: "active" }).lean(),
+    BrandMembership.findOne({
+      brandId,
+      userId: managerId,
+      status: "active",
+    }).lean(),
   ]);
 
-  if (!restaurant) throw new Error(`DEMO_RESTAURANT_NOT_FOUND: ${RESTAURANT_ID}`);
+  if (!restaurant)
+    throw new Error(`DEMO_RESTAURANT_NOT_FOUND: ${RESTAURANT_ID}`);
   if (!manager) throw new Error(`DEMO_MANAGER_NOT_FOUND: ${MANAGER_ID}`);
-  if (!membership) throw new Error(`DEMO_MANAGER_MEMBERSHIP_NOT_FOUND: manager=${MANAGER_ID} brand=${BRAND_ID}`);
+  if (!membership)
+    throw new Error(
+      `DEMO_MANAGER_MEMBERSHIP_NOT_FOUND: manager=${MANAGER_ID} brand=${BRAND_ID}`,
+    );
   if (String(restaurant.brandId || "") !== String(brandId)) {
-    throw new Error(`DEMO_RESTAURANT_BRAND_MISMATCH: restaurant.brandId=${restaurant.brandId || "null"} expected=${BRAND_ID}`);
+    throw new Error(
+      `DEMO_RESTAURANT_BRAND_MISMATCH: restaurant.brandId=${restaurant.brandId || "null"} expected=${BRAND_ID}`,
+    );
   }
 
   const managerUser = {
@@ -216,7 +234,9 @@ async function resolveContext() {
   }).lean();
 
   const staffByEmail = new Map(staffDocs.map((staff) => [staff.email, staff]));
-  const missingEmails = STAFF_SCENARIOS.map((item) => item.email).filter((email) => !staffByEmail.has(email));
+  const missingEmails = STAFF_SCENARIOS.map((item) => item.email).filter(
+    (email) => !staffByEmail.has(email),
+  );
   if (missingEmails.length) {
     throw new Error(`DEMO_STAFF_ACCOUNTS_MISSING: ${missingEmails.join(", ")}`);
   }
@@ -240,7 +260,9 @@ async function resolveContext() {
     .lean();
 
   if (!menuItem) {
-    throw new Error("DEMO_MENU_ITEM_NOT_FOUND: cần ít nhất một món available có giá, menuId và categoryId");
+    throw new Error(
+      "DEMO_MENU_ITEM_NOT_FOUND: cần ít nhất một món available có giá, menuId và categoryId",
+    );
   }
 
   const customers = await User.find({
@@ -254,7 +276,9 @@ async function resolveContext() {
     .lean();
 
   if (customers.length < 5) {
-    throw new Error(`DEMO_CUSTOMERS_INSUFFICIENT: found=${customers.length}, required=5`);
+    throw new Error(
+      `DEMO_CUSTOMERS_INSUFFICIENT: found=${customers.length}, required=5`,
+    );
   }
 
   return {
@@ -298,9 +322,14 @@ async function resetTaggedData({ restaurantId, staffIds }) {
     ],
   });
   await PerformanceIncidentAppeal.deleteMany({ _id: { $in: appealIds } });
-  await StaffPerformanceScoreAdjustment.deleteMany({ incidentId: { $in: incidentIds } });
+  await StaffPerformanceScoreAdjustment.deleteMany({
+    incidentId: { $in: incidentIds },
+  });
   await PerformanceIncident.deleteMany({ _id: { $in: incidentIds } });
-  await KitchenOrderWorkItem.deleteMany({ restaurantId, issueReviewNote: tagRegex });
+  await KitchenOrderWorkItem.deleteMany({
+    restaurantId,
+    issueReviewNote: tagRegex,
+  });
   await Review.deleteMany({ restaurantId, tags: TAG });
   await AttendanceCorrectionRequest.deleteMany({
     restaurantId,
@@ -362,7 +391,9 @@ async function seedAttendancePeriod({
 }) {
   for (const scenario of STAFF_SCENARIOS) {
     const staff = staffByEmail.get(scenario.email);
-    const workedMinutes = previous ? [420, 420, 420, 420] : scenario.currentWorkedMinutes;
+    const workedMinutes = previous
+      ? [420, 420, 420, 420]
+      : scenario.currentWorkedMinutes;
     const lateMinutes = previous ? [0, 0, 0, 0] : scenario.currentLateMinutes;
     const earlyMinutes = previous ? [0, 0, 0, 0] : scenario.currentEarlyMinutes;
     const correctionCount = previous ? 0 : scenario.currentCorrectionCount;
@@ -390,7 +421,9 @@ async function seedAttendancePeriod({
         notes: `${TAG} ${previous ? "previous" : "current"} ${scenario.key} shift ${index + 1}`,
       });
 
-      const actualCheckInAt = absent ? null : new Date(shiftStart.getTime() + late * 60_000);
+      const actualCheckInAt = absent
+        ? null
+        : new Date(shiftStart.getTime() + late * 60_000);
       const actualCheckOutAt = absent
         ? null
         : new Date(actualCheckInAt.getTime() + minutesWorked * 60_000);
@@ -549,61 +582,75 @@ async function createOperationalOrder({
   itemStatus = "served",
 }) {
   const voidRequests = voidReason
-    ? [{
-        requestId: `${TAG}-void-${sequence}`,
-        quantity: 1,
-        reason: voidReason,
-        status: "approved",
-        requestedBy: cashierId,
-        requestedAt: createdAt,
-        reviewedBy: cashierId,
-        reviewedAt: createdAt,
-        reviewNote: `${TAG} approved wrong-bill demo`,
-      }]
+    ? [
+        {
+          requestId: `${TAG}-void-${sequence}`,
+          quantity: 1,
+          reason: voidReason,
+          status: "approved",
+          requestedBy: cashierId,
+          requestedAt: createdAt,
+          reviewedBy: cashierId,
+          reviewedAt: createdAt,
+          reviewNote: `${TAG} approved wrong-bill demo`,
+        },
+      ]
     : [];
   const returnRequests = returnReason
-    ? [{
-        requestId: `${TAG}-return-${sequence}`,
-        quantity: 1,
-        reason: returnReason,
-        refundMode: "refund_after_payment",
-        status: "approved",
-        requestedBy: cashierId,
-        requestedAt: createdAt,
-        reviewedBy: cashierId,
-        reviewedAt: createdAt,
-        reviewNote: `${TAG} approved refund demo`,
-      }]
+    ? [
+        {
+          requestId: `${TAG}-return-${sequence}`,
+          quantity: 1,
+          reason: returnReason,
+          refundMode: "refund_after_payment",
+          status: "approved",
+          requestedBy: cashierId,
+          requestedAt: createdAt,
+          reviewedBy: cashierId,
+          reviewedAt: createdAt,
+          reviewNote: `${TAG} approved refund demo`,
+        },
+      ]
     : [];
 
   const requests = customerRequest
-    ? [{
-        requestId: `${TAG}-payment-${sequence}`,
-        type: "PAYMENT_REQUEST",
-        status: "RESOLVED",
-        message: `${TAG} payment request`,
-        source: "CUSTOMER_TRACKING",
-        ...customerRequest,
-      }]
+    ? [
+        {
+          requestId: `${TAG}-payment-${sequence}`,
+          type: "PAYMENT_REQUEST",
+          status: "RESOLVED",
+          message: `${TAG} payment request`,
+          source: "CUSTOMER_TRACKING",
+          ...customerRequest,
+        },
+      ]
     : [];
 
-  const item = buildOrderItem(menuItem, { status: itemStatus, voidRequests, returnRequests });
+  const item = buildOrderItem(menuItem, {
+    status: itemStatus,
+    voidRequests,
+    returnRequests,
+  });
   const subtotal = Number(menuItem.basePrice || 0);
   const grandTotal = Math.max(0, subtotal - discount);
 
   return Order.create({
     orderCode: `PERF-DEMO-${String(sequence).padStart(3, "0")}`,
     publicStatus: paymentStatus === "paid" ? "PAID" : "ISSUE_REPORTED",
-    statusHistory: [{
-      status: "PAID",
-      displayMessage: `${TAG} demo order`,
-      changedAt: createdAt,
-      changedByRole: "SYSTEM",
-      metadata: { demoTag: TAG },
-    }],
+    statusHistory: [
+      {
+        status: "PAID",
+        displayMessage: `${TAG} demo order`,
+        changedAt: createdAt,
+        changedByRole: "SYSTEM",
+        metadata: { demoTag: TAG },
+      },
+    ],
     orderKind: "order_batch",
     sessionStatus: "closed",
-    kitchenStatus: ["cancelled", "returned"].includes(itemStatus) ? "cancelled" : "served",
+    kitchenStatus: ["cancelled", "returned"].includes(itemStatus)
+      ? "cancelled"
+      : "served",
     orderPaymentStatus,
     openedAt: createdAt,
     closedAt: new Date(createdAt.getTime() + 60 * 60_000),
@@ -634,11 +681,13 @@ async function createOperationalOrder({
       paidBy: cashierId,
     },
     customerRequests: requests,
-    statusTimeline: [{
-      status: "completed",
-      at: new Date(createdAt.getTime() + 60 * 60_000),
-      note: TAG,
-    }],
+    statusTimeline: [
+      {
+        status: "completed",
+        at: new Date(createdAt.getTime() + 60 * 60_000),
+        note: TAG,
+      },
+    ],
     currentStatus: "completed",
     priority: "MEDIUM",
     note: `${TAG} operational demo order`,
@@ -648,26 +697,52 @@ async function createOperationalOrder({
   });
 }
 
-async function seedCashierEvidence({ restaurantId, customers, menuItem, staffByEmail }) {
+async function seedCashierEvidence({
+  restaurantId,
+  customers,
+  menuItem,
+  staffByEmail,
+}) {
   const cashier = staffByEmail.get("staff.cashier.demo@cohan.local");
   const base = atUtc(2026, 6, 1, 10, 0);
 
   const definitions = [
-    { paymentStatus: "paid", orderPaymentStatus: "paid", voidReason: "Tính nhầm hóa đơn" },
-    { paymentStatus: "failed", orderPaymentStatus: "failed", paymentNote: "Chọn sai phương thức thanh toán" },
-    { paymentStatus: "refunded", orderPaymentStatus: "refunded", returnReason: "Sai hóa đơn do thu ngân" },
+    {
+      paymentStatus: "paid",
+      orderPaymentStatus: "paid",
+      voidReason: "Tính nhầm hóa đơn",
+    },
+    {
+      paymentStatus: "failed",
+      orderPaymentStatus: "failed",
+      paymentNote: "Chọn sai phương thức thanh toán",
+    },
+    {
+      paymentStatus: "refunded",
+      orderPaymentStatus: "refunded",
+      returnReason: "Sai hóa đơn do thu ngân",
+    },
     {
       paymentStatus: "paid",
       orderPaymentStatus: "paid",
       customerRequest: {
         createdAt: new Date(base.getTime() + 3 * 24 * 60 * 60_000),
-        acknowledgedAt: new Date(base.getTime() + 3 * 24 * 60 * 60_000 + 5 * 60_000),
-        resolvedAt: new Date(base.getTime() + 3 * 24 * 60 * 60_000 + 10 * 60_000),
+        acknowledgedAt: new Date(
+          base.getTime() + 3 * 24 * 60 * 60_000 + 5 * 60_000,
+        ),
+        resolvedAt: new Date(
+          base.getTime() + 3 * 24 * 60 * 60_000 + 10 * 60_000,
+        ),
         acknowledgedBy: cashier._id,
         resolvedBy: cashier._id,
       },
     },
-    { paymentStatus: "paid", orderPaymentStatus: "paid", discount: 10_000, discountReason: "Áp sai khuyến mãi" },
+    {
+      paymentStatus: "paid",
+      orderPaymentStatus: "paid",
+      discount: 10_000,
+      discountReason: "Áp sai khuyến mãi",
+    },
   ];
 
   for (let index = 0; index < definitions.length; index += 1) {
@@ -683,34 +758,105 @@ async function seedCashierEvidence({ restaurantId, customers, menuItem, staffByE
   }
 }
 
-async function seedKitchenEvidence({ restaurantId, customers, menuItem, staffByEmail }) {
+async function seedKitchenEvidence({
+  restaurantId,
+  customers,
+  menuItem,
+  staffByEmail,
+}) {
   const chef = staffByEmail.get("staff.chef.demo@cohan.local");
   const helper = staffByEmail.get("staff.kitchenhelper.demo@cohan.local");
 
   const definitions = [
-    { owner: "chef", timeLevel: "very_late", status: "served", actualPrepMinutes: 55, targetPrepMinutes: 25 },
-    { owner: "chef", timeLevel: "very_late", status: "served", actualPrepMinutes: 50, targetPrepMinutes: 25 },
-    { owner: "chef", timeLevel: "late", status: "served", actualPrepMinutes: 35, targetPrepMinutes: 25 },
-    { owner: "chef", timeLevel: "on_time", status: "returned", issueType: "return", issueReasonKitchenRelated: true },
-    { owner: "chef", timeLevel: "on_time", status: "cancelled", issueType: "void", issueReasonKitchenRelated: true },
-    { owner: "chef", timeLevel: "on_time", status: "served", actualPrepMinutes: 22, targetPrepMinutes: 25 },
+    {
+      owner: "chef",
+      timeLevel: "very_late",
+      status: "served",
+      actualPrepMinutes: 55,
+      targetPrepMinutes: 25,
+    },
+    {
+      owner: "chef",
+      timeLevel: "very_late",
+      status: "served",
+      actualPrepMinutes: 50,
+      targetPrepMinutes: 25,
+    },
+    {
+      owner: "chef",
+      timeLevel: "late",
+      status: "served",
+      actualPrepMinutes: 35,
+      targetPrepMinutes: 25,
+    },
+    {
+      owner: "chef",
+      timeLevel: "on_time",
+      status: "returned",
+      issueType: "return",
+      issueReasonKitchenRelated: true,
+    },
+    {
+      owner: "chef",
+      timeLevel: "on_time",
+      status: "cancelled",
+      issueType: "void",
+      issueReasonKitchenRelated: true,
+    },
+    {
+      owner: "chef",
+      timeLevel: "on_time",
+      status: "served",
+      actualPrepMinutes: 22,
+      targetPrepMinutes: 25,
+    },
     { owner: "helper", timeLevel: "late", status: "served", unaccepted: true },
-    { owner: "helper", timeLevel: "very_late", status: "served", unaccepted: true },
-    { owner: "helper", timeLevel: "on_time", status: "returned", issueType: "return", issueReasonKitchenRelated: true },
-    { owner: "helper", timeLevel: "on_time", status: "cancelled", issueType: "void", issueReasonKitchenRelated: true },
-    { owner: "helper", timeLevel: "on_time", status: "served", actualPrepMinutes: 20, targetPrepMinutes: 25 },
-    { owner: "helper", timeLevel: "on_time", status: "served", actualPrepMinutes: 21, targetPrepMinutes: 25 },
+    {
+      owner: "helper",
+      timeLevel: "very_late",
+      status: "served",
+      unaccepted: true,
+    },
+    {
+      owner: "helper",
+      timeLevel: "on_time",
+      status: "returned",
+      issueType: "return",
+      issueReasonKitchenRelated: true,
+    },
+    {
+      owner: "helper",
+      timeLevel: "on_time",
+      status: "cancelled",
+      issueType: "void",
+      issueReasonKitchenRelated: true,
+    },
+    {
+      owner: "helper",
+      timeLevel: "on_time",
+      status: "served",
+      actualPrepMinutes: 20,
+      targetPrepMinutes: 25,
+    },
+    {
+      owner: "helper",
+      timeLevel: "on_time",
+      status: "served",
+      actualPrepMinutes: 21,
+      targetPrepMinutes: 25,
+    },
   ];
 
   for (let index = 0; index < definitions.length; index += 1) {
     const definition = definitions[index];
     const createdAt = atUtc(2026, 6, 1 + (index % 5), 11, index);
     const owner = definition.owner === "chef" ? chef : helper;
-    const itemStatus = definition.status === "returned"
-      ? "returned"
-      : definition.status === "cancelled"
-        ? "cancelled"
-        : "served";
+    const itemStatus =
+      definition.status === "returned"
+        ? "returned"
+        : definition.status === "cancelled"
+          ? "cancelled"
+          : "served";
 
     const order = await createOperationalOrder({
       restaurantId,
@@ -736,30 +882,50 @@ async function seedKitchenEvidence({ restaurantId, customers, menuItem, staffByE
       kitchenEnteredAt: createdAt,
       preparingAt: new Date(createdAt.getTime() + 2 * 60_000),
       readyAt: ["served", "returned"].includes(definition.status)
-        ? new Date(createdAt.getTime() + Number(definition.actualPrepMinutes || 30) * 60_000)
+        ? new Date(
+            createdAt.getTime() +
+              Number(definition.actualPrepMinutes || 30) * 60_000,
+          )
         : null,
-      servedAt: definition.status === "served"
-        ? new Date(createdAt.getTime() + Number(definition.actualPrepMinutes || 30) * 60_000 + 5 * 60_000)
-        : null,
-      cancelledAt: definition.status === "cancelled"
-        ? new Date(createdAt.getTime() + 15 * 60_000)
-        : null,
-      returnedAt: definition.status === "returned"
-        ? new Date(createdAt.getTime() + 45 * 60_000)
-        : null,
+      servedAt:
+        definition.status === "served"
+          ? new Date(
+              createdAt.getTime() +
+                Number(definition.actualPrepMinutes || 30) * 60_000 +
+                5 * 60_000,
+            )
+          : null,
+      cancelledAt:
+        definition.status === "cancelled"
+          ? new Date(createdAt.getTime() + 15 * 60_000)
+          : null,
+      returnedAt:
+        definition.status === "returned"
+          ? new Date(createdAt.getTime() + 45 * 60_000)
+          : null,
       issueType: definition.issueType || null,
-      issueReason: definition.issueReasonKitchenRelated ? "Món sai hoặc trễ do bếp" : "",
-      issueReasonCategory: definition.issueReasonKitchenRelated ? "kitchen_quality" : null,
+      issueReason: definition.issueReasonKitchenRelated
+        ? "Món sai hoặc trễ do bếp"
+        : "",
+      issueReasonCategory: definition.issueReasonKitchenRelated
+        ? "kitchen_quality"
+        : null,
       issueReasonKitchenRelated: Boolean(definition.issueReasonKitchenRelated),
       issueReviewNote: `${TAG} ${definition.owner} kitchen evidence ${index + 1}`,
       headChefId: definition.owner === "chef" ? chef._id : null,
       assistantChefIds: definition.owner === "helper" ? [helper._id] : [],
       teamEmployeeIds: [owner._id],
       unaccepted: Boolean(definition.unaccepted),
-      unacceptedAt: definition.unaccepted ? new Date(createdAt.getTime() + 20 * 60_000) : null,
+      unacceptedAt: definition.unaccepted
+        ? new Date(createdAt.getTime() + 20 * 60_000)
+        : null,
       unacceptedAfterMinutes: definition.unaccepted ? 20 : null,
-      unacceptedResponsibleEmployeeIds: definition.unaccepted ? [helper._id] : [],
-      unacceptedReason: definition.unaccepted ? `${TAG} chưa nhận món đúng hạn` : "",
+      unacceptedResponsibleEmployeeIds: definition.unaccepted
+        ? [helper._id]
+        : [],
+      unacceptedReason: definition.unaccepted
+        ? `${TAG} chưa nhận món đúng hạn`
+        : "",
       actualPrepMinutes: Number(definition.actualPrepMinutes || 30),
       targetPrepMinutes: Number(definition.targetPrepMinutes || 25),
       timeLevel: definition.timeLevel,
@@ -768,7 +934,12 @@ async function seedKitchenEvidence({ restaurantId, customers, menuItem, staffByE
   }
 }
 
-async function recalculatePeriod({ restaurantId, managerUser, staffIds, period }) {
+async function recalculatePeriod({
+  restaurantId,
+  managerUser,
+  staffIds,
+  period,
+}) {
   for (const employeeId of staffIds) {
     await recalculateStaffPerformanceSnapshots({
       input: {
@@ -855,7 +1026,9 @@ async function seedIncidentHistory({ restaurantId, manager, staffByEmail }) {
     periodEnd: CURRENT_PERIOD.end,
   }).lean();
 
-  const snapshotByEmployee = new Map(snapshots.map((item) => [String(item.employeeId), item]));
+  const snapshotByEmployee = new Map(
+    snapshots.map((item) => [String(item.employeeId), item]),
+  );
   const exception = staffByEmail.get("staff.exception.demo@cohan.local");
   const parttime = staffByEmail.get("staff.parttime.demo@cohan.local");
   const supervisor = staffByEmail.get("staff.supervisor.demo@cohan.local");
@@ -1007,13 +1180,17 @@ async function tagSnapshots({ restaurantId, staffIds }) {
 async function printSummary({ restaurantId, staffByEmail }) {
   const snapshots = await StaffPerformanceSnapshot.find({
     restaurantId,
-    employeeId: { $in: STAFF_SCENARIOS.map((item) => staffByEmail.get(item.email)._id) },
+    employeeId: {
+      $in: STAFF_SCENARIOS.map((item) => staffByEmail.get(item.email)._id),
+    },
     periodStart: CURRENT_PERIOD.start,
     periodEnd: CURRENT_PERIOD.end,
   })
     .select("employeeId finalPerformanceScore performanceLevel factors")
     .lean();
-  const byEmployee = new Map(snapshots.map((item) => [String(item.employeeId), item]));
+  const byEmployee = new Map(
+    snapshots.map((item) => [String(item.employeeId), item]),
+  );
 
   console.log("\nStaff performance demo summary:");
   for (const scenario of STAFF_SCENARIOS) {
@@ -1028,7 +1205,7 @@ async function printSummary({ restaurantId, staffByEmail }) {
 async function main() {
   assertDemoScriptAllowed("seedStaffPerformanceDemo.js");
   const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017";
-  const dbName = process.env.MONGO_DB || "foodhub";
+  const dbName = process.env.MONGO_DB || "cohan";
   console.log("Connecting with DB settings:", safeDbInfo());
   await mongoose.connect(mongoUri, { dbName });
 
@@ -1080,8 +1257,12 @@ async function main() {
   await printSummary(context);
 
   console.log(`\nSeed completed. tag=${TAG}`);
-  console.log(`Restaurant=${context.restaurant.name} (${context.restaurantId})`);
-  console.log(`Period=${CURRENT_PERIOD.start.toISOString()} -> ${CURRENT_PERIOD.end.toISOString()}`);
+  console.log(
+    `Restaurant=${context.restaurant.name} (${context.restaurantId})`,
+  );
+  console.log(
+    `Period=${CURRENT_PERIOD.start.toISOString()} -> ${CURRENT_PERIOD.end.toISOString()}`,
+  );
   console.log("Next: npm run verify:demo:staff-performance-data");
 }
 

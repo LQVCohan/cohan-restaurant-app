@@ -47,7 +47,9 @@ const STEPS = [
 ];
 
 const STEP_TO_FILE = Object.fromEntries(STEPS.map((s) => [s, `${s}.json`]));
-const CHECKPOINT_PATH = path.resolve("scripts/.checkpoints/import-restaurant-data.json");
+const CHECKPOINT_PATH = path.resolve(
+  "scripts/.checkpoints/import-restaurant-data.json",
+);
 const DEFAULT_SOURCE_DIR = path.resolve("scripts/import-data");
 
 const STEP_COLLECTIONS = {
@@ -119,22 +121,34 @@ function required(v, name) {
 }
 
 function restaurantKeyFromInput(row) {
-  return String(row.restaurantKey || row.key || row.code || row.slug || row.nameSeedKey || row.name || "")
+  return String(
+    row.restaurantKey ||
+      row.key ||
+      row.code ||
+      row.slug ||
+      row.nameSeedKey ||
+      row.name ||
+      "",
+  )
     .trim()
     .toLowerCase();
 }
 
 function normalizeTimeSlot(v) {
-  return String(v || "").trim().toLowerCase();
+  return String(v || "")
+    .trim()
+    .toLowerCase();
 }
 
 function normalizeEmail(v) {
-  return String(v || "").trim().toLowerCase();
+  return String(v || "")
+    .trim()
+    .toLowerCase();
 }
 
 async function connectDb() {
   const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
-  const DB_NAME = process.env.MONGO_DB || "foodhub";
+  const DB_NAME = process.env.MONGO_DB || "cohan";
   console.log("Connecting with DB settings:", safeDbInfo());
   await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
   log("DB", "connected", { dbName: DB_NAME });
@@ -143,7 +157,12 @@ async function connectDb() {
 async function ensureRestaurantManagerIndex() {
   if (options.dryRun) return;
   const indexes = await Restaurant.collection.indexes();
-  const uniqueManagerIndexes = indexes.filter((idx) => idx?.unique && idx?.key && Object.prototype.hasOwnProperty.call(idx.key, "managerId"));
+  const uniqueManagerIndexes = indexes.filter(
+    (idx) =>
+      idx?.unique &&
+      idx?.key &&
+      Object.prototype.hasOwnProperty.call(idx.key, "managerId"),
+  );
 
   for (const idx of uniqueManagerIndexes) {
     await Restaurant.collection.dropIndex(idx.name);
@@ -154,9 +173,15 @@ async function ensureRestaurantManagerIndex() {
     });
   }
 
-  const hasManagerIndex = indexes.some((idx) => idx?.key?.managerId === 1 && Object.keys(idx.key || {}).length === 1);
+  const hasManagerIndex = indexes.some(
+    (idx) =>
+      idx?.key?.managerId === 1 && Object.keys(idx.key || {}).length === 1,
+  );
   if (!hasManagerIndex) {
-    await Restaurant.collection.createIndex({ managerId: 1 }, { background: true });
+    await Restaurant.collection.createIndex(
+      { managerId: 1 },
+      { background: true },
+    );
     log("MIGRATION", "created restaurants.managerId non-unique index");
   }
 }
@@ -176,7 +201,11 @@ async function loadCheckpoint() {
 
 async function saveCheckpoint(payload) {
   await ensureDir(CHECKPOINT_PATH);
-  await fs.writeFile(CHECKPOINT_PATH, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  await fs.writeFile(
+    CHECKPOINT_PATH,
+    `${JSON.stringify(payload, null, 2)}\n`,
+    "utf8",
+  );
   log("CHECKPOINT", "saved", {
     lastCompletedStep: payload.lastCompletedStep || null,
     failedStep: payload.failedStep || null,
@@ -237,7 +266,9 @@ class KeyResolver {
     const key = `restaurant:${String(restaurantKey).toLowerCase()}`;
     const cached = this.get(key);
     if (cached) return toObjectId(cached);
-    const doc = await Restaurant.findOne({ name: restaurantKey }).select({ _id: 1 }).lean();
+    const doc = await Restaurant.findOne({ name: restaurantKey })
+      .select({ _id: 1 })
+      .lean();
     if (doc?._id) {
       this.set(key, doc._id);
       return doc._id;
@@ -292,18 +323,22 @@ async function upsertWithSummary({
   if (ctx.options.dryRun) {
     if (existing?._id) {
       summary.updated += 1;
-      if (keyCache && keyCacheValue) ctx.resolver.set(keyCacheValue, existing._id);
+      if (keyCache && keyCacheValue)
+        ctx.resolver.set(keyCacheValue, existing._id);
       return existing._id;
     }
     summary.created += 1;
-    const fakeId = ctx.resolver.getVirtualId(`dry:${model.modelName}:${JSON.stringify(filter)}`);
+    const fakeId = ctx.resolver.getVirtualId(
+      `dry:${model.modelName}:${JSON.stringify(filter)}`,
+    );
     if (keyCache && keyCacheValue) ctx.resolver.set(keyCacheValue, fakeId);
     return toObjectId(fakeId);
   }
   if (existing?._id) {
     await model.updateOne({ _id: existing._id }, { $set: payload });
     summary.updated += 1;
-    if (keyCache && keyCacheValue) ctx.resolver.set(keyCacheValue, existing._id);
+    if (keyCache && keyCacheValue)
+      ctx.resolver.set(keyCacheValue, existing._id);
     return existing._id;
   }
   const created = await model.create(payload);
@@ -325,7 +360,8 @@ function prepareStepsToRun(checkpoint) {
     if (idx >= 0 && idx + 1 < STEPS.length) fromStep = STEPS[idx + 1];
   }
   if (!fromStep) return [...STEPS];
-  if (!STEPS.includes(fromStep)) throw new Error(`IMPORT_FROM invalid step: ${fromStep}`);
+  if (!STEPS.includes(fromStep))
+    throw new Error(`IMPORT_FROM invalid step: ${fromStep}`);
   return STEPS.slice(STEPS.indexOf(fromStep));
 }
 
@@ -342,7 +378,10 @@ async function resetScope(ctx, stepsToRun) {
   let targetSteps = [];
   if (scope === "from_step") {
     const from = options.importFrom || stepsToRun[0];
-    if (!STEPS.includes(from)) throw new Error(`RESET_SCOPE=from_step requires valid IMPORT_FROM. Got: ${from}`);
+    if (!STEPS.includes(from))
+      throw new Error(
+        `RESET_SCOPE=from_step requires valid IMPORT_FROM. Got: ${from}`,
+      );
     targetSteps = STEPS.slice(STEPS.indexOf(from));
   } else {
     targetSteps = RESET_SCOPE_MAP[scope] || [];
@@ -355,7 +394,9 @@ async function resetScope(ctx, stepsToRun) {
     const key = restaurantKeyFromInput(row);
     if (!key) continue;
     try {
-      const rid = await ctx.resolver.resolveRestaurantId(row.name || row.restaurantKey || row.key || key);
+      const rid = await ctx.resolver.resolveRestaurantId(
+        row.name || row.restaurantKey || row.key || key,
+      );
       if (rid) ids.push(rid);
     } catch {
       // ignore unresolved restaurant before import
@@ -367,16 +408,43 @@ async function resetScope(ctx, stepsToRun) {
   for (const step of targetSteps) {
     const models = STEP_COLLECTIONS[step] || [];
     for (const model of models) {
-      if (!ridFilter && model !== Coupon && model !== Staff && model !== Shift && model !== Reservation && model !== Order) {
+      if (
+        !ridFilter &&
+        model !== Coupon &&
+        model !== Staff &&
+        model !== Shift &&
+        model !== Reservation &&
+        model !== Order
+      ) {
         continue;
       }
       let filter = {};
-      if (["Floor", "Table", "Category", "CategoryMenu", "Menu", "MenuItem", "Warehouse", "Ingredient", "Recipe", "StockItem", "Promotion"].includes(model.modelName)) {
+      if (
+        [
+          "Floor",
+          "Table",
+          "Category",
+          "CategoryMenu",
+          "Menu",
+          "MenuItem",
+          "Warehouse",
+          "Ingredient",
+          "Recipe",
+          "StockItem",
+          "Promotion",
+        ].includes(model.modelName)
+      ) {
         filter = ridFilter || { _id: null };
-      } else if (model.modelName === "Reservation" || model.modelName === "Order" || model.modelName === "Shift") {
+      } else if (
+        model.modelName === "Reservation" ||
+        model.modelName === "Order" ||
+        model.modelName === "Shift"
+      ) {
         filter = ridFilter || { _id: null };
       } else if (model.modelName === "Staff") {
-        filter = ridFilter ? { primaryRestaurant: { $in: ids } } : { _id: null };
+        filter = ridFilter
+          ? { primaryRestaurant: { $in: ids } }
+          : { _id: null };
       } else if (model.modelName === "Coupon") {
         filter = ridFilter || { _id: null };
       } else if (model.modelName === "Restaurant") {
@@ -389,7 +457,10 @@ async function resetScope(ctx, stepsToRun) {
         continue;
       }
       const rs = await model.deleteMany(filter);
-      log("RESET", "deleted", { model: model.modelName, deletedCount: rs.deletedCount });
+      log("RESET", "deleted", {
+        model: model.modelName,
+        deletedCount: rs.deletedCount,
+      });
     }
   }
 }
@@ -397,14 +468,18 @@ async function resetScope(ctx, stepsToRun) {
 function ensureRecipeVariants(variants, context) {
   const rows = asArray(variants);
   const keys = rows.map((v) => String(v?.key || "").trim()).filter(Boolean);
-  if (new Set(keys).size !== keys.length) throw new Error(`${context}: servingVariants.key must be unique`);
+  if (new Set(keys).size !== keys.length)
+    throw new Error(`${context}: servingVariants.key must be unique`);
   const defaultCount = rows.filter((v) => bool(v?.isDefault, false)).length;
-  if (defaultCount > 1) throw new Error(`${context}: only one servingVariant isDefault=true`);
+  if (defaultCount > 1)
+    throw new Error(`${context}: only one servingVariant isDefault=true`);
   for (const v of rows) {
     const mode = String(v?.mode || "").toUpperCase();
     const sellUnit = String(v?.sellUnit || "").toLowerCase();
-    if (mode === "PORTION" && sellUnit !== "portion") throw new Error(`${context}: PORTION must use sellUnit=portion`);
-    if (mode === "BY_WEIGHT" && !["g", "kg"].includes(sellUnit)) throw new Error(`${context}: BY_WEIGHT sellUnit must be g/kg`);
+    if (mode === "PORTION" && sellUnit !== "portion")
+      throw new Error(`${context}: PORTION must use sellUnit=portion`);
+    if (mode === "BY_WEIGHT" && !["g", "kg"].includes(sellUnit))
+      throw new Error(`${context}: BY_WEIGHT sellUnit must be g/kg`);
   }
 }
 
@@ -418,7 +493,9 @@ async function runStep(stepName, fn, checkpoint, ctx) {
 
     checkpoint.lastCompletedStep = stepName;
     checkpoint.failedStep = null;
-    checkpoint.completedSteps = [...new Set([...(checkpoint.completedSteps || []), stepName])];
+    checkpoint.completedSteps = [
+      ...new Set([...(checkpoint.completedSteps || []), stepName]),
+    ];
     checkpoint.updatedAt = new Date().toISOString();
     await saveCheckpoint(checkpoint);
   } catch (err) {
@@ -438,7 +515,13 @@ function toDate(v) {
 
 async function importRestaurants(ctx) {
   const rows = ctx.stepData.get("restaurants");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -446,7 +529,9 @@ async function importRestaurants(ctx) {
       const managerEmail = normalizeEmail(row.managerEmail || "");
       let managerId = toObjectId(row.managerId);
       if (!managerId && managerEmail) {
-        managerId = await ctx.resolver.resolveUserIdByEmail(managerEmail, { required: true });
+        managerId = await ctx.resolver.resolveUserIdByEmail(managerEmail, {
+          required: true,
+        });
       }
       const payload = {
         name,
@@ -479,7 +564,13 @@ async function importRestaurants(ctx) {
 
 async function importFloors(ctx) {
   const rows = ctx.stepData.get("floors");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -496,7 +587,13 @@ async function importFloors(ctx) {
         layout: asArray(row.layout),
       };
       const filter = { restaurantId: rid, level };
-      const id = await upsertWithSummary({ model: Floor, filter, payload, summary, ctx });
+      const id = await upsertWithSummary({
+        model: Floor,
+        filter,
+        payload,
+        summary,
+        ctx,
+      });
       ctx.resolver.set(`floor:${rKey.toLowerCase()}:${level}`, id);
     } catch (err) {
       summary.failed += 1;
@@ -509,7 +606,13 @@ async function importFloors(ctx) {
 
 async function importTables(ctx) {
   const rows = ctx.stepData.get("tables");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -517,8 +620,11 @@ async function importTables(ctx) {
       const floorLevel = Number(required(row.floorLevel, "floorLevel"));
       const tableCode = String(required(row.code, "code")).trim();
       const rid = await ctx.resolver.resolveRestaurantId(rKey);
-      const floorId = toObjectId(ctx.resolver.get(`floor:${rKey.toLowerCase()}:${floorLevel}`));
-      if (!floorId) throw new Error(`Cannot resolve floor for level=${floorLevel}`);
+      const floorId = toObjectId(
+        ctx.resolver.get(`floor:${rKey.toLowerCase()}:${floorLevel}`),
+      );
+      if (!floorId)
+        throw new Error(`Cannot resolve floor for level=${floorLevel}`);
       const payload = {
         restaurantId: rid,
         floorId,
@@ -536,9 +642,21 @@ async function importTables(ctx) {
         deposit: row.deposit ?? 1,
       };
       const filter = { restaurantId: rid, floorId, code: tableCode };
-      const id = await upsertWithSummary({ model: Table, filter, payload, summary, ctx });
-      ctx.resolver.set(`table:${rKey.toLowerCase()}:${floorLevel}:${tableCode.toLowerCase()}`, id);
-      ctx.resolver.set(`table2:${rKey.toLowerCase()}:${tableCode.toLowerCase()}`, id);
+      const id = await upsertWithSummary({
+        model: Table,
+        filter,
+        payload,
+        summary,
+        ctx,
+      });
+      ctx.resolver.set(
+        `table:${rKey.toLowerCase()}:${floorLevel}:${tableCode.toLowerCase()}`,
+        id,
+      );
+      ctx.resolver.set(
+        `table2:${rKey.toLowerCase()}:${tableCode.toLowerCase()}`,
+        id,
+      );
     } catch (err) {
       summary.failed += 1;
       log("ERROR", "tables failed", { index: i, reason: err.message });
@@ -550,7 +668,13 @@ async function importTables(ctx) {
 
 async function importCategories(ctx) {
   const rows = ctx.stepData.get("categories");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -570,7 +694,10 @@ async function importCategories(ctx) {
         summary,
         ctx,
       });
-      ctx.resolver.set(`category:${rKey.toLowerCase()}:${name.toLowerCase()}`, id);
+      ctx.resolver.set(
+        `category:${rKey.toLowerCase()}:${name.toLowerCase()}`,
+        id,
+      );
     } catch (err) {
       summary.failed += 1;
       log("ERROR", "categories failed", { index: i, reason: err.message });
@@ -582,7 +709,13 @@ async function importCategories(ctx) {
 
 async function importCategoryMenus(ctx) {
   const rows = ctx.stepData.get("categoryMenus");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -604,7 +737,10 @@ async function importCategoryMenus(ctx) {
         summary,
         ctx,
       });
-      ctx.resolver.set(`categoryMenu:${rKey.toLowerCase()}:${String(name).toLowerCase()}`, id);
+      ctx.resolver.set(
+        `categoryMenu:${rKey.toLowerCase()}:${String(name).toLowerCase()}`,
+        id,
+      );
     } catch (err) {
       summary.failed += 1;
       log("ERROR", "categoryMenus failed", { index: i, reason: err.message });
@@ -616,7 +752,13 @@ async function importCategoryMenus(ctx) {
 
 async function importMenus(ctx) {
   const rows = ctx.stepData.get("menus");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -624,7 +766,11 @@ async function importMenus(ctx) {
       const timeSlot = normalizeTimeSlot(required(row.timeSlot, "timeSlot"));
       const rid = await ctx.resolver.resolveRestaurantId(rKey);
       const categoryMenuId = row.categoryMenuName
-        ? toObjectId(ctx.resolver.get(`categoryMenu:${rKey.toLowerCase()}:${String(row.categoryMenuName).toLowerCase()}`))
+        ? toObjectId(
+            ctx.resolver.get(
+              `categoryMenu:${rKey.toLowerCase()}:${String(row.categoryMenuName).toLowerCase()}`,
+            ),
+          )
         : null;
       const payload = {
         restaurantId: rid,
@@ -654,18 +800,33 @@ async function importMenus(ctx) {
 
 async function importMenuItems(ctx) {
   const rows = ctx.stepData.get("menuItems");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
       const rKey = required(row.restaurantKey, "restaurantKey");
-      const timeSlot = normalizeTimeSlot(required(row.menuTimeSlot, "menuTimeSlot"));
+      const timeSlot = normalizeTimeSlot(
+        required(row.menuTimeSlot, "menuTimeSlot"),
+      );
       const categoryName = required(row.categoryName, "categoryName");
       const name = required(row.name, "name");
       const rid = await ctx.resolver.resolveRestaurantId(rKey);
-      const menuId = toObjectId(ctx.resolver.get(`menu:${rKey.toLowerCase()}:${timeSlot}`));
-      const categoryId = toObjectId(ctx.resolver.get(`category:${rKey.toLowerCase()}:${String(categoryName).toLowerCase()}`));
-      if (!menuId || !categoryId) throw new Error(`Cannot resolve menu/category for item "${name}"`);
+      const menuId = toObjectId(
+        ctx.resolver.get(`menu:${rKey.toLowerCase()}:${timeSlot}`),
+      );
+      const categoryId = toObjectId(
+        ctx.resolver.get(
+          `category:${rKey.toLowerCase()}:${String(categoryName).toLowerCase()}`,
+        ),
+      );
+      if (!menuId || !categoryId)
+        throw new Error(`Cannot resolve menu/category for item "${name}"`);
       const payload = {
         restaurantId: rid,
         menuId,
@@ -692,9 +853,20 @@ async function importMenuItems(ctx) {
       const filter = row.code
         ? { restaurantId: rid, code: String(row.code).toUpperCase() }
         : { restaurantId: rid, menuId, categoryId, name };
-      const id = await upsertWithSummary({ model: MenuItem, filter, payload, summary, ctx });
-      const bizItemKey = String(row.itemKey || row.code || row.name).trim().toLowerCase();
-      ctx.resolver.set(`menuItem:${rKey.toLowerCase()}:${timeSlot}:${String(categoryName).toLowerCase()}:${bizItemKey}`, id);
+      const id = await upsertWithSummary({
+        model: MenuItem,
+        filter,
+        payload,
+        summary,
+        ctx,
+      });
+      const bizItemKey = String(row.itemKey || row.code || row.name)
+        .trim()
+        .toLowerCase();
+      ctx.resolver.set(
+        `menuItem:${rKey.toLowerCase()}:${timeSlot}:${String(categoryName).toLowerCase()}:${bizItemKey}`,
+        id,
+      );
       ctx.resolver.set(`menuItem2:${rKey.toLowerCase()}:${bizItemKey}`, id);
     } catch (err) {
       summary.failed += 1;
@@ -707,7 +879,13 @@ async function importMenuItems(ctx) {
 
 async function importWarehouses(ctx) {
   const rows = ctx.stepData.get("warehouses");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -728,8 +906,15 @@ async function importWarehouses(ctx) {
         summary,
         ctx,
       });
-      ctx.resolver.set(`warehouse:${rKey.toLowerCase()}:${String(name).toLowerCase()}`, id);
-      if (row.code) ctx.resolver.set(`warehouseCode:${rKey.toLowerCase()}:${String(row.code).toLowerCase()}`, id);
+      ctx.resolver.set(
+        `warehouse:${rKey.toLowerCase()}:${String(name).toLowerCase()}`,
+        id,
+      );
+      if (row.code)
+        ctx.resolver.set(
+          `warehouseCode:${rKey.toLowerCase()}:${String(row.code).toLowerCase()}`,
+          id,
+        );
     } catch (err) {
       summary.failed += 1;
       log("ERROR", "warehouses failed", { index: i, reason: err.message });
@@ -741,7 +926,13 @@ async function importWarehouses(ctx) {
 
 async function importIngredients(ctx) {
   const rows = ctx.stepData.get("ingredients");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -768,7 +959,10 @@ async function importIngredients(ctx) {
         summary,
         ctx,
       });
-      ctx.resolver.set(`ingredient:${rKey.toLowerCase()}:${String(name).toLowerCase()}`, id);
+      ctx.resolver.set(
+        `ingredient:${rKey.toLowerCase()}:${String(name).toLowerCase()}`,
+        id,
+      );
     } catch (err) {
       summary.failed += 1;
       log("ERROR", "ingredients failed", { index: i, reason: err.message });
@@ -780,7 +974,13 @@ async function importIngredients(ctx) {
 
 async function importRecipes(ctx) {
   const rows = ctx.stepData.get("recipes");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -788,9 +988,15 @@ async function importRecipes(ctx) {
       const rid = await ctx.resolver.resolveRestaurantId(rKey);
       const menuItemKey = required(row.menuItemKey, "menuItemKey");
       const menuItemId =
-        toObjectId(ctx.resolver.get(`menuItem2:${rKey.toLowerCase()}:${String(menuItemKey).toLowerCase()}`)) ||
-        toObjectId(row.menuItemId);
-      if (!menuItemId) throw new Error(`Cannot resolve menuItem for recipe key "${menuItemKey}"`);
+        toObjectId(
+          ctx.resolver.get(
+            `menuItem2:${rKey.toLowerCase()}:${String(menuItemKey).toLowerCase()}`,
+          ),
+        ) || toObjectId(row.menuItemId);
+      if (!menuItemId)
+        throw new Error(
+          `Cannot resolve menuItem for recipe key "${menuItemKey}"`,
+        );
       const servingVariants = asArray(row.servingVariants).map((v) => ({
         key: required(v.key, "servingVariants.key"),
         name: v.name || undefined,
@@ -798,11 +1004,22 @@ async function importRecipes(ctx) {
         sellQty: v.sellQty ?? 1,
         sellUnit: v.sellUnit || "portion",
         ingredients: asArray(v.ingredients).map((line) => {
-          const ingName = line.ingredientName ? String(line.ingredientName) : null;
+          const ingName = line.ingredientName
+            ? String(line.ingredientName)
+            : null;
           const ingId =
             toObjectId(line.ingredientId) ||
-            (ingName ? toObjectId(ctx.resolver.get(`ingredient:${rKey.toLowerCase()}:${ingName.toLowerCase()}`)) : null);
-          if (!ingId) throw new Error(`Cannot resolve ingredient in recipe "${menuItemKey}"`);
+            (ingName
+              ? toObjectId(
+                  ctx.resolver.get(
+                    `ingredient:${rKey.toLowerCase()}:${ingName.toLowerCase()}`,
+                  ),
+                )
+              : null);
+          if (!ingId)
+            throw new Error(
+              `Cannot resolve ingredient in recipe "${menuItemKey}"`,
+            );
           return {
             ingredientId: ingId,
             qty: Number(required(line.qty, "line.qty")),
@@ -839,24 +1056,45 @@ async function importRecipes(ctx) {
 
 async function importStockItems(ctx) {
   const rows = ctx.stepData.get("stockItems");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
       const rKey = required(row.restaurantKey, "restaurantKey");
       const rid = await ctx.resolver.resolveRestaurantId(rKey);
       const warehouseName = row.warehouseName || row.warehouseCode;
-      if (!warehouseName) throw new Error("Missing warehouseName/warehouseCode");
+      if (!warehouseName)
+        throw new Error("Missing warehouseName/warehouseCode");
       const warehouseId =
-        toObjectId(ctx.resolver.get(`warehouse:${rKey.toLowerCase()}:${String(warehouseName).toLowerCase()}`)) ||
-        toObjectId(ctx.resolver.get(`warehouseCode:${rKey.toLowerCase()}:${String(warehouseName).toLowerCase()}`));
-      if (!warehouseId) throw new Error(`Cannot resolve warehouse "${warehouseName}"`);
+        toObjectId(
+          ctx.resolver.get(
+            `warehouse:${rKey.toLowerCase()}:${String(warehouseName).toLowerCase()}`,
+          ),
+        ) ||
+        toObjectId(
+          ctx.resolver.get(
+            `warehouseCode:${rKey.toLowerCase()}:${String(warehouseName).toLowerCase()}`,
+          ),
+        );
+      if (!warehouseId)
+        throw new Error(`Cannot resolve warehouse "${warehouseName}"`);
 
       const ingredientId = row.ingredientName
-        ? toObjectId(ctx.resolver.get(`ingredient:${rKey.toLowerCase()}:${String(row.ingredientName).toLowerCase()}`))
+        ? toObjectId(
+            ctx.resolver.get(
+              `ingredient:${rKey.toLowerCase()}:${String(row.ingredientName).toLowerCase()}`,
+            ),
+          )
         : toObjectId(row.ingredientId);
       const supplyId = toObjectId(row.supplyId);
-      if (!ingredientId && !supplyId) throw new Error("StockItem requires ingredientId or supplyId");
+      if (!ingredientId && !supplyId)
+        throw new Error("StockItem requires ingredientId or supplyId");
       const onHand = Number(required(row.onHand, "onHand"));
       const reserved = Number(row.reserved ?? 0);
       if (!Number.isInteger(onHand) || !Number.isInteger(reserved)) {
@@ -877,7 +1115,13 @@ async function importStockItems(ctx) {
       const filter = ingredientId
         ? { restaurantId: rid, warehouseId, ingredientId }
         : { restaurantId: rid, warehouseId, supplyId };
-      await upsertWithSummary({ model: StockItem, filter, payload, summary, ctx });
+      await upsertWithSummary({
+        model: StockItem,
+        filter,
+        payload,
+        summary,
+        ctx,
+      });
     } catch (err) {
       summary.failed += 1;
       log("ERROR", "stockItems failed", { index: i, reason: err.message });
@@ -889,7 +1133,13 @@ async function importStockItems(ctx) {
 
 async function importStaff(ctx) {
   const rows = ctx.stepData.get("staff");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -899,7 +1149,9 @@ async function importStaff(ctx) {
 
       let user = await User.findOne({ email });
       if (!user && !ctx.options.allowCreateStaffUsers) {
-        throw new Error(`Staff user missing: ${email}. Set ALLOW_CREATE_STAFF_USERS=1 to auto-create.`);
+        throw new Error(
+          `Staff user missing: ${email}. Set ALLOW_CREATE_STAFF_USERS=1 to auto-create.`,
+        );
       }
       if (!user && ctx.options.allowCreateStaffUsers) {
         if (ctx.options.dryRun) {
@@ -931,17 +1183,21 @@ async function importStaff(ctx) {
                 primaryRestaurant: rid,
                 department: row.department || "service",
                 employmentStatus: row.employmentStatus || "working",
-                positionTitle: row.positionTitle || user.positionTitle || "Staff",
+                positionTitle:
+                  row.positionTitle || user.positionTitle || "Staff",
                 employeeCode: row.employeeCode || user.employeeCode,
                 shiftType: row.shiftType || user.shiftType,
                 workingDays: asArray(row.workingDays),
               },
-            }
+            },
           );
         }
         summary.updated += 1;
       }
-      ctx.resolver.set(`staff-email:${email}`, user?._id || ctx.resolver.get(`user-email:${email}`));
+      ctx.resolver.set(
+        `staff-email:${email}`,
+        user?._id || ctx.resolver.get(`user-email:${email}`),
+      );
     } catch (err) {
       summary.failed += 1;
       log("ERROR", "staff failed", { index: i, reason: err.message });
@@ -953,14 +1209,22 @@ async function importStaff(ctx) {
 
 async function importShifts(ctx) {
   const rows = ctx.stepData.get("shifts");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
       const rKey = required(row.restaurantKey, "restaurantKey");
       const rid = await ctx.resolver.resolveRestaurantId(rKey);
       const email = normalizeEmail(required(row.staffEmail, "staffEmail"));
-      const employeeId = await ctx.resolver.resolveUserIdByEmail(email, { required: true });
+      const employeeId = await ctx.resolver.resolveUserIdByEmail(email, {
+        required: true,
+      });
       const startTime = toDate(required(row.startTime, "startTime"));
       const endTime = toDate(required(row.endTime, "endTime"));
       const payload = {
@@ -974,7 +1238,13 @@ async function importShifts(ctx) {
       };
       await upsertWithSummary({
         model: Shift,
-        filter: { employeeId, restaurantId: rid, startTime, endTime, shiftType: payload.shiftType },
+        filter: {
+          employeeId,
+          restaurantId: rid,
+          startTime,
+          endTime,
+          shiftType: payload.shiftType,
+        },
         payload,
         summary,
         ctx,
@@ -990,7 +1260,13 @@ async function importShifts(ctx) {
 
 async function importPromotions(ctx) {
   const rows = ctx.stepData.get("promotions");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -998,10 +1274,18 @@ async function importPromotions(ctx) {
       const rid = await ctx.resolver.resolveRestaurantId(rKey);
       const code = row.code ? String(row.code).trim().toUpperCase() : null;
       const itemId = row.itemKey
-        ? toObjectId(ctx.resolver.get(`menuItem2:${rKey.toLowerCase()}:${String(row.itemKey).toLowerCase()}`))
+        ? toObjectId(
+            ctx.resolver.get(
+              `menuItem2:${rKey.toLowerCase()}:${String(row.itemKey).toLowerCase()}`,
+            ),
+          )
         : toObjectId(row.itemId);
       const categoryId = row.categoryName
-        ? toObjectId(ctx.resolver.get(`category:${rKey.toLowerCase()}:${String(row.categoryName).toLowerCase()}`))
+        ? toObjectId(
+            ctx.resolver.get(
+              `category:${rKey.toLowerCase()}:${String(row.categoryName).toLowerCase()}`,
+            ),
+          )
         : toObjectId(row.categoryId);
       const payload = {
         name: required(row.name, "name"),
@@ -1025,9 +1309,21 @@ async function importPromotions(ctx) {
         isActive: row.isActive ?? true,
         stacking: bool(row.stacking, false),
       };
-      const filter = code ? { restaurantId: rid, code } : { restaurantId: rid, name: payload.name };
-      const id = await upsertWithSummary({ model: Promotion, filter, payload, summary, ctx });
-      if (code) ctx.resolver.set(`promotion:${rKey.toLowerCase()}:${code.toLowerCase()}`, id);
+      const filter = code
+        ? { restaurantId: rid, code }
+        : { restaurantId: rid, name: payload.name };
+      const id = await upsertWithSummary({
+        model: Promotion,
+        filter,
+        payload,
+        summary,
+        ctx,
+      });
+      if (code)
+        ctx.resolver.set(
+          `promotion:${rKey.toLowerCase()}:${code.toLowerCase()}`,
+          id,
+        );
     } catch (err) {
       summary.failed += 1;
       log("ERROR", "promotions failed", { index: i, reason: err.message });
@@ -1039,7 +1335,13 @@ async function importPromotions(ctx) {
 
 async function importCoupons(ctx) {
   const rows = ctx.stepData.get("coupons");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -1084,7 +1386,13 @@ async function importCoupons(ctx) {
 
 async function importReservations(ctx) {
   const rows = ctx.stepData.get("reservations");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -1094,9 +1402,13 @@ async function importReservations(ctx) {
       const timeTo = toDate(required(row.timeTo, "timeTo"));
       const rid = await ctx.resolver.resolveRestaurantId(rKey);
       const tableId = toObjectId(
-        ctx.resolver.get(`table2:${rKey.toLowerCase()}:${String(tableCode).toLowerCase()}`)
+        ctx.resolver.get(
+          `table2:${rKey.toLowerCase()}:${String(tableCode).toLowerCase()}`,
+        ),
       );
-      const userId = await ctx.resolver.resolveUserIdByEmail(userEmail, { required: true });
+      const userId = await ctx.resolver.resolveUserIdByEmail(userEmail, {
+        required: true,
+      });
       if (!tableId) throw new Error(`Cannot resolve table ${tableCode}`);
       const payload = {
         restaurantId: rid,
@@ -1125,10 +1437,16 @@ async function importReservations(ctx) {
         userId,
         timeTo,
       };
-      const id = await upsertWithSummary({ model: Reservation, filter, payload, summary, ctx });
+      const id = await upsertWithSummary({
+        model: Reservation,
+        filter,
+        payload,
+        summary,
+        ctx,
+      });
       ctx.resolver.set(
         `reservation:${rKey.toLowerCase()}:${String(tableCode).toLowerCase()}:${normalizeEmail(userEmail)}:${timeTo.toISOString()}`,
-        id
+        id,
       );
     } catch (err) {
       summary.failed += 1;
@@ -1141,7 +1459,13 @@ async function importReservations(ctx) {
 
 async function importOrders(ctx) {
   const rows = ctx.stepData.get("orders");
-  const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const summary = {
+    input: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+  };
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -1150,27 +1474,49 @@ async function importOrders(ctx) {
       const createdAt = toDate(required(row.createdAt, "createdAt"));
       const rid = await ctx.resolver.resolveRestaurantId(rKey);
       const tableId = row.tableCode
-        ? toObjectId(ctx.resolver.get(`table2:${rKey.toLowerCase()}:${String(row.tableCode).toLowerCase()}`))
+        ? toObjectId(
+            ctx.resolver.get(
+              `table2:${rKey.toLowerCase()}:${String(row.tableCode).toLowerCase()}`,
+            ),
+          )
         : toObjectId(row.tableId);
       const userId = row.userEmail
-        ? await ctx.resolver.resolveUserIdByEmail(row.userEmail, { required: false })
+        ? await ctx.resolver.resolveUserIdByEmail(row.userEmail, {
+            required: false,
+          })
         : toObjectId(row.userId);
       const reservationId = row.reservationRef
         ? toObjectId(ctx.resolver.get(`reservation:${row.reservationRef}`))
         : toObjectId(row.reservationId);
       const promotionId = row.totals?.promotionCode
-        ? toObjectId(ctx.resolver.get(`promotion:${rKey.toLowerCase()}:${String(row.totals.promotionCode).toLowerCase()}`))
+        ? toObjectId(
+            ctx.resolver.get(
+              `promotion:${rKey.toLowerCase()}:${String(row.totals.promotionCode).toLowerCase()}`,
+            ),
+          )
         : toObjectId(row?.totals?.promotionId);
 
       const items = asArray(row.items).map((item, idx) => {
         const categoryId = item.categoryName
-          ? toObjectId(ctx.resolver.get(`category:${rKey.toLowerCase()}:${String(item.categoryName).toLowerCase()}`))
+          ? toObjectId(
+              ctx.resolver.get(
+                `category:${rKey.toLowerCase()}:${String(item.categoryName).toLowerCase()}`,
+              ),
+            )
           : toObjectId(item.categoryId);
         const menuId = item.menuTimeSlot
-          ? toObjectId(ctx.resolver.get(`menu:${rKey.toLowerCase()}:${normalizeTimeSlot(item.menuTimeSlot)}`))
+          ? toObjectId(
+              ctx.resolver.get(
+                `menu:${rKey.toLowerCase()}:${normalizeTimeSlot(item.menuTimeSlot)}`,
+              ),
+            )
           : toObjectId(item.menuId);
         const dishId = item.itemKey
-          ? toObjectId(ctx.resolver.get(`menuItem2:${rKey.toLowerCase()}:${String(item.itemKey).toLowerCase()}`))
+          ? toObjectId(
+              ctx.resolver.get(
+                `menuItem2:${rKey.toLowerCase()}:${String(item.itemKey).toLowerCase()}`,
+              ),
+            )
           : toObjectId(item.dishId);
         if (!categoryId || !menuId || !dishId) {
           throw new Error(`Order item #${idx} ref resolve failed`);
@@ -1235,7 +1581,11 @@ async function importOrders(ctx) {
       }
     } catch (err) {
       summary.failed += 1;
-      log("ERROR", "orders failed", { index: i, orderCode: row?.orderCode, reason: err.message });
+      log("ERROR", "orders failed", {
+        index: i,
+        orderCode: row?.orderCode,
+        reason: err.message,
+      });
       if (!ctx.options.dryRun) throw err;
     }
   }
@@ -1268,7 +1618,9 @@ async function preLoadStepData(stepsToRun, ctx) {
     ctx.stepData.set(step, rows);
   }
   const restaurants = ctx.stepData.get("restaurants") || [];
-  ctx.restaurantIdsInSource = restaurants.map((r) => restaurantKeyFromInput(r)).filter(Boolean);
+  ctx.restaurantIdsInSource = restaurants
+    .map((r) => restaurantKeyFromInput(r))
+    .filter(Boolean);
 }
 
 async function main() {
@@ -1289,7 +1641,13 @@ async function main() {
 
   if (options.clearCheckpoint) await clearCheckpoint();
   const existingCheckpoint = await loadCheckpoint();
-  if (existingCheckpoint) checkpoint = { ...existingCheckpoint, runId, options, updatedAt: new Date().toISOString() };
+  if (existingCheckpoint)
+    checkpoint = {
+      ...existingCheckpoint,
+      runId,
+      options,
+      updatedAt: new Date().toISOString(),
+    };
 
   const ctx = buildImportContext(runId);
 
@@ -1302,7 +1660,12 @@ async function main() {
     await resetScope(ctx, stepsToRun);
 
     for (const stepName of stepsToRun) {
-      await runStep(stepName, () => STEP_HANDLERS[stepName](ctx), checkpoint, ctx);
+      await runStep(
+        stepName,
+        () => STEP_HANDLERS[stepName](ctx),
+        checkpoint,
+        ctx,
+      );
     }
 
     checkpoint.failedStep = null;

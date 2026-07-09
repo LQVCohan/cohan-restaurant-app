@@ -1,12 +1,13 @@
 const memoryStorage = new Map();
 const STORAGE_ORDER = ["local", "session"];
-const STORAGE_PROBE_KEY = "__foodhub_storage_probe__";
+const STORAGE_PROBE_KEY = "__cohan_storage_probe__";
 
 function resolveStorage(kind) {
   if (typeof window === "undefined") return null;
 
   try {
-    const storage = kind === "local" ? window.localStorage : window.sessionStorage;
+    const storage =
+      kind === "local" ? window.localStorage : window.sessionStorage;
     if (!storage) return null;
     storage.setItem(STORAGE_PROBE_KEY, kind);
     storage.removeItem(STORAGE_PROBE_KEY);
@@ -56,7 +57,9 @@ export function readStorageValueFrom(kind, key) {
 }
 
 export function writeStorageValue(key, value, { persistent = true } = {}) {
-  const preferredKinds = persistent ? STORAGE_ORDER : [...STORAGE_ORDER].reverse();
+  const preferredKinds = persistent
+    ? STORAGE_ORDER
+    : [...STORAGE_ORDER].reverse();
 
   for (const kind of preferredKinds) {
     const storage = resolveStorage(kind);

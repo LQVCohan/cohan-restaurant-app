@@ -18,7 +18,11 @@ import {
   User,
 } from "../models/index.js";
 
-import { assertDemoScriptAllowed, getDemoPassword, safeDbInfo } from "./lib/scriptSafety.js";
+import {
+  assertDemoScriptAllowed,
+  getDemoPassword,
+  safeDbInfo,
+} from "./lib/scriptSafety.js";
 
 const DEMO_PASSWORD = getDemoPassword();
 const RESET = process.argv.includes("--reset");
@@ -344,7 +348,7 @@ async function upsertTimesheet({
             : 0,
         hours:
           checkIn && checkOut
-            ? Number((((checkOut - checkIn) / 60000) / 60).toFixed(2))
+            ? Number(((checkOut - checkIn) / 60000 / 60).toFixed(2))
             : 0,
         approved,
         isOffSchedule,
@@ -356,7 +360,12 @@ async function upsertTimesheet({
   );
 }
 
-async function upsertPayrollItem({ periodId, restaurantId, staff, status = "draft" }) {
+async function upsertPayrollItem({
+  periodId,
+  restaurantId,
+  staff,
+  status = "draft",
+}) {
   return PayrollItem.findOneAndUpdate(
     { periodId, employeeId: staff._id },
     {
@@ -549,9 +558,9 @@ async function seedBlockedScenario({ restaurant, staff }) {
 }
 
 async function main() {
-  assertDemoScriptAllowed('seedPayrollReadinessDemo.js');
+  assertDemoScriptAllowed("seedPayrollReadinessDemo.js");
   const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
-  const DB_NAME = process.env.MONGO_DB || "foodhub";
+  const DB_NAME = process.env.MONGO_DB || "cohan";
 
   console.log("Connecting with DB settings:", safeDbInfo());
   await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
