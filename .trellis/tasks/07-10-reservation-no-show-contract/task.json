@@ -1,0 +1,11 @@
+{
+  "id": "07-10-reservation-no-show-contract",
+  "title": "Clarify reservation no-show contract",
+  "status": "in_progress",
+  "priority": "P2",
+  "source": "Bao_cao_tong_hop_tinh_nang_COHAN_Vong_6 FIND-003",
+  "scope": [
+    "Reservation GraphQL mutation naming",
+    "Customer reservation history UI actions"
+  ]
+}

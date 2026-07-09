@@ -307,7 +307,6 @@ userSchema.index({ emailVerifyTokenExp: 1 });
 userSchema.index({ phoneVerifyTokenExp: 1 });
 userSchema.index({ emailVerified: 1 });
 userSchema.index({ phoneVerified: 1 });
-userSchema.index({ googleId: 1 }, { unique: true, sparse: true });
 userSchema.index({ restaurantForStaff: 1, employeeCode: 1 }, {
   unique: true,
   partialFilterExpression: {
