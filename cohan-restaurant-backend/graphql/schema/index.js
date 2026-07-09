@@ -185,6 +185,7 @@ const readSchemaFile = (fileName) => {
 const files = [
   "base.graphql",
   "user.graphql",
+  "authSocial.graphql",
   "payrollReadiness.graphql",
   "payrollPagination.graphql",
   "managerDashboard.graphql",
