@@ -79,7 +79,7 @@ export default function MobileHome() {
             placeholder="Tìm món, nhà hàng..."
             aria-label="Tìm món hoặc nhà hàng"
           />
-          <button type="submit" aria-label="Tìm kiếm">Tìm</button>
+          <button type="submit">Tìm</button>
         </form>
 
         <div className="mobile-home__chips" aria-label="Gợi ý tìm nhanh">
