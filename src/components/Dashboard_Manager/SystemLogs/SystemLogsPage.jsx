@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import "./SystemLogsPage.scss";
+import "./SystemLogsPagePagination.scss";
 
 const AUDIT_LOGS_QUERY = gql`
   query ManagerAuditLogs($filter: AuditLogFilterInput, $limit: Int, $offset: Int) {
