@@ -66,6 +66,21 @@ describe("backup config resolver", () => {
     expect(models.AuditLog.create).toHaveBeenCalledWith(expect.objectContaining({ action: "CONFIG_BACKUP_EXPORTED" }));
   });
 
+  it("backupReadiness default scope does not claim runtime data backup", async () => {
+    const r = await resolver();
+    const result = await r.Query.backupReadiness(null, { restaurantId }, { user: { id: actorId, roleName: "manager" } });
+    expect(result.scope).toMatchObject({
+      ordersAndPayments: false,
+      tablesAndFloorPlan: true,
+      menuAndPricing: true,
+      inventory: true,
+      staffAndPermissions: false,
+      schedules: true,
+      customersAndPromotions: true,
+      reportsAndReconciliation: false,
+    });
+  });
+
   it("preview import validates file base64", async () => {
     service.decodeSnapshotBase64.mockImplementationOnce(() => { throw new Error("Invalid base64 JSON"); });
     const r = await resolver();
