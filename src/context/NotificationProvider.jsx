@@ -16,6 +16,10 @@ const ALERT_WARNING_PATTERN =
 
 const TECHNICAL_COPY_REPLACEMENTS = [
   [/\bEmail\s*\/\s*SMS provider\b/gi, "dịch vụ gửi email/SMS"],
+  [/\brestaurantId\b/gi, "nhà hàng"],
+  [/\btableId\b/gi, "bàn"],
+  [/\borderId\b/gi, "đơn hàng"],
+  [/\buserId\b/gi, "tài khoản"],
   [/\bfront[-\s]?end\b/gi, "giao diện"],
   [/\bback[-\s]?end\b/gi, "hệ thống xử lý"],
   [/\bdatabase\b|\bdb\b|\bmongodb\b|\bmongo\b/gi, "dữ liệu"],
@@ -25,6 +29,9 @@ const TECHNICAL_COPY_REPLACEMENTS = [
   [/\bpayload\b/gi, "dữ liệu gửi đi"],
   [/\bprovider\b/gi, "dịch vụ"],
   [/\bchunk\b|\bmodule\b/gi, "thành phần giao diện"],
+  [/\bupload\b/gi, "tải lên"],
+  [/\bimport\b/gi, "nhập file"],
+  [/\bexport\b/gi, "xuất file"],
 ];
 
 export const toUserFacingCopy = (value) => {
