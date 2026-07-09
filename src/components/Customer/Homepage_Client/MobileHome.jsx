@@ -19,6 +19,13 @@ const QUICK_ACTIONS = [
   { label: "Ưu đãi", caption: "Coupon", path: "/coupons", icon: Tags },
 ];
 
+const SEARCH_CHIPS = [
+  { label: "Gần bạn", path: "/restaurants" },
+  { label: "Món Việt", query: "món Việt" },
+  { label: "Ưu đãi", path: "/coupons" },
+  { label: "Đặt bàn", path: "/restaurants" },
+];
+
 const getCurrentTimeSlot = () => {
   const hour = new Date().getHours();
   if (hour >= 5 && hour < 10) return "breakfast";
@@ -39,6 +46,15 @@ export default function MobileHome() {
     navigate(`/search?q=${encodeURIComponent(search)}`);
   };
 
+  const handleSearchChip = (chip) => {
+    if (chip.path) {
+      navigate(chip.path);
+      return;
+    }
+
+    navigate(`/search?q=${encodeURIComponent(chip.query)}`);
+  };
+
   const handleCategorySelect = useCallback(
     (category) => {
       const categoryName = typeof category === "object" ? category?.name : category;
@@ -53,18 +69,26 @@ export default function MobileHome() {
       <section className="mobile-home__intro" aria-labelledby="mobile-home-title">
         <span className="mobile-home__eyebrow">Ăn ngon quanh bạn</span>
         <h1 id="mobile-home-title">Hôm nay bạn muốn ăn gì?</h1>
-        <p>Tìm món ăn, nhà hàng và bếp trưởng trong cùng một luồng.</p>
+        <p>Tìm món ăn, nhà hàng và ưu đãi gần bạn.</p>
 
         <form className="mobile-home__search" onSubmit={handleSearch}>
           <Search aria-hidden="true" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Tìm món, nhà hàng, bếp trưởng"
-            aria-label="Tìm món, nhà hàng hoặc bếp trưởng"
+            placeholder="Tìm món, nhà hàng..."
+            aria-label="Tìm món hoặc nhà hàng"
           />
-          <button type="submit">Tìm</button>
+          <button type="submit" aria-label="Tìm kiếm">Tìm</button>
         </form>
+
+        <div className="mobile-home__chips" aria-label="Gợi ý tìm nhanh">
+          {SEARCH_CHIPS.map((chip) => (
+            <button key={chip.label} type="button" onClick={() => handleSearchChip(chip)}>
+              {chip.label}
+            </button>
+          ))}
+        </div>
 
         <button
           type="button"
