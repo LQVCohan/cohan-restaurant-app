@@ -421,7 +421,7 @@ const streamTextChunks = async ({
 export default fp(
   async function uploadRoutes(app) {
     app.post(
-      "/api/auth/verify-account",
+      "/auth/verify-account",
       {
         config: {
           rateLimit: {
@@ -606,24 +606,20 @@ export default fp(
           if (part.fieldname !== "images") {
             await part.toBuffer();
             await cleanupSavedPaths(savedPaths, req.log);
-            return reply
-              .code(400)
-              .send({
-                ok: false,
-                message: "Unsupported AI image upload field",
-              });
+            return reply.code(400).send({
+              ok: false,
+              message: "Unsupported AI image upload field",
+            });
           }
 
           const buffer = await part.toBuffer();
           const ext = validateTable3DAiImageFile(part, buffer);
           if (images.length >= TABLE_3D_AI_MAX_IMAGES) {
             await cleanupSavedPaths(savedPaths, req.log);
-            return reply
-              .code(400)
-              .send({
-                ok: false,
-                message: "At most 5 AI reference images are allowed",
-              });
+            return reply.code(400).send({
+              ok: false,
+              message: "At most 5 AI reference images are allowed",
+            });
           }
           const fileName = buildSafeAssetName(part.filename, ext);
           const filePath = path.join(imageDir, fileName);
@@ -641,13 +637,11 @@ export default fp(
 
         if (images.length < TABLE_3D_AI_MIN_IMAGES) {
           await cleanupSavedPaths(savedPaths, req.log);
-          return reply
-            .code(400)
-            .send({
-              ok: false,
-              status: "validation_error",
-              message: "At least 3 AI reference images are required",
-            });
+          return reply.code(400).send({
+            ok: false,
+            status: "validation_error",
+            message: "At least 3 AI reference images are required",
+          });
         }
 
         const result = await requestTableModelGeneration(
@@ -742,12 +736,10 @@ export default fp(
             const buffer = await part.toBuffer();
             if (part.fieldname === "model") {
               if (modelPayload) {
-                return reply
-                  .code(400)
-                  .send({
-                    ok: false,
-                    message: "Only one model file is allowed",
-                  });
+                return reply.code(400).send({
+                  ok: false,
+                  message: "Only one model file is allowed",
+                });
               }
               const ext = validateTable3DModelFile(part, buffer);
               modelPayload = { file: part, buffer, ext };
@@ -755,12 +747,10 @@ export default fp(
             }
 
             if (thumbnailPayload) {
-              return reply
-                .code(400)
-                .send({
-                  ok: false,
-                  message: "Only one thumbnail file is allowed",
-                });
+              return reply.code(400).send({
+                ok: false,
+                message: "Only one thumbnail file is allowed",
+              });
             }
             const ext = validateTable3DThumbnailFile(part, buffer);
             thumbnailPayload = { file: part, buffer, ext };

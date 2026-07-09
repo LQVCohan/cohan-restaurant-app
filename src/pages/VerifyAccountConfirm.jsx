@@ -3,7 +3,7 @@ import { gql } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
-import { toApiUrl } from "@/lib/apiBaseUrl";
+import { toBackendRootUrl } from "@/lib/apiBaseUrl";
 import { getRoleHomeRoute, resolveRoleName } from "@/routes/routeGuard";
 import { isAccountVerified } from "@/utils/accountVerification";
 import "./AccountVerification.product.css";
@@ -24,8 +24,14 @@ const ACCEPT_BRAND_INVITATION = gql`
 `;
 
 const CHANGE_MY_PASSWORD = gql`
-  mutation ChangeRequiredPassword($currentPassword: String!, $newPassword: String!) {
-    changeMyPassword(currentPassword: $currentPassword, newPassword: $newPassword)
+  mutation ChangeRequiredPassword(
+    $currentPassword: String!
+    $newPassword: String!
+  ) {
+    changeMyPassword(
+      currentPassword: $currentPassword
+      newPassword: $newPassword
+    )
   }
 `;
 
@@ -36,11 +42,19 @@ const pathChannel = (pathname) => {
 
 function resolveVerifyError(error) {
   const graphError = error?.graphQLErrors?.[0];
-  const code = String(graphError?.extensions?.code || error?.code || "").toUpperCase();
+  const code = String(
+    graphError?.extensions?.code || error?.code || "",
+  ).toUpperCase();
   const message = graphError?.message || error?.message || "";
 
-  if (code === "BAD_USER_INPUT" || /expired|invalid|hết hạn|không hợp lệ/i.test(message)) {
-    return message || "Liên kết xác minh không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu gửi lại email.";
+  if (
+    code === "BAD_USER_INPUT" ||
+    /expired|invalid|hết hạn|không hợp lệ/i.test(message)
+  ) {
+    return (
+      message ||
+      "Liên kết xác minh không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu gửi lại email."
+    );
   }
 
   if (code === "NETWORK_ERROR") {
@@ -53,7 +67,7 @@ function resolveVerifyError(error) {
 async function verifyAccountByToken({ token, channel }) {
   let response;
   try {
-    response = await fetch(toApiUrl("/auth/verify-account"), {
+    response = await fetch(toBackendRootUrl("/auth/verify-account"), {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -79,13 +93,22 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
   const location = useLocation();
   const token = searchParams.get("token");
   const invitationToken = searchParams.get("inviteToken");
-  const invitedEmail = String(searchParams.get("email") || "").trim().toLowerCase();
+  const invitedEmail = String(searchParams.get("email") || "")
+    .trim()
+    .toLowerCase();
   const isBrandInvitation = Boolean(invitationToken);
-  const isForcedPasswordChange = searchParams.get("forcePasswordChange") === "1";
-  const autoAcceptInvitation = isBrandInvitation && searchParams.get("auto") === "1";
-  const requiresInvitationPassword = isBrandInvitation && searchParams.get("new") === "1";
+  const isForcedPasswordChange =
+    searchParams.get("forcePasswordChange") === "1";
+  const autoAcceptInvitation =
+    isBrandInvitation && searchParams.get("auto") === "1";
+  const requiresInvitationPassword =
+    isBrandInvitation && searchParams.get("new") === "1";
   const channel = useMemo(
-    () => forcedChannel || String(searchParams.get("channel") || pathChannel(location.pathname)).toUpperCase(),
+    () =>
+      forcedChannel ||
+      String(
+        searchParams.get("channel") || pathChannel(location.pathname),
+      ).toUpperCase(),
     [forcedChannel, location.pathname, searchParams],
   );
   const navigate = useNavigate();
@@ -98,7 +121,9 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
   } = useContext(AuthContext) || {};
   const [acceptBrandInvitation] = useMutation(ACCEPT_BRAND_INVITATION);
   const [changeMyPassword] = useMutation(CHANGE_MY_PASSWORD);
-  const [status, setStatus] = useState(token || invitationToken ? "ready" : "checking-session");
+  const [status, setStatus] = useState(
+    token || invitationToken ? "ready" : "checking-session",
+  );
   const [errorMessage, setErrorMessage] = useState("");
   const [redirectPath, setRedirectPath] = useState("/");
   const [verifying, setVerifying] = useState(false);
@@ -110,7 +135,11 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
 
   useEffect(() => {
     if (token || invitationToken) {
-      setStatus((current) => (current === "error" || current === "checking-session" ? "ready" : current));
+      setStatus((current) =>
+        current === "error" || current === "checking-session"
+          ? "ready"
+          : current,
+      );
       return;
     }
 
@@ -122,7 +151,9 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
     if (isForcedPasswordChange) {
       if (!isAuthenticated || !currentToken || !user) {
         setStatus("error");
-        setErrorMessage("Vui lòng đăng nhập bằng mật khẩu tạm trong email trước khi đổi mật khẩu.");
+        setErrorMessage(
+          "Vui lòng đăng nhập bằng mật khẩu tạm trong email trước khi đổi mật khẩu.",
+        );
         return;
       }
       if (user.forcePasswordChange || user.status === "force_password_change") {
@@ -130,7 +161,9 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
         setErrorMessage("");
         return;
       }
-      const nextPath = getRoleHomeRoute(resolveRoleName({ ...user, status: "active" }));
+      const nextPath = getRoleHomeRoute(
+        resolveRoleName({ ...user, status: "active" }),
+      );
       setRedirectPath(nextPath);
       setStatus("success");
       return;
@@ -144,14 +177,25 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
     }
 
     setStatus("error");
-    setErrorMessage("Thiếu mã xác minh trong liên kết. Vui lòng mở lại link từ email hoặc yêu cầu gửi lại email xác minh.");
-  }, [authLoading, currentToken, invitationToken, isAuthenticated, isForcedPasswordChange, token, user]);
+    setErrorMessage(
+      "Thiếu mã xác minh trong liên kết. Vui lòng mở lại link từ email hoặc yêu cầu gửi lại email xác minh.",
+    );
+  }, [
+    authLoading,
+    currentToken,
+    invitationToken,
+    isAuthenticated,
+    isForcedPasswordChange,
+    token,
+    user,
+  ]);
 
   const acceptInvitation = async () => {
     if (!invitationToken) throw new Error("Thiếu mã lời mời.");
     if (requiresInvitationPassword) {
       if (!password) throw new Error("Vui lòng nhập mật khẩu mới.");
-      if (password !== confirmPassword) throw new Error("Mật khẩu xác nhận không khớp.");
+      if (password !== confirmPassword)
+        throw new Error("Mật khẩu xác nhận không khớp.");
     }
 
     await acceptBrandInvitation({
@@ -170,12 +214,16 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
 
   const changeRequiredPassword = async () => {
     if (!isAuthenticated || !currentToken || !user) {
-      throw new Error("Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.");
+      throw new Error(
+        "Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.",
+      );
     }
     if (!currentPassword) throw new Error("Vui lòng nhập mật khẩu tạm.");
     if (!password) throw new Error("Vui lòng nhập mật khẩu mới.");
-    if (password !== confirmPassword) throw new Error("Mật khẩu xác nhận không khớp.");
-    if (password === currentPassword) throw new Error("Mật khẩu mới phải khác mật khẩu tạm.");
+    if (password !== confirmPassword)
+      throw new Error("Mật khẩu xác nhận không khớp.");
+    if (password === currentPassword)
+      throw new Error("Mật khẩu mới phải khác mật khẩu tạm.");
 
     await changeMyPassword({
       variables: { currentPassword, newPassword: password },
@@ -202,7 +250,8 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
       authLogin?.(issuedToken, verifiedUser, null, {
         persistSession: true,
         rememberIdentifier: true,
-        identifier: verifiedUser.email || verifiedUser.phone || verifiedUser.username,
+        identifier:
+          verifiedUser.email || verifiedUser.phone || verifiedUser.username,
       });
       setRedirectPath(getRoleHomeRoute(resolveRoleName(verifiedUser)));
     } else if (currentToken && user) {
@@ -219,7 +268,11 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
       setRedirectPath("/login");
     }
 
-    window.history.replaceState(null, "", isSms ? "/verify-phone/confirm" : "/verify-email/confirm");
+    window.history.replaceState(
+      null,
+      "",
+      isSms ? "/verify-phone/confirm" : "/verify-email/confirm",
+    );
   };
 
   const handleConfirm = async () => {
@@ -248,16 +301,36 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoAcceptInvitation]);
 
-  const icon = isForcedPasswordChange ? "🔐" : isBrandInvitation ? "🏢" : isSms ? "📱" : "📧";
+  const icon = isForcedPasswordChange
+    ? "🔐"
+    : isBrandInvitation
+      ? "🏢"
+      : isSms
+        ? "📱"
+        : "📧";
 
   return (
-    <main className="account-verification-page" aria-labelledby="account-verification-title">
-      <section className="account-verification-card" aria-labelledby="account-verification-title" aria-live="polite">
+    <main
+      className="account-verification-page"
+      aria-labelledby="account-verification-title"
+    >
+      <section
+        className="account-verification-card"
+        aria-labelledby="account-verification-title"
+        aria-live="polite"
+      >
         {status === "checking-session" && (
           <>
             <div className="account-verification-spinner" aria-hidden="true" />
-            <div className="account-verification-icon" aria-hidden="true">{icon}</div>
-            <h1 className="account-verification-title" id="account-verification-title">Đang kiểm tra phiên đăng nhập</h1>
+            <div className="account-verification-icon" aria-hidden="true">
+              {icon}
+            </div>
+            <h1
+              className="account-verification-title"
+              id="account-verification-title"
+            >
+              Đang kiểm tra phiên đăng nhập
+            </h1>
             <p className="account-verification-text">
               Cohan đang kiểm tra thông tin tài khoản trước khi tiếp tục.
             </p>
@@ -266,8 +339,13 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
 
         {status === "ready" && (
           <>
-            <div className="account-verification-icon" aria-hidden="true">{icon}</div>
-            <h1 className="account-verification-title" id="account-verification-title">
+            <div className="account-verification-icon" aria-hidden="true">
+              {icon}
+            </div>
+            <h1
+              className="account-verification-title"
+              id="account-verification-title"
+            >
               {isForcedPasswordChange
                 ? "Đổi mật khẩu lần đầu"
                 : isBrandInvitation
@@ -281,13 +359,33 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
                   ? "Xác nhận lời mời để kích hoạt đúng vai trò và phạm vi chi nhánh đã được phân công."
                   : "Cohan đã nhận được liên kết xác minh. Nhấn nút bên dưới để kích hoạt tài khoản và đăng nhập tự động."}
             </p>
-            <div className="account-verification-contact" aria-label="Thông tin yêu cầu">
-              <p><strong>Loại yêu cầu:</strong> {isForcedPasswordChange ? "Bảo mật lần đăng nhập đầu tiên" : isBrandInvitation ? "Lời mời thành viên chuỗi" : isSms ? "Xác minh số điện thoại" : "Xác minh email"}</p>
-              <p><strong>Trạng thái:</strong> {isForcedPasswordChange ? "Bắt buộc hoàn tất trước khi tiếp tục" : "Liên kết chỉ dùng được một lần và có thời hạn"}</p>
+            <div
+              className="account-verification-contact"
+              aria-label="Thông tin yêu cầu"
+            >
+              <p>
+                <strong>Loại yêu cầu:</strong>{" "}
+                {isForcedPasswordChange
+                  ? "Bảo mật lần đăng nhập đầu tiên"
+                  : isBrandInvitation
+                    ? "Lời mời thành viên chuỗi"
+                    : isSms
+                      ? "Xác minh số điện thoại"
+                      : "Xác minh email"}
+              </p>
+              <p>
+                <strong>Trạng thái:</strong>{" "}
+                {isForcedPasswordChange
+                  ? "Bắt buộc hoàn tất trước khi tiếp tục"
+                  : "Liên kết chỉ dùng được một lần và có thời hạn"}
+              </p>
             </div>
 
             {isForcedPasswordChange && (
-              <div className="brand-invitation-password" aria-label="Đổi mật khẩu bắt buộc">
+              <div
+                className="brand-invitation-password"
+                aria-label="Đổi mật khẩu bắt buộc"
+              >
                 <label>
                   <span>Mật khẩu tạm</span>
                   <input
@@ -322,7 +420,10 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
             )}
 
             {requiresInvitationPassword && (
-              <div className="brand-invitation-password" aria-label="Thiết lập mật khẩu tài khoản">
+              <div
+                className="brand-invitation-password"
+                aria-label="Thiết lập mật khẩu tài khoản"
+              >
                 <label>
                   <span>Mật khẩu mới</span>
                   <input
@@ -347,7 +448,12 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
             )}
 
             <div className="account-verification-actions">
-              <button type="button" className="account-verification-button is-primary" onClick={handleConfirm} disabled={verifying}>
+              <button
+                type="button"
+                className="account-verification-button is-primary"
+                onClick={handleConfirm}
+                disabled={verifying}
+              >
                 {verifying
                   ? "Đang xử lý..."
                   : isForcedPasswordChange
@@ -357,7 +463,18 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
                       : "Xác nhận & đăng nhập"}
               </button>
               {!isForcedPasswordChange && (
-                <button type="button" className="account-verification-button is-muted" onClick={() => navigate(invitedEmail ? `/login?email=${encodeURIComponent(invitedEmail)}` : "/login", { replace: true })}>
+                <button
+                  type="button"
+                  className="account-verification-button is-muted"
+                  onClick={() =>
+                    navigate(
+                      invitedEmail
+                        ? `/login?email=${encodeURIComponent(invitedEmail)}`
+                        : "/login",
+                      { replace: true },
+                    )
+                  }
+                >
                   Để sau
                 </button>
               )}
@@ -368,9 +485,18 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
         {status === "verifying" && (
           <>
             <div className="account-verification-spinner" aria-hidden="true" />
-            <div className="account-verification-icon" aria-hidden="true">{icon}</div>
-            <h1 className="account-verification-title" id="account-verification-title">
-              {isForcedPasswordChange ? "Đang đổi mật khẩu" : isBrandInvitation ? "Đang kích hoạt lời mời" : "Đang xác minh tài khoản"}
+            <div className="account-verification-icon" aria-hidden="true">
+              {icon}
+            </div>
+            <h1
+              className="account-verification-title"
+              id="account-verification-title"
+            >
+              {isForcedPasswordChange
+                ? "Đang đổi mật khẩu"
+                : isBrandInvitation
+                  ? "Đang kích hoạt lời mời"
+                  : "Đang xác minh tài khoản"}
             </h1>
             <p className="account-verification-text">
               {isForcedPasswordChange
@@ -384,9 +510,21 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
 
         {status === "success" && (
           <>
-            <div className="account-verification-icon is-success" aria-hidden="true">✓</div>
-            <h1 className="account-verification-title" id="account-verification-title">
-              {isForcedPasswordChange ? "Đã đổi mật khẩu" : isBrandInvitation ? "Đã tham gia chuỗi" : "Xác minh thành công"}
+            <div
+              className="account-verification-icon is-success"
+              aria-hidden="true"
+            >
+              ✓
+            </div>
+            <h1
+              className="account-verification-title"
+              id="account-verification-title"
+            >
+              {isForcedPasswordChange
+                ? "Đã đổi mật khẩu"
+                : isBrandInvitation
+                  ? "Đã tham gia chuỗi"
+                  : "Xác minh thành công"}
             </h1>
             <p className="account-verification-text">
               {isForcedPasswordChange
@@ -396,8 +534,16 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
                   : "Tài khoản đã được kích hoạt và đăng nhập tự động trên thiết bị này."}
             </p>
             <div className="account-verification-actions">
-              <button type="button" className="account-verification-button is-primary" onClick={() => navigate(redirectPath, { replace: true })}>
-                {isForcedPasswordChange ? "Tiếp tục vào Cohan" : isBrandInvitation ? "Đến trang đăng nhập" : "Vào Cohan ngay"}
+              <button
+                type="button"
+                className="account-verification-button is-primary"
+                onClick={() => navigate(redirectPath, { replace: true })}
+              >
+                {isForcedPasswordChange
+                  ? "Tiếp tục vào Cohan"
+                  : isBrandInvitation
+                    ? "Đến trang đăng nhập"
+                    : "Vào Cohan ngay"}
               </button>
             </div>
           </>
@@ -405,18 +551,43 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
 
         {status === "error" && (
           <>
-            <div className="account-verification-icon is-error" aria-hidden="true">!</div>
-            <h1 className="account-verification-title" id="account-verification-title">
-              {isForcedPasswordChange ? "Không thể đổi mật khẩu" : isBrandInvitation ? "Không thể xác nhận lời mời" : "Không thể xác minh"}
+            <div
+              className="account-verification-icon is-error"
+              aria-hidden="true"
+            >
+              !
+            </div>
+            <h1
+              className="account-verification-title"
+              id="account-verification-title"
+            >
+              {isForcedPasswordChange
+                ? "Không thể đổi mật khẩu"
+                : isBrandInvitation
+                  ? "Không thể xác nhận lời mời"
+                  : "Không thể xác minh"}
             </h1>
             <p className="account-verification-text" role="alert">
-              {errorMessage || "Yêu cầu không thể hoàn tất. Vui lòng quay lại đăng nhập và thử lại."}
+              {errorMessage ||
+                "Yêu cầu không thể hoàn tất. Vui lòng quay lại đăng nhập và thử lại."}
             </p>
             <div className="account-verification-actions">
               {isForcedPasswordChange && isAuthenticated ? (
-                <button type="button" className="account-verification-button is-primary" onClick={() => setStatus("ready")}>Thử lại</button>
+                <button
+                  type="button"
+                  className="account-verification-button is-primary"
+                  onClick={() => setStatus("ready")}
+                >
+                  Thử lại
+                </button>
               ) : (
-                <button type="button" className="account-verification-button is-primary" onClick={() => navigate("/login")}>Quay lại đăng nhập</button>
+                <button
+                  type="button"
+                  className="account-verification-button is-primary"
+                  onClick={() => navigate("/login")}
+                >
+                  Quay lại đăng nhập
+                </button>
               )}
             </div>
           </>
