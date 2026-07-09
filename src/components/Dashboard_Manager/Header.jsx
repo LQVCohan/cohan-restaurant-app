@@ -10,6 +10,7 @@ import "./Account/ManagerAccountOverlay.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { getDisplayUser, getInitials, resolveUserAvatarSrc } from "@/lib/userAvatar";
 import { getBrandRoleLabel, getCombinedRoleLabel, getMembershipScopeLabel, getRoleTooltip, getSystemRoleLabel } from "@/lib/userRoleDisplay";
+import { isAdminRole } from "@/utils/frontendRoleAccess";
 
 const getNotificationIcon = (type) => {
   if (type === "success") return <FiCheckCircle />;
@@ -72,6 +73,7 @@ const Header = ({
     ) || null,
     [activeBrand?.restaurants, selectedRestaurantId],
   );
+  const showCuisineOnboarding = !isAdminRole(user) && selectedRestaurant?.initialSetup?.status === "pending";
   const unreadCount = localNotifications.filter((item) => !item.read).length;
 
   useEffect(() => setLocalNotifications(Array.isArray(notifications) ? notifications : []), [notifications]);
@@ -207,7 +209,7 @@ const Header = ({
         </div>
       </header>
       {accountTab && <ManagerAccountCenter initialTab={accountTab} onClose={() => setAccountTab(null)} />}
-      {selectedRestaurant?.initialSetup?.status === "pending" && (
+      {showCuisineOnboarding && (
         <RestaurantCuisineOnboarding
           key={selectedRestaurant.id || selectedRestaurant._id}
           restaurant={selectedRestaurant}

@@ -1,11 +1,12 @@
 {
   "id": "07-10-system-log-pagination",
   "title": "Improve manager check log readability and pagination",
-  "status": "in_progress",
+  "status": "done",
   "createdAt": "2026-07-10",
+  "completedAt": "2026-07-10",
   "scope": [
     "Upgrade the newly added SystemLogsPage UI for readability",
-    "Add complete pagination controls for audit, event, and combined log views",
+    "Add pagination controls for audit, event, and combined log views",
     "Keep existing GraphQL contracts and manager/admin scoping"
   ]
 }

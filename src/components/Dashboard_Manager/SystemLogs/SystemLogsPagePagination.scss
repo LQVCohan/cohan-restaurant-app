@@ -1,0 +1,99 @@
+.system-logs-page__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.system-logs-page__stats button {
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.system-logs-page__stats button:hover,
+.system-logs-page__stats button.active {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.42);
+  background: #f8fbff;
+}
+
+.system-logs-page__toolbar {
+  grid-template-columns: minmax(260px, 1fr) minmax(180px, 240px);
+}
+
+.system-logs-page__row:hover {
+  background: #fbfdff;
+}
+
+.system-logs-page__row time {
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+}
+
+.system-logs-page__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.system-logs-page__pagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 14px;
+  padding: 10px 14px;
+  background: #172033;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.18s ease, opacity 0.18s ease, background 0.18s ease;
+}
+
+.system-logs-page__pagination button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #0f172a;
+}
+
+.system-logs-page__pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.system-logs-page__pagination strong {
+  min-width: 132px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 14px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #334155;
+  text-align: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 980px) {
+  .system-logs-page__meta,
+  .system-logs-page__pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .system-logs-page__pagination button,
+  .system-logs-page__pagination strong {
+    width: 100%;
+  }
+}
