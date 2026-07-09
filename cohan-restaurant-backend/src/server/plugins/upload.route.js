@@ -21,19 +21,19 @@ import { handleRestaurantChatbotMessage } from "../../services/ai/restaurantChat
 
 const MAX_FILE_SIZE_BYTES = Number.parseInt(
   process.env.UPLOAD_MAX_FILE_SIZE_BYTES || `${10 * 1024 * 1024}`,
-  10
+  10,
 );
 const TABLE_3D_MODEL_MAX_FILE_SIZE_BYTES = Number.parseInt(
   process.env.TABLE_3D_MODEL_MAX_FILE_SIZE_BYTES || `${15 * 1024 * 1024}`,
-  10
+  10,
 );
 const TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES = Number.parseInt(
   process.env.TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES || `${3 * 1024 * 1024}`,
-  10
+  10,
 );
 const TABLE_3D_AI_IMAGE_MAX_FILE_SIZE_BYTES = Number.parseInt(
   process.env.TABLE_3D_AI_IMAGE_MAX_FILE_SIZE_BYTES || `${5 * 1024 * 1024}`,
-  10
+  10,
 );
 const TABLE_3D_AI_MIN_IMAGES = 3;
 const TABLE_3D_AI_MAX_IMAGES = 5;
@@ -41,7 +41,7 @@ const TABLE_3D_MAX_MULTIPART_FILE_SIZE_BYTES = Math.max(
   MAX_FILE_SIZE_BYTES,
   TABLE_3D_MODEL_MAX_FILE_SIZE_BYTES,
   TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES,
-  TABLE_3D_AI_IMAGE_MAX_FILE_SIZE_BYTES
+  TABLE_3D_AI_IMAGE_MAX_FILE_SIZE_BYTES,
 );
 const TABLE_3D_MODEL_EXTENSIONS = new Set([".glb"]);
 const TABLE_3D_MODEL_MIME_TYPES = new Set([
@@ -55,15 +55,17 @@ const TABLE_3D_THUMBNAIL_MIME_TYPES = new Set([
 ]);
 const TABLE_3D_AI_IMAGE_MIME_TYPES = TABLE_3D_THUMBNAIL_MIME_TYPES;
 const ALLOWED_MIME_TYPES = new Set(
-  (process.env.UPLOAD_ALLOWED_MIME_TYPES ||
-    "image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif")
+  (
+    process.env.UPLOAD_ALLOWED_MIME_TYPES ||
+    "image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif"
+  )
     .split(",")
     .map((m) => m.trim())
-    .filter(Boolean)
+    .filter(Boolean),
 );
 const TEMP_FILE_RETENTION_MS = Number.parseInt(
   process.env.UPLOAD_TEMP_RETENTION_MS || `${24 * 60 * 60 * 1000}`,
-  10
+  10,
 );
 
 const ensureDir = async (dir) => {
@@ -74,12 +76,15 @@ const buildPublicBase = (req) =>
   process.env.PUBLIC_BASE_URL ||
   `${req.protocol}://${req.headers["x-forwarded-host"] || req.headers.host}`;
 
-const isDevelopmentMode = () => (process.env.UPLOAD_MODE || "local") === "local";
+const isDevelopmentMode = () =>
+  (process.env.UPLOAD_MODE || "local") === "local";
 
 const assertMimeAndSize = (file, fileSize) => {
   if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
     const allowed = Array.from(ALLOWED_MIME_TYPES).join(", ");
-    throw new Error(`Unsupported MIME type '${file.mimetype}'. Allowed: ${allowed}`);
+    throw new Error(
+      `Unsupported MIME type '${file.mimetype}'. Allowed: ${allowed}`,
+    );
   }
   if (fileSize > MAX_FILE_SIZE_BYTES) {
     throw new Error(`File exceeds max size of ${MAX_FILE_SIZE_BYTES} bytes`);
@@ -109,7 +114,12 @@ const getCleanExtension = (filename = "") =>
 
 const assertNoUnsafeUploadName = (filename = "") => {
   const raw = String(filename || "");
-  if (!raw || raw.includes("/") || raw.includes("\\") || raw.split(/[\\/]/).some((part) => part === "..")) {
+  if (
+    !raw ||
+    raw.includes("/") ||
+    raw.includes("\\") ||
+    raw.split(/[\\/]/).some((part) => part === "..")
+  ) {
     throw new Error("Invalid file name");
   }
 };
@@ -118,13 +128,19 @@ const validateTable3DModelFile = (file, buffer) => {
   assertNoUnsafeUploadName(file.filename);
   const ext = getCleanExtension(file.filename);
   if (!TABLE_3D_MODEL_EXTENSIONS.has(ext)) {
-    throw new Error("Only .glb table 3D model files are supported in this phase");
+    throw new Error(
+      "Only .glb table 3D model files are supported in this phase",
+    );
   }
-  if (!TABLE_3D_MODEL_MIME_TYPES.has(String(file.mimetype || "").toLowerCase())) {
+  if (
+    !TABLE_3D_MODEL_MIME_TYPES.has(String(file.mimetype || "").toLowerCase())
+  ) {
     throw new Error("Unsupported table 3D model MIME type");
   }
   if (!buffer.length || buffer.length > TABLE_3D_MODEL_MAX_FILE_SIZE_BYTES) {
-    throw new Error(`Model file exceeds max size of ${TABLE_3D_MODEL_MAX_FILE_SIZE_BYTES} bytes`);
+    throw new Error(
+      `Model file exceeds max size of ${TABLE_3D_MODEL_MAX_FILE_SIZE_BYTES} bytes`,
+    );
   }
   return ext;
 };
@@ -141,11 +157,18 @@ const validateTable3DThumbnailFile = (file, buffer) => {
   if (!TABLE_3D_THUMBNAIL_MIME_TYPES.has(mimeType)) {
     throw new Error("Thumbnail must be PNG, JPEG, or WebP");
   }
-  if (!buffer.length || buffer.length > TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES) {
-    throw new Error(`Thumbnail exceeds max size of ${TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES} bytes`);
+  if (
+    !buffer.length ||
+    buffer.length > TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES
+  ) {
+    throw new Error(
+      `Thumbnail exceeds max size of ${TABLE_3D_THUMBNAIL_MAX_FILE_SIZE_BYTES} bytes`,
+    );
   }
   if (![".png", ".jpg", ".jpeg", ".webp"].includes(ext)) {
-    throw new Error("Thumbnail file extension must be .png, .jpg, .jpeg, or .webp");
+    throw new Error(
+      "Thumbnail file extension must be .png, .jpg, .jpeg, or .webp",
+    );
   }
   return extByMime[mimeType] || ext;
 };
@@ -163,10 +186,14 @@ const validateTable3DAiImageFile = (file, buffer) => {
     throw new Error("AI reference images must be PNG, JPEG, or WebP");
   }
   if (!buffer.length || buffer.length > TABLE_3D_AI_IMAGE_MAX_FILE_SIZE_BYTES) {
-    throw new Error(`AI reference image exceeds max size of ${TABLE_3D_AI_IMAGE_MAX_FILE_SIZE_BYTES} bytes`);
+    throw new Error(
+      `AI reference image exceeds max size of ${TABLE_3D_AI_IMAGE_MAX_FILE_SIZE_BYTES} bytes`,
+    );
   }
   if (![".png", ".jpg", ".jpeg", ".webp"].includes(ext)) {
-    throw new Error("AI reference image extension must be .png, .jpg, .jpeg, or .webp");
+    throw new Error(
+      "AI reference image extension must be .png, .jpg, .jpeg, or .webp",
+    );
   }
   return extByMime[mimeType] || ext;
 };
@@ -179,9 +206,12 @@ export const cleanupSavedPaths = async (savedPaths = [], logger) => {
       try {
         await fs.unlink(filePath);
       } catch (err) {
-        logger?.warn?.({ err, filePath }, "failed to cleanup table 3d ai input file");
+        logger?.warn?.(
+          { err, filePath },
+          "failed to cleanup table 3d ai input file",
+        );
       }
-    })
+    }),
   );
 };
 
@@ -199,10 +229,7 @@ const parseJsonField = (value, fallback = {}) => {
 };
 
 const normalizePrefix = (prefix = "") =>
-  prefix
-    .trim()
-    .replace(/^\/+/, "")
-    .replace(/\/+$/, "");
+  prefix.trim().replace(/^\/+/, "").replace(/\/+$/, "");
 
 const cleanupTempUploads = async (tempDir, logger) => {
   try {
@@ -218,7 +245,7 @@ const cleanupTempUploads = async (tempDir, logger) => {
           if (now - stat.mtimeMs > TEMP_FILE_RETENTION_MS) {
             await fs.unlink(filePath).catch(() => {});
           }
-        })
+        }),
     );
   } catch (err) {
     logger?.warn({ err }, "temp file cleanup failed");
@@ -231,8 +258,14 @@ const sha256Hex = (value) =>
 const hmac = (key, value, encoding) =>
   crypto.createHmac("sha256", key).update(value).digest(encoding);
 
-const UPLOAD_RATE_LIMIT_MAX = Number.parseInt(process.env.UPLOAD_RATE_LIMIT_MAX || "30", 10);
-const UPLOAD_RATE_LIMIT_WINDOW_MS = Number.parseInt(process.env.UPLOAD_RATE_LIMIT_WINDOW_MS || `${60 * 1000}`, 10);
+const UPLOAD_RATE_LIMIT_MAX = Number.parseInt(
+  process.env.UPLOAD_RATE_LIMIT_MAX || "30",
+  10,
+);
+const UPLOAD_RATE_LIMIT_WINDOW_MS = Number.parseInt(
+  process.env.UPLOAD_RATE_LIMIT_WINDOW_MS || `${60 * 1000}`,
+  10,
+);
 // In-memory limiter is acceptable for single-instance/dev only.
 // In multi-instance production, use a shared store (e.g. Redis) or shared @fastify/rate-limit backend.
 const uploadRateStore = new Map();
@@ -249,7 +282,10 @@ const ensureUploadAuth = async (req, reply) => {
 const consumeUploadRateLimit = (req, userId) => {
   const now = Date.now();
   const key = `${userId}:${req.ip}`;
-  const bucket = uploadRateStore.get(key) || { count: 0, resetAt: now + UPLOAD_RATE_LIMIT_WINDOW_MS };
+  const bucket = uploadRateStore.get(key) || {
+    count: 0,
+    resetAt: now + UPLOAD_RATE_LIMIT_WINDOW_MS,
+  };
   if (now > bucket.resetAt) {
     bucket.count = 0;
     bucket.resetAt = now + UPLOAD_RATE_LIMIT_WINDOW_MS;
@@ -259,11 +295,14 @@ const consumeUploadRateLimit = (req, userId) => {
   return bucket.count <= UPLOAD_RATE_LIMIT_MAX;
 };
 
-const normalizeObjectKey = (value = "") => String(value).trim().replace(/^\/+/, "");
+const normalizeObjectKey = (value = "") =>
+  String(value).trim().replace(/^\/+/, "");
 
-const hasUnsafePathSegments = (key = "") => key.split("/").some((part) => !part || part === "." || part === "..");
+const hasUnsafePathSegments = (key = "") =>
+  key.split("/").some((part) => !part || part === "." || part === "..");
 
-const buildUserScopedUploadPrefix = (basePrefix, userId) => `${normalizePrefix(basePrefix)}/${String(userId || "").trim()}/`;
+const buildUserScopedUploadPrefix = (basePrefix, userId) =>
+  `${normalizePrefix(basePrefix)}/${String(userId || "").trim()}/`;
 
 const createS3Context = () => {
   const bucket = process.env.S3_BUCKET;
@@ -274,7 +313,7 @@ const createS3Context = () => {
 
   if (!bucket || !endpoint || !accessKeyId || !secretAccessKey) {
     throw new Error(
-      "S3_BUCKET, S3_ENDPOINT, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY are required when UPLOAD_MODE=s3"
+      "S3_BUCKET, S3_ENDPOINT, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY are required when UPLOAD_MODE=s3",
     );
   }
 
@@ -283,7 +322,7 @@ const createS3Context = () => {
   const keyPrefix = normalizePrefix(process.env.S3_UPLOAD_PREFIX || "uploads");
   const signedUrlExpiresSec = Number.parseInt(
     process.env.S3_SIGNED_URL_EXPIRES_SEC || "900",
-    10
+    10,
   );
 
   return {
@@ -296,8 +335,7 @@ const createS3Context = () => {
     keyPrefix,
     signedUrlExpiresSec,
     publicBase: (
-      process.env.S3_PUBLIC_BASE_URL ||
-      `${endpointUrl.origin}/${bucket}`
+      process.env.S3_PUBLIC_BASE_URL || `${endpointUrl.origin}/${bucket}`
     ).replace(/\/$/, ""),
   };
 };
@@ -309,9 +347,7 @@ const buildSignedPutUrl = ({ s3, key, mimeType }) => {
   const credentialScope = `${dateStamp}/${s3.region}/s3/aws4_request`;
 
   const host = s3.endpointUrl.host;
-  const canonicalUri = s3.forcePathStyle
-    ? `/${s3.bucket}/${key}`
-    : `/${key}`;
+  const canonicalUri = s3.forcePathStyle ? `/${s3.bucket}/${key}` : `/${key}`;
 
   const query = new URLSearchParams({
     "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
@@ -346,9 +382,7 @@ const buildSignedPutUrl = ({ s3, key, mimeType }) => {
   query.set("X-Amz-Signature", signature);
 
   const signedUrl = new URL(s3.endpointUrl.toString());
-  signedUrl.pathname = s3.forcePathStyle
-    ? `/${s3.bucket}/${key}`
-    : `/${key}`;
+  signedUrl.pathname = s3.forcePathStyle ? `/${s3.bucket}/${key}` : `/${key}`;
   signedUrl.search = query.toString();
   return signedUrl.toString();
 };
@@ -360,108 +394,140 @@ const writeSseEvent = (stream, event, payload) => {
   stream.write(`data: ${JSON.stringify(payload || {})}\n\n`);
 };
 
-const streamTextChunks = async ({ stream, event = "delta", text, isClosed }) => {
+const streamTextChunks = async ({
+  stream,
+  event = "delta",
+  text,
+  isClosed,
+}) => {
   const value = String(text || "");
-  const chunkSize = Number.parseInt(process.env.AI_CHATBOT_STREAM_CHUNK_SIZE || "36", 10);
-  const delayMs = Number.parseInt(process.env.AI_CHATBOT_STREAM_DELAY_MS || "12", 10);
+  const chunkSize = Number.parseInt(
+    process.env.AI_CHATBOT_STREAM_CHUNK_SIZE || "36",
+    10,
+  );
+  const delayMs = Number.parseInt(
+    process.env.AI_CHATBOT_STREAM_DELAY_MS || "12",
+    10,
+  );
   for (let index = 0; index < value.length; index += Math.max(8, chunkSize)) {
     if (isClosed()) return;
-    writeSseEvent(stream, event, { text: value.slice(index, index + Math.max(8, chunkSize)) });
+    writeSseEvent(stream, event, {
+      text: value.slice(index, index + Math.max(8, chunkSize)),
+    });
     if (delayMs > 0) await wait(delayMs);
   }
 };
 
 export default fp(
   async function uploadRoutes(app) {
-    app.post("/auth/verify-account", {
-      config: {
-        rateLimit: {
-          max: Number(process.env.RL_AUTH_VERIFY_ACCOUNT_MAX || 20),
-          timeWindow: process.env.RL_AUTH_VERIFY_ACCOUNT_WINDOW || "1 minute",
+    app.post(
+      "/api/auth/verify-account",
+      {
+        config: {
+          rateLimit: {
+            max: Number(process.env.RL_AUTH_VERIFY_ACCOUNT_MAX || 20),
+            timeWindow: process.env.RL_AUTH_VERIFY_ACCOUNT_WINDOW || "1 minute",
+          },
         },
       },
-    }, async function (req, reply) {
-      try {
-        const { token, channel } = req.body || {};
-        const result = await verifyAnyTokenAndIssueAuth({
-          token,
-          channel,
-          ctx: { request: req, reply },
-        });
-        return reply.send({ ok: true, token: result.token, user: result.user });
-      } catch (err) {
-        const code = err?.extensions?.code || err?.code || "VERIFY_FAILED";
-        req.log?.warn?.({ err, code }, "account verification auth endpoint failed");
-        return reply.code(code === "BAD_USER_INPUT" ? 400 : 500).send({
-          ok: false,
-          code,
-          message: err?.message || "Verification failed",
-        });
-      }
-    });
-
-    app.post("/ai/chatbot/stream", {
-      config: {
-        rateLimit: {
-          max: Number(process.env.RL_AI_CHATBOT_STREAM_MAX || 60),
-          timeWindow: process.env.RL_AI_CHATBOT_STREAM_WINDOW || "1 minute",
-        },
-      },
-    }, async function (req, reply) {
-      let closed = false;
-      req.raw.on("close", () => {
-        closed = true;
-      });
-
-      reply.hijack();
-      const stream = reply.raw;
-      stream.writeHead(200, {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
-        "X-Accel-Buffering": "no",
-      });
-
-      const heartbeat = setInterval(() => {
-        if (!closed) stream.write(": ping\n\n");
-      }, 15000);
-
-      try {
-        const body = req.body || {};
-        writeSseEvent(stream, "status", { message: "AI đã nhận câu hỏi" });
-        const authUser = await resolveAuthenticatedUserFromRequest(req).catch(() => null);
-        writeSseEvent(stream, "status", { message: "AI đang kiểm tra ngữ cảnh" });
-        const result = await handleRestaurantChatbotMessage({
-          message: body.message,
-          restaurantId: body.restaurantId,
-          history: Array.isArray(body.history) ? body.history : [],
-          guestId: body.guestId,
-          conversationId: body.conversationId,
-          pageContext: body.pageContext || {},
-          user: authUser || null,
-          clientIp: req.ip || "",
-        });
-
-        if (closed) return;
-        writeSseEvent(stream, "status", { message: "AI đang trả lời" });
-        await streamTextChunks({
-          stream,
-          text: result?.answer || "",
-          isClosed: () => closed,
-        });
-        if (!closed) writeSseEvent(stream, "done", result);
-      } catch (err) {
-        if (!closed) {
-          writeSseEvent(stream, "error", {
-            message: err?.message || "Không thể xử lý tin nhắn chatbot",
-            code: err?.code || "AI_CHATBOT_STREAM_FAILED",
+      async function (req, reply) {
+        try {
+          const { token, channel } = req.body || {};
+          const result = await verifyAnyTokenAndIssueAuth({
+            token,
+            channel,
+            ctx: { request: req, reply },
+          });
+          return reply.send({
+            ok: true,
+            token: result.token,
+            user: result.user,
+          });
+        } catch (err) {
+          const code = err?.extensions?.code || err?.code || "VERIFY_FAILED";
+          req.log?.warn?.(
+            { err, code },
+            "account verification auth endpoint failed",
+          );
+          return reply.code(code === "BAD_USER_INPUT" ? 400 : 500).send({
+            ok: false,
+            code,
+            message: err?.message || "Verification failed",
           });
         }
-      } finally {
-        clearInterval(heartbeat);
-        if (!closed) stream.end();
-      }
-    });
+      },
+    );
+
+    app.post(
+      "/ai/chatbot/stream",
+      {
+        config: {
+          rateLimit: {
+            max: Number(process.env.RL_AI_CHATBOT_STREAM_MAX || 60),
+            timeWindow: process.env.RL_AI_CHATBOT_STREAM_WINDOW || "1 minute",
+          },
+        },
+      },
+      async function (req, reply) {
+        let closed = false;
+        req.raw.on("close", () => {
+          closed = true;
+        });
+
+        reply.hijack();
+        const stream = reply.raw;
+        stream.writeHead(200, {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+          "X-Accel-Buffering": "no",
+        });
+
+        const heartbeat = setInterval(() => {
+          if (!closed) stream.write(": ping\n\n");
+        }, 15000);
+
+        try {
+          const body = req.body || {};
+          writeSseEvent(stream, "status", { message: "AI đã nhận câu hỏi" });
+          const authUser = await resolveAuthenticatedUserFromRequest(req).catch(
+            () => null,
+          );
+          writeSseEvent(stream, "status", {
+            message: "AI đang kiểm tra ngữ cảnh",
+          });
+          const result = await handleRestaurantChatbotMessage({
+            message: body.message,
+            restaurantId: body.restaurantId,
+            history: Array.isArray(body.history) ? body.history : [],
+            guestId: body.guestId,
+            conversationId: body.conversationId,
+            pageContext: body.pageContext || {},
+            user: authUser || null,
+            clientIp: req.ip || "",
+          });
+
+          if (closed) return;
+          writeSseEvent(stream, "status", { message: "AI đang trả lời" });
+          await streamTextChunks({
+            stream,
+            text: result?.answer || "",
+            isClosed: () => closed,
+          });
+          if (!closed) writeSseEvent(stream, "done", result);
+        } catch (err) {
+          if (!closed) {
+            writeSseEvent(stream, "error", {
+              message: err?.message || "Không thể xử lý tin nhắn chatbot",
+              code: err?.code || "AI_CHATBOT_STREAM_FAILED",
+            });
+          }
+        } finally {
+          clearInterval(heartbeat);
+          if (!closed) stream.end();
+        }
+      },
+    );
 
     if (!app.hasContentTypeParser("multipart")) {
       await app.register(multipart, {
@@ -473,10 +539,19 @@ export default fp(
     const table3DAiRateStore = new Map();
     const consumeTable3DAiRateLimit = (req, userId) => {
       const now = Date.now();
-      const max = Number.parseInt(process.env.TABLE_3D_AI_RATE_LIMIT_MAX || "10", 10);
-      const windowMs = Number.parseInt(process.env.TABLE_3D_AI_RATE_LIMIT_WINDOW_MS || `${60 * 1000}`, 10);
+      const max = Number.parseInt(
+        process.env.TABLE_3D_AI_RATE_LIMIT_MAX || "10",
+        10,
+      );
+      const windowMs = Number.parseInt(
+        process.env.TABLE_3D_AI_RATE_LIMIT_WINDOW_MS || `${60 * 1000}`,
+        10,
+      );
       const key = `${userId}:${req.ip}:table3d-ai`;
-      const bucket = table3DAiRateStore.get(key) || { count: 0, resetAt: now + windowMs };
+      const bucket = table3DAiRateStore.get(key) || {
+        count: 0,
+        resetAt: now + windowMs,
+      };
       if (now > bucket.resetAt) {
         bucket.count = 0;
         bucket.resetAt = now + windowMs;
@@ -490,13 +565,18 @@ export default fp(
       const authUser = await ensureUploadAuth(req, reply);
       if (!authUser) return;
       if (!consumeTable3DAiRateLimit(req, authUser.id)) {
-        return reply.code(429).send({ ok: false, message: "Too many AI generation requests" });
+        return reply
+          .code(429)
+          .send({ ok: false, message: "Too many AI generation requests" });
       }
 
       const savedPaths = [];
       try {
         const availability = getTable3DAiGenerationAvailability(process.env);
-        if (!availability.configured || availability.status === "pending_provider") {
+        if (
+          !availability.configured ||
+          availability.status === "pending_provider"
+        ) {
           return reply.code(503).send({
             ok: false,
             status: availability.status,
@@ -506,7 +586,7 @@ export default fp(
         }
 
         const uploadRoot = path.resolve(
-          process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads")
+          process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads"),
         );
         const imageDir = path.join(uploadRoot, "table-3d", "ai-inputs");
         await ensureDir(imageDir);
@@ -526,14 +606,24 @@ export default fp(
           if (part.fieldname !== "images") {
             await part.toBuffer();
             await cleanupSavedPaths(savedPaths, req.log);
-            return reply.code(400).send({ ok: false, message: "Unsupported AI image upload field" });
+            return reply
+              .code(400)
+              .send({
+                ok: false,
+                message: "Unsupported AI image upload field",
+              });
           }
 
           const buffer = await part.toBuffer();
           const ext = validateTable3DAiImageFile(part, buffer);
           if (images.length >= TABLE_3D_AI_MAX_IMAGES) {
             await cleanupSavedPaths(savedPaths, req.log);
-            return reply.code(400).send({ ok: false, message: "At most 5 AI reference images are allowed" });
+            return reply
+              .code(400)
+              .send({
+                ok: false,
+                message: "At most 5 AI reference images are allowed",
+              });
           }
           const fileName = buildSafeAssetName(part.filename, ext);
           const filePath = path.join(imageDir, fileName);
@@ -551,12 +641,22 @@ export default fp(
 
         if (images.length < TABLE_3D_AI_MIN_IMAGES) {
           await cleanupSavedPaths(savedPaths, req.log);
-          return reply.code(400).send({ ok: false, status: "validation_error", message: "At least 3 AI reference images are required" });
+          return reply
+            .code(400)
+            .send({
+              ok: false,
+              status: "validation_error",
+              message: "At least 3 AI reference images are required",
+            });
         }
 
         const result = await requestTableModelGeneration(
           { ...metadata, userId: authUser.id, images },
-          { userId: authUser.id, restaurantId: metadata.restaurantId, requestId: req.id }
+          {
+            userId: authUser.id,
+            restaurantId: metadata.restaurantId,
+            requestId: req.id,
+          },
         );
         if (!shouldKeepAiInputFilesForResult(result)) {
           await cleanupSavedPaths(savedPaths, req.log);
@@ -577,14 +677,18 @@ export default fp(
       const authUser = await ensureUploadAuth(req, reply);
       if (!authUser) return;
       if (!consumeTable3DAiRateLimit(req, authUser.id)) {
-        return reply.code(429).send({ ok: false, message: "Too many AI generation requests" });
+        return reply
+          .code(429)
+          .send({ ok: false, message: "Too many AI generation requests" });
       }
-      const result = await getTableModelGenerationStatus(req.params?.jobId, { userId: authUser.id });
+      const result = await getTableModelGenerationStatus(req.params?.jobId, {
+        userId: authUser.id,
+      });
       return reply.code(result.ok ? 200 : 503).send(result);
     });
 
     const tempDir = path.resolve(
-      process.env.UPLOAD_TEMP_DIR || path.join(os.tmpdir(), "cohan-uploads")
+      process.env.UPLOAD_TEMP_DIR || path.join(os.tmpdir(), "cohan-uploads"),
     );
     await cleanupTempUploads(tempDir, app.log);
     setInterval(() => {
@@ -593,7 +697,7 @@ export default fp(
 
     if (isDevelopmentMode()) {
       const uploadRoot = path.resolve(
-        process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads")
+        process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads"),
       );
       await ensureDir(uploadRoot);
 
@@ -611,7 +715,9 @@ export default fp(
         const authUser = await ensureUploadAuth(req, reply);
         if (!authUser) return;
         if (!consumeUploadRateLimit(req, authUser.id)) {
-          return reply.code(429).send({ ok: false, message: "Too many upload requests" });
+          return reply
+            .code(429)
+            .send({ ok: false, message: "Too many upload requests" });
         }
 
         const savedPaths = [];
@@ -628,13 +734,20 @@ export default fp(
             if (part.type !== "file") continue;
             if (part.fieldname !== "model" && part.fieldname !== "thumbnail") {
               await part.toBuffer();
-              return reply.code(400).send({ ok: false, message: "Unsupported upload field" });
+              return reply
+                .code(400)
+                .send({ ok: false, message: "Unsupported upload field" });
             }
 
             const buffer = await part.toBuffer();
             if (part.fieldname === "model") {
               if (modelPayload) {
-                return reply.code(400).send({ ok: false, message: "Only one model file is allowed" });
+                return reply
+                  .code(400)
+                  .send({
+                    ok: false,
+                    message: "Only one model file is allowed",
+                  });
               }
               const ext = validateTable3DModelFile(part, buffer);
               modelPayload = { file: part, buffer, ext };
@@ -642,26 +755,41 @@ export default fp(
             }
 
             if (thumbnailPayload) {
-              return reply.code(400).send({ ok: false, message: "Only one thumbnail file is allowed" });
+              return reply
+                .code(400)
+                .send({
+                  ok: false,
+                  message: "Only one thumbnail file is allowed",
+                });
             }
             const ext = validateTable3DThumbnailFile(part, buffer);
             thumbnailPayload = { file: part, buffer, ext };
           }
 
           if (!modelPayload) {
-            return reply.code(400).send({ ok: false, message: "Model .glb file is required" });
+            return reply
+              .code(400)
+              .send({ ok: false, message: "Model .glb file is required" });
           }
 
-          const modelFileName = buildSafeAssetName(modelPayload.file.filename, modelPayload.ext);
+          const modelFileName = buildSafeAssetName(
+            modelPayload.file.filename,
+            modelPayload.ext,
+          );
           const modelPath = path.join(modelDir, modelFileName);
           await fs.writeFile(modelPath, modelPayload.buffer, { flag: "wx" });
           savedPaths.push(modelPath);
 
           let thumbnailUrl = "";
           if (thumbnailPayload) {
-            const thumbnailFileName = buildSafeAssetName(thumbnailPayload.file.filename, thumbnailPayload.ext);
+            const thumbnailFileName = buildSafeAssetName(
+              thumbnailPayload.file.filename,
+              thumbnailPayload.ext,
+            );
             const thumbnailPath = path.join(thumbnailDir, thumbnailFileName);
-            await fs.writeFile(thumbnailPath, thumbnailPayload.buffer, { flag: "wx" });
+            await fs.writeFile(thumbnailPath, thumbnailPayload.buffer, {
+              flag: "wx",
+            });
             savedPaths.push(thumbnailPath);
             thumbnailUrl = `${buildPublicBase(req)}/uploads/table-3d/thumbnails/${thumbnailFileName}`;
           }
@@ -678,7 +806,9 @@ export default fp(
             storage: "local",
           });
         } catch (err) {
-          await Promise.all(savedPaths.map((filePath) => fs.unlink(filePath).catch(() => {})));
+          await Promise.all(
+            savedPaths.map((filePath) => fs.unlink(filePath).catch(() => {})),
+          );
           req.log.error({ err }, "table 3d asset upload failed");
           return reply.code(400).send({
             ok: false,
@@ -691,7 +821,9 @@ export default fp(
         const authUser = await ensureUploadAuth(req, reply);
         if (!authUser) return;
         if (!consumeUploadRateLimit(req, authUser.id)) {
-          return reply.code(429).send({ ok: false, message: "Too many upload requests" });
+          return reply
+            .code(429)
+            .send({ ok: false, message: "Too many upload requests" });
         }
         try {
           const data = await req.file();
@@ -725,12 +857,17 @@ export default fp(
           return reply.code(400).send({
             ok: false,
             message:
-              err?.message || "Invalid image format. Please upload a valid image.",
+              err?.message ||
+              "Invalid image format. Please upload a valid image.",
           });
         }
       });
 
-      app.get("/_probe", async () => ({ ok: true, route: "upload", storage: "local" }));
+      app.get("/_probe", async () => ({
+        ok: true,
+        route: "upload",
+        storage: "local",
+      }));
       return;
     }
 
@@ -740,7 +877,9 @@ export default fp(
       const authUser = await ensureUploadAuth(req, reply);
       if (!authUser) return;
       if (!consumeUploadRateLimit(req, authUser.id)) {
-        return reply.code(429).send({ ok: false, message: "Too many upload requests" });
+        return reply
+          .code(429)
+          .send({ ok: false, message: "Too many upload requests" });
       }
       const body = req.body || {};
       const mimeType = String(body.mimeType || "").trim();
@@ -751,11 +890,19 @@ export default fp(
           .code(400)
           .send({ ok: false, message: `Unsupported MIME type '${mimeType}'` });
       }
-      if (!Number.isFinite(fileSize) || fileSize <= 0 || fileSize > MAX_FILE_SIZE_BYTES) {
-        return reply.code(400).send({ ok: false, message: "Invalid file size" });
+      if (
+        !Number.isFinite(fileSize) ||
+        fileSize <= 0 ||
+        fileSize > MAX_FILE_SIZE_BYTES
+      ) {
+        return reply
+          .code(400)
+          .send({ ok: false, message: "Invalid file size" });
       }
 
-      const requestedExt = String(body.extension || "").trim().toLowerCase();
+      const requestedExt = String(body.extension || "")
+        .trim()
+        .toLowerCase();
       const ext = requestedExt || mimeType.split("/")[1] || "bin";
       const userPrefix = buildUserScopedUploadPrefix(s3.keyPrefix, authUser.id);
       const key = `${userPrefix}${randomName(ext)}`;
@@ -777,7 +924,9 @@ export default fp(
       const authUser = await ensureUploadAuth(req, reply);
       if (!authUser) return;
       if (!consumeUploadRateLimit(req, authUser.id)) {
-        return reply.code(429).send({ ok: false, message: "Too many upload requests" });
+        return reply
+          .code(429)
+          .send({ ok: false, message: "Too many upload requests" });
       }
       const { key } = req.body || {};
       if (!key) {
@@ -786,23 +935,41 @@ export default fp(
 
       const normalizedKey = normalizeObjectKey(key);
       if (!normalizedKey || hasUnsafePathSegments(normalizedKey)) {
-        return reply.code(400).send({ ok: false, message: "Invalid upload key" });
+        return reply
+          .code(400)
+          .send({ ok: false, message: "Invalid upload key" });
       }
 
       const allowedBasePrefix = `${normalizePrefix(s3.keyPrefix)}/`;
       if (!normalizedKey.startsWith(allowedBasePrefix)) {
-        return reply.code(400).send({ ok: false, message: "Invalid upload key" });
+        return reply
+          .code(400)
+          .send({ ok: false, message: "Invalid upload key" });
       }
 
-      const userScopedPrefix = buildUserScopedUploadPrefix(s3.keyPrefix, authUser.id);
+      const userScopedPrefix = buildUserScopedUploadPrefix(
+        s3.keyPrefix,
+        authUser.id,
+      );
       if (!normalizedKey.startsWith(userScopedPrefix)) {
-        return reply.code(403).send({ ok: false, message: "Forbidden upload key" });
+        return reply
+          .code(403)
+          .send({ ok: false, message: "Forbidden upload key" });
       }
 
-      return reply.send({ ok: true, key: normalizedKey, url: `${s3.publicBase}/${normalizedKey}`, storage: "s3" });
+      return reply.send({
+        ok: true,
+        key: normalizedKey,
+        url: `${s3.publicBase}/${normalizedKey}`,
+        storage: "s3",
+      });
     });
 
-    app.get("/_probe", async () => ({ ok: true, route: "upload", storage: "s3" }));
+    app.get("/_probe", async () => ({
+      ok: true,
+      route: "upload",
+      storage: "s3",
+    }));
   },
-  { name: "upload-routes", fastify: "4.x || 5.x" }
+  { name: "upload-routes", fastify: "4.x || 5.x" },
 );
