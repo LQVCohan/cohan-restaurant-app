@@ -26,7 +26,7 @@ export function buildAdminUserPayload({ email, passwordHash, adminRoleId }) {
 }
 
 async function main() {
-  const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
+  const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/RestaurantDB";
   const DB_NAME = process.env.MONGO_DB || "RestaurantDB";
 
   await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
