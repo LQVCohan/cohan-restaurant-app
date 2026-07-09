@@ -53,6 +53,7 @@ async function main() {
   } else {
     user.role = adminRole._id;
     user.status = "active";
+    user.provider = "local";
     user.userType = "ADMIN";
     user.emailVerified = true;
     user.emailVerifiedAt ||= new Date();
@@ -60,11 +61,14 @@ async function main() {
     user.verificationLastChannel = "email";
     user.verificationLastStatus = "verified";
     user.forcePasswordChange = false;
+    if (!user.passwordHash) {
+      user.passwordHash = await bcrypt.hash(password, 10);
+    }
     await user.save();
-    console.log("ℹ️ Admin existed, normalized role/status:", email);
+    console.log("ℹ️ Admin existed, normalized login fields:", email);
   }
 
-  console.log("🎉 DONE. Admin account is ready for:", email);
+  console.log("🎉 DONE. Admin account is ready for:", email, String(user._id));
   await mongoose.disconnect();
 }
 
