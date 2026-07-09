@@ -29,7 +29,7 @@ LOG_LEVEL=debug
 JWT_SECRET=${localJwtSecret}
 JWT_EXPIRES_IN=7d
 JWT_ISSUER=cohan-system
-MONGO_URI=mongodb://127.0.0.1:27017/RestaurantDB
+MONGO_URI=mongodb://127.0.0.1:27017/RestaurantDB?replicaSet=rs0
 MONGO_DB=RestaurantDB
 CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:4000
 RL_GLOBAL_MAX=200
