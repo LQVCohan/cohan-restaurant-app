@@ -13,7 +13,31 @@ vi.mock("./Account/ManagerAccountCenter", () => ({
   default: ({ initialTab }) => <div data-testid="manager-account-center" data-tab={initialTab} />,
 }));
 
-const renderHeader = (avatar = "/uploads/admin.png") => {
+vi.mock("./RestaurantSetup/RestaurantCuisineOnboarding", () => ({
+  default: () => <div data-testid="cuisine-onboarding" />,
+}));
+
+const pendingBrand = {
+  id: "b1",
+  name: "COHAN",
+  restaurants: [
+    {
+      id: "r1",
+      name: "Chi nhánh mới",
+      initialSetup: { status: "pending" },
+    },
+  ],
+};
+
+const renderHeader = (avatarOrOptions = "/uploads/admin.png") => {
+  const options = typeof avatarOrOptions === "object"
+    ? avatarOrOptions
+    : { avatar: avatarOrOptions };
+  const {
+    avatar = "/uploads/admin.png",
+    user: userOverride = {},
+    activeBrand = null,
+  } = options;
   const logout = vi.fn();
   render(
     <MemoryRouter>
@@ -24,11 +48,12 @@ const renderHeader = (avatar = "/uploads/admin.png") => {
             roleName: "admin",
             email: "admin@example.com",
             avatar,
+            ...userOverride,
           },
           logout,
         }}
       >
-        <Header />
+        <Header activeBrand={activeBrand} />
       </AuthContext.Provider>
     </MemoryRouter>,
   );
@@ -84,5 +109,24 @@ describe("manager Header", () => {
     openUserMenu();
     fireEvent.click(screen.getByRole("button", { name: "Đăng xuất" }));
     expect(logout).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not auto-show cuisine onboarding for system admin", () => {
+    localStorage.setItem("manager.selectedRestaurantId", "r1");
+
+    renderHeader({ activeBrand: pendingBrand });
+
+    expect(screen.queryByTestId("cuisine-onboarding")).not.toBeInTheDocument();
+  });
+
+  it("still shows cuisine onboarding for a manager scoped to a pending branch", () => {
+    localStorage.setItem("manager.selectedRestaurantId", "r1");
+
+    renderHeader({
+      activeBrand: pendingBrand,
+      user: { fullName: "Manager User", roleName: "manager" },
+    });
+
+    expect(screen.getByTestId("cuisine-onboarding")).toBeInTheDocument();
   });
 });
