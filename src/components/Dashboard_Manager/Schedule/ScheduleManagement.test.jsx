@@ -362,7 +362,7 @@ describe("ScheduleManagement", () => {
       expect(within(staffSection).getByText(/Phân công nhân viên \(1\)/i)).toBeInTheDocument();
     });
 
-    fireEvent.click(within(modal).getByRole("button", { name: /Lưu\s*&\s*Tạo\s*Lịch/i }));
+    fireEvent.click(within(modal).getByRole("button", { name: /Tạo ca làm việc/i }));
 
     await waitFor(() => expect(within(modal).queryByText(/Cần chọn ít nhất một nhân viên/i)).not.toBeInTheDocument());
     await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
