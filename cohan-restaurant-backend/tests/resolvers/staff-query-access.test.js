@@ -20,6 +20,12 @@ const guardMocks = vi.hoisted(() => ({
   requireRestaurantScope: vi.fn(),
 }));
 
+const scopeMocks = vi.hoisted(() => ({
+  getStaffRestaurantIds: vi.fn(async () => ["r1"]),
+  getStaffMembershipRestaurantFilter: vi.fn(async () => ({ _id: { $in: ["s1", "s2"] } })),
+  isSystemAdmin: vi.fn(() => false),
+}));
+
 const runtimeMocks = vi.hoisted(() => ({
   buildPayrollItemsForRange: vi.fn(), getPayrollSettings: vi.fn(), getPeriodDetail: vi.fn(), mapPayrollDocToGql: vi.fn((v) => v), summarize: vi.fn(() => ({})), toObjectId: vi.fn((v) => v),
 }));
@@ -28,6 +34,7 @@ const calcMocks = vi.hoisted(() => ({ buildPayrollItem: vi.fn(() => ({})) }));
 
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../graphql/guards.js", () => guardMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", () => scopeMocks);
 vi.mock("../../src/services/payroll/payrollRuntime.service.js", () => runtimeMocks);
 vi.mock("../../src/services/scheduling/schedulingPolicy.service.js", () => scheduleMocks);
 vi.mock("../../src/services/payroll/payrollCalculator.service.js", () => calcMocks);
@@ -53,6 +60,9 @@ const lean = (v) => ({ lean: vi.fn(async () => v) });
 beforeEach(() => {
   vi.clearAllMocks();
   guardMocks.requireAuth.mockReturnValue(undefined);
+  scopeMocks.getStaffRestaurantIds.mockResolvedValue(["r1"]);
+  scopeMocks.getStaffMembershipRestaurantFilter.mockResolvedValue({ _id: { $in: ["s1", "s2"] } });
+  scopeMocks.isSystemAdmin.mockReturnValue(false);
 });
 
 describe("staff query access guards", () => {
@@ -70,10 +80,10 @@ describe("staff query access guards", () => {
     guardMocks.requireRestaurantAccess.mockRejectedValueOnce(new Error("denied"));
     const populateSpy = vi.fn().mockReturnThis();
     modelMocks.Staff.findById
-      .mockReturnValueOnce({ select: vi.fn(() => lean({ _id: "s2", userType: "STAFF", deletedAt: null, primaryRestaurant: "valid-r1" })) })
+      .mockReturnValueOnce({ select: vi.fn(() => lean({ _id: "s2", userType: "STAFF", deletedAt: null })) })
       .mockReturnValueOnce({ populate: populateSpy });
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
-    await expect(query.staff(null, { id: "s2" }, { user: { id: "me" } })).rejects.toThrow("denied");
+    await expect(query.staff(null, { id: "s2" }, { user: { id: "me" } })).rejects.toThrow("FORBIDDEN_SCOPE");
     expect(populateSpy).not.toHaveBeenCalled();
   });
 
@@ -99,7 +109,6 @@ describe("staff query access guards", () => {
     const staffDoc = {
       _id: "s2",
       userType: "STAFF",
-      restaurantForStaff: "r1",
     };
 
     modelMocks.Staff.findById.mockReturnValue({
@@ -107,6 +116,7 @@ describe("staff query access guards", () => {
         populate: vi.fn().mockResolvedValue(staffDoc),
       }),
     });
+    scopeMocks.getStaffRestaurantIds.mockResolvedValue(["r1"]);
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("denied"));
 
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
