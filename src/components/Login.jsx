@@ -132,6 +132,23 @@ const FieldIcon = ({ type }) => {
         <path d="m4 7 8 6 8-6" />
       </>
     ),
+    phone: (
+      <>
+        <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.8a2 2 0 0 1-.4 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z" />
+      </>
+    ),
+    building: (
+      <>
+        <rect x="4" y="3" width="16" height="18" rx="2" />
+        <path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M9 21v-4h6v4" />
+      </>
+    ),
+    mapPin: (
+      <>
+        <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+        <circle cx="12" cy="10" r="3" />
+      </>
+    ),
     eye: (
       <>
         <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
@@ -238,7 +255,7 @@ const LoginAudience = () => (
     </span>
     <span>
       <strong>Thương hiệu</strong>
-      <small>Brand, chi nhánh, POS</small>
+      <small>Thương hiệu, chi nhánh, POS</small>
     </span>
   </div>
 );
@@ -314,7 +331,6 @@ const LoginPage = () => {
   const [loginForm, setLoginForm] = useState({
     identifier: "",
     password: "",
-    rememberSession: true,
     rememberIdentifier: true,
   });
   const [registerForm, setRegisterForm] = useState(CUSTOMER_REGISTER_INITIAL);
@@ -389,7 +405,6 @@ const LoginPage = () => {
         return;
       }
       authLogin(token, loggedInUser, null, {
-        persistSession: loginForm.rememberSession,
         rememberIdentifier: loginForm.rememberIdentifier,
         identifier: loginForm.identifier,
       });
@@ -561,7 +576,7 @@ const LoginPage = () => {
 
             {isBrandRegister ? (
               <>
-                <p className="auth-subtitle">Tạo thương hiệu trước, sau đó hệ thống sẽ gắn chi nhánh đầu tiên vào Brand.</p>
+                <p className="auth-subtitle">Tạo thương hiệu trước, sau đó hệ thống sẽ tạo chi nhánh đầu tiên cho thương hiệu đó.</p>
                 <label className="field-label" htmlFor="brand-register-full-name">Người đại diện</label>
                 <div className="input-wrapper"><FieldIcon type="user" /><input id="brand-register-full-name" type="text" placeholder="Họ và tên" autoComplete="name" value={brandRegisterForm.fullName} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, fullName: e.target.value })} /></div>
 
@@ -569,7 +584,7 @@ const LoginPage = () => {
                 <div className="input-wrapper"><FieldIcon type="mail" /><input id="brand-register-email" type="email" placeholder="Email" autoComplete="email" value={brandRegisterForm.email} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, email: e.target.value })} /></div>
 
                 <label className="field-label" htmlFor="brand-register-phone">Số điện thoại</label>
-                <div className="input-wrapper"><FieldIcon type="user" /><input id="brand-register-phone" type="tel" placeholder="Số điện thoại" autoComplete="tel" value={brandRegisterForm.phone} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, phone: e.target.value })} /></div>
+                <div className="input-wrapper"><FieldIcon type="phone" /><input id="brand-register-phone" type="tel" placeholder="Số điện thoại" autoComplete="tel" value={brandRegisterForm.phone} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, phone: e.target.value })} /></div>
 
                 <label className="field-label" htmlFor="brand-register-password">Mật khẩu</label>
                 <div className="password-field">
@@ -589,13 +604,13 @@ const LoginPage = () => {
                 </div>
 
                 <label className="field-label" htmlFor="brand-register-name">Tên thương hiệu</label>
-                <div className="input-wrapper"><FieldIcon type="user" /><input id="brand-register-name" type="text" placeholder="VD: Cohan Restaurant" autoComplete="organization" value={brandRegisterForm.brandName} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, brandName: e.target.value })} /></div>
+                <div className="input-wrapper"><FieldIcon type="building" /><input id="brand-register-name" type="text" placeholder="VD: Cohan Restaurant" autoComplete="organization" value={brandRegisterForm.brandName} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, brandName: e.target.value })} /></div>
 
                 <label className="field-label" htmlFor="brand-register-restaurant">Chi nhánh đầu tiên</label>
-                <div className="input-wrapper"><FieldIcon type="user" /><input id="brand-register-restaurant" type="text" placeholder="Để trống sẽ dùng tên thương hiệu" autoComplete="organization" value={brandRegisterForm.firstRestaurantName} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, firstRestaurantName: e.target.value })} /></div>
+                <div className="input-wrapper"><FieldIcon type="building" /><input id="brand-register-restaurant" type="text" placeholder="Để trống sẽ dùng tên thương hiệu" autoComplete="organization" value={brandRegisterForm.firstRestaurantName} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, firstRestaurantName: e.target.value })} /></div>
 
                 <label className="field-label" htmlFor="brand-register-address">Địa chỉ chi nhánh</label>
-                <div className="input-wrapper"><FieldIcon type="user" /><input id="brand-register-address" type="text" placeholder="Địa chỉ" autoComplete="street-address" value={brandRegisterForm.address} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, address: e.target.value })} /></div>
+                <div className="input-wrapper"><FieldIcon type="mapPin" /><input id="brand-register-address" type="text" placeholder="Địa chỉ" autoComplete="street-address" value={brandRegisterForm.address} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, address: e.target.value })} /></div>
 
                 <label className="check-card check-card--terms"><input type="checkbox" checked={brandRegisterForm.terms} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, terms: e.target.checked })} /><span>Tôi đồng ý với chính sách & điều khoản</span></label>
               </>
@@ -644,23 +659,22 @@ const LoginPage = () => {
             <label className="field-label" htmlFor="login-password">Mật khẩu</label>
             <div className="input-wrapper"><FieldIcon type="lock" /><input id="login-password" type={showPassword ? "text" : "password"} placeholder="Mật khẩu" aria-label="Mật khẩu" autoComplete="current-password" value={loginForm.password} onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} /><PasswordToggleButton visible={showPassword} onToggle={() => setShowPassword((current) => !current)} /></div>
 
-            <button type="button" className="forgot-link" onClick={() => showNotification("Tính năng đặt lại mật khẩu đang được chuẩn bị. Vui lòng liên hệ hỗ trợ nếu cần đổi mật khẩu.", "info")}>Quên mật khẩu?</button>
+            <button type="button" className="forgot-link" onClick={() => showNotification("Vui lòng liên hệ quản trị viên nhà hàng hoặc bộ phận hỗ trợ để đặt lại mật khẩu.", "info")}>Quên mật khẩu?</button>
             {renderCaptcha(recaptchaLoginRef)}
-            <div className="remember-card"><label className="check-row"><input type="checkbox" checked={loginForm.rememberSession} onChange={(e) => setLoginForm({ ...loginForm, rememberSession: e.target.checked })} /><span>Duy trì đăng nhập tối đa 30 ngày trên thiết bị này</span></label><label className="check-row"><input type="checkbox" checked={loginForm.rememberIdentifier} onChange={(e) => setLoginForm({ ...loginForm, rememberIdentifier: e.target.checked })} /><span>Ghi nhớ tài khoản (chỉ lưu email/số điện thoại)</span></label></div>
+            <div className="remember-card"><label className="check-row"><input type="checkbox" checked={loginForm.rememberIdentifier} onChange={(e) => setLoginForm({ ...loginForm, rememberIdentifier: e.target.checked })} /><span>Ghi nhớ tài khoản trên thiết bị này (chỉ lưu email/số điện thoại)</span></label></div>
             <button type="submit" className="btn-primary" disabled={loginLoading || captchaConfigMissing}>{loginLoading ? "Đang xử lý..." : "Đăng nhập"}</button>
-            <div className="social-container" aria-label="Đăng nhập bằng mạng xã hội"><button type="button" className="social social-facebook" aria-label="Đăng nhập bằng Facebook sắp ra mắt" disabled>f</button><button type="button" className="social social-google" aria-label="Đăng nhập bằng Google sắp ra mắt" disabled>G</button></div>
           </form>
         </div>
 
-        <div className="overlay-container" aria-hidden="true">
+        <div className="overlay-container">
           <div className="overlay">
             <FloatingFoodIcons />
             <div className="overlay-panel overlay-left">
               <h1>Chào mừng</h1>
-              <p>Đăng ký khách hàng để đặt món, hoặc đăng ký thương hiệu để tạo Brand và chi nhánh đầu tiên.</p>
+              <p>Đăng ký khách hàng để đặt món, hoặc đăng ký thương hiệu để tạo thương hiệu và chi nhánh đầu tiên.</p>
               <div className="overlay-access-stack">
                 <span><strong>Khách hàng</strong><small>Đặt món, ví, khẩu vị</small></span>
-                <span><strong>Thương hiệu</strong><small>Tạo Brand, chi nhánh, POS</small></span>
+                <span><strong>Thương hiệu</strong><small>Tạo thương hiệu, chi nhánh, POS</small></span>
               </div>
               <button type="button" className="ghost" onClick={() => togglePanel(false)}>Đăng nhập</button>
             </div>
@@ -669,7 +683,7 @@ const LoginPage = () => {
               <p>Đăng nhập Cohan để tiếp tục với đúng vai trò: khách hàng hoặc đội vận hành thương hiệu.</p>
               <div className="overlay-access-stack">
                 <span><strong>Khách hàng</strong><small>Theo dõi đơn & ưu đãi</small></span>
-                <span><strong>Thương hiệu</strong><small>Kiểm soát Brand, bàn, ca, POS</small></span>
+                <span><strong>Thương hiệu</strong><small>Kiểm soát thương hiệu, bàn, ca, POS</small></span>
               </div>
               <button type="button" className="ghost" onClick={() => togglePanel(true)}>Đăng ký</button>
             </div>
