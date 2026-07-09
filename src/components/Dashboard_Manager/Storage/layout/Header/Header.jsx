@@ -118,7 +118,7 @@ const Header = ({
               className="sm-btn secondary"
               onClick={handleImportData}
               disabled={actionDisabled || !canWriteInventory || !activeActions.import}
-              title={disabledWriteTitle || `Nhập ${activeTabCopy.label} từ Excel hoặc CSV`}
+              title={disabledWriteTitle || `Nhập ${activeTabCopy.label} từ file Excel hoặc CSV`}
             >
               <Upload size={17} /> <span className="hide-on-mobile">Nhập file</span>
             </button>
@@ -129,16 +129,16 @@ const Header = ({
                 className="sm-btn secondary"
                 onClick={() => handleExportData("xlsx")}
                 disabled={actionDisabled || !activeActions.exportXlsx}
-                title={`Xuất ${activeTabCopy.label} dạng XLSX`}
+                title={`Xuất ${activeTabCopy.label} ra file Excel`}
               >
-                <Download size={17} /> <span>XLSX</span>
+                <Download size={17} /> <span>Excel</span>
               </button>
               <button
                 type="button"
                 className="sm-btn secondary compact"
                 onClick={() => handleExportData("csv")}
                 disabled={actionDisabled || !activeActions.exportCsv}
-                title={`Xuất ${activeTabCopy.label} dạng CSV`}
+                title={`Xuất ${activeTabCopy.label} ra file CSV`}
               >
                 CSV
               </button>
@@ -278,11 +278,11 @@ const Header = ({
 function getActiveTabCopy(activeTab) {
   switch (activeTab) {
     case "ingredients":
-      return { label: "Nguyên liệu", helper: "Import, export và báo cáo nguyên liệu.", Icon: Package };
+      return { label: "Nguyên liệu", helper: "Nhập file, xuất file và lập báo cáo nguyên liệu.", Icon: Package };
     case "supplies":
-      return { label: "Vật tư", helper: "Import, export và báo cáo vật tư.", Icon: PackageOpen };
+      return { label: "Vật tư", helper: "Nhập file, xuất file và lập báo cáo vật tư.", Icon: PackageOpen };
     case "recipes":
-      return { label: "Công thức", helper: "Import, export và báo cáo công thức.", Icon: BookOpen };
+      return { label: "Công thức", helper: "Nhập file, xuất file và lập báo cáo công thức.", Icon: BookOpen };
     case "inventory":
       return { label: "Kiểm kê", helper: "Ưu tiên tồn kho, định mức và biến động.", Icon: ClipboardList };
     default:
