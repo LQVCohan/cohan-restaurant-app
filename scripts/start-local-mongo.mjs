@@ -11,6 +11,12 @@ const dataDir = path.resolve(
   process.env.MONGO_DBPATH ||
     (isWindows ? 'C:\\data\\db' : path.join(os.homedir(), '.cohan', 'mongodb', 'data')),
 );
+const defaultLogPath = isWindows
+  ? 'C:\\data\\mongod.log'
+  : path.join(os.homedir(), '.cohan', 'mongodb', 'mongod.log');
+const requestedLogPath = process.env.MONGO_LOGPATH ?? defaultLogPath;
+const logToConsole = ['0', 'false', 'stdout', 'console'].includes(String(requestedLogPath).toLowerCase());
+const extraArgs = process.argv.slice(2).filter((arg) => arg !== '--');
 
 function isPortOpen(targetHost, targetPort) {
   return new Promise((resolve) => {
@@ -25,6 +31,10 @@ function isPortOpen(targetHost, targetPort) {
     socket.once('timeout', () => done(false));
     socket.once('error', () => done(false));
   });
+}
+
+function hasOption(args, names) {
+  return args.some((arg) => names.some((name) => arg === name || arg.startsWith(`${name}=`)));
 }
 
 function versionScore(name) {
@@ -112,6 +122,16 @@ function findRunnableMongod() {
   return null;
 }
 
+function getLogArgs() {
+  if (logToConsole || hasOption(extraArgs, ['--logpath'])) return [];
+
+  const logPath = path.resolve(requestedLogPath);
+  fs.mkdirSync(path.dirname(logPath), { recursive: true });
+  const args = ['--logpath', logPath];
+  if (!hasOption(extraArgs, ['--logappend'])) args.push('--logappend');
+  return args;
+}
+
 if (!Number.isInteger(port) || port <= 0 || port > 65535) {
   console.error(`❌ Invalid MONGO_PORT: ${process.env.MONGO_PORT}`);
   process.exit(1);
@@ -129,6 +149,7 @@ if (!mongodBin) {
 }
 
 fs.mkdirSync(dataDir, { recursive: true });
+const logArgs = getLogArgs();
 
 const args = [
   '--dbpath',
@@ -137,11 +158,13 @@ const args = [
   host,
   '--port',
   String(port),
-  ...process.argv.slice(2),
+  ...logArgs,
+  ...extraArgs,
 ];
 
 console.log(`▶️  Starting MongoDB: ${mongodBin}`);
 console.log(`📁 Data directory: ${dataDir}`);
+if (logArgs.length) console.log(`📝 Log file: ${logArgs[1]}`);
 console.log(`🌐 Listening: ${host}:${port}`);
 console.log('Press Ctrl+C to stop MongoDB.');
 
