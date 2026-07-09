@@ -1,0 +1,253 @@
+.system-logs-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: #172033;
+}
+
+.system-logs-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.88));
+  box-shadow: 0 16px 42px rgba(15, 23, 42, 0.08);
+}
+
+.system-logs-page__eyebrow {
+  display: inline-flex;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.system-logs-page__header h2 {
+  margin: 0;
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.08;
+}
+
+.system-logs-page__header p {
+  max-width: 62ch;
+  margin: 8px 0 0;
+  color: #64748b;
+}
+
+.system-logs-page__refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 14px;
+  padding: 10px 14px;
+  background: #172033;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.system-logs-page__refresh:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.system-logs-page__refresh:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.system-logs-page__stats,
+.system-logs-page__toolbar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.system-logs-page__stats article,
+.system-logs-page__toolbar label {
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.07);
+}
+
+.system-logs-page__stats article {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 16px;
+}
+
+.system-logs-page__stats strong {
+  grid-column: 1 / -1;
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+}
+
+.system-logs-page__stats span,
+.system-logs-page__toolbar span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.system-logs-page__toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+}
+
+.system-logs-page__toolbar select,
+.system-logs-page__toolbar input {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  color: #172033;
+  outline: none;
+}
+
+.system-logs-page__search div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  border-radius: 12px;
+  padding: 0 10px;
+  background: #fff;
+}
+
+.system-logs-page__search input {
+  border: 0;
+  padding-left: 0;
+}
+
+.system-logs-page__error,
+.system-logs-page__state,
+.system-logs-page--empty {
+  border-radius: 18px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #64748b;
+  text-align: center;
+}
+
+.system-logs-page__error {
+  color: #b42318;
+  background: #fff1f0;
+  text-align: left;
+}
+
+.system-logs-page__table {
+  overflow: hidden;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+}
+
+.system-logs-page__table-head,
+.system-logs-page__row {
+  display: grid;
+  grid-template-columns: 150px 86px minmax(150px, 1.1fr) minmax(120px, 0.9fr) minmax(140px, 1fr) minmax(180px, 1.2fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+}
+
+.system-logs-page__table-head {
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.system-logs-page__row {
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  font-size: 14px;
+}
+
+.system-logs-page__row time,
+.system-logs-page__row span,
+.system-logs-page__row strong,
+.system-logs-page__row summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.system-logs-page__badge {
+  justify-self: start;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.system-logs-page__badge--audit {
+  color: #854d0e;
+  background: #fef3c7;
+}
+
+.system-logs-page__badge--event {
+  color: #075985;
+  background: #e0f2fe;
+}
+
+.system-logs-page__row details {
+  min-width: 0;
+}
+
+.system-logs-page__row summary {
+  cursor: pointer;
+  color: #334155;
+}
+
+.system-logs-page__row pre {
+  max-height: 280px;
+  overflow: auto;
+  margin: 10px 0 0;
+  border-radius: 12px;
+  padding: 12px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.system-logs-page--empty {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  min-height: 260px;
+}
+
+.system-logs-page--empty h2,
+.system-logs-page--empty p {
+  margin: 0;
+}
+
+@media (max-width: 980px) {
+  .system-logs-page__header {
+    flex-direction: column;
+  }
+
+  .system-logs-page__table-head {
+    display: none;
+  }
+
+  .system-logs-page__row {
+    grid-template-columns: 1fr;
+  }
+}
