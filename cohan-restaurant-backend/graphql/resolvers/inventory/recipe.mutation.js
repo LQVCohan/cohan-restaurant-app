@@ -171,4 +171,20 @@ export default {
     await syncMenuItemFromRecipe({ restaurantId, menuItemId, variants: recipe.servingVariants || [] });
     return recipe.toObject({ virtuals: true });
   },
+
+  deleteRecipePermanently: async (_p, { restaurantId, menuItemId }, ctx) => {
+    if (![restaurantId, menuItemId].every(mongoose.isValidObjectId)) return false;
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_WRITE);
+
+    const res = await Recipe.deleteOne({
+      restaurantId,
+      menuItemId,
+      deletedAt: { $ne: null },
+    });
+
+    if (res.deletedCount > 0) {
+      await resetMenuItemRecipeCache({ restaurantId, menuItemId });
+    }
+    return res.deletedCount > 0;
+  },
 };

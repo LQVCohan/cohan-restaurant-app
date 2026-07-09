@@ -3,7 +3,8 @@ import { GraphQLError } from "graphql";
 import { Supply, StockItem, StockMovement, SupplyCategory } from "../../../models/index.js";
 import Warehouse from "../../../models/warehouse.model.js";
 import { findOrCreateSupplyCategory, isValidObjectId, toEnglishCategoryName } from "./mutation.support.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 const SOFT_DELETE_RETENTION_DAYS = 30;
 const ACTIVE_SUPPLY_FILTER = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
@@ -100,7 +101,7 @@ async function assertWarehouseBelongsToRestaurant({ warehouseId, restaurantId })
 
 export default {
   createSupply: async (_p, { input }, ctx) => {
-    await requireRestaurantAccess(ctx, input.restaurantId);
+    await requireRestaurantPermission(ctx, input.restaurantId, PERMISSIONS.INVENTORY_WRITE);
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
@@ -129,7 +130,7 @@ export default {
     if (!isValidObjectId(id)) return null;
     const existing = await Supply.findOne({ _id: id, ...ACTIVE_SUPPLY_FILTER }).select({ restaurantId: 1 }).lean();
     if (!existing) return null;
-    await requireRestaurantAccess(ctx, existing.restaurantId);
+    await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.INVENTORY_WRITE);
     const patch = { ...input };
     delete patch.restaurantId;
     const session = await mongoose.startSession();
@@ -163,7 +164,7 @@ export default {
     if (!mongoose.isValidObjectId(id)) return false;
     const existing = await Supply.findOne({ _id: id, ...ACTIVE_SUPPLY_FILTER });
     if (!existing) return false;
-    await requireRestaurantAccess(ctx, existing.restaurantId);
+    await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.INVENTORY_WRITE);
     const now = new Date();
     existing.set({
       isActive: false,
@@ -178,7 +179,7 @@ export default {
     if (!mongoose.isValidObjectId(id)) return null;
     const existing = await Supply.findOne({ _id: id, deletedAt: { $ne: null } });
     if (!existing) return null;
-    await requireRestaurantAccess(ctx, existing.restaurantId);
+    await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.INVENTORY_WRITE);
     await assertSupplyBusinessUnique({ restaurantId: existing.restaurantId, excludeId: id, name: existing.name, sku: existing.sku, category: existing.category });
     existing.set({ deletedAt: null, deleteExpiresAt: null, isActive: true });
     await existing.save();
@@ -190,7 +191,7 @@ export default {
     const nQty = Number(qty);
     if (![restaurantId, warehouseId, supplyId].every(mongoose.isValidObjectId)) throw new Error("Invalid IDs");
     if (!Number.isFinite(nQty) || nQty === 0) throw new Error("qty must be a non-zero number");
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_WRITE);
     await assertWarehouseBelongsToRestaurant({ warehouseId, restaurantId });
     const supply = await getActiveSupplyOrThrow({ restaurantId, supplyId });
     const stock = await StockItem.findOneAndUpdate(
@@ -209,7 +210,7 @@ export default {
     if (!Number.isFinite(nQty) || nQty <= 0) throw new GraphQLError("Số lượng nhập phải lớn hơn 0.", { extensions: { code: "BAD_USER_INPUT" } });
     const nCost = costPerBaseUnit === null || costPerBaseUnit === undefined ? 0 : Number(costPerBaseUnit);
     if (!Number.isFinite(nCost) || nCost < 0) throw new GraphQLError("Giá nhập không hợp lệ.", { extensions: { code: "BAD_USER_INPUT" } });
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_WRITE);
     await assertWarehouseBelongsToRestaurant({ warehouseId, restaurantId });
     const supply = await getActiveSupplyOrThrow({ restaurantId, supplyId });
 
@@ -239,7 +240,7 @@ export default {
     const nQty = Number(qty);
     if (![restaurantId, warehouseId, supplyId].every(mongoose.isValidObjectId)) throw new GraphQLError("Thông tin kho hoặc vật tư không hợp lệ.", { extensions: { code: "BAD_USER_INPUT" } });
     if (!Number.isFinite(nQty) || nQty <= 0) throw new GraphQLError("Số lượng xuất phải lớn hơn 0.", { extensions: { code: "BAD_USER_INPUT" } });
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_WRITE);
     await getActiveSupplyOrThrow({ restaurantId, supplyId });
     const stock = await StockItem.findOne({ restaurantId, warehouseId, supplyId });
     if (!stock) throw new GraphQLError("Vật tư này chưa có tồn kho tại kho đang chọn.", { extensions: { code: "STOCK_ITEM_NOT_FOUND" } });
@@ -265,7 +266,7 @@ export default {
     const nQty = Number(qty);
     if (![restaurantId, fromWarehouseId, toWarehouseId, supplyId].every(mongoose.isValidObjectId)) throw new Error("Invalid IDs");
     if (!Number.isFinite(nQty) || nQty <= 0) throw new Error("qty must be > 0");
-    await requireRestaurantAccess(ctx, restaurantId);
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_WRITE);
     await getActiveSupplyOrThrow({ restaurantId, supplyId });
     if (fromWarehouseId === toWarehouseId) throw new Error("Cannot transfer to the same warehouse");
     const warehouses = await Warehouse.find({ _id: { $in: [fromWarehouseId, toWarehouseId] }, restaurantId }).lean();

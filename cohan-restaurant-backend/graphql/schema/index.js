@@ -70,6 +70,7 @@ extend type Mutation {
   adminUpdateUser(userId: ID!, input: AdminUpdateUserInput!): User
   updateCustomerMetrics(id: ID!, restaurantId: ID!, loyaltyPoints: Int!, customerType: CustomerType!): User
   resendUserVerification(userId: ID!, channel: VerificationChannel = AUTO): VerificationResult
+  resendSmsVerification(phone: String!): Boolean
 }
 `;
 

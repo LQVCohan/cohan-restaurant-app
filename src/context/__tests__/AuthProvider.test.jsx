@@ -52,6 +52,26 @@ function Consumer() {
       >
         login
       </button>
+      <button
+        onClick={() =>
+          ctx.login("remember-token", { id: "u2", roleName: "customer" }, null, {
+            rememberIdentifier: true,
+            identifier: "  tester@example.com  ",
+          })
+        }
+      >
+        login-remember
+      </button>
+      <button
+        onClick={() =>
+          ctx.login("forget-token", { id: "u3", roleName: "customer" }, null, {
+            rememberIdentifier: false,
+            identifier: "tester@example.com",
+          })
+        }
+      >
+        login-forget
+      </button>
       <button onClick={() => ctx.login("admin-token", { id: "admin-1", roleName: "admin", emailVerified: true })}>login-admin</button>
       <button onClick={() => ctx.logout()}>logout</button>
     </>
@@ -133,6 +153,23 @@ describe("AuthProvider", () => {
       getQueryText(query).includes("query Me"),
     );
     expect(getQueryText(meQueryCall?.[0])).not.toContain("restaurantForStaff");
+  });
+
+  it("login honors remembered identifier options", async () => {
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+
+    fireEvent.click(screen.getByText("login-remember"));
+    await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("remember-token"));
+    expect(localStorage.getItem("remembered_login_identifier")).toBe("tester@example.com");
+
+    fireEvent.click(screen.getByText("login-forget"));
+    await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("forget-token"));
+    expect(localStorage.getItem("remembered_login_identifier")).toBeNull();
+    expect(sessionStorage.getItem("remembered_login_identifier")).toBeNull();
   });
 
   it("clears Apollo account cache on logout", async () => {

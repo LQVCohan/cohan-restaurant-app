@@ -105,6 +105,29 @@ describe("Inventory restaurant access guards", () => {
     expect(modelMocks.MenuItem.updateOne).not.toHaveBeenCalled();
   });
 
+  it("deleteRecipePermanently denied does not call writes", async () => {
+    guardMocks.requireRestaurantAccess.mockRejectedValue(forbidden);
+    const m = (await import("../../graphql/resolvers/inventory/recipe.mutation.js")).default;
+    await expect(m.deleteRecipePermanently(null, { restaurantId: "valid-r1", menuItemId: "valid-m1" }, ctx)).rejects.toThrow("FORBIDDEN_SCOPE");
+    expect(modelMocks.Recipe.deleteOne).not.toHaveBeenCalled();
+    expect(modelMocks.MenuItem.updateOne).not.toHaveBeenCalled();
+  });
+
+  it("deleteRecipePermanently deletes soft-deleted recipe and resets menu cache", async () => {
+    modelMocks.Recipe.deleteOne.mockResolvedValueOnce({ deletedCount: 1 });
+    const m = (await import("../../graphql/resolvers/inventory/recipe.mutation.js")).default;
+    await expect(m.deleteRecipePermanently(null, { restaurantId: "valid-r1", menuItemId: "valid-m1" }, ctx)).resolves.toBe(true);
+    expect(modelMocks.Recipe.deleteOne).toHaveBeenCalledWith({
+      restaurantId: "valid-r1",
+      menuItemId: "valid-m1",
+      deletedAt: { $ne: null },
+    });
+    expect(modelMocks.MenuItem.updateOne).toHaveBeenCalledWith(
+      { _id: "valid-m1", restaurantId: "valid-r1" },
+      { $set: { hasByWeightVariant: false }, $unset: { defaultServingKey: 1 } },
+    );
+  });
+
   it("consumeForOrder denied before warehouse/service", async () => {
     guardMocks.requireRestaurantAccess.mockRejectedValue(forbidden);
     const m = (await import("../../graphql/resolvers/inventory/consume.mutation.js")).default;

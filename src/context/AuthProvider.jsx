@@ -5,6 +5,8 @@ import { gql } from "@apollo/client";
 import { useApolloClient, useQuery } from "@apollo/client/react";
 import {
   readStorageValue,
+  removeStorageValue,
+  writeStorageValue,
 } from "@/lib/browserStorage";
 import { clearPersistedCart } from "@/hooks/useCart";
 import { clearAuth, clearLegacyAuthStorage, getToken, setAuth } from "@/lib/authStorage";
@@ -503,6 +505,13 @@ export const AuthProvider = ({ children }) => {
       const rawUser =
         typeof roleOrUser === "string" ? { roleName: roleOrUser } : roleOrUser;
       const newUser = normalizeUserModel(rawUser, null, avatar);
+      const identifier = String(options?.identifier || "").trim();
+
+      if (options?.rememberIdentifier && identifier) {
+        writeStorageValue(TOKEN_KEYS.rememberedIdentifier, identifier, { persistent: true });
+      } else if (Object.prototype.hasOwnProperty.call(options || {}, "rememberIdentifier")) {
+        removeStorageValue(TOKEN_KEYS.rememberedIdentifier);
+      }
 
       setAuth({ token: newToken });
       setToken(newToken);

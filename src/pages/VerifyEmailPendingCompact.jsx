@@ -10,6 +10,12 @@ const RESEND_VERIFICATION = gql`
   }
 `;
 
+const RESEND_SMS_VERIFICATION = gql`
+  mutation ResendSmsVerification($phone: String!) {
+    resendSmsVerification(phone: $phone)
+  }
+`;
+
 function readSessionValue(key) {
   try {
     return window.sessionStorage?.getItem(key) || "";
@@ -18,34 +24,47 @@ function readSessionValue(key) {
   }
 }
 
-function resolveVerificationError(error) {
+function resolveVerificationError(error, channel = "email") {
   const first = error?.graphQLErrors?.[0];
   const extensions = first?.extensions || {};
   const code = String(extensions.code || "").toUpperCase();
   const provider = extensions.provider ? ` Provider: ${extensions.provider}.` : "";
   const detail = extensions.error ? ` Chi tiết: ${extensions.error}.` : "";
+  const isSms = channel === "sms";
 
   if (code === "EMAIL_PROVIDER_NOT_CONFIGURED") {
     return `Chưa gửi được email xác minh: backend chưa cấu hình SMTP hoặc App Password Gmail.${provider}${detail}`;
+  }
+
+  if (code === "SMS_PROVIDER_NOT_CONFIGURED") {
+    return `Chưa gửi được SMS xác minh: backend chưa cấu hình provider SMS.${provider}${detail}`;
   }
 
   if (code === "EMAIL_DELIVERY_FAILED") {
     return `Gửi email xác minh thất bại: provider trả lỗi.${provider}${detail}`;
   }
 
+  if (code === "SMS_DELIVERY_FAILED") {
+    return `Gửi SMS xác minh thất bại: provider trả lỗi.${provider}${detail}`;
+  }
+
   if (code === "TOO_MANY_REQUESTS") {
-    return "Bạn vừa yêu cầu gửi lại email. Vui lòng đợi hết thời gian cooldown rồi thử lại.";
+    return `Bạn vừa yêu cầu gửi lại ${isSms ? "SMS" : "email"}. Vui lòng đợi hết thời gian cooldown rồi thử lại.`;
   }
 
   if (code === "EMAIL_NOT_SENT") {
     return `Email xác minh chưa được gửi. Trạng thái: ${extensions.deliveryStatus || "UNKNOWN"}.${provider}${detail}`;
   }
 
+  if (code === "SMS_NOT_SENT") {
+    return `SMS xác minh chưa được gửi. Trạng thái: ${extensions.deliveryStatus || "UNKNOWN"}.${provider}${detail}`;
+  }
+
   if (error?.networkError) {
     return "Không kết nối được backend. Hãy kiểm tra backend đã chạy và GraphQL endpoint đúng chưa.";
   }
 
-  return first?.message || error?.message || "Không thể gửi lại email xác minh.";
+  return first?.message || error?.message || `Không thể gửi lại ${isSms ? "SMS" : "email"} xác minh.`;
 }
 
 export default function VerifyEmailPendingCompact() {
@@ -67,7 +86,7 @@ export default function VerifyEmailPendingCompact() {
   const mustChangePassword =
     user?.forcePasswordChange || user?.status === "force_password_change";
 
-  const [resendVerification, { loading }] = useMutation(RESEND_VERIFICATION, {
+  const [resendVerification, { loading: emailLoading }] = useMutation(RESEND_VERIFICATION, {
     errorPolicy: "none",
     onCompleted: () => {
       setFeedbackType("success");
@@ -75,7 +94,19 @@ export default function VerifyEmailPendingCompact() {
     },
     onError: (err) => {
       setFeedbackType("error");
-      setFeedback(resolveVerificationError(err));
+      setFeedback(resolveVerificationError(err, "email"));
+    },
+  });
+
+  const [resendSmsVerification, { loading: smsLoading }] = useMutation(RESEND_SMS_VERIFICATION, {
+    errorPolicy: "none",
+    onCompleted: () => {
+      setFeedbackType("success");
+      setFeedback("SMS xác minh đã được backend gửi thành công. Hãy kiểm tra tin nhắn trên điện thoại.");
+    },
+    onError: (err) => {
+      setFeedbackType("error");
+      setFeedback(resolveVerificationError(err, "sms"));
     },
   });
 
@@ -93,6 +124,17 @@ export default function VerifyEmailPendingCompact() {
       return;
     }
     resendVerification({ variables: { email } });
+  };
+
+  const handleResendSms = () => {
+    setFeedback("");
+    setFeedbackType("success");
+    if (!phone) {
+      setFeedbackType("error");
+      setFeedback("Thiếu số điện thoại để gửi SMS xác nhận. Vui lòng cập nhật số điện thoại hoặc quay lại đăng nhập.");
+      return;
+    }
+    resendSmsVerification({ variables: { phone } });
   };
 
   if (mustChangePassword) return null;
@@ -118,18 +160,19 @@ export default function VerifyEmailPendingCompact() {
             type="button"
             className="account-verification-button is-primary"
             onClick={handleResendEmail}
-            disabled={loading || !email || user?.emailVerified}
+            disabled={emailLoading || !email || user?.emailVerified}
           >
-            {loading ? "Đang gửi..." : "Gửi lại email"}
+            {emailLoading ? "Đang gửi..." : "Gửi lại email"}
           </button>
 
           <button
             type="button"
             className="account-verification-button"
-            disabled
-            title="SMS chỉ khả dụng khi tài khoản có số điện thoại"
+            onClick={handleResendSms}
+            disabled={smsLoading || !phone || user?.phoneVerified}
+            title={phone ? "Gửi lại SMS xác minh" : "SMS chỉ khả dụng khi tài khoản có số điện thoại"}
           >
-            Gửi lại SMS
+            {smsLoading ? "Đang gửi..." : "Gửi lại SMS"}
           </button>
 
           <button
