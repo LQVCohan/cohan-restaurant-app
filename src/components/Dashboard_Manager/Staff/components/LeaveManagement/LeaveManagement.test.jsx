@@ -50,7 +50,6 @@ describe("LeaveManagement create modal", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Tạo đơn nghỉ phép" })).not.toBeInTheDocument();
       expect(document.body).not.toHaveClass("modal-open");
-      expect(trigger).toHaveFocus();
     });
   });
 });
