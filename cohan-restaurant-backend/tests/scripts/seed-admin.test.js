@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { buildAdminUserPayload } from "../../scripts/seed-admin.js";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { buildAdminUserPayload, isDirectExecution } from "../../scripts/seed-admin.js";
 
 describe("seed-admin payload", () => {
   it("uses ObjectId role value instead of array", () => {
@@ -16,5 +17,11 @@ describe("seed-admin payload", () => {
     expect(payload.emailVerified).toBe(true);
     expect(payload.verifiedAt).toBeInstanceOf(Date);
     expect(payload.forcePasswordChange).toBe(false);
+  });
+
+  it("detects direct execution through file URL conversion", () => {
+    const scriptPath = fileURLToPath(new URL("../../scripts/seed-admin.js", import.meta.url));
+    expect(isDirectExecution(pathToFileURL(scriptPath).href, scriptPath)).toBe(true);
+    expect(isDirectExecution("file:///not-seed-admin.js", scriptPath)).toBe(false);
   });
 });
