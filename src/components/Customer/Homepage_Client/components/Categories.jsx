@@ -39,12 +39,12 @@ const CATEGORY_DISPLAY_NAME_MAP = {
 };
 
 const suggestedCategories = [
-  { key: "suggestion-vietnamese", name: "Món Việt", helperText: "Cơm, bún, món gia đình", __isSuggestion: true },
-  { key: "suggestion-rice-noodle", name: "Cơm & Bún", helperText: "No lâu, dễ chọn", __isSuggestion: true },
-  { key: "suggestion-hotpot-grill", name: "Lẩu & Nướng", helperText: "Đi nhóm rất hợp", __isSuggestion: true },
-  { key: "suggestion-drinks", name: "Đồ uống", helperText: "Trà, cà phê, nước ép", __isSuggestion: true },
-  { key: "suggestion-healthy", name: "Healthy", helperText: "Nhẹ bụng, cân bằng", __isSuggestion: true },
-  { key: "suggestion-dessert", name: "Tráng miệng", helperText: "Ngọt nhẹ sau bữa ăn", __isSuggestion: true },
+  { key: "suggestion-vietnamese", name: "Món Việt", helperText: "Cơm, bún", __isSuggestion: true },
+  { key: "suggestion-rice-noodle", name: "Cơm & Bún", helperText: "Ăn no", __isSuggestion: true },
+  { key: "suggestion-hotpot-grill", name: "Lẩu & Nướng", helperText: "Đi nhóm", __isSuggestion: true },
+  { key: "suggestion-drinks", name: "Đồ uống", helperText: "Trà, cà phê", __isSuggestion: true },
+  { key: "suggestion-healthy", name: "Healthy", helperText: "Nhẹ bụng", __isSuggestion: true },
+  { key: "suggestion-dessert", name: "Tráng miệng", helperText: "Ngọt nhẹ", __isSuggestion: true },
 ];
 
 const normalizeCategoryName = (value = "") =>
