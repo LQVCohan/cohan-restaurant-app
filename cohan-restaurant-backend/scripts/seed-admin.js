@@ -7,6 +7,7 @@ import { User, Role } from "../models/index.js";
 import { validatePasswordStrong } from "../lib/passwordPolicy.js";
 
 export function buildAdminUserPayload({ email, passwordHash, adminRoleId }) {
+  const now = new Date();
   return {
     fullName: "System Admin",
     email,
@@ -15,6 +16,12 @@ export function buildAdminUserPayload({ email, passwordHash, adminRoleId }) {
     status: "active",
     provider: "local",
     userType: "ADMIN",
+    emailVerified: true,
+    emailVerifiedAt: now,
+    verifiedAt: now,
+    verificationLastChannel: "email",
+    verificationLastStatus: "verified",
+    forcePasswordChange: false,
   };
 }
 
@@ -47,6 +54,12 @@ async function main() {
     user.role = adminRole._id;
     user.status = "active";
     user.userType = "ADMIN";
+    user.emailVerified = true;
+    user.emailVerifiedAt ||= new Date();
+    user.verifiedAt ||= new Date();
+    user.verificationLastChannel = "email";
+    user.verificationLastStatus = "verified";
+    user.forcePasswordChange = false;
     await user.save();
     console.log("ℹ️ Admin existed, normalized role/status:", email);
   }
