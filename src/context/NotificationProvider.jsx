@@ -29,6 +29,8 @@ const TECHNICAL_COPY_REPLACEMENTS = [
   [/\bpayload\b/gi, "dữ liệu gửi đi"],
   [/\bprovider\b/gi, "dịch vụ"],
   [/\bchunk\b|\bmodule\b/gi, "thành phần giao diện"],
+  [/\brealtime\b/gi, "cập nhật mới"],
+  [/\bonline\b/gi, "trực tuyến"],
   [/\bvr\b/gi, "ảnh 360"],
   [/\bupload\b/gi, "tải lên"],
   [/\bimport\b/gi, "nhập file"],
