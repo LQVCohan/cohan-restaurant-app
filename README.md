@@ -34,6 +34,42 @@ npm run env:local
 
 Làm theo [`handover/database/README.md`](handover/database/README.md).
 
+### 3b) Chạy trắng từ database rỗng
+
+Chỉ dùng mục này khi **không restore database mẫu** hoặc vừa xóa sạch database. Cần seed dữ liệu nền trước khi chạy các seed demo khác.
+
+Trong `cohan-restaurant-backend/.env`, kiểm tra tối thiểu các biến sau:
+
+```env
+MONGO_URI=mongodb://127.0.0.1:27017/RestaurantDB
+MONGO_DB=RestaurantDB
+ADMIN_EMAIL=admin@cohan.local
+ADMIN_PASSWORD=Admin@123456
+```
+
+Sau đó chạy theo đúng thứ tự:
+
+```bash
+npm --prefix cohan-restaurant-backend run seed:rbac
+npm --prefix cohan-restaurant-backend run seed:admin
+```
+
+`seed:rbac` tạo dữ liệu nền quyền/vai trò gồm `permissions`, `parentroles`, `roles`. `seed:admin` tạo hoặc cập nhật tài khoản quản trị hệ thống trong collection `users` với `userType: "ADMIN"`. Không kiểm tra collection `admins` vì dự án không dùng collection đó cho admin hệ thống.
+
+Kiểm tra admin sau khi seed:
+
+```bash
+mongosh RestaurantDB --eval "db.users.find({ userType: 'ADMIN' }, { email: 1, status: 1, userType: 1, role: 1 }).pretty()"
+```
+
+Sau khi đã có RBAC và admin, mới chạy các seed dữ liệu nghiệp vụ/demo cần thiết, ví dụ:
+
+```bash
+npm --prefix cohan-restaurant-backend run seed:demo:menu-management
+npm --prefix cohan-restaurant-backend run seed:demo:coupon-promotion
+npm --prefix cohan-restaurant-backend run seed:demo:customers
+```
+
 ### 4) Chạy backend
 
 ```bash
