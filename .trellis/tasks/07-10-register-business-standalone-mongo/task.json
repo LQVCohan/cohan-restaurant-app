@@ -1,0 +1,11 @@
+{
+  "id": "07-10-register-business-standalone-mongo",
+  "title": "Fix business owner registration on standalone MongoDB",
+  "status": "in_progress",
+  "type": "bugfix",
+  "createdAt": "2026-07-10",
+  "scope": [
+    "registerBusinessOwner mutation",
+    "business account registration"
+  ]
+}
