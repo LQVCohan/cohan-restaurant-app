@@ -25,6 +25,10 @@ function normalizeChannel(channel) {
   return String(channel || "AUTO").toUpperCase();
 }
 
+function normalizePhone(phone) {
+  return String(phone || "").replace(/\s+/g, "").replace(/^\+84/, "0").trim();
+}
+
 function idString(value) {
   if (!value) return "";
   if (typeof value === "object") return String(value._id || value.id || value.value || "");
@@ -46,34 +50,43 @@ function forbidden() {
   return new GraphQLError("FORBIDDEN", { extensions: { code: "FORBIDDEN" } });
 }
 
+function channelLabel(channel) {
+  return channel === "sms" ? "SMS" : "email";
+}
+
+function channelCode(channel, suffix) {
+  return `${channel === "sms" ? "SMS" : "EMAIL"}_${suffix}`;
+}
+
 function ensureVerificationDispatched(result, channel = "email") {
   const delivery = channel === "sms" ? result?.sms : result?.email;
   const status = String(delivery?.status || result?.status || "").toUpperCase();
+  const label = channelLabel(channel);
 
   if (status === "SENT" || status === "ALREADY_VERIFIED" || status === "VERIFIED") {
     return true;
   }
 
   if (status === "COOLDOWN") {
-    throw new GraphQLError("Verification email was requested too recently. Please wait before trying again.", {
+    throw new GraphQLError(`Verification ${label} was requested too recently. Please wait before trying again.`, {
       extensions: { code: "TOO_MANY_REQUESTS", deliveryStatus: status, cooldownUntil: delivery?.cooldownUntil || null },
     });
   }
 
   if (status === "NOT_CONFIGURED") {
-    throw new GraphQLError("Verification email was not sent because the email provider is not configured.", {
-      extensions: { code: "EMAIL_PROVIDER_NOT_CONFIGURED", deliveryStatus: status, provider: delivery?.provider || null, error: delivery?.error || null },
+    throw new GraphQLError(`Verification ${label} was not sent because the ${label} provider is not configured.`, {
+      extensions: { code: channelCode(channel, "PROVIDER_NOT_CONFIGURED"), deliveryStatus: status, provider: delivery?.provider || null, error: delivery?.error || null },
     });
   }
 
   if (status === "FAILED") {
-    throw new GraphQLError("Verification email delivery failed.", {
-      extensions: { code: "EMAIL_DELIVERY_FAILED", deliveryStatus: status, provider: delivery?.provider || null, error: delivery?.error || null },
+    throw new GraphQLError(`Verification ${label} delivery failed.`, {
+      extensions: { code: channelCode(channel, "DELIVERY_FAILED"), deliveryStatus: status, provider: delivery?.provider || null, error: delivery?.error || null },
     });
   }
 
-  throw new GraphQLError("Verification email was not sent.", {
-    extensions: { code: "EMAIL_NOT_SENT", deliveryStatus: status || "UNKNOWN", provider: delivery?.provider || null, error: delivery?.error || null },
+  throw new GraphQLError(`Verification ${label} was not sent.`, {
+    extensions: { code: channelCode(channel, "NOT_SENT"), deliveryStatus: status || "UNKNOWN", provider: delivery?.provider || null, error: delivery?.error || null },
   });
 }
 
@@ -147,6 +160,16 @@ export default {
     if (user.emailVerified) return true;
     const result = await issueVerificationForUser({ user, channels: "EMAIL", reason: "resend", ctx });
     return ensureVerificationDispatched(result, "email");
+  },
+
+  resendSmsVerification: async (_root, { phone }, ctx) => {
+    const normalizedPhone = normalizePhone(phone);
+    if (!normalizedPhone) return true;
+    const user = await User.findOne({ phone: normalizedPhone });
+    if (!user) return true; // Không tiết lộ user existence.
+    if (user.phoneVerified) return true;
+    const result = await issueVerificationForUser({ user, channels: "SMS", reason: "resend", ctx });
+    return ensureVerificationDispatched(result, "sms");
   },
 
   requestMyVerification: async (_root, { channel = "AUTO" }, ctx) => {
