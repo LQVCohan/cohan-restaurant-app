@@ -8,11 +8,23 @@ import React, {
 import { NotificationContext } from "./NotificationContext";
 
 const ALERT_FALLBACK_MESSAGE = "Có thông báo mới từ hệ thống.";
+const ALERT_SUCCESS_PATTERN =
+  /(thành công|đã sao chép|đã lưu|đã cập nhật|đã gửi|hoàn tất|success)/i;
+const ALERT_ERROR_PATTERN = /(lỗi|thất bại|không thể|failed|error)/i;
+const ALERT_WARNING_PATTERN =
+  /(vui lòng|cần\s|không hợp lệ|không tìm thấy|không có quyền)/i;
 
 const toAlertMessage = (message) => {
   if (message == null) return ALERT_FALLBACK_MESSAGE;
   if (message instanceof Error) return message.message || ALERT_FALLBACK_MESSAGE;
   return String(message) || ALERT_FALLBACK_MESSAGE;
+};
+
+const getAlertNotificationType = (message) => {
+  if (ALERT_SUCCESS_PATTERN.test(message)) return "success";
+  if (ALERT_ERROR_PATTERN.test(message)) return "error";
+  if (ALERT_WARNING_PATTERN.test(message)) return "warning";
+  return "info";
 };
 
 /**
@@ -57,7 +69,8 @@ const NotificationProvider = ({ children }) => {
 
     const nativeAlert = window.alert;
     const notifyAlert = (message) => {
-      showNotification(toAlertMessage(message), "error");
+      const alertMessage = toAlertMessage(message);
+      showNotification(alertMessage, getAlertNotificationType(alertMessage));
     };
 
     window.alert = notifyAlert;
