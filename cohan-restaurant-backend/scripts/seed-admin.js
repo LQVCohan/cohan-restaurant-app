@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import process from "process";
 
-import { User, Role, Permission } from "../models/index.js";
+import { User, Role } from "../models/index.js";
 import { validatePasswordStrong } from "../lib/passwordPolicy.js";
 
 export function buildAdminUserPayload({ email, passwordHash, adminRoleId }) {
@@ -25,20 +25,9 @@ async function main() {
   await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
   console.log("✅ Connected Mongo");
 
-  const perms = [{ action: "manage", resource: "all", name: "ALL_PRIVILEGES", description: "Full access" }];
-  const permDocs = [];
-  for (const p of perms) {
-    let doc = await Permission.findOne({ action: p.action, resource: p.resource });
-    if (!doc) doc = await Permission.create(p);
-    permDocs.push(doc);
-  }
-
-  let adminRole = await Role.findOne({ name: "admin" });
+  const adminRole = await Role.findOne({ slug: "admin" });
   if (!adminRole) {
-    adminRole = await Role.create({ name: "admin", description: "Restaurant chain owner", permissions: permDocs.map((d) => d._id) });
-  } else {
-    adminRole.permissions = permDocs.map((d) => d._id);
-    await adminRole.save();
+    throw new Error("Missing admin role. Run `npm run seed:rbac` before `npm run seed:admin`.");
   }
 
   const email = String(process.env.ADMIN_EMAIL || "").trim().toLowerCase();
@@ -55,7 +44,11 @@ async function main() {
     user = await User.create(buildAdminUserPayload({ email, passwordHash, adminRoleId: adminRole._id }));
     console.log("✅ Created admin:", email);
   } else {
-    console.log("ℹ️ Admin existed:", email);
+    user.role = adminRole._id;
+    user.status = "active";
+    user.userType = "ADMIN";
+    await user.save();
+    console.log("ℹ️ Admin existed, normalized role/status:", email);
   }
 
   console.log("🎉 DONE. Admin account is ready for:", email);
