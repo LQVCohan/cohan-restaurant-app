@@ -1,0 +1,11 @@
+{
+  "id": "07-10-hide-customer-reservation-delete",
+  "title": "Hide fake customer reservation delete action",
+  "status": "in_progress",
+  "priority": "P2",
+  "source": "Follow-up from reservation no-show contract fix",
+  "scope": [
+    "Customer orders reservation actions",
+    "Reservation no-show/delete contract alignment"
+  ]
+}
