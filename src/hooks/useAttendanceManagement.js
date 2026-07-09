@@ -17,7 +17,6 @@ export const QUERY_ATTENDANCE_PAGE = gql`
       positionTitle
       roleName
       avatarUrl
-      restaurantForStaff
     }
     staffAttendanceRecords(
       restaurantId: $restaurantId

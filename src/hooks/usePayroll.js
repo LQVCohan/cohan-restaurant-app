@@ -541,7 +541,6 @@ export const QUERY_PAYROLL_CONTEXT = gql`
   query PayrollContext {
     me {
       id
-      restaurantForStaff
       roleName
     }
   }
@@ -825,7 +824,6 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
       restaurantId ||
       settingsQuery.data?.payrollSettings?.restaurantId ||
       periodsQuery.data?.payrollPeriods?.[0]?.restaurantId ||
-      meQuery.data?.me?.restaurantForStaff ||
       null,
     refetchPeriods: periodsQuery.refetch,
     refetchPayrollPeriods: periodsQuery.refetch,

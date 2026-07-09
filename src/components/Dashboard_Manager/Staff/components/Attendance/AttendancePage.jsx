@@ -24,6 +24,12 @@ import {
 } from "@/utils/graphqlErrorUtils";
 import { buildAttendanceReconciliationSummary } from "./attendanceReconciliationUtils";
 
+
+const getRestaurantIdFromUrl = () => {
+  if (typeof window === "undefined") return "";
+  return new URLSearchParams(window.location.search || "").get("restaurantId") || "";
+};
+
 const MISSED_CHECKOUT_GRACE_MINUTES = 30;
 
 const STATUS_TABS = [
@@ -471,7 +477,7 @@ const renderRequestDetails = (request) => {
   );
 };
 
-const AttendancePage = () => {
+const AttendancePage = ({ restaurantId: scopedRestaurantId = "" } = {}) => {
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0],
   );
@@ -603,7 +609,7 @@ const AttendancePage = () => {
     window.history.replaceState(null, "", nextUrl);
   }, []);
 
-  const userRestaurantId = user?.restaurantForStaff || null;
+  const userRestaurantId = scopedRestaurantId || getRestaurantIdFromUrl() || null;
 
   const {
     employees,
@@ -708,7 +714,6 @@ const AttendancePage = () => {
   };
 
   const effectiveRestaurantId =
-    selectedEmployee?.restaurantForStaff ||
     userRestaurantId ||
     records[0]?.restaurantId ||
     null;

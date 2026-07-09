@@ -11,7 +11,7 @@ const staffList = [
     positionTitle: "Server",
     roleName: "Staff",
     department: "service",
-    restaurantForStaff: "restaurant-1",
+    restaurantId: "restaurant-1",
   },
   {
     id: "staff-2",
@@ -20,7 +20,7 @@ const staffList = [
     positionTitle: "Restaurant Manager",
     roleName: "Manager",
     department: "management",
-    restaurantForStaff: "restaurant-1",
+    restaurantId: "restaurant-1",
   },
   {
     id: "staff-3",
@@ -29,7 +29,7 @@ const staffList = [
     positionTitle: "Assistant Manager",
     roleName: "Supervisor",
     department: "operations",
-    restaurantForStaff: "restaurant-1",
+    restaurantId: "restaurant-1",
   },
 ];
 

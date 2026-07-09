@@ -30,11 +30,6 @@ const STAFF_FIELDS = gql`
       slug
     }
 
-    refRestaurants {
-      id
-      name
-    }
-    restaurantForStaff
 
     address {
       line1

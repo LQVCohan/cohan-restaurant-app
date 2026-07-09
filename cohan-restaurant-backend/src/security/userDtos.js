@@ -5,6 +5,10 @@ import {
   requireRestaurantPermission,
 } from "../services/auth/authorization.service.js";
 import { maskUserSensitiveFields } from "../services/auth/adminSensitiveAccess.service.js";
+import {
+  getStaffRestaurantIds,
+  staffBelongsToRestaurantByMembership,
+} from "../services/auth/restaurantScope.service.js";
 
 function toPlainObject(user) {
   if (!user) return null;
@@ -164,7 +168,6 @@ export function sanitizeAdminUserListItem(user, options = {}) {
     lastLoginAt: source.lastLoginAt,
     emergencyContact: source.emergencyContact,
     wallet: safeWallet(source.wallet),
-    restaurantForStaff: source.restaurantForStaff,
     isOnline: source.isOnline,
     loyaltyDurationScore: source.loyaltyDurationScore,
   });
@@ -184,15 +187,15 @@ function getRoleName(user) {
   return String(user?.roleName || user?.role?.slug || user?.role?.name || "").toLowerCase();
 }
 
-export function staffBelongsToRestaurant(staffUser, restaurantId) {
-  const assignedRestaurantId = stringId(staffUser?.restaurantForStaff);
-  return Boolean(assignedRestaurantId && idEquals(assignedRestaurantId, stringId(restaurantId)));
+export async function staffBelongsToRestaurant(staffUser, restaurantId) {
+  return staffBelongsToRestaurantByMembership(staffUser?._id || staffUser?.id, restaurantId);
 }
 
-export function resolveStaffPrivateProfileScope(staffUser, requestedRestaurantId = null) {
+export async function resolveStaffPrivateProfileScope(staffUser, requestedRestaurantId = null) {
   const requested = stringId(requestedRestaurantId);
   if (requested) return requested;
-  return stringId(staffUser?.restaurantForStaff) || null;
+  const [firstRestaurantId] = await getStaffRestaurantIds(staffUser?._id || staffUser?.id);
+  return firstRestaurantId || null;
 }
 
 export async function assertCanReadStaffPrivateProfile({ ctx, staffUser, restaurantId }) {
@@ -205,8 +208,8 @@ export async function assertCanReadStaffPrivateProfile({ ctx, staffUser, restaur
   const viewerId = viewer.id || viewer._id;
   if (idEquals(viewerId, staffUser._id || staffUser.id)) return true;
 
-  const targetRestaurantId = resolveStaffPrivateProfileScope(staffUser, restaurantId);
-  if (restaurantId && !staffBelongsToRestaurant(staffUser, restaurantId)) {
+  const targetRestaurantId = await resolveStaffPrivateProfileScope(staffUser, restaurantId);
+  if (restaurantId && !(await staffBelongsToRestaurant(staffUser, restaurantId))) {
     throw notFound();
   }
 

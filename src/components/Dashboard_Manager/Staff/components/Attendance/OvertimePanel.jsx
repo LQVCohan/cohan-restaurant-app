@@ -250,11 +250,10 @@ const OvertimePanel = ({ user, selectedDate, searchQuery, restaurantId }) => {
     const candidates = [
       restaurantId,
       getRestaurantIdFromUrl(),
-      user?.restaurantForStaff,
       user?.restaurantId,
     ];
     return candidates.map(normalizeId).find(isValidObjectId) || "";
-  }, [restaurantId, user?.restaurantForStaff, user?.restaurantId]);
+  }, [restaurantId, user?.restaurantId]);
 
   const {
     employees,

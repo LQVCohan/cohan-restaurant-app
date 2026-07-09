@@ -102,7 +102,7 @@ describe("createStaff employeeCode generation", () => {
         input: {
           fullName: "Alice",
           employeeCode: "HACKED",
-          restaurantForStaff: restaurantA,
+          businessRestaurantId: restaurantA,
         },
       },
       { user: { id: "manager-1" } },
@@ -112,7 +112,7 @@ describe("createStaff employeeCode generation", () => {
       {
         input: {
           fullName: "Bob",
-          restaurantForStaff: restaurantA,
+          businessRestaurantId: restaurantA,
         },
       },
       { user: { id: "manager-1" } },
@@ -122,7 +122,7 @@ describe("createStaff employeeCode generation", () => {
       {
         input: {
           fullName: "Carol",
-          restaurantForStaff: restaurantB,
+          businessRestaurantId: restaurantB,
         },
       },
       { user: { id: "manager-1" } },
@@ -130,6 +130,7 @@ describe("createStaff employeeCode generation", () => {
 
     expect(modelMocks.Staff.mock.calls[0][0].employeeCode).toBe("NV0001");
     expect(modelMocks.Staff.mock.calls[0][0].employeeCode).not.toBe("HACKED");
+    expect(modelMocks.Staff.mock.calls[0][0].restaurantForStaff).toBeUndefined();
     expect(first.employeeCode).toBe("NV0001");
     expect(second.employeeCode).toBe("NV0002");
     expect(third.employeeCode).toBe("NV0001");

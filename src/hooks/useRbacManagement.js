@@ -60,7 +60,6 @@ const STAFF_ROLE_FIELDS = gql`
     email
     phone
     employeeCode
-    restaurantForStaff
     roleName
     role {
       id

@@ -55,7 +55,6 @@ input AdminUpdateUserInput {
   status: String
   roleId: ID
   refRestaurantIds: [ID!]
-  restaurantForStaff: ID
   customerType: CustomerType
   loyaltyPoints: Int
   totalOrders: Int

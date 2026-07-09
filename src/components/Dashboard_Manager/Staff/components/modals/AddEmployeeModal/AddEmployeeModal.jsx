@@ -33,7 +33,7 @@ const AddEmployeeModal = ({
   const handleSubmit = useCallback(
     async (values) => {
       const selectedRestaurantId =
-        normalizeId(values?.restaurantForStaff) || activeRestaurantId;
+        normalizeId(values?.restaurantId) || activeRestaurantId;
       const selectedRestaurantBelongsToActiveBusiness =
         activeBusinessRestaurants.some(
           (restaurant) => normalizeId(restaurant) === selectedRestaurantId,
@@ -49,9 +49,7 @@ const AddEmployeeModal = ({
         );
       }
 
-      // `restaurantForStaff` is only the legacy form control; do not send it as account scope.
-      const accountInput = { ...(values || {}) };
-      delete accountInput.restaurantForStaff;
+      const { restaurantId: _restaurantId, ...accountInput } = values || {};
 
       return onSubmit?.({
         ...accountInput,

@@ -30,6 +30,11 @@ const validationMocks = vi.hoisted(() => ({
   validateShiftAssignment: vi.fn(async () => ({ ok: true, blockingErrors: [], warnings: [] })),
 }));
 
+const scopeMocks = vi.hoisted(() => ({
+  getStaffRestaurantIds: vi.fn(async () => ["rest-1"]),
+  staffBelongsToRestaurantByMembership: vi.fn(async () => true),
+}));
+
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../lib/mailer.js", () => ({ mailer: { sendMail: vi.fn() } }));
 vi.mock("../../src/services/staffPerformance/staffPerformance.service.js", () => ({ recalculateStaffPerformanceSnapshots: vi.fn(), upsertStaffPerformanceReview: vi.fn() }));
@@ -46,6 +51,7 @@ vi.mock("../../src/config/payrollPolicy.vn.js", () => ({ getPayrollPolicyForDate
 vi.mock("../../src/services/scheduling/scheduleLifecycle.service.js", () => scheduleLifecycleMocks);
 vi.mock("../../graphql/guards.js", () => ({ requireAuth: vi.fn(), requireRestaurantAccess: vi.fn(), requireRoles: vi.fn(), requireRestaurantScope: vi.fn() }));
 vi.mock("../../src/services/scheduling/schedulingPermission.service.js", () => ({ ATTENDANCE_REVIEW_ROLES: [], ATTENDANCE_OPERATION_ROLES: [], ATTENDANCE_SELF_ROLES: [], SCHEDULE_WRITE_ROLES: ["manager"], SHIFT_ACK_ADMIN_ROLES: [], resolveUserRoles: vi.fn(), userCanAccessRestaurant: vi.fn() }));
+vi.mock("../../src/services/auth/restaurantScope.service.js", () => scopeMocks);
 vi.mock("../../src/services/performance/performanceIncident.service.js", () => ({ createPerformanceIncidentOnce: vi.fn(), applyPerformanceIncidentScore: vi.fn(), markPerformanceIncidentEligible: vi.fn(), reviewPerformanceIncident: vi.fn(), waivePerformanceIncident: vi.fn() }));
 vi.mock("../../src/services/performance/performanceAppeal.service.js", () => ({ createPerformanceIncidentAppeal: vi.fn(), cancelPerformanceIncidentAppeal: vi.fn(), reviewPerformanceIncidentAppeal: vi.fn(), reverseScoreForAcceptedAppeal: vi.fn() }));
 vi.mock("mongoose", () => ({ default: { isValidObjectId: vi.fn(() => true), Types: { ObjectId: function ObjectId(value) { return value; } } } }));
@@ -81,7 +87,9 @@ function mockPublicationStatus(status) {
 describe("createStaffShift lifecycle guard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    modelMocks.Staff.findById.mockReturnValue(query({ _id: "staff-1", userType: "STAFF", fullName: "A", restaurantForStaff: "rest-1" }));
+    scopeMocks.getStaffRestaurantIds.mockResolvedValue(["rest-1"]);
+    scopeMocks.staffBelongsToRestaurantByMembership.mockResolvedValue(true);
+    modelMocks.Staff.findById.mockReturnValue(query({ _id: "staff-1", userType: "STAFF", fullName: "A" }));
     modelMocks.Shift.create.mockResolvedValue({ _id: "shift-1", employeeId: "staff-1", restaurantId: "rest-1", shiftType: "morning", startTime: new Date(baseInput.startTime), endTime: new Date(baseInput.endTime), status: "scheduled", notes: "" });
   });
 

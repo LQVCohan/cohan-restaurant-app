@@ -22,6 +22,11 @@ const guardMocks = vi.hoisted(() => ({
   requireRestaurantScope: vi.fn(),
 }));
 
+const scopeMocks = vi.hoisted(() => ({
+  getStaffRestaurantIds: vi.fn(),
+  staffBelongsToRestaurantByMembership: vi.fn(),
+  getStaffMembershipRestaurantFilter: vi.fn(),
+}));
 const permissionMocks = vi.hoisted(() => ({ assertPayrollPermission: vi.fn() }));
 const runtimeMocks = vi.hoisted(() => ({
   buildPayrollItemsForRange: vi.fn(async () => []),
@@ -40,6 +45,7 @@ const validationMocks = vi.hoisted(() => ({ validatePayrollPeriod: vi.fn(async (
 
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../graphql/guards.js", () => guardMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", () => scopeMocks);
 vi.mock("../../src/services/payroll/payrollPermission.service.js", () => permissionMocks);
 vi.mock("../../src/services/payroll/payrollRuntime.service.js", () => runtimeMocks);
 vi.mock("../../src/services/payroll/payrollPayment.service.js", () => paymentMocks);
@@ -88,14 +94,13 @@ function installStaffSalarySummaryMocks({ staffId = "staff-a", restaurantId = "r
   modelMocks.Staff.findById.mockReturnValue(resolveStaffDocChain({
     _id: staffId,
     userType: "STAFF",
-    restaurantForStaff: restaurantId,
     baseSalary: 1000,
   }));
   modelMocks.Shift.find.mockReturnValue(queryChain([]));
 }
 
 function user(overrides = {}) {
-  return { id: "manager-a", userType: "MANAGER", restaurantForStaff: "restaurant-a", ...overrides };
+  return { id: "manager-a", userType: "MANAGER", restaurantIds: ["restaurant-a"], ...overrides };
 }
 
 function installAccessMocks() {
@@ -104,7 +109,7 @@ function installAccessMocks() {
   });
   guardMocks.requireRestaurantAccess.mockImplementation(async (ctx, restaurantId) => {
     if (String(ctx?.user?.userType || "").toUpperCase() === "ADMIN") return true;
-    const allowed = [ctx?.user?.restaurantId, ctx?.user?.restaurantForStaff, ...(ctx?.user?.restaurantIds || [])]
+    const allowed = [ctx?.user?.restaurantId, ...(ctx?.user?.restaurantIds || [])]
       .filter(Boolean)
       .map(String);
     if (!allowed.includes(String(restaurantId))) throw new Error("FORBIDDEN_SCOPE");
@@ -131,8 +136,18 @@ function installDbMocks({ restaurantId = "restaurant-a", employeeId = "staff-a",
   modelMocks.PayrollPeriod.find.mockReturnValue(findSortLimit([{ _id: "period-a", restaurantId, status }]));
   modelMocks.PayrollItem.find.mockReturnValue(queryChain([{ _id: "item-a", periodId: "period-a", restaurantId, employeeId }]));
   modelMocks.PayrollItem.findOne.mockReturnValue(queryChain({ _id: "item-a" }));
-  modelMocks.Staff.findById.mockReturnValue(selectLean({ _id: employeeId, userType: "STAFF", restaurantForStaff: restaurantId }));
-  modelMocks.Staff.find.mockReturnValue({ select: vi.fn(() => lean([{ _id: employeeId, restaurantForStaff: restaurantId, employmentStatus: "active", createdAt: new Date("2026-01-01") }])) });
+  modelMocks.Staff.findById.mockReturnValue(selectLean({ _id: employeeId, userType: "STAFF" }));
+  modelMocks.Staff.find.mockReturnValue({ select: vi.fn(() => lean([{ _id: employeeId, employmentStatus: "active", createdAt: new Date("2026-01-01") }])) });
+  scopeMocks.getStaffRestaurantIds.mockImplementation(async (userId) => {
+    if (String(userId) === String(employeeId)) return [restaurantId];
+    if (String(userId).includes("staff-b")) return ["restaurant-b"];
+    return ["restaurant-a"];
+  });
+  scopeMocks.staffBelongsToRestaurantByMembership.mockImplementation(async (userId, rid) => {
+    const [scopedRestaurantId] = await scopeMocks.getStaffRestaurantIds(userId);
+    return String(scopedRestaurantId) === String(rid);
+  });
+  scopeMocks.getStaffMembershipRestaurantFilter.mockResolvedValue({ _id: { $in: [employeeId] } });
   modelMocks.LeaveBalance.findOne.mockReturnValue(lean({ _id: "lb-a", employeeId, year: 2026, annualEntitledDays: 12, annualRemainingDays: 10 }));
   modelMocks.LeaveBalance.find.mockReturnValue(lean([]));
   modelMocks.Timesheet.find.mockReturnValue(populateLean([]));
@@ -167,7 +182,7 @@ describe("sensitive payroll and staff report access", () => {
 
   it("denies STAFF aggregate payroll/report data and other staff leave balances", async () => {
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
-    const staffCtx = { user: user({ id: "staff-self", userType: "STAFF", restaurantForStaff: "restaurant-a" }) };
+    const staffCtx = { user: user({ id: "staff-self", userType: "STAFF", restaurantIds: ["restaurant-a"] }) };
 
     await expect(query.staffPayrollOverview(null, { restaurantId: "restaurant-a", startDate: "2026-01-01", endDate: "2026-01-31" }, staffCtx)).rejects.toThrow("FORBIDDEN");
     await expect(query.payrollPeriods(null, { restaurantId: "restaurant-a" }, staffCtx)).rejects.toThrow("FORBIDDEN");
@@ -200,7 +215,7 @@ describe("sensitive payroll and staff report access", () => {
   it("allows STAFF to view their own staffSalarySummary", async () => {
     installStaffSalarySummaryMocks({ staffId: "staff-a", restaurantId: "restaurant-a" });
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
-    const staffCtx = { user: user({ id: "staff-a", userType: "STAFF", restaurantForStaff: "restaurant-a" }) };
+    const staffCtx = { user: user({ id: "staff-a", userType: "STAFF", restaurantIds: ["restaurant-a"] }) };
 
     await expect(query.staffSalarySummary(null, { staffId: "staff-a" }, staffCtx)).resolves.toMatchObject({ staffId: "staff-a" });
     expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
@@ -210,14 +225,14 @@ describe("sensitive payroll and staff report access", () => {
   it("denies STAFF staffSalarySummary for another staff member", async () => {
     installStaffSalarySummaryMocks({ staffId: "staff-b", restaurantId: "restaurant-b" });
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
-    const staffCtx = { user: user({ id: "staff-a", userType: "STAFF", restaurantForStaff: "restaurant-a" }) };
+    const staffCtx = { user: user({ id: "staff-a", userType: "STAFF", restaurantIds: ["restaurant-a"] }) };
 
     await expect(query.staffSalarySummary(null, { staffId: "staff-b" }, staffCtx)).rejects.toThrow("FORBIDDEN_SCOPE");
   });
 
   it("allows STAFF self-service only through finalized self payslip and own leave balance", async () => {
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
-    const staffCtx = { user: user({ id: "staff-a", userType: "STAFF", restaurantForStaff: "restaurant-a" }) };
+    const staffCtx = { user: user({ id: "staff-a", userType: "STAFF", restaurantIds: ["restaurant-a"] }) };
 
     await expect(query.myPayslips(null, { limit: 5 }, staffCtx)).resolves.toEqual(expect.any(Array));
     await expect(query.myPayslip(null, { periodId: "period-a" }, staffCtx)).resolves.toBeTruthy();
@@ -227,7 +242,7 @@ describe("sensitive payroll and staff report access", () => {
 
   it("lists staff payslips after filtering out unpublished periods", async () => {
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
-    const staffCtx = { user: user({ id: "staff-a", userType: "STAFF", restaurantForStaff: "restaurant-a" }) };
+    const staffCtx = { user: user({ id: "staff-a", userType: "STAFF", restaurantIds: ["restaurant-a"] }) };
     modelMocks.PayrollItem.find.mockReturnValueOnce(queryChain([
       { _id: "draft-item", periodId: "draft-period", employeeId: "staff-a", netSalary: 1000 },
       { _id: "final-item", periodId: "final-period", employeeId: "staff-a", netSalary: 2000 },
@@ -295,8 +310,8 @@ describe("sensitive payroll and staff report access", () => {
     installDbMocks({ restaurantId: "restaurant-b", employeeId: "staff-b" });
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
 
-    await expect(query.payrollPeriodDetail(null, { periodId: "period-b" }, { user: user({ id: "acct-a", userType: "ACCOUNTANT", restaurantForStaff: "restaurant-a" }) })).rejects.toThrow("FORBIDDEN_SCOPE");
-    await expect(query.staffReportsOverview(null, { input: { restaurantId: "restaurant-b", startDate: "2026-01-01", endDate: "2026-01-31" } }, { user: user({ id: "hr-a", userType: "HR", restaurantForStaff: "restaurant-a" }) })).rejects.toThrow("FORBIDDEN_SCOPE");
-    await expect(query.payrollPeriodDetail(null, { periodId: "period-b" }, { user: user({ id: "admin", userType: "ADMIN", restaurantForStaff: null }) })).resolves.toBeTruthy();
+    await expect(query.payrollPeriodDetail(null, { periodId: "period-b" }, { user: user({ id: "acct-a", userType: "ACCOUNTANT", restaurantIds: ["restaurant-a"] }) })).rejects.toThrow("FORBIDDEN_SCOPE");
+    await expect(query.staffReportsOverview(null, { input: { restaurantId: "restaurant-b", startDate: "2026-01-01", endDate: "2026-01-31" } }, { user: user({ id: "hr-a", userType: "HR", restaurantIds: ["restaurant-a"] }) })).rejects.toThrow("FORBIDDEN_SCOPE");
+    await expect(query.payrollPeriodDetail(null, { periodId: "period-b" }, { user: user({ id: "admin", userType: "ADMIN", restaurantIds: [] }) })).resolves.toBeTruthy();
   });
 });

@@ -3,6 +3,7 @@ import { GraphQLError } from "graphql";
 import { EventLog, Staff } from "../../../models/index.js";
 import { requireAuth, requireRestaurantAccess, requireRoles } from "../../guards.js";
 import { sanitizeStaffPrivateProfile } from "../../../src/security/userDtos.js";
+import { getStaffRestaurantIds } from "../../../src/services/auth/restaurantScope.service.js";
 import {
   deleteLocalAvatar,
   resolveAvatarUpdate,
@@ -27,13 +28,28 @@ const updateStaffAvatar = async (_, { userId, input }, ctx) => {
     });
   }
 
-  const restaurantId = staff.restaurantForStaff;
-  if (!restaurantId) {
+  const staffRestaurantIds = await getStaffRestaurantIds(staff._id);
+  if (!staffRestaurantIds.length) {
     throw new GraphQLError("Nhân viên chưa được gán nhà hàng.", {
       extensions: { code: "BAD_USER_INPUT" },
     });
   }
-  await requireRestaurantAccess(ctx, restaurantId);
+
+  let restaurantId = null;
+  for (const candidateRestaurantId of staffRestaurantIds) {
+    try {
+      await requireRestaurantAccess(ctx, candidateRestaurantId);
+      restaurantId = candidateRestaurantId;
+      break;
+    } catch {
+      // Try the next BrandMembership-assigned restaurant.
+    }
+  }
+  if (!restaurantId) {
+    throw new GraphQLError("FORBIDDEN_SCOPE", {
+      extensions: { code: "FORBIDDEN" },
+    });
+  }
 
   const previousAvatarUrl = staff.avatarUrl || null;
   const nextAvatarUrl = await resolveAvatarUpdate({ input, userId: staff._id });

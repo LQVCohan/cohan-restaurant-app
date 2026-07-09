@@ -6,6 +6,7 @@ import {
   isProtectedSystemRoleSlug,
   requireRestaurantPermission,
 } from "./authorization.service.js";
+import { staffBelongsToRestaurantByMembership } from "./restaurantScope.service.js";
 import { logRbacAudit } from "../audit/rbacAudit.service.js";
 
 function toId(value) {
@@ -75,7 +76,7 @@ export async function assignStaffRoleWithinRestaurant({ actor, staffUserId, role
     throw new GraphQLError("Staff not found", { extensions: { code: "BAD_USER_INPUT" } });
   }
 
-  if (toId(staff.restaurantForStaff) !== toId(restaurantId)) {
+  if (!(await staffBelongsToRestaurantByMembership(staff._id, restaurantId))) {
     throw forbidden("Staff does not belong to this restaurant");
   }
 

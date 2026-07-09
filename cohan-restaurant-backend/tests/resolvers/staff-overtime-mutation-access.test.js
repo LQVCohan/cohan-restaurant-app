@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const guards = vi.hoisted(() => ({ requireAuth: vi.fn(), requireRestaurantAccess: vi.fn(async () => true), requireRoles: vi.fn(), requireRestaurantScope: vi.fn() }));
+const scopeMocks = vi.hoisted(() => ({
+  staffBelongsToRestaurantByMembership: vi.fn(),
+}));
 const services = vi.hoisted(() => ({ createOvertimeRequestService: vi.fn(async () => ({ id: "ot1" })), confirmOvertimeRequestService: vi.fn(async () => ({ id: "ot1" })), approveOvertimeRequestService: vi.fn(async () => ({ id: "ot1" })), rejectOvertimeRequestService: vi.fn(async () => ({ id: "ot1" })), cancelOvertimeRequestService: vi.fn(async () => ({ id: "ot1" })), completeOvertimeRequestService: vi.fn(async () => ({ id: "ot1" })) }));
 const modelMocks = vi.hoisted(() => ({
   Staff: { findById: vi.fn() }, Shift: { findById: vi.fn() }, Timesheet: { findById: vi.fn() }, OvertimeRequest: { findById: vi.fn() },
@@ -9,6 +12,7 @@ const modelMocks = vi.hoisted(() => ({
 
 vi.mock("../../graphql/guards.js", () => guards);
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", () => scopeMocks);
 vi.mock("../../lib/mailer.js", () => ({ mailer: { sendMail: vi.fn() } }));
 vi.mock("../../src/services/overtime/overtimeRequest.service.js", () => ({
   createOvertimeRequest: services.createOvertimeRequestService,
@@ -30,7 +34,8 @@ const findDoc = (value) => ({ select: vi.fn(async () => value) });
 describe("staff overtime mutation access", () => {
   beforeEach(() => {
     vi.resetModules(); vi.clearAllMocks();
-    modelMocks.Staff.findById.mockReturnValue(findChain({ _id: "e1", userType: "STAFF", primaryRestaurant: "r1", restaurantForStaff: "r1", refRestaurants: [] }));
+    scopeMocks.staffBelongsToRestaurantByMembership.mockResolvedValue(true);
+    modelMocks.Staff.findById.mockReturnValue(findChain({ _id: "e1", userType: "STAFF" }));
     modelMocks.Shift.findById.mockReturnValue(findChain({ _id: "s1", employeeId: "e1", restaurantId: "r1" }));
     modelMocks.Timesheet.findById.mockReturnValue(findChain({ _id: "t1", employeeId: "e1", restaurantId: "r1", shiftId: "s1" }));
     modelMocks.OvertimeRequest.findById.mockReturnValue(findDoc({ _id: "ot1", employeeId: "e2", restaurantId: "r1", status: "pending_approval" }));

@@ -75,7 +75,7 @@ describe("createStaff active business context", () => {
     mocks.Staff.deleteOne.mockResolvedValue({ deletedCount: 1 });
   });
 
-  it("creates the membership from explicit business context without account restaurant data", async () => {
+  it("creates the membership from explicit business context without legacy restaurantForStaff", async () => {
     const resolvers = (
       await import("../../graphql/resolvers/staff/index.js")
     ).default;
@@ -96,7 +96,7 @@ describe("createStaff active business context", () => {
       {
         input: {
           fullName: "Nhân viên mới",
-          restaurantForStaff: "restaurant-active",
+          businessRestaurantId: "restaurant-active",
         },
       },
       context,

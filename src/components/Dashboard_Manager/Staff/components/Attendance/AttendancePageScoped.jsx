@@ -43,18 +43,8 @@ const AttendancePageScoped = ({ restaurantId, ...props }) => {
     () => normalizeRestaurantId(restaurantId),
     [restaurantId],
   );
-  const scopedAuth = useMemo(() => {
-    if (!auth?.user || !normalizedRestaurantId) return auth;
+  const scopedAuth = auth;
 
-    return {
-      ...auth,
-      user: {
-        ...auth.user,
-        // Frontend query scope only. Backend authorization still uses BrandMembership.
-        restaurantForStaff: normalizedRestaurantId,
-      },
-    };
-  }, [auth, normalizedRestaurantId]);
 
   useEffect(() => {
     syncAttendanceRestaurantQuery(normalizedRestaurantId);
@@ -64,7 +54,7 @@ const AttendancePageScoped = ({ restaurantId, ...props }) => {
 
   return (
     <AuthContext.Provider value={scopedAuth}>
-      <AttendancePage {...props} />
+      <AttendancePage {...props} restaurantId={normalizedRestaurantId} />
     </AuthContext.Provider>
   );
 };

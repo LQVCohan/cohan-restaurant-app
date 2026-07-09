@@ -21,6 +21,10 @@ const modelMocks = vi.hoisted(() => ({
   OvertimeRequest: {},
 }));
 
+const scopeMocks = vi.hoisted(() => ({
+  staffBelongsToRestaurantByMembership: vi.fn(),
+}));
+
 const scheduleLifecycleMocks = vi.hoisted(() => ({
   mapSchedulePublicationOutput: vi.fn((value) => value),
   resolveScheduleLifecycleStatus: vi.fn(),
@@ -32,6 +36,7 @@ const validationMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", () => scopeMocks);
 vi.mock("../../lib/mailer.js", () => ({ mailer: { sendMail: vi.fn() } }));
 vi.mock("../../src/services/staffPerformance/staffPerformance.service.js", () => ({
   recalculateStaffPerformanceSnapshots: vi.fn(),
@@ -156,12 +161,12 @@ async function getMutation() {
 describe("createStaffShift lifecycle guard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    scopeMocks.staffBelongsToRestaurantByMembership.mockResolvedValue(true);
     modelMocks.Staff.findById.mockReturnValue(
       query({
         _id: "staff-1",
         userType: "STAFF",
         fullName: "Lifecycle Staff",
-        restaurantForStaff: "rest-1",
       }),
     );
     modelMocks.Shift.create.mockImplementation(async (input) => ({

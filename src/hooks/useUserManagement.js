@@ -48,7 +48,6 @@ export const GET_USERS = gql`
       status
       provider
       avatarUrl
-      restaurantForStaff
       refRestaurants {
         id
         name
@@ -115,7 +114,6 @@ export const GET_CUSTOMERS = gql`
       status
       provider
       avatarUrl
-      restaurantForStaff
       refRestaurants {
         id
         name
@@ -251,8 +249,7 @@ export const CREATE_USER = gql`
         status
         provider
         avatarUrl
-        restaurantForStaff
-        refRestaurants {
+          refRestaurants {
           id
           name
         }
@@ -343,7 +340,6 @@ export const UPDATE_MY_USER = gql`
       status
       provider
       avatarUrl
-      restaurantForStaff
       refRestaurants {
         id
         name
@@ -399,7 +395,6 @@ export const ADMIN_UPDATE_USER = gql`
       status
       provider
       avatarUrl
-      restaurantForStaff
       refRestaurants {
         id
         name

@@ -18,6 +18,11 @@ function userFindByIdChain(row) {
   return { populate: () => ({ populate: () => ({ lean: async () => row }) }) };
 }
 
+const scopeMocks = vi.hoisted(() => ({
+  getStaffRestaurantIds: vi.fn(),
+  staffBelongsToRestaurantByMembership: vi.fn(),
+}));
+
 vi.mock("../../models/index.js", () => ({
   AuditLog: { create: auditCreate },
   User: { find: userFind, findById: userFindById },
@@ -25,6 +30,11 @@ vi.mock("../../models/index.js", () => ({
   Customer: { find: customerFind },
   Order: {},
   WalletTransaction: {},
+}));
+vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  getStaffRestaurantIds: scopeMocks.getStaffRestaurantIds,
+  staffBelongsToRestaurantByMembership: scopeMocks.staffBelongsToRestaurantByMembership,
 }));
 
 describe("admin sensitive user access", () => {
@@ -35,6 +45,8 @@ describe("admin sensitive user access", () => {
     userFind.mockReset().mockReturnValue(userFindChain([{ _id: "u1", email: "leminh@gmail.com", phone: "0987654389", wallet: { balance: 50, currency: "VND" } }]));
     userFindById.mockReset().mockReturnValue(userFindByIdChain({ _id: "507f1f77bcf86cd799439012", userType: "STAFF", fullName: "Staff", baseSalary: 100 }));
     customerFind.mockReset().mockReturnValue(customerExportChain([{ _id: "c1", email: "leminh@gmail.com", phone: "0987654389", loyaltyPoints: 1 }]));
+    scopeMocks.getStaffRestaurantIds.mockReset().mockResolvedValue(["507f1f77bcf86cd799439013"]);
+    scopeMocks.staffBelongsToRestaurantByMembership.mockReset().mockResolvedValue(true);
   });
 
   it("masks user contact and wallet for system admin without reason", async () => {

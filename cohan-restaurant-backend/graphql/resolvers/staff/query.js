@@ -11,6 +11,7 @@ import {
   Category,
   Promotion,
   Restaurant,
+  BrandMembership,
   PayrollPeriod,
   PayrollItem,
   SchedulePublication,
@@ -52,7 +53,11 @@ import {
   sanitizeAdminUserListItem,
   sanitizeStaffPrivateProfile,
 } from "../../../src/security/userDtos.js";
-import { isSystemAdmin } from "../../../src/services/auth/restaurantScope.service.js";
+import {
+  getStaffMembershipRestaurantFilter,
+  getStaffRestaurantIds,
+  isSystemAdmin,
+} from "../../../src/services/auth/restaurantScope.service.js";
 import { tryAdminSensitiveAccessWithAudit, SENSITIVE_ACCESS } from "../../../src/services/auth/adminSensitiveAccess.service.js";
 import {
   buildPayrollItemsForRange,
@@ -95,6 +100,11 @@ import {
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
   return new mongoose.Types.ObjectId(id);
+}
+
+async function firstStaffRestaurantId(userId) {
+  const [restaurantId] = await getStaffRestaurantIds(userId);
+  return restaurantId || null;
 }
 
 function toStartOfDay(date) {
@@ -375,7 +385,7 @@ async function findPayrollItemInPeriodRestaurant(period, employeeId) {
 async function requireLeaveBalanceAccess(ctx, employeeId) {
   requireAuth(ctx);
   const staff = await Staff.findById(employeeId)
-    .select({ _id: 1, restaurantForStaff: 1, userType: 1 })
+    .select({ _id: 1, userType: 1 })
     .lean();
   if (!staff) return null;
 
@@ -384,7 +394,8 @@ async function requireLeaveBalanceAccess(ctx, employeeId) {
   if (isSelf) return staff;
 
   requireRoles(ctx, ATTENDANCE_READ_ROLES);
-  await requireRestaurantAccess(ctx, staff.restaurantForStaff);
+  const [restaurantId] = await getStaffRestaurantIds(staff._id);
+  await requireRestaurantAccess(ctx, restaurantId);
   return staff;
 }
 
@@ -398,16 +409,16 @@ export default {
       .select({
         userType: 1,
         deletedAt: 1,
-        restaurantForStaff: 1,
-        refRestaurants: 1,
       })
       .lean();
     if (!minimal || minimal.userType !== "STAFF" || minimal.deletedAt) {
       throw new Error("Staff not found");
     }
     if (String(ctx?.user?.id || ctx?.user?._id || "") !== String(id)) {
-      const targetRestaurantId = minimal?.restaurantForStaff || null;
-      await requireRestaurantAccess(ctx, targetRestaurantId);
+      const targetRestaurantIds = await getStaffRestaurantIds(id);
+      if (!targetRestaurantIds.length) throw new Error("Staff not found");
+      await Promise.any(targetRestaurantIds.map((targetRestaurantId) => requireRestaurantAccess(ctx, targetRestaurantId)))
+        .catch(() => { throw new Error("FORBIDDEN_SCOPE"); });
     }
     const user = await Staff.findById(id)
       .populate("role")
@@ -415,7 +426,7 @@ export default {
     if (String(ctx?.user?.id || ctx?.user?._id || "") === String(id)) {
       return sanitizeAdminUserListItem(user);
     }
-    return sanitizeStaffPrivateProfile(user, ctx, { restaurantId: minimal?.restaurantForStaff });
+    return sanitizeStaffPrivateProfile(user, ctx);
   },
 
   // =========================
@@ -426,10 +437,11 @@ export default {
     const rid = toObjectId(restaurantId);
     if (!rid && !restaurantId) return [];
 
+    const membershipFilter = await getStaffMembershipRestaurantFilter(rid || restaurantId);
     const filter = {
       userType: "STAFF",
       deletedAt: null,
-      restaurantForStaff: rid || restaurantId,
+      ...membershipFilter,
     };
 
     const list = await Staff.find(filter)
@@ -458,13 +470,7 @@ export default {
 
     if (restaurantId) {
       await requireRestaurantAccess(ctx, restaurantId);
-      const rid = toObjectId(restaurantId);
-      const restaurantScopeFilter = {
-        $or: [
-          ...(rid ? [{ restaurantForStaff: rid }] : []),
-          { restaurantForStaff: restaurantId },
-        ],
-      };
+      const restaurantScopeFilter = await getStaffMembershipRestaurantFilter(restaurantId);
       filter.$and = [...(filter.$and || []), restaurantScopeFilter];
     } else {
       requireRoles(ctx, ["ADMIN"]);
@@ -511,7 +517,7 @@ export default {
       }));
     }
 
-    return Promise.all(staff.map((item) => sanitizeStaffPrivateProfile(item, ctx, { restaurantId: item?.restaurantForStaff || restaurantId })));
+    return Promise.all(staff.map((item) => sanitizeStaffPrivateProfile(item, ctx, { restaurantId })));
   },
   shiftAcknowledgements: async (
     _,
@@ -640,11 +646,12 @@ export default {
         .lean(),
     ]);
 
+    const scopedStaffFilter = await getStaffMembershipRestaurantFilter(restaurantOid);
     const staffRows = await Staff.find({
-      restaurantForStaff: restaurantOid,
+      ...scopedStaffFilter,
       _id: { $in: [...new Set(shiftRows.map((s) => String(s.employeeId)).filter(Boolean))] },
     })
-      .select({ _id: 1, fullName: 1, employeeCode: 1, restaurantForStaff: 1 })
+      .select({ _id: 1, fullName: 1, employeeCode: 1 })
       .lean();
 
     const staffById = new Map(staffRows.map((row) => [String(row._id), row]));
@@ -828,11 +835,11 @@ export default {
     const isSelf =
       String(ctx?.user?.id || ctx?.user?._id || "") === String(staff._id);
     if (!isSelf) {
-      const targetRestaurantId = staff?.restaurantForStaff || null;
+      const targetRestaurantId = await firstStaffRestaurantId(staff._id);
       await requireRestaurantAccess(ctx, targetRestaurantId);
     }
 
-    const restaurantId = staff?.restaurantForStaff || null;
+    const restaurantId = await firstStaffRestaurantId(staff._id);
     const rid = toObjectId(restaurantId);
 
     let floorAssigned = [];
@@ -901,7 +908,6 @@ export default {
       employmentStatus: String(
         staff.employmentStatus || "working",
       ).toUpperCase(),
-      restaurantForStaff: staff.restaurantForStaff || null,
       floorAssigned,
       floorCount,
       tableCount,
@@ -922,7 +928,7 @@ export default {
     const isSelf =
       String(ctx?.user?.id || ctx?.user?._id || "") === String(staff._id);
     if (!isSelf) {
-      const targetRestaurantId = staff?.restaurantForStaff || null;
+      const targetRestaurantId = await firstStaffRestaurantId(staff._id);
       await requireRestaurantAccess(ctx, targetRestaurantId);
       assertPayrollPermission(ctx, "payroll.view");
     }
@@ -1045,7 +1051,7 @@ export default {
     const isSelf =
       String(ctx?.user?.id || ctx?.user?._id || "") === String(staff._id);
     if (!isSelf) {
-      const targetRestaurantId = staff?.restaurantForStaff || null;
+      const targetRestaurantId = await firstStaffRestaurantId(staff._id);
       await requireRestaurantAccess(ctx, targetRestaurantId);
     }
 
@@ -1104,7 +1110,7 @@ export default {
 
     const authUser = ctx?.user || null;
     const fallbackRestaurantId =
-      restaurantId || authUser?.restaurantForStaff || null;
+      restaurantId || await firstStaffRestaurantId(authUser?.id || authUser?._id) || null;
     const rid = toObjectId(fallbackRestaurantId);
     if (!rid) {
       return {
@@ -1127,7 +1133,7 @@ export default {
     requireAuth(ctx);
     assertPayrollPermission(ctx, "payroll.view");
     const authUser = ctx?.user || null;
-    const rid = toObjectId(restaurantId || authUser?.restaurantForStaff || null);
+    const rid = toObjectId(restaurantId || await firstStaffRestaurantId(authUser?.id || authUser?._id) || null);
     if (!rid) return [];
     await requireRestaurantAccess(ctx, rid);
     const rows = await PayrollPeriod.find({ restaurantId: rid })
@@ -1248,7 +1254,7 @@ export default {
     requireAuth(ctx);
     assertPayrollPermission(ctx, "payroll.view");
     const authUser = ctx?.user || null;
-    const rid = restaurantId || authUser?.restaurantForStaff || null;
+    const rid = restaurantId || await firstStaffRestaurantId(authUser?.id || authUser?._id) || null;
     if (!rid) return null;
     await requireRestaurantAccess(ctx, rid);
     const settings = await getPayrollSettings(rid);
@@ -1457,7 +1463,7 @@ export default {
       authUserId &&
       requestedEmployeeId === authUserId;
     const fallbackRestaurantId =
-      restaurantId || authUser?.restaurantForStaff || null;
+      restaurantId || await firstStaffRestaurantId(authUser?.id || authUser?._id) || null;
     const rid = toObjectId(fallbackRestaurantId);
     const eid = toObjectId(employeeId);
     if (!rid) return [];
@@ -1560,7 +1566,7 @@ export default {
     const authUser = ctx?.user || null;
     const actorId = authUser?.id || authUser?._id || null;
     const fallbackRestaurantId =
-      restaurantId || authUser?.restaurantForStaff || null;
+      restaurantId || await firstStaffRestaurantId(authUser?.id || authUser?._id) || null;
 
     const rid = toObjectId(fallbackRestaurantId);
     if (!rid) return [];
@@ -1593,10 +1599,11 @@ export default {
       ? actorEmployeeId
       : requestedEmployeeId;
 
+    const scopedStaffFilter = await getStaffMembershipRestaurantFilter(rid);
     const staffFilter = {
       userType: "STAFF",
       deletedAt: null,
-      restaurantForStaff: rid,
+      ...scopedStaffFilter,
     };
 
     const eid = toObjectId(effectiveEmployeeId);
@@ -1794,7 +1801,7 @@ export default {
 
     const authUser = ctx?.user || null;
     const fallbackRestaurantId =
-      filter.restaurantId || authUser?.restaurantForStaff || null;
+      filter.restaurantId || await firstStaffRestaurantId(authUser?.id || authUser?._id) || null;
 
     const rid = toObjectId(fallbackRestaurantId);
     if (!rid) return [];
@@ -2036,7 +2043,7 @@ export default {
 
     const authUser = ctx?.user || null;
     const fallbackRestaurantId =
-      input.restaurantId || authUser?.restaurantForStaff || null;
+      input.restaurantId || await firstStaffRestaurantId(authUser?.id || authUser?._id) || null;
     const rid = toObjectId(fallbackRestaurantId);
     if (!rid) throw new Error("Missing restaurantId for staff report");
     await requireStaffReportAccessForRestaurant(ctx, rid);
@@ -2052,9 +2059,10 @@ export default {
       ? toEndOfDay(input.compareEndDate)
       : toEndOfDay(new Date(start.getTime() - 1));
 
+    const scopedStaffFilter = await getStaffMembershipRestaurantFilter(rid);
     const staffDocs = await Staff.find({
       userType: "STAFF",
-      $or: [{ restaurantForStaff: rid }],
+      ...scopedStaffFilter,
     })
       .select({
         _id: 1,

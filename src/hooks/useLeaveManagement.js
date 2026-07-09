@@ -11,7 +11,6 @@ export const Q_LEAVE_PAGE = gql`
       roleName
       department
       avatarUrl
-      restaurantForStaff
     }
     leaveRequests(filter: $filter) {
       id

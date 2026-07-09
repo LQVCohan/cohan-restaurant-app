@@ -92,7 +92,6 @@ describe("GraphQL user privacy schema", () => {
         email
         phone
         employeeCode
-        restaurantForStaff
         roleName
         role { id name slug department }
       }

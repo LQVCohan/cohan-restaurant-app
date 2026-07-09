@@ -331,7 +331,6 @@ type User {
   provider: String
   avatarUrl: String
 
-  restaurantForStaff: ID
   refRestaurants: [Restaurant!]
 
   customerType: CustomerType
@@ -589,7 +588,6 @@ type StaffPrivateProfile {
   employeeCode: String
   department: DepartmentType
   positionTitle: String
-  restaurantForStaff: ID
   refRestaurants: [Restaurant!]
   emergencyContact: EmergencyContact
   emergencyContacts: [EmergencyContactExtended!]
@@ -664,7 +662,6 @@ input CreateUserInput {
   status: String
   roleId: ID
   refRestaurantIds: [ID!]
-  restaurantForStaff: ID
   customerType: CustomerType
   captchaToken: String
 
@@ -719,7 +716,6 @@ input UpdateUserInput {
   status: String
   roleId: ID
   refRestaurantIds: [ID!]
-  restaurantForStaff: ID
   customerType: CustomerType
 
   userType: UserType

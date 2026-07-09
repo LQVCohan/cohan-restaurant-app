@@ -21,6 +21,8 @@ const modelMocks = vi.hoisted(() => ({
   },
 }));
 
+const scopeMocks = vi.hoisted(() => ({ getStaffRestaurantIds: vi.fn() }));
+
 const runtimeMocks = vi.hoisted(() => ({
   getPayrollSettings: vi.fn(),
   getPeriodDetail: vi.fn(),
@@ -42,11 +44,16 @@ const runtimeMocks = vi.hoisted(() => ({
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../lib/mailer.js", () => ({ mailer: { sendMail: vi.fn() } }));
 vi.mock("../../src/services/payroll/payrollRuntime.service.js", () => runtimeMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  getStaffRestaurantIds: scopeMocks.getStaffRestaurantIds,
+}));
 
 describe("Payroll period setup semantics", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    scopeMocks.getStaffRestaurantIds.mockResolvedValue(["restaurant-1"]);
   });
 
   it("blocks changing the applied payroll period while the current period is not fully paid", async () => {
@@ -73,7 +80,7 @@ describe("Payroll period setup semantics", () => {
             name: "Ky moi",
           },
         },
-        { user: { restaurantForStaff: "restaurant-1", id: "admin-1", roleName: "admin" } },
+        { user: { id: "admin-1", roleName: "admin" } },
       );
     } catch (error) {
       thrownError = error;
@@ -131,7 +138,7 @@ describe("Payroll period setup semantics", () => {
           name: "Ky moi",
         },
       },
-      { user: { restaurantForStaff: "restaurant-1", id: "admin-1", roleName: "admin" } },
+      { user: { id: "admin-1", roleName: "admin" } },
     );
 
     expect(modelMocks.PayrollSetting.findOneAndUpdate).toHaveBeenCalledWith(

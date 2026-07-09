@@ -147,6 +147,7 @@ const userSchema = BaseSchemaModel(
     refRestaurants: [{ type: mongoose.Schema.Types.ObjectId, ref: "Restaurant" }],
 
     // Nhà hàng chính nhân viên được phân công (lưu dạng restaurant ID)
+    // legacy data only; runtime scope uses BrandMembership
     restaurantForStaff: { type: mongoose.Schema.Types.ObjectId, ref: "Restaurant", default: null },
 
     taxCode: {

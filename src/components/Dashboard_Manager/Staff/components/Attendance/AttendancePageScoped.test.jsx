@@ -9,14 +9,14 @@ vi.mock("./AttendancePage", async () => {
   const { AuthContext: MockAuthContext } = await import("@/context/AuthContext");
 
   return {
-    default: () => {
+    default: ({ restaurantId }) => {
       const { user } = ReactModule.useContext(MockAuthContext);
       return (
         <div>
           <span data-testid="attendance-user-id">{user?.id}</span>
           <span data-testid="attendance-user-role">{user?.roleName}</span>
           <span data-testid="attendance-restaurant-scope">
-            {user?.restaurantForStaff || "unscoped"}
+            {restaurantId || "unscoped"}
           </span>
         </div>
       );
