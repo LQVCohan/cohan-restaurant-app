@@ -140,6 +140,10 @@ export default defineConfig(({ mode }) => {
           target: devBackendUrl,
           changeOrigin: true,
         },
+        "/auth": {
+          target: devBackendUrl,
+          changeOrigin: true,
+        },
         "/ai": {
           target: devBackendUrl,
           changeOrigin: true,
