@@ -15,7 +15,7 @@ QR in trên bàn là token tĩnh. Người đi ngang có thể quét QR của b�
 3. POS/staff thấy yêu cầu theo bàn và mã yêu cầu; mã 6 số chỉ hiện sau thao tác rõ ràng “Đã tới bàn – hiện mã”.
 4. Khách nhập mã staff đọc tại bàn. Backend mới cấp `orderSessionToken` ngắn hạn.
 5. Token phải gắn `restaurantId + tableId + tableSessionId + deviceHash + requestId`.
-6. Token cũ mất hiệu lực khi phiên bàn đóng, chuyển sang thanh toán, hoặc phiên mới được mở.
+6. Quyền gửi thêm món bị khóa khi phiên chuyển sang thanh toán; token mất hiệu lực hoàn toàn khi phiên đóng, đã thanh toán hoặc phiên mới được mở.
 7. Gửi order, xem order, gọi nhân viên, yêu cầu thanh toán và OTP liên kết khách đều phải có token phiên hợp lệ.
 8. Một phiên bàn có thể có tối đa 5 yêu cầu xác nhận đang chờ; cùng thiết bị được tái sử dụng yêu cầu chưa hết hạn.
 
@@ -24,6 +24,7 @@ QR in trên bàn là token tĩnh. Người đi ngang có thể quét QR của b�
 - Không thêm dependency hoặc model mới.
 - Lưu các yêu cầu xác nhận ngắn hạn trong `Order.clientMeta` của bản ghi `table_session`.
 - Mã xác nhận được suy ra bằng HMAC, không lưu plaintext trong database.
+- Session token được giữ trong cookie HttpOnly theo từng bàn; frontend không lưu token trong Web Storage.
 - Không thay đổi quy tắc order QR phải chờ staff/POS nhận trước khi vào bếp.
 - Giữ restaurant scoping và quyền `order.read` cho hàng đợi staff.
 
@@ -40,6 +41,6 @@ QR in trên bàn là token tĩnh. Người đi ngang có thể quét QR của b�
 - Khách chưa nhập đúng mã không nhận được session token.
 - Staff phải mở mã từ UI hàng đợi; mã khớp đúng request label và bàn.
 - Token phiên của bàn A không dùng cho bàn B, phiên khác hoặc device khác.
-- Token bị chặn khi phiên bàn `ready_to_pay/closed/cancelled` hoặc đã yêu cầu/đã thanh toán.
+- Phiên `ready_to_pay/payment_requested` không thể gửi thêm món; phiên `closed/cancelled/paid` không dùng lại token.
 - Sau xác nhận một lần, cùng browser có thể gọi nhiều đợt món trong đúng phiên bàn.
-- Refresh trang giữ token trong `sessionStorage`; phiên bàn mới không dùng lại token cũ.
+- Refresh trang giữ quyền bằng cookie HttpOnly; phiên bàn mới không dùng lại token cũ.
