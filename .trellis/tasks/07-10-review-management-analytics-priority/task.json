@@ -1,7 +1,7 @@
 {
   "id": "07-10-review-management-analytics-priority",
-  "title": "Đồng bộ màu và tách tab phân tích review",
-  "status": "implemented_unverified",
+  "title": "Đồng bộ màu, tách tab phân tích và gộp thông báo review",
+  "status": "in_progress",
   "type": "frontend-ui-bugfix",
   "scope": [
     "src/components/Dashboard_Manager/Review/ReviewManagement.jsx",
@@ -27,13 +27,15 @@
       "made analytics queues navigate back to the matching review list filter",
       "replaced local cream, orange and blue presentation values with shared manager sage tokens",
       "synchronized the page header, command bar, filter sidebar, review cards and detail modal",
-      "added focused tests for tab visibility, query skipping, scope rules and queue navigation"
+      "added focused tests for tab visibility, query skipping, scope rules and queue navigation",
+      "traced review notifications from review mutation to Notification resolver, useCommunication and the manager header bell",
+      "confirmed the review page bell duplicates the existing global query, polling and socket listener",
+      "planned deletion-only consolidation without changing backend or shared notification behavior"
     ],
     "notRun": [
-      "targeted Vitest was unavailable in the GitHub connector environment",
-      "npm run build was unavailable in the GitHub connector environment",
-      "browser smoke at 375, 768, 1024 and 1440 px was unavailable in the GitHub connector environment",
-      "no GitHub status checks were attached to commit 85856a21afef7f5a257461eeb436fa25d8af800b at verification time"
+      "targeted Vitest pending follow-up implementation",
+      "npm run build pending follow-up implementation",
+      "browser smoke at 375, 768, 1024 and 1440 px pending follow-up implementation"
     ]
   }
 }
