@@ -13,6 +13,13 @@ describe("buildCartLineIdentity", () => {
     );
   });
 
+  it("tách dòng khi khác thời điểm phục vụ", () => {
+    const base = { id: "m1", restaurantId: "r1", servingVariantKey: "size-l", modifiers: [] };
+    expect(buildCartLineIdentity({ ...base, serviceAt: "2026-07-11T01:00:00.000Z" })).not.toBe(
+      buildCartLineIdentity({ ...base, serviceAt: "2026-07-11T11:00:00.000Z" }),
+    );
+  });
+
   it("tách dòng khi khác modifiers", () => {
     const base = { id: "m1", restaurantId: "r1", servingVariantKey: "size-l", note: "" };
     expect(
