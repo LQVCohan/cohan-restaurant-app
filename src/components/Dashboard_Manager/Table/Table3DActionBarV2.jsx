@@ -1,28 +1,15 @@
 import React from "react";
-import {
-  Camera,
-  Check,
-  Info,
-  Loader2,
-  ScanLine,
-  Smartphone,
-} from "lucide-react";
+import { Camera, Loader2, ScanLine } from "lucide-react";
 import Button from "@/components/common/Button";
 
 export default function Table3DActionBarV2({
   selectedModel,
   canPreviewCamera,
   onOpenCamera,
-  canOpenArPlacement,
-  arPlacementTitle,
-  placementActionLabel = "Thiết lập vị trí bàn",
-  onOpenArPlacement,
   canLaunchNativeAr,
   isOpeningAr,
   arUnavailableReason,
   onOpenNativeAr,
-  applyActionLabel = "Áp dụng mẫu này",
-  onApply,
 }) {
   return (
     <div className="table-3d-modal__footer table-3d-modal__footer--clear-actions">
@@ -35,56 +22,29 @@ export default function Table3DActionBarV2({
             ? "Hãy chọn một mẫu bàn trước"
             : !canPreviewCamera
               ? "Thiết bị hoặc trình duyệt chưa cho phép sử dụng camera"
-              : "Xem thử mẫu bàn bằng camera, không lưu vị trí"
+              : "Mở camera để ước lượng nhanh vị trí và kích thước hiển thị"
         }
       >
-        <Camera size={16} /> Xem thử 2D bằng camera
+        <Camera size={16} aria-hidden="true" /> Xem camera 2D
       </Button>
 
       <Button
         type="button"
-        variant="secondary"
+        variant="primary"
         onClick={onOpenNativeAr}
         disabled={!canLaunchNativeAr || isOpeningAr}
         title={
           canLaunchNativeAr
-            ? "Mở mẫu bàn bằng trình xem AR của thiết bị"
+            ? "Mở camera AR của thiết bị để đặt thử mẫu bàn trong không gian thật"
             : arUnavailableReason
         }
       >
         {isOpeningAr ? (
-          <Loader2 size={15} className="spin" />
+          <Loader2 size={15} className="spin" aria-hidden="true" />
         ) : (
-          <Smartphone size={15} />
+          <ScanLine size={15} aria-hidden="true" />
         )}
-        {isOpeningAr ? "Đang mở AR..." : "Xem AR trên thiết bị"}
-      </Button>
-
-      <div className="table-3d-position-action">
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={onOpenArPlacement}
-          disabled={!canOpenArPlacement}
-          title={arPlacementTitle}
-        >
-          <ScanLine size={16} />
-          {canOpenArPlacement ? placementActionLabel : "Chưa chọn bàn"}
-        </Button>
-        {!canOpenArPlacement && (
-          <span className="table-3d-position-action__hint">
-            <Info size={13} /> Mở chi tiết một bàn trước để lưu vị trí.
-          </span>
-        )}
-      </div>
-
-      <Button
-        variant="primary"
-        className="table-3d-apply-button"
-        onClick={onApply}
-        disabled={!selectedModel}
-      >
-        <Check size={16} /> {applyActionLabel}
+        {isOpeningAr ? "Đang mở camera AR..." : "Mở camera AR"}
       </Button>
     </div>
   );
