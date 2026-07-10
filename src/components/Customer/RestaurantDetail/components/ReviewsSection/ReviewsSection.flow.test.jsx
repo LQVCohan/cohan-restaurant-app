@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
@@ -108,13 +108,16 @@ describe("ReviewsSection customer flow", () => {
     renderWithAuth();
 
     fireEvent.click(screen.getByRole("button", { name: "Viết đánh giá" }));
-    fireEvent.change(screen.getByLabelText("Nội dung đánh giá"), {
+    const dialog = screen.getByRole("dialog", { name: "Viết đánh giá" });
+    fireEvent.change(within(dialog).getByLabelText("Nội dung đánh giá"), {
       target: { value: "Quá ngắn" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Gửi đánh giá" }));
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Gửi đánh giá" }),
+    );
 
     expect(createReview).not.toHaveBeenCalled();
-    expect(await screen.findByRole("alert")).toHaveTextContent(
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
       "Nội dung đánh giá phải có ít nhất 10 ký tự.",
     );
   });
