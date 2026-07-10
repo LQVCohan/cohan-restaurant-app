@@ -1,6 +1,23 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
+import {
+  AlertTriangle,
+  Archive,
+  Building2,
+  CheckCircle2,
+  Download,
+  FileText,
+  History,
+  LockKeyhole,
+  RefreshCw,
+  Save,
+  ShieldCheck,
+  Upload,
+  XCircle,
+} from "lucide-react";
 import { AuthContext } from "../../../context/AuthContext";
+import useManagerRestaurantSelection from "../../../hooks/useManagerRestaurantSelection";
+import { hasPermission } from "../../../utils/frontendPermissionAccess";
 import "./BackupManagement.scss";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 
@@ -12,7 +29,7 @@ const Q_BACKUP_READINESS = gql`
       risks { key label severity resolved description }
       checklist { reportsChecked transactionsReconciled settingsReviewed exportPrepared safeCopyStored operatorRecorded }
       scope { ordersAndPayments tablesAndFloorPlan menuAndPricing inventory staffAndPermissions schedules customersAndPromotions reportsAndReconciliation }
-      lastRun { id status note completedAt createdAt updatedAt }
+      lastRun { id restaurantId status note completedAt createdAt updatedAt }
     }
   }
 `;
@@ -100,14 +117,14 @@ const FALLBACK_CHECKLIST = {
 };
 
 const FALLBACK_SCOPE = {
-  ordersAndPayments: true,
+  ordersAndPayments: false,
   tablesAndFloorPlan: true,
   menuAndPricing: true,
   inventory: true,
-  staffAndPermissions: true,
+  staffAndPermissions: false,
   schedules: true,
   customersAndPromotions: true,
-  reportsAndReconciliation: true,
+  reportsAndReconciliation: false,
 };
 
 const FALLBACK_READINESS = {
@@ -185,6 +202,7 @@ const SEVERITY_LABELS = {
 const ACTION_LABELS = {
   create: "Thêm mới",
   update: "Cập nhật",
+  upsert: "Cập nhật",
   replace: "Thay thế",
   merge: "Bổ sung",
   skip: "Bỏ qua",
@@ -211,7 +229,13 @@ const FRIENDLY_WARNING_RULES = [
 ];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const UNSUPPORTED_SCOPE_KEYS = new Set([
+  "ordersAndPayments",
+  "staffAndPermissions",
+  "reportsAndReconciliation",
+]);
 const allSections = () => Object.fromEntries(CONFIG_SECTIONS.map(([key]) => [key, true]));
+const selectedSectionCount = (state) => CONFIG_SECTIONS.filter(([key]) => Boolean(state[key])).length;
 const toChecklistItems = (checklist = FALLBACK_CHECKLIST) => Object.entries(CHECKLIST_LABELS).map(([key, label]) => ({ key, label, done: Boolean(checklist?.[key]) }));
 const toScopeItems = (scope = FALLBACK_SCOPE) => Object.entries(SCOPE_LABELS).map(([key, label]) => ({ key, label, enabled: Boolean(scope?.[key]) }));
 const restaurantOptionId = (restaurant) => String(restaurant?.id || restaurant?._id || restaurant?.restaurantId || "");
@@ -223,6 +247,14 @@ const statusLabel = (status) => STATUS_LABELS[status] || status || "Chưa xác �
 const severityLabel = (severity) => SEVERITY_LABELS[severity] || severity || "Thông tin";
 const actionLabel = (action) => ACTION_LABELS[action] || action || "Thay đổi";
 const fieldLabel = (field) => FIELD_LABELS[field] || field || "Trường dữ liệu";
+
+const normalizeDraftScope = (scope = FALLBACK_SCOPE) => ({
+  ...FALLBACK_SCOPE,
+  ...scope,
+  ordersAndPayments: false,
+  staffAndPermissions: false,
+  reportsAndReconciliation: false,
+});
 
 const formatDate = (value) => {
   if (!value) return "-";
@@ -257,8 +289,34 @@ const friendlyReason = (reason = "") => {
 };
 
 const BackupManagement = () => {
-  const { restaurants = [] } = useContext(AuthContext) || {};
-  const [restaurantId, setRestaurantId] = useState("");
+  const auth = useContext(AuthContext) || {};
+  const { user, restaurants: authRestaurants = [] } = auth;
+  const restaurantScope = useManagerRestaurantSelection(authRestaurants);
+  const sourceRestaurants = restaurantScope.restaurantOptions || [];
+  const restaurantId = restaurantScope.selectedRestaurantId || "";
+  const selectedRestaurant = restaurantScope.selectedRestaurant
+    || sourceRestaurants.find((restaurant) => restaurantOptionId(restaurant) === restaurantId)
+    || null;
+  const restaurants = useMemo(() => {
+    const byId = new Map();
+    [...authRestaurants, ...sourceRestaurants].forEach((restaurant) => {
+      const id = restaurantOptionId(restaurant);
+      if (id) byId.set(id, restaurant);
+    });
+    return [...byId.values()];
+  }, [authRestaurants, sourceRestaurants]);
+  const hasConfirmedRestaurantScope = Boolean(
+    !restaurantScope.restaurantsLoading
+      && restaurantId
+      && selectedRestaurant
+      && restaurantOptionId(selectedRestaurant) === restaurantId,
+  );
+
+  const canRead = hasPermission(user, "backup.read");
+  const canWrite = hasPermission(user, "backup.write");
+  const canExport = hasPermission(user, "backup.export");
+  const canImport = hasPermission(user, "backup.import");
+
   const [targetRestaurantId, setTargetRestaurantId] = useState("");
   const [exportSections, setExportSections] = useState(allSections);
   const [importSections, setImportSections] = useState(allSections);
@@ -271,76 +329,106 @@ const BackupManagement = () => {
   const [confirmedImport, setConfirmedImport] = useState(false);
   const [selectedRunId, setSelectedRunId] = useState("");
   const [runDraft, setRunDraft] = useState({ checklist: FALLBACK_CHECKLIST, scope: FALLBACK_SCOPE, note: "" });
-  const [statusMessage, setStatusMessage] = useState("");
+  const [statusNotice, setStatusNotice] = useState(null);
   const [conflictResolutions, setConflictResolutions] = useState({});
   const [conflictFilter, setConflictFilter] = useState({ section: "all", severity: "all", resolution: "all", search: "" });
 
-  useEffect(() => {
-    const firstId = restaurantOptionId(restaurants[0]);
-    if (!restaurantId && firstId) setRestaurantId(firstId);
-    if (!targetRestaurantId && firstId) setTargetRestaurantId(firstId);
-  }, [restaurantId, targetRestaurantId, restaurants]);
-
-  const readinessQuery = useQuery(Q_BACKUP_READINESS, { variables: { restaurantId }, skip: !restaurantId, fetchPolicy: "network-only" });
-  const runsQuery = useQuery(Q_BACKUP_RUNS, { variables: { restaurantId, limit: 5, offset: 0 }, skip: !restaurantId, fetchPolicy: "network-only" });
-  const [previewExport, previewExportState] = useLazyQuery(Q_CONFIG_BACKUP_PREVIEW, { fetchPolicy: "network-only", onError: (error) => setStatusMessage(`Không thể xem trước file sao lưu: ${error.message}`) });
-  const [exportBackup, exportBackupState] = useMutation(M_EXPORT_CONFIG_BACKUP, { onError: (error) => setStatusMessage(`Không tải được file sao lưu: ${error.message}`) });
-  const [previewImport, previewImportState] = useMutation(M_PREVIEW_CONFIG_IMPORT, { onError: (error) => setStatusMessage(`Không thể xem trước khôi phục: ${error.message}`) });
+  const readinessQuery = useQuery(Q_BACKUP_READINESS, {
+    variables: { restaurantId },
+    skip: !hasConfirmedRestaurantScope || !canRead,
+    fetchPolicy: "network-only",
+    notifyOnNetworkStatusChange: true,
+  });
+  const runsQuery = useQuery(Q_BACKUP_RUNS, {
+    variables: { restaurantId, limit: 5, offset: 0 },
+    skip: !hasConfirmedRestaurantScope || !canRead,
+    fetchPolicy: "network-only",
+    notifyOnNetworkStatusChange: true,
+  });
+  const [previewExport, previewExportState] = useLazyQuery(Q_CONFIG_BACKUP_PREVIEW, { fetchPolicy: "network-only" });
+  const [exportBackup, exportBackupState] = useMutation(M_EXPORT_CONFIG_BACKUP);
+  const [previewImport, previewImportState] = useMutation(M_PREVIEW_CONFIG_IMPORT);
 
   const afterRunMutation = () => {
-    readinessQuery.refetch?.();
-    runsQuery.refetch?.();
+    void readinessQuery.refetch?.();
+    void runsQuery.refetch?.();
   };
 
   const [createBackupRun, createRunState] = useMutation(M_CREATE_BACKUP_RUN, {
     onCompleted: ({ createBackupRun: created }) => {
       setSelectedRunId(created?.id || "");
-      setStatusMessage("Đã tạo lần chuẩn bị sao lưu.");
+      setStatusNotice({ type: "success", text: "Đã tạo lần chuẩn bị sao lưu." });
       afterRunMutation();
     },
-    onError: (error) => setStatusMessage(`Không tạo được lần chuẩn bị sao lưu: ${error.message}`),
+    onError: (error) => setStatusNotice({ type: "error", text: `Không tạo được lần chuẩn bị sao lưu: ${error.message}` }),
   });
   const [updateBackupRun, updateRunState] = useMutation(M_UPDATE_BACKUP_RUN, {
     onCompleted: ({ updateBackupRun: updated }) => {
       setSelectedRunId(updated?.id || "");
-      setStatusMessage("Đã lưu checklist an toàn.");
+      setStatusNotice({ type: "success", text: "Đã lưu checklist an toàn." });
       afterRunMutation();
     },
-    onError: (error) => setStatusMessage(`Không lưu được checklist an toàn: ${error.message}`),
+    onError: (error) => setStatusNotice({ type: "error", text: `Không lưu được checklist an toàn: ${error.message}` }),
   });
   const [importBackup, importBackupState] = useMutation(M_IMPORT_CONFIG_BACKUP, {
-    onError: (error) => setStatusMessage(`Khôi phục thất bại: ${error.message}`),
     onCompleted: () => afterRunMutation(),
   });
 
-  const readiness = readinessQuery.data?.backupReadiness || FALLBACK_READINESS;
-  const runs = Array.isArray(runsQuery.data?.backupRuns) ? runsQuery.data.backupRuns : [];
-  const selectedRun = runs.find((run) => run.id === selectedRunId) || runs[0] || readiness.lastRun || null;
+  const rawReadiness = readinessQuery.data?.backupReadiness;
+  const readinessMatchesScope = Boolean(rawReadiness && String(rawReadiness.restaurantId || "") === restaurantId);
+  const readiness = readinessMatchesScope ? rawReadiness : FALLBACK_READINESS;
+  const rawRuns = Array.isArray(runsQuery.data?.backupRuns) ? runsQuery.data.backupRuns : [];
+  const runs = rawRuns.filter((run) => String(run.restaurantId || "") === restaurantId);
+  const currentLastRun = readiness.lastRun && String(readiness.lastRun.restaurantId || "") === restaurantId
+    ? readiness.lastRun
+    : null;
+  const selectedRun = runs.find((run) => run.id === selectedRunId) || runs[0] || currentLastRun || null;
 
   useEffect(() => {
-    if (!selectedRunId && selectedRun?.id) setSelectedRunId(selectedRun.id);
-  }, [selectedRunId, selectedRun?.id]);
+    setTargetRestaurantId(restaurantId);
+    setSelectedRunId("");
+    setRunDraft({ checklist: FALLBACK_CHECKLIST, scope: FALLBACK_SCOPE, note: "" });
+    setExportPreview(null);
+    setImportPreview(null);
+    setImportResult(null);
+    setConfirmedImport(false);
+    setConflictResolutions({});
+    setConflictFilter({ section: "all", severity: "all", resolution: "all", search: "" });
+    setStatusNotice(null);
+  }, [restaurantId]);
+
+  useEffect(() => {
+    if (selectedRun?.id && selectedRun.id !== selectedRunId) setSelectedRunId(selectedRun.id);
+  }, [selectedRun?.id, selectedRunId]);
 
   useEffect(() => {
     if (selectedRun) {
-      setRunDraft({ checklist: { ...FALLBACK_CHECKLIST, ...(selectedRun.checklist || {}) }, scope: { ...FALLBACK_SCOPE, ...(selectedRun.scope || {}) }, note: selectedRun.note || "" });
-    } else {
-      setRunDraft((prev) => ({ checklist: { ...FALLBACK_CHECKLIST, ...prev.checklist }, scope: { ...FALLBACK_SCOPE, ...prev.scope }, note: prev.note || "" }));
+      setRunDraft({
+        checklist: { ...FALLBACK_CHECKLIST, ...(selectedRun.checklist || {}) },
+        scope: normalizeDraftScope(selectedRun.scope),
+        note: selectedRun.note || "",
+      });
+      return;
     }
-  }, [selectedRun?.id]);
+    setRunDraft({ checklist: FALLBACK_CHECKLIST, scope: FALLBACK_SCOPE, note: "" });
+  }, [restaurantId, selectedRun?.id]);
 
   const checklistItems = useMemo(() => toChecklistItems(readiness.checklist), [readiness.checklist]);
   const scopeItems = useMemo(() => toScopeItems(readiness.scope), [readiness.scope]);
   const unresolvedRisks = useMemo(() => (readiness.risks || []).filter((risk) => !risk.resolved), [readiness.risks]);
   const completedChecklistCount = checklistItems.filter((item) => item.done).length;
   const enabledScopeCount = scopeItems.filter((item) => item.enabled).length;
-  const lastRunDate = readiness.lastRun?.completedAt || readiness.lastRun?.updatedAt || readiness.lastRun?.createdAt;
-  const loading = readinessQuery.loading || runsQuery.loading;
+  const staleReadData = Boolean((rawReadiness && !readinessMatchesScope) || rawRuns.some((run) => String(run.restaurantId || "") !== restaurantId));
+  const loading = restaurantScope.restaurantsLoading
+    || (canRead && hasConfirmedRestaurantScope && (readinessQuery.loading || runsQuery.loading));
   const importConflicts = importPreview?.conflicts || [];
   const importWarnings = (importPreview?.warnings || []).map(friendlyWarning);
   const exportWarnings = (exportPreview?.warnings || []).map(friendlyWarning);
   const resultWarnings = (importResult?.warnings || []).map(friendlyWarning);
-  const warning = !restaurantId ? "Chọn nhà hàng để xem trạng thái sao lưu." : readinessQuery.error || runsQuery.error ? "Không đọc được trạng thái sao lưu, đang hiển thị checklist khuyến nghị." : "";
+  const exportCount = selectedSectionCount(exportSections);
+  const importCount = selectedSectionCount(importSections);
+  const hasExportSections = exportCount > 0;
+  const hasImportSections = importCount > 0;
 
   const conflictStats = useMemo(() => ({
     total: importConflicts.length,
@@ -362,26 +450,40 @@ const BackupManagement = () => {
 
   const invalidConflictResolution = importConflicts.some((conflict) => {
     const current = conflictResolutions[conflict.id] || { resolution: conflict.defaultResolution, renameTo: "" };
-    return !conflict.allowedResolutions.includes(current.resolution) || (current.resolution === "rename_source" && !current.renameTo?.trim()) || (conflict.severity === "blocking" && current.resolution === "skip");
+    return !conflict.allowedResolutions.includes(current.resolution)
+      || (current.resolution === "rename_source" && !current.renameTo?.trim())
+      || (conflict.severity === "blocking" && current.resolution === "skip");
   });
+  const importPreviewReady = Boolean(importPreview && !(importPreview.errors || []).length && !invalidConflictResolution);
+  const importCanRun = Boolean(importPreviewReady && confirmedImport && fileContentBase64 && hasImportSections && canImport);
 
-  const statusText = statusMessage.toLowerCase();
-  const statusType = statusText.includes("thất bại") || statusText.includes("lỗi") || statusText.includes("không") ? "error" : statusText.includes("mã kiểm tra") || statusText.includes("đã") ? "success" : "warning";
-  const importCanRun = Boolean(importPreview?.valid && !(importPreview?.errors || []).length && confirmedImport && fileContentBase64 && !invalidConflictResolution);
-
-  const toggleSection = (setter, key) => setter((prev) => ({ ...prev, [key]: !prev[key] }));
+  const resetImportReview = () => {
+    setImportPreview(null);
+    setImportResult(null);
+    setConfirmedImport(false);
+    setConflictResolutions({});
+    setConflictFilter({ section: "all", severity: "all", resolution: "all", search: "" });
+  };
   const updateDraftChecklist = (key, checked) => setRunDraft((prev) => ({ ...prev, checklist: { ...prev.checklist, [key]: checked } }));
-  const updateDraftScope = (key, checked) => setRunDraft((prev) => ({ ...prev, scope: { ...prev.scope, [key]: checked } }));
-  const updateConflictResolution = (conflictId, patch) => setConflictResolutions((prev) => ({ ...prev, [conflictId]: { ...(prev[conflictId] || { conflictId }), ...patch } }));
-
-  const applyBulkResolution = (resolution, predicate = () => true) => setConflictResolutions((prev) => {
-    const next = { ...prev };
-    for (const conflict of importConflicts) {
-      if (!predicate(conflict) || !conflict.allowedResolutions.includes(resolution)) continue;
-      next[conflict.id] = { ...(next[conflict.id] || { conflictId: conflict.id, renameTo: "", fieldOverridesJson: "" }), resolution };
-    }
-    return next;
-  });
+  const updateDraftScope = (key, checked) => {
+    if (UNSUPPORTED_SCOPE_KEYS.has(key)) return;
+    setRunDraft((prev) => ({ ...prev, scope: { ...prev.scope, [key]: checked } }));
+  };
+  const updateConflictResolution = (conflictId, patch) => {
+    setConfirmedImport(false);
+    setConflictResolutions((prev) => ({ ...prev, [conflictId]: { ...(prev[conflictId] || { conflictId }), ...patch } }));
+  };
+  const applyBulkResolution = (resolution, predicate = () => true) => {
+    setConfirmedImport(false);
+    setConflictResolutions((prev) => {
+      const next = { ...prev };
+      for (const conflict of importConflicts) {
+        if (!predicate(conflict) || !conflict.allowedResolutions.includes(resolution)) continue;
+        next[conflict.id] = { ...(next[conflict.id] || { conflictId: conflict.id, renameTo: "", fieldOverridesJson: "" }), resolution };
+      }
+      return next;
+    });
+  };
 
   const importInput = (dryRun = true) => ({
     targetRestaurantId,
@@ -393,215 +495,301 @@ const BackupManagement = () => {
     conflictResolutions: Object.values(conflictResolutions),
   });
 
-  const createRun = () => createBackupRun({ variables: { input: { restaurantId, checklist: runDraft.checklist, scope: runDraft.scope, note: runDraft.note } } });
+  const createRun = () => {
+    if (!hasConfirmedRestaurantScope || !canWrite) return;
+    void createBackupRun({ variables: { input: { restaurantId, checklist: runDraft.checklist, scope: normalizeDraftScope(runDraft.scope), note: runDraft.note } } });
+  };
   const saveRun = (status) => {
-    if (!selectedRun?.id) return;
-    updateBackupRun({ variables: { input: { id: selectedRun.id, restaurantId, checklist: runDraft.checklist, scope: runDraft.scope, note: runDraft.note, ...(status ? { status } : {}) } } });
+    if (!selectedRun?.id || !hasConfirmedRestaurantScope || !canWrite) return;
+    void updateBackupRun({ variables: { input: { id: selectedRun.id, restaurantId, checklist: runDraft.checklist, scope: normalizeDraftScope(runDraft.scope), note: runDraft.note, ...(status ? { status } : {}) } } });
+  };
+
+  const toggleExportSection = (key) => {
+    setExportPreview(null);
+    setExportSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+  const toggleImportSection = (key) => {
+    resetImportReview();
+    setImportSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+  const setAllExportSections = (enabled) => {
+    setExportPreview(null);
+    setExportSections(Object.fromEntries(CONFIG_SECTIONS.map(([key]) => [key, enabled])));
+  };
+  const setAllImportSections = (enabled) => {
+    resetImportReview();
+    setImportSections(Object.fromEntries(CONFIG_SECTIONS.map(([key]) => [key, enabled])));
   };
 
   const handlePreviewExport = async () => {
-    setStatusMessage("");
-    const { data } = await previewExport({ variables: { input: { restaurantId, sections: selectedSectionsPayload(exportSections) } } });
-    setExportPreview(data?.restaurantConfigBackupPreview || null);
+    if (!restaurantId || !hasExportSections || !canRead) return;
+    setStatusNotice(null);
+    try {
+      const { data } = await previewExport({ variables: { input: { restaurantId, sections: selectedSectionsPayload(exportSections) } } });
+      setExportPreview(data?.restaurantConfigBackupPreview || null);
+    } catch (error) {
+      setStatusNotice({ type: "error", text: `Không thể xem trước file sao lưu: ${error.message}` });
+    }
   };
 
   const handleDownloadExport = async () => {
-    setStatusMessage("");
-    const { data } = await exportBackup({ variables: { input: { restaurantId, sections: selectedSectionsPayload(exportSections) } } });
-    const file = data?.exportRestaurantConfigBackup;
-    if (!file?.contentBase64) return;
-    const blob = base64ToBlob(file.contentBase64, file.mimeType);
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = file.fileName || "sao-luu-cau-hinh-nha-hang.json";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-    setStatusMessage(`Đã tạo file ${file.fileName}. Mã kiểm tra: ${file.checksum}`);
+    if (!restaurantId || !hasExportSections || !canExport) return;
+    setStatusNotice(null);
+    try {
+      const { data } = await exportBackup({ variables: { input: { restaurantId, sections: selectedSectionsPayload(exportSections) } } });
+      const file = data?.exportRestaurantConfigBackup;
+      if (!file?.contentBase64) throw new Error("Máy chủ không trả về nội dung file");
+      const blob = base64ToBlob(file.contentBase64, file.mimeType);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = file.fileName || "sao-luu-cau-hinh-nha-hang.json";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setStatusNotice({ type: "success", text: `Đã tạo file ${file.fileName}. Mã kiểm tra: ${file.checksum}` });
+    } catch (error) {
+      setStatusNotice({ type: "error", text: `Không tải được file sao lưu: ${error.message}` });
+    }
   };
 
   const handleFileChange = async (event) => {
     const file = event.target.files?.[0];
-    setImportPreview(null);
-    setImportResult(null);
-    setConfirmedImport(false);
-    setConflictResolutions({});
-    setSelectedFile(file || null);
+    resetImportReview();
+    setSelectedFile(null);
     setFileContentBase64("");
+    setStatusNotice(null);
     if (!file) return;
-    if (file.size > MAX_FILE_SIZE) {
-      setStatusMessage("File sao lưu quá lớn, giới hạn là 10MB.");
+    const isJson = file.type === "application/json" || file.name.toLowerCase().endsWith(".json");
+    if (!isJson) {
+      setStatusNotice({ type: "error", text: "Chỉ chấp nhận file sao lưu định dạng JSON." });
       return;
     }
-    setFileContentBase64(await readFileAsBase64(file));
+    if (file.size > MAX_FILE_SIZE) {
+      setStatusNotice({ type: "error", text: "File sao lưu quá lớn, giới hạn là 10MB." });
+      return;
+    }
+    try {
+      const content = await readFileAsBase64(file);
+      setSelectedFile(file);
+      setFileContentBase64(content);
+    } catch (error) {
+      setStatusNotice({ type: "error", text: error.message || "Không đọc được file sao lưu." });
+    }
   };
 
   const handlePreviewImport = async () => {
-    setStatusMessage("");
-    const { data } = await previewImport({ variables: { input: importInput(true) } });
-    const preview = data?.previewRestaurantConfigImport || null;
-    setImportPreview(preview);
-    setConflictResolutions(Object.fromEntries((preview?.conflicts || []).map((conflict) => [conflict.id, { conflictId: conflict.id, resolution: conflict.defaultResolution, renameTo: "", fieldOverridesJson: "" }])));
+    if (!fileContentBase64 || !targetRestaurantId || !hasImportSections || !canImport) return;
+    setStatusNotice(null);
+    setConfirmedImport(false);
+    setImportResult(null);
+    try {
+      const { data } = await previewImport({ variables: { input: importInput(true) } });
+      const preview = data?.previewRestaurantConfigImport || null;
+      setImportPreview(preview);
+      setConflictResolutions(Object.fromEntries((preview?.conflicts || []).map((conflict) => [
+        conflict.id,
+        { conflictId: conflict.id, resolution: conflict.defaultResolution, renameTo: "", fieldOverridesJson: "" },
+      ])));
+    } catch (error) {
+      setImportPreview(null);
+      setStatusNotice({ type: "error", text: `Không thể xem trước khôi phục: ${error.message}` });
+    }
   };
 
   const handleImport = async () => {
-    setStatusMessage("");
-    const { data } = await importBackup({ variables: { input: importInput(false) } });
-    setImportResult(data?.importRestaurantConfigBackup || null);
+    if (!importCanRun) return;
+    setStatusNotice(null);
+    try {
+      const { data } = await importBackup({ variables: { input: importInput(false) } });
+      const result = data?.importRestaurantConfigBackup || null;
+      setImportResult(result);
+      setConfirmedImport(false);
+      setStatusNotice({
+        type: result?.success ? "success" : "error",
+        text: result?.success ? "Đã áp dụng cấu hình vào nhà hàng đã chọn." : "Khôi phục không thành công. Hãy kiểm tra kết quả bên dưới.",
+      });
+    } catch (error) {
+      setStatusNotice({ type: "error", text: `Khôi phục thất bại: ${error.message}` });
+    }
   };
 
-  const summaryItems = [
-    { title: "An toàn", value: readiness.ready ? "Sẵn sàng" : "Cần rà soát", description: readiness.ready ? "Có thể tạo file sau khi kiểm tra lần cuối." : `${unresolvedRisks.length} mục cần hoàn tất trước khi chốt.` },
-    { title: "Checklist", value: `${completedChecklistCount}/${checklistItems.length}`, description: "Bước xác nhận trước khi tạo bản sao." },
-    { title: "Phạm vi", value: `${enabledScopeCount}/${scopeItems.length}`, description: "Hạng mục đang nằm trong kế hoạch sao lưu." },
-    { title: "Gần nhất", value: lastRunDate ? formatDate(lastRunDate) : "Chưa có", description: "Lần chuẩn bị sao lưu gần nhất." },
+  const pageWarning = !canRead
+    ? "Tài khoản chưa có quyền backup.read nên không thể xem checklist và lịch sử. Các thao tác khác vẫn phụ thuộc quyền riêng của từng chức năng."
+    : !hasConfirmedRestaurantScope && !restaurantScope.restaurantsLoading
+      ? "Chọn một chi nhánh ở thanh quản trị phía trên để bắt đầu."
+      : readinessQuery.error || runsQuery.error
+        ? "Không đọc được trạng thái sao lưu mới nhất. Hãy kiểm tra kết nối hoặc quyền truy cập."
+        : staleReadData
+          ? "Dữ liệu trả về không thuộc chi nhánh đang chọn nên đã được bỏ qua. Hãy làm mới để tải lại."
+          : "";
+
+  const headerStats = [
+    { label: "An toàn", value: readiness.ready ? "Sẵn sàng" : "Cần rà soát", icon: <ShieldCheck size={17} />, tone: readiness.ready ? "success" : "warning" },
+    { label: "Checklist", value: `${completedChecklistCount}/${checklistItems.length}`, icon: <CheckCircle2 size={17} /> },
+    { label: "Phạm vi", value: `${enabledScopeCount}/${scopeItems.length}`, icon: <FileText size={17} /> },
+    { label: "Lịch sử", value: runs.length, icon: <History size={17} /> },
   ];
 
   return (
-    <div className="backup-management backup-management--final">
+    <div className="backup-management" aria-busy={loading}>
       <ManagementPageHeader
         eyebrow="Sao lưu & khôi phục"
-        title="Sao lưu cấu hình nhà hàng"
-        subtitle="Lưu lại các cài đặt quan trọng, xem trước thay đổi và khôi phục có kiểm soát. File này không thay thế bản sao toàn bộ dữ liệu vận hành."
-        icon="🗄️"
-        stats={[{ label: "Checklist", value: `${completedChecklistCount}/${checklistItems.length}`, icon: "✅" }, { label: "Lần gần nhất", value: runs.length, icon: "🧾" }]}
+        title="Sao lưu cấu hình"
+        subtitle="Tạo file cấu hình có kiểm soát, xem trước trước khi khôi phục và lưu dấu vết người thực hiện."
+        icon={<Archive size={18} />}
+        stats={headerStats}
+        loading={loading}
+        density="compact"
+        showTimeWidget={false}
         customControls={(
-          <div className="backup-management__badges" aria-label="Thiết lập sao lưu">
-            <label>Nhà hàng
-              <select value={restaurantId} onChange={(event) => setRestaurantId(event.target.value)}>
-                {restaurants.map((restaurant) => <option key={restaurantOptionId(restaurant)} value={restaurantOptionId(restaurant)}>{restaurantOptionName(restaurant)}</option>)}
-              </select>
-            </label>
-            <span>Xem trước trước khi áp dụng</span>
-            <span>Không chứa mật khẩu hoặc khóa thanh toán</span>
+          <div className="backup-management__badges" aria-label="Nguyên tắc sao lưu">
+            <span><Building2 size={14} />{selectedRestaurant ? restaurantOptionName(selectedRestaurant) : "Chưa chọn chi nhánh"}</span>
+            <span><LockKeyhole size={14} />Không chứa mật khẩu hoặc khóa thanh toán</span>
           </div>
         )}
-        showTimeWidget={false}
       />
 
-      <section className="backup-management__hero" aria-label="Giới thiệu sao lưu cấu hình">
-        <div>
-          <span>Bản sao an toàn</span>
-          <h2>Lưu cấu hình trước khi thay đổi lớn</h2>
-          <p>Trang này giúp quản lý tạo file sao lưu cho cài đặt, menu, sơ đồ bàn, quy tắc xếp ca, khuyến mãi và các dữ liệu cấu hình. Khi khôi phục, hệ thống luôn yêu cầu xem trước và xác nhận.</p>
-        </div>
-        <aside>
-          <strong>{readiness.ready ? "Sẵn sàng" : "Cần kiểm tra"}</strong>
-          <small>{readiness.ready ? "Checklist đã đủ điều kiện." : "Hoàn tất checklist để giảm rủi ro khi sao lưu."}</small>
-        </aside>
-      </section>
-
-      <section className="backup-management__summary" aria-label="Tổng quan trước sao lưu">
-        {loading ? <p className="backup-management__note">Đang tải trạng thái sao lưu...</p> : null}
-        {summaryItems.map((item) => <article key={item.title}><span>{item.title}</span><h3>{item.value}</h3><p>{item.description}</p></article>)}
-      </section>
-
-      {warning ? <section className="backup-management__alert is-warning" role="note">{warning}</section> : null}
-      {statusMessage ? <section className={`backup-management__alert is-${statusType}`} role={statusType === "error" ? "alert" : "status"}>{statusMessage}</section> : null}
-
-      <section className="backup-management__product-steps" aria-label="Quy trình an toàn">
-        <article><span>1</span><strong>Kiểm tra</strong><p>Rà soát báo cáo, đối soát và phạm vi.</p></article>
-        <article><span>2</span><strong>Tải file</strong><p>Chọn hạng mục cần lưu và tải file về máy.</p></article>
-        <article><span>3</span><strong>Khôi phục</strong><p>Xem trước thay đổi, xử lý trùng dữ liệu rồi xác nhận.</p></article>
-      </section>
+      {pageWarning ? <section className="backup-management__alert is-warning" role="status"><AlertTriangle size={18} />{pageWarning}</section> : null}
+      {statusNotice ? <section className={`backup-management__alert is-${statusNotice.type}`} role={statusNotice.type === "error" ? "alert" : "status"}>{statusNotice.type === "success" ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}{statusNotice.text}</section> : null}
+      {loading ? <section className="backup-management__state" role="status"><RefreshCw className="is-spinning" size={20} /><div><strong>Đang đồng bộ dữ liệu sao lưu</strong><p>Hệ thống đang lấy checklist và lịch sử đúng theo chi nhánh đã chọn.</p></div></section> : null}
 
       <section className="backup-management__run-workflow" aria-label="Checklist an toàn">
         <div className="backup-management__run-editor">
-          <div>
-            <span>Checklist an toàn</span>
-            <h3>Chuẩn bị trước khi sao lưu</h3>
-            <p>Đánh dấu các bước đã kiểm tra để người vận hành sau này biết file được tạo trong điều kiện an toàn.</p>
+          <div className="backup-management__section-head">
+            <div>
+              <span>01 · Chuẩn bị</span>
+              <h2>Checklist an toàn</h2>
+              <p>Xác nhận điều kiện trước khi tải file để lần sao lưu có người thực hiện, phạm vi và ghi chú rõ ràng.</p>
+            </div>
+            <div className="backup-management__run-actions">
+              <button type="button" className="is-primary" onClick={createRun} disabled={!hasConfirmedRestaurantScope || !canWrite || createRunState.loading} title={!canWrite ? "Cần quyền backup.write" : "Tạo lần chuẩn bị mới"}>
+                <ShieldCheck size={16} />{createRunState.loading ? "Đang tạo..." : "Tạo lần chuẩn bị"}
+              </button>
+              <button type="button" onClick={() => saveRun()} disabled={!selectedRun?.id || !canWrite || updateRunState.loading} title={!canWrite ? "Cần quyền backup.write" : "Lưu checklist"}>
+                <Save size={16} />{updateRunState.loading ? "Đang lưu..." : "Lưu"}
+              </button>
+              <button type="button" className="is-danger" onClick={() => saveRun("cancelled")} disabled={!selectedRun?.id || !canWrite || updateRunState.loading}>
+                <XCircle size={16} />Hủy lần này
+              </button>
+            </div>
           </div>
-          <div className="backup-management__run-actions">
-            <button type="button" onClick={createRun} disabled={!restaurantId || createRunState.loading}>{createRunState.loading ? "Đang tạo..." : "Tạo lần chuẩn bị"}</button>
-            <button type="button" onClick={() => saveRun()} disabled={!selectedRun?.id || updateRunState.loading}>{updateRunState.loading ? "Đang lưu..." : "Lưu checklist"}</button>
-            <button type="button" onClick={() => saveRun("cancelled")} disabled={!selectedRun?.id || updateRunState.loading}>Hủy lần này</button>
-          </div>
+          {!canWrite ? <p className="backup-management__permission-note">Bạn có thể xem nhưng cần quyền <strong>backup.write</strong> để tạo hoặc cập nhật checklist.</p> : null}
           <div className="backup-management__check-scope-grid">
-            <div>
-              <h4>Việc cần xác nhận</h4>
-              {Object.entries(CHECKLIST_LABELS).map(([key, label]) => <label key={key}><input type="checkbox" checked={Boolean(runDraft.checklist[key])} onChange={(event) => updateDraftChecklist(key, event.target.checked)} />{label}</label>)}
-            </div>
-            <div>
-              <h4>Phạm vi cần lưu</h4>
-              {Object.entries(SCOPE_LABELS).map(([key, label]) => <label key={key}><input type="checkbox" checked={Boolean(runDraft.scope[key])} onChange={(event) => updateDraftScope(key, event.target.checked)} />{label}</label>)}
-            </div>
+            <fieldset>
+              <legend>Việc cần xác nhận</legend>
+              {Object.entries(CHECKLIST_LABELS).map(([key, label]) => (
+                <label key={key}>
+                  <input type="checkbox" checked={Boolean(runDraft.checklist[key])} disabled={!canWrite} onChange={(event) => updateDraftChecklist(key, event.target.checked)} />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </fieldset>
+            <fieldset>
+              <legend>Phạm vi file cấu hình</legend>
+              {Object.entries(SCOPE_LABELS).map(([key, label]) => {
+                const unsupported = UNSUPPORTED_SCOPE_KEYS.has(key);
+                return (
+                  <label key={key} className={unsupported ? "is-disabled" : ""}>
+                    <input type="checkbox" checked={Boolean(runDraft.scope[key])} disabled={!canWrite || unsupported} onChange={(event) => updateDraftScope(key, event.target.checked)} />
+                    <span>{label}{unsupported ? <small>Không thuộc file cấu hình</small> : null}</span>
+                  </label>
+                );
+              })}
+            </fieldset>
           </div>
           <label className="backup-management__run-note">Ghi chú nội bộ
-            <textarea value={runDraft.note} maxLength={1000} onChange={(event) => setRunDraft((prev) => ({ ...prev, note: event.target.value }))} placeholder="VD: file đã lưu tại Drive nội bộ, đã đối soát ca tối, người thực hiện..." />
+            <textarea value={runDraft.note} maxLength={1000} disabled={!canWrite} onChange={(event) => setRunDraft((prev) => ({ ...prev, note: event.target.value }))} placeholder="Nơi lưu file, ca đã đối soát, người thực hiện..." />
             <small>{runDraft.note.length}/1000 ký tự</small>
           </label>
         </div>
         <aside className="backup-management__run-detail">
-          <h3>Lần chuẩn bị đang chọn</h3>
-          {selectedRun ? <><p><strong>{statusLabel(selectedRun.status)}</strong> • tạo {formatDate(selectedRun.createdAt)}</p><p>Hoàn tất: {selectedRun.completedAt ? formatDate(selectedRun.completedAt) : "Chưa hoàn tất"}</p><p>Cập nhật: {formatDate(selectedRun.updatedAt)}</p><p>Ghi chú: {selectedRun.note || "Chưa có"}</p><label>Lịch sử<select value={selectedRun?.id || ""} onChange={(event) => setSelectedRunId(event.target.value)}>{runs.map((run) => <option key={run.id} value={run.id}>{statusLabel(run.status)} • {formatDate(run.createdAt)}</option>)}</select></label></> : <div className="backup-management__empty">Chưa có lần chuẩn bị. Hãy tạo lần mới để bắt đầu.</div>}
+          <div className="backup-management__section-head">
+            <div><span>Lần đang chọn</span><h3>{selectedRun ? statusLabel(selectedRun.status) : "Chưa có dữ liệu"}</h3></div>
+          </div>
+          {selectedRun ? (
+            <dl>
+              <div><dt>Tạo lúc</dt><dd>{formatDate(selectedRun.createdAt)}</dd></div>
+              <div><dt>Hoàn tất</dt><dd>{selectedRun.completedAt ? formatDate(selectedRun.completedAt) : "Chưa hoàn tất"}</dd></div>
+              <div><dt>Cập nhật</dt><dd>{formatDate(selectedRun.updatedAt)}</dd></div>
+              <div><dt>Ghi chú</dt><dd>{selectedRun.note || "Chưa có"}</dd></div>
+            </dl>
+          ) : <div className="backup-management__empty">Chưa có lần chuẩn bị. Tạo lần mới để ghi nhận checklist.</div>}
+          {runs.length ? <label>Lịch sử gần đây<select value={selectedRun?.id || ""} onChange={(event) => setSelectedRunId(event.target.value)}>{runs.map((run) => <option key={run.id} value={run.id}>{statusLabel(run.status)} · {formatDate(run.createdAt)}</option>)}</select></label> : null}
+          <p className="backup-management__run-hint">File này chỉ lưu cấu hình. Đơn hàng, giao dịch và dữ liệu vận hành không nằm trong snapshot.</p>
         </aside>
       </section>
 
       <section className="backup-management__flow" aria-label="Sao lưu và khôi phục cấu hình">
         <section className="backup-management__config-panel backup-management__config-panel--export" aria-label="Tải file sao lưu">
-          <div>
-            <span className="backup-management__panel-kicker">Sao lưu</span>
-            <h3>Tải file sao lưu</h3>
-            <p>Chọn các hạng mục cấu hình cần lưu. File tải về có thể cất ở Drive nội bộ hoặc nơi lưu trữ an toàn của nhà hàng.</p>
+          <div className="backup-management__section-head">
+            <div><span>02 · Sao lưu</span><h2>Tải file cấu hình</h2><p>Nguồn dữ liệu là chi nhánh đang chọn trên thanh quản trị: <strong>{selectedRestaurant ? restaurantOptionName(selectedRestaurant) : "chưa chọn"}</strong>.</p></div>
+            <Download size={22} aria-hidden="true" />
           </div>
-          <label>Nhà hàng nguồn
-            <select value={restaurantId} onChange={(event) => setRestaurantId(event.target.value)}>
-              {restaurants.map((restaurant) => <option key={restaurantOptionId(restaurant)} value={restaurantOptionId(restaurant)}>{restaurantOptionName(restaurant)}</option>)}
-            </select>
-          </label>
+          {!canExport ? <p className="backup-management__permission-note">Cần quyền <strong>backup.export</strong> để tải file. Quyền <strong>backup.read</strong> dùng cho bước xem trước.</p> : null}
+          <div className="backup-management__section-toolbar"><strong>{exportCount}/{CONFIG_SECTIONS.length} hạng mục</strong><button type="button" onClick={() => setAllExportSections(exportCount !== CONFIG_SECTIONS.length)}>{exportCount === CONFIG_SECTIONS.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}</button></div>
           <div className="backup-management__section-list">
-            {CONFIG_SECTIONS.map(([key, label]) => <label key={key}><input type="checkbox" checked={Boolean(exportSections[key])} onChange={() => toggleSection(setExportSections, key)} />{label}</label>)}
+            {CONFIG_SECTIONS.map(([key, label]) => <label key={key}><input type="checkbox" checked={Boolean(exportSections[key])} onChange={() => toggleExportSection(key)} /><span>{label}</span></label>)}
           </div>
+          {!hasExportSections ? <p className="backup-management__field-error">Chọn ít nhất một hạng mục để tạo file.</p> : null}
           <div className="backup-management__actions">
-            <button type="button" onClick={handlePreviewExport} disabled={!restaurantId || previewExportState.loading}>{previewExportState.loading ? "Đang kiểm tra..." : "Kiểm tra nội dung"}</button>
-            <button type="button" onClick={handleDownloadExport} disabled={!restaurantId || exportBackupState.loading}>{exportBackupState.loading ? "Đang tạo file..." : "Tải file sao lưu"}</button>
+            <button type="button" onClick={handlePreviewExport} disabled={!hasConfirmedRestaurantScope || !hasExportSections || !canRead || previewExportState.loading} title={!canRead ? "Cần quyền backup.read" : "Kiểm tra số lượng dữ liệu"}>
+              <FileText size={16} />{previewExportState.loading ? "Đang kiểm tra..." : "Xem nội dung"}
+            </button>
+            <button type="button" className="is-primary" onClick={handleDownloadExport} disabled={!hasConfirmedRestaurantScope || !hasExportSections || !canExport || exportBackupState.loading} title={!canExport ? "Cần quyền backup.export" : "Tải file JSON"}>
+              <Download size={16} />{exportBackupState.loading ? "Đang tạo file..." : "Tải file sao lưu"}
+            </button>
           </div>
-          {exportPreview ? <div className="backup-management__result"><h4>Sẵn sàng tải file</h4><p>Tên file: {exportPreview.fileName}</p><ul>{exportPreview.counts.map((item) => <li key={item.key}>{item.label}: {item.enabled ? `${item.count} mục` : "Không chọn"}</li>)}</ul>{exportWarnings.map((item) => <p key={item}>{item}</p>)}</div> : null}
+          {exportPreview ? <div className="backup-management__result"><h3>Sẵn sàng tải file</h3><p><strong>{exportPreview.fileName}</strong></p><ul>{exportPreview.counts.map((item) => <li key={item.key}><span>{item.label}</span><strong>{item.enabled ? `${item.count} mục` : "Không chọn"}</strong></li>)}</ul>{exportWarnings.map((item) => <p key={item}>{item}</p>)}</div> : null}
         </section>
 
         <section className="backup-management__config-panel backup-management__config-panel--import" aria-label="Khôi phục cấu hình">
-          <div>
-            <span className="backup-management__panel-kicker">Khôi phục</span>
-            <h3>Khôi phục từ file</h3>
-            <p>Chọn file đã lưu, xem trước tác động rồi xác nhận. Hệ thống sẽ không áp dụng thay đổi nếu còn mục bắt buộc chưa xử lý.</p>
+          <div className="backup-management__section-head">
+            <div><span>03 · Khôi phục</span><h2>Khôi phục từ file</h2><p>Chọn file, xem trước đúng nhà hàng đích, xử lý mục trùng rồi xác nhận.</p></div>
+            <Upload size={22} aria-hidden="true" />
           </div>
+          {!canImport ? <p className="backup-management__permission-note">Cần quyền <strong>backup.import</strong> để xem trước và áp dụng khôi phục.</p> : null}
           <ol className="backup-management__wizard" aria-label="Các bước khôi phục">
-            <li className={selectedFile ? "is-done" : ""}>1. Chọn file</li>
-            <li className={importPreview ? "is-done" : ""}>2. Xem trước</li>
-            <li className={!importConflicts.length && importPreview ? "is-done" : ""}>3. Xử lý mục trùng</li>
-            <li className={confirmedImport ? "is-done" : ""}>4. Xác nhận</li>
+            <li className={selectedFile ? "is-done" : ""}><span>1</span>Chọn file</li>
+            <li className={importPreview ? "is-done" : ""}><span>2</span>Xem trước</li>
+            <li className={importPreview && !invalidConflictResolution ? "is-done" : ""}><span>3</span>Xử lý trùng</li>
+            <li className={confirmedImport ? "is-done" : ""}><span>4</span>Xác nhận</li>
           </ol>
-          <label>File sao lưu
-            <input type="file" accept=".json,application/json" onChange={handleFileChange} />
+          <label className="backup-management__file-input">File sao lưu
+            <input type="file" accept=".json,application/json" disabled={!canImport} onChange={handleFileChange} />
+            <span><Upload size={16} />{selectedFile ? selectedFile.name : "Chọn file JSON tối đa 10MB"}</span>
           </label>
-          {selectedFile ? <p className="backup-management__note">Đã chọn: {selectedFile.name}</p> : <div className="backup-management__empty" role="status">Chưa chọn file sao lưu. Hãy chọn file để xem trước.</div>}
-          <label>Khôi phục vào nhà hàng
-            <select value={targetRestaurantId} onChange={(event) => setTargetRestaurantId(event.target.value)}>
-              {restaurants.map((restaurant) => <option key={restaurantOptionId(restaurant)} value={restaurantOptionId(restaurant)}>{restaurantOptionName(restaurant)}</option>)}
-            </select>
-          </label>
-          <label>Cách áp dụng
-            <select value={importMode} onChange={(event) => { setImportMode(event.target.value); setConfirmedImport(false); setConflictResolutions({}); }}>
-              {IMPORT_MODES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          </label>
+          <div className="backup-management__import-options">
+            <label>Khôi phục vào nhà hàng
+              <select value={targetRestaurantId} disabled={!canImport} onChange={(event) => { setTargetRestaurantId(event.target.value); resetImportReview(); }}>
+                {restaurants.map((restaurant) => <option key={restaurantOptionId(restaurant)} value={restaurantOptionId(restaurant)}>{restaurantOptionName(restaurant)}</option>)}
+              </select>
+            </label>
+            <label>Cách áp dụng
+              <select value={importMode} disabled={!canImport} onChange={(event) => { setImportMode(event.target.value); resetImportReview(); }}>
+                {IMPORT_MODES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </label>
+          </div>
+          <div className="backup-management__section-toolbar"><strong>{importCount}/{CONFIG_SECTIONS.length} hạng mục</strong><button type="button" onClick={() => setAllImportSections(importCount !== CONFIG_SECTIONS.length)}>{importCount === CONFIG_SECTIONS.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}</button></div>
           <div className="backup-management__section-list">
-            {CONFIG_SECTIONS.map(([key, label]) => <label key={key}><input type="checkbox" checked={Boolean(importSections[key])} onChange={() => toggleSection(setImportSections, key)} />{label}</label>)}
+            {CONFIG_SECTIONS.map(([key, label]) => <label key={key}><input type="checkbox" checked={Boolean(importSections[key])} disabled={!canImport} onChange={() => toggleImportSection(key)} /><span>{label}</span></label>)}
           </div>
-          <label className="backup-management__confirm"><input type="checkbox" checked={confirmedImport} onChange={(event) => setConfirmedImport(event.target.checked)} />Tôi đã xem trước và đồng ý áp dụng thay đổi vào nhà hàng đã chọn</label>
+          {!hasImportSections ? <p className="backup-management__field-error">Chọn ít nhất một hạng mục để xem trước.</p> : null}
           <div className="backup-management__actions">
-            <button type="button" onClick={handlePreviewImport} disabled={!fileContentBase64 || !targetRestaurantId || previewImportState.loading}>{previewImportState.loading ? "Đang xem trước..." : "Xem trước khôi phục"}</button>
-            <button type="button" onClick={handleImport} disabled={!importCanRun || importBackupState.loading}>{importBackupState.loading ? "Đang áp dụng..." : "Áp dụng khôi phục"}</button>
+            <button type="button" onClick={handlePreviewImport} disabled={!fileContentBase64 || !targetRestaurantId || !hasImportSections || !canImport || previewImportState.loading}>
+              <FileText size={16} />{previewImportState.loading ? "Đang xem trước..." : "Xem trước khôi phục"}
+            </button>
+            <button type="button" className="is-primary" onClick={handleImport} disabled={!importCanRun || importBackupState.loading}>
+              <Upload size={16} />{importBackupState.loading ? "Đang áp dụng..." : "Áp dụng khôi phục"}
+            </button>
           </div>
-          {importPreview ? <div className="backup-management__result"><h4>{importPreview.valid ? "Có thể khôi phục" : "Chưa thể khôi phục"}</h4><p>Nguồn file: {importPreview.sourceRestaurantName || "-"} • Cách áp dụng: {modeLabel(importPreview.mode)}</p><ul>{importPreview.changes.map((item) => <li key={`${item.section}-${item.action}`}>{item.label || sectionLabel(item.section)}: {actionLabel(item.action)} {item.count} mục</li>)}</ul>{importWarnings.map((item) => <p key={item}>{item}</p>)}{importPreview.errors.map((item) => <p key={item} className="backup-management__error">{item}</p>)}</div> : null}
+          {importPreview ? <div className={`backup-management__result ${importPreviewReady ? "is-ready" : "is-blocked"}`}><h3>{importPreviewReady ? "Có thể khôi phục" : "Cần xử lý trước khi khôi phục"}</h3><p>Nguồn file: <strong>{importPreview.sourceRestaurantName || "-"}</strong> · {modeLabel(importPreview.mode)}</p><ul>{importPreview.changes.map((item) => <li key={`${item.section}-${item.action}`}><span>{item.label || sectionLabel(item.section)}</span><strong>{actionLabel(item.action)} {item.count} mục</strong></li>)}</ul>{importWarnings.map((item) => <p key={item}>{item}</p>)}{(importPreview.errors || []).map((item) => <p key={item} className="backup-management__error">{item}</p>)}</div> : null}
 
           {importConflicts.length ? (
             <section className="backup-management__conflicts" aria-label="Xử lý mục trùng khi khôi phục">
-              <h3>Mục cần chọn cách xử lý</h3>
-              <p>Những mục dưới đây đã có dữ liệu tương tự trong nhà hàng đích. Chọn cách xử lý trước khi áp dụng.</p>
+              <div className="backup-management__section-head"><div><span>Xung đột dữ liệu</span><h3>Chọn cách xử lý</h3><p>Mỗi lựa chọn sẽ được gửi lại cùng thao tác khôi phục và ghi vào audit log.</p></div></div>
               <div className="backup-management__conflict-summary">
                 <article><strong>{conflictStats.total}</strong><span>Tổng mục</span></article>
                 <article><strong>{conflictStats.blocking}</strong><span>Cần xử lý</span></article>
@@ -616,19 +804,15 @@ const BackupManagement = () => {
                   {[...new Set(importConflicts.map((conflict) => conflict.section))].map((section) => <option key={section} value={section}>{sectionLabel(section)}</option>)}
                 </select>
                 <select aria-label="Lọc mức độ xung đột" value={conflictFilter.severity} onChange={(event) => setConflictFilter((prev) => ({ ...prev, severity: event.target.value }))}>
-                  <option value="all">Tất cả mức độ</option>
-                  <option value="blocking">Cần chọn cách xử lý</option>
-                  <option value="warning">Nên kiểm tra</option>
-                  <option value="info">Thông tin</option>
+                  <option value="all">Tất cả mức độ</option><option value="blocking">Cần chọn cách xử lý</option><option value="warning">Nên kiểm tra</option><option value="info">Thông tin</option>
                 </select>
                 <select aria-label="Lọc cách xử lý xung đột" value={conflictFilter.resolution} onChange={(event) => setConflictFilter((prev) => ({ ...prev, resolution: event.target.value }))}>
-                  <option value="all">Tất cả cách xử lý</option>
-                  {Object.keys(RESOLUTION_LABELS).map((key) => <option key={key} value={key}>{RESOLUTION_LABELS[key]}</option>)}
+                  <option value="all">Tất cả cách xử lý</option>{Object.keys(RESOLUTION_LABELS).map((key) => <option key={key} value={key}>{RESOLUTION_LABELS[key]}</option>)}
                 </select>
                 <input aria-label="Tìm xung đột" value={conflictFilter.search} onChange={(event) => setConflictFilter((prev) => ({ ...prev, search: event.target.value }))} placeholder="Tìm theo tên hoặc mã" />
               </div>
-              <div className="backup-management__actions">
-                <button type="button" onClick={() => setConflictResolutions(Object.fromEntries(importConflicts.map((conflict) => [conflict.id, { conflictId: conflict.id, resolution: conflict.defaultResolution, renameTo: "", fieldOverridesJson: "" }]))) }>Dùng đề xuất</button>
+              <div className="backup-management__actions is-wrap">
+                <button type="button" onClick={() => { setConfirmedImport(false); setConflictResolutions(Object.fromEntries(importConflicts.map((conflict) => [conflict.id, { conflictId: conflict.id, resolution: conflict.defaultResolution, renameTo: "", fieldOverridesJson: "" }]))); }}>Dùng đề xuất</button>
                 <button type="button" onClick={() => applyBulkResolution("keep_target")}>Giữ bản hiện tại</button>
                 <button type="button" onClick={() => applyBulkResolution("use_source")}>Dùng bản trong file</button>
                 <button type="button" onClick={() => applyBulkResolution("merge", (conflict) => conflict.severity !== "blocking")}>Gộp mục an toàn</button>
@@ -639,54 +823,44 @@ const BackupManagement = () => {
                   const current = conflictResolutions[conflict.id] || { conflictId: conflict.id, resolution: conflict.defaultResolution, renameTo: "" };
                   return (
                     <article key={conflict.id}>
-                      <header><strong>{sectionLabel(conflict.section)} • {conflict.label || conflict.entityKey}</strong><span className={`backup-management__severity is-${conflict.severity}`}>{severityLabel(conflict.severity)}</span></header>
+                      <header><strong>{sectionLabel(conflict.section)} · {conflict.label || conflict.entityKey}</strong><span className={`backup-management__severity is-${conflict.severity}`}>{severityLabel(conflict.severity)}</span></header>
                       <p>{friendlyReason(conflict.reason)}</p>
-                      <p>Đề xuất: {RESOLUTION_LABELS[conflict.defaultResolution] || conflict.defaultResolution}</p>
                       <label>Cách xử lý
                         <select aria-label={`Cách xử lý ${conflict.entityKey}`} value={current.resolution} onChange={(event) => updateConflictResolution(conflict.id, { resolution: event.target.value })}>
                           {conflict.allowedResolutions.map((resolution) => <option key={resolution} value={resolution}>{RESOLUTION_LABELS[resolution] || resolution}</option>)}
                         </select>
                       </label>
                       {current.resolution === "rename_source" ? <label>Tên mới<input aria-label={`Tên mới ${conflict.entityKey}`} value={current.renameTo || ""} onChange={(event) => updateConflictResolution(conflict.id, { renameTo: event.target.value })} /></label> : null}
-                      <details>
-                        <summary>Xem khác biệt</summary>
-                        <ul>{conflict.fieldDiffs.map((diff) => <li key={`${conflict.id}-${diff.field}`}>{fieldLabel(diff.field)}: file={diff.sourceValuePreview || "-"} / hiện tại={diff.targetValuePreview || "-"}</li>)}</ul>
-                      </details>
+                      <details><summary>Xem khác biệt</summary><ul>{conflict.fieldDiffs.map((diff) => <li key={`${conflict.id}-${diff.field}`}>{fieldLabel(diff.field)}: file={diff.sourceValuePreview || "-"} / hiện tại={diff.targetValuePreview || "-"}</li>)}</ul></details>
                     </article>
                   );
                 })}
               </div>
             </section>
           ) : null}
-          {importResult ? (
-            <div className="backup-management__result">
-              <h4>Khôi phục {importResult.success ? "thành công" : "không thành công"}</h4>
-              <p>Mã ghi nhận: {importResult.backupRun?.id || "-"}</p>
-              {(importResult.appliedResolutions || []).length ? <p>Cách xử lý đã áp dụng: {(importResult.appliedResolutions || []).map((item) => `${RESOLUTION_LABELS[item.resolution] || item.resolution}${item.renameTo ? ` → ${item.renameTo}` : ""}`).join(", ")}</p> : null}
-              {resultWarnings.map((item) => <p key={`import-warning-${item}`}>{item}</p>)}
-              {(importResult.errors || []).map((item) => <p key={`import-error-${item}`} className="backup-management__error">{item}</p>)}
-            </div>
-          ) : null}
+
+          {importPreviewReady ? <label className="backup-management__confirm"><input type="checkbox" checked={confirmedImport} onChange={(event) => setConfirmedImport(event.target.checked)} /><span>Tôi đã xem đúng nhà hàng đích, hạng mục và cách xử lý; đồng ý áp dụng thay đổi.</span></label> : null}
+          {importResult ? <div className={`backup-management__result ${importResult.success ? "is-ready" : "is-blocked"}`}><h3>Khôi phục {importResult.success ? "thành công" : "không thành công"}</h3><p>Mã ghi nhận: <strong>{importResult.backupRun?.id || "-"}</strong></p>{(importResult.appliedResolutions || []).length ? <p>Cách xử lý đã áp dụng: {(importResult.appliedResolutions || []).map((item) => `${RESOLUTION_LABELS[item.resolution] || item.resolution}${item.renameTo ? ` → ${item.renameTo}` : ""}`).join(", ")}</p> : null}{resultWarnings.map((item) => <p key={`import-warning-${item}`}>{item}</p>)}{(importResult.errors || []).map((item) => <p key={`import-error-${item}`} className="backup-management__error">{item}</p>)}</div> : null}
         </section>
       </section>
 
-      <section className="backup-management__data-grid" aria-label="Phạm vi sao lưu cấu hình">
-        <h3>Phạm vi đang theo dõi</h3>
-        <div>{scopeItems.map((item) => <article key={item.key}><h4>{item.label}</h4><p>{item.enabled ? "Đang nằm trong kế hoạch" : "Không bao gồm"}</p></article>)}</div>
-      </section>
-
-      <section className="backup-management__risk-grid" aria-label="Điểm cần kiểm tra trước khi sao lưu">
-        <h3>Điểm cần kiểm tra</h3>
-        <div>{(readiness.risks || []).map((risk) => <article key={risk.key}><h4>{CHECKLIST_LABELS[risk.key] || risk.label}</h4><p>{risk.resolved ? "Đã xử lý" : "Cần hoàn tất trước khi chốt."}</p></article>)}</div>
-      </section>
-
-      <section className="backup-management__timeline" aria-label="Lịch sử sao lưu cấu hình">
-        <h3>5 lần gần nhất</h3>
-        <ol>{runs.length ? runs.map((run) => {
-          const doneCount = toChecklistItems(run.checklist).filter((item) => item.done).length;
-          const scopeCount = toScopeItems(run.scope).filter((item) => item.enabled).length;
-          return <li key={run.id}><div><h4>{statusLabel(run.status)} • {formatDate(run.createdAt)}</h4><p>Checklist: {doneCount}/{checklistItems.length} bước hoàn tất</p><p>Phạm vi: {scopeCount}/{scopeItems.length} hạng mục</p>{run.completedAt ? <p>Hoàn tất lúc: {formatDate(run.completedAt)}</p> : null}{run.note ? <p>Ghi chú: {run.note}</p> : null}</div></li>;
-        }) : <li><div><p>Chưa có lịch sử sao lưu.</p></div></li>}</ol>
+      <section className="backup-management__secondary" aria-label="Thông tin sao lưu bổ sung">
+        <details>
+          <summary><span><FileText size={17} />Phạm vi đang theo dõi</span><strong>{enabledScopeCount}/{scopeItems.length}</strong></summary>
+          <div className="backup-management__detail-grid">{scopeItems.map((item) => <article key={item.key}><h3>{item.label}</h3><p>{item.enabled ? "Đang nằm trong kế hoạch" : "Không bao gồm"}</p></article>)}</div>
+        </details>
+        <details>
+          <summary><span><AlertTriangle size={17} />Điểm cần kiểm tra</span><strong>{unresolvedRisks.length}</strong></summary>
+          <div className="backup-management__detail-grid">{(readiness.risks || []).length ? readiness.risks.map((risk) => <article key={risk.key} className={risk.resolved ? "is-resolved" : ""}><h3>{CHECKLIST_LABELS[risk.key] || risk.label}</h3><p>{risk.resolved ? "Đã xử lý" : "Cần hoàn tất trước khi chốt."}</p></article>) : <p className="backup-management__empty">Chưa có dữ liệu kiểm tra.</p>}</div>
+        </details>
+        <details>
+          <summary><span><History size={17} />5 lần gần nhất</span><strong>{runs.length}</strong></summary>
+          <ol className="backup-management__timeline">{runs.length ? runs.map((run) => {
+            const doneCount = toChecklistItems(run.checklist).filter((item) => item.done).length;
+            const scopeCount = toScopeItems(run.scope).filter((item) => item.enabled).length;
+            return <li key={run.id}><div><h3>{statusLabel(run.status)}</h3><time>{formatDate(run.createdAt)}</time><p>Checklist {doneCount}/{checklistItems.length} · Phạm vi {scopeCount}/{scopeItems.length}</p>{run.note ? <p>{run.note}</p> : null}</div></li>;
+          }) : <li><div><p>Chưa có lịch sử sao lưu.</p></div></li>}</ol>
+        </details>
       </section>
     </div>
   );
