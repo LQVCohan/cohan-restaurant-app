@@ -1,0 +1,59 @@
+name: verify-cuisine-template-preview
+
+on:
+  push:
+    branches:
+      - feat/cuisine-template-preview-20260710
+    paths:
+      - cohan-restaurant-backend/src/services/restaurantCuisineTemplate.service.js
+      - cohan-restaurant-backend/graphql/schema/restaurantInitialSetup.graphql
+      - cohan-restaurant-backend/tests/services/restaurant-cuisine-template.service.test.js
+      - src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.jsx
+      - src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.scss
+      - src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.test.jsx
+      - .github/workflows/verify-cuisine-template-preview.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-cuisine-template-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cohan-restaurant-backend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        run: npm --prefix cohan-restaurant-backend ci
+
+      - name: Backend template tests
+        run: npm --prefix cohan-restaurant-backend test -- tests/services/restaurant-cuisine-template.service.test.js
+
+      - name: Frontend onboarding tests
+        run: npx vitest run src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.test.jsx
+
+      - name: Check GraphQL contracts
+        run: npm run check:graphql
+
+      - name: Check conflict markers
+        run: npm run check:conflicts
+
+      - name: Build frontend
+        run: npm run build
