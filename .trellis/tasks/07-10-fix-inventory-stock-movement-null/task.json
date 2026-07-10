@@ -1,6 +1,6 @@
 {
   "title": "Fix inventory StockMovement null contract",
-  "status": "in_progress",
+  "status": "completed",
   "type": "bugfix",
   "createdAt": "2026-07-10",
   "updatedAt": "2026-07-10"
