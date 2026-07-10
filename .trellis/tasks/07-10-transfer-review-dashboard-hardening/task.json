@@ -27,7 +27,9 @@
     "src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.jsx",
     "src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.test.jsx",
     "src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPagePolish.scss",
-    "src/hooks/useDashboard.test.jsx"
+    "src/hooks/useDashboard.test.jsx",
+    "src/components/Dashboard_Manager/Combo/ComboManagement.test.jsx",
+    "src/lib/lucideReactShim.jsx"
   ],
-  "notes": "Reuse the canonical manager scope hook directly. Preserve payment.read/payment.write authorization, settlement transactions, audit logging, realtime events, and customer proof retry behavior. The dashboard test assertion now reflects that a restored restaurant from an old account is hidden until the current scope is confirmed."
+  "notes": "Reuse the canonical manager scope hook directly. Preserve payment.read/payment.write authorization, settlement transactions, audit logging, realtime events, and customer proof retry behavior. CI also exposed and now covers an outdated dashboard scope expectation, one malformed combo test mock, and two missing icon exports in the temporary Lucide test shim."
 }
