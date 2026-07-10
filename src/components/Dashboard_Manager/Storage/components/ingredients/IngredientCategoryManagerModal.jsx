@@ -47,6 +47,18 @@ const fmtDateTime = (value) => {
   });
 };
 
+const formatSyncSummary = (report) => {
+  if (!report) return "Chưa có lịch sử đồng bộ.";
+  if (report.summaryText && !/^processed=/i.test(report.summaryText)) return report.summaryText;
+
+  const total = Number(report.totalIngredients || 0);
+  const created = Number(report.categoriesCreated || 0);
+  const updated = Number(report.categoriesUpdated || 0);
+  const reassigned = Number(report.ingredientsReassigned || 0);
+  const errors = Number(report.errors || 0);
+  return `${total} nguyên liệu · ${created} danh mục mới · ${updated} cập nhật · ${reassigned} gán lại · ${errors} lỗi`;
+};
+
 const getCategoryId = (cat) => cat?.id || cat?._id || cat?.name;
 
 const IngredientCategoryManagerModal = ({
@@ -95,7 +107,7 @@ const IngredientCategoryManagerModal = ({
       .toLowerCase();
     return [...(categories || [])]
       .filter((cat) => matchCategory(cat, key, sourceFilter))
-      .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      .sort((a, b) => (a.name || "").localeCompare(b.name || "", "vi"));
   }, [categories, search, sourceFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -108,7 +120,7 @@ const IngredientCategoryManagerModal = ({
   useEffect(() => {
     if (!pendingCreatedCategory) return;
     const sortedAll = [...(categories || [])].sort((a, b) =>
-      (a.name || "").localeCompare(b.name || ""),
+      (a.name || "").localeCompare(b.name || "", "vi"),
     );
     const created = sortedAll.find((cat) => {
       if (pendingCreatedCategory.id && getCategoryId(cat) === pendingCreatedCategory.id) {
@@ -162,7 +174,7 @@ const IngredientCategoryManagerModal = ({
     if (loading) return false;
     if (name.trim()) {
       const ok = window.confirm(
-        "Bạn đang nhập danh mục mới. Đóng modal có thể làm mất dữ liệu. Tiếp tục?",
+        "Bạn đang nhập danh mục mới. Đóng cửa sổ có thể làm mất dữ liệu. Tiếp tục?",
       );
       if (!ok) return false;
     }
@@ -175,7 +187,7 @@ const IngredientCategoryManagerModal = ({
   }, [canClose, onClose]);
 
   const summary = lastSyncReport || syncLogs?.[0] || null;
-  const lastLog = syncLogs?.[0] || null;
+  const lastSyncAt = lastSyncReport?.syncedAt || syncLogs?.[0]?.at;
 
   if (!isOpen) return null;
 
@@ -184,7 +196,7 @@ const IngredientCategoryManagerModal = ({
       isOpen={isOpen}
       onClose={requestClose}
       onBeforeClose={canClose}
-      title="Quản lý danh mục nguyên liệu"
+      title="Danh mục nguyên liệu"
       size="lg"
       className="storage-category-modal-shell"
       closeOnOverlayClick={false}
@@ -195,25 +207,25 @@ const IngredientCategoryManagerModal = ({
           <section className="cat-manager-compact-hero">
             <div className="hero-copy">
               <span className="hero-kicker">
-                <Sparkles size={14} /> Phân loại nguyên liệu
+                <Sparkles size={14} /> Sắp xếp kho dễ hơn
               </span>
-              <h4>Quản lý nhóm nguyên liệu trong một màn hình.</h4>
-              <p>Thêm nhanh, đồng bộ, lọc và chỉnh sửa danh mục mà không phải rời khỏi kho.</p>
+              <h4>Tạo, tìm và đồng bộ danh mục tại một nơi</h4>
+              <p>Tên danh mục tiếng Việt có dấu được giữ nguyên; đồng bộ chỉ chuẩn hóa nhóm và liên kết nguyên liệu.</p>
             </div>
-            <div className="hero-stats compact">
+            <div className="hero-stats compact" aria-label="Thống kê danh mục">
               <div>
                 <strong>{categories.length}</strong>
-                <span>Tổng</span>
+                <span>Tổng danh mục</span>
               </div>
               <div>
                 <strong>{filtered.length}</strong>
-                <span>Hiển thị</span>
+                <span>Đang hiển thị</span>
               </div>
             </div>
           </section>
 
           {!!error && (
-            <div className="alert-box danger">
+            <div className="alert-box danger" role="alert">
               <AlertCircle size={18} />
               <span>{error}</span>
             </div>
@@ -227,8 +239,8 @@ const IngredientCategoryManagerModal = ({
                     <FolderPlus size={16} />
                   </div>
                   <div className="header-text">
-                    <h4 className="im-section-title">Thêm danh mục</h4>
-                    <p className="im-section-desc">Nhập tên rồi bấm Enter để thêm nhanh.</p>
+                    <h4 className="im-section-title">Tạo danh mục mới</h4>
+                    <p className="im-section-desc">Có thể nhập đầy đủ dấu tiếng Việt.</p>
                   </div>
                 </div>
 
@@ -245,7 +257,8 @@ const IngredientCategoryManagerModal = ({
                           create();
                         }
                       }}
-                      placeholder="VD: Hải sản, Tinh bột..."
+                      placeholder="Ví dụ: Hải sản, Đồ khô..."
+                      aria-label="Tên danh mục mới"
                       disabled={loading}
                     />
                   </div>
@@ -266,8 +279,8 @@ const IngredientCategoryManagerModal = ({
                     <Database size={16} />
                   </div>
                   <div className="header-text">
-                    <h4 className="im-section-title">Đồng bộ từ nguyên liệu</h4>
-                    <p className="im-section-desc">Gom nhóm lại từ dữ liệu kho hiện có.</p>
+                    <h4 className="im-section-title">Quét và đồng bộ</h4>
+                    <p className="im-section-desc">Tự gom nguyên liệu vào nhóm phù hợp, tên nhóm có dấu.</p>
                   </div>
                 </div>
                 <Button
@@ -275,13 +288,7 @@ const IngredientCategoryManagerModal = ({
                   variant="secondary"
                   className="btn-outline-primary w-full sync-button"
                   onClick={async () => {
-                    if (
-                      !window.confirm(
-                        "Bạn có chắc chắn muốn đồng bộ danh mục từ nguyên liệu?",
-                      )
-                    ) {
-                      return;
-                    }
+                    if (!window.confirm("Quét lại nguyên liệu và đồng bộ danh mục ngay?")) return;
                     setLoading(true);
                     try {
                       const report = await onSync?.();
@@ -297,20 +304,20 @@ const IngredientCategoryManagerModal = ({
                 >
                   {loading ? (
                     <span className="loading-state">
-                      <span className="spinner"></span> Đang xử lý...
+                      <span className="spinner" /> Đang quét...
                     </span>
                   ) : (
                     <>
-                      <RefreshCw size={16} /> Đồng bộ ngay
+                      <RefreshCw size={16} /> Quét nguyên liệu
                     </>
                   )}
                 </Button>
               </div>
 
               <div className="metrics-grid compact-metrics">
-                <Metric label="Thủ công" value={manualCount} />
-                <Metric label="Đồng bộ" value={syncCount} />
-                <Metric label="Gán lại" value={summary?.ingredientsReassigned || 0} />
+                <Metric label="Tự tạo" value={manualCount} />
+                <Metric label="Từ dữ liệu" value={syncCount} />
+                <Metric label="Đã gán lại" value={summary?.ingredientsReassigned || 0} />
                 <Metric label="Lỗi" value={summary?.errors || 0} danger={summary?.errors > 0} />
               </div>
 
@@ -320,20 +327,20 @@ const IngredientCategoryManagerModal = ({
                     <Clock size={16} />
                   </div>
                   <div className="header-text">
-                    <h4 className="im-section-title">Đồng bộ gần nhất</h4>
-                    <p className="im-section-desc">Không dùng scroll phụ trong khu vực này.</p>
+                    <h4 className="im-section-title">Lần quét gần nhất</h4>
+                    <p className="im-section-desc">Tóm tắt kết quả để kiểm tra nhanh.</p>
                   </div>
                 </div>
 
-                {lastLog ? (
+                {summary ? (
                   <div className="last-sync-content">
                     <div className="last-sync-time">
-                      <CheckCircle2 size={15} /> {fmtDateTime(lastLog.at)}
+                      <CheckCircle2 size={15} /> {fmtDateTime(lastSyncAt)}
                     </div>
-                    <p>{lastLog.summaryText || "Đồng bộ hoàn tất."}</p>
+                    <p>{formatSyncSummary(summary)}</p>
                   </div>
                 ) : (
-                  <div className="last-sync-empty">Chưa có lịch sử đồng bộ.</div>
+                  <div className="last-sync-empty">Chưa quét dữ liệu nguyên liệu.</div>
                 )}
               </section>
             </aside>
@@ -364,7 +371,8 @@ const IngredientCategoryManagerModal = ({
                       setSearch(e.target.value);
                       setPage(1);
                     }}
-                    placeholder="Tìm theo tên danh mục..."
+                    placeholder="Tìm danh mục..."
+                    aria-label="Tìm danh mục"
                     disabled={loading}
                   />
                 </div>
@@ -377,11 +385,12 @@ const IngredientCategoryManagerModal = ({
                       setSourceFilter(e.target.value);
                       setPage(1);
                     }}
+                    aria-label="Lọc nguồn danh mục"
                     disabled={loading}
                   >
-                    <option value="all">Tất cả nguồn</option>
-                    <option value="manual">Tạo thủ công</option>
-                    <option value="sync">Đồng bộ</option>
+                    <option value="all">Tất cả danh mục</option>
+                    <option value="manual">Tự tạo</option>
+                    <option value="sync">Từ dữ liệu</option>
                   </select>
                 </div>
               </div>
@@ -392,15 +401,11 @@ const IngredientCategoryManagerModal = ({
                     <div className="item-info">
                       <div className="item-name">{toIngredientCategoryVi(cat.name)}</div>
                       <div className="item-meta">
-                        <span
-                          className={`badge ${
-                            cat.source === "sync" ? "badge-sync" : "badge-manual"
-                          }`}
-                        >
-                          {cat.source === "sync" ? "SYNC" : "MANUAL"}
+                        <span className={`badge ${cat.source === "sync" ? "badge-sync" : "badge-manual"}`}>
+                          {cat.source === "sync" ? "TỪ DỮ LIỆU" : "TỰ TẠO"}
                         </span>
                         <span className="usage-count">
-                          Sử dụng: <b>{cat.usageCount || 0}</b>
+                          Đang dùng cho <b>{cat.usageCount || 0}</b> nguyên liệu
                         </span>
                       </div>
                     </div>
@@ -411,6 +416,7 @@ const IngredientCategoryManagerModal = ({
                         className="action-btn edit"
                         disabled={loading}
                         title="Đổi tên"
+                        aria-label={`Đổi tên danh mục ${cat.name || ""}`}
                         onClick={async () => {
                           const next = window.prompt("Đổi tên danh mục:", cat.name || "");
                           if (!next?.trim() || next.trim() === cat.name) return;
@@ -432,6 +438,7 @@ const IngredientCategoryManagerModal = ({
                         className="action-btn delete"
                         disabled={loading}
                         title="Xóa danh mục"
+                        aria-label={`Xóa danh mục ${cat.name || ""}`}
                         onClick={async () => {
                           if (!window.confirm(`Xóa danh mục "${cat.name}"?`)) return;
                           setLoading(true);
@@ -454,7 +461,8 @@ const IngredientCategoryManagerModal = ({
                 {!pageRows.length && (
                   <div className="empty-state">
                     <Search size={32} />
-                    <p>Không có danh mục phù hợp bộ lọc.</p>
+                    <p>Không tìm thấy danh mục phù hợp.</p>
+                    <span>Thử đổi từ khóa hoặc chọn tất cả danh mục.</span>
                   </div>
                 )}
               </div>
@@ -488,7 +496,7 @@ const IngredientCategoryManagerModal = ({
       </Modal.Body>
 
       <Modal.Footer className="cat-manager-footer">
-        <span className="footer-helper">Danh mục ảnh hưởng trực tiếp đến lọc nguyên liệu và kiểm kê.</span>
+        <span className="footer-helper">Danh mục được dùng để lọc nguyên liệu, kiểm kê và lập công thức.</span>
         <Button
           type="button"
           variant="secondary"
@@ -496,7 +504,7 @@ const IngredientCategoryManagerModal = ({
           disabled={loading}
           className="btn-cancel"
         >
-          Đóng cửa sổ
+          Đóng
         </Button>
       </Modal.Footer>
     </Modal>
