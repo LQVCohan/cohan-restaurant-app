@@ -7,28 +7,27 @@
 
 ## Root cause
 
-`useRecipes` keeps a local `recipes` state derived from Apollo `listState.data`. Leaving the recipe tab passes a null restaurant id and clears the local state, while Apollo retains the previous query result. When the same cached data object is reused on the next fetch, the effect watching only `listState.data` may not run again, so the UI remains empty even though the request succeeds. Concurrent list requests can also complete out of order and overwrite a newer result.
+`useRecipes` clears its local list when the recipe tab becomes inactive, while Apollo retains the previous `menuItemsWithRecipes` result. When the tab is opened again and the server returns data equivalent to the cached result, Apollo can preserve the result identity and the effect that copies `listState.data` into local state may not run again. The request therefore succeeds without restoring the rows in the UI.
 
 ## Flow traced
 
-`Menu/MenuItem/Recipe models -> menuItemsWithRecipes resolver -> Q_MENU_ITEMS_WITH_RECIPES_PAGED -> useRecipes -> StorageManagement tab switch -> RecipeList empty/loading state`.
+`Menu/MenuItem/Recipe models -> menuItemsWithRecipes resolver -> Q_MENU_ITEMS_WITH_RECIPES_PAGED -> Apollo cache -> useRecipes -> StorageManagement tab switch -> RecipeList empty/loading state`.
 
 ## Files
 
-- `src/hooks/useRecipes.js`: apply each fetch result directly to local list state and ignore stale request completions.
-- `src/hooks/useRecipes.test.jsx`: reproduce leaving and returning to the recipe tab with the same Apollo data object.
+- `src/apollo/client.js`: add a field policy for `menuItemsWithRecipes` that preserves query-variable separation and returns a fresh connection result for each incoming response.
 
 ## Acceptance criteria
 
 - Returning to the recipe tab restores the fetched rows without reloading the page.
-- A successful list request always updates `recipes`, `pageInfo`, and `total`, even when Apollo reuses the same cached data object.
-- An older request cannot overwrite the result of a newer request.
-- No GraphQL schema, resolver, permissions, or recipe persistence changes.
+- A successful `menuItemsWithRecipes` response produces a fresh result notification even when entity data is unchanged.
+- Cache entries remain separated by restaurant and active recipe filters.
+- No GraphQL schema, resolver, permissions, recipe persistence, or UI redesign changes.
 
 ## Validation
 
-- Run `vitest run src/hooks/useRecipes.test.jsx` when an executable checkout is available.
-- Review the schema-to-resolver-to-hook-to-tab flow.
+- Review the schema-to-resolver-to-query-to-cache-to-hook-to-tab flow.
+- Run the focused recipe tab scenario and frontend tests when an executable checkout is available.
 
 ## Out of scope
 
