@@ -18,8 +18,14 @@
     "completed": [
       "read AGENTS.md, Trellis workflow, guide index, and ponytail skill",
       "traced package.json dev:mobile through start-mobile-dev.mjs into vite.config server settings",
-      "confirmed the API remains same-origin through the existing Vite proxy"
+      "confirmed the API remains same-origin through the existing Vite proxy",
+      "added scoped ngrok domain suffixes while preserving localhost, LAN IPs, and explicit extra hosts",
+      "made the mobile profile infer the request host and protocol instead of forcing LAN origin and HMR values",
+      "ran Node syntax checks for the updated mobile launcher and Vite config content"
     ],
-    "notRun": []
+    "notRun": [
+      "npm run check:conflicts and npm run build were not run because the GitHub connector does not provide a repository checkout with installed dependencies.",
+      "Manual ngrok verification remains for the user's local Windows machine."
+    ]
   }
 }
