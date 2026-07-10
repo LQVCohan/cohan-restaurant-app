@@ -1,7 +1,7 @@
 {
   "id": "07-10-staff-mobile-workspace-audit",
   "title": "Audit và sửa responsive toàn bộ khu vực nhân viên",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-responsive",
   "scope": [
     "src/layouts/StaffLayout.jsx",
@@ -14,7 +14,7 @@
     "src/components/common/ChatThreadPanel.jsx",
     "src/components/common/ChatThreadPanel.scss"
   ],
-  "rootCause": "The staff shell renders a mobile nav with an is-open class, while the stylesheet hides the real nav and styles a non-existent drawer. Staff subpages also lack one shared mobile containment layer for tables, matrices, sticky controls, safe areas and portal-like panels. Reservation change review remains desktop-only inline styling.",
+  "rootCause": "The staff shell rendered a mobile nav with an is-open class while its stylesheet hid the real nav and styled a non-existent drawer. Active-link modifiers were also out of sync. Staff subpages lacked one shared mobile containment layer for wide operational data, safe areas and sticky controls, and reservation change review remained desktop-only inline styling.",
   "validation": {
     "planned": [
       "npm run check:conflicts",
@@ -26,8 +26,20 @@
       "read AGENTS.md and Trellis workflow",
       "read ponytail, ui-ux-pro-max, frontend-design, taste-ui-redesign and redesign-existing-projects skills",
       "traced AppRouter staff routes through StaffLayout into all staff pages and shared modal/panel callers",
-      "audited existing responsive rules for dashboard, schedule, attendance, leave, profile, notifications, contacts, performance, payslips, settings, orders, kitchen, AI handoff and reservation change review"
+      "audited existing responsive rules for dashboard, schedule, attendance, leave, profile, notifications, contacts, performance, payslips, settings, orders, kitchen, AI handoff and reservation change review",
+      "replaced dead mobile drawer styles with the real controlled staff navigation and synchronized is-active state",
+      "added route-change menu closing, aria controls and navigation entries for performance and reservation change review",
+      "added shared mobile containment for tables, matrices, forms, sticky bars, order controls, safe areas and 16px mobile inputs",
+      "replaced reservation change review inline desktop layout with responsive semantic cards",
+      "made contact cards and the chat thread dialog responsive with 44px touch controls and accessible labels",
+      "confirmed the latest repository head contains all task commits",
+      "checked the latest commit combined status; no CI status was available"
     ],
-    "notRun": []
+    "notRun": [
+      "npm run check:conflicts was not executable in the GitHub connector environment",
+      "npm run build was not executable in the GitHub connector environment",
+      "targeted Vitest/component tests were not executable in the GitHub connector environment",
+      "manual browser review at 390x844 and 430x932 was not executable in the GitHub connector environment"
+    ]
   }
 }
