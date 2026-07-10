@@ -27,10 +27,18 @@ const eventMocks = vi.hoisted(() => ({
   emitOrderEvent: vi.fn(),
 }));
 
+const incomingReviewMocks = vi.hoisted(() => ({
+  confirmIncomingOrder: vi.fn(),
+  rejectIncomingOrder: vi.fn(),
+}));
+
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../graphql/guards.js", () => guardMocks);
 vi.mock("../../src/services/auth/authorization.service.js", () => authorizationMocks);
 vi.mock("../../graphql/resolvers/order/helper/emitOrderEvent.js", () => eventMocks);
+vi.mock("../../graphql/resolvers/order/confirmedOrderPrintMutation.js", () => ({
+  ConfirmedOrderPrintMutation: incomingReviewMocks,
+}));
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn((value) => String(value || "").startsWith("valid-")),
@@ -76,6 +84,12 @@ describe("order mutation restaurant access guards", () => {
     guardMocks.requireRestaurantAccess.mockResolvedValue(undefined);
     authorizationMocks.requireRestaurantPermission.mockResolvedValue(undefined);
     eventMocks.emitOrderEvent.mockResolvedValue(undefined);
+    incomingReviewMocks.confirmIncomingOrder.mockResolvedValue({
+      order: { id: "valid-order-1", currentStatus: "confirmed" },
+    });
+    incomingReviewMocks.rejectIncomingOrder.mockResolvedValue({
+      order: { id: "valid-order-1", currentStatus: "cancelled" },
+    });
   });
 
   it("requires restaurant access before createOffPremiseOrder", async () => {
@@ -117,60 +131,62 @@ describe("order mutation restaurant access guards", () => {
     expect(mutation.createOffPremiseOrder).not.toHaveBeenCalled();
   });
 
-  it("routes confirmIncomingOrder through one station-aware order lookup", async () => {
-    const pendingOrder = {
-      _id: "valid-order-1",
-      restaurantId: "valid-restaurant-1",
-      currentStatus: "pending",
-    };
-    const confirmedOrder = {
-      ...pendingOrder,
-      currentStatus: "confirmed",
-      orderCode: "ORD-1",
-      items: [],
-    };
-
-    modelMocks.Order.findById.mockReturnValue(pendingOrder);
-    modelMocks.PrintSetting.findOne.mockReturnValue(leanResult(null));
-
+  it("routes confirmIncomingOrder through the scoped atomic review resolver", async () => {
     const mutation = buildMutation();
-    mutation.updateOrderStatus.mockResolvedValue(confirmedOrder);
     const { withOrderRestaurantAccessGuards } = await import(
       "../../graphql/resolvers/order/accessGuard.js"
     );
     const guarded = withOrderRestaurantAccessGuards(mutation);
-
-    const result = await guarded.confirmIncomingOrder(
-      null,
-      {
-        input: {
-          id: "valid-order-1",
-          restaurantId: "valid-restaurant-1",
-        },
+    const args = {
+      input: {
+        id: "valid-order-1",
+        restaurantId: "valid-restaurant-1",
       },
-      { user: { id: "manager-1" } },
-    );
+    };
+    const ctx = { user: { id: "manager-1" } };
 
-    expect(result).toEqual({ order: confirmedOrder });
-    expect(modelMocks.Order.findById).toHaveBeenCalledTimes(1);
+    const result = await guarded.confirmIncomingOrder(null, args, ctx);
+
+    expect(result).toEqual({
+      order: { id: "valid-order-1", currentStatus: "confirmed" },
+    });
+    expect(incomingReviewMocks.confirmIncomingOrder).toHaveBeenCalledWith(
+      null,
+      args,
+      ctx,
+      undefined,
+    );
     expect(mutation.confirmIncomingOrder).not.toHaveBeenCalled();
     expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
-    expect(authorizationMocks.requireRestaurantPermission).toHaveBeenCalledWith(
-      expect.anything(),
-      "valid-restaurant-1",
-      expect.anything(),
+  });
+
+  it("routes rejectIncomingOrder through the same scoped review boundary", async () => {
+    const mutation = buildMutation();
+    const { withOrderRestaurantAccessGuards } = await import(
+      "../../graphql/resolvers/order/accessGuard.js"
     );
-    expect(mutation.updateOrderStatus).toHaveBeenCalledWith(
+    const guarded = withOrderRestaurantAccessGuards(mutation);
+    const args = {
+      input: {
+        id: "valid-order-1",
+        restaurantId: "valid-restaurant-1",
+        reason: "Món đã hết",
+      },
+    };
+    const ctx = { user: { id: "cashier-1" } };
+
+    const result = await guarded.rejectIncomingOrder(null, args, ctx);
+
+    expect(result).toEqual({
+      order: { id: "valid-order-1", currentStatus: "cancelled" },
+    });
+    expect(incomingReviewMocks.rejectIncomingOrder).toHaveBeenCalledWith(
       null,
-      expect.objectContaining({
-        input: expect.objectContaining({
-          id: "valid-order-1",
-          restaurantId: "valid-restaurant-1",
-          status: "confirmed",
-        }),
-      }),
-      expect.anything(),
+      args,
+      ctx,
+      undefined,
     );
+    expect(mutation.rejectIncomingOrder).not.toHaveBeenCalled();
   });
 
   it("checks scoped order before creating a temporary bill print job", async () => {
