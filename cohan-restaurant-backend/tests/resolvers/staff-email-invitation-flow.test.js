@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  BrandMembership: { deleteOne: vi.fn() },
+  BrandMembership: { deleteMany: vi.fn() },
   Staff: {
     findById: vi.fn(),
     deleteOne: vi.fn(),
@@ -52,7 +52,7 @@ describe("staff email invitation flow", () => {
     vi.clearAllMocks();
     mocks.generateRandomPassword.mockReturnValue("Generated#123");
     mocks.sendStaffInvitationEmail.mockResolvedValue({ sent: true });
-    mocks.BrandMembership.deleteOne.mockResolvedValue({ deletedCount: 1 });
+    mocks.BrandMembership.deleteMany.mockResolvedValue({ deletedCount: 1 });
     mocks.Staff.deleteOne.mockResolvedValue({ deletedCount: 1 });
     mocks.sanitizeStaffPrivateProfile.mockImplementation((staff) => ({
       id: String(staff._id),
@@ -147,7 +147,7 @@ describe("staff email invitation flow", () => {
     });
   });
 
-  it("rolls back the new account and membership when invitation delivery fails", async () => {
+  it("rolls back the new account and all memberships when invitation delivery fails", async () => {
     const staff = staffDocument();
     mocks.Staff.findById.mockResolvedValue(staff);
     mocks.sendStaffInvitationEmail.mockRejectedValue(
@@ -171,8 +171,7 @@ describe("staff email invitation flow", () => {
       ),
     ).rejects.toThrow("STAFF_INVITATION_EMAIL_NOT_SENT");
 
-    expect(mocks.BrandMembership.deleteOne).toHaveBeenCalledWith({
-      brandId: "brand-1",
+    expect(mocks.BrandMembership.deleteMany).toHaveBeenCalledWith({
       userId: "staff-1",
     });
     expect(mocks.Staff.deleteOne).toHaveBeenCalledWith({ _id: "staff-1" });
