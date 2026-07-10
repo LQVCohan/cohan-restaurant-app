@@ -1,0 +1,71 @@
+name: apply-schedule-ui-data-integrity
+
+on:
+  push:
+    branches:
+      - fix/schedule-ui-data-integrity-20260710
+    paths:
+      - scripts/apply-schedule-ui-data-integrity.py
+      - .github/workflows/apply-schedule-ui-data-integrity.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-schedule-ui-data-integrity-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout patch branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/schedule-ui-data-integrity-20260710
+          fetch-depth: 0
+
+      - name: Apply root-cause patch
+        run: python scripts/apply-schedule-ui-data-integrity.py
+
+      - name: Remove one-shot patch payload
+        run: rm scripts/apply-schedule-ui-data-integrity.py
+
+      - name: Check patch formatting
+        run: git diff --check
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cohan-restaurant-backend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install backend schema dependencies
+        run: npm --prefix cohan-restaurant-backend ci
+
+      - name: Run focused availability modal tests
+        run: npx vitest run src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.test.jsx
+
+      - name: Check conflict markers
+        run: npm run check:conflicts
+
+      - name: Validate GraphQL schema and operations
+        run: npm run check:graphql
+
+      - name: Build production frontend
+        run: npm run build
+
+      - name: Commit verified implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(schedule): align availability data and polish manager UI"
+          git push origin HEAD:fix/schedule-ui-data-integrity-20260710
