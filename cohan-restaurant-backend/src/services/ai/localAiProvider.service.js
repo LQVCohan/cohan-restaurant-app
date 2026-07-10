@@ -1,3 +1,5 @@
+import { getAiRuntimeTimeouts } from "./aiRuntimeTimeout.service.js";
+
 const DEFAULT_BASE_URL = "http://localhost:11434";
 const DEFAULT_CHAT_PATH = "/api/chat";
 const DEFAULT_EMBEDDING_PATH = "/api/embeddings";
@@ -98,7 +100,7 @@ const normalizeChatMessages = ({ messages = [], systemInstruction }) => {
   return normalized;
 };
 
-export async function callLocalChatProvider({ messages = [], systemInstruction = "", temperature = 0.25, maxTokens = 800 } = {}) {
+export async function callLocalChatProvider({ messages = [], systemInstruction = "", temperature = 0.25, maxTokens = 800, timeoutMs } = {}) {
   const config = getLocalAiConfig();
   if (!config.enabled) return null;
   const payload = {
@@ -111,8 +113,9 @@ export async function callLocalChatProvider({ messages = [], systemInstruction =
     },
   };
   try {
+    const runtimeTimeouts = getAiRuntimeTimeouts(process.env);
     const data = await fetchJsonWithTimeout(joinUrl(config.baseUrl, config.chatPath), payload, {
-      timeoutMs: config.timeoutMs,
+      timeoutMs: toPositiveInt(timeoutMs, runtimeTimeouts.localChatMs),
       provider: config.provider,
       model: config.chatModel,
       path: config.chatPath,
@@ -133,7 +136,7 @@ const normalizeEmbedding = (data) => {
   return embedding.length ? embedding : null;
 };
 
-export async function createLocalEmbedding(text) {
+export async function createLocalEmbedding(text, { timeoutMs } = {}) {
   const config = getLocalAiConfig();
   if (!config.enabled) return null;
   const input = String(text || "").trim();
@@ -144,8 +147,9 @@ export async function createLocalEmbedding(text) {
     input,
   };
   try {
+    const runtimeTimeouts = getAiRuntimeTimeouts(process.env);
     const data = await fetchJsonWithTimeout(joinUrl(config.baseUrl, config.embeddingPath), payload, {
-      timeoutMs: config.timeoutMs,
+      timeoutMs: toPositiveInt(timeoutMs, runtimeTimeouts.localEmbeddingMs),
       provider: config.provider,
       model: config.embeddingModel,
       path: config.embeddingPath,
