@@ -1,7 +1,7 @@
 {
   "id": "07-11-serving-variant-default-resolution",
   "title": "Resolve real default serving variant for customer stock checks",
-  "status": "in_progress",
+  "status": "ready_for_review",
   "priority": "high",
   "scope": [
     "cohan-restaurant-backend/graphql/resolvers/cart/index.js",
