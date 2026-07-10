@@ -61,6 +61,18 @@ input AdminUpdateUserInput {
   totalSpending: Float
   isGuest: Boolean
   guestExpiresAt: DateTime
+
+  department: DepartmentType
+  positionTitle: String
+  employmentType: EmploymentType
+  employmentStatus: EmploymentStatus
+  shiftType: ShiftType
+  workingDays: [StaffWorkingDay!]
+  dateJoined: DateTime
+  dateLeft: DateTime
+  baseSalary: Int
+  noteInternal: String
+  emergencyContact: EmergencyContactInput
 }
 
 extend type Mutation {
