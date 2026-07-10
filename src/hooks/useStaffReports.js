@@ -135,17 +135,24 @@ export const buildPresetRange = (preset) => {
   }
 };
 
-export default function useStaffReports({ startDate, endDate, compareStartDate, compareEndDate }) {
+export default function useStaffReports({
+  restaurantId,
+  startDate,
+  endDate,
+  compareStartDate,
+  compareEndDate,
+}) {
   const variables = useMemo(
     () => ({
       input: {
+        restaurantId: restaurantId || undefined,
         startDate: toDateTimeInput(startDate, "start"),
         endDate: toDateTimeInput(endDate, "end"),
         compareStartDate: toDateTimeInput(compareStartDate, "start"),
         compareEndDate: toDateTimeInput(compareEndDate, "end"),
       },
     }),
-    [compareEndDate, compareStartDate, endDate, startDate]
+    [compareEndDate, compareStartDate, endDate, restaurantId, startDate]
   );
 
   const { data, loading, error, refetch } = useQuery(STAFF_REPORTS_QUERY, {
