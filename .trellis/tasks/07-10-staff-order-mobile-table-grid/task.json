@@ -6,10 +6,9 @@
   "scope": [
     "src/components/Staff/components/TableMap.jsx",
     "src/components/Staff/components/TableMap.scss",
-    "src/components/Staff/StaffOrdering.scss",
     "src/components/Staff/components/TableMap.test.jsx"
   ],
-  "rootCause": "The staff table map keeps secondary floor filters and desktop-density table/sidepanel content expanded on narrow screens. This wastes vertical space and lets content height dominate the mobile order workflow even though the table grid itself already attempts two columns.",
+  "rootCause": "The staff table map keeps the floor filter expanded and repeats table status on a separate line on narrow screens. The existing two-column media rule therefore still wastes vertical space and allows table metadata to stretch each card.",
   "validation": {
     "planned": [
       "npx vitest run src/components/Staff/components/TableMap.test.jsx",
@@ -19,9 +18,15 @@
     ],
     "completed": [
       "read AGENTS.md, Trellis workflow, taste-ui-redesign, redesign-existing-projects and ponytail skills",
-      "traced StaffOrdering GraphQL table data into TableMap selection and the selected-table sidepanel",
-      "inspected the current TableMap component, stylesheet, direct test and StaffOrdering mobile workspace styles"
+      "traced StaffOrdering GraphQL table data into TableMap selection",
+      "inspected the current TableMap component, stylesheet, direct test and only caller",
+      "added a responsive native details floor filter that is closed on mobile and open on desktop",
+      "enforced a two-column mobile grid and compact table status metadata",
+      "added regression coverage for table selection, compact status markup and floor switching"
     ],
-    "notRun": []
+    "notRun": [
+      "Targeted Vitest, conflict check and build were not run because the GitHub connector does not provide a repository checkout with installed dependencies.",
+      "390x844 and 430x932 visual verification remains for the local browser/device."
+    ]
   }
 }
