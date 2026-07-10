@@ -1,6 +1,7 @@
 import { GraphQLError } from "graphql";
 
 const requireRoleMock = vi.hoisted(() => vi.fn());
+const requireRestaurantPermissionMock = vi.hoisted(() => vi.fn(async () => true));
 
 const createChain = (result) => ({
   populate: vi.fn(() => ({
@@ -29,7 +30,7 @@ const modelMocks = vi.hoisted(() => ({
     findOne: vi.fn(),
     findByIdAndUpdate: vi.fn(),
   },
-  Role: { findById: vi.fn() },
+  Role: { find: vi.fn(), findById: vi.fn() },
   Customer: CustomerMock,
   CustomerRankSetting: {},
   WalletTransaction: {},
@@ -37,6 +38,10 @@ const modelMocks = vi.hoisted(() => ({
 
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../utils/authz.js", () => ({ requireRole: requireRoleMock }));
+vi.mock("../../src/services/auth/authorization.service.js", () => ({
+  requirePermission: vi.fn(async () => true),
+  requireRestaurantPermission: requireRestaurantPermissionMock,
+}));
 vi.mock("../../src/services/customerRankSetting.service.js", () => ({
   getEffectiveCustomerRankSetting: vi.fn(async () => ({ ranks: [], isDefault: true })),
 }));
@@ -66,6 +71,28 @@ describe("user admin management access hardening", () => {
     vi.resetModules();
     vi.clearAllMocks();
     requireRoleMock.mockImplementation(() => {});
+  });
+
+  it("roleList authorizes through the active restaurant for Brand Admin managers", async () => {
+    modelMocks.Role.find.mockReturnValue(createChain([
+      { _id: "role-server", slug: "server", name: "Server" },
+    ]));
+    const ctx = ctxFor("manager");
+    const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
+
+    const result = await UserQuery.roleList(
+      null,
+      { restaurantId: "valid-restaurant" },
+      ctx,
+    );
+
+    expect(result).toHaveLength(1);
+    expect(requireRestaurantPermissionMock).toHaveBeenCalledWith(
+      ctx,
+      "valid-restaurant",
+      "staff.write",
+    );
+    expect(requireRoleMock).not.toHaveBeenCalled();
   });
 
   it("users rejects manager before User.find", async () => {
