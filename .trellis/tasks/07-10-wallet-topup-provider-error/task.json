@@ -1,0 +1,32 @@
+{
+  "id": "07-10-wallet-topup-provider-error",
+  "name": "07-10-wallet-topup-provider-error",
+  "title": "Clarify wallet topup provider and sanitize MoMo errors",
+  "description": "Prevent accidental MoMo topups when the user intends VNPAY card payment, and keep upstream MoMo signature diagnostics out of the customer UI.",
+  "status": "completed",
+  "dev_type": "fullstack",
+  "scope": "wallet-topup-provider-selection",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": "2026-07-10",
+  "branch": "fix/wallet-topup-provider-error-20260710",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "5d2eac3d83988fde9c890f632d58d21f79c4e536",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1342",
+  "subtasks": [],
+  "children": [],
+  "parent": "payment-provider-flow-audit-20260710",
+  "relatedFiles": [
+    "src/pages/WalletPage.jsx",
+    "cohan-restaurant-backend/src/services/payment/providers.js",
+    "cohan-restaurant-backend/tests/services/payment-provider-errors.security.test.js"
+  ],
+  "notes": "Completed the explicit provider selection, MoMo credential trimming, safe provider error mapping, and regression test. GitHub CI passed backend/frontend lint, tests, builds, Menu RBAC checks, changed-component checks, and Playwright smoke tests. No live provider transaction was run from the connector environment.",
+  "meta": {
+    "skills": ["ponytail"]
+  }
+}

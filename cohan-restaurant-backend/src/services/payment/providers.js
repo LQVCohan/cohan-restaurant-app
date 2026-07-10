@@ -76,9 +76,9 @@ export async function createMomoPayment({ payment, ipnUrl, returnUrl, mode = "sa
       ? (process.env.MOMO_ENDPOINT_PRODUCTION || "https://payment.momo.vn/v2/gateway/api/create")
       : (process.env.MOMO_ENDPOINT_SANDBOX || "https://test-payment.momo.vn/v2/gateway/api/create");
 
-  const partnerCode = process.env.MOMO_PARTNER_CODE;
-  const accessKey = process.env.MOMO_ACCESS_KEY;
-  const secretKey = process.env.MOMO_SECRET_KEY;
+  const partnerCode = String(process.env.MOMO_PARTNER_CODE || "").trim();
+  const accessKey = String(process.env.MOMO_ACCESS_KEY || "").trim();
+  const secretKey = String(process.env.MOMO_SECRET_KEY || "").trim();
 
   if (!partnerCode || !accessKey || !secretKey) {
     throw new Error("MoMo chưa cấu hình đầy đủ MOMO_PARTNER_CODE/MOMO_ACCESS_KEY/MOMO_SECRET_KEY");
@@ -124,7 +124,19 @@ export async function createMomoPayment({ payment, ipnUrl, returnUrl, mode = "sa
 
   const json = await response.json();
   if (!response.ok || Number(json?.resultCode) !== 0) {
-    throw new Error(`MoMo create payment lỗi: ${json?.message || response.statusText}`);
+    const providerMessage = String(json?.message || "");
+    const resultCode = Number.isFinite(Number(json?.resultCode))
+      ? String(json.resultCode)
+      : String(response.status || "unknown");
+    if (/chữ ký không hợp lệ|invalid signature/i.test(providerMessage)) {
+      const environmentLabel = mode === "production" ? "Production" : "Sandbox";
+      throw new Error(
+        `MoMo từ chối chữ ký (mã ${resultCode}). Kiểm tra MOMO_PARTNER_CODE, MOMO_ACCESS_KEY và MOMO_SECRET_KEY phải thuộc cùng một bộ ${environmentLabel}.`,
+      );
+    }
+    throw new Error(
+      `MoMo từ chối yêu cầu thanh toán (mã ${resultCode}). Vui lòng thử lại hoặc chọn phương thức khác.`,
+    );
   }
 
   return {
@@ -138,8 +150,8 @@ export async function createMomoPayment({ payment, ipnUrl, returnUrl, mode = "sa
 }
 
 export function verifyMomoCallback(payload = {}) {
-  const accessKey = process.env.MOMO_ACCESS_KEY;
-  const secretKey = process.env.MOMO_SECRET_KEY;
+  const accessKey = String(process.env.MOMO_ACCESS_KEY || "").trim();
+  const secretKey = String(process.env.MOMO_SECRET_KEY || "").trim();
   if (!accessKey || !secretKey) return false;
 
   const rawSignature =

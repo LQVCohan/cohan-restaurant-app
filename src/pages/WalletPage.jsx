@@ -90,7 +90,7 @@ export default function WalletPage() {
   const navigate = useNavigate();
   const { data, loading, error, refetch } = useQuery(MY_WALLET, { fetchPolicy: "cache-and-network" });
   const [topupAmount, setTopupAmount] = useState(100000);
-  const [topupProvider, setTopupProvider] = useState("momo");
+  const [topupProvider, setTopupProvider] = useState("");
   const [notice, setNotice] = useState("");
   const [activePayment, setActivePayment] = useState(null);
   const [createTopup, { loading: toppingUp }] = useMutation(CREATE_WALLET_TOPUP, {
@@ -144,6 +144,10 @@ export default function WalletPage() {
 
   const handleTopup = () => {
     const amount = Number(topupAmount || 0);
+    if (!["momo", "vnpay"].includes(topupProvider)) {
+      setNotice("Vui lòng chọn MoMo hoặc VNPAY trước khi tạo phiên thanh toán.");
+      return;
+    }
     if (!(amount >= 1000)) {
       setNotice("Số tiền nạp tối thiểu là 1.000đ.");
       return;
@@ -187,10 +191,18 @@ export default function WalletPage() {
           <p>Số dư chỉ được cộng sau khi MoMo/VNPAY xác nhận thanh toán thành công.</p>
           <label className="wallet-page__amount-input">
             Cổng thanh toán
-            <select value={topupProvider} onChange={(event) => setTopupProvider(event.target.value)}>
-              <option value="momo">MoMo</option>
-              <option value="vnpay">VNPAY</option>
+            <select
+              value={topupProvider}
+              onChange={(event) => {
+                setTopupProvider(event.target.value);
+                setNotice("");
+              }}
+            >
+              <option value="" disabled>Chọn cổng thanh toán</option>
+              <option value="momo">MoMo (ví điện tử)</option>
+              <option value="vnpay">VNPAY (thẻ ngân hàng)</option>
             </select>
+            <small>Chọn VNPAY để thanh toán bằng thẻ ngân hàng Sandbox.</small>
           </label>
           <div className="wallet-page__quick-amounts" aria-label="Chọn nhanh số tiền nạp">
             {quickAmounts.map((amount) => (
@@ -216,7 +228,12 @@ export default function WalletPage() {
               onChange={(event) => setTopupAmount(event.target.value)}
             />
           </label>
-          <button type="button" className="wallet-page__primary" onClick={handleTopup} disabled={toppingUp}>
+          <button
+            type="button"
+            className="wallet-page__primary"
+            onClick={handleTopup}
+            disabled={toppingUp || !topupProvider}
+          >
             <CreditCard size={18} aria-hidden="true" /> {toppingUp ? "Đang tạo phiên..." : "Tạo phiên thanh toán"}
           </button>
           {currentPayment && (
