@@ -14,7 +14,9 @@ vi.mock("./Account/ManagerAccountCenter", () => ({
 }));
 
 vi.mock("./RestaurantSetup/RestaurantCuisineOnboarding", () => ({
-  default: () => <div data-testid="cuisine-onboarding" />,
+  default: ({ openRequest }) => (
+    <div data-testid="cuisine-onboarding" data-open-request={openRequest} />
+  ),
 }));
 
 const pendingBrand = {
@@ -128,5 +130,20 @@ describe("manager Header", () => {
     });
 
     expect(screen.getByTestId("cuisine-onboarding")).toBeInTheDocument();
+  });
+
+  it("offers a persistent account-menu action to reopen pending cuisine setup", () => {
+    localStorage.setItem("manager.selectedRestaurantId", "r1");
+
+    renderHeader({
+      activeBrand: pendingBrand,
+      user: { fullName: "Manager User", roleName: "manager" },
+    });
+
+    expect(screen.getByTestId("cuisine-onboarding")).toHaveAttribute("data-open-request", "0");
+    openUserMenu();
+    fireEvent.click(screen.getByRole("button", { name: "Chọn mẫu thiết lập nhà hàng" }));
+    expect(screen.getByTestId("cuisine-onboarding")).toHaveAttribute("data-open-request", "1");
+    expect(screen.queryByRole("button", { name: "Chọn mẫu thiết lập nhà hàng" })).not.toBeInTheDocument();
   });
 });
