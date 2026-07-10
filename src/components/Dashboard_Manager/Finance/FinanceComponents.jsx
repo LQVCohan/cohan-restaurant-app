@@ -11,6 +11,13 @@ import { formatCurrencyAmount } from "@/utils/currency";
 
 const defaultFormatMoney = (value) => formatCurrencyAmount(value, "VND");
 
+const formatDisplayDate = (value) => {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime())
+    ? date.toLocaleDateString("vi-VN")
+    : "Chưa có dữ liệu";
+};
+
 const STATUS_LABELS = {
   completed: "Hoàn tất",
   success: "Thành công",
@@ -143,10 +150,7 @@ export const ReceivableDebts = ({
           <div className="debt-info">
             <div className="supplier-name">{debt.supplier}</div>
             <div className="due-date text-danger">
-              Hạn thanh toán: {" "}
-              {debt.dueDate
-                ? new Date(debt.dueDate).toLocaleDateString("vi-VN")
-                : "Chưa có ngày"}
+              Cập nhật gần nhất: {formatDisplayDate(debt.dueDate)}
             </div>
           </div>
           <div className="debt-amount">
@@ -187,6 +191,7 @@ export const TransactionTable = ({
         ) : (
           transactions.map((transaction) => {
             const date = new Date(transaction.occurredAt);
+            const hasValidDate = !Number.isNaN(date.getTime());
             const isInflow = transaction.type === "INFLOW";
             const isSuccess = ["completed", "success"].includes(
               String(transaction.status || "").toLowerCase(),
@@ -206,8 +211,14 @@ export const TransactionTable = ({
                 className={onSelect ? "clickable-row" : ""}
               >
                 <td className="date-col">
-                  <b>{`${date.getDate()}`.padStart(2, "0")}</b>/
-                  {`${date.getMonth() + 1}`.padStart(2, "0")}
+                  {hasValidDate ? (
+                    <>
+                      <b>{`${date.getDate()}`.padStart(2, "0")}</b>/
+                      {`${date.getMonth() + 1}`.padStart(2, "0")}
+                    </>
+                  ) : (
+                    "--/--"
+                  )}
                 </td>
                 <td>
                   <div className="desc">{transaction.description}</div>
