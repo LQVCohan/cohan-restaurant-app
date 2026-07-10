@@ -1,10 +1,11 @@
 {
   "id": "07-10-single-default-warehouse-ui",
   "title": "Use only the restaurant default warehouse in manager UI",
-  "status": "implemented_unverified",
+  "status": "superseded",
   "area": "fullstack",
   "createdAt": "2026-07-10",
-  "updatedAt": "2026-07-10",
+  "updatedAt": "2026-07-11",
+  "supersededBy": "07-11-multi-warehouse-management",
   "validation": {
     "completed": [],
     "notRun": [
@@ -16,8 +17,7 @@
       "browser smoke"
     ],
     "notes": [
-      "GitHub connector does not expose a runnable repository checkout or browser.",
-      "The legacy zero-warehouse recovery action remains for historical inconsistent data; normal restaurant creation still creates Kho chính transactionally."
+      "Product clarification confirmed that one restaurant can operate multiple warehouses for intra-restaurant transfer."
     ]
   }
 }
