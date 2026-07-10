@@ -42,7 +42,7 @@ const aiKnowledgeNoticeMessageGuardPlugin = () => ({
   },
 });
 
-const staffPerformanceMonthRangeGuardPlugin = () => ({
+export const staffPerformanceMonthRangeGuardPlugin = () => ({
   name: "staff-performance-month-range-guard",
   enforce: "pre",
   transform(code, id) {
