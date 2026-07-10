@@ -10,7 +10,10 @@ import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { requireRole } from "../../../utils/authz.js";
 import { requireRestaurantAccess } from "../../guards.js";
-import { requirePermission } from "../../../src/services/auth/authorization.service.js";
+import {
+  requirePermission,
+  requireRestaurantPermission,
+} from "../../../src/services/auth/authorization.service.js";
 import { isSystemAdmin } from "../../../src/services/auth/restaurantScope.service.js";
 import { requireAdminSensitiveAccess, tryAdminSensitiveAccessWithAudit, SENSITIVE_ACCESS } from "../../../src/services/auth/adminSensitiveAccess.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
@@ -148,10 +151,17 @@ export const UserQuery = {
   },
 
   // ========== Danh sách vai trò (để FE map slug -> id) ==========
-  async roleList(_, __, { user: authUser }) {
+  async roleList(_, { restaurantId }, ctx) {
     try {
-      // Cho phép các vai trò quản lý nhân sự tải role list
-      requireRole(authUser, ["admin", "manager", "hr"]);
+      if (restaurantId) {
+        await requireRestaurantPermission(
+          ctx,
+          restaurantId,
+          PERMISSIONS.STAFF_WRITE,
+        );
+      } else {
+        requireRole(ctx?.user, ["admin", "manager", "hr"]);
+      }
 
       const list = await Role.find({})
         .populate({ path: "parentRole", select: "name slug" })
