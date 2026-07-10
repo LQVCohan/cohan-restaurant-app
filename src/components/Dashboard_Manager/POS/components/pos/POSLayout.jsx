@@ -7,6 +7,7 @@ import RightPanel from "./RightPanel";
 import TablePaymentRequestNotice from "./TablePaymentRequestNotice";
 import PosMenuAvailabilityRealtimeNotice from "./PosMenuAvailabilityRealtimeNotice";
 import PosReservationRealtimeNotice from "./PosReservationRealtimeNotice";
+import PosIncomingTableOrderQueue from "./PosIncomingTableOrderQueue";
 import CustomerRequestQueuePanel from "./CustomerRequestQueuePanel";
 import EligibleGiftSuggestionPanel from "./EligibleGiftSuggestionPanel";
 import DiscountCouponDock from "./DiscountCouponDock";
@@ -41,6 +42,7 @@ function POSContent({ restaurantId }) {
 
       <div className={styles.rightCol}>
         <div className={styles.card} style={{ position: "relative" }}>
+          <PosIncomingTableOrderQueue restaurantId={restaurantId} />
           <CustomerRequestQueuePanel
             restaurantId={restaurantId}
             onOpenPayment={handleOpenPayment}
