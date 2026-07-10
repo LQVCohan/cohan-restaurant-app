@@ -1,12 +1,8 @@
 const TABLE_ROUTE_PATTERN = /^\/table\/([a-f\d]{24})\/([a-f\d]{24})\/?$/i;
 const DEVICE_PREFIX = "cohan:table-order:device";
-const TOKEN_PREFIX = "cohan:table-order:session-token";
 
-export const TABLE_ORDER_ACCESS_CHANGED_EVENT =
-  "cohan:table-order-access-changed";
-
-function storageKey(prefix, restaurantId, tableId) {
-  return `${prefix}:${restaurantId}:${tableId}`;
+function storageKey(restaurantId, tableId) {
+  return `${DEVICE_PREFIX}:${restaurantId}:${tableId}`;
 }
 
 function readSessionStorage(key) {
@@ -21,10 +17,9 @@ function readSessionStorage(key) {
 function writeSessionStorage(key, value) {
   if (typeof window === "undefined") return;
   try {
-    if (value) window.sessionStorage.setItem(key, value);
-    else window.sessionStorage.removeItem(key);
+    window.sessionStorage.setItem(key, value);
   } catch {
-    // The page still works in memory; storage is only for refresh continuity.
+    // The verification remains usable in memory when storage is unavailable.
   }
 }
 
@@ -46,57 +41,10 @@ export function parsePublicTableRoute(pathname) {
 
 export function getOrCreateTableOrderDeviceId(restaurantId, tableId) {
   if (!restaurantId || !tableId) return "";
-  const key = storageKey(DEVICE_PREFIX, restaurantId, tableId);
+  const key = storageKey(restaurantId, tableId);
   const existing = readSessionStorage(key);
   if (existing) return existing;
   const deviceId = createDeviceId();
   writeSessionStorage(key, deviceId);
   return deviceId;
-}
-
-export function readTableOrderSessionToken(restaurantId, tableId) {
-  if (!restaurantId || !tableId) return "";
-  return readSessionStorage(storageKey(TOKEN_PREFIX, restaurantId, tableId));
-}
-
-export function storeTableOrderSessionToken(
-  restaurantId,
-  tableId,
-  token,
-) {
-  if (!restaurantId || !tableId) return;
-  writeSessionStorage(storageKey(TOKEN_PREFIX, restaurantId, tableId), token);
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(
-      new CustomEvent(TABLE_ORDER_ACCESS_CHANGED_EVENT, {
-        detail: { restaurantId, tableId, confirmed: Boolean(token) },
-      }),
-    );
-  }
-}
-
-export function clearTableOrderSessionToken(restaurantId, tableId) {
-  storeTableOrderSessionToken(restaurantId, tableId, "");
-}
-
-export function getTableOrderAccessHeaders(pathname) {
-  const route = parsePublicTableRoute(
-    pathname ||
-      (typeof window !== "undefined" ? window.location.pathname : ""),
-  );
-  if (!route) return {};
-
-  const deviceId = getOrCreateTableOrderDeviceId(
-    route.restaurantId,
-    route.tableId,
-  );
-  const token = readTableOrderSessionToken(
-    route.restaurantId,
-    route.tableId,
-  );
-
-  return {
-    ...(deviceId ? { "x-table-order-device": deviceId } : {}),
-    ...(token ? { "x-table-order-session": token } : {}),
-  };
 }
