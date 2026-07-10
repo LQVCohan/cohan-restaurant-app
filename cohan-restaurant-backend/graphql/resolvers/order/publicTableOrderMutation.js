@@ -272,6 +272,23 @@ function toOutOfStockError(error) {
   return error;
 }
 
+function buildQrIdempotencyFilter({ restaurantId, tableId, idempotencyKey }) {
+  return {
+    restaurantId,
+    tableId,
+    "clientMeta.source": QR_ORDER_SOURCE,
+    "clientMeta.idempotencyKey": idempotencyKey,
+  };
+}
+
+function buildExistingOrderResult(order) {
+  return {
+    ok: true,
+    message: "Đợt gọi món này đã được gửi trước đó.",
+    order: mapPublicTableOrder(order.toObject()),
+  };
+}
+
 export async function publicRequestTableIdentityOtp(_parent, { input }) {
   const access = await loadPublicTableAccess(input || {});
   await assertTableAcceptsOrders(access);
@@ -385,23 +402,18 @@ export async function publicSubmitTableOrder(_parent, { input }, ctx) {
     restaurantId: access.rid,
     tableId: access.tid,
   });
-
-  const existing = await Order.findOne({
+  const idempotencyFilter = buildQrIdempotencyFilter({
     restaurantId: access.rid,
     tableId: access.tid,
-    "clientMeta.source": QR_ORDER_SOURCE,
-    "clientMeta.idempotencyKey": normalized.idempotencyKey,
-  }).sort({ createdAt: -1 });
-  if (existing) {
-    return {
-      ok: true,
-      message: "Đợt gọi món này đã được gửi trước đó.",
-      order: mapPublicTableOrder(existing.toObject()),
-    };
-  }
+    idempotencyKey: normalized.idempotencyKey,
+  });
+
+  const existing = await Order.findOne(idempotencyFilter).sort({ createdAt: -1 });
+  if (existing) return buildExistingOrderResult(existing);
 
   const transaction = await mongoose.startSession();
   let createdOrder = null;
+  let reusedExistingOrder = false;
   try {
     await transaction.withTransaction(async () => {
       const currentAccess = await loadPublicTableAccess({ ...input, session: transaction });
@@ -425,6 +437,25 @@ export async function publicSubmitTableOrder(_parent, { input }, ctx) {
         session: transaction,
       });
       const parentSession = sessionMeta.sessionOrder;
+      const submissionAt = new Date();
+
+      // The active table-session row is the serialization point for all QR batches
+      // of one table. Concurrent retries now conflict/retry before another batch is
+      // created, then observe the first committed idempotency key.
+      await Order.updateOne(
+        { _id: parentSession._id, orderKind: ORDER_KIND.TABLE_SESSION },
+        { $set: { "clientMeta.lastQrSubmissionAt": submissionAt } },
+        { session: transaction },
+      );
+
+      const existingInTransaction = await Order.findOne(idempotencyFilter).session(
+        transaction,
+      );
+      if (existingInTransaction) {
+        createdOrder = existingInTransaction;
+        reusedExistingOrder = true;
+        return;
+      }
 
       const pendingCount = await Order.countDocuments({
         ...childOrdersForSessionFilter({
@@ -453,7 +484,6 @@ export async function publicSubmitTableOrder(_parent, { input }, ctx) {
         tableCode: currentAccess.tableCode,
         session: transaction,
       });
-      const now = new Date();
 
       const [order] = await Order.create(
         [
@@ -479,7 +509,7 @@ export async function publicSubmitTableOrder(_parent, { input }, ctx) {
             statusTimeline: [
               {
                 status: "pending",
-                at: now,
+                at: submissionAt,
                 byUserId: tableCustomerId ? toId(tableCustomerId) : undefined,
                 note: "Khách gửi món từ mã QR, chờ nhân viên xác nhận",
               },
@@ -488,7 +518,7 @@ export async function publicSubmitTableOrder(_parent, { input }, ctx) {
               source: QR_ORDER_SOURCE,
               idempotencyKey: normalized.idempotencyKey,
               identityMode: tableCustomerId ? "linked" : "anonymous",
-              submittedAt: now,
+              submittedAt: submissionAt,
             },
           },
         ],
@@ -520,6 +550,19 @@ export async function publicSubmitTableOrder(_parent, { input }, ctx) {
         { session: transaction },
       );
 
+      await Table.updateOne(
+        {
+          _id: currentAccess.tid,
+          restaurantId: currentAccess.rid,
+          status: { $in: ["reserved", "occupied", "payment_pending"] },
+        },
+        { $set: { status: "occupied" } },
+        { session: transaction },
+      );
+
+      await ensureOrderTracking(order);
+      updatePublicStatusHistory(order, "CUSTOMER");
+      await order.save({ session: transaction });
       createdOrder = order;
     });
   } catch (error) {
@@ -528,14 +571,19 @@ export async function publicSubmitTableOrder(_parent, { input }, ctx) {
     await transaction.endSession();
   }
 
-  await Table.updateOne(
-    { _id: access.tid, restaurantId: access.rid, status: { $in: ["reserved", "occupied"] } },
-    { $set: { status: "occupied" } },
-  );
-  await ensureOrderTracking(createdOrder);
-  updatePublicStatusHistory(createdOrder, "CUSTOMER");
-  await createdOrder.save();
-  await emitOrderEvent(ctx, String(access.rid), "ORDER_CREATED", createdOrder);
+  if (!createdOrder) {
+    throw new Error("Không thể tạo đợt gọi món. Vui lòng thử lại.");
+  }
+  if (reusedExistingOrder) return buildExistingOrderResult(createdOrder);
+
+  try {
+    await emitOrderEvent(ctx, String(access.rid), "ORDER_CREATED", createdOrder);
+  } catch (error) {
+    console.warn(
+      "[QR_ORDER] Order committed but realtime notification failed",
+      error?.message || error,
+    );
+  }
 
   return {
     ok: true,
