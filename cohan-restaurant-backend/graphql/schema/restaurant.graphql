@@ -207,7 +207,7 @@ extend type Query {
     cursor: ID
     filter: RestaurantFilter
   ): RestaurantConnection!
-  publicRestaurant(id: ID!): Restaurant
+  publicRestaurant(id: ID!, at: DateTime): Restaurant
   similarRestaurants(restaurantId: ID!, limit: Int = 6): [Restaurant!]!
 
   scopedRestaurants(
