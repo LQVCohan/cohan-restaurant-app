@@ -1,0 +1,31 @@
+{
+  "id": "transfer-review-dashboard-hardening",
+  "name": "transfer-review-dashboard-hardening",
+  "title": "Harden transfer payment review dashboard",
+  "description": "Synchronize the transfer-review page with the canonical manager restaurant scope, expose exact queue totals, correct the All filter, and redesign the screen as a compact operational workspace without changing payment settlement semantics.",
+  "status": "in_progress",
+  "dev_type": "feature-fix",
+  "scope": "manager-transfer-review",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "codex/transfer-review-dashboard-hardening",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/schema/paymentTransfer.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/payment/bankTransferQuery.js",
+    "src/layouts/ManagerLayout.jsx",
+    "src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.jsx",
+    "src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPagePolish.scss"
+  ],
+  "notes": "Preserve payment.read/payment.write authorization, settlement transactions, audit logging, realtime events, and customer proof retry behavior."
+}
