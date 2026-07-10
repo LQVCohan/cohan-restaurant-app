@@ -2,7 +2,7 @@
 
 ## Placement
 
-Keep `staff/mutation.js` as the existing persistence layer. Extend the existing `staff/index.js` domain wrapper because it already owns business context, membership creation, restaurant role assignment, and rollback.
+Keep `staff/mutation.js` as the existing persistence layer and preserve `staff/index.js` as the business-context/role wrapper. Add a small staff-specific decorator at resolver composition, following the repository's existing guarded-mutation pattern, so invitation work runs only after the complete staff domain flow returns successfully.
 
 ## Create flow
 
@@ -14,7 +14,7 @@ For an input containing an email:
 4. After the domain flow succeeds, load the created staff document, restore contact fields, force `pending` and unverified email state, then save.
 5. Send one staff invitation email containing the login identifier, initial password, and `/login` link.
 6. Return the normal sanitized staff profile.
-7. Roll back the new membership and staff account when restoring contact details or sending the invitation fails.
+7. Roll back all new memberships and the staff account when restoring contact details or sending the invitation fails.
 
 Phone-only creation continues through the existing path.
 
@@ -32,5 +32,5 @@ This keeps blocked/inactive guards unchanged and avoids issuing a token containi
 ## Security
 
 - Plaintext initial passwords exist only in request memory and the outgoing email builder.
-- Passwords are not written to MongoDB, logs, EventLog metadata, GraphQL responses, or query parameters.
+- Passwords are not written to MongoDB, application/audit logs, GraphQL responses, or query parameters.
 - Login still requires the normal password check, rate limiting, and CAPTCHA configuration.
