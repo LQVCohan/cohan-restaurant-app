@@ -121,10 +121,12 @@ export default function CustomerRequestQueuePanel({ restaurantId, onOpenPayment 
     try {
       await action();
       await refetchAll();
+      return true;
     } catch (error) {
       setActionError(
         error?.message || "Không thể cập nhật yêu cầu. Vui lòng thử lại.",
       );
+      return false;
     } finally {
       setBusyRequestId(null);
     }
@@ -163,6 +165,11 @@ export default function CustomerRequestQueuePanel({ restaurantId, onOpenPayment 
         );
       }
     });
+
+  const acceptPaymentRequest = async (request) => {
+    const accepted = await acknowledge(request);
+    if (accepted) onOpenPayment?.(request.orderId);
+  };
 
   if (!rows.length) return null;
 
@@ -289,11 +296,7 @@ export default function CustomerRequestQueuePanel({ restaurantId, onOpenPayment 
                       type="button"
                       className={styles.primaryAction}
                       disabled={isBusy}
-                      onClick={() =>
-                        void acknowledge(request).then(() =>
-                          onOpenPayment?.(request.orderId),
-                        )
-                      }
+                      onClick={() => void acceptPaymentRequest(request)}
                     >
                       {isBusy ? "Đang nhận..." : "Nhận thanh toán"}
                     </button>
