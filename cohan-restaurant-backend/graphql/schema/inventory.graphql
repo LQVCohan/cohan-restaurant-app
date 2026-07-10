@@ -243,7 +243,8 @@ type StockMovement {
   id: ID!
   restaurantId: ID!
   warehouseId: ID!
-  ingredientId: ID!
+  ingredientId: ID
+  supplyId: ID
   type: MovementType!
   qty: Float!
   reason: String
