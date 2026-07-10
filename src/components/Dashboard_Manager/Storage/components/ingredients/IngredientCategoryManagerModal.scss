@@ -1,4 +1,4 @@
-/* Ingredient category manager: focused two-column workbench */
+/* Ingredient category manager: one scroll container, no clipped rows */
 .modal-container.storage-category-modal-shell {
   width: min(1160px, calc(100vw - 40px)) !important;
   max-height: min(92dvh, 860px) !important;
@@ -16,6 +16,7 @@
   border-bottom: 1px solid #e2e6e2 !important;
 }
 
+.modal-container.storage-category-modal-shell > .modal-header h2,
 .modal-container.storage-category-modal-shell > .modal-header h3 {
   color: #1f2a2f !important;
   font-size: 1.05rem !important;
@@ -26,7 +27,9 @@
 .modal-container.storage-category-modal-shell > .modal-body.cat-manager-modal-body {
   min-height: 0 !important;
   padding: 16px !important;
-  overflow: hidden !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  scrollbar-gutter: stable;
   background: #f7f8f6 !important;
 }
 
@@ -82,19 +85,22 @@
 }
 
 .cat-manager-workbench {
-  height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  overflow: hidden;
+  overflow: visible;
 }
 
-.cat-manager-premium .flex-1 { flex: 1; }
-.cat-manager-premium .w-full { width: 100%; }
+.cat-manager-premium .flex-1 {
+  flex: 1;
+}
+
+.cat-manager-premium .w-full {
+  width: 100%;
+}
 
 .cat-manager-compact-hero {
-  flex: 0 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -173,33 +179,19 @@
 }
 
 .cat-manager-main-grid {
-  flex: 1 1 auto;
-  min-height: 0;
   display: grid;
   grid-template-columns: minmax(310px, 0.38fr) minmax(0, 1fr);
+  align-items: start;
   gap: 14px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .cat-manager-side-panel {
-  min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 2px;
-}
-
-.cat-manager-side-panel::-webkit-scrollbar,
-.cat-manager-premium .main-scroll-list::-webkit-scrollbar {
-  width: 7px;
-}
-
-.cat-manager-side-panel::-webkit-scrollbar-thumb,
-.cat-manager-premium .main-scroll-list::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: #c7d0ca;
+  overflow: visible;
 }
 
 .cat-manager-premium .category-action-card,
@@ -229,8 +221,13 @@
   gap: 10px;
 }
 
-.cat-manager-premium .im-section-header.compact { margin-bottom: 10px; }
-.cat-manager-premium .im-section-header.list-header { margin-bottom: 0; }
+.cat-manager-premium .im-section-header.compact {
+  margin-bottom: 10px;
+}
+
+.cat-manager-premium .im-section-header.list-header {
+  margin-bottom: 0;
+}
 
 .cat-manager-premium .icon-box {
   width: 32px;
@@ -256,7 +253,9 @@
   color: #65716c;
 }
 
-.cat-manager-premium .header-text { min-width: 0; }
+.cat-manager-premium .header-text {
+  min-width: 0;
+}
 
 .cat-manager-premium .im-section-title {
   margin: 0;
@@ -307,7 +306,9 @@
   padding-left: 39px;
 }
 
-.cat-manager-premium .standard-input::placeholder { color: #9aa39f; }
+.cat-manager-premium .standard-input::placeholder {
+  color: #9aa39f;
+}
 
 .cat-manager-premium .standard-input:focus {
   outline: none;
@@ -436,7 +437,9 @@
   color: var(--cat-danger);
 }
 
-.cat-manager-premium .last-sync-card { flex: 0 0 auto; }
+.cat-manager-premium .last-sync-card {
+  flex: 0 0 auto;
+}
 
 .cat-manager-premium .last-sync-content {
   padding: 10px 11px;
@@ -463,16 +466,15 @@
 }
 
 .cat-manager-premium .manager-grade-list {
-  min-height: 0;
+  min-width: 0;
   padding: 15px;
   display: flex;
   flex-direction: column;
   border-radius: 18px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .cat-manager-premium .list-panel-top {
-  flex: 0 0 auto;
   margin-bottom: 11px;
   display: flex;
   align-items: flex-start;
@@ -492,7 +494,6 @@
 }
 
 .cat-manager-premium .toolbar {
-  flex: 0 0 auto;
   margin-bottom: 11px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(190px, 0.36fr);
@@ -500,17 +501,15 @@
 }
 
 .cat-manager-premium .main-scroll-list {
-  flex: 1 1 auto;
-  min-height: 0;
   padding: 5px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: visible;
   border: 1px solid #e0e5e1;
   border-radius: 14px;
   background: #fafbfa;
 }
 
 .cat-manager-premium .list-item {
+  min-height: 66px;
   padding: 11px 12px;
   display: flex;
   align-items: center;
@@ -521,7 +520,9 @@
   transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
-.cat-manager-premium .list-item:not(:last-child) { margin-bottom: 3px; }
+.cat-manager-premium .list-item:not(:last-child) {
+  margin-bottom: 3px;
+}
 
 .cat-manager-premium .list-item:hover {
   border-color: #dfe5e0;
@@ -575,7 +576,9 @@
   color: var(--cat-accent);
 }
 
-.cat-manager-premium .usage-count b { color: var(--cat-text); }
+.cat-manager-premium .usage-count b {
+  color: var(--cat-text);
+}
 
 .cat-manager-premium .item-actions {
   flex: 0 0 auto;
@@ -626,7 +629,7 @@
 }
 
 .cat-manager-premium .empty-state {
-  min-height: 240px;
+  min-height: 220px;
   padding: 36px 20px;
   display: flex;
   flex-direction: column;
@@ -637,12 +640,20 @@
   text-align: center;
 }
 
-.cat-manager-premium .empty-state svg { opacity: 0.42; }
-.cat-manager-premium .empty-state p { margin: 0; font-weight: 750; }
-.cat-manager-premium .empty-state span { font-size: 0.76rem; }
+.cat-manager-premium .empty-state svg {
+  opacity: 0.42;
+}
+
+.cat-manager-premium .empty-state p {
+  margin: 0;
+  font-weight: 750;
+}
+
+.cat-manager-premium .empty-state span {
+  font-size: 0.76rem;
+}
 
 .cat-manager-premium .pagination-premium {
-  flex: 0 0 auto;
   margin-top: 11px;
   padding-top: 11px;
   display: flex;
@@ -691,7 +702,6 @@
 }
 
 .cat-manager-premium .alert-box {
-  flex: 0 0 auto;
   padding: 11px 13px;
   display: flex;
   align-items: center;
@@ -708,7 +718,9 @@
 }
 
 @keyframes catSpin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 980px) {
@@ -716,16 +728,6 @@
     width: calc(100vw - 20px) !important;
     max-height: calc(100dvh - 20px) !important;
     border-radius: 20px !important;
-  }
-
-  .modal-container.storage-category-modal-shell > .modal-body.cat-manager-modal-body {
-    overflow-y: auto !important;
-  }
-
-  .cat-manager-workbench,
-  .cat-manager-main-grid,
-  .cat-manager-side-panel {
-    overflow: visible;
   }
 
   .cat-manager-main-grid,
@@ -736,10 +738,6 @@
 
   .cat-manager-premium .hero-stats.compact {
     min-width: 0;
-  }
-
-  .cat-manager-premium .manager-grade-list {
-    min-height: 500px;
   }
 }
 
@@ -774,7 +772,9 @@
     align-items: stretch !important;
   }
 
-  .cat-manager-premium .btn-save { width: 100%; }
+  .cat-manager-premium .btn-save {
+    width: 100%;
+  }
 
   .cat-manager-premium .list-item {
     align-items: flex-start;
