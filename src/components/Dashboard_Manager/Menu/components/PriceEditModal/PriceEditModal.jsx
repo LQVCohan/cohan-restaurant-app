@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { gql, useMutation } from "@apollo/client";
 import Modal from "../../../../common/Modal";
 import {
   FiAlertCircle,
   FiCheck,
   FiFilter,
   FiRefreshCw,
+  FiRotateCcw,
   FiSearch,
   FiTrendingDown,
   FiTrendingUp,
@@ -14,6 +16,15 @@ import "./PriceEditModal.scss";
 import "./PriceEditModalPolish.scss";
 import "./PriceEditModalSelection.scss";
 import MenuConfirmDialog from "../common/MenuConfirmDialog";
+
+const RESTORE_MENU_ITEM_PRICES = gql`
+  mutation RestoreMenuItemPrices($input: RestoreMenuItemPricesInput!) {
+    restoreMenuItemPrices(input: $input) {
+      restoredCount
+      skippedCount
+    }
+  }
+`;
 
 const DEFAULT_BULK_CHANGE = {
   type: "fixed",
@@ -81,9 +92,17 @@ const PriceEditModal = ({
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(false);
   const [appliedBulkOperations, setAppliedBulkOperations] = useState({});
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
   const [bulkChange, setBulkChange] = useState(DEFAULT_BULK_CHANGE);
+  const [restoreSavedPrices, { loading: isRestoringPrices }] = useMutation(
+    RESTORE_MENU_ITEM_PRICES,
+  );
 
-  const submitting = isSubmitting || isLocalSubmitting;
+  const restaurantId = useMemo(
+    () => (menuItems || []).find((item) => item?.restaurantId)?.restaurantId || null,
+    [menuItems],
+  );
+  const submitting = isSubmitting || isLocalSubmitting || isRestoringPrices;
 
   useEffect(() => {
     if (!isOpen || !menuItems) return;
@@ -133,6 +152,8 @@ const PriceEditModal = ({
     setSubmitError(null);
     setIsLocalSubmitting(false);
     setAppliedBulkOperations({});
+    setIsResetConfirmOpen(false);
+    setIsRestoreConfirmOpen(false);
     setBulkChange(DEFAULT_BULK_CHANGE);
   }, [isOpen, menuItems]);
 
@@ -246,7 +267,6 @@ const PriceEditModal = ({
     };
     const affectedItemIds = [];
 
-    // Compute synchronously before setState so the validation does not race React batching.
     const nextPriceChanges = priceChanges.map((item) => {
       const selected = selectedItemIds.has(String(item.itemId));
       const inScope =
@@ -403,6 +423,34 @@ const PriceEditModal = ({
     }
   };
 
+  const handleRestoreSavedPrices = async () => {
+    if (submitting || !restaurantId || selectedItemIds.size === 0) return;
+    setSubmitError(null);
+    try {
+      const { data } = await restoreSavedPrices({
+        variables: {
+          input: {
+            restaurantId,
+            menuItemIds: Array.from(selectedItemIds),
+          },
+        },
+      });
+      const result = data?.restoreMenuItemPrices;
+      if (!result?.restoredCount) {
+        throw new Error(
+          "Không có bản giá cũ đã lưu cho các món được tick. Hãy lưu một lần điều chỉnh giá trước.",
+        );
+      }
+
+      await onSave({ bulkOperations: [], manualUpdates: [] });
+      setIsRestoreConfirmOpen(false);
+      onClose?.();
+    } catch (error) {
+      setIsRestoreConfirmOpen(false);
+      setSubmitError(normalizeInlineError(error));
+    }
+  };
+
   const handleRequestClose = () => {
     if (!submitting) onClose?.();
   };
@@ -524,6 +572,14 @@ const PriceEditModal = ({
                 disabled={submitting}
               >
                 <FiRefreshCw /> Đặt lại
+              </button>
+              <button
+                className="pem-btn-reset"
+                onClick={() => setIsRestoreConfirmOpen(true)}
+                disabled={submitting || !restaurantId || selectedItemIds.size === 0}
+                title="Khôi phục giá gần nhất đã lưu trong cơ sở dữ liệu"
+              >
+                <FiRotateCcw /> Khôi phục giá đã lưu
               </button>
             </div>
 
@@ -717,7 +773,7 @@ const PriceEditModal = ({
               >
                 <FiCheck style={{ marginRight: 6 }} />
                 {submitting
-                  ? "Đang lưu..."
+                  ? "Đang xử lý..."
                   : `Lưu${changedCount > 0 ? ` (${changedCount})` : ""} thay đổi`}
               </button>
             </div>
@@ -738,6 +794,18 @@ const PriceEditModal = ({
           resetPrices();
           setIsResetConfirmOpen(false);
         }}
+      />
+
+      <MenuConfirmDialog
+        isOpen={isRestoreConfirmOpen}
+        title="Khôi phục giá đã lưu?"
+        message={`Hệ thống sẽ lấy bản giá trước lần điều chỉnh gần nhất của ${selectedItemIds.size} món đã tick từ cơ sở dữ liệu. Các thay đổi chưa lưu trong cửa sổ này sẽ bị bỏ.`}
+        tone="warning"
+        confirmText="Khôi phục giá"
+        cancelText="Hủy"
+        isLoading={isRestoringPrices}
+        onCancel={() => setIsRestoreConfirmOpen(false)}
+        onConfirm={handleRestoreSavedPrices}
       />
     </>
   );
