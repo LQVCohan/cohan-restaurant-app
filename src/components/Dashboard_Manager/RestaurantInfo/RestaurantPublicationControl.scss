@@ -1,0 +1,147 @@
+.manager-layout--restaurant-info-management .restaurant-publication-slot {
+  width: min(100%, 1440px);
+  display: flex;
+  justify-content: flex-end;
+  margin: 10px auto -2px;
+  padding: 0 clamp(10px, 1.6vw, 20px);
+}
+
+.restaurant-publication-control {
+  width: min(100%, 560px);
+  min-height: 66px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--manager-border, rgba(83, 108, 97, 0.22));
+  border-radius: 16px;
+  background: var(--manager-surface, rgba(249, 252, 250, 0.94));
+  box-shadow: var(--manager-shadow, 0 16px 36px rgba(48, 72, 61, 0.09));
+  color: var(--manager-text, #24312c);
+}
+
+.restaurant-publication-control.is-published {
+  border-color: rgba(47, 125, 104, 0.34);
+  background: linear-gradient(
+    135deg,
+    var(--manager-success-soft, #e5f3ed),
+    var(--manager-surface, rgba(249, 252, 250, 0.94))
+  );
+}
+
+.restaurant-publication-control.is-draft {
+  border-color: rgba(166, 106, 24, 0.3);
+  background: linear-gradient(
+    135deg,
+    var(--manager-warning-soft, #fff3da),
+    var(--manager-surface, rgba(249, 252, 250, 0.94))
+  );
+}
+
+.restaurant-publication-control.is-error {
+  border-color: rgba(181, 71, 71, 0.32);
+  background: var(--manager-danger-soft, #fae9e7);
+}
+
+.restaurant-publication-control__icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--manager-muted, #607069);
+}
+
+.is-published .restaurant-publication-control__icon {
+  color: var(--manager-success, #2f7d68);
+}
+
+.is-draft .restaurant-publication-control__icon {
+  color: var(--manager-warning, #a66a18);
+}
+
+.is-error .restaurant-publication-control__icon {
+  color: var(--manager-danger, #b54747);
+}
+
+.restaurant-publication-control__copy {
+  display: grid;
+  gap: 1px;
+}
+
+.restaurant-publication-control__copy > span {
+  color: var(--manager-muted, #607069);
+  font-size: 0.68rem;
+  font-weight: 780;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.restaurant-publication-control__copy > strong {
+  color: var(--manager-text, #24312c);
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.restaurant-publication-control__copy > small {
+  color: var(--manager-muted, #607069);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.restaurant-publication-control__action {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 12px;
+  border-left: 1px solid var(--manager-border, rgba(83, 108, 97, 0.22));
+  color: var(--manager-text, #24312c);
+  font-size: 0.76rem;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.restaurant-publication-control .ant-switch:focus-visible,
+.restaurant-publication-control .ant-btn:focus-visible {
+  outline: 3px solid rgba(47, 125, 104, 0.2);
+  outline-offset: 2px;
+}
+
+.restaurant-publication-control .ant-btn {
+  min-height: 40px;
+  border-radius: 10px;
+  color: var(--manager-danger, #b54747);
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .manager-layout--restaurant-info-management .restaurant-publication-slot {
+    margin-top: 8px;
+    padding: 0 8px;
+  }
+
+  .restaurant-publication-control {
+    width: 100%;
+    grid-template-columns: auto minmax(0, 1fr);
+    border-radius: 14px;
+  }
+
+  .restaurant-publication-control__action,
+  .restaurant-publication-control > .ant-btn {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: space-between;
+    padding: 8px 0 0;
+    border-top: 1px solid var(--manager-border, rgba(83, 108, 97, 0.22));
+    border-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .restaurant-publication-control {
+    transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+  }
+}
