@@ -28,7 +28,8 @@
     "src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.test.jsx",
     "src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPagePolish.scss",
     "src/hooks/useDashboard.test.jsx",
-    "src/components/Dashboard_Manager/Combo/ComboManagement.test.jsx"
+    "src/components/Dashboard_Manager/Combo/ComboManagement.test.jsx",
+    "tests/e2e/smoke/guest-home-detail.spec.js"
   ],
-  "notes": "Reuse the canonical manager scope hook directly. Preserve payment.read/payment.write authorization, settlement transactions, audit logging, realtime events, and customer proof retry behavior. CI also exposed and now covers an outdated dashboard scope expectation and one malformed combo test mock; Lucide compatibility remains isolated inside the page test."
+  "notes": "Reuse the canonical manager scope hook directly. Preserve payment.read/payment.write authorization, settlement transactions, audit logging, realtime events, and customer proof retry behavior. CI also exposed and now covers an outdated dashboard scope expectation, one malformed combo test mock, and an ambiguous guest smoke locator; Lucide compatibility remains isolated inside the page test."
 }
