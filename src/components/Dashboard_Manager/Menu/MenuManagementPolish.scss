@@ -155,12 +155,39 @@
   padding: 13px 18px 10px !important;
 }
 
+/* One compact row per preparation method: name, price, and cook time. */
+.modal-overlay .modal-container.menu-item-modal-modern .method-card {
+  padding: 12px !important;
+}
+
+.modal-overlay .modal-container.menu-item-modal-modern .method-card .method-card-header {
+  margin-bottom: 8px !important;
+  padding-bottom: 6px !important;
+}
+
 .modal-overlay .modal-container.menu-item-modal-modern .method-card .method-grid {
-  grid-template-columns: minmax(0, 1fr) minmax(130px, 0.78fr) !important;
+  grid-template-columns:
+    minmax(145px, 1.25fr)
+    minmax(82px, 0.6fr)
+    minmax(118px, 0.78fr) !important;
+  align-items: end !important;
+  gap: 8px !important;
 }
 
 .modal-overlay .modal-container.menu-item-modal-modern .method-card .method-grid .full-width {
-  grid-column: 1 / -1 !important;
+  grid-column: auto !important;
+}
+
+.modal-overlay .modal-container.menu-item-modal-modern .method-card .method-grid .form-group {
+  min-width: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.modal-overlay .modal-container.menu-item-modal-modern .method-card .method-grid label {
+  min-height: 30px !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  line-height: 1.2 !important;
 }
 
 /* Hide image implementation details from managers in the item editor. */
@@ -187,6 +214,10 @@
   .modal-overlay .modal-container.menu-item-modal-modern {
     width: min(94vw, 860px) !important;
   }
+
+  .modal-overlay .modal-container.menu-item-modal-modern .method-card .method-grid {
+    grid-template-columns: minmax(180px, 1.2fr) minmax(100px, 0.7fr) minmax(140px, 0.8fr) !important;
+  }
 }
 
 @media (max-width: 720px) {
@@ -194,7 +225,12 @@
     width: 100% !important;
   }
 
+  .modal-overlay .modal-container.menu-item-modal-modern .method-card .method-grid,
   .modal-overlay .modal-container.menu-item-modal-modern .local-image-picker {
     grid-template-columns: 1fr !important;
+  }
+
+  .modal-overlay .modal-container.menu-item-modal-modern .method-card .method-grid label {
+    min-height: auto !important;
   }
 }
