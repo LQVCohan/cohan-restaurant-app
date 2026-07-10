@@ -1,0 +1,25 @@
+{
+  "id": "07-11-schedule-board-responsive-optimization",
+  "title": "Tối ưu trang lịch lớn",
+  "status": "in_progress",
+  "type": "frontend-ui",
+  "scope": [
+    "src/components/Dashboard_Manager/Schedule/components/ShiftCard.jsx",
+    "src/styles/schedule-manager-sage-upgrade.css",
+    "src/components/Dashboard_Manager/Schedule/components/ShiftCard.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "targeted ShiftCard Vitest",
+      "npm run check:conflicts",
+      "npm run build",
+      "visual review at 1440, 1024, 768, 390 widths"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail and ui-ux-pro-max skills",
+      "traced scheduling policy shift templates through Apollo to the weekly board",
+      "confirmed the last-loaded sage stylesheet overrides earlier responsive breakpoints"
+    ],
+    "notRun": []
+  }
+}
