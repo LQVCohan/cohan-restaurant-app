@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
 import useCommunication from "@/hooks/useCommunication";
 import StaffQrOrderRealtimeNotice from "@/components/Staff/StaffQrOrderRealtimeNotice";
+import PosIncomingTableOrderQueue from "@/components/Dashboard_Manager/POS/components/pos/PosIncomingTableOrderQueue";
 import "./StaffLayout.scss";
 import "./StaffWorkspaceOverrides.scss";
 import {
@@ -205,6 +206,10 @@ export default function StaffLayout({ children }) {
   const canReceiveOrderNotice =
     STAFF_ORDER_ROLES.includes(normalizedRole) ||
     hasAnyPermission(user, ORDER_NOTICE_PERMISSIONS);
+  const showIncomingOrderQueue =
+    location.pathname.startsWith("/staff/orders") &&
+    canReceiveOrderNotice &&
+    Boolean(orderNoticeRestaurantId);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -329,7 +334,12 @@ export default function StaffLayout({ children }) {
       </header>
 
       <main id="staff-main-content" className="staff-shell__main">
-        <div className="staff-shell__content">{children}</div>
+        <div className="staff-shell__content">
+          {showIncomingOrderQueue ? (
+            <PosIncomingTableOrderQueue restaurantId={orderNoticeRestaurantId} />
+          ) : null}
+          {children}
+        </div>
       </main>
     </div>
   );
