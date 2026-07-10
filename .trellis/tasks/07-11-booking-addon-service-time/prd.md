@@ -65,3 +65,13 @@ Luồng `BookingModal -> RestaurantMenu -> FoodDetailV2 -> addCartItem` chỉ tr
 - Cart hold được chuyển sang order trong transaction, không giữ tồn kho hai lần.
 - Tiền cọc cuối cùng = tiền cọc bàn + 50% × tổng món (gồm modifiers), do backend tính.
 - Nếu tạo order kèm thất bại thì không mở thanh toán cho reservation chưa liên kết món.
+
+## Kết quả triển khai bổ sung
+
+- Food detail dùng serving key do backend resolve và refetch giỏ làm phương án đối soát.
+- Cart local/server giữ `serviceAt` trong dữ liệu và identity.
+- Booking draft được truyền qua menu, khôi phục bàn/tầng/form khi quay lại.
+- Reservation nhận cart item IDs, tự xác thực hold và tính cọc bàn + 50% subtotal gồm modifier.
+- Order add-on xác thực chủ reservation, release cart hold rồi reserve order trong cùng transaction; không đổi bàn tương lai sang occupied.
+- Nếu order add-on thất bại, reservation được hủy và UI không mở thanh toán.
+- Đã parse thành công toàn bộ JS/JSX thay đổi bằng esbuild và hai schema GraphQL bằng Prettier parser; thêm ba kiểm thử hồi quy mục tiêu.
