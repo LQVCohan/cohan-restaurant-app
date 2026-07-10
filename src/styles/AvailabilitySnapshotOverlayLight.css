@@ -25,7 +25,7 @@ html body .availability-snapshot-modal-overlay {
 
 html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
   width: min(1480px, calc(100vw - 2rem));
-  height: min(88dvh, 820px);
+  height: min(90dvh, 860px);
   min-height: 0;
   max-height: calc(100dvh - 2rem);
   display: flex;
@@ -95,6 +95,11 @@ html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
   min-height: 40px;
 }
 
+.availability-snapshot-modal .availability-snapshot-controls select:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .availability-snapshot-modal .availability-results-bar {
   flex: 0 0 auto;
   min-height: 1.5rem;
@@ -103,6 +108,44 @@ html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
 
 .availability-snapshot-modal .availability-results-bar button {
   min-height: 34px;
+}
+
+.availability-snapshot-modal .availability-template-strip {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.3rem 1rem 0;
+  overflow-x: auto;
+  color: var(--availability-muted, #66756e);
+  font-size: 0.7rem;
+  scrollbar-width: thin;
+}
+
+.availability-snapshot-modal .availability-template-strip strong {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  flex: 0 0 auto;
+  padding-right: 0.25rem;
+  color: var(--availability-text, #23342c);
+  background: #fbfcfb;
+}
+
+.availability-snapshot-modal .availability-template-strip span {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.45rem;
+  border: 1px solid var(--availability-border, rgba(55, 76, 65, 0.2));
+  border-radius: 8px;
+  background: #fff;
+  white-space: nowrap;
+}
+
+.availability-snapshot-modal .availability-template-strip span.is-part-time {
+  border-color: rgba(35, 132, 97, 0.3);
+  color: #23664f;
+  background: #edf7f2;
+  font-weight: 760;
 }
 
 .availability-snapshot-modal .availability-legend-row {
@@ -128,13 +171,85 @@ html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
   border-radius: 10px;
 }
 
-.availability-snapshot-modal .availability-table-shell {
+.availability-snapshot-modal .availability-group-stack {
   flex: 1 1 auto;
-  min-height: 180px;
-  max-height: none;
-  margin: 0.5rem 1rem 1rem;
-  overflow: auto !important;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  overflow-y: auto;
+  padding: 0.55rem 1rem 1rem;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.availability-snapshot-modal .availability-group {
+  flex: 0 0 auto;
+  min-width: 0;
+  border: 1px solid var(--availability-border, rgba(55, 76, 65, 0.2));
   border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.availability-snapshot-modal .availability-group-header {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--availability-border, rgba(55, 76, 65, 0.2));
+  background: #f5f8f6;
+}
+
+.availability-snapshot-modal .availability-group-header div {
+  min-width: 0;
+}
+
+.availability-snapshot-modal .availability-group-header strong,
+.availability-snapshot-modal .availability-group-header span {
+  display: block;
+}
+
+.availability-snapshot-modal .availability-group-header strong {
+  color: var(--availability-text, #23342c);
+  font-size: 0.86rem;
+}
+
+.availability-snapshot-modal .availability-group-header span {
+  margin-top: 0.12rem;
+  color: var(--availability-muted, #66756e);
+  font-size: 0.72rem;
+}
+
+.availability-snapshot-modal .availability-group-header b {
+  flex: 0 0 auto;
+  color: var(--availability-primary-strong, #3d574b);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.availability-snapshot-modal .availability-policy-warning {
+  margin: 0.55rem 0.75rem 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #f2c98f;
+  border-radius: 10px;
+  color: #81511e;
+  background: #fff8ed;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.availability-snapshot-modal .availability-group .availability-table-shell {
+  flex: 0 0 auto;
+  min-height: 0;
+  max-height: 310px;
+  margin: 0;
+  overflow: auto !important;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   -webkit-overflow-scrolling: touch;
@@ -150,6 +265,19 @@ html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
   min-width: 70px;
 }
 
+.availability-snapshot-modal .availability-full-time-table {
+  min-width: 780px;
+}
+
+.availability-snapshot-modal .availability-full-time-table th:not(.employee-col),
+.availability-snapshot-modal .availability-full-time-table td:not(.employee-col) {
+  min-width: 86px;
+}
+
+.availability-snapshot-modal .availability-day-cell span {
+  min-width: 3.7rem;
+}
+
 @media (max-height: 720px) and (min-width: 621px) {
   html body .availability-snapshot-modal-overlay {
     padding: 0.5rem;
@@ -158,6 +286,10 @@ html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
   html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
     height: calc(100dvh - 1rem);
     max-height: calc(100dvh - 1rem);
+  }
+
+  .availability-snapshot-modal .availability-group .availability-table-shell {
+    max-height: 235px;
   }
 }
 
@@ -199,9 +331,17 @@ html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
     font-size: 1rem;
   }
 
-  .availability-snapshot-modal .availability-table-shell {
+  .availability-snapshot-modal .availability-group-stack {
     flex: 0 0 auto;
-    min-height: 300px;
+    overflow: visible;
+  }
+
+  .availability-snapshot-modal .availability-group-header {
+    align-items: flex-start;
+  }
+
+  .availability-snapshot-modal .availability-group .availability-table-shell {
+    min-height: 260px;
     max-height: 56dvh;
   }
 }
