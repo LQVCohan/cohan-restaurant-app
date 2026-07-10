@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect, useContext } from "react";
-import { useNavigate } from "react-router-dom"; // 1. Import useNavigate
+import React, { useContext, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Modal from "../../../components/common/Modal";
 import Button from "../../../components/common/Button";
 import { AuthContext } from "@/context/AuthContext";
@@ -8,11 +8,8 @@ import useTableManagement from "@/hooks/useTableManagement";
 import useFloorManagement from "@/hooks/useFloorManagement";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import TableActionsLiteModal from "./TableActionsLiteModal";
-import Table3DSimulatorModal from "./Table3DSimulatorModal";
 import { loadTableVrImage } from "@/utils/vrStorage";
 import useModalDraft from "@/hooks/useModalDraft";
-import "./TableManagement.scss";
-import { mapModelToTableForm } from "@/config/table3dCatalog";
 import { mapTableMutationError } from "@/utils/tableMutationError";
 import { getTableGuardState } from "@/utils/tableGuardState";
 import {
@@ -33,16 +30,25 @@ import {
   getTableAreaLabel,
 } from "@/utils/tableManagementOptions";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
-import { getVisualConfigSummary } from "./tableVisualConfigHelpers";
+import "./TableManagement.scss";
+import "./TableAddModal360.css";
 
 const ALL_FLOORS_KEY = "all";
+const EMPTY_TABLE_FORM = {
+  number: "",
+  seats: 4,
+  floorId: "",
+  area: "standard",
+};
 
 const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
-  const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
-  const duplicateErr = gqlErrors.find(
-    (item) => item?.extensions?.code === "TABLE_CODE_DUPLICATE"
+  const graphQLErrors =
+    error?.graphQLErrors || error?.networkError?.result?.errors || [];
+  const duplicateError = graphQLErrors.find(
+    (item) => item?.extensions?.code === "TABLE_CODE_DUPLICATE",
   );
-  if (duplicateErr?.message) return duplicateErr.message;
+  if (duplicateError?.message) return duplicateError.message;
+
   const message = error?.message || "";
   if (message.includes("TABLE_CODE_DUPLICATE")) {
     return `Bàn '${fallbackCode}' đã tồn tại trong tầng này. Vui lòng dùng tên khác.`;
@@ -51,18 +57,16 @@ const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
 };
 
 const TableManagement = () => {
-  const navigate = useNavigate(); // 2. Init Hook
+  const navigate = useNavigate();
   const { showNotification } = useNotification();
   const { restaurants } = useContext(AuthContext);
   const restaurantList = useMemo(() => restaurants || [], [restaurants]);
-
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
 
-  // --- Init Restaurant ---
   useEffect(() => {
-    if (!selectedRestaurantId && restaurantList?.length > 0) {
+    if (!selectedRestaurantId && restaurantList.length > 0) {
       setSelectedRestaurantId(
-        String(restaurantList[0].id ?? restaurantList[0].restaurantId)
+        String(restaurantList[0].id ?? restaurantList[0].restaurantId),
       );
     }
   }, [restaurantList, selectedRestaurantId]);
@@ -74,7 +78,6 @@ const TableManagement = () => {
     refetch: refetchRestaurant,
   } = useRestaurant(restaurantId);
 
-  // --- Hooks ---
   const {
     floors: floorsRaw,
     floorsLoading,
@@ -101,36 +104,33 @@ const TableManagement = () => {
     splitTables,
   } = useTableManagement({ restaurantId });
 
-  // --- Data Mapping (Chỉ giữ lại data cần thiết cho quản lý danh sách) ---
   const floors = useMemo(
     () =>
-      (floorsRaw || []).map((f) => ({
-        id: String(f.id),
-        name: f.name || `Tầng ${f.level ?? ""}`,
+      (floorsRaw || []).map((floor) => ({
+        id: String(floor.id),
+        name: floor.name || `Tầng ${floor.level ?? ""}`,
         icon: "🏢",
-        level: Number(f.level),
+        level: Number(floor.level),
       })),
-    [floorsRaw]
+    [floorsRaw],
   );
 
   const tablesMapped = useMemo(
     () =>
-      (tablesRaw || []).map((t) => ({
-        id: String(t.id),
-        number: String(t.code || ""),
-        seats: Number(t.capacity ?? 0),
-        status: t.status || "available",
-        floorId: t.floorId != null ? String(t.floorId) : null,
-        area: t.type || "standard",
-        vrUrl: t.vrUrl || "",
-        deposit: t.deposit ?? 0,
-        visualConfig: t.visualConfig || null,
-        position: t.position || null,
+      (tablesRaw || []).map((table) => ({
+        id: String(table.id),
+        number: String(table.code || ""),
+        seats: Number(table.capacity ?? 0),
+        status: table.status || "available",
+        floorId: table.floorId != null ? String(table.floorId) : null,
+        area: table.type || "standard",
+        vrUrl: table.vrUrl || "",
+        deposit: table.deposit ?? 0,
+        position: table.position || null,
       })),
-    [tablesRaw]
+    [tablesRaw],
   );
 
-  // --- UI States ---
   const [currentFloor, setCurrentFloor] = useState(ALL_FLOORS_KEY);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentFilters, setCurrentFilters] = useState({
@@ -138,53 +138,35 @@ const TableManagement = () => {
     area: "",
   });
 
-  // Modals State
   const [showLiteModal, setShowLiteModal] = useState(false);
   const [liteTable, setLiteTable] = useState(null);
   const [showAddTableModal, setShowAddTableModal] = useState(false);
   const [showFloorModal, setShowFloorModal] = useState(false);
   const [showVrModal, setShowVrModal] = useState(false);
-  const [showTable3DModal, setShowTable3DModal] = useState(false);
-  const [simulatorTargetFloor, setSimulatorTargetFloor] = useState(null);
-  const latestLiteTable = useMemo(
-    () =>
-      liteTable?.id
-        ? getRawTableById(tablesRaw, liteTable.id) || liteTable
-        : liteTable,
-    [liteTable, tablesRaw]
-  );
-  const [vrForm, setVrForm] = useState({
-    vrTourUrl: "",
-  });
-
-  // Forms State
-  const [tableForm, setTableForm] = useState({
-    number: "",
-    seats: 4,
-    floorId: "",
-    area: "standard",
-    visualTemplate: "",
-    visualConfig: null,
-  });
+  const [tableForm, setTableForm] = useState(EMPTY_TABLE_FORM);
   const [floorForm, setFloorForm] = useState({ name: "" });
+  const [vrForm, setVrForm] = useState({ vrTourUrl: "" });
   const [vrSaving, setVrSaving] = useState(false);
   const [tableSaving, setTableSaving] = useState(false);
   const [floorSaving, setFloorSaving] = useState(false);
   const [tableErrors, setTableErrors] = useState({});
   const [floorErrors, setFloorErrors] = useState({});
 
+  const latestLiteTable = useMemo(
+    () =>
+      liteTable?.id
+        ? getRawTableById(tablesRaw, liteTable.id) || liteTable
+        : liteTable,
+    [liteTable, tablesRaw],
+  );
+
   const addTableDirty =
-    !!tableForm.number.trim() ||
+    Boolean(tableForm.number.trim()) ||
     Number(tableForm.seats || 0) !== 4 ||
-    !!tableForm.floorId ||
-    tableForm.area !== "standard" ||
-    !!tableForm.visualTemplate ||
-    !!tableForm.visualConfig;
-  const floorDirty = !!floorForm.name.trim();
-  const normalizeVrTourUrl = (value) => {
-    const normalized = String(value || "").trim();
-    return normalized;
-  };
+    Boolean(tableForm.floorId) ||
+    tableForm.area !== "standard";
+  const floorDirty = Boolean(floorForm.name.trim());
+  const normalizeVrTourUrl = (value) => String(value || "").trim();
   const vrInitialUrl = normalizeVrTourUrl(restaurant?.vrTourUrl);
   const vrCurrentUrl = normalizeVrTourUrl(vrForm.vrTourUrl);
   const vrDirty = vrCurrentUrl !== vrInitialUrl;
@@ -194,24 +176,24 @@ const TableManagement = () => {
     draftIdentity: {
       module: "table",
       modal: "add-table-modal",
-      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      route:
+        typeof window !== "undefined" ? window.location.pathname : "unknown",
       mode: "create",
       entityType: "table",
       recordId: null,
       context: String(restaurantId || "default"),
-      schemaVersion: "1",
+      schemaVersion: "2",
     },
     formValue: tableForm,
     isDirty: addTableDirty,
-    sanitize: (v) => ({
-      number: v?.number || "",
-      seats: v?.seats ?? 4,
-      floorId: v?.floorId || "",
-      area: v?.area || "standard",
-      visualTemplate: v?.visualTemplate || "",
-      visualConfig: v?.visualConfig ?? null,
+    sanitize: (value) => ({
+      number: value?.number || "",
+      seats: value?.seats ?? 4,
+      floorId: value?.floorId || "",
+      area: value?.area || "standard",
     }),
-    onRestore: (draft) => setTableForm((prev) => ({ ...prev, ...draft })),
+    onRestore: (draft) =>
+      setTableForm((previous) => ({ ...previous, ...draft })),
     notify: showNotification,
   });
 
@@ -220,7 +202,8 @@ const TableManagement = () => {
     draftIdentity: {
       module: "table",
       modal: "add-floor-modal",
-      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      route:
+        typeof window !== "undefined" ? window.location.pathname : "unknown",
       mode: "create",
       entityType: "floor",
       recordId: null,
@@ -229,8 +212,9 @@ const TableManagement = () => {
     },
     formValue: floorForm,
     isDirty: floorDirty,
-    sanitize: (v) => ({ name: v?.name || "" }),
-    onRestore: (draft) => setFloorForm((prev) => ({ ...prev, ...draft })),
+    sanitize: (value) => ({ name: value?.name || "" }),
+    onRestore: (draft) =>
+      setFloorForm((previous) => ({ ...previous, ...draft })),
     notify: showNotification,
   });
 
@@ -239,7 +223,8 @@ const TableManagement = () => {
     draftIdentity: {
       module: "table",
       modal: "restaurant-vr-modal",
-      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      route:
+        typeof window !== "undefined" ? window.location.pathname : "unknown",
       mode: "edit",
       entityType: "restaurant-vr",
       recordId: restaurantId || null,
@@ -248,8 +233,8 @@ const TableManagement = () => {
     },
     formValue: vrForm,
     isDirty: vrDirty,
-    sanitize: (v) => ({ vrTourUrl: v?.vrTourUrl || "" }),
-    onRestore: (draft) => setVrForm((prev) => ({ ...prev, ...draft })),
+    sanitize: (value) => ({ vrTourUrl: value?.vrTourUrl || "" }),
+    onRestore: (draft) => setVrForm((previous) => ({ ...previous, ...draft })),
     notify: showNotification,
   });
 
@@ -257,10 +242,10 @@ const TableManagement = () => {
 
   useEffect(() => {
     if (currentFloor === ALL_FLOORS_KEY) return;
-    const hasSelectedFloor = floors.some(
-      (floor) => String(floor.id) === String(currentFloor)
+    const floorExists = floors.some(
+      (floor) => String(floor.id) === String(currentFloor),
     );
-    if (!hasSelectedFloor) {
+    if (!floorExists) {
       setCurrentFloor(ALL_FLOORS_KEY);
       setActiveLevel(null);
     }
@@ -269,8 +254,10 @@ const TableManagement = () => {
   useEffect(() => {
     if (vrDraft.didRestore) return;
     const nextUrl = restaurant?.vrTourUrl || "";
-    setVrForm((prev) =>
-      prev.vrTourUrl === nextUrl ? prev : { ...prev, vrTourUrl: nextUrl }
+    setVrForm((previous) =>
+      previous.vrTourUrl === nextUrl
+        ? previous
+        : { ...previous, vrTourUrl: nextUrl },
     );
   }, [restaurant?.vrTourUrl, vrDraft.didRestore]);
 
@@ -295,76 +282,52 @@ const TableManagement = () => {
 
   const selectFloor = (floorId) => {
     setCurrentFloor(String(floorId));
-    const lvl = getLevelFromId(floorId);
-    if (lvl != null) setActiveLevel(Number(lvl));
+    const level = getLevelFromId(floorId);
+    if (level != null) setActiveLevel(Number(level));
   };
-
-  // --- Helpers ---
-  const getStatusConfig = getTableStatusConfig;
-  const getAreaText = getTableAreaLabel;
 
   const formatCurrency = (amount) =>
     `${Number(amount || 0).toLocaleString("vi-VN")}đ`;
 
   const findAvailablePosition = (floorId) => {
-    const existing = (tablesRaw || [])
-      .filter((t) => String(t.floorId) === String(floorId))
-      .map((t) => ({
-        x: t.position?.x ?? 0,
-        y: t.position?.y ?? 0,
-        w: 60,
-        h: 60,
+    const occupiedPositions = (tablesRaw || [])
+      .filter((table) => String(table.floorId) === String(floorId))
+      .map((table) => ({
+        x: table.position?.x ?? 0,
+        y: table.position?.y ?? 0,
+        w: Number(table.position?.w || 60),
+        h: Number(table.position?.h || 60),
       }));
-    const isOverlapping = (x, y) =>
-      existing.some(
-        (t) =>
-          x < t.x + t.w + 10 &&
-          x + 60 + 10 > t.x &&
-          y < t.y + t.h + 10 &&
-          y + 60 + 10 > t.y
+    const overlaps = (x, y) =>
+      occupiedPositions.some(
+        (position) =>
+          x < position.x + position.w + 10 &&
+          x + 70 > position.x &&
+          y < position.y + position.h + 10 &&
+          y + 70 > position.y,
       );
-    const startX = 50;
-    const startY = 50;
-    if (!isOverlapping(startX, startY)) return { x: startX, y: startY };
+
+    const start = { x: 50, y: 50 };
+    if (!overlaps(start.x, start.y)) return start;
+
     const step = 80;
-    for (let r = 1; r <= 10; r += 1) {
-      for (let dx = -r; dx <= r; dx += 1) {
-        for (let dy = -r; dy <= r; dy += 1) {
-          const x = startX + dx * step;
-          const y = startY + dy * step;
-          if (!isOverlapping(x, y)) return { x, y };
+    for (let radius = 1; radius <= 10; radius += 1) {
+      for (let deltaX = -radius; deltaX <= radius; deltaX += 1) {
+        for (let deltaY = -radius; deltaY <= radius; deltaY += 1) {
+          const candidate = {
+            x: start.x + deltaX * step,
+            y: start.y + deltaY * step,
+          };
+          if (!overlaps(candidate.x, candidate.y)) return candidate;
         }
       }
     }
-    return { x: startX, y: startY };
+    return start;
   };
 
-  const getQuickActionBlockReason = (currentStatus, nextStatus) =>
-    isPosManagedStatusTransition(currentStatus, nextStatus)
-      ? POS_MANAGED_STATUS_TRANSITION_TITLE
-      : "";
-
-  const renderQuickAction = (targetTable, nextStatus, label, className) => {
-    const reason = getQuickActionBlockReason(targetTable?.status, nextStatus);
-    return (
-      <button
-        type="button"
-        className={className}
-        onClick={(event) => {
-          event.stopPropagation();
-          handleTableStatusChange(targetTable, nextStatus);
-        }}
-        disabled={!!reason}
-        title={reason}
-      >
-        {label}
-      </button>
-    );
-  };
   const hasActiveFilters = Boolean(
-    searchQuery.trim() || currentFilters.status || currentFilters.area
+    searchQuery.trim() || currentFilters.status || currentFilters.area,
   );
-
   const baseFilteredTables = useMemo(
     () =>
       filterTableRows(tablesMapped, {
@@ -372,19 +335,14 @@ const TableManagement = () => {
         status: currentFilters.status,
         area: currentFilters.area,
       }),
-    [tablesMapped, searchQuery, currentFilters.status, currentFilters.area]
+    [currentFilters.area, currentFilters.status, searchQuery, tablesMapped],
   );
-
   const filteredTables = useMemo(() => {
-    const shouldFilterByFloor =
-      currentFloor != null &&
-      currentFloor !== "" &&
-      currentFloor !== ALL_FLOORS_KEY;
-    const scopedTables = shouldFilterByFloor
-      ? filterTablesByFloor(baseFilteredTables, currentFloor)
-      : baseFilteredTables;
+    const scopedTables = isAllFloorsSelected
+      ? baseFilteredTables
+      : filterTablesByFloor(baseFilteredTables, currentFloor);
     return sortTableRowsByNumber(scopedTables);
-  }, [baseFilteredTables, currentFloor]);
+  }, [baseFilteredTables, currentFloor, isAllFloorsSelected]);
 
   const allFloorsCount = baseFilteredTables.length;
   const getFloorTableCount = (floorId) =>
@@ -395,17 +353,8 @@ const TableManagement = () => {
   const selectedFloorName = isAllFloorsSelected
     ? "Tất cả tầng"
     : getFloorName(currentFloor);
-  const isLoadingTables = !!tablesLoading || !!floorsLoading;
+  const isLoadingTables = Boolean(tablesLoading || floorsLoading);
   const tableLoadError = tablesError || floorsError;
-
-  // --- Handlers ---
-  const handleTableStatusChange = async (table, nextStatus) => {
-    if (isPosManagedStatusTransition(table?.status, nextStatus)) {
-      showNotification(POS_MANAGED_STATUS_TRANSITION_MESSAGE, "warning");
-      return;
-    }
-    return changeTableStatus(table.id, nextStatus);
-  };
 
   const changeTableStatus = async (tableId, newStatus) => {
     try {
@@ -416,67 +365,99 @@ const TableManagement = () => {
     }
   };
 
+  const handleTableStatusChange = async (table, nextStatus) => {
+    if (isPosManagedStatusTransition(table?.status, nextStatus)) {
+      showNotification(POS_MANAGED_STATUS_TRANSITION_MESSAGE, "warning");
+      return;
+    }
+    await changeTableStatus(table.id, nextStatus);
+  };
+
+  const renderQuickAction = (table, nextStatus, label, className) => {
+    const reason = isPosManagedStatusTransition(table?.status, nextStatus)
+      ? POS_MANAGED_STATUS_TRANSITION_TITLE
+      : "";
+    return (
+      <button
+        type="button"
+        className={className}
+        onClick={(event) => {
+          event.stopPropagation();
+          handleTableStatusChange(table, nextStatus);
+        }}
+        disabled={Boolean(reason)}
+        title={reason}
+      >
+        {label}
+      </button>
+    );
+  };
+
   const handleOpenFloorDesigner = () => {
     if (isAllFloorsSelected || !currentFloor) {
-      showNotification("Vui lòng chọn một tầng cụ thể để thiết kế sơ đồ.", "warning");
+      showNotification(
+        "Vui lòng chọn một tầng cụ thể để thiết kế sơ đồ.",
+        "warning",
+      );
       return;
     }
-    const targetFloorId = currentFloor;
-    if (!targetFloorId) {
-      showNotification("Chưa chọn tầng để chỉnh sửa sơ đồ.", "warning");
-      return;
-    }
+
     const activeCount = (tablesRaw || []).filter(
-      (t) =>
-        String(t.floorId) === String(targetFloorId) &&
-        t.status &&
-        t.status !== "available"
+      (table) =>
+        String(table.floorId) === String(currentFloor) &&
+        table.status &&
+        table.status !== "available",
     ).length;
     const floorWatching = (floorsRaw || []).find(
-      (f) => String(f.id) === String(targetFloorId)
+      (floor) => String(floor.id) === String(currentFloor),
     )?.isWatching;
+
     if (activeCount > 0 || floorWatching) {
-      const floorName =
-        floors.find((f) => String(f.id) === String(targetFloorId))?.name ||
-        "";
-      const message = floorWatching
-        ? `Tầng ${floorName} đang có khách xem sơ đồ, không thể chỉnh sửa.`
-        : `Có ${activeCount} bàn đang hoạt động ở tầng ${floorName}. Không thể chỉnh sửa sơ đồ.`;
-      showNotification(message, "warning");
+      const floorName = getFloorName(currentFloor);
+      showNotification(
+        floorWatching
+          ? `Tầng ${floorName} đang có khách xem sơ đồ, không thể chỉnh sửa.`
+          : `Có ${activeCount} bàn đang hoạt động ở tầng ${floorName}. Không thể chỉnh sửa sơ đồ.`,
+        "warning",
+      );
       return;
     }
-    navigate(`/manager/floor-map/${restaurantId}?floorId=${targetFloorId}`);
+
+    navigate(`/manager/floor-map/${restaurantId}?floorId=${currentFloor}`);
   };
 
   const handleOpenTableDetail = (tableRow) => {
-    const rawTable = getRawTableById(tablesRaw, tableRow.id);
-    setLiteTable(rawTable || tableRow);
+    setLiteTable(getRawTableById(tablesRaw, tableRow.id) || tableRow);
     setShowLiteModal(true);
   };
 
-  const handleOpenArPlacementForTable = (tableRow) => {
-    if (!tableRow?.id) return;
-    const rawTable = getRawTableById(tablesRaw, tableRow.id);
-    const targetTable = rawTable || tableRow;
-    const targetFloorId = targetTable?.floorId ?? tableRow?.floorId;
-    const foundFloor =
-      floors.find((floor) => String(floor.id) === String(targetFloorId)) ||
-      (floorsRaw || []).find((floor) => String(floor.id) === String(targetFloorId));
-    setLiteTable(targetTable);
-    setSimulatorTargetFloor(foundFloor || null);
-    setShowTable3DModal(true);
-  };
+  const handleTable360Action = (tableRow) => {
+    const rawTable = getRawTableById(tablesRaw, tableRow.id) || tableRow;
+    const panoramaUrl = String(rawTable?.vrUrl || tableRow?.vrUrl || "").trim();
+    const hasStoredPanorama = Boolean(loadTableVrImage(tableRow.id));
 
-  const handleOpen3DSimulatorFromHeader = () => {
-    setLiteTable(null);
-    setSimulatorTargetFloor(null);
-    setShowTable3DModal(true);
+    if (panoramaUrl) {
+      if (panoramaUrl.startsWith("/")) {
+        navigate(panoramaUrl);
+      } else {
+        window.open(panoramaUrl, "_blank", "noopener,noreferrer");
+      }
+      return;
+    }
+
+    if (hasStoredPanorama) {
+      navigate(`/vr/table/${tableRow.id}`);
+      return;
+    }
+
+    handleOpenTableDetail(tableRow);
   };
 
   const handleOpenAddTableModal = () => {
-    setTableForm((prev) => ({
-      ...prev,
-      floorId: prev.floorId || (isAllFloorsSelected ? "" : currentFloor),
+    setTableForm((previous) => ({
+      ...previous,
+      floorId:
+        previous.floorId || (isAllFloorsSelected ? "" : String(currentFloor)),
     }));
     setShowAddTableModal(true);
   };
@@ -488,104 +469,70 @@ const TableManagement = () => {
 
   const handleSaveTable = async () => {
     if (tableSaving) return;
-    const { number, seats, floorId, area, visualConfig } = tableForm;
+
+    const number = tableForm.number.trim();
+    const seats = Number(tableForm.seats);
+    const floorId = tableForm.floorId;
     const nextErrors = {};
-    if (!number?.trim()) nextErrors.number = "Vui lòng nhập số bàn.";
+    if (!number) nextErrors.number = "Vui lòng nhập số bàn.";
     if (!floorId) nextErrors.floorId = "Vui lòng chọn tầng cho bàn.";
-    if (!seats || Number(seats) < 1) {
+    if (!Number.isFinite(seats) || seats < 1) {
       nextErrors.seats = "Số ghế phải lớn hơn hoặc bằng 1.";
     }
+
     if (Object.keys(nextErrors).length > 0) {
       setTableErrors(nextErrors);
       showNotification("Vui lòng kiểm tra lại các trường bắt buộc.", "error");
       return;
     }
+
     setTableErrors({});
     setTableSaving(true);
     try {
       const position = findAvailablePosition(floorId);
       const existingCount = (tablesRaw || []).filter(
-        (t) => String(t.floorId) === String(floorId)
+        (table) => String(table.floorId) === String(floorId),
       ).length;
-      const floorName = floors.find((f) => f.id === String(floorId))?.name;
+      const floorName = getFloorName(floorId);
+
       await createTable({
         restaurantId,
         code: number,
-        capacity: Number(seats),
+        capacity: seats,
         floorId,
-        type: area,
+        type: tableForm.area,
         status: "available",
         position: { x: position.x, y: position.y },
-        visualConfig: visualConfig || null,
       });
       await refetchTables();
       addTableDraft.clearDraft();
+      setTableForm({
+        ...EMPTY_TABLE_FORM,
+        floorId: isAllFloorsSelected ? "" : String(currentFloor),
+      });
       setShowAddTableModal(false);
-      showNotification("Thêm bàn thành công!", "success");
+      showNotification("Thêm bàn thành công.", "success");
+
       if (existingCount > 0) {
         showNotification(
-          `Có bàn ở tầng ${floorName || ""} cần điều chỉnh vị trí.`,
-          "info"
+          `Bàn mới đã được đặt tạm trên sơ đồ ${floorName}. Bạn có thể kéo chỉnh trong Thiết kế sơ đồ.`,
+          "info",
         );
       }
     } catch (error) {
-      const duplicateMessage = resolveTableDuplicateMessage(error, number?.trim());
+      const duplicateMessage = resolveTableDuplicateMessage(error, number);
       if (duplicateMessage) {
-        setTableErrors((prev) => ({
-          ...prev,
+        setTableErrors((previous) => ({
+          ...previous,
           number: duplicateMessage,
         }));
         showNotification(duplicateMessage, "error");
-        return;
+      } else {
+        showNotification(mapTableMutationError(error), "error");
       }
-      showNotification("Lỗi thêm bàn!", "error");
     } finally {
       setTableSaving(false);
     }
-  };
-
-
-
-  const handleSaveArTablePosition = async ({ position, visualConfigPatch } = {}) => {
-    const targetTable = liteTable || null;
-    if (!targetTable?.id) {
-      showNotification("Vui lòng mở chi tiết một bàn trước khi lưu vị trí AR.", "warning");
-      return;
-    }
-    try {
-      await updateTable({
-        id: targetTable.id,
-        position,
-        visualConfig: {
-          ...(targetTable.visualConfig || {}),
-          ...(visualConfigPatch || {}),
-        },
-      });
-      await refetchTables();
-      showNotification("Đã lưu vị trí bàn từ AR.", "success");
-    } catch (error) {
-      console.error(error);
-      showNotification("Không thể lưu vị trí bàn từ AR.", "error");
-      throw error;
-    }
-  };
-
-  const handleApply3DTemplate = (selectedModel, extras = {}) => {
-    const mapped = mapModelToTableForm(selectedModel);
-    // Chỉ prefill form để user xác nhận lại theo luồng thêm bàn hiện tại.
-    setTableForm((prev) => ({
-      ...prev,
-      seats: mapped.seats,
-      area: mapped.area,
-      floorId:
-        prev.floorId ||
-        (isAllFloorsSelected ? "" : currentFloor) ||
-        "",
-      visualTemplate: mapped.visualTemplate,
-      visualConfig: extras.visualConfig || prev.visualConfig || null,
-    }));
-    setShowTable3DModal(false);
-    setShowAddTableModal(true);
   };
 
   const handleSaveRestaurantVr = async () => {
@@ -594,6 +541,7 @@ const TableManagement = () => {
       showNotification("Không có thay đổi để lưu.", "info");
       return;
     }
+
     setVrSaving(true);
     try {
       await updateRestaurant(restaurantId, {
@@ -603,8 +551,8 @@ const TableManagement = () => {
       vrDraft.clearDraft();
       showNotification("Đã cập nhật VR toàn quán.", "success");
       setShowVrModal(false);
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
       showNotification("Không thể cập nhật VR toàn quán.", "error");
     } finally {
       setVrSaving(false);
@@ -619,13 +567,12 @@ const TableManagement = () => {
       showNotification("Vui lòng nhập tên tầng trước khi lưu.", "error");
       return;
     }
+
     setFloorSaving(true);
     setFloorErrors({});
     try {
       const createdFloor = await createFloor({ name: normalizedName });
-      if (createdFloor?.id) {
-        setCurrentFloor(String(createdFloor.id));
-      }
+      if (createdFloor?.id) setCurrentFloor(String(createdFloor.id));
       if (createdFloor?.level != null) {
         setActiveLevel(Number(createdFloor.level));
       }
@@ -634,12 +581,9 @@ const TableManagement = () => {
       setFloorForm({ name: "" });
       setShowFloorModal(false);
     } catch (error) {
-      const errMsg = error?.message || "Không thể thêm tầng. Vui lòng thử lại.";
-      setFloorErrors((prev) => ({
-        ...prev,
-        name: prev?.name || errMsg,
-      }));
-      showNotification(errMsg, "error");
+      const message = error?.message || "Không thể thêm tầng. Vui lòng thử lại.";
+      setFloorErrors({ name: message });
+      showNotification(message, "error");
     } finally {
       setFloorSaving(false);
     }
@@ -652,34 +596,69 @@ const TableManagement = () => {
         showTimeWidget={false}
         eyebrow="QUẢN LÝ BÀN"
         title="Quản lý bàn"
-        subtitle="Theo dõi trạng thái bàn, sơ đồ tầng và đặt chỗ."
+        subtitle="Theo dõi trạng thái, sơ đồ tầng và không gian 360° quanh từng bàn."
         icon="🍽️"
         selectedRestaurant={selectedRestaurantId}
         onRestaurantChange={setSelectedRestaurantId}
-        restaurantList={restaurantList.map((r) => ({ id: String(r.id), name: r.name }))}
+        restaurantList={restaurantList.map((item) => ({
+          id: String(item.id),
+          name: item.name,
+        }))}
         stats={[
-          { id: "total", icon: "🪑", label: "Tổng bàn", value: tablesMapped.length },
-          { id: "busy", icon: "🔴", label: "Đang sử dụng", value: tablesMapped.filter((t) => t.status === "occupied").length },
-          { id: "free", icon: "🟢", label: "Trống", value: tablesMapped.filter((t) => t.status === "available").length },
-          { id: "floors", icon: "🏢", label: "Số tầng", value: floors.length },
+          {
+            id: "total",
+            icon: "🪑",
+            label: "Tổng bàn",
+            value: tablesMapped.length,
+          },
+          {
+            id: "busy",
+            icon: "🔴",
+            label: "Đang sử dụng",
+            value: tablesMapped.filter((table) => table.status === "occupied")
+              .length,
+          },
+          {
+            id: "free",
+            icon: "🟢",
+            label: "Trống",
+            value: tablesMapped.filter((table) => table.status === "available")
+              .length,
+          },
+          {
+            id: "floors",
+            icon: "🏢",
+            label: "Số tầng",
+            value: floors.length,
+          },
         ]}
         loading={isLoadingTables}
         secondaryActions={[
-          { label: "Thiết kế sơ đồ", icon: "🗺️", onClick: handleOpenFloorDesigner },
-          { label: "VR toàn quán", icon: "🕶️", onClick: () => setShowVrModal(true) },
-          { label: "Mô phỏng 3D", icon: "🪑", onClick: handleOpen3DSimulatorFromHeader, disabled: !restaurantId },
+          {
+            label: "Thiết kế sơ đồ",
+            icon: "🗺️",
+            onClick: handleOpenFloorDesigner,
+          },
+          {
+            label: "VR toàn quán",
+            icon: "🕶️",
+            onClick: () => setShowVrModal(true),
+          },
         ]}
-        primaryAction={{ label: "Thêm bàn", icon: "➕", onClick: handleOpenAddTableModal }}
+        primaryAction={{
+          label: "Thêm bàn",
+          icon: "➕",
+          onClick: handleOpenAddTableModal,
+        }}
       />
 
-      {/* --- Main Layout --- */}
       <div className="tm-layout">
-        {/* Sidebar: Floors */}
         <aside className="tm-sidebar" aria-label="Chọn tầng và lọc bàn">
           <div className="tm-panel-heading">
             <span className="tm-panel-kicker">Điều hướng tầng</span>
             <h2>Khu vực / Tầng</h2>
           </div>
+
           <nav className="tm-floor-list" aria-label="Danh sách tầng">
             <button
               type="button"
@@ -687,29 +666,41 @@ const TableManagement = () => {
               onClick={selectAllFloors}
               aria-pressed={isAllFloorsSelected}
             >
-              <span className="icon" aria-hidden="true">🏬</span>
+              <span className="icon" aria-hidden="true">
+                🏬
+              </span>
               <span className="name">Tất cả tầng</span>
-              <span className="count" aria-label={`${allFloorsCount} bàn`}>{allFloorsCount}</span>
+              <span className="count" aria-label={`${allFloorsCount} bàn`}>
+                {allFloorsCount}
+              </span>
             </button>
-            {floors.map((f) => {
-              const isActiveFloor =
-                !isAllFloorsSelected && String(currentFloor) === String(f.id);
+
+            {floors.map((floor) => {
+              const isActive =
+                !isAllFloorsSelected &&
+                String(currentFloor) === String(floor.id);
               return (
                 <button
                   type="button"
-                  key={f.id}
-                  className={`tm-floor-item ${isActiveFloor ? "active" : ""}`}
-                  onClick={() => selectFloor(f.id)}
-                  aria-pressed={isActiveFloor}
+                  key={floor.id}
+                  className={`tm-floor-item ${isActive ? "active" : ""}`}
+                  onClick={() => selectFloor(floor.id)}
+                  aria-pressed={isActive}
                 >
-                  <span className="icon" aria-hidden="true">{f.icon}</span>
-                  <span className="name">{f.name}</span>
-                  <span className="count" aria-label={`${getFloorTableCount(f.id)} bàn`}>
-                    {getFloorTableCount(f.id)}
+                  <span className="icon" aria-hidden="true">
+                    {floor.icon}
+                  </span>
+                  <span className="name">{floor.name}</span>
+                  <span
+                    className="count"
+                    aria-label={`${getFloorTableCount(floor.id)} bàn`}
+                  >
+                    {getFloorTableCount(floor.id)}
                   </span>
                 </button>
               );
             })}
+
             <button
               type="button"
               className="tm-add-floor-btn"
@@ -720,7 +711,10 @@ const TableManagement = () => {
           </nav>
 
           {!isAllFloorsSelected && (
-            <section className="tm-floor-design-card" aria-label="Thiết kế sơ đồ tầng đang chọn">
+            <section
+              className="tm-floor-design-card"
+              aria-label="Thiết kế sơ đồ tầng đang chọn"
+            >
               <div>
                 <span>Đang chọn</span>
                 <strong>{selectedFloorName}</strong>
@@ -740,49 +734,58 @@ const TableManagement = () => {
                 </button>
               )}
             </div>
+
             <label className="tm-filter-field" htmlFor="tm-table-search">
               <span>Tìm bàn</span>
               <input
                 id="tm-table-search"
-                type="text"
+                type="search"
                 placeholder="Nhập mã hoặc số bàn"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(event) => setSearchQuery(event.target.value)}
                 aria-label="Tìm bàn theo mã hoặc số bàn"
               />
             </label>
+
             <label className="tm-filter-field" htmlFor="tm-status-filter">
               <span>Trạng thái</span>
               <select
                 id="tm-status-filter"
                 value={currentFilters.status}
-                onChange={(e) =>
-                  setCurrentFilters({ ...currentFilters, status: e.target.value })
+                onChange={(event) =>
+                  setCurrentFilters((previous) => ({
+                    ...previous,
+                    status: event.target.value,
+                  }))
                 }
                 aria-label="Lọc theo trạng thái bàn"
               >
                 <option value="">Tất cả trạng thái</option>
-                {TABLE_STATUS_OPTIONS.map((statusOption) => (
-                  <option key={statusOption.value} value={statusOption.value}>
-                    {statusOption.icon} {statusOption.label}
+                {TABLE_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.icon} {option.label}
                   </option>
                 ))}
               </select>
             </label>
+
             <label className="tm-filter-field" htmlFor="tm-area-filter">
               <span>Khu vực</span>
               <select
                 id="tm-area-filter"
                 value={currentFilters.area}
-                onChange={(e) =>
-                  setCurrentFilters({ ...currentFilters, area: e.target.value })
+                onChange={(event) =>
+                  setCurrentFilters((previous) => ({
+                    ...previous,
+                    area: event.target.value,
+                  }))
                 }
                 aria-label="Lọc theo khu vực bàn"
               >
                 <option value="">Tất cả khu vực</option>
-                {TABLE_AREA_OPTIONS.map((areaOption) => (
-                  <option key={areaOption.value} value={areaOption.value}>
-                    {areaOption.label}
+                {TABLE_AREA_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>
@@ -790,7 +793,6 @@ const TableManagement = () => {
           </section>
         </aside>
 
-        {/* Main: Grid Tables */}
         <section className="tm-grid-area" aria-label="Danh sách bàn vận hành">
           <div className="tm-grid-toolbar">
             <div>
@@ -799,6 +801,7 @@ const TableManagement = () => {
             </div>
             <span className="tm-result-count">{filteredTables.length} bàn</span>
           </div>
+
           {tableLoadError ? (
             <div className="tm-empty tm-empty--error" role="alert">
               <span aria-hidden="true">⚠️</span>
@@ -807,7 +810,11 @@ const TableManagement = () => {
           ) : isLoadingTables ? (
             <div className="tm-table-grid" aria-label="Đang tải bàn">
               {Array.from({ length: 8 }).map((_, index) => (
-                <article key={index} className="tm-table-card tm-table-card--skeleton" aria-hidden="true">
+                <article
+                  key={index}
+                  className="tm-table-card tm-table-card--skeleton"
+                  aria-hidden="true"
+                >
                   <div className="skeleton-line skeleton-line--title" />
                   <div className="skeleton-line" />
                   <div className="skeleton-line" />
@@ -835,101 +842,141 @@ const TableManagement = () => {
                   Xóa bộ lọc
                 </Button>
               ) : floors.length === 0 ? (
-                <Button variant="primary" size="sm" onClick={() => setShowFloorModal(true)}>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setShowFloorModal(true)}
+                >
                   Thêm tầng
                 </Button>
               ) : (
-                <Button variant="primary" size="sm" onClick={handleOpenAddTableModal}>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleOpenAddTableModal}
+                >
                   Thêm bàn đầu tiên
                 </Button>
               )}
             </div>
           ) : (
             <div className="tm-table-grid">
-              {filteredTables.map((t) => {
-                const statusCfg = getStatusConfig(t.status);
-                const hasVr = !!t.vrUrl || !!loadTableVrImage(t.id);
-                const hasVisualConfig = !!t.visualConfig;
-                const guardState = getTableGuardState(t);
+              {filteredTables.map((table) => {
+                const statusConfig = getTableStatusConfig(table.status);
+                const hasPanorama = Boolean(
+                  table.vrUrl || loadTableVrImage(table.id),
+                );
+                const guardState = getTableGuardState(table);
+
                 return (
                   <article
-                    key={t.id}
-                    className={`tm-table-card ${t.status}`}
+                    key={table.id}
+                    className={`tm-table-card ${table.status}`}
                   >
                     <div className="card-top">
-                      <span className="table-no">{t.number || "Bàn chưa mã"}</span>
+                      <span className="table-no">
+                        {table.number || "Bàn chưa mã"}
+                      </span>
                       <div className="card-top-right">
-                        {hasVr && <span className="vr-badge">360°</span>}
-                        {hasVisualConfig && (
-                          <span
-                            className="tm-3d-badge"
-                            title="Bàn này có cấu hình mô phỏng 3D"
-                          >
-                            3D
-                          </span>
-                        )}
+                        {hasPanorama && <span className="vr-badge">360°</span>}
                         {guardState.hasGuard && (
-                          <span className="tm-guard-badge" title={guardState.reason}>
+                          <span
+                            className="tm-guard-badge"
+                            title={guardState.reason}
+                          >
                             {guardState.badge}
                           </span>
                         )}
-                        <span className={`status-badge ${statusCfg.color}`}>
-                          {statusCfg.text}
+                        <span className={`status-badge ${statusConfig.color}`}>
+                          {statusConfig.text}
                         </span>
                       </div>
                     </div>
+
                     <div className="card-body">
                       <div className="info-row">
-                        <span aria-hidden="true">👥</span> {t.seats} chỗ
+                        <span aria-hidden="true">👥</span> {table.seats} chỗ
                       </div>
                       <div className="info-row">
-                        <span aria-hidden="true">🏢</span> {getFloorName(t.floorId)}
+                        <span aria-hidden="true">🏢</span>{" "}
+                        {getFloorName(table.floorId)}
                       </div>
                       <div className="info-row">
-                        <span aria-hidden="true">🏷️</span> {getAreaText(t.area)}
+                        <span aria-hidden="true">🏷️</span>{" "}
+                        {getTableAreaLabel(table.area)}
                       </div>
                       <div className="info-row">
-                        <span aria-hidden="true">💰</span> {formatCurrency(t.deposit)}
+                        <span aria-hidden="true">💰</span>{" "}
+                        {formatCurrency(table.deposit)}
                       </div>
                     </div>
+
                     <div className="card-actions">
                       <button
                         type="button"
-                        className="btn-mini primary btn-mini--3d"
-                        aria-label={`Mở 3D và AR cho bàn ${t.number || "chưa có mã"}`}
+                        className={`btn-mini btn-mini--360 ${
+                          hasPanorama ? "is-ready" : "is-empty"
+                        }`}
+                        aria-label={
+                          hasPanorama
+                            ? `Xem không gian 360 của bàn ${table.number || "chưa có mã"}`
+                            : `Thêm ảnh 360 cho bàn ${table.number || "chưa có mã"}`
+                        }
                         onClick={(event) => {
                           event.stopPropagation();
-                          handleOpenArPlacementForTable(t);
+                          handleTable360Action(table);
                         }}
                       >
-                        3D / AR
+                        {hasPanorama ? "Xem 360°" : "Thêm ảnh 360°"}
                       </button>
+
                       <button
                         type="button"
                         className="btn-mini secondary"
-                        aria-label={`Mở cấu hình bàn ${t.number || "chưa có mã"}`}
+                        aria-label={`Mở cấu hình bàn ${table.number || "chưa có mã"}`}
                         onClick={(event) => {
                           event.stopPropagation();
-                          handleOpenTableDetail(t);
+                          handleOpenTableDetail(table);
                         }}
                       >
                         Chi tiết
                       </button>
-                      {t.status === "available" && (
-                        renderQuickAction(t, "occupied", "Nhận khách", "btn-mini success")
-                      )}
-                      {t.status === "occupied" && (
-                        renderQuickAction(t, "payment_pending", "T.Toán", "btn-mini warning")
-                      )}
-                      {t.status === "payment_pending" && (
-                        renderQuickAction(t, "cleaning", "Dọn bàn", "btn-mini primary")
-                      )}
-                      {t.status === "cleaning" && (
-                        renderQuickAction(t, "available", "Hoàn tất", "btn-mini secondary")
-                      )}
-                      {t.status === "reserved" && (
-                        renderQuickAction(t, "occupied", "Nhận khách", "btn-mini success")
-                      )}
+
+                      {table.status === "available" &&
+                        renderQuickAction(
+                          table,
+                          "occupied",
+                          "Nhận khách",
+                          "btn-mini success",
+                        )}
+                      {table.status === "occupied" &&
+                        renderQuickAction(
+                          table,
+                          "payment_pending",
+                          "T.Toán",
+                          "btn-mini warning",
+                        )}
+                      {table.status === "payment_pending" &&
+                        renderQuickAction(
+                          table,
+                          "cleaning",
+                          "Dọn bàn",
+                          "btn-mini primary",
+                        )}
+                      {table.status === "cleaning" &&
+                        renderQuickAction(
+                          table,
+                          "available",
+                          "Hoàn tất",
+                          "btn-mini secondary",
+                        )}
+                      {table.status === "reserved" &&
+                        renderQuickAction(
+                          table,
+                          "occupied",
+                          "Nhận khách",
+                          "btn-mini success",
+                        )}
                     </div>
                   </article>
                 );
@@ -939,9 +986,6 @@ const TableManagement = () => {
         </section>
       </div>
 
-      {/* --- MODALS SECTION --- */}
-
-      {/* 1. Quick Actions Modal */}
       {showLiteModal && latestLiteTable && (
         <TableActionsLiteModal
           open={showLiteModal}
@@ -968,48 +1012,72 @@ const TableManagement = () => {
         />
       )}
 
-      {/* 2. Add Table Modal */}
       <Modal
         isOpen={showAddTableModal}
-        onClose={() => addTableDraft.requestCloseWithDraft(() => setShowAddTableModal(false))}
+        onClose={() =>
+          addTableDraft.requestCloseWithDraft(() => setShowAddTableModal(false))
+        }
         onBeforeClose={() => !tableSaving}
         closeOnEscape={!tableSaving}
         autoWrapBody={false}
         size="lg"
-        className="tm-modal tm-modal--add-table"
+        className="tm-modal tm-modal--add-table tm-modal--360-only"
       >
-        <Modal.Header>Thêm bàn mới</Modal.Header>
+        <Modal.Header>Thêm bàn</Modal.Header>
         <Modal.Body className="tm-form tm-form--add-table">
-          <div className="tm-form-header tm-form-header--add-table">
-            <h4>Thiết lập thông tin bàn</h4>
-            <p>Điền thông tin cơ bản để tạo bàn mới trong khu vực quản lý.</p>
+          <div className="tm-add-table-intro">
+            <span className="tm-add-table-intro__icon" aria-hidden="true">
+              🪑
+            </span>
+            <div>
+              <span className="tm-add-table-intro__kicker">Thiết lập nhanh</span>
+              <h4>Tạo vị trí phục vụ mới</h4>
+              <p>
+                Nhập thông tin vận hành của bàn. Ảnh không gian 360° được bổ sung
+                sau khi tạo.
+              </p>
+            </div>
           </div>
-          <div className="tm-form-section tm-form-section--basic">
-            <div className="tm-form-section-title">Thông tin cơ bản</div>
+
+          <section className="tm-form-section tm-form-section--basic">
+            <div className="tm-form-section-title">Thông tin bàn</div>
             <div className="tm-form-grid">
-              <div className={`tm-field ${tableErrors.number ? "is-invalid" : ""}`}>
+              <div
+                className={`tm-field ${tableErrors.number ? "is-invalid" : ""}`}
+              >
                 <label htmlFor="tm-add-table-number">Số bàn *</label>
                 <input
                   id="tm-add-table-number"
                   value={tableForm.number}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setTableForm({ ...tableForm, number: value });
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setTableForm((previous) => ({
+                      ...previous,
+                      number: value,
+                    }));
                     if (tableErrors.number && value.trim()) {
-                      setTableErrors((prev) => ({ ...prev, number: undefined }));
+                      setTableErrors((previous) => ({
+                        ...previous,
+                        number: undefined,
+                      }));
                     }
                   }}
                   placeholder="VD: A1, B2..."
-                  aria-invalid={!!tableErrors.number}
+                  aria-invalid={Boolean(tableErrors.number)}
                 />
                 <div className="tm-field-meta">
-                  <span className="tm-field-hint">Dùng mã ngắn, dễ nhận biết theo khu vực.</span>
+                  <span className="tm-field-hint">
+                    Dùng mã ngắn, dễ nhận biết theo khu vực.
+                  </span>
                   {tableErrors.number && (
                     <span className="tm-field-error">{tableErrors.number}</span>
                   )}
                 </div>
               </div>
-              <div className={`tm-field ${tableErrors.seats ? "is-invalid" : ""}`}>
+
+              <div
+                className={`tm-field ${tableErrors.seats ? "is-invalid" : ""}`}
+              >
                 <label htmlFor="tm-add-table-seats">Số ghế *</label>
                 <input
                   id="tm-add-table-seats"
@@ -1017,98 +1085,114 @@ const TableManagement = () => {
                   min={1}
                   step={1}
                   value={tableForm.seats}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setTableForm({ ...tableForm, seats: value });
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setTableForm((previous) => ({
+                      ...previous,
+                      seats: value,
+                    }));
                     if (tableErrors.seats && Number(value) >= 1) {
-                      setTableErrors((prev) => ({ ...prev, seats: undefined }));
+                      setTableErrors((previous) => ({
+                        ...previous,
+                        seats: undefined,
+                      }));
                     }
                   }}
-                  aria-invalid={!!tableErrors.seats}
+                  aria-invalid={Boolean(tableErrors.seats)}
                 />
                 <div className="tm-field-meta">
-                  <span className="tm-field-hint">Nên khớp với sức chứa thực tế của bàn.</span>
+                  <span className="tm-field-hint">
+                    Nên khớp với sức chứa thực tế của bàn.
+                  </span>
                   {tableErrors.seats && (
                     <span className="tm-field-error">{tableErrors.seats}</span>
                   )}
                 </div>
               </div>
-              <div className={`tm-field ${tableErrors.floorId ? "is-invalid" : ""}`}>
+
+              <div
+                className={`tm-field ${tableErrors.floorId ? "is-invalid" : ""}`}
+              >
                 <label htmlFor="tm-add-table-floor">Tầng *</label>
                 <select
                   id="tm-add-table-floor"
                   value={tableForm.floorId}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setTableForm({ ...tableForm, floorId: value });
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setTableForm((previous) => ({
+                      ...previous,
+                      floorId: value,
+                    }));
                     if (tableErrors.floorId && value) {
-                      setTableErrors((prev) => ({ ...prev, floorId: undefined }));
+                      setTableErrors((previous) => ({
+                        ...previous,
+                        floorId: undefined,
+                      }));
                     }
                   }}
-                  aria-invalid={!!tableErrors.floorId}
+                  aria-invalid={Boolean(tableErrors.floorId)}
                 >
                   <option value="">Chọn tầng...</option>
-                  {floors.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name}
+                  {floors.map((floor) => (
+                    <option key={floor.id} value={floor.id}>
+                      {floor.name}
                     </option>
                   ))}
                 </select>
                 <div className="tm-field-meta">
-                  <span className="tm-field-hint">Tầng giúp phân bổ bàn và sơ đồ chính xác.</span>
+                  <span className="tm-field-hint">
+                    Bàn sẽ được đặt tạm trên sơ đồ của tầng này.
+                  </span>
                   {tableErrors.floorId && (
                     <span className="tm-field-error">{tableErrors.floorId}</span>
                   )}
                 </div>
               </div>
+
               <div className="tm-field">
                 <label htmlFor="tm-add-table-area">Khu vực</label>
                 <select
                   id="tm-add-table-area"
                   value={tableForm.area}
-                  onChange={(e) =>
-                    setTableForm({ ...tableForm, area: e.target.value })
+                  onChange={(event) =>
+                    setTableForm((previous) => ({
+                      ...previous,
+                      area: event.target.value,
+                    }))
                   }
                 >
-                  {TABLE_AREA_OPTIONS.map((areaOption) => (
-                    <option key={areaOption.value} value={areaOption.value}>
-                      {areaOption.label}
+                  {TABLE_AREA_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
                     </option>
                   ))}
                 </select>
                 <div className="tm-field-meta">
-                  <span className="tm-field-hint">Giúp lọc nhanh khi điều phối khách theo nhu cầu.</span>
+                  <span className="tm-field-hint">
+                    Giúp lọc và điều phối khách theo nhu cầu.
+                  </span>
                 </div>
               </div>
             </div>
-          </div>
-          {tableForm.visualTemplate && (
-            <div className="tm-template-preview">
-              <div className="tm-template-preview__title">Mẫu 3D đã áp dụng</div>
-              <div className="tm-template-preview__value">{tableForm.visualTemplate}</div>
-              <div className="tm-template-preview__hint">
-                Số ghế, khu vực hoặc tầng có thể đã được gợi ý sẵn từ mẫu này.
-              </div>
+          </section>
+
+          <aside className="tm-add-table-360-note">
+            <span className="tm-add-table-360-note__badge">360°</span>
+            <div>
+              <strong>Thêm ảnh không gian sau khi tạo bàn</strong>
+              <p>
+                Mở Chi tiết bàn để tải ảnh panorama hoặc gắn liên kết xem 360°.
+              </p>
             </div>
-          )}
-          {tableForm.visualConfig && (
-            <div className="tm-template-preview">
-              <div className="tm-template-preview__title">Cấu hình mô phỏng 3D</div>
-              <div className="tm-template-preview__value">
-                {getVisualConfigSummary(tableForm.visualConfig)?.label || "Mẫu bàn đã lưu"}
-              </div>
-              <div className="tm-template-preview__hint">
-                Đã lưu metadata model, nguồn và camera placement nếu có cho bàn này.
-              </div>
-            </div>
-          )}
+          </aside>
         </Modal.Body>
+
         <Modal.Footer className="tm-add-table-footer">
           <Button
             variant="secondary"
             onClick={() =>
               addTableDraft.requestCloseWithDraft(() =>
-                setShowAddTableModal(false)
+                setShowAddTableModal(false),
               )
             }
             disabled={tableSaving}
@@ -1116,12 +1200,11 @@ const TableManagement = () => {
             Hủy
           </Button>
           <Button variant="primary" onClick={handleSaveTable} loading={tableSaving}>
-            {tableSaving ? "Đang lưu..." : "Lưu bàn"}
+            {tableSaving ? "Đang tạo..." : "Tạo bàn"}
           </Button>
         </Modal.Footer>
       </Modal>
 
-      {/* 3. Add Floor Modal (Stub) */}
       <Modal
         isOpen={showFloorModal}
         onClose={() =>
@@ -1137,26 +1220,25 @@ const TableManagement = () => {
           <div className="tm-form-header">
             <h4>Cấu hình khu vực phục vụ theo tầng</h4>
             <p>
-              Đặt tên tầng rõ ràng để phân bổ bàn và quản lý sơ đồ thuận tiện
-              hơn.
+              Đặt tên tầng rõ ràng để phân bổ bàn và quản lý sơ đồ thuận tiện hơn.
             </p>
           </div>
           <div className="tm-form-section">
             <div className="tm-form-section-title">Thông tin tầng</div>
-            <div className={`tm-field ${floorErrors.name ? "is-invalid" : ""}`}>
+            <div
+              className={`tm-field ${floorErrors.name ? "is-invalid" : ""}`}
+            >
               <label htmlFor="tm-add-floor-name">Tên tầng *</label>
               <input
                 id="tm-add-floor-name"
                 value={floorForm.name}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFloorForm({ ...floorForm, name: value });
-                  if (floorErrors.name && value.trim()) {
-                    setFloorErrors((prev) => ({ ...prev, name: undefined }));
-                  }
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setFloorForm({ name: value });
+                  if (floorErrors.name && value.trim()) setFloorErrors({});
                 }}
-                placeholder="VD: Tầng 1, Tầng 2, Sân thượng..."
-                aria-invalid={!!floorErrors.name}
+                placeholder="VD: Tầng 1, Sân thượng..."
+                aria-invalid={Boolean(floorErrors.name)}
               />
               <div className="tm-field-meta">
                 <span className="tm-field-hint">
@@ -1185,33 +1267,11 @@ const TableManagement = () => {
         </Modal.Footer>
       </Modal>
 
-      <Table3DSimulatorModal
-        open={showTable3DModal}
-        onClose={() => setShowTable3DModal(false)}
-        onApply={handleApply3DTemplate}
-        currentFloorName={
-          simulatorTargetFloor?.name ||
-          floors.find((f) => String(f.id) === String(currentFloor))?.name
-        }
-        restaurantName={restaurant?.name}
-        restaurantId={restaurantId}
-        restaurant={restaurant}
-        table={latestLiteTable}
-        floor={
-          simulatorTargetFloor ||
-          floors.find((f) => String(f.id) === String(currentFloor))
-        }
-        currentFloorLayout={
-          simulatorTargetFloor ||
-          floors.find((f) => String(f.id) === String(currentFloor))
-        }
-        onSaveArPosition={handleSaveArTablePosition}
-      />
-
-      {/* 4. Restaurant VR Modal */}
       <Modal
         isOpen={showVrModal}
-        onClose={() => vrDraft.requestCloseWithDraft(() => setShowVrModal(false))}
+        onClose={() =>
+          vrDraft.requestCloseWithDraft(() => setShowVrModal(false))
+        }
         title="Cấu hình VR toàn quán"
         size="lg"
         className="tm-modal tm-modal--vr"
@@ -1225,17 +1285,20 @@ const TableManagement = () => {
             <div className="tm-vr-card">
               <div className="tm-vr-icon">🕶️</div>
               <div className="tm-vr-content">
-                <label>Link VR tổng quan (360/Google VR)</label>
+                <label htmlFor="tm-restaurant-vr-url">
+                  Link VR tổng quan (360/Google VR)
+                </label>
                 <input
+                  id="tm-restaurant-vr-url"
                   value={vrForm.vrTourUrl}
-                  onChange={(e) =>
-                    setVrForm({ ...vrForm, vrTourUrl: e.target.value })
+                  onChange={(event) =>
+                    setVrForm({ vrTourUrl: event.target.value })
                   }
                   placeholder="https://..."
                 />
                 <div className="hint">
-                  Link này dùng để mở trải nghiệm VR toàn quán. Ảnh VR theo từng
-                  bàn vẫn lưu ở field vrUrl của từng bàn.
+                  Link này dành cho toàn quán. Ảnh 360° quanh từng bàn được quản
+                  lý trong Chi tiết bàn.
                 </div>
                 <div className="tm-vr-actions">
                   <Button
@@ -1246,15 +1309,16 @@ const TableManagement = () => {
                         window.open(
                           vrCurrentUrl,
                           "_blank",
-                          "noopener,noreferrer"
+                          "noopener,noreferrer",
                         );
                       }
                     }}
+                    disabled={!vrCurrentUrl}
                   >
                     Mở thử VR
                   </Button>
                   <span className="tm-vr-status">
-                    {vrForm.vrTourUrl
+                    {vrCurrentUrl
                       ? "Đã gắn link VR tổng quan"
                       : "Chưa có link VR"}
                   </span>
@@ -1265,32 +1329,42 @@ const TableManagement = () => {
               <div className="tm-vr-tip">
                 <span className="tip-icon">✨</span>
                 <div>
-                  <strong>Gợi ý trải nghiệm</strong>
+                  <strong>Ảnh panorama rõ nét</strong>
                   <p>
-                    Dùng link 360/Google VR có chế độ xoay để khách dễ khám phá
-                    không gian.
+                    Ưu tiên ảnh tỉ lệ 2:1 và chụp ở tầm mắt để thao tác xoay tự
+                    nhiên hơn.
                   </p>
                 </div>
               </div>
               <div className="tm-vr-tip">
-                <span className="tip-icon">📌</span>
+                <span className="tip-icon">🪑</span>
                 <div>
-                  <strong>Phân bổ theo bàn</strong>
+                  <strong>Mỗi bàn một góc nhìn</strong>
                   <p>
-                    Mỗi bàn vẫn có thể gắn VR riêng ở mục “Hành động bàn” để mô
-                    tả chi tiết vị trí.
+                    Dùng Chi tiết bàn để tải ảnh riêng, giúp khách hiểu khu vực
+                    xung quanh chỗ ngồi.
                   </p>
                 </div>
               </div>
             </div>
           </div>
-          <div className="modal-footer">
+          <div className="tm-modal-footer tm-vr-footer">
+            <Button
+              variant="secondary"
+              onClick={() =>
+                vrDraft.requestCloseWithDraft(() => setShowVrModal(false))
+              }
+              disabled={vrSaving}
+            >
+              Hủy
+            </Button>
             <Button
               variant="primary"
               onClick={handleSaveRestaurantVr}
-              disabled={vrSaving || !vrDirty}
+              loading={vrSaving}
+              disabled={!vrDirty}
             >
-              {vrSaving ? "Đang lưu..." : "Lưu VR"}
+              {vrSaving ? "Đang lưu..." : "Lưu cấu hình"}
             </Button>
           </div>
         </div>
