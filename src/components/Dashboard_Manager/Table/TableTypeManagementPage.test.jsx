@@ -1,7 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthContext } from "@/context/AuthContext";
 
 const mocks = vi.hoisted(() => ({
   createTable: vi.fn(),
@@ -14,6 +13,9 @@ const mocks = vi.hoisted(() => ({
   updateFloor: vi.fn(),
   deleteFloor: vi.fn(),
   notify: vi.fn(),
+  close: vi.fn(),
+  tableRestaurantId: null,
+  floorRestaurantId: null,
 }));
 
 vi.mock("@apollo/client", async () => {
@@ -34,63 +36,75 @@ vi.mock("@apollo/client", async () => {
 });
 
 vi.mock("@/hooks/useTableManagement", () => ({
-  default: () => ({
-    tables: [
-      {
-        id: "table-a1",
-        code: "A1",
-        type: "standard",
-        capacity: 4,
-        floorId: "floor-1",
-        floorLevel: 1,
-        status: "available",
-        position: { x: 50, y: 50 },
-      },
-      {
-        id: "table-vip-2",
-        code: "VIP-02",
-        type: "vip",
-        capacity: 6,
-        floorId: "floor-1",
-        floorLevel: 1,
-        status: "occupied",
-        position: { x: 140, y: 50 },
-      },
-    ],
-    tablesLoading: false,
-    tablesError: null,
-    createTable: mocks.createTable,
-    updateTable: mocks.updateTable,
-    moveTable: mocks.moveTable,
-    deleteTable: mocks.deleteTable,
-    refetchTables: mocks.refetchTables,
-  }),
+  default: ({ restaurantId }) => {
+    mocks.tableRestaurantId = restaurantId;
+    return {
+      tables: [
+        {
+          id: "table-a1",
+          code: "A1",
+          type: "standard",
+          capacity: 4,
+          floorId: "floor-1",
+          floorLevel: 1,
+          status: "available",
+          position: { x: 50, y: 50 },
+        },
+        {
+          id: "table-vip-2",
+          code: "VIP-02",
+          type: "vip",
+          capacity: 6,
+          floorId: "floor-1",
+          floorLevel: 1,
+          status: "occupied",
+          position: { x: 140, y: 50 },
+        },
+      ],
+      tablesLoading: false,
+      tablesError: null,
+      createTable: mocks.createTable,
+      updateTable: mocks.updateTable,
+      moveTable: mocks.moveTable,
+      deleteTable: mocks.deleteTable,
+      refetchTables: mocks.refetchTables,
+    };
+  },
 }));
 
 vi.mock("@/hooks/useFloorManagement", () => ({
-  default: () => ({
-    floors: [
-      { id: "floor-1", name: "Tầng 1", level: 1 },
-      { id: "floor-2", name: "Sân thượng", level: 2 },
-    ],
-    floorsLoading: false,
-    floorsError: null,
-    createFloor: mocks.createFloor,
-    refetchFloors: mocks.refetchFloors,
-  }),
+  default: ({ restaurantId }) => {
+    mocks.floorRestaurantId = restaurantId;
+    return {
+      floors: [
+        { id: "floor-1", name: "Tầng 1", level: 1 },
+        { id: "floor-2", name: "Sân thượng", level: 2 },
+      ],
+      floorsLoading: false,
+      floorsError: null,
+      createFloor: mocks.createFloor,
+      refetchFloors: mocks.refetchFloors,
+    };
+  },
 }));
 
 vi.mock("@/hooks/useNotification", () => ({
   useNotification: () => ({ showNotification: mocks.notify }),
 }));
 
-vi.mock("./TableManagement", () => ({
-  default: () => <main data-testid="table-management-background">Quản lý bàn nền</main>,
-}));
-
 vi.mock("../../../components/common/Modal", () => {
-  const Modal = ({ children }) => <div role="dialog">{children}</div>;
-  Modal.Header = ({ children }) => <header>{children}</header>;
+  const Modal = ({ children, isOpen }) =>
+    isOpen ? <div role="dialog">{children}</div> : null;
+  Modal.Header = ({ children, onClose }) => (
+    <header>
+      {children}
+      {onClose && (
+        <button type="button" aria-label="Đóng modal" onClick={onClose}>
+          ×
+        </button>
+      )}
+    </header>
+  );
   Modal.Body = ({ children }) => <div>{children}</div>;
   Modal.Footer = ({ children }) => <footer>{children}</footer>;
   return { default: Modal };
@@ -104,19 +118,23 @@ vi.mock("../../../components/common/Button", () => ({
 
 import TableTypeManagementPage from "./TableTypeManagementPage";
 
-const renderPage = () =>
+const renderModal = (props = {}) =>
   render(
-    <AuthContext.Provider
-      value={{ restaurants: [{ id: "restaurant-1", name: "Cơ sở trung tâm" }] }}
-    >
-      <TableTypeManagementPage />
-    </AuthContext.Provider>,
+    <TableTypeManagementPage
+      isOpen
+      onClose={mocks.close}
+      restaurantId="restaurant-1"
+      restaurantName="Cơ sở trung tâm"
+      {...props}
+    />,
   );
 
 describe("TableTypeManagementPage modal", () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
-    localStorage.clear();
+    mocks.tableRestaurantId = null;
+    mocks.floorRestaurantId = null;
     vi.spyOn(window, "confirm").mockReturnValue(true);
     mocks.createTable.mockResolvedValue({ id: "table-new" });
     mocks.updateTable.mockResolvedValue({ id: "table-a1" });
@@ -129,22 +147,35 @@ describe("TableTypeManagementPage modal", () => {
     mocks.deleteFloor.mockResolvedValue({ data: { deleteFloor: true } });
   });
 
-  it("keeps table management as the background and opens the combined modal", () => {
-    const { container } = renderPage();
+  it("stays closed and skips scoped queries until explicitly opened", () => {
+    renderModal({ isOpen: false });
 
-    expect(screen.getByTestId("table-management-background")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mocks.tableRestaurantId).toBeNull();
+    expect(mocks.floorRestaurantId).toBeNull();
+  });
+
+  it("opens as a controlled modal for the selected restaurant", () => {
+    const { container } = renderModal();
+
     expect(
       screen.getByRole("heading", { name: "Loại bàn & không gian" }),
     ).toBeInTheDocument();
+    expect(screen.getByText(/Cơ sở trung tâm/)).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Loại bàn/i })).toHaveAttribute(
       "aria-selected",
       "true",
     );
     expect(container.querySelectorAll(".ttm-type-card")).toHaveLength(7);
+    expect(mocks.tableRestaurantId).toBe("restaurant-1");
+    expect(mocks.floorRestaurantId).toBe("restaurant-1");
+
+    fireEvent.click(screen.getByRole("button", { name: "Đóng modal" }));
+    expect(mocks.close).toHaveBeenCalledTimes(1);
   });
 
   it("changes a table type and supports adding, editing and deleting a table", async () => {
-    renderPage();
+    renderModal();
 
     fireEvent.change(screen.getByRole("combobox", { name: "Loại bàn A1" }), {
       target: { value: "vip" },
@@ -211,7 +242,7 @@ describe("TableTypeManagementPage modal", () => {
   });
 
   it("adds, renames and deletes an empty service space", async () => {
-    renderPage();
+    renderModal();
 
     fireEvent.click(screen.getByRole("tab", { name: /Không gian/i }));
     fireEvent.change(screen.getByLabelText("Tên không gian mới"), {
