@@ -1,12 +1,12 @@
 {
   "id": "07-11-menu-grid-list-view",
   "title": "Tối ưu chế độ lưới và danh sách cho quản lý món",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-ui-fix",
   "scope": [
     "src/components/Dashboard_Manager/Menu/MenuManagementPolish.scss"
   ],
-  "rootCause": "The grid/list switch is now visible, but list mode still reuses a tall card content flow: image height stretches with the row, information and warnings stack vertically, and the wide action rail leaves unused space. The result is a sparse list that is harder to scan than the grid view.",
+  "rootCause": "The grid/list switch was visible, but list mode still reused a tall card content flow: image height stretched with the row, information and warnings stacked vertically, and the wide action rail left unused space. The result was a sparse list that was harder to scan than the grid view.",
   "validation": {
     "planned": [
       "npm run check:conflicts",
@@ -18,8 +18,15 @@
       "read AGENTS.md, Trellis workflow, ponytail, ui-ux-pro-max, taste-ui-redesign and redesign-existing-projects skills",
       "traced MenuManagement currentView through Toolbar actions, result classes and MenuItemCard markup",
       "inspected the complete polish import order and the final list-specific style precedence",
-      "reviewed MenuItemCard child order, warning states, prep-station control and action menu behavior"
+      "reviewed MenuItemCard child order, warning states, prep-station control and action menu behavior",
+      "converted desktop list cards into compact operational rows with a bounded image, two-column information area and narrow vertical action rail",
+      "collapsed successful advisory badges and warning descriptions while preserving missing-data actions",
+      "added tablet and phone fallbacks that move actions below the row and return to a single-column card on narrow screens",
+      "reviewed the resulting commit diff and confirmed no schema, GraphQL, permission or data-flow changes"
     ],
-    "notRun": []
+    "notRun": [
+      "npm run check:conflicts and npm run build were not run because the GitHub connector does not provide a repository checkout with installed dependencies.",
+      "Desktop and 390x844 / 430x932 visual verification remains for the local browser."
+    ]
   }
 }
