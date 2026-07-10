@@ -1,114 +1,112 @@
-import React, { useContext, useMemo, useState } from "react";
-import {
-  Users,
-  Star,
-  ArrowRight as ArrowRightLeft,
-  Grid2X2 as Combine,
-  Receipt,
-} from "lucide-react";
-import { AuthContext } from "@/context/AuthContext";
-import { getStaffOrderingPermissions } from "../staffOrderingPermissions";
+import React, { useState } from "react";
+import { Star, Users } from "lucide-react";
 import "./TableMap.scss";
 
+const getTableCode = (table) =>
+  table?.tableCode || table?.code || table?.name || "Chưa đặt mã";
+
+const getTableCapacity = (table) =>
+  Number(table?.guests ?? table?.capacity ?? 0);
+
+const getOperationalStatus = (status) => {
+  if (status === "empty") {
+    return { key: "empty", label: "Sẵn sàng" };
+  }
+  return { key: "serving", label: "Đang phục vụ" };
+};
+
 export default function TableMap({
-  tables,
+  tables = [],
   onSelect,
   selectedTable,
-  onTableAction,
   floors = [],
 }) {
-  const { user } = useContext(AuthContext) || {};
-  const permissions = useMemo(() => {
-    return getStaffOrderingPermissions(user);
-  }, [user]);
-
-  const [floor, setFloor] = useState((floors && floors[0]) || "");
+  const [floor, setFloor] = useState(floors[0] || "");
 
   React.useEffect(() => {
-    if (!floor && floors?.length) setFloor(floors[0]);
-    if (floor && floors?.length && !floors.includes(floor)) setFloor(floors[0]);
-  }, [floors, floor]);
+    if (!floor && floors.length) setFloor(floors[0]);
+    if (floor && floors.length && !floors.includes(floor)) setFloor(floors[0]);
+  }, [floor, floors]);
 
-  const currentFloorTables = tables.filter((t) => t.floor === floor);
-
+  const currentFloorTables = tables.filter((table) => table.floor === floor);
   const servingCount = currentFloorTables.filter(
-    (t) => t.status !== "empty",
+    (table) => table.status !== "empty",
   ).length;
 
   return (
     <div className="staff-pos-tables">
       <div className="floor-header">
-        <div>
-          <p className="floor-eyebrow">Sơ đồ phục vụ</p>
-          <h2>Chọn bàn / khu vực</h2>
+        <div className="floor-stats">
+          <h3>Chọn bàn / khu vực</h3>
+          <p>
+            <Users size={15} aria-hidden="true" />{" "}
+            <strong>{servingCount}</strong>/{currentFloorTables.length} bàn đang phục vụ
+          </p>
         </div>
-        <div className="floor-actions">
-          <div className="floor-summary">
-            <Users size={16} />
-            <span>
-              {servingCount}/{currentFloorTables.length} bàn đang phục vụ
-            </span>
-          </div>
-          <div className="floor-tabs">
-            {floors.map((f) => (
-              <button
-                key={f}
-                className={f === floor ? "active" : ""}
-                type="button"
-                onClick={() => setFloor(f)}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-        </div>
+      </div>
+
+      <div className="floor-selector-scroll" aria-label="Chọn không gian phục vụ">
+        {floors.map((floorName) => (
+          <button
+            key={floorName}
+            type="button"
+            className={`floor-chip ${floorName === floor ? "active" : ""}`}
+            onClick={() => setFloor(floorName)}
+          >
+            {floorName}
+          </button>
+        ))}
       </div>
 
       <div className="table-grid">
         {currentFloorTables.map((table) => {
           const isSelected = selectedTable?.id === table.id;
-          const canQuickOrder = permissions.canCreateOrder || permissions.canManageOrders;
-          const canRequestPayment = permissions.canRequestPayment || permissions.canManagePayments;
-          const canMergeSplit = permissions.canMergeSplitTables || permissions.canManageTables;
+          const status = getOperationalStatus(table.status);
+          const code = getTableCode(table);
+          const capacity = getTableCapacity(table);
 
           return (
-            <button
+            <article
               key={table.id}
-              type="button"
-              className={`table-card status-${table.status} ${isSelected ? "selected" : ""}`}
-              onClick={() => onSelect(table)}
+              className={`table-card-wrapper status-${status.key} ${
+                isSelected ? "selected" : ""
+              }`}
             >
-              <div className="table-card__top">
-                <span className="table-code">{table.code}</span>
-                <span className="table-status">{table.statusLabel || table.status}</span>
-              </div>
-              <div className="table-card__body">
-                <div className="table-shape">
-                  <Star size={18} />
+              <button
+                type="button"
+                className="table-card-main"
+                onClick={() => onSelect?.(table)}
+                aria-pressed={isSelected}
+                aria-label={`Chọn bàn ${code}, ${capacity} khách, ${status.label}`}
+              >
+                <div className="table-header">
+                  <span className="table-name">{code}</span>
+                  <span className="status-indicator" aria-hidden="true" />
                 </div>
-                <div>
-                  <strong>{table.capacity || 4} khách</strong>
-                  <p>{table.serverName || "Chưa gán nhân viên"}</p>
+                <div className="table-body">
+                  <span className="guest-count">
+                    <Users size={14} aria-hidden="true" />
+                    {capacity} khách
+                  </span>
+                  {table.customer?.name ? (
+                    <span className="customer-tag">
+                      <Star className="star-icon" size={12} aria-hidden="true" />
+                      <span className="truncate">{table.customer.name}</span>
+                    </span>
+                  ) : null}
                 </div>
-              </div>
-              <div className="table-card__actions" onClick={(event) => event.stopPropagation()}>
-                <button type="button" onClick={() => onTableAction?.("order", table)} disabled={!canQuickOrder}>
-                  <Receipt size={14} />
-                  Gọi món
-                </button>
-                <button type="button" onClick={() => onTableAction?.("payment", table)} disabled={!canRequestPayment}>
-                  <ArrowRightLeft size={14} />
-                  Thanh toán
-                </button>
-                <button type="button" onClick={() => onTableAction?.("merge", table)} disabled={!canMergeSplit}>
-                  <Combine size={14} />
-                  Ghép/tách
-                </button>
-              </div>
-            </button>
+                <div className="table-status-text">{status.label}</div>
+              </button>
+            </article>
           );
         })}
       </div>
     </div>
   );
 }
+
+export const __testables = {
+  getTableCode,
+  getTableCapacity,
+  getOperationalStatus,
+};
