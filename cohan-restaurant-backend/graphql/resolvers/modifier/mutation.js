@@ -1,4 +1,3 @@
-// src/graphql/resolvers/modifier/mutation.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import {
@@ -10,190 +9,56 @@ import {
 import { requireRole } from "../../../utils/authz.js";
 import { requireRestaurantAccess } from "../../guards.js";
 
-// ===== helpers =====
-const isValidId = (v) => mongoose.isValidObjectId(v);
-const toId = (v) => new mongoose.Types.ObjectId(v);
+const isValidId = (value) => mongoose.isValidObjectId(value);
+const toId = (value) => new mongoose.Types.ObjectId(value);
+const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
 
 function badRequest(message) {
   throw new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
 }
 
-function normalizeDupKey(err) {
-  if (err?.code === 11000) {
-    const fields = Object.keys(err.keyPattern || {});
-    const fieldText = fields.length ? fields.join(", ") : "unique field";
-    return new GraphQLError(`Duplicate ${fieldText}`, {
-      extensions: { code: "BAD_USER_INPUT" },
-    });
-  }
-  return err;
+function normalizeDupKey(error) {
+  if (error?.code !== 11000) return error;
+  return new GraphQLError("Tên nhóm tuỳ chọn đã tồn tại trong nhà hàng này.", {
+    extensions: { code: "BAD_USER_INPUT" },
+  });
 }
 
-/**
- * Chuẩn hoá & validate input group theo model mới
- * Model fields kỳ vọng:
- * - restaurantId, name, groupType, coverage, menuItemIds
- * - selectionType, required, minSelected, maxSelected
- * - options[]: { name, isDefault, isActive, priceRule{rule,amount}, inventoryRule{rule,ingredientLines,baseRecipeMultiplier,note} }
- */
-function normalizeAndValidateGroupInput(input, { isUpdate = false } = {}) {
-  if (!input || typeof input !== "object") badRequest("input is required");
-
-  const out = {};
-
-  // restaurantId (create bắt buộc)
-  if (!isUpdate) {
-    if (!isValidId(input.restaurantId)) badRequest("Invalid restaurantId");
-    out.restaurantId = toId(input.restaurantId);
-  } else if (input.restaurantId !== undefined) {
-    if (!isValidId(input.restaurantId)) badRequest("Invalid restaurantId");
-    out.restaurantId = toId(input.restaurantId);
-  }
-
-  // name
-  if (!isUpdate || input.name !== undefined) {
-    const name = String(input.name || "").trim();
-    if (!name) badRequest("name is required");
-    out.name = name;
-  }
-
-  // groupType
-  if (!isUpdate || input.groupType !== undefined) {
-    const groupType = String(input.groupType || "").trim();
-    const ok = ["SIZE", "TOPPING", "PREPARATION", "CUSTOM"].includes(groupType);
-    if (!ok) badRequest("groupType must be SIZE|TOPPING|PREPARATION|CUSTOM");
-    out.groupType = groupType;
-  }
-
-  // coverage
-  if (!isUpdate || input.coverage !== undefined) {
-    const coverage = String(input.coverage || "").trim();
-    const ok = ["GLOBAL", "ITEMS"].includes(coverage);
-    if (!ok) badRequest("coverage must be GLOBAL|ITEMS");
-    out.coverage = coverage;
-  }
-
-  // menuItemIds
-  if (!isUpdate || input.menuItemIds !== undefined) {
-    const raw = Array.isArray(input.menuItemIds) ? input.menuItemIds : [];
-    const unique = [...new Set(raw.map(String))];
-
-    for (const id of unique) {
-      if (!isValidId(id)) badRequest(`Invalid menuItemId: ${id}`);
-    }
-    out.menuItemIds = unique.map(toId);
-  }
-
-  // selectionType
-  if (!isUpdate || input.selectionType !== undefined) {
-    const selectionType = String(input.selectionType || "").trim();
-    if (!["single", "multiple"].includes(selectionType)) {
-      badRequest("selectionType must be single|multiple");
-    }
-    out.selectionType = selectionType;
-  }
-
-  // required
-  if (!isUpdate || input.required !== undefined) {
-    out.required = !!input.required;
-  }
-
-  // minSelected/maxSelected
-  if (!isUpdate || input.minSelected !== undefined) {
-    const v = input.minSelected == null ? 0 : Number(input.minSelected);
-    if (!Number.isFinite(v) || v < 0) badRequest("minSelected must be >= 0");
-    out.minSelected = Math.floor(v);
-  }
-
-  if (!isUpdate || input.maxSelected !== undefined) {
-    const v = input.maxSelected == null ? null : Number(input.maxSelected);
-    if (v != null && (!Number.isFinite(v) || v < 1))
-      badRequest("maxSelected must be >= 1");
-    out.maxSelected = v == null ? undefined : Math.floor(v);
-  }
-
-  // note/isActive
-  if (!isUpdate || input.note !== undefined) out.note = input.note ?? undefined;
-  if (!isUpdate || input.isActive !== undefined)
-    out.isActive = input.isActive ?? true;
-
-  // options
-  if (!isUpdate || input.options !== undefined) {
-    if (!Array.isArray(input.options) || input.options.length === 0) {
-      badRequest("options must have at least 1 option");
-    }
-    out.options = input.options.map(normalizeAndValidateOptionInput);
-    normalizeSingleDefault(out);
-  }
-
-  // ---- cross-field normalize & validate ----
-
-  // coverage rule
-  const cov = out.coverage ?? input.coverage; // update case: may not set
-  const ids = out.menuItemIds ?? input.menuItemIds;
-
-  // nếu update mà không gửi coverage/menuItemIds thì không kiểm tra ở đây
-  if (cov === "GLOBAL") {
-    if (Array.isArray(ids) && ids.length > 0)
-      badRequest("coverage=GLOBAL must not have menuItemIds");
-  }
-  if (cov === "ITEMS") {
-    if (!Array.isArray(ids) || ids.length === 0)
-      badRequest("coverage=ITEMS requires menuItemIds");
-  }
-
-  // selection constraints
-  const sel = out.selectionType ?? input.selectionType;
-  const req = out.required ?? input.required;
-
-  if (sel === "single") {
-    out.maxSelected = 1;
-    out.minSelected = req ? 1 : 0;
-  } else if (sel === "multiple") {
-    const min = out.minSelected ?? 0;
-    const max = out.maxSelected;
-
-    if (req && min < 1) out.minSelected = 1;
-    if (max != null && max < (out.minSelected ?? 0)) {
-      badRequest("maxSelected must be >= minSelected");
-    }
-  }
-
-  return out;
+function normalizeNullableText(value) {
+  if (value == null) return null;
+  const normalized = String(value).trim();
+  return normalized || null;
 }
 
-function normalizeAndValidateOptionInput(opt) {
-  if (!opt || typeof opt !== "object") badRequest("Invalid option");
+function normalizeAndValidateOptionInput(option) {
+  if (!option || typeof option !== "object") badRequest("Lựa chọn không hợp lệ.");
 
-  const name = String(opt.name || "").trim();
-  if (!name) badRequest("Option.name is required");
+  const name = String(option.name || "").trim();
+  if (!name) badRequest("Tên lựa chọn là bắt buộc.");
 
-  // priceRule
-  const priceRule = opt.priceRule || {};
+  const priceRule = option.priceRule || {};
   const priceRuleType = String(priceRule.rule || "").trim();
   if (!["DELTA", "SET"].includes(priceRuleType)) {
-    badRequest(`Option "${name}": priceRule.rule must be DELTA|SET`);
+    badRequest(`Lựa chọn "${name}": quy tắc giá không hợp lệ.`);
   }
   const priceAmount = Number(priceRule.amount ?? 0);
-  if (!Number.isFinite(priceAmount))
-    badRequest(`Option "${name}": priceRule.amount invalid`);
-  if (priceRuleType === "SET" && priceAmount < 0)
-    badRequest(`Option "${name}": SET price cannot be negative`);
+  if (!Number.isFinite(priceAmount)) {
+    badRequest(`Lựa chọn "${name}": số tiền không hợp lệ.`);
+  }
+  if (priceRuleType === "SET" && priceAmount < 0) {
+    badRequest(`Lựa chọn "${name}": giá đặt lại không được âm.`);
+  }
 
-  // inventoryRule
-  const inventoryRule = opt.inventoryRule || {};
-  const invType = String(inventoryRule.rule || "").trim();
-  if (
-    ![
-      "NONE",
-      "ADD_INGREDIENTS",
-      "REPLACE_INGREDIENTS",
-      "MULTIPLY_BASE_RECIPE",
-    ].includes(invType)
-  ) {
-    badRequest(
-      `Option "${name}": inventoryRule.rule must be NONE|ADD_INGREDIENTS|REPLACE_INGREDIENTS|MULTIPLY_BASE_RECIPE`
-    );
+  const inventoryRule = option.inventoryRule || {};
+  const inventoryRuleType = String(inventoryRule.rule || "").trim();
+  const inventoryRuleTypes = [
+    "NONE",
+    "ADD_INGREDIENTS",
+    "REPLACE_INGREDIENTS",
+    "MULTIPLY_BASE_RECIPE",
+  ];
+  if (!inventoryRuleTypes.includes(inventoryRuleType)) {
+    badRequest(`Lựa chọn "${name}": quy tắc tồn kho không hợp lệ.`);
   }
 
   const ingredientLines = Array.isArray(inventoryRule.ingredientLines)
@@ -201,378 +66,466 @@ function normalizeAndValidateOptionInput(opt) {
     : [];
   const baseRecipeMultiplier = inventoryRule.baseRecipeMultiplier;
 
-  if (invType === "MULTIPLY_BASE_RECIPE") {
-    const f = Number(baseRecipeMultiplier);
-    if (!Number.isFinite(f) || f <= 0)
-      badRequest(`Option "${name}": baseRecipeMultiplier must be > 0`);
-    if (ingredientLines.length > 0)
-      badRequest(
-        `Option "${name}": ingredientLines not allowed for MULTIPLY_BASE_RECIPE`
-      );
-  }
-
-  if (invType === "ADD_INGREDIENTS" || invType === "REPLACE_INGREDIENTS") {
-    if (baseRecipeMultiplier != null)
-      badRequest(
-        `Option "${name}": baseRecipeMultiplier only for MULTIPLY_BASE_RECIPE`
-      );
-    for (const line of ingredientLines) {
-      if (!isValidId(line?.ingredientId))
-        badRequest(`Option "${name}": invalid ingredientId`);
-      const qty = Number(line?.qty);
-      if (!Number.isFinite(qty) || qty <= 0)
-        badRequest(`Option "${name}": qty must be > 0`);
-      const unit = String(line?.unit || "").trim();
-      if (!unit) badRequest(`Option "${name}": unit is required`);
-      const wastePct = Number(line?.wastePct ?? 0);
-      if (!Number.isFinite(wastePct) || wastePct < 0 || wastePct > 100)
-        badRequest(`Option "${name}": wastePct 0..100`);
+  if (inventoryRuleType === "MULTIPLY_BASE_RECIPE") {
+    const multiplier = Number(baseRecipeMultiplier);
+    if (!Number.isFinite(multiplier) || multiplier <= 0) {
+      badRequest(`Lựa chọn "${name}": hệ số công thức phải lớn hơn 0.`);
+    }
+    if (ingredientLines.length > 0) {
+      badRequest(`Lựa chọn "${name}": không thể vừa nhân công thức vừa khai báo nguyên liệu.`);
     }
   }
 
-  if (invType === "NONE") {
-    if (baseRecipeMultiplier != null)
-      badRequest(`Option "${name}": baseRecipeMultiplier not allowed for NONE`);
-    if (ingredientLines.length > 0)
-      badRequest(`Option "${name}": ingredientLines not allowed for NONE`);
+  if (["ADD_INGREDIENTS", "REPLACE_INGREDIENTS"].includes(inventoryRuleType)) {
+    if (baseRecipeMultiplier != null) {
+      badRequest(`Lựa chọn "${name}": hệ số chỉ dùng khi nhân công thức gốc.`);
+    }
+    for (const line of ingredientLines) {
+      if (!isValidId(line?.ingredientId)) {
+        badRequest(`Lựa chọn "${name}": nguyên liệu không hợp lệ.`);
+      }
+      const qty = Number(line?.qty);
+      if (!Number.isFinite(qty) || qty <= 0) {
+        badRequest(`Lựa chọn "${name}": định lượng nguyên liệu phải lớn hơn 0.`);
+      }
+      const unit = String(line?.unit || "").trim();
+      if (!unit) badRequest(`Lựa chọn "${name}": đơn vị nguyên liệu là bắt buộc.`);
+      const wastePct = Number(line?.wastePct ?? 0);
+      if (!Number.isFinite(wastePct) || wastePct < 0 || wastePct > 100) {
+        badRequest(`Lựa chọn "${name}": hao hụt phải nằm trong khoảng 0–100%.`);
+      }
+    }
+  }
+
+  if (inventoryRuleType === "NONE") {
+    if (baseRecipeMultiplier != null || ingredientLines.length > 0) {
+      badRequest(`Lựa chọn "${name}": quy tắc không ảnh hưởng kho không nhận dữ liệu nguyên liệu.`);
+    }
   }
 
   return {
     name,
-    isDefault: !!opt.isDefault,
-    isActive: opt.isActive ?? true,
-
+    isDefault: Boolean(option.isDefault),
+    isActive: option.isActive !== false,
     priceRule: { rule: priceRuleType, amount: priceAmount },
-
     inventoryRule: {
-      rule: invType,
-      ingredientLines:
-        invType === "ADD_INGREDIENTS" || invType === "REPLACE_INGREDIENTS"
-          ? ingredientLines.map((l) => ({
-              ingredientId: toId(l.ingredientId),
-              qty: Number(l.qty),
-              unit: String(l.unit),
-              wastePct: Number(l.wastePct ?? 0),
-            }))
-          : [],
+      rule: inventoryRuleType,
+      ingredientLines: ["ADD_INGREDIENTS", "REPLACE_INGREDIENTS"].includes(
+        inventoryRuleType,
+      )
+        ? ingredientLines.map((line) => ({
+            ingredientId: toId(line.ingredientId),
+            qty: Number(line.qty),
+            unit: String(line.unit),
+            wastePct: Number(line.wastePct ?? 0),
+          }))
+        : [],
       baseRecipeMultiplier:
-        invType === "MULTIPLY_BASE_RECIPE"
+        inventoryRuleType === "MULTIPLY_BASE_RECIPE"
           ? Number(baseRecipeMultiplier)
           : undefined,
-      note: inventoryRule.note ?? undefined,
+      note: normalizeNullableText(inventoryRule.note),
     },
   };
 }
 
-/**
- * Nếu selectionType=single: đảm bảo chỉ 1 default
- * Nếu required=true & single: auto set default nếu chưa có
- */
-function normalizeSingleDefault(groupPatch) {
-  const { selectionType, required, options } = groupPatch;
+function normalizeDefaultOption(groupPatch) {
+  const options = groupPatch.options;
   if (!Array.isArray(options) || options.length === 0) return;
 
-  if (selectionType === "single") {
-    let found = false;
-    for (const o of options) {
-      if (o.isDefault && !found) found = true;
-      else if (o.isDefault && found) o.isDefault = false;
+  let defaultIndex = options.findIndex((option) => option.isDefault);
+  if (defaultIndex < 0 && groupPatch.selectionType === "single" && groupPatch.required) {
+    defaultIndex = 0;
+  }
+  options.forEach((option, index) => {
+    option.isDefault = index === defaultIndex;
+  });
+}
+
+function normalizeAndValidateGroupInput(input, { isUpdate = false } = {}) {
+  if (!input || typeof input !== "object") badRequest("Dữ liệu nhóm tuỳ chọn là bắt buộc.");
+  const output = {};
+
+  if (!isUpdate || hasOwn(input, "restaurantId")) {
+    if (!isValidId(input.restaurantId)) badRequest("Nhà hàng không hợp lệ.");
+    output.restaurantId = toId(input.restaurantId);
+  }
+
+  if (!isUpdate || hasOwn(input, "name")) {
+    const name = String(input.name || "").trim();
+    if (!name) badRequest("Tên nhóm tuỳ chọn là bắt buộc.");
+    output.name = name;
+  }
+
+  if (!isUpdate || hasOwn(input, "groupType")) {
+    const groupType = String(input.groupType || "").trim();
+    if (!["SIZE", "TOPPING", "PREPARATION", "CUSTOM"].includes(groupType)) {
+      badRequest("Loại nhóm tuỳ chọn không hợp lệ.");
     }
-    if (required && !found) options[0].isDefault = true;
-  } else {
-    // multiple: vẫn không cho >1 default để tránh UI/logic mơ hồ
-    let found = false;
-    for (const o of options) {
-      if (o.isDefault && !found) found = true;
-      else if (o.isDefault && found) o.isDefault = false;
+    output.groupType = groupType;
+  }
+
+  if (!isUpdate || hasOwn(input, "coverage")) {
+    const coverage = String(input.coverage || "").trim();
+    if (!["GLOBAL", "ITEMS"].includes(coverage)) {
+      badRequest("Phạm vi áp dụng không hợp lệ.");
+    }
+    output.coverage = coverage;
+  }
+
+  if (!isUpdate || hasOwn(input, "menuItemIds")) {
+    const rawIds = Array.isArray(input.menuItemIds) ? input.menuItemIds : [];
+    const uniqueIds = [...new Set(rawIds.map(String))];
+    uniqueIds.forEach((id) => {
+      if (!isValidId(id)) badRequest(`Món ăn không hợp lệ: ${id}`);
+    });
+    output.menuItemIds = uniqueIds.map(toId);
+  }
+
+  if (!isUpdate || hasOwn(input, "selectionType")) {
+    const selectionType = String(input.selectionType || "").trim();
+    if (!["single", "multiple"].includes(selectionType)) {
+      badRequest("Kiểu chọn không hợp lệ.");
+    }
+    output.selectionType = selectionType;
+  }
+
+  if (!isUpdate || hasOwn(input, "required")) {
+    output.required = Boolean(input.required);
+  }
+
+  if (!isUpdate || hasOwn(input, "minSelected")) {
+    const minimum = input.minSelected == null ? 0 : Number(input.minSelected);
+    if (!Number.isFinite(minimum) || minimum < 0) {
+      badRequest("Số lựa chọn tối thiểu phải từ 0 trở lên.");
+    }
+    output.minSelected = Math.floor(minimum);
+  }
+
+  if (!isUpdate || hasOwn(input, "maxSelected")) {
+    if (input.maxSelected == null || input.maxSelected === "") {
+      output.maxSelected = null;
+    } else {
+      const maximum = Number(input.maxSelected);
+      if (!Number.isFinite(maximum) || maximum < 1) {
+        badRequest("Số lựa chọn tối đa phải từ 1 trở lên.");
+      }
+      output.maxSelected = Math.floor(maximum);
     }
   }
+
+  if (!isUpdate || hasOwn(input, "note")) {
+    output.note = normalizeNullableText(input.note);
+  }
+  if (!isUpdate || hasOwn(input, "isActive")) {
+    output.isActive = input.isActive !== false;
+  }
+
+  if (!isUpdate || hasOwn(input, "options")) {
+    if (!Array.isArray(input.options) || input.options.length === 0) {
+      badRequest("Nhóm tuỳ chọn phải có ít nhất một lựa chọn.");
+    }
+    output.options = input.options.map(normalizeAndValidateOptionInput);
+  }
+
+  const coverage = output.coverage ?? input.coverage;
+  const menuItemIds = output.menuItemIds ?? input.menuItemIds;
+  if (coverage === "GLOBAL" && Array.isArray(menuItemIds) && menuItemIds.length > 0) {
+    badRequest("Nhóm áp dụng toàn menu không được chứa danh sách món.");
+  }
+  if (coverage === "ITEMS" && (!Array.isArray(menuItemIds) || menuItemIds.length === 0)) {
+    badRequest("Nhóm áp dụng theo món phải chọn ít nhất một món.");
+  }
+
+  const selectionType = output.selectionType ?? input.selectionType;
+  const required = output.required ?? input.required;
+  if (selectionType === "single") {
+    output.minSelected = required ? 1 : 0;
+    output.maxSelected = 1;
+  } else if (selectionType === "multiple") {
+    const minimum = output.minSelected ?? Number(input.minSelected || 0);
+    if (required && minimum < 1) output.minSelected = 1;
+    const normalizedMinimum = output.minSelected ?? minimum;
+    const maximum = hasOwn(output, "maxSelected")
+      ? output.maxSelected
+      : input.maxSelected;
+    if (maximum != null && maximum < normalizedMinimum) {
+      badRequest("Số lựa chọn tối đa phải lớn hơn hoặc bằng tối thiểu.");
+    }
+  }
+
+  normalizeDefaultOption({
+    selectionType,
+    required,
+    options: output.options,
+  });
+  return output;
 }
 
 async function assertMenuItemsExist({ restaurantId, menuItemIds }) {
   if (!menuItemIds?.length) return;
+  const ids = [...new Set(menuItemIds.map(String))];
   const count = await MenuItem.countDocuments({
     restaurantId: toId(restaurantId),
-    _id: { $in: menuItemIds.map(toId) },
+    _id: { $in: ids.map(toId) },
   });
-  if (count !== menuItemIds.length)
-    badRequest("Some menuItemIds do not exist in this restaurant");
+  if (count !== ids.length) {
+    badRequest("Có món không tồn tại trong nhà hàng đang chọn.");
+  }
 }
 
-async function assertIngredientsExistFromOptions(options) {
+async function assertIngredientsExistFromOptions({ restaurantId, options }) {
   const ids = new Set();
-  for (const o of options || []) {
-    const r = o?.inventoryRule?.rule;
-    if (r === "ADD_INGREDIENTS" || r === "REPLACE_INGREDIENTS") {
-      for (const l of o.inventoryRule.ingredientLines || []) {
-        ids.add(String(l.ingredientId));
-      }
+  for (const option of options || []) {
+    if (!["ADD_INGREDIENTS", "REPLACE_INGREDIENTS"].includes(option?.inventoryRule?.rule)) {
+      continue;
+    }
+    for (const line of option.inventoryRule.ingredientLines || []) {
+      ids.add(String(line.ingredientId));
     }
   }
-  const list = [...ids];
-  if (!list.length) return;
+  if (!ids.size) return;
 
+  const list = [...ids];
   const count = await Ingredient.countDocuments({
+    restaurantId: toId(restaurantId),
     _id: { $in: list.map(toId) },
   });
-  if (count !== list.length)
-    badRequest("Some ingredientIds in option inventoryRule do not exist");
+  if (count !== list.length) {
+    badRequest("Có nguyên liệu không thuộc nhà hàng đang chọn.");
+  }
 }
 
-// ===== mutations =====
+const valueOrCurrent = (patch, key, currentValue) =>
+  hasOwn(patch, key) ? patch[key] : currentValue;
+
 export const ModifierMutation = {
-  // ============ Group CRUD ============
-
   createModifierGroup: async (_, { input }, ctx) => {
-    const { user } = ctx || {};
     try {
-      requireRole(user, ["admin", "manager"]);
-
-      const patch = normalizeAndValidateGroupInput(input, { isUpdate: false });
+      requireRole(ctx?.user, ["admin", "manager"]);
+      const patch = normalizeAndValidateGroupInput(input);
       await requireRestaurantAccess(ctx, patch.restaurantId);
 
-      // validate cross-collection
       if (patch.coverage === "ITEMS") {
         await assertMenuItemsExist({
           restaurantId: patch.restaurantId,
-          menuItemIds: (patch.menuItemIds || []).map(String),
+          menuItemIds: patch.menuItemIds,
         });
       }
-      await assertIngredientsExistFromOptions(patch.options);
+      await assertIngredientsExistFromOptions({
+        restaurantId: patch.restaurantId,
+        options: patch.options,
+      });
 
       const created = await ModifierGroup.create(patch);
-      return await ModifierGroup.findById(created._id).lean({ virtuals: true });
-    } catch (err) {
-      console.error("❌ createModifierGroup error:", err);
-      const e = normalizeDupKey(err);
-      throw e instanceof GraphQLError
-        ? e
-        : new GraphQLError(e.message || "Failed to create modifier group", {
+      return ModifierGroup.findById(created._id).lean({ virtuals: true });
+    } catch (error) {
+      console.error("❌ createModifierGroup error:", error);
+      const normalized = normalizeDupKey(error);
+      throw normalized instanceof GraphQLError
+        ? normalized
+        : new GraphQLError(normalized.message || "Không thể tạo nhóm tuỳ chọn.", {
             extensions: { code: "INTERNAL_SERVER_ERROR" },
           });
     }
   },
 
   updateModifierGroup: async (_, { input }, ctx) => {
-    const { user } = ctx || {};
     try {
-      requireRole(user, ["admin", "manager"]);
-
+      requireRole(ctx?.user, ["admin", "manager"]);
       const { id, ...rest } = input || {};
-      if (!isValidId(id)) badRequest("Invalid id");
+      if (!isValidId(id)) badRequest("Nhóm tuỳ chọn không hợp lệ.");
 
-      const doc = await ModifierGroup.findById(id);
-      if (!doc) throw new GraphQLError("ModifierGroup not found");
-      await requireRestaurantAccess(ctx, doc.restaurantId);
+      const document = await ModifierGroup.findById(id);
+      if (!document) throw new GraphQLError("Không tìm thấy nhóm tuỳ chọn.");
+      await requireRestaurantAccess(ctx, document.restaurantId);
 
-      // merge current + patch để validate ràng buộc chéo chắc chắn
       const merged = {
-        restaurantId: doc.restaurantId,
-        name: rest.name ?? doc.name,
-        groupType: rest.groupType ?? doc.groupType,
-        coverage: rest.coverage ?? doc.coverage,
-        menuItemIds: rest.menuItemIds ?? doc.menuItemIds,
-        selectionType: rest.selectionType ?? doc.selectionType,
-        required: rest.required ?? doc.required,
-        minSelected: rest.minSelected ?? doc.minSelected,
-        maxSelected: rest.maxSelected ?? doc.maxSelected,
-        options: rest.options ?? doc.options,
-        note: rest.note ?? doc.note,
-        isActive: rest.isActive ?? doc.isActive,
+        restaurantId: document.restaurantId,
+        name: valueOrCurrent(rest, "name", document.name),
+        groupType: valueOrCurrent(rest, "groupType", document.groupType),
+        coverage: valueOrCurrent(rest, "coverage", document.coverage),
+        menuItemIds: valueOrCurrent(rest, "menuItemIds", document.menuItemIds),
+        selectionType: valueOrCurrent(rest, "selectionType", document.selectionType),
+        required: valueOrCurrent(rest, "required", document.required),
+        minSelected: valueOrCurrent(rest, "minSelected", document.minSelected),
+        maxSelected: valueOrCurrent(rest, "maxSelected", document.maxSelected),
+        options: valueOrCurrent(rest, "options", document.options),
+        note: valueOrCurrent(rest, "note", document.note),
+        isActive: valueOrCurrent(rest, "isActive", document.isActive),
       };
-      merged.restaurantId = doc.restaurantId;
-
       const patch = normalizeAndValidateGroupInput(merged, { isUpdate: true });
 
-      // validate cross-collection
-      if ((patch.coverage ?? merged.coverage) === "ITEMS") {
-        const ids = (patch.menuItemIds ?? merged.menuItemIds ?? []).map(String);
+      if (patch.coverage === "ITEMS") {
         await assertMenuItemsExist({
-          restaurantId: merged.restaurantId,
-          menuItemIds: ids,
+          restaurantId: document.restaurantId,
+          menuItemIds: patch.menuItemIds,
         });
       }
+      await assertIngredientsExistFromOptions({
+        restaurantId: document.restaurantId,
+        options: patch.options,
+      });
 
-      const options = patch.options ?? merged.options;
-      await assertIngredientsExistFromOptions(options);
-
-      Object.assign(doc, patch);
-      await doc.save();
-
-      return await ModifierGroup.findById(doc._id).lean({ virtuals: true });
-    } catch (err) {
-      console.error("❌ updateModifierGroup error:", err);
-      const e = normalizeDupKey(err);
-      throw e instanceof GraphQLError
-        ? e
-        : new GraphQLError(e.message || "Failed to update modifier group", {
+      Object.assign(document, patch);
+      await document.save();
+      return ModifierGroup.findById(document._id).lean({ virtuals: true });
+    } catch (error) {
+      console.error("❌ updateModifierGroup error:", error);
+      const normalized = normalizeDupKey(error);
+      throw normalized instanceof GraphQLError
+        ? normalized
+        : new GraphQLError(normalized.message || "Không thể cập nhật nhóm tuỳ chọn.", {
             extensions: { code: "INTERNAL_SERVER_ERROR" },
           });
     }
   },
 
   deleteModifierGroup: async (_, { id }, ctx) => {
-    const { user } = ctx || {};
     try {
-      requireRole(user, ["admin"]);
+      requireRole(ctx?.user, ["admin"]);
+      if (!isValidId(id)) badRequest("Nhóm tuỳ chọn không hợp lệ.");
 
-      if (!isValidId(id)) badRequest("Invalid id");
-      const existing = await ModifierGroup.findById(id).select({ restaurantId: 1 }).lean();
+      const existing = await ModifierGroup.findById(id)
+        .select({ restaurantId: 1 })
+        .lean();
       if (!existing) return true;
       await requireRestaurantAccess(ctx, existing.restaurantId);
 
-      // professional: chặn xoá nếu đã xuất hiện trong Order
-      // (nếu bạn chưa có Order model trong index.js thì bỏ import Order ở trên)
       const usedInOrders = await Order?.exists?.({
         "items.modifiers.groupId": toId(id),
       });
       if (usedInOrders) {
-        throw new GraphQLError("Cannot delete: group already used in orders", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
+        badRequest("Nhóm đã được dùng trong đơn hàng. Hãy tắt nhóm thay vì xoá.");
       }
 
       await ModifierGroup.findByIdAndDelete(id);
       return true;
-    } catch (err) {
-      console.error("❌ deleteModifierGroup error:", err);
-      throw err instanceof GraphQLError
-        ? err
-        : new GraphQLError(err.message || "Failed to delete modifier group", {
+    } catch (error) {
+      console.error("❌ deleteModifierGroup error:", error);
+      throw error instanceof GraphQLError
+        ? error
+        : new GraphQLError(error.message || "Không thể xoá nhóm tuỳ chọn.", {
             extensions: { code: "INTERNAL_SERVER_ERROR" },
           });
     }
   },
 
-  // ============ Option CRUD (clean, đúng model mới) ============
-
   addModifierOption: async (_, { groupId, option }, ctx) => {
-    const { user } = ctx || {};
     try {
-      requireRole(user, ["admin", "manager"]);
+      requireRole(ctx?.user, ["admin", "manager"]);
+      if (!isValidId(groupId)) badRequest("Nhóm tuỳ chọn không hợp lệ.");
 
-      if (!isValidId(groupId)) badRequest("Invalid groupId");
-      const g = await ModifierGroup.findById(groupId);
-      if (!g) throw new GraphQLError("ModifierGroup not found");
-      await requireRestaurantAccess(ctx, g.restaurantId);
+      const group = await ModifierGroup.findById(groupId);
+      if (!group) throw new GraphQLError("Không tìm thấy nhóm tuỳ chọn.");
+      await requireRestaurantAccess(ctx, group.restaurantId);
 
       const normalizedOption = normalizeAndValidateOptionInput(option);
-      await assertIngredientsExistFromOptions([normalizedOption]);
+      await assertIngredientsExistFromOptions({
+        restaurantId: group.restaurantId,
+        options: [normalizedOption],
+      });
 
-      // single => chỉ 1 default
-      if (g.selectionType === "single" && normalizedOption.isDefault) {
-        g.options.forEach((o) => (o.isDefault = false));
+      if (normalizedOption.isDefault) {
+        group.options.forEach((candidate) => {
+          candidate.isDefault = false;
+        });
       }
+      group.options.push(normalizedOption);
+      normalizeDefaultOption(group);
 
-      g.options.push(normalizedOption);
-
-      // nếu single+required mà chưa có default => auto set default option đầu
-      if (g.selectionType === "single" && g.required) {
-        const anyDefault = g.options.some((o) => o.isDefault);
-        if (!anyDefault && g.options.length) g.options[0].isDefault = true;
-      }
-
-      await g.save();
-      return await ModifierGroup.findById(g._id).lean({ virtuals: true });
-    } catch (err) {
-      console.error("❌ addModifierOption error:", err);
-      throw err instanceof GraphQLError
-        ? err
-        : new GraphQLError(err.message || "Failed to add option", {
+      await group.save();
+      return ModifierGroup.findById(group._id).lean({ virtuals: true });
+    } catch (error) {
+      console.error("❌ addModifierOption error:", error);
+      throw error instanceof GraphQLError
+        ? error
+        : new GraphQLError(error.message || "Không thể thêm lựa chọn.", {
             extensions: { code: "INTERNAL_SERVER_ERROR" },
           });
     }
   },
 
   updateModifierOption: async (_, { groupId, optionId, option }, ctx) => {
-    const { user } = ctx || {};
     try {
-      requireRole(user, ["admin", "manager"]);
+      requireRole(ctx?.user, ["admin", "manager"]);
+      if (!isValidId(groupId) || !isValidId(optionId)) {
+        badRequest("Nhóm hoặc lựa chọn không hợp lệ.");
+      }
 
-      if (!isValidId(groupId)) badRequest("Invalid groupId");
-      if (!isValidId(optionId)) badRequest("Invalid optionId");
+      const group = await ModifierGroup.findById(groupId);
+      if (!group) throw new GraphQLError("Không tìm thấy nhóm tuỳ chọn.");
+      await requireRestaurantAccess(ctx, group.restaurantId);
 
-      const g = await ModifierGroup.findById(groupId);
-      if (!g) throw new GraphQLError("ModifierGroup not found");
-      await requireRestaurantAccess(ctx, g.restaurantId);
-
-      const idx = g.options.findIndex(
-        (o) => String(o._id) === String(optionId)
+      const optionIndex = group.options.findIndex(
+        (candidate) => String(candidate._id) === String(optionId),
       );
-      if (idx === -1) throw new GraphQLError("Option not found");
+      if (optionIndex < 0) throw new GraphQLError("Không tìm thấy lựa chọn.");
 
-      // build merged option then validate (no fallback)
-      const current = g.options[idx].toObject
-        ? g.options[idx].toObject()
-        : g.options[idx];
-
+      const current = group.options[optionIndex].toObject
+        ? group.options[optionIndex].toObject()
+        : group.options[optionIndex];
       const merged = {
-        name: option.name ?? current.name,
-        isDefault: option.isDefault ?? current.isDefault,
-        isActive: option.isActive ?? current.isActive,
-        priceRule: option.priceRule ?? current.priceRule,
-        inventoryRule: option.inventoryRule ?? current.inventoryRule,
+        name: valueOrCurrent(option, "name", current.name),
+        isDefault: valueOrCurrent(option, "isDefault", current.isDefault),
+        isActive: valueOrCurrent(option, "isActive", current.isActive),
+        priceRule: valueOrCurrent(option, "priceRule", current.priceRule),
+        inventoryRule: valueOrCurrent(option, "inventoryRule", current.inventoryRule),
       };
+      const normalizedOption = normalizeAndValidateOptionInput(merged);
+      await assertIngredientsExistFromOptions({
+        restaurantId: group.restaurantId,
+        options: [normalizedOption],
+      });
 
-      const normalized = normalizeAndValidateOptionInput(merged);
-      await assertIngredientsExistFromOptions([normalized]);
-
-      // single default handling
-      if (g.selectionType === "single" && normalized.isDefault) {
-        g.options.forEach((o) => (o.isDefault = false));
+      if (normalizedOption.isDefault) {
+        group.options.forEach((candidate) => {
+          candidate.isDefault = false;
+        });
       }
+      Object.assign(group.options[optionIndex], normalizedOption);
+      normalizeDefaultOption(group);
 
-      g.options[idx].name = normalized.name;
-      g.options[idx].isDefault = normalized.isDefault;
-      g.options[idx].isActive = normalized.isActive;
-      g.options[idx].priceRule = normalized.priceRule;
-      g.options[idx].inventoryRule = normalized.inventoryRule;
-
-      if (g.selectionType === "single" && g.required) {
-        const anyDefault = g.options.some((o) => o.isDefault);
-        if (!anyDefault && g.options.length) g.options[0].isDefault = true;
-      }
-
-      await g.save();
-      return await ModifierGroup.findById(g._id).lean({ virtuals: true });
-    } catch (err) {
-      console.error("❌ updateModifierOption error:", err);
-      throw err instanceof GraphQLError
-        ? err
-        : new GraphQLError(err.message || "Failed to update option", {
+      await group.save();
+      return ModifierGroup.findById(group._id).lean({ virtuals: true });
+    } catch (error) {
+      console.error("❌ updateModifierOption error:", error);
+      throw error instanceof GraphQLError
+        ? error
+        : new GraphQLError(error.message || "Không thể cập nhật lựa chọn.", {
             extensions: { code: "INTERNAL_SERVER_ERROR" },
           });
     }
   },
 
   removeModifierOption: async (_, { groupId, optionId }, ctx) => {
-    const { user } = ctx || {};
     try {
-      requireRole(user, ["admin", "manager"]);
-
-      if (!isValidId(groupId)) badRequest("Invalid groupId");
-      if (!isValidId(optionId)) badRequest("Invalid optionId");
-
-      const g = await ModifierGroup.findById(groupId);
-      if (!g) throw new GraphQLError("ModifierGroup not found");
-      await requireRestaurantAccess(ctx, g.restaurantId);
-
-      g.options = (g.options || []).filter(
-        (o) => String(o._id) !== String(optionId)
-      );
-
-      if (g.selectionType === "single" && g.required) {
-        const anyDefault = g.options.some((o) => o.isDefault);
-        if (!anyDefault && g.options.length) g.options[0].isDefault = true;
+      requireRole(ctx?.user, ["admin", "manager"]);
+      if (!isValidId(groupId) || !isValidId(optionId)) {
+        badRequest("Nhóm hoặc lựa chọn không hợp lệ.");
       }
 
-      await g.save();
-      return await ModifierGroup.findById(g._id).lean({ virtuals: true });
-    } catch (err) {
-      console.error("❌ removeModifierOption error:", err);
-      throw err instanceof GraphQLError
-        ? err
-        : new GraphQLError(err.message || "Failed to remove option", {
+      const group = await ModifierGroup.findById(groupId);
+      if (!group) throw new GraphQLError("Không tìm thấy nhóm tuỳ chọn.");
+      await requireRestaurantAccess(ctx, group.restaurantId);
+
+      const optionIndex = group.options.findIndex(
+        (candidate) => String(candidate._id) === String(optionId),
+      );
+      if (optionIndex < 0) throw new GraphQLError("Không tìm thấy lựa chọn.");
+      if (group.options.length <= 1) {
+        badRequest("Nhóm tuỳ chọn phải giữ lại ít nhất một lựa chọn.");
+      }
+
+      group.options.splice(optionIndex, 1);
+      normalizeDefaultOption(group);
+      await group.save();
+      return ModifierGroup.findById(group._id).lean({ virtuals: true });
+    } catch (error) {
+      console.error("❌ removeModifierOption error:", error);
+      throw error instanceof GraphQLError
+        ? error
+        : new GraphQLError(error.message || "Không thể xoá lựa chọn.", {
             extensions: { code: "INTERNAL_SERVER_ERROR" },
           });
     }
