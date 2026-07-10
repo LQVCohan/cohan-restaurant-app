@@ -654,6 +654,9 @@ export default function AiChatbotKnowledgePage() {
   const suggestions = (
     suggestionsQuery.data?.restaurantAiChatbotKnowledgeSuggestions || []
   ).filter(Boolean);
+  const allSuggestionsSelected =
+    suggestions.length > 0 &&
+    suggestions.every((item) => selectedSuggestions.includes(item.id));
   const feedback = (
     feedbackQuery.data?.restaurantAiChatbotAnswerFeedback || []
   ).filter(Boolean);
@@ -688,7 +691,11 @@ export default function AiChatbotKnowledgePage() {
     setNotice("");
     try {
       const actionMessage = await action();
-      setNotice(typeof actionMessage === "string" && actionMessage ? actionMessage : successMessage);
+      setNotice(
+        typeof actionMessage === "string" && actionMessage
+          ? actionMessage
+          : successMessage,
+      );
       setPendingConfirm(null);
       refetchAll();
     } catch (error) {
@@ -736,7 +743,8 @@ export default function AiChatbotKnowledgePage() {
       return block("Tiêu đề tri thức bắt buộc và tối đa 160 ký tự.");
     if (!input.content || input.content.length > 3000)
       return block("Nội dung tri thức bắt buộc và tối đa 3000 ký tự.");
-    if (input.category.length > 80) return block("Danh mục tối đa 80 ký tự.");
+    if (input.category.length > 80)
+      return block("Danh mục tối đa 80 ký tự.");
     if (!validateTags(tags))
       return block("Tối đa 10 thẻ, mỗi thẻ tối đa 40 ký tự.");
     if (!validatePriority(input.priority))
@@ -846,7 +854,8 @@ export default function AiChatbotKnowledgePage() {
       return block("Question bắt buộc và tối đa 500 ký tự.");
     if (input.expectedBehavior.length > 1000)
       return block("Expected behavior tối đa 1000 ký tự.");
-    if (input.category.length > 80) return block("Category tối đa 80 ký tự.");
+    if (input.category.length > 80)
+      return block("Category tối đa 80 ký tự.");
     if (!validateTags(tags))
       return block("Tối đa 10 tags, mỗi tag tối đa 40 ký tự.");
     runAction(
@@ -968,6 +977,33 @@ export default function AiChatbotKnowledgePage() {
     );
   };
 
+  const approveSuggestionItem = (item) =>
+    approveSuggestion({
+      variables: {
+        id: item.id,
+        input: {
+          title: item.suggestedTitle || item.question,
+          content: item.suggestedContent || item.question,
+          category: item.category || "suggestion",
+          tags: item.tags || [],
+          enabled: true,
+          priority: 20,
+          sourceType: "suggestion",
+        },
+      },
+    });
+  const approveSelectedSuggestions = () =>
+    runAction(
+      async () => {
+        for (const item of suggestions) {
+          if (selectedSuggestions.includes(item.id)) {
+            await approveSuggestionItem(item);
+          }
+        }
+        setSelectedSuggestions([]);
+      },
+      `Đã duyệt ${selectedSuggestions.length} gợi ý thành tri thức.`,
+    );
   const selectedAction = (ids, action, message) =>
     runAction(() => action({ variables: { input: { ids } } }), message);
   const disabledWriteTitle = canWriteKnowledge
@@ -1195,7 +1231,12 @@ export default function AiChatbotKnowledgePage() {
             <div className="ai-admin-empty__icon">＋</div>
             <h4>Chưa có mục tri thức</h4>
             <p>Thêm tri thức đầu tiên để chatbot có nguồn trả lời rõ ràng hơn.</p>
-            <button type="button" disabled={!canWriteKnowledge} title={disabledWriteTitle} onClick={() => setKnowledgeEditorOpen(true)}>
+            <button
+              type="button"
+              disabled={!canWriteKnowledge}
+              title={disabledWriteTitle}
+              onClick={() => setKnowledgeEditorOpen(true)}
+            >
               Thêm tri thức đầu tiên
             </button>
           </div>
@@ -1203,138 +1244,138 @@ export default function AiChatbotKnowledgePage() {
       </article>
       <aside className="ai-admin-side-stack">
         {knowledgeEditorOpen ? (
-        <article className="ai-admin-panel ai-admin-drawer-panel">
-          <header className="ai-admin-panel__header ai-admin-panel__header--compact">
-            <div>
-              <p className="ai-admin-eyebrow">Nội dung tri thức</p>
-              <h3>{editingKnowledgeId ? "Sửa tri thức" : "Thêm tri thức"}</h3>
-              <p>
-                {!canWriteKnowledge
-                  ? "Chế độ chỉ xem: bạn cần quyền chỉnh sửa chatbot."
-                  : "Chỉ nhập nội dung cần thiết; mở cài đặt nâng cao khi cần."}
-              </p>
-            </div>
-          </header>
-          <form className="ai-admin-form" onSubmit={submitKnowledge}>
-            <label className="ai-admin-field">
-              <span>Tiêu đề</span>
-              <input
-                disabled={!canWriteKnowledge}
-                value={knowledgeForm.title}
-                maxLength={160}
-                onChange={(e) =>
-                  setKnowledgeForm((f) => ({ ...f, title: e.target.value }))
-                }
-              />
-            </label>
-            <label className="ai-admin-field">
-              <span>Nội dung</span>
-              <textarea
-                disabled={!canWriteKnowledge}
-                rows={8}
-                maxLength={3000}
-                value={knowledgeForm.content}
-                onChange={(e) =>
-                  setKnowledgeForm((f) => ({ ...f, content: e.target.value }))
-                }
-              />
-            </label>
-            <div className="ai-admin-form__split">
+          <article className="ai-admin-panel ai-admin-drawer-panel">
+            <header className="ai-admin-panel__header ai-admin-panel__header--compact">
+              <div>
+                <p className="ai-admin-eyebrow">Nội dung tri thức</p>
+                <h3>{editingKnowledgeId ? "Sửa tri thức" : "Thêm tri thức"}</h3>
+                <p>
+                  {!canWriteKnowledge
+                    ? "Chế độ chỉ xem: bạn cần quyền chỉnh sửa chatbot."
+                    : "Chỉ nhập nội dung cần thiết; mở cài đặt nâng cao khi cần."}
+                </p>
+              </div>
+            </header>
+            <form className="ai-admin-form" onSubmit={submitKnowledge}>
               <label className="ai-admin-field">
-                <span>Danh mục</span>
+                <span>Tiêu đề</span>
                 <input
                   disabled={!canWriteKnowledge}
-                  maxLength={80}
-                  value={knowledgeForm.category}
+                  value={knowledgeForm.title}
+                  maxLength={160}
                   onChange={(e) =>
-                    setKnowledgeForm((f) => ({
-                      ...f,
-                      category: e.target.value,
-                    }))
+                    setKnowledgeForm((f) => ({ ...f, title: e.target.value }))
                   }
                 />
               </label>
               <label className="ai-admin-field">
-                <span>Nguồn nội dung</span>
-                <select
+                <span>Nội dung</span>
+                <textarea
                   disabled={!canWriteKnowledge}
-                  value={knowledgeForm.sourceType}
+                  rows={8}
+                  maxLength={3000}
+                  value={knowledgeForm.content}
                   onChange={(e) =>
-                    setKnowledgeForm((f) => ({
-                      ...f,
-                      sourceType: e.target.value,
-                    }))
+                    setKnowledgeForm((f) => ({ ...f, content: e.target.value }))
                   }
+                />
+              </label>
+              <div className="ai-admin-form__split">
+                <label className="ai-admin-field">
+                  <span>Danh mục</span>
+                  <input
+                    disabled={!canWriteKnowledge}
+                    maxLength={80}
+                    value={knowledgeForm.category}
+                    onChange={(e) =>
+                      setKnowledgeForm((f) => ({
+                        ...f,
+                        category: e.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="ai-admin-field">
+                  <span>Nguồn nội dung</span>
+                  <select
+                    disabled={!canWriteKnowledge}
+                    value={knowledgeForm.sourceType}
+                    onChange={(e) =>
+                      setKnowledgeForm((f) => ({
+                        ...f,
+                        sourceType: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="manual">Thủ công</option>
+                    <option value="faq">FAQ</option>
+                    <option value="policy">Chính sách</option>
+                    <option value="suggestion">Gợi ý</option>
+                  </select>
+                </label>
+              </div>
+              <label className="ai-admin-field">
+                <span>Thẻ</span>
+                <input
+                  disabled={!canWriteKnowledge}
+                  value={knowledgeForm.tags}
+                  onChange={(e) =>
+                    setKnowledgeForm((f) => ({ ...f, tags: e.target.value }))
+                  }
+                  placeholder="thực đơn, chính sách, cay"
+                />
+              </label>
+              <div className="ai-admin-form__split">
+                <label className="ai-admin-field">
+                  <span>Ưu tiên</span>
+                  <input
+                    disabled={!canWriteKnowledge}
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={knowledgeForm.priority}
+                    onChange={(e) =>
+                      setKnowledgeForm((f) => ({
+                        ...f,
+                        priority: e.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="ai-admin-check">
+                  <input
+                    disabled={!canWriteKnowledge}
+                    type="checkbox"
+                    checked={!!knowledgeForm.enabled}
+                    onChange={(e) =>
+                      setKnowledgeForm((f) => ({
+                        ...f,
+                        enabled: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span>Cho phép chatbot dùng nội dung này</span>
+                </label>
+              </div>
+              <div className="ai-admin-actions">
+                <button type="submit" disabled={!canWriteKnowledge}>
+                  {editingKnowledgeId ? "Cập nhật" : "Thêm tri thức"}
+                </button>
+                <button
+                  type="button"
+                  className="ai-admin-button--secondary"
+                  onClick={() => {
+                    setKnowledgeForm(defaultKnowledgeForm);
+                    setEditingKnowledgeId(null);
+                    setKnowledgeEditorOpen(false);
+                  }}
                 >
-                  <option value="manual">Thủ công</option>
-                  <option value="faq">FAQ</option>
-                  <option value="policy">Chính sách</option>
-                  <option value="suggestion">Gợi ý</option>
-                </select>
-              </label>
-            </div>
-            <label className="ai-admin-field">
-              <span>Thẻ</span>
-              <input
-                disabled={!canWriteKnowledge}
-                value={knowledgeForm.tags}
-                onChange={(e) =>
-                  setKnowledgeForm((f) => ({ ...f, tags: e.target.value }))
-                }
-                placeholder="thực đơn, chính sách, cay"
-              />
-            </label>
-            <div className="ai-admin-form__split">
-              <label className="ai-admin-field">
-                <span>Ưu tiên</span>
-                <input
-                  disabled={!canWriteKnowledge}
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value={knowledgeForm.priority}
-                  onChange={(e) =>
-                    setKnowledgeForm((f) => ({
-                      ...f,
-                      priority: e.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label className="ai-admin-check">
-                <input
-                  disabled={!canWriteKnowledge}
-                  type="checkbox"
-                  checked={!!knowledgeForm.enabled}
-                  onChange={(e) =>
-                    setKnowledgeForm((f) => ({
-                      ...f,
-                      enabled: e.target.checked,
-                    }))
-                  }
-                />
-                <span>Cho phép chatbot dùng nội dung này</span>
-              </label>
-            </div>
-            <div className="ai-admin-actions">
-              <button type="submit" disabled={!canWriteKnowledge}>
-                {editingKnowledgeId ? "Cập nhật" : "Thêm tri thức"}
-              </button>
-              <button
-                type="button"
-                className="ai-admin-button--secondary"
-                onClick={() => {
-                  setKnowledgeForm(defaultKnowledgeForm);
-                  setEditingKnowledgeId(null);
-                  setKnowledgeEditorOpen(false);
-                }}
-              >
-                Đóng
-              </button>
-            </div>
-          </form>
-        </article>
+                  Đóng
+                </button>
+              </div>
+            </form>
+          </article>
         ) : (
           <article className="ai-admin-panel ai-admin-drawer-panel ai-admin-guide-card">
             <div className="ai-admin-empty__icon">i</div>
@@ -1345,7 +1386,14 @@ export default function AiChatbotKnowledgePage() {
               thanh toán, khuyến mãi và giao hàng để tạo các gợi ý tri thức.
               Quản lý cần duyệt trước khi chatbot sử dụng.
             </p>
-            <button type="button" disabled={!canWriteKnowledge} title={disabledWriteTitle} onClick={() => setKnowledgeEditorOpen(true)}>Thêm tri thức</button>
+            <button
+              type="button"
+              disabled={!canWriteKnowledge}
+              title={disabledWriteTitle}
+              onClick={() => setKnowledgeEditorOpen(true)}
+            >
+              Thêm tri thức
+            </button>
           </article>
         )}
         <details className="ai-admin-collapsible ai-admin-panel">
@@ -1429,13 +1477,37 @@ export default function AiChatbotKnowledgePage() {
           <p className="ai-admin-eyebrow">Gợi ý</p>
           <h3>Gợi ý bổ sung tri thức</h3>
           <p>
-            Duyệt các câu hỏi khách đã hỏi nhưng chatbot cần thêm nội dung để trả lời tốt hơn.
+            Duyệt các câu hỏi khách đã hỏi nhưng chatbot cần thêm nội dung để trả
+            lời tốt hơn.
           </p>
         </div>
         <div className="ai-admin-actions">
           <span className="ai-admin-selection">
             {selectedSuggestions.length} mục đã chọn
           </span>
+          <button
+            type="button"
+            className="ai-admin-button--secondary"
+            disabled={!canModerateAi || !suggestions.length}
+            title={disabledModerateTitle}
+            onClick={() =>
+              setSelectedSuggestions(
+                allSuggestionsSelected
+                  ? []
+                  : suggestions.map((item) => item.id),
+              )
+            }
+          >
+            {allSuggestionsSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+          </button>
+          <button
+            type="button"
+            disabled={!canModerateAi || !selectedSuggestions.length}
+            title={disabledModerateTitle}
+            onClick={approveSelectedSuggestions}
+          >
+            Duyệt mục đã chọn
+          </button>
           <button
             type="button"
             className="ai-admin-button--secondary"
@@ -1481,6 +1553,7 @@ export default function AiChatbotKnowledgePage() {
             <article key={item.id} className="ai-admin-card">
               <input
                 className="ai-admin-card__checkbox"
+                aria-label={`suggestion-${item.id}`}
                 type="checkbox"
                 checked={selectedSuggestions.includes(item.id)}
                 onChange={() =>
@@ -1511,21 +1584,7 @@ export default function AiChatbotKnowledgePage() {
                   title={disabledModerateTitle}
                   onClick={() =>
                     runAction(
-                      () =>
-                        approveSuggestion({
-                          variables: {
-                            id: item.id,
-                            input: {
-                              title: item.suggestedTitle || item.question,
-                              content: item.suggestedContent || item.question,
-                              category: item.category || "suggestion",
-                              tags: item.tags || [],
-                              enabled: true,
-                              priority: 20,
-                              sourceType: "suggestion",
-                            },
-                          },
-                        }),
+                      () => approveSuggestionItem(item),
                       "Đã duyệt gợi ý thành tri thức.",
                     )
                   }
@@ -1727,7 +1786,8 @@ export default function AiChatbotKnowledgePage() {
             <p className="ai-admin-eyebrow">Quy tắc an toàn</p>
             <h3>Quy tắc an toàn</h3>
             <p>
-              Chặn chủ đề nhạy cảm, thêm nội dung cần cảnh báo, đề xuất chuyển nhân viên và giới hạn phạm vi trả lời.
+              Chặn chủ đề nhạy cảm, thêm nội dung cần cảnh báo, đề xuất chuyển
+              nhân viên và giới hạn phạm vi trả lời.
             </p>
           </div>
           <div className="ai-admin-actions">
@@ -1819,10 +1879,14 @@ export default function AiChatbotKnowledgePage() {
                       <span>Ưu tiên {item.priority}</span>
                     </div>
                     <h4>{item.pattern}</h4>
-                    <p>{item.responseMessage || "Chưa có nội dung cảnh báo."}</p>
+                    <p>
+                      {item.responseMessage || "Chưa có nội dung cảnh báo."}
+                    </p>
                   </div>
                   <div className="ai-admin-card__actions">
-                    <button type="button" onClick={() => editSafety(item)}>Sửa</button>
+                    <button type="button" onClick={() => editSafety(item)}>
+                      Sửa
+                    </button>
                     <button
                       type="button"
                       className="ai-admin-button--danger"
@@ -1861,101 +1925,108 @@ export default function AiChatbotKnowledgePage() {
         )}
       </article>
       {safetyEditorOpen ? (
-      <aside className="ai-admin-panel ai-admin-drawer-panel">
-        <header className="ai-admin-panel__header ai-admin-panel__header--compact">
-          <div>
-            <p className="ai-admin-eyebrow">Nội dung quy tắc</p>
-            <h3>{editingSafetyId ? "Sửa quy tắc" : "Thêm quy tắc"}</h3>
-          </div>
-        </header>
-        <form className="ai-admin-form" onSubmit={submitSafety}>
-          <label className="ai-admin-field">
-            <span>Loại quy tắc</span>
-            <select
-              disabled={!canModerateAi}
-              value={safetyForm.ruleType}
-              onChange={(e) =>
-                setSafetyForm((f) => ({ ...f, ruleType: e.target.value }))
-              }
-            >
-              {[...RULE_TYPES].map((type) => (
-                <option key={type} value={type}>
-                  {safetyRuleLabel(type)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="ai-admin-field">
-            <span>Chủ đề hoặc nội dung cần kiểm soát</span>
-            <input
-              disabled={!canModerateAi}
-              value={safetyForm.pattern}
-              onChange={(e) =>
-                setSafetyForm((f) => ({ ...f, pattern: e.target.value }))
-              }
-            />
-          </label>
-          <label className="ai-admin-field">
-            <span>Nội dung cần cảnh báo</span>
-            <textarea
-              disabled={!canModerateAi}
-              value={safetyForm.responseMessage}
-              onChange={(e) =>
-                setSafetyForm((f) => ({
-                  ...f,
-                  responseMessage: e.target.value,
-                }))
-              }
-            />
-          </label>
-          <label className="ai-admin-field">
-            <span>Ưu tiên</span>
-            <input
-              disabled={!canModerateAi}
-              type="number"
-              min="0"
-              max="100"
-              value={safetyForm.priority}
-              onChange={(e) =>
-                setSafetyForm((f) => ({ ...f, priority: e.target.value }))
-              }
-            />
-          </label>
-          <label className="ai-admin-check">
-            <input
-              disabled={!canModerateAi}
-              type="checkbox"
-              checked={!!safetyForm.enabled}
-              onChange={(e) =>
-                setSafetyForm((f) => ({ ...f, enabled: e.target.checked }))
-              }
-            />
-            <span>Bật quy tắc</span>
-          </label>
-          <div className="ai-admin-actions">
-            <button type="submit" disabled={!canModerateAi}>
-              {editingSafetyId ? "Cập nhật" : "Thêm quy tắc"}
-            </button>
-            <button
-              type="button"
-              className="ai-admin-button--secondary"
-              onClick={() => {
-                setSafetyForm(defaultSafetyForm);
-                setEditingSafetyId(null);
-                setSafetyEditorOpen(false);
-              }}
-            >
-              Đóng
-            </button>
-          </div>
-        </form>
-      </aside>
+        <aside className="ai-admin-panel ai-admin-drawer-panel">
+          <header className="ai-admin-panel__header ai-admin-panel__header--compact">
+            <div>
+              <p className="ai-admin-eyebrow">Nội dung quy tắc</p>
+              <h3>{editingSafetyId ? "Sửa quy tắc" : "Thêm quy tắc"}</h3>
+            </div>
+          </header>
+          <form className="ai-admin-form" onSubmit={submitSafety}>
+            <label className="ai-admin-field">
+              <span>Loại quy tắc</span>
+              <select
+                disabled={!canModerateAi}
+                value={safetyForm.ruleType}
+                onChange={(e) =>
+                  setSafetyForm((f) => ({ ...f, ruleType: e.target.value }))
+                }
+              >
+                {[...RULE_TYPES].map((type) => (
+                  <option key={type} value={type}>
+                    {safetyRuleLabel(type)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="ai-admin-field">
+              <span>Chủ đề hoặc nội dung cần kiểm soát</span>
+              <input
+                disabled={!canModerateAi}
+                value={safetyForm.pattern}
+                onChange={(e) =>
+                  setSafetyForm((f) => ({ ...f, pattern: e.target.value }))
+                }
+              />
+            </label>
+            <label className="ai-admin-field">
+              <span>Nội dung cần cảnh báo</span>
+              <textarea
+                disabled={!canModerateAi}
+                value={safetyForm.responseMessage}
+                onChange={(e) =>
+                  setSafetyForm((f) => ({
+                    ...f,
+                    responseMessage: e.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label className="ai-admin-field">
+              <span>Ưu tiên</span>
+              <input
+                disabled={!canModerateAi}
+                type="number"
+                min="0"
+                max="100"
+                value={safetyForm.priority}
+                onChange={(e) =>
+                  setSafetyForm((f) => ({ ...f, priority: e.target.value }))
+                }
+              />
+            </label>
+            <label className="ai-admin-check">
+              <input
+                disabled={!canModerateAi}
+                type="checkbox"
+                checked={!!safetyForm.enabled}
+                onChange={(e) =>
+                  setSafetyForm((f) => ({ ...f, enabled: e.target.checked }))
+                }
+              />
+              <span>Bật quy tắc</span>
+            </label>
+            <div className="ai-admin-actions">
+              <button type="submit" disabled={!canModerateAi}>
+                {editingSafetyId ? "Cập nhật" : "Thêm quy tắc"}
+              </button>
+              <button
+                type="button"
+                className="ai-admin-button--secondary"
+                onClick={() => {
+                  setSafetyForm(defaultSafetyForm);
+                  setEditingSafetyId(null);
+                  setSafetyEditorOpen(false);
+                }}
+              >
+                Đóng
+              </button>
+            </div>
+          </form>
+        </aside>
       ) : (
         <aside className="ai-admin-panel ai-admin-guide-card">
           <div className="ai-admin-empty__icon">i</div>
           <h3>Chọn một quy tắc</h3>
           <p>Chọn quy tắc an toàn để xem chi tiết hoặc thêm quy tắc mới.</p>
-          <button type="button" disabled={!canModerateAi} title={disabledModerateTitle} onClick={() => setSafetyEditorOpen(true)}>Thêm quy tắc</button>
+          <button
+            type="button"
+            disabled={!canModerateAi}
+            title={disabledModerateTitle}
+            onClick={() => setSafetyEditorOpen(true)}
+          >
+            Thêm quy tắc
+          </button>
         </aside>
       )}
     </div>
@@ -1967,7 +2038,10 @@ export default function AiChatbotKnowledgePage() {
           <div>
             <p className="ai-admin-eyebrow">Kiểm thử phản hồi</p>
             <h3>Kiểm thử phản hồi</h3>
-            <p>Thử câu hỏi của khách và kiểm tra chất lượng câu trả lời trước khi áp dụng rộng rãi.</p>
+            <p>
+              Thử câu hỏi của khách và kiểm tra chất lượng câu trả lời trước khi
+              áp dụng rộng rãi.
+            </p>
           </div>
           <div className="ai-admin-actions">
             <button
@@ -2057,7 +2131,10 @@ export default function AiChatbotKnowledgePage() {
               rows={3}
               value={evalForm.expectedBehavior}
               onChange={(e) =>
-                setEvalForm((f) => ({ ...f, expectedBehavior: e.target.value }))
+                setEvalForm((f) => ({
+                  ...f,
+                  expectedBehavior: e.target.value,
+                }))
               }
             />
           </label>
@@ -2197,7 +2274,9 @@ export default function AiChatbotKnowledgePage() {
                                 input: { id: item.id, enabled: !item.enabled },
                               },
                             }),
-                          item.enabled ? "Đã disable case." : "Đã enable case.",
+                          item.enabled
+                            ? "Đã disable case."
+                            : "Đã enable case.",
                         )
                       }
                     >
@@ -2261,7 +2340,8 @@ export default function AiChatbotKnowledgePage() {
           <p className="ai-admin-eyebrow">Trung tâm tri thức</p>
           <h2>Tri thức Chatbot AI</h2>
           <p>
-            Quản lý nội dung chatbot dùng để trả lời khách và các gợi ý cần duyệt. {readOnly ? "Bạn đang ở chế độ chỉ xem." : ""}
+            Quản lý nội dung chatbot dùng để trả lời khách và các gợi ý cần duyệt.{" "}
+            {readOnly ? "Bạn đang ở chế độ chỉ xem." : ""}
           </p>
         </div>
         <label className="ai-admin-field ai-admin-field--restaurant">
