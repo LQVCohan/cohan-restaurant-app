@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import { Order } from "../../../models/index.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { ConfirmedOrderPrintMutation } from "./confirmedOrderPrintMutation.js";
 
@@ -22,7 +24,7 @@ async function requireInputRestaurantAccess(ctx, restaurantId) {
   return rid;
 }
 
-async function loadScopedOrder({ orderId, restaurantId, ctx }) {
+async function loadScopedOrder({ orderId, restaurantId, ctx, permissionCode }) {
   const oid = toObjectId(orderId);
   if (!oid) throw new Error("Invalid orderId");
 
@@ -33,7 +35,11 @@ async function loadScopedOrder({ orderId, restaurantId, ctx }) {
     throw new Error("Order not found");
   }
 
-  await requireRestaurantAccess(ctx, order.restaurantId);
+  if (permissionCode) {
+    await requireRestaurantPermission(ctx, order.restaurantId, permissionCode);
+  } else {
+    await requireRestaurantAccess(ctx, order.restaurantId);
+  }
   return order;
 }
 
@@ -145,6 +151,51 @@ export function withOrderRestaurantAccessGuards(mutation = {}) {
         orderItemId: input.orderItemId,
       });
       return mutation.remindOrderItem.call(mutation, parent, args, ctx, info);
+    },
+
+    async adjustOrderItemQuantity(parent, args, ctx, info) {
+      await loadScopedOrder({
+        orderId: args?.input?.orderId,
+        ctx,
+        permissionCode: PERMISSIONS.ORDER_UPDATE,
+      });
+      return mutation.adjustOrderItemQuantity.call(mutation, parent, args, ctx, info);
+    },
+
+    async requestOrderItemVoid(parent, args, ctx, info) {
+      await loadScopedOrder({
+        orderId: args?.input?.orderId,
+        ctx,
+        permissionCode: PERMISSIONS.ORDER_UPDATE,
+      });
+      return mutation.requestOrderItemVoid.call(mutation, parent, args, ctx, info);
+    },
+
+    async reviewOrderItemVoid(parent, args, ctx, info) {
+      await loadScopedOrder({
+        orderId: args?.input?.orderId,
+        ctx,
+        permissionCode: PERMISSIONS.ORDER_CANCEL,
+      });
+      return mutation.reviewOrderItemVoid.call(mutation, parent, args, ctx, info);
+    },
+
+    async requestOrderItemReturn(parent, args, ctx, info) {
+      await loadScopedOrder({
+        orderId: args?.input?.orderId,
+        ctx,
+        permissionCode: PERMISSIONS.ORDER_UPDATE,
+      });
+      return mutation.requestOrderItemReturn.call(mutation, parent, args, ctx, info);
+    },
+
+    async reviewOrderItemReturn(parent, args, ctx, info) {
+      await loadScopedOrder({
+        orderId: args?.input?.orderId,
+        ctx,
+        permissionCode: PERMISSIONS.ORDER_CANCEL,
+      });
+      return mutation.reviewOrderItemReturn.call(mutation, parent, args, ctx, info);
     },
   };
 }
