@@ -3,7 +3,7 @@
   "name": "table-360-only-flow",
   "title": "Simplify tables to a 360-only visual flow",
   "description": "Upgrade the add-table modal and remove per-table 3D/AR placement so each table exposes only photo/360 viewing.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack",
   "scope": "manager-table-create-and-customer-360-preview",
   "package": null,
@@ -11,25 +11,24 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "d6582eecaebdf904a493b441afd1026ed8ff0cc7",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": null,
   "relatedFiles": [
     "src/components/Dashboard_Manager/Table/TableManagement.jsx",
-    "src/components/Dashboard_Manager/Table/TableManagementPolish.scss",
-    "src/components/Dashboard_Manager/Table/TableActionsLiteModal.jsx",
-    "src/components/Customer/TableBooking/components/FloorMap/FloorMap.jsx",
+    "src/components/Dashboard_Manager/Table/TableAddModal360.css",
+    "src/components/Dashboard_Manager/Table/Table3DSimulatorModal.jsx",
     "src/hooks/useTableManagement.js",
     "src/hooks/useFloorManagement.js",
     "src/components/Dashboard_Manager/Table/TableManagement.test.jsx",
-    "src/components/Dashboard_Manager/Table/TableActionsLiteModal.test.jsx",
-    "src/components/Customer/TableBooking/components/FloorMap/FloorMap.test.jsx"
+    "src/components/Dashboard_Manager/Table/Table3DSimulatorModal.test.jsx",
+    "src/hooks/useTableManagement.360Only.test.js"
   ],
-  "notes": "The backend Table position remains required for the manually designed floor map. The change removes all reachable callers that attach visualConfig or AR-derived coordinates to a table, while keeping vrUrl/photos and legacy backend fields for backward compatibility."
+  "notes": "Completed the active 360-only product flow. TableManagement no longer imports, renders or calls the per-table model/AR simulator; table cards expose only 360 viewing/setup, and the add-table form contains operational fields only. Shared manager/public floor queries no longer request visualConfig. The table mutation boundary strips legacy model payloads and rejects the old AR signature that paired visualConfig with a derived position while preserving ordinary moveTable coordinates. The backend legacy field remains for historic-record compatibility. No CI workflow, component tests, GraphQL checks, production build, 390x844/430x932 viewport checks or physical-phone panorama validation were available through the GitHub connector."
 }
