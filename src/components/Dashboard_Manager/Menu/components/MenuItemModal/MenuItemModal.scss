@@ -320,3 +320,53 @@ $radius: 8px;
     }
   }
 }
+
+/* Reset the real Modal.Header. Legacy menu styles used a fake first header; this modal has one header. */
+.modal-overlay .modal-container.menu-item-modal-modern > .modal-header,
+.menu-item-modal-modern > .modal-header {
+  position: relative !important;
+  inset: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  z-index: 6 !important;
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 64px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  padding: 15px 22px 15px 24px !important;
+  overflow: visible !important;
+  pointer-events: auto !important;
+  white-space: normal !important;
+  word-break: normal !important;
+}
+
+.modal-overlay .modal-container.menu-item-modal-modern > .modal-header::before,
+.modal-overlay .modal-container.menu-item-modal-modern > .modal-header::after,
+.menu-item-modal-modern > .modal-header::before,
+.menu-item-modal-modern > .modal-header::after {
+  display: none !important;
+  content: none !important;
+}
+
+.modal-overlay .modal-container.menu-item-modal-modern > .modal-header > .modal-close,
+.modal-overlay .modal-container.menu-item-modal-modern > .modal-header > .btn-close,
+.menu-item-modal-modern > .modal-header > .modal-close,
+.menu-item-modal-modern > .modal-header > .btn-close {
+  position: static !important;
+  inset: auto !important;
+  flex: 0 0 auto !important;
+  width: 38px !important;
+  height: 38px !important;
+  margin: 0 0 0 auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  pointer-events: auto !important;
+}
