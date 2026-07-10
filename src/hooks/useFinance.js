@@ -75,27 +75,71 @@ const RANGE_MAP = {
   custom: "CUSTOM",
 };
 
-const today = new Date();
-const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+export const toLocalDateInputValue = (value) => {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+export const getMonthDateRange = (value = new Date()) => {
+  const date = value instanceof Date ? value : new Date(value);
+  return {
+    from: toLocalDateInputValue(new Date(date.getFullYear(), date.getMonth(), 1)),
+    to: toLocalDateInputValue(
+      new Date(date.getFullYear(), date.getMonth() + 1, 0),
+    ),
+  };
+};
+
+export const getFinanceRangeError = ({ range, dateFrom, dateTo }) => {
+  if (range !== "custom") return "";
+  if (!dateFrom || !dateTo) {
+    return "Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc.";
+  }
+  if (dateFrom > dateTo) {
+    return "Ngày bắt đầu không được sau ngày kết thúc.";
+  }
+  return "";
+};
+
+const initialMonth = getMonthDateRange();
 
 export const useFinance = () => {
-  const { restaurants = [] } = useContext(AuthContext) || {};
-  const [restaurantId, setRestaurantId] = useState(restaurants?.[0]?.id || "");
+  const { restaurants = [], activeRestaurantId = "" } =
+    useContext(AuthContext) || {};
+  const [restaurantId, setRestaurantId] = useState(
+    activeRestaurantId || restaurants?.[0]?.id || "",
+  );
   const [range, setRange] = useState("month");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [dateFrom, setDateFrom] = useState(monthStart);
-  const [dateTo, setDateTo] = useState(monthEnd);
-  const [currency, setCurrency] = useState("VND");
+  const [dateFrom, setDateFrom] = useState(initialMonth.from);
+  const [dateTo, setDateTo] = useState(initialMonth.to);
 
   useEffect(() => {
-    if (!restaurantId && restaurants?.length) {
-      setRestaurantId(restaurants[0].id);
+    if (!restaurants.length) {
+      if (restaurantId) setRestaurantId("");
+      return;
     }
-  }, [restaurants, restaurantId]);
 
-  const { data, loading, error, refetch } = useQuery(GET_FINANCE_DASHBOARD, {
-    skip: !restaurantId,
+    const stillAccessible = restaurants.some(
+      (restaurant) => String(restaurant.id) === String(restaurantId),
+    );
+    if (!stillAccessible) {
+      setRestaurantId(activeRestaurantId || restaurants[0].id);
+    }
+  }, [activeRestaurantId, restaurantId, restaurants]);
+
+  const validationError = useMemo(
+    () => getFinanceRangeError({ range, dateFrom, dateTo }),
+    [dateFrom, dateTo, range],
+  );
+  const canQuery = Boolean(restaurantId && !validationError);
+
+  const query = useQuery(GET_FINANCE_DASHBOARD, {
+    skip: !canQuery,
     fetchPolicy: "network-only",
     variables: {
       input: {
@@ -103,17 +147,19 @@ export const useFinance = () => {
         range: RANGE_MAP[range] || "MONTH",
         dateFrom: range === "custom" ? dateFrom : null,
         dateTo: range === "custom" ? dateTo : null,
-        currency,
       },
     },
   });
 
-  const dashboard = data?.financeDashboard;
+  const dashboard = query.data?.financeDashboard;
 
   const transactions = useMemo(() => {
     const items = dashboard?.transactions || [];
     if (typeFilter === "all") return items;
-    return items.filter((x) => x.type.toLowerCase() === typeFilter.toLowerCase());
+    return items.filter(
+      (item) =>
+        String(item.type || "").toLowerCase() === typeFilter.toLowerCase(),
+    );
   }, [dashboard, typeFilter]);
 
   return {
@@ -126,13 +172,13 @@ export const useFinance = () => {
     setDateFrom,
     dateTo,
     setDateTo,
-    currency,
-    setCurrency,
     typeFilter,
     setTypeFilter,
-    loading,
-    error,
-    refetch,
+    loading: query.loading,
+    error: query.error,
+    validationError,
+    canQuery,
+    refetch: canQuery ? query.refetch : async () => null,
     summary: dashboard?.summary || {
       revenue: 0,
       expense: 0,
