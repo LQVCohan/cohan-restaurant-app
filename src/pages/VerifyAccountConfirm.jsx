@@ -58,7 +58,7 @@ function resolveVerifyError(error) {
   }
 
   if (code === "NETWORK_ERROR") {
-    return "Không thể kết nối backend để xác minh. Vui lòng kiểm tra kết nối hoặc thử lại sau.";
+    return "Không thể kết nối hệ thống để xác minh. Vui lòng kiểm tra kết nối hoặc thử lại sau.";
   }
 
   return message || "Không thể hoàn tất yêu cầu. Vui lòng thử lại.";
@@ -74,14 +74,14 @@ async function verifyAccountByToken({ token, channel }) {
       body: JSON.stringify({ token, channel }),
     });
   } catch (err) {
-    const error = new Error(err?.message || "Network error");
+    const error = new Error(err?.message || "Không thể kết nối hệ thống.");
     error.code = "NETWORK_ERROR";
     throw error;
   }
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok || !data?.ok) {
-    const error = new Error(data?.message || "Verification failed");
+    const error = new Error(data?.message || "Không thể xác minh tài khoản.");
     error.code = data?.code || response.status;
     throw error;
   }
