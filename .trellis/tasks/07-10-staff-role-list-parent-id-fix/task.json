@@ -1,0 +1,30 @@
+{
+  "id": "staff-role-list-parent-id-fix",
+  "name": "staff-role-list-parent-id-fix",
+  "title": "Fix staff role list parent id serialization",
+  "description": "Map lean ParentRole _id values to the non-null GraphQL id field so the add-employee modal can consume roleList data from MongoDB.",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "manager-staff",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/resolvers/role/types.js",
+    "cohan-restaurant-backend/tests/resolvers/role-mutation-rbac-response.test.js",
+    "src/hooks/useStaffManagement.js",
+    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.jsx"
+  ],
+  "notes": "Flow traced: Mongo Role/ParentRole -> UserQuery.roleList -> Role.parentRole GraphQL field -> Apollo roleList -> EmployeeFormModal validation. The role query requests parentRole.id, but populated lean ParentRole values only expose _id and no ParentRole type resolver currently maps it to id."
+}
