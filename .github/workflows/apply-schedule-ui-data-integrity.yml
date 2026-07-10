@@ -16,7 +16,7 @@ permissions:
 
 concurrency:
   group: apply-schedule-ui-data-integrity-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   apply-and-verify:
@@ -44,7 +44,7 @@ jobs:
           if-no-files-found: error
 
       - name: Remove one-shot patch payload
-        run: rm scripts/apply-schedule-ui-data-integrity.py
+        run: rm -rf scripts/apply-schedule-ui-data-integrity.py scripts/.schedule-ui-patch
 
       - name: Check patch formatting
         run: git diff --check
