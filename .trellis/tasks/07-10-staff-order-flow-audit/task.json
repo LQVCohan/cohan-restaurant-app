@@ -1,22 +1,22 @@
 {
   "id": "07-10-staff-order-flow-audit",
   "title": "Kiểm tra và sửa luồng order của staff",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "full-stack-bugfix",
   "scope": [
-    "src/components/Staff/StaffOrderingScoped.jsx",
-    "src/components/Staff/StaffOrdering.jsx",
     "src/components/Staff/components/TableMap.jsx",
+    "src/components/Staff/components/TableMap.scss",
     "src/components/Staff/components/TableMap.test.jsx",
+    "src/components/Staff/staffOrderingPermissions.js",
+    "src/components/Staff/staffOrderingPermissions.test.js",
     "cohan-restaurant-backend/graphql/resolvers/order/accessGuard.js",
-    "cohan-restaurant-backend/graphql/resolvers/order/mutation.js",
     "cohan-restaurant-backend/tests/resolvers/order-restaurant-access-guard.test.js"
   ],
-  "rootCause": "The staff order screen resolves restaurant scope twice, maps table fields/statuses inconsistently, and emits quick-action names that its caller does not handle. Persisted item adjustment mutations also bypass the shared order restaurant/permission guard, while payment requests reject cashier accounts that carry payment.write but not order.update.",
+  "rootCause": "The table map consumed field and action names that did not match StaffOrdering, rendered nested buttons, and exposed duplicate quick actions that were not connected to the real side-panel flow. Frontend permissions also exposed payment to cashier although the backend role lacks order.update. Persisted item adjustment/void/return mutations bypassed the shared restaurant permission boundary and their legacy realtime calls used the wrong emitOrderEvent signature.",
   "flow": "AppRouter /staff/orders -> StaffOrderingScoped/AuthProvider scope -> StaffOrdering GraphQL operations -> order schema -> composed order resolver guards/lifecycles -> inventory, kitchen and realtime side effects",
   "validation": {
     "planned": [
-      "vitest run src/components/Staff/components/TableMap.test.jsx src/components/Staff/StaffOrdering.semantic.test.jsx",
+      "vitest run src/components/Staff/components/TableMap.test.jsx src/components/Staff/staffOrderingPermissions.test.js src/components/Staff/StaffOrdering.semantic.test.jsx",
       "vitest run --config vitest.backend.config.js cohan-restaurant-backend/tests/resolvers/order-restaurant-access-guard.test.js",
       "npm run check:conflicts",
       "npm run check:graphql",
@@ -25,8 +25,13 @@
     "completed": [
       "read repository workflow and relevant UI/ponytail skills",
       "traced staff route, restaurant scope, UI actions, GraphQL schema, resolver composition, permissions, inventory/kitchen and realtime paths",
-      "audited existing tests and staff role permission seeds"
+      "audited existing tests and staff role permission seeds",
+      "reviewed the final changed-file contracts through GitHub"
     ],
-    "notRun": []
+    "notRun": [
+      "targeted Vitest tests because the GitHub connector has no execution terminal",
+      "conflict and GraphQL checks because the GitHub connector has no execution terminal",
+      "Vite build and browser walkthrough because the GitHub connector has no terminal/browser"
+    ]
   }
 }
