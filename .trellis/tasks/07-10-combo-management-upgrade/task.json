@@ -1,0 +1,24 @@
+{
+  "id": "07-10-combo-management-upgrade",
+  "title": "Nâng cấp giao diện và luồng quản lý combo",
+  "status": "planning",
+  "type": "frontend-backend-bugfix",
+  "scope": [
+    "src/components/Dashboard_Manager/Combo/ComboManagement.jsx",
+    "src/components/Dashboard_Manager/Combo/ComboManagement.scss",
+    "src/components/Dashboard_Manager/Combo/ComboManagement.test.jsx",
+    "cohan-restaurant-backend/graphql/resolvers/customerCombo/index.js",
+    "cohan-restaurant-backend/tests/resolvers/customerCombo/customerCombo.resolver.test.js"
+  ],
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "npm run check:graphql",
+      "vitest run src/components/Dashboard_Manager/Combo/ComboManagement.test.jsx",
+      "vitest run cohan-restaurant-backend/tests/resolvers/customerCombo/customerCombo.resolver.test.js",
+      "npm run build"
+    ],
+    "completed": [],
+    "notRun": []
+  }
+}
