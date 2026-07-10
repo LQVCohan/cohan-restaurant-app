@@ -1,0 +1,33 @@
+{
+  "id": "staff-brand-flow-audit",
+  "name": "staff-brand-flow-audit",
+  "title": "Harden employee modal and staff brand flows",
+  "description": "Trace and repair the BrandMembership-scoped employee create/update flow from GraphQL contract through manager UI actions.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "manager-staff",
+  "package": null,
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Staff/components/modals/AddEmployeeModal/AddEmployeeModal.jsx",
+    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.jsx",
+    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeEditModal/EmployeeEditModal.jsx",
+    "src/hooks/useStaffManagement.js",
+    "cohan-restaurant-backend/graphql/schema/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/staff/index.js",
+    "cohan-restaurant-backend/src/services/auth/staffRoleAssignment.service.js"
+  ],
+  "notes": "Tracing schema -> resolver/service -> Apollo operations -> modal/page actions before applying the smallest compatible fix."
+}
