@@ -22,6 +22,8 @@ export function hasRole(user, slugs = []) {
     user.roleName,
     user.role?.slug,
     user.role?.name,
+    user.role?.parentRole?.slug,
+    user.role?.parentRole?.name,
     ...(Array.isArray(user.roles) ? user.roles : []),
   ]
     .map((role) => String(role || "").trim().toLowerCase())
