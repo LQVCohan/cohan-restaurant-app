@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Ingredient, Recipe, StockItem } from "../../models/index.js";
+import { Ingredient, Recipe, StockItem, Warehouse } from "../../models/index.js";
 
 const DEFAULT_EDGES = [
   { from: "kg", to: "g", ratio: 1000 },
@@ -164,13 +164,26 @@ const buildRequiredByIngredient = async ({ restaurantId, menuItemId }) => {
   };
 };
 
-const getAvailableStockByIngredient = async ({ restaurantId, ingredientIds }) => {
+const resolveActiveWarehouseId = async (restaurantId) => {
+  const warehouse = await Warehouse.findOne({ restaurantId, isActive: true })
+    .sort({ createdAt: 1, _id: 1 })
+    .lean();
+  if (!warehouse?._id) throw new Error("Nhà hàng chưa có kho hoạt động.");
+  return warehouse._id;
+};
+
+const getAvailableStockByIngredient = async ({
+  restaurantId,
+  warehouseId,
+  ingredientIds,
+}) => {
   if (!ingredientIds.length) return new Map();
 
   const rows = await StockItem.aggregate([
     {
       $match: {
         restaurantId: new mongoose.Types.ObjectId(restaurantId),
+        warehouseId: new mongoose.Types.ObjectId(warehouseId),
         ingredientId: {
           $in: ingredientIds.map((id) => new mongoose.Types.ObjectId(id)),
         },
@@ -217,8 +230,10 @@ export async function getMenuItemInventoryAvailability({ restaurantId, menuItemI
     }
 
     const required = requiredState.required;
+    const warehouseId = await resolveActiveWarehouseId(restaurantId);
     const availableMap = await getAvailableStockByIngredient({
       restaurantId,
+      warehouseId,
       ingredientIds: required.map((line) => line.ingredientId),
     });
 
