@@ -1,0 +1,27 @@
+{
+  "id": "07-10-staff-order-mobile-table-grid",
+  "title": "Tối ưu bộ lọc và grid bàn trên mobile",
+  "status": "in_progress",
+  "type": "frontend-responsive-fix",
+  "scope": [
+    "src/components/Staff/components/TableMap.jsx",
+    "src/components/Staff/components/TableMap.scss",
+    "src/components/Staff/StaffOrdering.scss",
+    "src/components/Staff/components/TableMap.test.jsx"
+  ],
+  "rootCause": "The staff table map keeps secondary floor filters and desktop-density table/sidepanel content expanded on narrow screens. This wastes vertical space and lets content height dominate the mobile order workflow even though the table grid itself already attempts two columns.",
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Staff/components/TableMap.test.jsx",
+      "npm run check:conflicts",
+      "npm run build",
+      "manual 390x844 and 430x932 review"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, taste-ui-redesign, redesign-existing-projects and ponytail skills",
+      "traced StaffOrdering GraphQL table data into TableMap selection and the selected-table sidepanel",
+      "inspected the current TableMap component, stylesheet, direct test and StaffOrdering mobile workspace styles"
+    ],
+    "notRun": []
+  }
+}
