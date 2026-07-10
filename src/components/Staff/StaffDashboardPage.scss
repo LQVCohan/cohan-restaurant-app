@@ -401,6 +401,35 @@
   }
 }
 
+@media (max-width: 760px) {
+  .staff-shell:has(.staff-dashboard-page) .staff-shell__inner {
+    gap: 8px;
+  }
+
+  .staff-shell:has(.staff-dashboard-page) .staff-shell__subtitle {
+    display: none;
+  }
+
+  .staff-shell:has(.staff-dashboard-page) .staff-shell__identity {
+    padding: 6px 8px;
+    box-shadow: none;
+  }
+
+  .staff-shell:has(.staff-dashboard-page) .staff-shell__identity-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+  }
+
+  .staff-shell:has(.staff-dashboard-page) .staff-shell__identity-copy span {
+    display: none;
+  }
+
+  .staff-shell:has(.staff-dashboard-page) .staff-shell__identity-copy div {
+    font-size: 0.86rem;
+  }
+}
+
 @media (max-width: 560px) {
   .staff-dashboard-page {
     gap: 10px;
