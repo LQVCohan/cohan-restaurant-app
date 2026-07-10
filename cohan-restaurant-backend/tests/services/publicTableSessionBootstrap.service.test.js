@@ -81,7 +81,7 @@ describe("ensurePublicTableSessionForAccess", () => {
         _id: tableId,
         restaurantId,
         code: "A01",
-        status: "reserved",
+        status: "occupied",
         tableAccessToken: token,
       }),
     );
@@ -111,7 +111,7 @@ describe("ensurePublicTableSessionForAccess", () => {
     expect(mongooseMocks.startSession).not.toHaveBeenCalled();
   });
 
-  it("creates only the active table-session row for a reserved walk-in table", async () => {
+  it("creates only the active table-session row for an occupied walk-in table", async () => {
     modelMocks.Order.findOne.mockReturnValue(activeSessionQuery(null));
     const createdSession = { _id: "64b000000000000000000003" };
     lifecycleMocks.ensureActiveTableSessionForDineInOrder.mockResolvedValue({
@@ -143,27 +143,30 @@ describe("ensurePublicTableSessionForAccess", () => {
     expect(sessionMocks.endSession).toHaveBeenCalledOnce();
   });
 
-  it("does not let a static QR open an available table", async () => {
-    modelMocks.Order.findOne.mockReturnValue(activeSessionQuery(null));
-    modelMocks.Table.findOne.mockReturnValue(
-      tableQuery({
-        _id: tableId,
-        restaurantId,
-        code: "A01",
-        status: "available",
-        tableAccessToken: token,
-      }),
-    );
+  it.each(["available", "reserved"])(
+    "does not let a static QR open a %s table before staff starts service",
+    async (status) => {
+      modelMocks.Order.findOne.mockReturnValue(activeSessionQuery(null));
+      modelMocks.Table.findOne.mockReturnValue(
+        tableQuery({
+          _id: tableId,
+          restaurantId,
+          code: "A01",
+          status,
+          tableAccessToken: token,
+        }),
+      );
 
-    const { ensurePublicTableSessionForAccess } = await import(
-      "../../src/services/publicTableSessionBootstrap.service.js"
-    );
+      const { ensurePublicTableSessionForAccess } = await import(
+        "../../src/services/publicTableSessionBootstrap.service.js"
+      );
 
-    await expect(
-      ensurePublicTableSessionForAccess({ restaurantId, tableId, token }),
-    ).rejects.toThrow(/mở bàn phục vụ/i);
-    expect(
-      lifecycleMocks.ensureActiveTableSessionForDineInOrder,
-    ).not.toHaveBeenCalled();
-  });
+      await expect(
+        ensurePublicTableSessionForAccess({ restaurantId, tableId, token }),
+      ).rejects.toThrow(/trạng thái đang phục vụ/i);
+      expect(
+        lifecycleMocks.ensureActiveTableSessionForDineInOrder,
+      ).not.toHaveBeenCalled();
+    },
+  );
 });
