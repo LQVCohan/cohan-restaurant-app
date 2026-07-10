@@ -7,6 +7,18 @@
   padding: clamp(16px, 2.4vw, 30px) clamp(18px, 3vw, 34px);
 }
 
+.staff-shell__content,
+.staff-shell__content > *,
+.staff-shell .staff-page,
+.staff-shell .staff-dashboard-page,
+.staff-shell .staff-performance-page,
+.staff-shell .staff-kitchen-page,
+.staff-shell .staff-pos-layout,
+.staff-shell .ai-handoff-inbox {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .staff-shell__nav-count {
   display: inline-grid;
   min-width: 20px;
@@ -34,15 +46,15 @@
 }
 
 .staff-schedule-page {
-  --staff-bg: #F8FAF6;
-  --staff-text: #1F2A24;
-  --staff-muted: #64746A;
-  --staff-primary: #1F6F4A;
-  --staff-primary-strong: #165C3C;
-  --staff-primary-soft: #EAF5EE;
+  --staff-bg: #f8faf6;
+  --staff-text: #1f2a24;
+  --staff-muted: #64746a;
+  --staff-primary: #1f6f4a;
+  --staff-primary-strong: #165c3c;
+  --staff-primary-soft: #eaf5ee;
   --staff-page-max: 1360px;
-  background: transparent;
   padding: 0;
+  background: transparent;
 }
 
 .staff-schedule-hero,
@@ -54,12 +66,12 @@
 .staff-schedule-hero__content p,
 .staff-week-switcher__button,
 .staff-week-switcher__current strong {
-  color: #1F2A24;
+  color: #1f2a24;
 }
 
 .staff-schedule-hero__content p,
 .staff-week-switcher__current span {
-  color: #64746A;
+  color: #64746a;
 }
 
 .staff-dashboard-embedded-grid {
@@ -96,7 +108,7 @@
   height: 54px;
   place-items: center;
   border-radius: 18px;
-  background: #1F6F4A;
+  background: #1f6f4a;
   color: #fff;
   font-weight: 860;
 }
@@ -104,7 +116,7 @@
 .staff-embedded-profile-card span,
 .staff-embedded-profile-card small,
 .staff-embedded-profile-card__meta span {
-  color: #64746A;
+  color: #64746a;
   font-size: 0.78rem;
   font-weight: 760;
 }
@@ -113,7 +125,7 @@
 .staff-embedded-profile-card__meta strong {
   display: block;
   margin-top: 4px;
-  color: #1F2A24;
+  color: #1f2a24;
   font-size: 0.96rem;
   font-weight: 850;
   overflow-wrap: anywhere;
@@ -129,15 +141,93 @@
 }
 
 .staff-embedded-notification span {
-  color: #165C3C;
+  color: #165c3c;
   font-size: 0.78rem;
   font-weight: 820;
 }
 
 .staff-embedded-notification strong {
-  color: #1F2A24;
+  color: #1f2a24;
   font-size: 0.95rem;
   line-height: 1.35;
+}
+
+/* Shared staff page rhythm aligned with the schedule page scale. */
+.staff-page {
+  color: #1f2a24;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.staff-page h1 {
+  color: #1f2a24;
+  font-size: clamp(1.55rem, 3vw, 2rem);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.staff-page h2,
+.staff-section-title {
+  color: #1f2a24;
+  font-size: clamp(1.05rem, 1.8vw, 1.22rem);
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+
+.staff-page p {
+  color: #64746a;
+  line-height: 1.55;
+}
+
+.staff-card {
+  border-color: #dde6df;
+  border-radius: 20px;
+}
+
+.staff-chip {
+  border: 1px solid #dde6df;
+  border-radius: 999px;
+  background: #fff;
+  color: #64746a;
+  font-weight: 800;
+}
+
+/* Keep wide operational data inside its own scroller instead of widening the page. */
+.staff-shell :is(
+  .table-responsive,
+  .staff-performance-table-wrap,
+  .staff-availability-matrix,
+  .leave-table-wrapper,
+  .leave-table-container,
+  .payroll-table-wrapper
+) {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.staff-shell :is(table, .payroll-table, .staff-performance-table) {
+  max-width: none;
+}
+
+.staff-shell :is(
+  .staff-dashboard-panel,
+  .staff-attendance-card,
+  .staff-leave-panel,
+  .staff-profile__card,
+  .staff-notifications__toolbar-card,
+  .staff-notification-card,
+  .staff-settings-card,
+  .staff-performance-panel,
+  .staff-kitchen-page__order,
+  .staff-pos-main,
+  .staff-pos-header,
+  .ai-handoff-inbox__panel
+) {
+  min-width: 0;
 }
 
 @media (max-width: 980px) {
@@ -147,43 +237,224 @@
   }
 }
 
-/* Shared staff page rhythm aligned with the schedule page scale. */
-.staff-page {
-  color: #1F2A24;
-  font-size: 15px;
-  line-height: 1.5;
+@media (max-width: 760px) {
+  .staff-shell__main {
+    padding:
+      12px
+      max(12px, env(safe-area-inset-right))
+      calc(22px + env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+  }
+
+  .staff-page,
+  .staff-performance-page,
+  .staff-kitchen-page,
+  .staff-pos-layout,
+  .ai-handoff-inbox {
+    width: 100%;
+  }
+
+  .staff-shell :is(input, select, textarea) {
+    max-width: 100%;
+    font-size: 16px;
+  }
+
+  .staff-shell :is(button, a, input, select, textarea) {
+    touch-action: manipulation;
+  }
+
+  .staff-shell :is(
+    .staff-primary-button,
+    .staff-primary-btn,
+    .staff-attendance-form button,
+    .staff-leave-primary-btn,
+    .leave-open-modal-btn,
+    .staff-profile__hero-actions a,
+    .staff-profile__ghost-button,
+    .staff-notifications__actions button,
+    .staff-notification-card__actions a,
+    .staff-notification-card__actions button,
+    .staff-settings__profile-link,
+    .staff-settings-neutral-action,
+    .staff-support-actions a,
+    .staff-settings-savebar button,
+    .staff-performance-appeal-form button,
+    .staff-kitchen-page__refresh,
+    .staff-kitchen-page__action,
+    .table-sidepanel__actions button
+  ) {
+    min-height: 44px;
+  }
+
+  .staff-dashboard-page :is(
+    .staff-dashboard-hero,
+    .staff-dashboard-panel,
+    .staff-dashboard-section
+  ),
+  .staff-attendance-page :is(
+    .staff-attendance-hero,
+    .staff-attendance-card,
+    .staff-attendance-stats article
+  ),
+  .staff-performance-page :is(
+    .staff-performance-hero,
+    .staff-performance-panel,
+    .staff-performance-card
+  ) {
+    border-radius: 18px;
+  }
+
+  .staff-attendance-page {
+    gap: 14px;
+  }
+
+  .staff-attendance-hero,
+  .staff-attendance-card {
+    padding: 16px;
+  }
+
+  .staff-attendance-date-picker {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .staff-attendance-history-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .staff-attendance-history-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .staff-attendance-history-actions button {
+    min-height: 44px;
+  }
+
+  .staff-profile__hero-actions,
+  .staff-notifications__actions,
+  .staff-notification-card__actions {
+    width: 100%;
+  }
+
+  .staff-profile__hero-actions a,
+  .staff-notification-card__actions > *,
+  .staff-notifications__actions button {
+    min-width: 0;
+  }
+
+  .staff-settings-savebar,
+  .staff-action-bar,
+  .ai-handoff-inbox__reply {
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  .staff-settings-savebar {
+    margin-inline: 0;
+  }
+
+  .staff-payslips-page .staff-dashboard-panel {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .staff-payslips-page .table-responsive {
+    border-radius: 16px;
+  }
+
+  .staff-payslips-page .payroll-table {
+    min-width: 760px;
+  }
+
+  .staff-pos-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .staff-pos-header .search-container {
+    min-width: 0;
+  }
+
+  .staff-pos-header .header-actions {
+    align-self: center;
+  }
+
+  .staff-pos-main {
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .staff-pos-bottom-nav {
+    position: sticky;
+    bottom: 0;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .floating-cart-wrapper {
+    position: fixed;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    left: max(12px, env(safe-area-inset-left));
+  }
+
+  .ai-handoff-inbox {
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+  }
+
+  .ai-handoff-inbox__panel {
+    min-height: min(540px, 72dvh);
+  }
+
+  .ai-handoff-inbox__reply {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
 }
 
-.staff-page h1 {
-  color: #1F2A24;
-  font-size: clamp(1.55rem, 3vw, 2rem);
-  line-height: 1.08;
-  letter-spacing: -0.025em;
-  text-wrap: balance;
-}
+@media (max-width: 430px) {
+  .staff-page {
+    font-size: 14px;
+  }
 
-.staff-page h2,
-.staff-section-title {
-  color: #1F2A24;
-  font-size: clamp(1.05rem, 1.8vw, 1.22rem);
-  line-height: 1.2;
-  letter-spacing: -0.015em;
-}
+  .staff-shell :is(
+    .staff-dashboard-hero,
+    .staff-attendance-hero,
+    .staff-leave-hero__copy,
+    .staff-leave-identity-card,
+    .staff-profile__hero,
+    .staff-notifications__toolbar-card,
+    .staff-settings-card,
+    .staff-performance-hero,
+    .staff-performance-panel,
+    .staff-kitchen-page__hero
+  ) {
+    padding: 14px;
+    border-radius: 16px;
+  }
 
-.staff-page p {
-  color: #64746A;
-  line-height: 1.55;
-}
+  .staff-profile__hero-actions,
+  .staff-attendance-history-actions,
+  .staff-settings-savebar div {
+    grid-template-columns: 1fr;
+  }
 
-.staff-card {
-  border-color: #DDE6DF;
-  border-radius: 20px;
-}
+  .staff-notifications__actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
 
-.staff-chip {
-  border: 1px solid #DDE6DF;
-  border-radius: 999px;
-  background: #FFFFFF;
-  color: #64746A;
-  font-weight: 800;
+  .staff-notifications__actions button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .staff-kitchen-page__metrics {
+    grid-template-columns: 1fr;
+  }
 }
