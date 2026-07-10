@@ -22,12 +22,7 @@ import { useTime } from "../../../hooks/useTime";
 import useManagerRestaurantSelection from "../../../hooks/useManagerRestaurantSelection";
 import { useNotification } from "@/hooks/useNotification";
 import { matchesEmployeeSearch } from "../../../utils/employeeSearch";
-import { getStaffRoleDisplayLabel } from "../../../utils/staffRoleOptions";
-import {
-  getStaffListStatus,
-  normalizeAccountStatus,
-  normalizeEmploymentStatus,
-} from "./staffStatus";
+import { mapStaffToEmployee } from "./staffViewModel";
 
 import "./StaffManagement.scss";
 import "./StaffPremiumBoard.scss";
@@ -250,78 +245,7 @@ const StaffManagement = () => {
   }, [staffList, selectedRestaurant, debouncedSearchQuery]);
 
   const mappedStaff = useMemo(
-    () =>
-      filteredStaff.map((staff) => {
-        const accountStatus = normalizeAccountStatus(staff.status);
-        const employmentStatus = normalizeEmploymentStatus(staff.employmentStatus);
-        const roleLabel =
-          getStaffRoleDisplayLabel(staff.role) ||
-          getStaffRoleDisplayLabel(staff.roleName) ||
-          getStaffRoleDisplayLabel(staff.role?.slug);
-        const avatarUrl =
-          staff.avatarUrl ||
-          staff.avatar ||
-          staff.photoUrl ||
-          staff.profileImage ||
-          "";
-
-        return {
-          id: staff.id,
-          name: staff.fullName,
-          code: staff.employeeCode,
-          role: staff.positionTitle || roleLabel || "Chưa gán vị trí",
-          roleId: staff.role?.id || null,
-          roleSlug: staff.role?.slug || "",
-          roleName: roleLabel || staff.roleName || "",
-          positionTitle: staff.positionTitle || "",
-          department: staff.department,
-          status: getStaffListStatus({ accountStatus, employmentStatus }),
-          accountStatus,
-          employmentStatus,
-          email: staff.email,
-          phone: staff.phone,
-          username: staff.username,
-          avatar: avatarUrl,
-          avatarUrl,
-          startDate: staff.dateJoined
-            ? new Date(staff.dateJoined).toLocaleDateString("vi-VN")
-            : "---",
-          shift: staff.shiftType || "Ca xoay",
-          baseSalary: staff.baseSalary ?? null,
-          salary: staff.baseSalary ?? null,
-          address: staff.address
-            ? [staff.address.line1, staff.address.ward, staff.address.district, staff.address.city]
-                .filter(Boolean)
-                .join(", ")
-            : "",
-          employmentType: staff.employmentType,
-          workingDays: staff.workingDays || [],
-          dateLeft: staff.dateLeft,
-          taxCode: staff.taxCode,
-          emergencyContact: staff.emergencyContact,
-          noteInternal: staff.noteInternal,
-          emailVerified: Boolean(staff.emailVerified),
-          phoneVerified: Boolean(staff.phoneVerified),
-          verificationStatus:
-            staff.emailVerified || staff.phoneVerified
-              ? "verified"
-              : staff.status === "pending"
-                ? "pending"
-                : "unverified",
-          verificationLabel: staff.emailVerified
-            ? "Đã xác minh email"
-            : staff.phoneVerified
-              ? "Đã xác minh SĐT"
-              : staff.status === "pending"
-                ? "Chờ xác minh"
-                : "Chưa xác minh",
-          canResendVerification: Boolean(
-            (staff.email && !staff.emailVerified) ||
-              (staff.phone && !staff.phoneVerified),
-          ),
-          raw: staff,
-        };
-      }),
+    () => filteredStaff.map(mapStaffToEmployee),
     [filteredStaff],
   );
 
@@ -387,7 +311,7 @@ const StaffManagement = () => {
     async (values) => {
       const created = await createStaff(values);
       await refetchStaffList?.();
-      if (created) setSelectedEmployee(created);
+      if (created) setSelectedEmployee(mapStaffToEmployee(created));
       closeModal("addEmployee");
       showNotification("Đã thêm nhân viên thành công.", "success");
     },
@@ -399,7 +323,7 @@ const StaffManagement = () => {
       if (!selectedEmployee?.id) return;
       const updated = await updateStaff(selectedEmployee.id, values);
       await refetchStaffList?.();
-      if (updated) setSelectedEmployee(updated);
+      if (updated) setSelectedEmployee(mapStaffToEmployee(updated));
       closeModal("editEmployee");
       showNotification("Đã cập nhật hồ sơ nhân viên.", "success");
     },
@@ -672,7 +596,9 @@ const StaffManagement = () => {
     if (currentPage === "leave") {
       return <LeaveManagement restaurantId={selectedRestaurant} />;
     }
-    if (currentPage === "schedule") return <SchedulePage />;
+    if (currentPage === "schedule") {
+      return <SchedulePage restaurantId={selectedRestaurant} />;
+    }
     if (currentPage === "performance") {
       return (
         <StaffPerformancePage
@@ -683,7 +609,9 @@ const StaffManagement = () => {
         />
       );
     }
-    if (currentPage === "reports") return <StaffReportsPage />;
+    if (currentPage === "reports") {
+      return <StaffReportsPage restaurantId={selectedRestaurant} />;
+    }
     return null;
   }, [
     currentDate,
