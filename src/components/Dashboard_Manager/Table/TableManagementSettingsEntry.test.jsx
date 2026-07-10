@@ -4,11 +4,18 @@ import { describe, expect, it, vi } from "vitest";
 import TableManagementSettingsEntry from "./TableManagementSettingsEntry";
 
 vi.mock("./TableManagement", () => ({
-  default: () => <main>Trang quản lý bàn</main>,
+  default: () => (
+    <main>
+      <div className="management-page-header">
+        <div className="mph-controls-row" />
+      </div>
+      Trang quản lý bàn
+    </main>
+  ),
 }));
 
 describe("TableManagementSettingsEntry", () => {
-  it("opens table settings from the table page button", () => {
+  it("opens table settings from the table page header", () => {
     const onOpenTableSettings = vi.fn();
 
     render(
@@ -22,7 +29,7 @@ describe("TableManagementSettingsEntry", () => {
     expect(onOpenTableSettings).toHaveBeenCalledTimes(1);
   });
 
-  it("hides the settings button when no opener is provided", () => {
+  it("hides the settings action when no opener is provided", () => {
     render(<TableManagementSettingsEntry />);
 
     expect(
