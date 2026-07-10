@@ -59,10 +59,15 @@ describe("IngredientModal edit layout", () => {
     expect(activeButton).toHaveAttribute("aria-pressed", "false");
     expect(pausedButton).toHaveAttribute("aria-pressed", "true");
 
+    const unitSelect = screen.getByLabelText(/Đơn vị gốc/i);
+    expect(unitSelect).toHaveValue("piece");
+    expect(unitSelect.selectedOptions[0]).toHaveTextContent("Cái");
+
     const minStockInput = screen.getByLabelText(/Mức cảnh báo tồn thấp/i);
     expect(minStockInput.closest(".form-group")).toHaveClass("form-group--full");
 
     expect(screen.getByText("₫", { selector: ".currency-symbol" })).toBeInTheDocument();
+    expect(screen.getByText("VND / cái")).toBeInTheDocument();
 
     const saveButton = screen.getByRole("button", { name: "Lưu thay đổi" });
     expect(saveButton).toHaveAttribute("form", "ingredient-form");
