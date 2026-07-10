@@ -1,0 +1,28 @@
+{
+  "id": "staff-workspace-runtime-audit",
+  "name": "staff-workspace-runtime-audit",
+  "title": "Fix staff post-create crash and audit workforce pages",
+  "description": "Normalize staff mutation responses before rendering and audit manager/staff attendance, leave, schedule, performance, and report flows across UI, GraphQL, resolver, scope, and tests.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "manager-staff-workspace",
+  "package": null,
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Staff/StaffManagement.jsx",
+    "src/components/Dashboard_Manager/Staff/StaffManagement.test.jsx"
+  ],
+  "notes": "Confirmed post-create runtime failure: StaffManagement stores the raw GraphQL StaffPrivateProfile as selectedEmployee, so EmployeeDetail attempts to render the structured address object as a React child before the list mapping effect can normalize it. Audit in progress for attendance, leave, schedule, performance, and reports."
+}
