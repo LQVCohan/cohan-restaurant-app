@@ -1,0 +1,309 @@
+.reservation-change-review {
+  --reservation-review-text: #1f2a24;
+  --reservation-review-muted: #64746a;
+  --reservation-review-border: #dce8df;
+  --reservation-review-primary: #1f6f4a;
+  --reservation-review-primary-strong: #165c3c;
+  --reservation-review-primary-soft: #eaf5ee;
+  --reservation-review-danger: #b42318;
+  --reservation-review-danger-soft: #fff1f0;
+  --reservation-review-warning: #9a6700;
+  --reservation-review-warning-soft: #fff7d6;
+
+  display: grid;
+  gap: 14px;
+  width: min(100%, 1180px);
+  margin-inline: auto;
+  color: var(--reservation-review-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.reservation-change-review__toolbar,
+.reservation-change-card,
+.reservation-change-review__state {
+  border: 1px solid var(--reservation-review-border);
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(31, 111, 74, 0.07);
+}
+
+.reservation-change-review__toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 94% 0%, rgba(31, 111, 74, 0.1), transparent 18rem),
+    linear-gradient(135deg, #fff, #f5fbf7);
+}
+
+.reservation-change-review__toolbar > div {
+  min-width: 0;
+}
+
+.reservation-change-review__eyebrow {
+  color: var(--reservation-review-primary);
+  font-size: 0.74rem;
+  font-weight: 850;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.reservation-change-review__toolbar h1 {
+  margin: 5px 0 6px;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.reservation-change-review__toolbar p {
+  max-width: 62ch;
+  margin: 0;
+}
+
+.reservation-change-review__restaurant,
+.reservation-change-card__note {
+  display: grid;
+  gap: 6px;
+}
+
+.reservation-change-review__restaurant {
+  flex: 0 0 min(280px, 100%);
+  min-width: 240px;
+}
+
+.reservation-change-review__restaurant span,
+.reservation-change-card__note span {
+  color: var(--reservation-review-muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.reservation-change-review__restaurant select,
+.reservation-change-card__note textarea {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--reservation-review-border);
+  border-radius: 13px;
+  background: #fff;
+  color: var(--reservation-review-text);
+  font: inherit;
+  padding: 10px 12px;
+}
+
+.reservation-change-card__note textarea {
+  min-height: 82px;
+  resize: vertical;
+}
+
+.reservation-change-review__restaurant select:focus,
+.reservation-change-card__note textarea:focus {
+  border-color: rgba(31, 111, 74, 0.48);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31, 111, 74, 0.13);
+}
+
+.reservation-change-review__state {
+  display: grid;
+  gap: 4px;
+  padding: 18px;
+  border-radius: 18px;
+  color: var(--reservation-review-muted);
+}
+
+.reservation-change-review__state strong {
+  color: var(--reservation-review-text);
+}
+
+.reservation-change-review__state.is-error {
+  border-color: rgba(180, 35, 24, 0.22);
+  color: var(--reservation-review-danger);
+  background: var(--reservation-review-danger-soft);
+}
+
+.reservation-change-review__list {
+  display: grid;
+  gap: 12px;
+}
+
+.reservation-change-card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 18px;
+  border-radius: 20px;
+}
+
+.reservation-change-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.reservation-change-card__header > div {
+  min-width: 0;
+}
+
+.reservation-change-card__header strong {
+  color: var(--reservation-review-text);
+  font-size: 1.02rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.reservation-change-card__header p {
+  margin: 5px 0;
+  overflow-wrap: anywhere;
+}
+
+.reservation-change-card__header > div > span {
+  color: var(--reservation-review-muted);
+  font-size: 0.88rem;
+}
+
+.reservation-change-card__status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 30px;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--reservation-review-warning);
+  background: var(--reservation-review-warning-soft);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.reservation-change-card__details {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.reservation-change-card__details div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--reservation-review-border);
+  border-radius: 14px;
+  background: #f8faf6;
+}
+
+.reservation-change-card__details dt {
+  color: var(--reservation-review-muted);
+  font-size: 0.76rem;
+  font-weight: 760;
+}
+
+.reservation-change-card__details dd {
+  margin: 5px 0 0;
+  color: var(--reservation-review-text);
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.reservation-change-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.reservation-change-card__actions button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+  transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+}
+
+.reservation-change-card__actions button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.reservation-change-card__actions button:focus-visible {
+  outline: 3px solid rgba(31, 111, 74, 0.24);
+  outline-offset: 3px;
+}
+
+.reservation-change-card__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.reservation-change-card__actions .is-reject {
+  border-color: rgba(180, 35, 24, 0.22);
+  color: var(--reservation-review-danger);
+  background: var(--reservation-review-danger-soft);
+}
+
+.reservation-change-card__actions .is-approve {
+  border-color: var(--reservation-review-primary);
+  color: #fff;
+  background: var(--reservation-review-primary);
+  box-shadow: 0 10px 22px rgba(31, 111, 74, 0.18);
+}
+
+.reservation-change-card__actions .is-approve:hover:not(:disabled) {
+  background: var(--reservation-review-primary-strong);
+}
+
+@media (max-width: 860px) {
+  .reservation-change-review__toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reservation-change-review__restaurant {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .reservation-change-card__details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .reservation-change-review__toolbar,
+  .reservation-change-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .reservation-change-card__header {
+    flex-direction: column;
+  }
+
+  .reservation-change-card__details {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-change-card__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reservation-change-card__actions button {
+    width: 100%;
+    min-width: 0;
+    padding-inline: 10px;
+  }
+
+  .reservation-change-review__restaurant select,
+  .reservation-change-card__note textarea {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reservation-change-review *,
+  .reservation-change-review *::before,
+  .reservation-change-review *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
