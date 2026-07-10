@@ -11,7 +11,7 @@ const tabs = [
   { id: "management", label: "Quản lý" },
   { id: "kitchen", label: "Bếp" },
   { id: "cashier", label: "Thu ngân" },
-  { id: "support", label: "Customers/Support" },
+  { id: "support", label: "Khách hàng / Hỗ trợ" },
 ];
 
 export default function ContactsView({ restaurantId, focusThreadId = null, onFocusHandled }) {
@@ -40,24 +40,26 @@ export default function ContactsView({ restaurantId, focusThreadId = null, onFoc
     onFocusHandled?.();
   }, [focusThreadId, loadThread, onFocusHandled]);
 
-  const contacts = useMemo(() => {
-    return (threads || []).map((t) => ({
-      id: t.id,
-      name: t.subject || `Thread ${t.channel || "support"}`,
-      role: t.targetRole || t.channel || "support",
-      dept: t.targetRole || t.channel || "support",
-      lastMsg: t.lastMessagePreview || "(Chưa có tin nhắn)",
-      unreadCount: Number(t.unreadCount || 0),
-      status: "online",
-      avatarColor: "blue",
-    }));
-  }, [threads]);
+  const contacts = useMemo(
+    () =>
+      (threads || []).map((item) => ({
+        id: item.id,
+        name: item.subject || `Hội thoại ${item.channel || "support"}`,
+        role: item.targetRole || item.channel || "support",
+        dept: item.targetRole || item.channel || "support",
+        lastMsg: item.lastMessagePreview || "(Chưa có tin nhắn)",
+        unreadCount: Number(item.unreadCount || 0),
+        status: "online",
+      })),
+    [threads],
+  );
 
-  const filteredContacts = contacts.filter((c) => {
-    const matchesTab = activeTab === "all" || c.dept === activeTab;
+  const filteredContacts = contacts.filter((contact) => {
+    const normalizedSearch = searchQuery.toLowerCase();
+    const matchesTab = activeTab === "all" || contact.dept === activeTab;
     const matchesSearch =
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.role.toLowerCase().includes(searchQuery.toLowerCase());
+      contact.name.toLowerCase().includes(normalizedSearch) ||
+      contact.role.toLowerCase().includes(normalizedSearch);
     return matchesTab && matchesSearch;
   });
 
@@ -70,7 +72,7 @@ export default function ContactsView({ restaurantId, focusThreadId = null, onFoc
 
   const openRoleThread = async (role) => {
     if (!restaurantId) {
-      showNotification("Thiếu restaurant context", "warning");
+      showNotification("Chưa xác định được nhà hàng làm việc.", "warning");
       return;
     }
     const { data } = await openThread({
@@ -84,20 +86,13 @@ export default function ContactsView({ restaurantId, focusThreadId = null, onFoc
       },
     });
     const threadId = data?.openChatThread?.id;
-    if (threadId) {
-      await openExistingThread(threadId);
-    }
+    if (threadId) await openExistingThread(threadId);
   };
 
   const handleSend = async (content) => {
     if (!activeThreadId) return;
     await sendMessage({
-      variables: {
-        input: {
-          threadId: activeThreadId,
-          content,
-        },
-      },
+      variables: { input: { threadId: activeThreadId, content } },
     });
     await loadThread({ variables: { id: activeThreadId } });
     refetchThreads?.();
@@ -106,79 +101,104 @@ export default function ContactsView({ restaurantId, focusThreadId = null, onFoc
   return (
     <div className="staff-pos-contacts">
       <div className="search-section">
-        <div className="search-bar">
-          <Search className="search-icon" size={20} />
+        <label className="search-bar">
+          <Search className="search-icon" size={20} aria-hidden="true" />
+          <span className="sr-only">Tìm nhân viên hoặc bộ phận</span>
           <input
-            type="text"
+            type="search"
             placeholder="Tìm nhân viên / bộ phận..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(event) => setSearchQuery(event.target.value)}
           />
-        </div>
+        </label>
       </div>
 
-      <div className="filter-scroll">
+      <nav className="filter-scroll" aria-label="Lọc liên hệ theo bộ phận">
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            type="button"
             className={`filter-chip ${activeTab === tab.id ? "active" : ""}`}
             onClick={() => setActiveTab(tab.id)}
+            aria-pressed={activeTab === tab.id}
           >
             {tab.label}
           </button>
         ))}
-      </div>
+      </nav>
 
       <div className="contact-list">
-        <div className="contact-card">
+        <article className="contact-card contact-card--management">
           <div className="contact-info-wrap">
             <div className="info-text">
-              <h4>Nhắn management</h4>
-              <p className="last-msg">Mở thread nội bộ với quản lý</p>
+              <h4>Quản lý nhà hàng</h4>
+              <p className="last-msg">Mở hội thoại nội bộ với quản lý</p>
             </div>
           </div>
           <div className="contact-actions">
-            <button className="action-btn btn-chat" onClick={() => openRoleThread("management")}>
-              <MessageCircle size={18} />
+            <button
+              type="button"
+              className="action-btn btn-chat"
+              onClick={() => openRoleThread("management")}
+              aria-label="Nhắn tin cho quản lý"
+            >
+              <MessageCircle size={18} aria-hidden="true" />
             </button>
-            <button className="action-btn btn-call" aria-label="Gọi điện">
-              <PhoneCall size={18} />
+            <button type="button" className="action-btn btn-call" aria-label="Gọi quản lý">
+              <PhoneCall size={18} aria-hidden="true" />
             </button>
           </div>
-        </div>
+        </article>
 
-        {threadsLoading && <div className="empty-state">Đang tải hội thoại...</div>}
+        {threadsLoading ? <div className="empty-state">Đang tải hội thoại...</div> : null}
         {!threadsLoading && filteredContacts.length === 0 ? (
-          <div className="empty-state">Chưa có hội thoại cho nhà hàng này.</div>
+          <div className="empty-state">Chưa có hội thoại phù hợp.</div>
         ) : (
-          filteredContacts.map((c) => (
-            <div key={c.id} className="contact-card" onClick={() => openExistingThread(c.id)}>
-              <div className="contact-info-wrap">
-                <div className="avatar-wrapper">
-                  <div className={`avatar ${c.avatarColor}`}>{(c.name || "C").charAt(0).toUpperCase()}</div>
-                  <span className={`status-indicator ${c.status}`}></span>
+          filteredContacts.map((contact) => (
+            <article key={contact.id} className="contact-card">
+              <button
+                type="button"
+                className="contact-card__open"
+                onClick={() => openExistingThread(contact.id)}
+                aria-label={`Mở hội thoại ${contact.name}`}
+              >
+                <div className="contact-info-wrap">
+                  <div className="avatar-wrapper">
+                    <div className="avatar">
+                      {(contact.name || "C").charAt(0).toUpperCase()}
+                    </div>
+                    <span className={`status-indicator ${contact.status}`} aria-hidden="true" />
+                  </div>
+                  <div className="info-text">
+                    <h4>{contact.name}</h4>
+                    <span className="role">{contact.role}</span>
+                    <p className="last-msg">{contact.lastMsg}</p>
+                  </div>
                 </div>
-
-                <div className="info-text">
-                  <h4>{c.name}</h4>
-                  <span className="role">{c.role}</span>
-                  <p className="last-msg">{c.lastMsg}</p>
-                </div>
-              </div>
+              </button>
 
               <div className="contact-actions">
-                {c.unreadCount > 0 && <span className="unread-pill">{c.unreadCount}</span>}
-                <button className="action-btn btn-chat">
-                  <MessageCircle size={18} />
+                {contact.unreadCount > 0 ? (
+                  <span className="unread-pill" aria-label={`${contact.unreadCount} tin chưa đọc`}>
+                    {contact.unreadCount}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  className="action-btn btn-chat"
+                  onClick={() => openExistingThread(contact.id)}
+                  aria-label={`Nhắn tin trong hội thoại ${contact.name}`}
+                >
+                  <MessageCircle size={18} aria-hidden="true" />
                 </button>
               </div>
-            </div>
+            </article>
           ))
         )}
       </div>
 
       <ChatThreadPanel
-        open={!!activeThreadId}
+        open={Boolean(activeThreadId)}
         title={thread?.subject || "Trao đổi"}
         meId={user?.id}
         messages={thread?.messages || []}
