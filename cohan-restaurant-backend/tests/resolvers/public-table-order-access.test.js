@@ -7,6 +7,9 @@ const serviceMocks = vi.hoisted(() => ({
   confirmPublicTableOrderAccess: vi.fn(),
   listPendingPublicTableOrderAccessRequests: vi.fn(),
 }));
+const bootstrapMocks = vi.hoisted(() => ({
+  ensurePublicTableSessionForAccess: vi.fn(),
+}));
 const baseMocks = vi.hoisted(() => ({
   publicActiveTableSessionOrders: vi.fn(),
   publicRequestTableIdentityOtp: vi.fn(),
@@ -25,6 +28,9 @@ const eventMocks = vi.hoisted(() => ({
 
 vi.mock("../../src/services/publicTableOrderAccess.service.js", () => ({
   ...serviceMocks,
+}));
+vi.mock("../../src/services/publicTableSessionBootstrap.service.js", () => ({
+  ...bootstrapMocks,
 }));
 vi.mock(
   "../../graphql/resolvers/order/publicTableSessionQuery.js",
@@ -85,6 +91,19 @@ function buildBaseResult() {
 describe("PublicTableOrderAccess resolver boundary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    bootstrapMocks.ensurePublicTableSessionForAccess.mockResolvedValue({
+      _id: "64b000000000000000000003",
+    });
+    serviceMocks.requestPublicTableOrderAccess.mockResolvedValue({
+      ok: true,
+      restaurantId,
+      tableId,
+      tableCode: "A01",
+      requestId: "request-1",
+      requestLabel: "A1B2",
+      requestToken: "request-token",
+      expiresAt: "2026-07-11T03:00:00.000Z",
+    });
     baseMocks.publicActiveTableSessionOrders.mockResolvedValue(
       buildBaseResult(),
     );
@@ -95,6 +114,7 @@ describe("PublicTableOrderAccess resolver boundary", () => {
     serviceMocks.validatePublicTableOrderSessionAccess.mockResolvedValue({
       session: { _id: "session-1" },
     });
+    eventMocks.emitRestaurantEvent.mockResolvedValue(undefined);
   });
 
   it("hides table orders and disables ordering when the scanned device is not confirmed", async () => {
@@ -134,6 +154,38 @@ describe("PublicTableOrderAccess resolver boundary", () => {
     expect(result.orders).toHaveLength(1);
     expect(result.customerRequests).toHaveLength(1);
     expect(result.session.orderCode).toBe("POS-A01");
+  });
+
+  it("opens or reuses the table session before creating the staff verification request", async () => {
+    const { PublicTableOrderAccessMutation } = await import(
+      "../../graphql/resolvers/order/publicTableOrderAccess.js"
+    );
+    const input = {
+      restaurantId,
+      tableId,
+      token: "printed-token",
+      deviceId: "table-device-11111111-2222-4333-8444-555555555555",
+    };
+
+    const result =
+      await PublicTableOrderAccessMutation.publicRequestTableOrderAccess(
+        null,
+        { input },
+        { io: {} },
+      );
+
+    expect(result.requestLabel).toBe("A1B2");
+    expect(
+      bootstrapMocks.ensurePublicTableSessionForAccess,
+    ).toHaveBeenCalledWith(input);
+    expect(serviceMocks.requestPublicTableOrderAccess).toHaveBeenCalledWith(
+      input,
+    );
+    expect(
+      bootstrapMocks.ensurePublicTableSessionForAccess.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      serviceMocks.requestPublicTableOrderAccess.mock.invocationCallOrder[0],
+    );
   });
 
   it("validates the verified table session before the original submit-order resolver runs", async () => {
