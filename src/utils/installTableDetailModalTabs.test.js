@@ -5,9 +5,17 @@ import { enhanceTableDetailModal } from "./installTableDetailModalTabs";
 const group = (title, marker) => `
   <section class="talite-group" data-testid="${marker}">
     <div class="talite-group-header">
+      <span class="talite-group-icon">legacy</span>
       <div class="talite-label">${title}</div>
     </div>
   </section>
+`;
+
+const summaryRow = (label, value, marker) => `
+  <div class="kv" data-testid="${marker}">
+    <span class="k">${label}:</span>
+    <span class="v">${value}</span>
+  </div>
 `;
 
 const renderModal = () => {
@@ -15,10 +23,19 @@ const renderModal = () => {
     <div class="talite-modal">
       <header class="talite-header"><h3>Chi tiết bàn A1</h3></header>
       <div class="talite-body">
-        <div class="talite-info" data-testid="summary">Tầng 1 · 4 chỗ</div>
+        <div class="talite-info" data-testid="summary">
+          ${summaryRow("Mã bàn", "A1", "summary-code")}
+          ${summaryRow("Tầng", "Tầng 1", "summary-floor")}
+          ${summaryRow("Sức chứa", "4 chỗ", "summary-capacity")}
+          ${summaryRow("Loại", "Tiêu chuẩn", "summary-type")}
+          ${summaryRow("Khu vực", "Sảnh chính", "summary-zone")}
+          ${summaryRow("Trạng thái", "Đang phục vụ", "summary-status")}
+        </div>
         ${group("Thông tin bàn", "configuration")}
         ${group("Trạng thái", "status")}
         ${group("Chuyển bàn sang tầng khác", "move")}
+        ${group("Đổi vị trí với bàn khác", "swap")}
+        ${group("Ghép hoặc tách bàn", "merge")}
         ${group("Đặt cọc và khuyến mãi", "booking")}
         ${group("Chính sách đặt bàn", "policy")}
         ${group("Trợ lý vận hành bàn", "assistant")}
@@ -73,6 +90,49 @@ describe("table detail modal tabs", () => {
     expect(screen.getByTestId("configuration")).toHaveAttribute("hidden");
     expect(screen.getByRole("button", { name: "Lưu cấu hình", hidden: true })).toHaveAttribute(
       "hidden",
+    );
+  });
+
+  it("adds stable summary and section hooks for the visual system", () => {
+    const modal = renderModal();
+
+    expect(screen.getByTestId("summary-code")).toHaveAttribute(
+      "data-table-detail-summary",
+      "code",
+    );
+    expect(screen.getByTestId("summary-floor")).toHaveAttribute(
+      "data-table-detail-summary",
+      "floor",
+    );
+    expect(screen.getByTestId("summary-status")).toHaveAttribute(
+      "data-table-detail-summary",
+      "status",
+    );
+    expect(screen.getByTestId("summary-status")).toHaveAttribute(
+      "data-table-status-tone",
+      "busy",
+    );
+    expect(modal).toHaveAttribute("data-table-detail-status-tone", "busy");
+
+    expect(screen.getByTestId("configuration")).toHaveAttribute(
+      "data-table-detail-kind",
+      "basics",
+    );
+    expect(screen.getByTestId("move")).toHaveAttribute("data-table-detail-kind", "move");
+    expect(screen.getByTestId("swap")).toHaveAttribute("data-table-detail-kind", "swap");
+    expect(screen.getByTestId("merge")).toHaveAttribute("data-table-detail-kind", "merge");
+    expect(screen.getByTestId("booking")).toHaveAttribute(
+      "data-table-detail-kind",
+      "promotion",
+    );
+    expect(screen.getByTestId("policy")).toHaveAttribute("data-table-detail-kind", "policy");
+    expect(screen.getByTestId("assistant")).toHaveAttribute(
+      "data-table-detail-kind",
+      "assistant",
+    );
+    expect(screen.getByTestId("danger-zone")).toHaveAttribute(
+      "data-table-detail-kind",
+      "danger",
     );
   });
 
