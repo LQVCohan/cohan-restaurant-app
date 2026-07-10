@@ -103,13 +103,6 @@ vi.mock("./CustomTableModelBuilderModal", () => ({
     ) : null,
 }));
 
-vi.mock("./TableCameraPlacementPreviewModal", () => ({
-  default: ({ open, modelItem }) =>
-    open ? (
-      <div data-testid="camera-preview">Camera {modelItem?.label}</div>
-    ) : null,
-}));
-
 const baseProps = {
   open: true,
   onClose: vi.fn(),
@@ -123,10 +116,6 @@ beforeEach(() => {
     configurable: true,
     value: false,
   });
-  Object.defineProperty(navigator, "mediaDevices", {
-    configurable: true,
-    value: { getUserMedia: vi.fn() },
-  });
   Object.defineProperty(navigator, "xr", {
     configurable: true,
     value: undefined,
@@ -134,7 +123,7 @@ beforeEach(() => {
 });
 
 describe("Table3DSimulatorModalV2", () => {
-  it("renders the global catalog preview without table persistence actions", () => {
+  it("renders the global catalog preview without 2D or persistence actions", () => {
     render(<Table3DSimulatorModalV2 {...baseProps} />);
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -148,6 +137,9 @@ describe("Table3DSimulatorModalV2", () => {
     expect(
       screen.getByRole("button", { name: /Mở camera AR/i }),
     ).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: /Xem camera 2D/i }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/Chưa chọn bàn/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/lưu vị trí/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Áp dụng mẫu/i)).not.toBeInTheDocument();
@@ -168,17 +160,7 @@ describe("Table3DSimulatorModalV2", () => {
     );
   });
 
-  it("opens the camera fallback for the selected model", () => {
-    render(<Table3DSimulatorModalV2 {...baseProps} />);
-
-    fireEvent.click(screen.getByRole("button", { name: /Xem camera 2D/i }));
-
-    expect(screen.getByTestId("camera-preview")).toHaveTextContent(
-      "Bàn tròn 4 ghế",
-    );
-  });
-
-  it("launches native camera AR when the page is secure", async () => {
+  it("configures floor placement and launches native AR after capability detection", async () => {
     Object.defineProperty(window, "isSecureContext", {
       configurable: true,
       value: true,
@@ -189,13 +171,30 @@ describe("Table3DSimulatorModalV2", () => {
     });
 
     const { container } = render(<Table3DSimulatorModalV2 {...baseProps} />);
+    const viewer = container.querySelector("model-viewer");
+    Object.defineProperty(viewer, "canActivateAR", {
+      configurable: true,
+      value: true,
+    });
+    viewer.activateAR = vi.fn().mockResolvedValue(undefined);
+
+    expect(viewer).toHaveAttribute("ar-placement", "floor");
+    expect(viewer).toHaveAttribute("ar-scale", "fixed");
+    expect(viewer).toHaveAttribute(
+      "ar-modes",
+      "webxr scene-viewer quick-look",
+    );
+    expect(viewer).toHaveAttribute("scale", "1 1 1");
+    expect(viewer).toHaveAttribute("xr-environment");
+
+    fireEvent.load(viewer);
 
     await waitFor(() => {
-      expect(screen.getByText("Sẵn sàng AR")).toBeInTheDocument();
+      expect(screen.getByText("Sẵn sàng quét sàn")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Mở camera AR/i }),
+      ).toBeEnabled();
     });
-
-    const viewer = container.querySelector("model-viewer");
-    viewer.activateAR = vi.fn().mockResolvedValue(undefined);
 
     fireEvent.click(screen.getByRole("button", { name: /Mở camera AR/i }));
 
