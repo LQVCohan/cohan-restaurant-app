@@ -4,6 +4,50 @@ import process from "node:process";
 
 const DEFAULT_TIMEOUT = Number(process.env.PAYMENT_PROVIDER_TIMEOUT_MS || 15000);
 const DEFAULT_VNPAY_TTL_MINUTES = Number(process.env.PAYMENT_SESSION_TTL_MINUTES || 10);
+const CALLBACK_CREDENTIAL_TTL_MS = 60_000;
+const paymentCredentialContexts = new Map();
+
+function credentialContextKey(provider, reference) {
+  return `${String(provider || "").toLowerCase()}:${String(reference || "")}`;
+}
+
+export function primePaymentCredentialContext(provider, reference, credentials) {
+  if (!provider || !reference || !credentials) return;
+  const key = credentialContextKey(provider, reference);
+  const entry = { credentials, expiresAt: Date.now() + CALLBACK_CREDENTIAL_TTL_MS };
+  paymentCredentialContexts.set(key, entry);
+  const timer = setTimeout(() => {
+    if (paymentCredentialContexts.get(key) === entry) paymentCredentialContexts.delete(key);
+  }, CALLBACK_CREDENTIAL_TTL_MS);
+  timer.unref?.();
+}
+
+function getPaymentCredentialContext(provider, reference) {
+  const key = credentialContextKey(provider, reference);
+  const entry = paymentCredentialContexts.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    paymentCredentialContexts.delete(key);
+    return null;
+  }
+  return entry.credentials;
+}
+
+function platformMomoCredentials() {
+  return {
+    partnerCode: String(process.env.MOMO_PARTNER_CODE || "").trim(),
+    accessKey: String(process.env.MOMO_ACCESS_KEY || "").trim(),
+    secretKey: String(process.env.MOMO_SECRET_KEY || "").trim(),
+  };
+}
+
+function platformVnpayCredentials() {
+  return {
+    tmnCode: String(process.env.VNPAY_TMN_CODE || "").trim(),
+    hashSecret: String(process.env.VNPAY_HASH_SECRET || "").trim(),
+    bankCode: String(process.env.VNPAY_BANK_CODE || "").trim().toUpperCase(),
+  };
+}
 
 function hmacSHA256(raw, key) {
   return crypto.createHmac("sha256", key).update(raw).digest("hex");
@@ -76,12 +120,13 @@ export async function createMomoPayment({ payment, ipnUrl, returnUrl, mode = "sa
       ? (process.env.MOMO_ENDPOINT_PRODUCTION || "https://payment.momo.vn/v2/gateway/api/create")
       : (process.env.MOMO_ENDPOINT_SANDBOX || "https://test-payment.momo.vn/v2/gateway/api/create");
 
-  const partnerCode = String(process.env.MOMO_PARTNER_CODE || "").trim();
-  const accessKey = String(process.env.MOMO_ACCESS_KEY || "").trim();
-  const secretKey = String(process.env.MOMO_SECRET_KEY || "").trim();
+  const merchant = payment?.$locals?.paymentProviderCredentials || platformMomoCredentials();
+  const partnerCode = String(merchant.partnerCode || "").trim();
+  const accessKey = String(merchant.accessKey || "").trim();
+  const secretKey = String(merchant.secretKey || "").trim();
 
   if (!partnerCode || !accessKey || !secretKey) {
-    throw new Error("MoMo chưa cấu hình đầy đủ MOMO_PARTNER_CODE/MOMO_ACCESS_KEY/MOMO_SECRET_KEY");
+    throw new Error("MoMo chưa cấu hình đầy đủ tài khoản merchant.");
   }
 
   const requestId = payment.requestId;
@@ -131,7 +176,7 @@ export async function createMomoPayment({ payment, ipnUrl, returnUrl, mode = "sa
     if (/chữ ký không hợp lệ|invalid signature/i.test(providerMessage)) {
       const environmentLabel = mode === "production" ? "Production" : "Sandbox";
       throw new Error(
-        `MoMo từ chối chữ ký (mã ${resultCode}). Kiểm tra MOMO_PARTNER_CODE, MOMO_ACCESS_KEY và MOMO_SECRET_KEY phải thuộc cùng một bộ ${environmentLabel}.`,
+        `MoMo từ chối chữ ký (mã ${resultCode}). Kiểm tra ba thông tin merchant phải thuộc cùng một bộ ${environmentLabel}.`,
       );
     }
     throw new Error(
@@ -150,8 +195,9 @@ export async function createMomoPayment({ payment, ipnUrl, returnUrl, mode = "sa
 }
 
 export function verifyMomoCallback(payload = {}) {
-  const accessKey = String(process.env.MOMO_ACCESS_KEY || "").trim();
-  const secretKey = String(process.env.MOMO_SECRET_KEY || "").trim();
+  const merchant = getPaymentCredentialContext("momo", payload.orderId) || platformMomoCredentials();
+  const accessKey = String(merchant.accessKey || "").trim();
+  const secretKey = String(merchant.secretKey || "").trim();
   if (!accessKey || !secretKey) return false;
 
   const rawSignature =
@@ -197,16 +243,17 @@ export function createVnpayPayment({
   mode = "sandbox",
   now = new Date(),
 }) {
-  const tmnCode = process.env.VNPAY_TMN_CODE;
-  const hashSecret = process.env.VNPAY_HASH_SECRET;
-  const bankCode = String(process.env.VNPAY_BANK_CODE || "").trim().toUpperCase();
+  const merchant = payment?.$locals?.paymentProviderCredentials || platformVnpayCredentials();
+  const tmnCode = String(merchant.tmnCode || "").trim();
+  const hashSecret = String(merchant.hashSecret || "").trim();
+  const bankCode = String(merchant.bankCode || "").trim().toUpperCase();
   const baseUrl =
     mode === "production"
       ? (process.env.VNPAY_URL_PRODUCTION || "https://pay.vnpay.vn/vpcpay.html")
       : (process.env.VNPAY_URL_SANDBOX || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html");
 
   if (!tmnCode || !hashSecret) {
-    throw new Error("VNPAY chưa cấu hình đầy đủ VNPAY_TMN_CODE/VNPAY_HASH_SECRET");
+    throw new Error("VNPAY chưa cấu hình đầy đủ tài khoản merchant.");
   }
 
   const createDate = now instanceof Date ? now : new Date(now);
@@ -263,7 +310,8 @@ export function isVnpaySuccessful(payload = {}) {
 }
 
 export function verifyVnpayCallback(payload = {}) {
-  const hashSecret = process.env.VNPAY_HASH_SECRET;
+  const merchant = getPaymentCredentialContext("vnpay", payload.vnp_TxnRef) || platformVnpayCredentials();
+  const hashSecret = String(merchant.hashSecret || "").trim();
   if (!hashSecret) return false;
 
   const secureHash = payload.vnp_SecureHash;

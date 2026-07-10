@@ -74,6 +74,7 @@ const NAVIGATION_SECTIONS = [
       { id: "finance", permissions: ["payment.read"], icon: "💳", label: "Tài chính", page: "Tài chính" },
       { id: "transactions", permissions: ["transaction.read", "finance.read", "payment.read"], icon: "🧾", label: "Giao dịch", page: "Giao dịch" },
       { id: "transfer-review", permissions: ["payment.read"], icon: "🏦", label: "Duyệt chuyển khoản", page: "Duyệt chuyển khoản" },
+      { id: "payment-settings", permissions: ["payment.read", "payment.write"], icon: "🔐", label: "Cổng thanh toán", page: "Cổng thanh toán" },
       { id: "wallet", permissions: ["payment.read", "payment.write", "refund.write"], icon: "👛", label: "Ví khách hàng", page: "Ví khách hàng" },
     ],
   },
@@ -119,15 +120,14 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBr
 
   const handleItemClick = useCallback((item) => {
     onPageChange(item.id);
-    window.requestAnimationFrame(() => {
-      const content = document.querySelector(".manager-layout__content");
-      if (!content) return;
+    const content = document.querySelector(".manager-layout__content");
+    if (content) {
       if (typeof content.scrollTo === "function") {
         content.scrollTo({ top: 0, left: 0, behavior: "auto" });
       } else {
         content.scrollTop = 0;
       }
-    });
+    }
     if (window.innerWidth <= 768) onClose();
   }, [onClose, onPageChange]);
 

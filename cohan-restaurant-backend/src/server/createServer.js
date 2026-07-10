@@ -391,11 +391,11 @@ export async function createServer() {
   app.get("/api/payments/webhooks/vnpay", async (req, reply) => {
     try {
       const payload = { ...(req.query || {}) };
-      const signatureValid = verifyVnpayCallback({ ...payload });
       const reference = payload.vnp_TxnRef;
-      const payment = signatureValid && reference
+      const payment = reference
         ? await PaymentSession.findOne({ provider: "vnpay", reference })
         : null;
+      const signatureValid = verifyVnpayCallback({ ...payload });
       const validationError = getVnpayIpnValidationError({ signatureValid, payment, payload });
       if (validationError) return reply.code(200).send(validationError);
 
@@ -440,14 +440,14 @@ export async function createServer() {
     const payload = { ...(req.query || {}) };
     const reference = provider === "momo" ? payload.orderId : payload.vnp_TxnRef;
     try {
+      const payment = reference
+        ? await PaymentSession.findOne({ provider, reference })
+        : null;
       const verified = provider === "momo"
         ? verifyMomoCallback(payload)
         : provider === "vnpay"
           ? verifyVnpayCallback(payload)
           : false;
-      const payment = reference
-        ? await PaymentSession.findOne({ provider, reference }).lean()
-        : null;
       const successful = verified && (
         provider === "momo"
           ? Number(payload.resultCode) === 0

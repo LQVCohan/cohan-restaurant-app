@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import BaseSchemaModel from "./baseSchemaModel.js";
 
 const { Schema, Types } = mongoose;
+const EXTERNAL_PROVIDERS = new Set(["momo", "vnpay"]);
 
 const PaymentEventSchema = new Schema(
   {
@@ -88,6 +89,9 @@ const PaymentSessionSchema = BaseSchemaModel({
   requestId: { type: String, required: true, index: true },
   reference: { type: String, required: true, index: true },
   providerTransactionId: { type: String, index: true },
+  providerCredentialId: { type: Types.ObjectId, ref: "PaymentProviderCredential", index: true },
+  providerCredentialSource: { type: String, enum: ["restaurant", "platform"] },
+  providerCredentialMode: { type: String, enum: ["sandbox", "production"] },
   payUrl: { type: String },
   deeplink: { type: String },
   qrCodeUrl: { type: String },
@@ -105,6 +109,48 @@ const PaymentSessionSchema = BaseSchemaModel({
   transfer: { type: TransferPaymentSchema, default: () => ({}) },
 
   events: { type: [PaymentEventSchema], default: [] },
+});
+
+PaymentSessionSchema.pre("save", async function attachRestaurantCredential() {
+  if (!this.isNew || !this.restaurantId || !EXTERNAL_PROVIDERS.has(String(this.provider))) return;
+  const {
+    getRestaurantProviderMode,
+    resolvePaymentProviderCredential,
+  } = await import("../src/services/payment/paymentCredential.service.js");
+  const mode = await getRestaurantProviderMode(this.restaurantId, this.provider);
+  const resolved = await resolvePaymentProviderCredential({
+    restaurantId: this.restaurantId,
+    provider: this.provider,
+    mode,
+  });
+  this.providerCredentialId = resolved.credentialId || undefined;
+  this.providerCredentialSource = resolved.source;
+  this.providerCredentialMode = resolved.mode;
+  this.$locals.paymentProviderCredentials = resolved.credentials;
+});
+
+PaymentSessionSchema.post("findOne", async function primeCallbackCredential(payment) {
+  const query = this.getQuery?.() || {};
+  if (
+    !payment ||
+    !query.provider ||
+    !query.reference ||
+    !EXTERNAL_PROVIDERS.has(String(payment.provider))
+  ) return;
+  try {
+    const { resolvePaymentProviderCredential } = await import("../src/services/payment/paymentCredential.service.js");
+    const { primePaymentCredentialContext } = await import("../src/services/payment/providers.js");
+    const resolved = await resolvePaymentProviderCredential({
+      restaurantId: payment.restaurantId,
+      provider: payment.provider,
+      mode: payment.providerCredentialMode || "sandbox",
+      credentialId: payment.providerCredentialId,
+    });
+    payment.$locals.paymentProviderCredentials = resolved.credentials;
+    primePaymentCredentialContext(payment.provider, payment.reference, resolved.credentials);
+  } catch (_) {
+    // Verification will safely fall back to platform credentials and reject on mismatch.
+  }
 });
 
 PaymentSessionSchema.index({ provider: 1, reference: 1 }, { unique: true });
