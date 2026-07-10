@@ -1,7 +1,16 @@
-export const resolveMenuTimeSlotAt = (value) => {
+export const resolveMenuTimeSlotAt = (
+  value,
+  timezone = "Asia/Ho_Chi_Minh",
+) => {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  const hour = date.getHours();
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone,
+      hour: "2-digit",
+      hourCycle: "h23",
+    }).format(date),
+  );
   if (hour >= 5 && hour < 10) return "breakfast";
   if (hour >= 10 && hour < 15) return "lunch";
   if (hour >= 15 && hour < 22) return "dinner";
