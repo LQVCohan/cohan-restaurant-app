@@ -204,7 +204,7 @@ const AuditLogModal = ({
       className="audit-log-modal"
       closeOnOverlayClick={!loading}
     >
-      <Modal.Header>{title}</Modal.Header>
+      <Modal.Header onClose={onClose}>{title}</Modal.Header>
       <Modal.Body>
         <div className="alm-header-row">
           <div className="alm-header-copy">
