@@ -59,11 +59,14 @@ const VALID_MANAGER_PAGES = new Set([
   "ai-chatbot-analytics", "ai-chatbot-settings", "ai-chatbot-knowledge",
 ]);
 
+const getPersistentManagerPage = (pageId) =>
+  pageId === "table-types" ? "tables" : pageId;
+
 const resolveInitialManagerPage = () => {
   const hash = window.location.hash?.replace("#", "");
-  if (hash && VALID_MANAGER_PAGES.has(hash)) return hash;
+  if (hash && VALID_MANAGER_PAGES.has(hash)) return getPersistentManagerPage(hash);
   const saved = localStorage.getItem("manager.currentPage");
-  if (saved && VALID_MANAGER_PAGES.has(saved)) return saved;
+  if (saved && VALID_MANAGER_PAGES.has(saved)) return getPersistentManagerPage(saved);
   return "dashboard";
 };
 
@@ -122,7 +125,7 @@ const PAGE_CONFIG = {
   dashboard: page("Tổng quan", "Tổng quan hiệu suất và số liệu vận hành nhà hàng", "📊", ["overview", "thống kê", "kpi", "doanh thu", "dashboard"]),
   brands: page("Quản lý chuỗi", "Quản lý Brand, chi nhánh và chủ sở hữu", "🏢", ["brand", "chuỗi", "chi nhánh", "owner"]),
   tables: page("Quản lý bàn", "Theo dõi trạng thái bàn, sơ đồ tầng và đặt chỗ", "🪑", ["bàn", "table", "đặt bàn", "sơ đồ"]),
-  "table-types": page("Loại bàn", "Thống kê và cập nhật loại cho từng bàn", "🏷️", ["loại bàn", "table type", "vip", "booth", "bar"]),
+  "table-types": page("Quản lý bàn", "Thiết lập loại bàn và không gian phục vụ", "🏷️", ["loại bàn", "table type", "không gian", "vip", "booth", "bar"]),
   "table-qr": page("QR truy cập bàn", "Sinh QR để khách quét tại bàn và xem order hiện tại", "📱", ["qr", "bàn", "quét", "order", "khách"]),
   orders: page("Quản lý đơn hàng", "Xử lý đơn tại chỗ, mang đi, giao hàng và thanh toán", "🧾", ["order", "đơn", "timeline", "thanh toán"]),
   menu: page("Quản lý menu", "Quản lý món ăn, giá bán, danh mục và trạng thái phục vụ", "🍜", ["món", "menu", "giá", "danh mục"]),
@@ -312,7 +315,12 @@ const ManagerLayout = () => {
   useEffect(() => {
     const syncFromHash = () => {
       const hash = window.location.hash?.replace("#", "");
-      if (hash && validPages.has(hash)) setCurrentPage(hash);
+      if (!hash || !validPages.has(hash)) return;
+      const nextPage = getPersistentManagerPage(hash);
+      if (nextPage !== hash) {
+        history.replaceState(null, "", buildManagerNavigationUrl({ page: nextPage }));
+      }
+      setCurrentPage(nextPage);
     };
     syncFromHash();
     window.addEventListener("hashchange", syncFromHash);
@@ -321,7 +329,7 @@ const ManagerLayout = () => {
 
   useEffect(() => {
     if (!validPages.has(currentPage)) return;
-    localStorage.setItem("manager.currentPage", currentPage);
+    localStorage.setItem("manager.currentPage", getPersistentManagerPage(currentPage));
     const expectedHash = `#${currentPage}`;
     if (window.location.pathname !== MANAGER_CANONICAL_PATH || window.location.hash !== expectedHash) {
       history.replaceState(null, "", `${MANAGER_CANONICAL_PATH}${expectedHash}`);
@@ -360,7 +368,7 @@ const ManagerLayout = () => {
       if (!pageId || !validPages.has(pageId) || !allowedPages.has(pageId)) return;
       setCurrentPage(pageId);
       setSidebarOpen(false);
-      localStorage.setItem("manager.currentPage", pageId);
+      localStorage.setItem("manager.currentPage", getPersistentManagerPage(pageId));
       history.replaceState(null, "", buildManagerNavigationUrl({ page: pageId, query }));
       window.dispatchEvent(new PopStateEvent("popstate"));
       window.dispatchEvent(new CustomEvent("manager:navigation-query", { detail: { page: pageId, query, source: event?.detail?.source || "manager:navigate" } }));
