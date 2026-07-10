@@ -1,0 +1,489 @@
+name: One-shot payment provider flow
+
+on:
+  push:
+    branches: [fix/payment-provider-flow-20260710]
+    paths:
+      - .github/workflows/one-shot-payment-provider-flow.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply focused payment patch on latest main files
+        run: |
+          git fetch origin main
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          import subprocess
+
+          def read(path):
+              return Path(path).read_text(encoding="utf-8")
+
+          def write(path, text):
+              Path(path).write_text(text, encoding="utf-8")
+
+          def replace_once(path, old, new):
+              text = read(path)
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one match in {path}, found {count}: {old[:120]!r}")
+              write(path, text.replace(old, new, 1))
+
+          def replace_regex_once(path, pattern, replacement):
+              text = read(path)
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one regex match in {path}, found {count}: {pattern}")
+              write(path, updated)
+
+          server = "cohan-restaurant-backend/src/server/createServer.js"
+          subprocess.run(["git", "checkout", "origin/main", "--", server], check=True)
+
+          replace_once(
+              server,
+              'import { applyPaymentProviderCallback, createReservationPayment, getPaymentSessionById, listReservationPayments, reconcileBankTransferWebhook } from "../services/payment/paymentSession.service.js";',
+              '''import { applyPaymentProviderCallback, createReservationPayment, getPaymentSessionById, listReservationPayments, reconcileBankTransferWebhook } from "../services/payment/paymentSession.service.js";
+          import { isVnpaySuccessful, verifyMomoCallback, verifyVnpayCallback } from "../services/payment/providers.js";''',
+          )
+          replace_once(
+              server,
+              'import { ChatThread, Order } from "../../models/index.js";',
+              'import { ChatThread, Order, PaymentSession } from "../../models/index.js";',
+          )
+
+          helper_marker = 'export function buildContentSecurityPolicyDirectives({ inProduction, allowedOrigins, s3PublicBase, allowUnsafeInlineStyle }) {'
+          helpers = r'''function escapeHtml(value) {
+            return String(value ?? "")
+              .replaceAll("&", "&amp;")
+              .replaceAll("<", "&lt;")
+              .replaceAll(">", "&gt;")
+              .replaceAll('"', "&quot;")
+              .replaceAll("'", "&#039;");
+          }
+
+          export function buildPaymentReturnPage({ provider, verified, successful, paymentFound, reference }) {
+            const providerLabel = String(provider || "").toLowerCase() === "momo" ? "MoMo" : "VNPAY";
+            let title = "Đã ghi nhận kết quả thanh toán";
+            let message = "Vui lòng quay lại cửa sổ COHAN. Hệ thống sẽ tự động cập nhật khi cổng thanh toán gửi xác nhận.";
+
+            if (!verified) {
+              title = "Không thể xác thực kết quả thanh toán";
+              message = "Dữ liệu trả về không hợp lệ. Vui lòng quay lại COHAN và kiểm tra trạng thái giao dịch trước khi thử lại.";
+            } else if (!paymentFound) {
+              title = "Không tìm thấy phiên thanh toán";
+              message = "COHAN chưa xác định được giao dịch tương ứng. Vui lòng quay lại ứng dụng để kiểm tra.";
+            } else if (!successful) {
+              title = "Giao dịch chưa hoàn tất";
+              message = "Cổng thanh toán chưa xác nhận giao dịch thành công. Vui lòng quay lại COHAN để thử lại hoặc chọn phương thức khác.";
+            }
+
+            return `<!doctype html>
+          <html lang="vi">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <title>${escapeHtml(title)}</title>
+            </head>
+            <body>
+              <main>
+                <h1>${escapeHtml(title)}</h1>
+                <p>${escapeHtml(message)}</p>
+                <p>Phương thức: <strong>${escapeHtml(providerLabel)}</strong></p>
+                ${reference ? `<p>Mã tham chiếu: <strong>${escapeHtml(reference)}</strong></p>` : ""}
+                <p>Bạn có thể đóng trang này sau khi quay lại COHAN.</p>
+              </main>
+            </body>
+          </html>`;
+          }
+
+          export function getVnpayIpnValidationError({ signatureValid, payment, payload = {} }) {
+            if (!signatureValid) return { RspCode: "97", Message: "Invalid Checksum" };
+            if (!payment) return { RspCode: "01", Message: "Order not found" };
+
+            const providerAmount = Math.round(Number(payload.vnp_Amount || 0) / 100);
+            const expectedAmount = Math.round(Number(payment.amount || 0));
+            if (providerAmount !== expectedAmount) {
+              return { RspCode: "04", Message: "Invalid Amount" };
+            }
+            return null;
+          }
+
+          '''
+          replace_once(server, helper_marker, helpers + helper_marker)
+
+          route_pattern = r'  app\.post\("/api/payments/webhooks/:provider".*?\n  app\.get\("/api/reverse-geocode"'
+          route_replacement = r'''  app.get("/api/payments/webhooks/vnpay", async (req, reply) => {
+            try {
+              const payload = { ...(req.query || {}) };
+              const signatureValid = verifyVnpayCallback({ ...payload });
+              const reference = payload.vnp_TxnRef;
+              const payment = signatureValid && reference
+                ? await PaymentSession.findOne({ provider: "vnpay", reference })
+                : null;
+              const validationError = getVnpayIpnValidationError({ signatureValid, payment, payload });
+              if (validationError) return reply.code(200).send(validationError);
+
+              const alreadyConfirmed = String(payment.status || "").toLowerCase() === "success";
+              const updatedPayment = await applyPaymentProviderCallback({
+                provider: "vnpay",
+                payload: { ...payload },
+                source: "webhook",
+              });
+              if (updatedPayment?.status === "success" && !updatedPayment?.realtimeEmitSkipped) {
+                await emitPaymentRealtime({ io: app.io, payment: updatedPayment, eventType: "PAYMENT_VERIFIED" });
+              }
+              return reply.code(200).send({
+                RspCode: alreadyConfirmed ? "02" : "00",
+                Message: alreadyConfirmed ? "Order already confirmed" : "Confirm Success",
+              });
+            } catch (err) {
+              req.log.error({ err }, "VNPAY IPN failed");
+              return reply.code(200).send({ RspCode: "99", Message: "Unknown error" });
+            }
+          });
+
+          app.post("/api/payments/webhooks/:provider", async (req, reply) => {
+            try {
+              const payment = await applyPaymentProviderCallback({
+                provider: req.params?.provider,
+                payload: req.body || {},
+                source: "webhook",
+              });
+              if (payment?.status === "success" && !payment?.realtimeEmitSkipped) {
+                await emitPaymentRealtime({ io: app.io, payment, eventType: "PAYMENT_VERIFIED" });
+              }
+              return reply.send({ ok: true, paymentId: String(payment._id), status: payment.status });
+            } catch (err) {
+              req.log.error({ err }, "payment webhook failed");
+              return reply.code(400).send({ ok: false, message: err?.message || "Webhook failed" });
+            }
+          });
+
+          app.get("/api/payments/return/:provider", async (req, reply) => {
+            const provider = String(req.params?.provider || "").toLowerCase();
+            const payload = { ...(req.query || {}) };
+            const reference = provider === "momo" ? payload.orderId : payload.vnp_TxnRef;
+            try {
+              const verified = provider === "momo"
+                ? verifyMomoCallback(payload)
+                : provider === "vnpay"
+                  ? verifyVnpayCallback(payload)
+                  : false;
+              const payment = reference
+                ? await PaymentSession.findOne({ provider, reference }).lean()
+                : null;
+              const successful = verified && (
+                provider === "momo"
+                  ? Number(payload.resultCode) === 0
+                  : provider === "vnpay" && isVnpaySuccessful(payload)
+              );
+              return reply
+                .type("text/html; charset=utf-8")
+                .send(buildPaymentReturnPage({
+                  provider,
+                  verified,
+                  successful,
+                  paymentFound: Boolean(payment),
+                  reference,
+                }));
+            } catch (err) {
+              req.log.warn({ err, provider, reference }, "payment return display failed");
+              return reply
+                .type("text/html; charset=utf-8")
+                .send(buildPaymentReturnPage({
+                  provider,
+                  verified: false,
+                  successful: false,
+                  paymentFound: false,
+                  reference,
+                }));
+            }
+          });
+
+          app.get("/api/reverse-geocode"'''
+          replace_regex_once(server, route_pattern, route_replacement)
+
+          service = "cohan-restaurant-backend/src/services/payment/paymentSession.service.js"
+          replace_once(
+              service,
+              '''  createMomoPayment,
+            createVnpayPayment,
+            verifyMomoCallback,
+            verifyVnpayCallback,''',
+              '''  createMomoPayment,
+            createVnpayPayment,
+            isVnpaySuccessful,
+            verifyMomoCallback,
+            verifyVnpayCallback,''',
+          )
+          replace_once(
+              service,
+              '''function mapProviderStatus(provider, payload) {
+            if (provider === "momo") {
+              return Number(payload?.resultCode) === 0 ? "success" : "failed";
+            }
+            const code = String(payload?.vnp_ResponseCode || "");
+            if (code === "00") return "success";
+            if (["24", "51"].includes(code)) return "cancelled";
+            return "failed";
+          }''',
+              '''function mapProviderStatus(provider, payload) {
+            if (provider === "momo") {
+              return Number(payload?.resultCode) === 0 ? "success" : "failed";
+            }
+            if (isVnpaySuccessful(payload)) return "success";
+            const code = String(payload?.vnp_ResponseCode || "");
+            if (code === "24") return "cancelled";
+            return "failed";
+          }''',
+          )
+
+          providers = "cohan-restaurant-backend/src/services/payment/providers.js"
+          replace_regex_once(
+              providers,
+              r'''  const isValid = safeCompareString\(expected, secureHash\);\n\n  if \(\n    isValid &&\n    String\(payload\.vnp_ResponseCode \|\| ""\) === "00" &&\n    !isVnpaySuccessful\(payload\)\n  \) \{\n    // The payment service historically maps VNPAY by responseCode\. Normalize a\n    // signed non-success transaction so it cannot be settled as successful\.\n    payload\.vnp_ResponseCode = String\(payload\.vnp_TransactionStatus \|\| "99"\);\n  \}\n\n  return isValid;''',
+              '  return safeCompareString(expected, secureHash);',
+          )
+
+          component = "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx"
+          old_controls = '''                      <Row gutter={16}>
+                        <Col span={8}>
+                          <Form.Item label="Tên hiển thị">
+                            <Input
+                              value={provider.label}
+                              onChange={(e) =>
+                                setRestaurantForm((p) => {
+                                  const providers = [...(p.paymentSettings?.providers || [])];
+                                  providers[idx] = { ...providers[idx], label: e.target.value };
+                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
+                                })
+                              }
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={5}>
+                          <Form.Item label="Thứ tự ưu tiên">
+                            <Input
+                              type="number"
+                              value={provider.priority}
+                              onChange={(e) =>
+                                setRestaurantForm((p) => {
+                                  const providers = [...(p.paymentSettings?.providers || [])];
+                                  providers[idx] = { ...providers[idx], priority: Number(e.target.value || 0) };
+                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
+                                })
+                              }
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={5}>
+                          <Form.Item label="Môi trường kết nối">
+                            <Select
+                              value={provider.mode || "sandbox"}
+                              onChange={(v) =>
+                                setRestaurantForm((p) => {
+                                  const providers = [...(p.paymentSettings?.providers || [])];
+                                  providers[idx] = { ...providers[idx], mode: v };
+                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
+                                })
+                              }
+                              options={[
+                                { value: "sandbox", label: "Kiểm thử" },
+                                { value: "production", label: "Vận hành thực tế" },
+                              ]}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                          <Form.Item label="Đang sử dụng">
+                            <Switch
+                              checked={provider.active !== false}
+                              onChange={(checked) =>
+                                setRestaurantForm((p) => {
+                                  const providers = [...(p.paymentSettings?.providers || [])];
+                                  providers[idx] = { ...providers[idx], active: checked };
+                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
+                                })
+                              }
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>'''
+          new_controls = '''                      <Row gutter={[12, 12]} align="middle" justify="space-between">
+                        <Col flex="auto">
+                          <Text type="secondary">
+                            {provider.provider === "momo"
+                              ? "Cho phép khách hàng thanh toán qua MoMo"
+                              : "Cho phép khách hàng thanh toán qua VNPAY"}
+                          </Text>
+                        </Col>
+                        <Col>
+                          <Form.Item label="Đang sử dụng" style={{ marginBottom: 0 }}>
+                            <Switch
+                              checked={provider.active !== false}
+                              onChange={(checked) =>
+                                setRestaurantForm((p) => {
+                                  const providers = [...(p.paymentSettings?.providers || [])];
+                                  providers[idx] = { ...providers[idx], active: checked };
+                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
+                                })
+                              }
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>'''
+          replace_once(component, old_controls, new_controls)
+
+          main = "src/main.jsx"
+          replace_once(
+              main,
+              'import "./components/Dashboard_Manager/RestaurantInfo/RestaurantPaymentMethodsSimple.css";\n',
+              "",
+          )
+          for obsolete in [
+              "src/components/Dashboard_Manager/RestaurantInfo/RestaurantPaymentMethodsSimple.css",
+              "src/components/Dashboard_Manager/RestaurantInfo/RestaurantPaymentMethodsSimple.test.js",
+          ]:
+              path = Path(obsolete)
+              if path.exists():
+                  path.unlink()
+
+          provider_test = "cohan-restaurant-backend/tests/services/payment-providers.security.test.js"
+          replace_once(
+              provider_test,
+              '''    expect(verifyVnpayCallback(signedFailure)).toBe(true);
+            expect(signedFailure.vnp_ResponseCode).toBe("02");''',
+              '''    expect(verifyVnpayCallback(signedFailure)).toBe(true);
+            expect(isVnpaySuccessful(signedFailure)).toBe(false);
+            expect(signedFailure.vnp_ResponseCode).toBe("00");''',
+          )
+
+          callback_test = "cohan-restaurant-backend/tests/server/payment-provider-callback-contract.test.js"
+          write(callback_test, '''import { describe, expect, it } from "vitest";
+          import {
+            buildPaymentReturnPage,
+            getVnpayIpnValidationError,
+          } from "../../src/server/createServer.js";
+
+          describe("payment provider callback contracts", () => {
+            it("validates VNPAY IPN in checksum, order and amount order", () => {
+              const payment = { amount: 150000 };
+              const mismatched = { vnp_Amount: "10000000" };
+              const matching = { vnp_Amount: "15000000" };
+
+              expect(getVnpayIpnValidationError({ signatureValid: false, payment, payload: mismatched }))
+                .toEqual({ RspCode: "97", Message: "Invalid Checksum" });
+              expect(getVnpayIpnValidationError({ signatureValid: true, payment: null, payload: matching }))
+                .toEqual({ RspCode: "01", Message: "Order not found" });
+              expect(getVnpayIpnValidationError({ signatureValid: true, payment, payload: mismatched }))
+                .toEqual({ RspCode: "04", Message: "Invalid Amount" });
+              expect(getVnpayIpnValidationError({ signatureValid: true, payment, payload: matching }))
+                .toBeNull();
+            });
+
+            it("renders a user-facing return page without raw callback data", () => {
+              const html = buildPaymentReturnPage({
+                provider: "vnpay",
+                verified: true,
+                successful: true,
+                paymentFound: true,
+                reference: '<script>alert("x")</script>',
+              });
+
+              expect(html).toContain("Đã ghi nhận kết quả thanh toán");
+              expect(html).toContain("VNPAY");
+              expect(html).toContain("&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;");
+              expect(html).not.toContain("vnp_SecureHash");
+              expect(html).not.toContain('<script>alert("x")</script>');
+            });
+
+            it("shows a clear error state for an unverified return", () => {
+              const html = buildPaymentReturnPage({
+                provider: "momo",
+                verified: false,
+                successful: false,
+                paymentFound: true,
+                reference: "MOMO-REF-1",
+              });
+
+              expect(html).toContain("Không thể xác thực kết quả thanh toán");
+              expect(html).toContain("MoMo");
+            });
+          });
+          ''')
+
+          component_test = "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx"
+          text = read(component_test)
+          marker = "\n});\n"
+          index = text.rfind(marker)
+          if index < 0:
+              raise SystemExit("Could not find final describe terminator in RestaurantInfoManagement.test.jsx")
+          payment_test = r'''
+
+            it("shows only customer-facing MoMo and VNPAY controls", async () => {
+              render(<RestaurantInfoManagement />);
+
+              await waitFor(() => {
+                expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+              });
+
+              fireEvent.click(
+                screen.getByRole("tab", { name: /Thanh toán trực tuyến/i }),
+              );
+
+              await waitFor(() => {
+                expect(screen.getAllByText("MoMo").length).toBeGreaterThan(0);
+                expect(screen.getAllByText("VNPAY").length).toBeGreaterThan(0);
+              });
+              expect(screen.queryByText("Môi trường kết nối")).not.toBeInTheDocument();
+              expect(screen.queryByText("Kiểm thử")).not.toBeInTheDocument();
+              expect(screen.queryByText("Vận hành thực tế")).not.toBeInTheDocument();
+              expect(screen.queryByText("Thứ tự ưu tiên")).not.toBeInTheDocument();
+              expect(screen.queryByText("Tên hiển thị")).not.toBeInTheDocument();
+
+              fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+              await waitFor(() => expect(updateRestaurantMock).toHaveBeenCalledTimes(1));
+              expect(
+                updateRestaurantMock.mock.calls[0][0].variables.input.paymentSettings.providers,
+              ).toEqual(restaurant.paymentSettings.providers);
+            });'''
+          write(component_test, text[:index] + payment_test + text[index:])
+          PY
+
+      - name: Review syntax and patch integrity
+        run: |
+          git diff --check
+          node --check cohan-restaurant-backend/src/services/payment/providers.js
+          node --check cohan-restaurant-backend/src/services/payment/paymentSession.service.js
+          node --check cohan-restaurant-backend/src/server/createServer.js
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm --prefix cohan-restaurant-backend ci
+
+      - name: Run focused tests and build
+        run: |
+          npm --prefix cohan-restaurant-backend test -- tests/services/payment-providers.security.test.js tests/server/payment-provider-callback-contract.test.js
+          npx vitest run src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx
+          npm run check:graphql
+          npm run build
+
+      - name: Commit verified focused update
+        run: |
+          rm .github/workflows/one-shot-payment-provider-flow.yml
+          git config user.name "COHAN Agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(payment): finalize provider callback flow"
+          git push origin HEAD:fix/payment-provider-flow-20260710
