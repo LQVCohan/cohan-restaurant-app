@@ -6,7 +6,8 @@
   "scope": [
     "src/components/Dashboard_Manager/Table/TableTypeManagementPage.jsx",
     "src/components/Dashboard_Manager/Table/TableTypeManagementPage.scss",
-    "src/components/Dashboard_Manager/Table/TableTypeManagementPage.test.jsx"
+    "src/components/Dashboard_Manager/Table/TableTypeManagementPage.test.jsx",
+    "src/components/Dashboard_Manager/Sidebar.jsx"
   ],
   "validation": {
     "planned": [
@@ -22,6 +23,7 @@
       "replaced the standalone table-type content with the normal table-management screen plus a combined modal",
       "added table create, direct type change, full table edit/move, guarded delete, and floor create/rename/delete flows",
       "kept backend models, GraphQL schema, resolvers, permissions, table-state guards and POS flows unchanged",
+      "renamed the navigation entry to Loại bàn & không gian so it represents a modal settings entry rather than a standalone management page",
       "added responsive modal styles and focused component tests for table and floor actions"
     ],
     "notRun": [
@@ -29,7 +31,8 @@
       "npm run check:conflicts was not executable in the GitHub connector environment",
       "npm run check:graphql was not executable in the GitHub connector environment",
       "npm run build was not executable in the GitHub connector environment",
-      "desktop and mobile browser smoke screenshots were unavailable"
+      "desktop and mobile browser smoke screenshots were unavailable",
+      "no GitHub status checks were attached to the latest implementation commit"
     ]
   }
 }
