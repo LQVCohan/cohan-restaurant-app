@@ -1,0 +1,22 @@
+{
+  "id": "07-11-ingredient-category-sync-transaction",
+  "title": "Sửa lỗi transaction khi quét danh mục nguyên liệu",
+  "status": "in_progress",
+  "type": "backend-bugfix",
+  "scope": [
+    "cohan-restaurant-backend/graphql/resolvers/inventory/ingredientCategory.mutation.js",
+    "cohan-restaurant-backend/tests/resolvers/ingredient-category-normalization.test.js"
+  ],
+  "validation": {
+    "planned": [
+      "npm --prefix cohan-restaurant-backend test -- tests/resolvers/ingredient-category-normalization.test.js",
+      "npm run check:conflicts"
+    ],
+    "completed": [
+      "traced IngredientCategory model -> GraphQL mutation -> useIngredients -> IngredientList -> IngredientCategoryManagerModal",
+      "confirmed both sync mutations share runIngredientCategorySync",
+      "identified unsupported parallel queries on one MongoDB transaction session"
+    ],
+    "notRun": []
+  }
+}
