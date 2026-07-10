@@ -28,9 +28,9 @@ const AUDIT_LOGS_QUERY = gql`
 `;
 
 const ACTION_LABELS = {
-  create: "Đã tạo món",
-  update: "Đã cập nhật món",
-  delete: "Đã xóa món",
+  create: "Tạo món",
+  update: "Cập nhật món",
+  delete: "Xóa món",
 };
 
 const ACTION_CLASS = {
@@ -42,11 +42,22 @@ const ACTION_CLASS = {
 const FIELD_LABELS = {
   name: "Tên món",
   description: "Mô tả",
+  categoryId: "Danh mục món",
   basePrice: "Giá bán",
   price: "Giá bán",
   status: "Trạng thái bán",
-  prepStation: "Khu vực chế biến",
+  prepStation: "Khu chế biến",
   avgPrepTimeMin: "Thời gian chế biến",
+  thumbImage: "Ảnh món",
+  foodType: "Nhóm món",
+  meatTypes: "Loại thịt",
+  dietTags: "Chế độ ăn",
+  allergenTags: "Thành phần dị ứng",
+  tasteProfile: "Khẩu vị",
+  notes: "Ghi chú",
+  point: "Điểm thưởng",
+  rate: "Đánh giá",
+  orderCounter: "Số phần đã bán",
   isAvailable: "Đang phục vụ",
   sortOrder: "Thứ tự hiển thị",
   order: "Thứ tự hiển thị",
@@ -55,11 +66,13 @@ const FIELD_LABELS = {
 const CREATE_FIELDS = new Set([
   "name",
   "description",
+  "categoryId",
   "basePrice",
   "price",
   "status",
   "prepStation",
   "avgPrepTimeMin",
+  "foodType",
 ]);
 
 const VALUE_LABELS = {
@@ -67,8 +80,75 @@ const VALUE_LABELS = {
   unavailable: "Tạm ngưng bán",
   out_of_stock: "Hết món",
   hidden: "Ẩn khỏi thực đơn",
-  kitchen: "Bếp",
+  kitchen: "Bếp chính",
   bar: "Quầy bar",
+  UNKNOWN: "Chưa xác định",
+  VEGETARIAN: "Món chay",
+  VEGAN: "Món thuần chay",
+  NON_VEGETARIAN: "Có thịt hoặc hải sản",
+  MIXED: "Có lựa chọn chay và món có thịt",
+  BEEF: "Bò",
+  PORK: "Heo",
+  CHICKEN: "Gà",
+  DUCK: "Vịt",
+  SEAFOOD: "Hải sản",
+  FISH: "Cá",
+  LAMB: "Cừu",
+  OTHER: "Khác",
+  vegan: "Ăn chay hoặc thuần chay",
+  keto: "Keto hoặc ít tinh bột",
+  halal: "Halal",
+  seafood: "Hải sản",
+  peanut: "Đậu phộng",
+  milk: "Sữa",
+  egg: "Trứng",
+  gluten: "Gluten hoặc bột mì",
+};
+
+const ACTOR_ROLE_LABELS = {
+  admin: "Quản trị viên",
+  manager: "Người quản lý",
+  restaurant_manager: "Quản lý nhà hàng",
+  brand_manager: "Quản lý thương hiệu",
+  owner: "Chủ nhà hàng",
+  staff: "Nhân viên",
+  employee: "Nhân viên",
+};
+
+const comparable = (value) => JSON.stringify(value ?? null);
+
+const hasMeaningfulDiff = (diff, action) => {
+  if (action !== "update") return true;
+  if (!diff || typeof diff !== "object" || Array.isArray(diff)) return false;
+
+  if (Object.prototype.hasOwnProperty.call(diff, "field")) {
+    return comparable(diff.before) !== comparable(diff.after);
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(diff, "before") ||
+    Object.prototype.hasOwnProperty.call(diff, "after")
+  ) {
+    const before = diff.before;
+    const after = diff.after;
+    if (
+      !before ||
+      !after ||
+      typeof before !== "object" ||
+      typeof after !== "object" ||
+      Array.isArray(before) ||
+      Array.isArray(after)
+    ) {
+      return comparable(before) !== comparable(after);
+    }
+
+    const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+    return [...keys].some(
+      (key) => comparable(before[key]) !== comparable(after[key]),
+    );
+  }
+
+  return Object.keys(diff).some((key) => key !== "type");
 };
 
 const formatDateTime = (value) => {
@@ -76,9 +156,40 @@ const formatDateTime = (value) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "short",
-    timeStyle: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   }).format(date);
+};
+
+const formatActorRole = (value) => {
+  const key = String(value || "").trim().toLowerCase();
+  return ACTOR_ROLE_LABELS[key] || value || "";
+};
+
+const formatTasteProfile = (value = {}) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return "Đã thay đổi";
+  }
+
+  return [
+    value.containsOnion === undefined
+      ? null
+      : value.containsOnion
+        ? "Có hành"
+        : "Không hành",
+    value.containsCilantro === undefined
+      ? null
+      : value.containsCilantro
+        ? "Có ngò"
+        : "Không ngò",
+    value.sugar === undefined ? null : `Độ ngọt ${value.sugar}%`,
+    value.spice === undefined ? null : `Độ cay ${value.spice}`,
+  ]
+    .filter(Boolean)
+    .join("; ") || "Đã thay đổi";
 };
 
 const formatValue = (key, value) => {
@@ -94,9 +205,16 @@ const formatValue = (key, value) => {
   if (key === "avgPrepTimeMin" && Number.isFinite(Number(value))) {
     return `${Number(value).toLocaleString("vi-VN")} phút`;
   }
+  if (key === "tasteProfile") return formatTasteProfile(value);
+  if (key === "categoryId") return value ? "Đã chọn danh mục" : "Chưa phân loại";
+  if (key === "thumbImage") return value ? "Đã có ảnh" : "Chưa có ảnh";
   if (typeof value === "number") return value.toLocaleString("vi-VN");
   if (typeof value === "string") return VALUE_LABELS[value] || value;
-  if (Array.isArray(value)) return value.length ? value.join(", ") : "Không có";
+  if (Array.isArray(value)) {
+    return value.length
+      ? value.map((item) => VALUE_LABELS[item] || item).join(", ")
+      : "Không có";
+  }
   return "Đã thay đổi";
 };
 
@@ -135,28 +253,33 @@ const renderCreatedValues = (diff) => {
   );
 };
 
+const formatChangeText = (key, beforeValue, afterValue) => {
+  if (key === "categoryId") return "Đã thay đổi danh mục";
+  if (key === "thumbImage") return "Đã cập nhật ảnh món";
+  return `${formatValue(key, beforeValue)} → ${formatValue(key, afterValue)}`;
+};
+
 const renderChangedValues = (before = {}, after = {}) => {
-  const entries = getVisibleEntries(after).filter(([key, value]) => {
-    const beforeValue = before?.[key];
-    return JSON.stringify(beforeValue) !== JSON.stringify(value);
-  });
+  const entries = getVisibleEntries(after).filter(
+    ([key, value]) => comparable(before?.[key]) !== comparable(value),
+  );
 
   if (!entries.length) {
-    return <span className="alm-muted">Không có thay đổi cần hiển thị.</span>;
+    return (
+      <span className="alm-muted">
+        Thông tin kỹ thuật của món đã được cập nhật.
+      </span>
+    );
   }
 
   return (
     <div className="alm-kv-grid">
       {entries.map(([key, afterValue]) => {
-        const beforeValue = before?.[key];
-        const beforeText = formatValue(key, beforeValue);
-        const afterText = formatValue(key, afterValue);
+        const changeText = formatChangeText(key, before?.[key], afterValue);
         return (
           <div className="alm-kv-row" key={key}>
             <span>{FIELD_LABELS[key]}</span>
-            <b title={`${beforeText} → ${afterText}`}>
-              {beforeText} → {afterText}
-            </b>
+            <b title={changeText}>{changeText}</b>
           </div>
         );
       })}
@@ -170,24 +293,34 @@ const renderDiff = (diff, action) => {
   }
 
   if (diff.type === "bulk_price_update") {
+    const before = formatValue("basePrice", diff.basePriceBefore);
+    const after = formatValue("basePrice", diff.basePriceAfter);
     return (
       <div className="alm-diff-summary">
-        <span>Giá bán đã được điều chỉnh</span>
-        <small>Giá mới: {formatValue("basePrice", diff.basePriceAfter)}</small>
+        <span>Điều chỉnh giá bán</span>
+        <small>{before} → {after}</small>
       </div>
     );
   }
 
   if (diff.field) {
-    if (!FIELD_LABELS[diff.field] || diff.field === "thumbImage") {
-      return <span className="alm-muted">Thông tin món đã được cập nhật.</span>;
+    if (diff.field === "thumbImage") {
+      return (
+        <div className="alm-diff-summary">
+          <span>Ảnh món</span>
+          <small>Đã cập nhật ảnh món</small>
+        </div>
+      );
+    }
+    if (!FIELD_LABELS[diff.field]) {
+      return (
+        <span className="alm-muted">Thông tin món đã được cập nhật.</span>
+      );
     }
     return (
       <div className="alm-diff-summary">
         <span>{FIELD_LABELS[diff.field]}</span>
-        <small>
-          {formatValue(diff.field, diff.before)} → {formatValue(diff.field, diff.after)}
-        </small>
+        <small>{formatChangeText(diff.field, diff.before, diff.after)}</small>
       </div>
     );
   }
@@ -199,7 +332,7 @@ const renderDiff = (diff, action) => {
   if (action === "create") return renderCreatedValues(diff);
 
   return renderRows(getVisibleEntries(diff)) || (
-    <span className="alm-muted">Không có thay đổi cần hiển thị.</span>
+    <span className="alm-muted">Thông tin món đã được cập nhật.</span>
   );
 };
 
@@ -226,7 +359,10 @@ const AuditLogModal = ({
   });
 
   const logs = data?.auditLogs?.items || [];
-  const total = data?.auditLogs?.total || 0;
+  const visibleLogs = useMemo(
+    () => logs.filter((log) => hasMeaningfulDiff(log?.diff, log?.action)),
+    [logs],
+  );
 
   return (
     <Modal
@@ -240,8 +376,8 @@ const AuditLogModal = ({
       <Modal.Body>
         <div className="alm-header-row">
           <div className="alm-header-copy">
-            <strong>Lịch sử hoạt động</strong>
-            <span>Theo dõi những lần tạo, chỉnh sửa hoặc xóa món.</span>
+            <strong>Lịch sử chỉnh sửa</strong>
+            <span>Chỉ hiển thị những thay đổi thực tế của món.</span>
           </div>
           <button
             type="button"
@@ -250,7 +386,7 @@ const AuditLogModal = ({
             disabled={loading || shouldSkip}
           >
             <RefreshCw size={15} className={loading ? "is-spinning" : ""} />
-            Cập nhật
+            Tải lại
           </button>
         </div>
 
@@ -263,26 +399,29 @@ const AuditLogModal = ({
 
         {loading && logs.length === 0 ? (
           <div className="alm-state">Đang tải lịch sử món...</div>
-        ) : logs.length === 0 ? (
+        ) : visibleLogs.length === 0 ? (
           <div className="alm-empty">
             <Activity size={34} />
-            <strong>Chưa có thay đổi nào</strong>
-            <span>Các lần tạo, chỉnh sửa hoặc xóa món sẽ xuất hiện tại đây.</span>
+            <strong>Chưa có thay đổi thực tế</strong>
+            <span>Các lần chỉnh sửa có thay đổi dữ liệu sẽ xuất hiện tại đây.</span>
           </div>
         ) : (
           <div className="alm-timeline">
             <div className="alm-total">
-              {total === 1 ? "1 thay đổi" : `${total} thay đổi`}
+              {visibleLogs.length === 1
+                ? "1 thay đổi"
+                : `${visibleLogs.length} thay đổi`}
             </div>
-            {logs.map((log) => {
+            {visibleLogs.map((log) => {
               const actionClass = ACTION_CLASS[log.action] || "update";
+              const actorRole = formatActorRole(log.actorRole);
               return (
                 <article className="alm-entry" key={log.id}>
                   <div className={`alm-entry-dot ${actionClass}`} />
                   <div className="alm-entry-card">
                     <div className="alm-entry-top">
                       <span className={`alm-action ${actionClass}`}>
-                        {ACTION_LABELS[log.action] || "Đã thay đổi món"}
+                        {ACTION_LABELS[log.action] || "Thay đổi món"}
                       </span>
                       <span className="alm-time">
                         <Clock size={14} /> {formatDateTime(log.createdAt)}
@@ -290,8 +429,8 @@ const AuditLogModal = ({
                     </div>
                     <div className="alm-entry-sub">
                       <User size={14} />
-                      <span>{log.actorName || "Người quản lý"}</span>
-                      {log.actorRole && <small>{log.actorRole}</small>}
+                      <span>{log.actorName || "Tài khoản quản lý"}</span>
+                      {actorRole && <small>{actorRole}</small>}
                     </div>
                     <div className="alm-entry-diff">
                       {renderDiff(log.diff, log.action)}
