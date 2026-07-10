@@ -1,5 +1,96 @@
 /* Final interaction and layout pass for the ingredient modal. */
 
+.modal-container.ingredient-modal-shell {
+  width: min(900px, calc(100vw - 56px)) !important;
+  max-height: min(88dvh, 790px) !important;
+}
+
+.ingredient-modal-shell > .modal-header {
+  min-height: 60px !important;
+  padding: 14px 20px !important;
+}
+
+.ingredient-modal-shell > .ingredient-modal-body {
+  padding: 16px 18px 18px !important;
+  background:
+    radial-gradient(circle at 95% 0%, rgba(95, 127, 112, 0.07), transparent 20rem),
+    linear-gradient(180deg, #f6f9f7 0%, #edf2ef 100%) !important;
+  scroll-padding-bottom: 24px;
+}
+
+.ingredient-modal-shell .ingredient-form-premium {
+  gap: 14px !important;
+}
+
+.ingredient-modal-shell .ingredient-form-premium .form-section,
+.ingredient-modal-shell .ingredient-form-premium .form-section.elevated-section,
+.ingredient-modal-shell .ingredient-form-premium .form-section.borderless {
+  margin: 0 !important;
+  padding: 16px !important;
+  border: 1px solid rgba(55, 76, 65, 0.16) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 8px 20px rgba(34, 57, 46, 0.045) !important;
+}
+
+.ingredient-modal-shell .im-section-header {
+  align-items: center !important;
+  gap: 11px !important;
+  margin-bottom: 13px !important;
+}
+
+.ingredient-modal-shell .im-section-header .icon-box {
+  width: 34px !important;
+  height: 34px !important;
+  flex: 0 0 34px !important;
+  border-radius: 11px !important;
+}
+
+.ingredient-modal-shell .im-section-title {
+  margin: 0 0 2px !important;
+  font-size: 0.98rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.018em !important;
+}
+
+.ingredient-modal-shell .im-section-desc {
+  margin: 0 !important;
+  font-size: 0.79rem !important;
+  line-height: 1.35 !important;
+}
+
+.ingredient-modal-shell .form-grid-2 {
+  gap: 13px 16px !important;
+}
+
+.ingredient-modal-shell .form-group {
+  min-width: 0;
+  gap: 6px !important;
+}
+
+.ingredient-modal-shell .form-group > label,
+.ingredient-modal-shell .status-fieldset > legend {
+  margin: 0 !important;
+  color: #203229 !important;
+  font-size: 0.82rem !important;
+  font-weight: 650 !important;
+  line-height: 1.3 !important;
+}
+
+.ingredient-modal-shell .form-group > label {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap;
+  gap: 6px !important;
+}
+
+.ingredient-modal-shell .form-group .hint {
+  margin-left: auto;
+  color: #7b8781 !important;
+  font-size: 0.72rem !important;
+  font-weight: 550 !important;
+}
+
 .ingredient-modal-shell .status-fieldset {
   min-width: 0;
   margin: 0;
@@ -8,22 +99,40 @@
 }
 
 .ingredient-modal-shell .status-fieldset > legend {
-  margin: 0 0 8px;
+  margin-bottom: 6px !important;
   padding: 0;
-  color: #203229;
-  font-size: 0.875rem;
-  font-weight: 500;
 }
 
-.ingredient-modal-shell .form-group--full {
-  grid-column: 1 / -1;
+.ingredient-modal-shell :is(.standard-input, .standard-textarea, input, select) {
+  font-size: 0.9rem !important;
+}
+
+.ingredient-modal-shell :is(.standard-input, input, select),
+.ingredient-modal-shell .input-addon-group,
+.ingredient-modal-shell .input-with-icon {
+  min-height: 42px !important;
+  border-radius: 13px !important;
+}
+
+.ingredient-modal-shell .input-with-icon input,
+.ingredient-modal-shell .input-with-icon select {
+  min-height: 42px !important;
+}
+
+.ingredient-modal-shell .segmented-control {
+  min-height: 42px !important;
+  padding: 3px !important;
+  border-radius: 13px !important;
 }
 
 .ingredient-modal-shell .segmented-control .segment {
-  min-height: 38px;
+  min-height: 34px;
   appearance: none;
   border: 1px solid transparent !important;
+  border-radius: 10px !important;
   cursor: pointer;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
 }
 
 .ingredient-modal-shell .segmented-control .segment:hover:not(:disabled):not(.active) {
@@ -37,7 +146,7 @@
   background: #dfe9e3 !important;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.68),
-    0 5px 14px rgba(34, 57, 46, 0.1) !important;
+    0 4px 12px rgba(34, 57, 46, 0.09) !important;
 }
 
 .ingredient-modal-shell .segmented-control .segment.error.active {
@@ -51,37 +160,190 @@
   opacity: 0.58;
 }
 
-.ingredient-modal-shell .form-section.borderless {
-  margin-bottom: 14px !important;
+.ingredient-modal-shell .form-group--full {
+  grid-column: 1 / -1;
 }
 
-.ingredient-modal-shell .modal-body {
-  scroll-padding-bottom: 96px;
+.ingredient-modal-shell .currency-symbol {
+  min-width: 40px !important;
+  color: #4f6c5e !important;
+  font-size: 1rem !important;
+  font-weight: 800 !important;
 }
 
-.ingredient-modal-shell .form-actions-premium .btn-save {
+.ingredient-modal-shell .addon-suffix {
+  white-space: nowrap;
+  font-size: 0.78rem !important;
+}
+
+.ingredient-modal-shell .badge-hint {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ingredient-modal-shell .help-text,
+.ingredient-modal-shell .error-text {
+  font-size: 0.73rem !important;
+  line-height: 1.35 !important;
+}
+
+.ingredient-modal-shell .ingredient-notes-field {
+  margin-top: 1px;
+}
+
+.ingredient-modal-shell .ingredient-notes-field label svg {
+  color: #65766d;
+}
+
+.ingredient-modal-shell .ingredient-notes-field textarea {
+  min-height: 66px !important;
+  max-height: 112px;
+  resize: vertical;
+  border-radius: 13px !important;
+}
+
+.ingredient-modal-shell > .ingredient-modal-actions {
+  position: relative !important;
+  bottom: auto !important;
+  min-height: 64px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  padding: 11px 18px !important;
+  border-top: 1px solid rgba(55, 76, 65, 0.15) !important;
+  background: rgba(251, 252, 251, 0.97) !important;
+  box-shadow: 0 -8px 22px rgba(34, 57, 46, 0.045) !important;
+}
+
+.ingredient-modal-actions__meta {
+  color: #718078;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.ingredient-modal-actions__meta > span {
+  color: #b54747;
+}
+
+.ingredient-modal-actions__buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.ingredient-modal-actions__buttons .btn {
+  min-height: 42px !important;
+  min-width: 116px;
+  border-radius: 13px !important;
+}
+
+.ingredient-modal-actions__buttons .btn-cancel {
+  color: #43564c !important;
+  border-color: rgba(55, 76, 65, 0.17) !important;
+  background: #ffffff !important;
+}
+
+.ingredient-modal-actions__buttons .btn-save {
   color: #ffffff !important;
   border-color: #5f7f70 !important;
   background: #5f7f70 !important;
-  box-shadow: 0 10px 22px rgba(61, 87, 75, 0.18) !important;
+  box-shadow: 0 9px 20px rgba(61, 87, 75, 0.17) !important;
 }
 
-.ingredient-modal-shell .form-actions-premium .btn-save:hover:not(:disabled) {
+.ingredient-modal-actions__buttons .btn-save:hover:not(:disabled) {
   border-color: #4f6c5e !important;
   background: #4f6c5e !important;
-  box-shadow: 0 14px 28px rgba(61, 87, 75, 0.24) !important;
+  box-shadow: 0 12px 24px rgba(61, 87, 75, 0.22) !important;
 }
 
-.ingredient-modal-shell .form-actions-premium .btn-save:active:not(:disabled) {
+.ingredient-modal-actions__buttons .btn-save:active:not(:disabled) {
   transform: translateY(1px);
 }
 
+@media (max-height: 760px) and (min-width: 721px) {
+  .modal-container.ingredient-modal-shell {
+    max-height: calc(100dvh - 24px) !important;
+  }
+
+  .ingredient-modal-shell > .ingredient-modal-body {
+    padding-block: 13px !important;
+  }
+
+  .ingredient-modal-shell .ingredient-form-premium .form-section {
+    padding: 14px !important;
+  }
+
+  .ingredient-modal-shell .im-section-header {
+    margin-bottom: 10px !important;
+  }
+}
+
 @media (max-width: 720px) {
+  .modal-overlay:has(.ingredient-modal-shell) {
+    align-items: flex-end !important;
+    padding: 8px !important;
+  }
+
+  .modal-container.ingredient-modal-shell {
+    width: 100% !important;
+    max-height: calc(100dvh - 16px) !important;
+    border-radius: 22px 22px 14px 14px !important;
+  }
+
+  .ingredient-modal-shell > .modal-header {
+    padding: 14px 16px !important;
+  }
+
+  .ingredient-modal-shell > .ingredient-modal-body {
+    padding: 12px !important;
+  }
+
+  .ingredient-modal-shell .form-grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
   .ingredient-modal-shell .form-group--full {
     grid-column: auto;
   }
 
-  .ingredient-modal-shell .status-fieldset > legend {
-    margin-bottom: 7px;
+  .ingredient-modal-shell .ingredient-form-premium .form-section {
+    padding: 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .ingredient-modal-shell .badge-hint {
+    max-width: 150px;
+  }
+
+  .ingredient-modal-shell > .ingredient-modal-actions {
+    padding: 10px 12px 12px !important;
+  }
+
+  .ingredient-modal-actions__meta {
+    display: none;
+  }
+
+  .ingredient-modal-actions__buttons {
+    width: 100%;
+  }
+
+  .ingredient-modal-actions__buttons .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ingredient-modal-shell,
+  .ingredient-modal-shell * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
