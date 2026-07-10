@@ -13,6 +13,10 @@ import { OPEN_CUSTOMER_CART_EVENT } from "../utils/cartEvents";
 import "../styles/MobileCustomerPolish.scss";
 import "../styles/MobileCustomerFloatingControls.scss";
 
+const TableOrderExperience = React.lazy(
+  () => import("../components/Customer/TableCurrentSession/TableOrderExperience"),
+);
+
 export default function MainLayout({ children }) {
   const [isCartOpen, setIsCartOpen] = React.useState(false);
   const location = useLocation();
@@ -27,9 +31,9 @@ export default function MainLayout({ children }) {
   });
   const searchParams = new URLSearchParams(location.search);
   const isRestaurantDetailPreview = searchParams.get("preview") === "1";
+  const isPublicTableRoute = location.pathname.startsWith("/table/");
   const isFocusedTableFlow =
-    location.pathname === "/scan-table" ||
-    location.pathname.startsWith("/table/");
+    location.pathname === "/scan-table" || isPublicTableRoute;
 
   React.useEffect(() => {
     const handler = () => setIsCartOpen(true);
@@ -72,6 +76,12 @@ export default function MainLayout({ children }) {
     />
   );
 
+  const tableOrderExperience = isPublicTableRoute ? (
+    <React.Suspense fallback={null}>
+      <TableOrderExperience />
+    </React.Suspense>
+  ) : null;
+
   if (isMobile) {
     return (
       <>
@@ -81,6 +91,7 @@ export default function MainLayout({ children }) {
         >
           {children}
         </MobileCustomerShell>
+        {tableOrderExperience}
         {cartPanel}
         {location.pathname === "/" && <TodayMealWizard />}
         {!isFocusedTableFlow && <PostOrderReviewPrompt />}
@@ -92,6 +103,7 @@ export default function MainLayout({ children }) {
     <>
       <Header onCartToggle={() => setIsCartOpen(true)} cartItemCount={getTotalItems()} />
       <main className="customer-experience-main">{children}</main>
+      {tableOrderExperience}
       {cartPanel}
       {!isFocusedTableFlow && <TodayMealWizard />}
       {!isFocusedTableFlow && <PostOrderReviewPrompt />}
