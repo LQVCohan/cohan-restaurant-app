@@ -2,29 +2,19 @@ import React from "react";
 import { Loader2, ScanLine } from "lucide-react";
 import Button from "@/components/common/Button";
 
+const AR_MODES = "scene-viewer webxr quick-look";
+
 const getActiveModelViewer = () =>
   typeof document === "undefined"
     ? null
     : document.querySelector(".table-3d-modal model-viewer");
 
-const prepareStableArViewer = async (viewer) => {
+const prepareArViewer = (viewer) => {
   if (!viewer) return null;
 
-  let supportsWebXr = false;
-  try {
-    supportsWebXr = Boolean(
-      typeof navigator !== "undefined" &&
-        (await navigator.xr?.isSessionSupported?.("immersive-ar")),
-    );
-  } catch {
-    supportsWebXr = false;
-  }
-
-  viewer.setAttribute(
-    "ar-modes",
-    supportsWebXr ? "webxr" : "scene-viewer quick-look",
-  );
-  viewer.setAttribute("ar-scale", "fixed");
+  viewer.setAttribute("ar-modes", AR_MODES);
+  viewer.setAttribute("ar-placement", "floor");
+  viewer.setAttribute("ar-scale", "auto");
   return viewer;
 };
 
@@ -35,27 +25,8 @@ export default function Table3DActionBarV2({
   onOpenNativeAr,
 }) {
   const handleOpenNativeAr = async () => {
-    const viewer = await prepareStableArViewer(getActiveModelViewer());
-    if (!viewer) {
-      await onOpenNativeAr?.();
-      return;
-    }
-
-    const originalSetAttribute = viewer.setAttribute;
-    viewer.setAttribute = function setStableArAttribute(name, value) {
-      return originalSetAttribute.call(
-        this,
-        name,
-        name === "ar-scale" && value === "auto" ? "fixed" : value,
-      );
-    };
-
-    try {
-      await onOpenNativeAr?.();
-    } finally {
-      viewer.setAttribute = originalSetAttribute;
-      viewer.setAttribute("ar-scale", "fixed");
-    }
+    prepareArViewer(getActiveModelViewer());
+    await onOpenNativeAr?.();
   };
 
   return (
@@ -67,7 +38,7 @@ export default function Table3DActionBarV2({
         disabled={!canLaunchNativeAr || isOpeningAr}
         title={
           canLaunchNativeAr
-            ? "Mở camera AR, quét mặt sàn và đặt thử mẫu bàn trong không gian thật"
+            ? "Mở camera AR, quét mặt sàn rồi dùng hai ngón để chỉnh kích thước mẫu bàn"
             : arUnavailableReason
         }
       >
@@ -83,6 +54,7 @@ export default function Table3DActionBarV2({
 }
 
 export const __testables = {
+  AR_MODES,
   getActiveModelViewer,
-  prepareStableArViewer,
+  prepareArViewer,
 };
