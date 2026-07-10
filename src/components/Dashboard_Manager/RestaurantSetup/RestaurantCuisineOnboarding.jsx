@@ -89,7 +89,7 @@ const readFocusable = (node) =>
     'button:not([disabled]), input:not([disabled]), summary, [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
   ) || [])].filter((element) => !element.hasAttribute("hidden"));
 
-export default function RestaurantCuisineOnboarding({ restaurant }) {
+export default function RestaurantCuisineOnboarding({ restaurant, openRequest = 0 }) {
   const restaurantId = String(restaurant?.id || restaurant?._id || "");
   const pending = restaurant?.initialSetup?.status === "pending";
   const [dismissed, setDismissed] = useState(false);
@@ -127,6 +127,12 @@ export default function RestaurantCuisineOnboarding({ restaurant }) {
     setSelectedKey("");
     setSubmitError("");
   }, [restaurantId]);
+
+  useEffect(() => {
+    if (!pending) return;
+    setDismissed(false);
+    setSubmitError("");
+  }, [openRequest, pending]);
 
   useEffect(() => {
     if (!selectedKey && templates[0]?.key) setSelectedKey(templates[0].key);

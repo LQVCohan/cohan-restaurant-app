@@ -156,6 +156,23 @@ describe("RestaurantCuisineOnboarding", () => {
     expect(screen.getAllByRole("radio")[0]).toBeChecked();
   });
 
+  it("reopens after being dismissed when the parent sends a new request", () => {
+    const restaurant = {
+      id: "r1",
+      name: "Cohan Quận 1",
+      initialSetup: { status: "pending" },
+    };
+    const { rerender } = render(
+      <RestaurantCuisineOnboarding restaurant={restaurant} openRequest={0} />,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Để sau" })[0]);
+    expect(screen.queryByRole("dialog", { name: /chọn mô hình ẩm thực/i })).not.toBeInTheDocument();
+
+    rerender(<RestaurantCuisineOnboarding restaurant={restaurant} openRequest={1} />);
+    expect(screen.getByRole("dialog", { name: /chọn mô hình ẩm thực/i })).toBeInTheDocument();
+  });
+
   it("selects and applies a cuisine package", async () => {
     const { container } = render(
       <RestaurantCuisineOnboarding
