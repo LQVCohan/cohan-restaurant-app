@@ -1,11 +1,11 @@
 {
   "id": "07-10-menu-price-restore",
   "title": "Persist and restore menu prices",
-  "status": "in_progress",
+  "status": "completed",
   "type": "bugfix",
   "scope": [
     "menu bulk price adjustment",
     "persistent previous-price history",
-    "manual and scheduled restore"
+    "manual database restore"
   ]
 }
