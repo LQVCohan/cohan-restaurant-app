@@ -1,0 +1,28 @@
+{
+  "id": "staff-performance-responsive",
+  "name": "staff-performance-responsive",
+  "title": "Fix responsive staff performance layout",
+  "description": "Remove the unused detail-column gap and make the staff performance dashboard respond to its actual content width.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-staff-performance",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.jsx",
+    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.scss"
+  ],
+  "notes": "UI-only change. No GraphQL, resolver, service, schema, permission, restaurant-scope, or data behavior changes."
+}
