@@ -14,23 +14,29 @@
   order: 4;
 }
 
-/* Keep operational cards readable instead of letting competing grid layers
-   compress them into narrow columns. */
+/* Keep table cards compact while preserving one-line table codes. */
 .manager-layout--tables .tm-settings-page {
   .tm-table-grid {
-    grid-template-columns: repeat(auto-fit, minmax(300px, 340px)) !important;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 286px)) !important;
     justify-content: start !important;
+    gap: 10px !important;
   }
 
   .tm-table-card {
     width: 100% !important;
-    min-width: 300px !important;
-    max-width: 340px !important;
+    min-width: 260px !important;
+    max-width: 286px !important;
+    min-height: 0 !important;
+    gap: 8px !important;
+    padding: 11px !important;
+    border-radius: 16px !important;
 
     .card-top {
       display: grid !important;
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: start !important;
+      min-height: 30px !important;
+      gap: 6px !important;
     }
 
     .table-no {
@@ -38,14 +44,52 @@
       min-width: 0;
       overflow: hidden;
       overflow-wrap: normal !important;
+      font-size: 1.22rem !important;
       text-overflow: ellipsis;
       white-space: nowrap !important;
       word-break: normal !important;
     }
 
     .card-top-right {
-      max-width: 52%;
+      max-width: 54%;
+      gap: 4px !important;
       align-content: start;
+    }
+
+    .status-badge,
+    .tm-guard-badge,
+    .vr-badge,
+    .tm-3d-badge {
+      padding: 4px 6px !important;
+      font-size: 0.6rem !important;
+    }
+
+    .card-body {
+      gap: 6px !important;
+    }
+
+    .info-row {
+      min-height: 46px !important;
+      gap: 3px !important;
+      padding: 7px 8px !important;
+      border-radius: 10px !important;
+      font-size: 0.8rem !important;
+    }
+
+    .card-actions {
+      gap: 6px !important;
+    }
+
+    .btn-mini {
+      min-height: 40px !important;
+      padding: 6px 8px !important;
+      font-size: 0.78rem !important;
+    }
+
+    .btn-mini.success,
+    .btn-mini.warning,
+    .btn-mini.primary {
+      min-height: 42px !important;
     }
   }
 }
