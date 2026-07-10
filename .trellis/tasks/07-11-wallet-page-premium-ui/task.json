@@ -1,0 +1,30 @@
+{
+  "id": "07-11-wallet-page-premium-ui",
+  "title": "Tối ưu giao diện ví Cohan Balance",
+  "status": "in_progress",
+  "type": "frontend-redesign",
+  "scope": [
+    "src/pages/WalletPage.jsx",
+    "src/pages/WalletPage.scss",
+    "src/pages/WalletPage.test.jsx"
+  ],
+  "rootCause": "WalletPage already has a correct wallet/payment contract, but its presentation spreads the main task across an oversized hero, a tall one-column statistics rail and a technical-looking top-up form. This creates excessive whitespace, weak hierarchy and unnecessary scrolling on desktop while leaving provider selection and empty-state guidance visually unclear.",
+  "validation": {
+    "planned": [
+      "npx vitest run src/pages/WalletPage.test.jsx",
+      "npm run check:graphql",
+      "npm run check:conflicts",
+      "npm run build",
+      "manual desktop and 390x844 responsive review"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow and frontend specification",
+      "read ponytail, ui-ux-pro-max, frontend-design, taste-ui-redesign, redesign-existing-projects, wcag-ui-audit and web-design-guidelines skills",
+      "reviewed the supplied desktop screenshots",
+      "traced wallet schema -> resolver -> wallet service -> Apollo operations -> WalletPage actions",
+      "confirmed no backend or GraphQL contract change is required",
+      "inspected MainLayout caller and customer header/footer ownership"
+    ],
+    "notRun": []
+  }
+}
