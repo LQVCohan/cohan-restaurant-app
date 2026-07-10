@@ -179,7 +179,11 @@ describe("StorageManagement operations UI", () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Quản lý kho" })).toBeInTheDocument();
-    expect(screen.getByText("Chọn phạm vi dữ liệu, xử lý nhập/xuất và theo dõi tồn kho trong một màn hình.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Theo dõi nguyên liệu, nhập xuất và kiểm kê trong kho mặc định của nhà hàng."),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Nhà hàng")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Kho hàng")).not.toBeInTheDocument();
     expect(screen.getByText("Tổng nguyên liệu")).toBeInTheDocument();
     expect(screen.getByText("Sắp hết")).toBeInTheDocument();
     expect(within(lowStockKpi()).getByText("1")).toBeInTheDocument();
