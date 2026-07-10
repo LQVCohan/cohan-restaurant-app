@@ -13,8 +13,8 @@ import { OPEN_CUSTOMER_CART_EVENT } from "../utils/cartEvents";
 import "../styles/MobileCustomerPolish.scss";
 import "../styles/MobileCustomerFloatingControls.scss";
 
-const TableOrderExperience = React.lazy(
-  () => import("../components/Customer/TableCurrentSession/TableOrderExperience"),
+const TableOrderRouteExperience = React.lazy(
+  () => import("../components/Customer/TableCurrentSession/TableOrderRouteExperience"),
 );
 
 export default function MainLayout({ children }) {
@@ -78,7 +78,7 @@ export default function MainLayout({ children }) {
 
   const tableOrderExperience = isPublicTableRoute ? (
     <React.Suspense fallback={null}>
-      <TableOrderExperience />
+      <TableOrderRouteExperience />
     </React.Suspense>
   ) : null;
 
