@@ -1,0 +1,36 @@
+{
+  "id": "payment-provider-flow-audit-20260710",
+  "name": "payment-provider-flow-audit-20260710",
+  "title": "Harden MoMo and VNPAY payment flow and simplify restaurant payment UI",
+  "description": "Audit the live payment path, align VNPAY callback handling with the provider contract, preserve MoMo behavior, and remove sandbox environment controls from the restaurant manager UI.",
+  "status": "completed",
+  "dev_type": "fullstack",
+  "scope": "payment-provider-callbacks-and-restaurant-payment-settings-ui",
+  "package": null,
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": "2026-07-10",
+  "branch": "fix/payment-provider-flow-20260710",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "5a6f14cfae88d7647220a5da459179831b901ca8",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1332",
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/payment/providers.js",
+    "cohan-restaurant-backend/src/services/payment/paymentSession.service.js",
+    "cohan-restaurant-backend/src/server/createServer.js",
+    "cohan-restaurant-backend/tests/server/payment-provider-callback-contract.test.js",
+    "cohan-restaurant-backend/tests/services/payment-providers.security.test.js",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx"
+  ],
+  "notes": "Completed provider-contract hardening and UI simplification. Focused validation passed: diff/syntax checks, VNPAY provider and callback tests, RestaurantInfoManagement tests, GraphQL validation, and frontend build. Repository-wide CI still has unrelated pre-existing order/print test mock failures around Order.findOneAndUpdate.",
+  "meta": {
+    "skills": ["ponytail", "frontend-design", "taste-ui-redesign", "redesign-existing-projects", "ui-ux-pro-max"]
+  }
+}

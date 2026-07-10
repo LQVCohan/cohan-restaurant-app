@@ -24,6 +24,7 @@ import { calculateDiscountBreakdown } from "../discountCalculation.service.js";
 import {
   createMomoPayment,
   createVnpayPayment,
+  isVnpaySuccessful,
   verifyMomoCallback,
   verifyVnpayCallback,
 } from "./providers.js";
@@ -640,9 +641,9 @@ function mapProviderStatus(provider, payload) {
   if (provider === "momo") {
     return Number(payload?.resultCode) === 0 ? "success" : "failed";
   }
+  if (isVnpaySuccessful(payload)) return "success";
   const code = String(payload?.vnp_ResponseCode || "");
-  if (code === "00") return "success";
-  if (["24", "51"].includes(code)) return "cancelled";
+  if (code === "24") return "cancelled";
   return "failed";
 }
 

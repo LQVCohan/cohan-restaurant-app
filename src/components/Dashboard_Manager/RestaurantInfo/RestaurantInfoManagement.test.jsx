@@ -776,4 +776,32 @@ describe("RestaurantInfoManagement", () => {
       ).not.toBeDisabled();
     });
   });
+
+  it("shows only customer-facing MoMo and VNPAY controls", async () => {
+    render(<RestaurantInfoManagement />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    fireEvent.click(
+      screen.getByRole("tab", { name: /Thanh toán trực tuyến/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText("MoMo").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("VNPAY").length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByText("Môi trường kết nối")).not.toBeInTheDocument();
+    expect(screen.queryByText("Kiểm thử")).not.toBeInTheDocument();
+    expect(screen.queryByText("Vận hành thực tế")).not.toBeInTheDocument();
+    expect(screen.queryByText("Thứ tự ưu tiên")).not.toBeInTheDocument();
+    expect(screen.queryByText("Tên hiển thị")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+    await waitFor(() => expect(updateRestaurantMock).toHaveBeenCalledTimes(1));
+    expect(
+      updateRestaurantMock.mock.calls[0][0].variables.input.paymentSettings.providers,
+    ).toEqual(restaurant.paymentSettings.providers);
+  });
 });

@@ -27,6 +27,7 @@ import {
 import { registerObservability } from "../observability/observability.js";
 import { initBackendSentry } from "../observability/sentry.js";
 import { applyPaymentProviderCallback, createReservationPayment, getPaymentSessionById, listReservationPayments, reconcileBankTransferWebhook } from "../services/payment/paymentSession.service.js";
+import { isVnpaySuccessful, verifyMomoCallback, verifyVnpayCallback } from "../services/payment/providers.js";
 import { emitPaymentRealtime } from "../services/payment/paymentRealtime.service.js";
 import { expireStaleTransferPayments } from "../services/payment/transferExpiry.service.js";
 import { resolveAuthenticatedUserFromRequest } from "./authUserResolver.js";
@@ -34,7 +35,7 @@ import { requireRestaurantPermission } from "../services/auth/authorization.serv
 import { validateGuestConversationOwnership, isValidConversationId, getAiConversationGuestRoomName } from "../services/ai/restaurantChatbotRealtime.service.js";
 import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit } from "../services/ai/restaurantChatbotRateLimit.service.js";
 import { PERMISSIONS } from "../constants/permissions.js";
-import { ChatThread, Order } from "../../models/index.js";
+import { ChatThread, Order, PaymentSession } from "../../models/index.js";
 import mongoose from "mongoose";
 import { clearRefreshCookie, revokeRefreshToken, rotateRefreshToken } from "../security/authTokens.js";
 import { createGraphqlValidationRules } from "../security/graphqlLimits.js";
@@ -70,6 +71,62 @@ const parseAllowedOrigins = () => {
 
 
 
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+export function buildPaymentReturnPage({ provider, verified, successful, paymentFound, reference }) {
+  const providerLabel = String(provider || "").toLowerCase() === "momo" ? "MoMo" : "VNPAY";
+  let title = "Đã ghi nhận kết quả thanh toán";
+  let message = "Vui lòng quay lại cửa sổ COHAN. Hệ thống sẽ tự động cập nhật khi cổng thanh toán gửi xác nhận.";
+
+  if (!verified) {
+    title = "Không thể xác thực kết quả thanh toán";
+    message = "Dữ liệu trả về không hợp lệ. Vui lòng quay lại COHAN và kiểm tra trạng thái giao dịch trước khi thử lại.";
+  } else if (!paymentFound) {
+    title = "Không tìm thấy phiên thanh toán";
+    message = "COHAN chưa xác định được giao dịch tương ứng. Vui lòng quay lại ứng dụng để kiểm tra.";
+  } else if (!successful) {
+    title = "Giao dịch chưa hoàn tất";
+    message = "Cổng thanh toán chưa xác nhận giao dịch thành công. Vui lòng quay lại COHAN để thử lại hoặc chọn phương thức khác.";
+  }
+
+  return `<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeHtml(title)}</title>
+  </head>
+  <body>
+    <main>
+      <h1>${escapeHtml(title)}</h1>
+      <p>${escapeHtml(message)}</p>
+      <p>Phương thức: <strong>${escapeHtml(providerLabel)}</strong></p>
+      ${reference ? `<p>Mã tham chiếu: <strong>${escapeHtml(reference)}</strong></p>` : ""}
+      <p>Bạn có thể đóng trang này sau khi quay lại COHAN.</p>
+    </main>
+  </body>
+</html>`;
+}
+
+export function getVnpayIpnValidationError({ signatureValid, payment, payload = {} }) {
+  if (!signatureValid) return { RspCode: "97", Message: "Invalid Checksum" };
+  if (!payment) return { RspCode: "01", Message: "Order not found" };
+
+  const providerAmount = Math.round(Number(payload.vnp_Amount || 0) / 100);
+  const expectedAmount = Math.round(Number(payment.amount || 0));
+  if (providerAmount !== expectedAmount) {
+    return { RspCode: "04", Message: "Invalid Amount" };
+  }
+  return null;
+}
 
 export function buildContentSecurityPolicyDirectives({ inProduction, allowedOrigins, s3PublicBase, allowUnsafeInlineStyle }) {
   if (!inProduction) return false;
@@ -331,6 +388,36 @@ export async function createServer() {
     }
   });
 
+  app.get("/api/payments/webhooks/vnpay", async (req, reply) => {
+    try {
+      const payload = { ...(req.query || {}) };
+      const signatureValid = verifyVnpayCallback({ ...payload });
+      const reference = payload.vnp_TxnRef;
+      const payment = signatureValid && reference
+        ? await PaymentSession.findOne({ provider: "vnpay", reference })
+        : null;
+      const validationError = getVnpayIpnValidationError({ signatureValid, payment, payload });
+      if (validationError) return reply.code(200).send(validationError);
+
+      const alreadyConfirmed = String(payment.status || "").toLowerCase() === "success";
+      const updatedPayment = await applyPaymentProviderCallback({
+        provider: "vnpay",
+        payload: { ...payload },
+        source: "webhook",
+      });
+      if (updatedPayment?.status === "success" && !updatedPayment?.realtimeEmitSkipped) {
+        await emitPaymentRealtime({ io: app.io, payment: updatedPayment, eventType: "PAYMENT_VERIFIED" });
+      }
+      return reply.code(200).send({
+        RspCode: alreadyConfirmed ? "02" : "00",
+        Message: alreadyConfirmed ? "Order already confirmed" : "Confirm Success",
+      });
+    } catch (err) {
+      req.log.error({ err }, "VNPAY IPN failed");
+      return reply.code(200).send({ RspCode: "99", Message: "Unknown error" });
+    }
+  });
+
   app.post("/api/payments/webhooks/:provider", async (req, reply) => {
     try {
       const payment = await applyPaymentProviderCallback({
@@ -349,18 +436,43 @@ export async function createServer() {
   });
 
   app.get("/api/payments/return/:provider", async (req, reply) => {
+    const provider = String(req.params?.provider || "").toLowerCase();
+    const payload = { ...(req.query || {}) };
+    const reference = provider === "momo" ? payload.orderId : payload.vnp_TxnRef;
     try {
-      const payment = await applyPaymentProviderCallback({
-        provider: req.params?.provider,
-        payload: req.query || {},
-        source: "return",
-      });
-      if (payment?.status === "success" && !payment?.realtimeEmitSkipped) {
-        await emitPaymentRealtime({ io: app.io, payment, eventType: "PAYMENT_VERIFIED" });
-      }
-      return reply.send({ ok: true, paymentId: String(payment._id), status: payment.status, message: "Payment return captured. Backend remains source of truth." });
+      const verified = provider === "momo"
+        ? verifyMomoCallback(payload)
+        : provider === "vnpay"
+          ? verifyVnpayCallback(payload)
+          : false;
+      const payment = reference
+        ? await PaymentSession.findOne({ provider, reference }).lean()
+        : null;
+      const successful = verified && (
+        provider === "momo"
+          ? Number(payload.resultCode) === 0
+          : provider === "vnpay" && isVnpaySuccessful(payload)
+      );
+      return reply
+        .type("text/html; charset=utf-8")
+        .send(buildPaymentReturnPage({
+          provider,
+          verified,
+          successful,
+          paymentFound: Boolean(payment),
+          reference,
+        }));
     } catch (err) {
-      return reply.code(400).send({ ok: false, message: err?.message || "Return processing failed" });
+      req.log.warn({ err, provider, reference }, "payment return display failed");
+      return reply
+        .type("text/html; charset=utf-8")
+        .send(buildPaymentReturnPage({
+          provider,
+          verified: false,
+          successful: false,
+          paymentFound: false,
+          reference,
+        }));
     }
   });
 

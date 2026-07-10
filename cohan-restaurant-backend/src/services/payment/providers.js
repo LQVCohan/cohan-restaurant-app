@@ -3,9 +3,14 @@ import { Buffer } from "node:buffer";
 import process from "node:process";
 
 const DEFAULT_TIMEOUT = Number(process.env.PAYMENT_PROVIDER_TIMEOUT_MS || 15000);
+const DEFAULT_VNPAY_TTL_MINUTES = Number(process.env.PAYMENT_SESSION_TTL_MINUTES || 10);
 
 function hmacSHA256(raw, key) {
   return crypto.createHmac("sha256", key).update(raw).digest("hex");
+}
+
+function hmacSHA512(raw, key) {
+  return crypto.createHmac("sha512", key).update(raw).digest("hex");
 }
 
 function sortObject(input = {}) {
@@ -19,7 +24,50 @@ function sortObject(input = {}) {
 }
 
 function getOrderInfo(payment) {
-  return String(payment?.metadata?.orderInfo || `Thanh toan Cohan ${payment?.reference || ""}`).trim();
+  return String(
+    payment?.metadata?.orderInfo ||
+      `Thanh toan Cohan ${payment?.reference || ""}`,
+  ).trim();
+}
+
+function getVnpOrderInfo(payment) {
+  return getOrderInfo(payment)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .replace(/[^a-zA-Z0-9 .,:_-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 255);
+}
+
+export function formatVnpDate(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) throw new Error("Invalid VNPAY date");
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+
+  return `${values.year}${values.month}${values.day}${values.hour}${values.minute}${values.second}`;
+}
+
+function normalizeVnpIpAddress(value) {
+  const first = String(value || "127.0.0.1").split(",")[0].trim();
+  return first.replace(/^::ffff:/i, "") || "127.0.0.1";
 }
 
 export async function createMomoPayment({ payment, ipnUrl, returnUrl, mode = "sandbox" }) {
@@ -56,7 +104,7 @@ export async function createMomoPayment({ payment, ipnUrl, returnUrl, mode = "sa
         paymentId: String(payment._id),
         reservationId: payment.reservationId ? String(payment.reservationId) : null,
         source: payment?.metadata?.source || null,
-      })
+      }),
     ).toString("base64"),
   };
 
@@ -105,7 +153,6 @@ export function verifyMomoCallback(payload = {}) {
   return safeCompareString(expected, payload.signature);
 }
 
-
 function safeCompareString(a, b) {
   const left = String(a || "").trim();
   const right = String(b || "").trim();
@@ -124,11 +171,20 @@ function safeCompareString(a, b) {
 
 function buildVnpHashData(payload) {
   return Object.entries(sortObject(payload))
-    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v).replace(/%20/g, "+")}`)
+    .map(
+      ([k, v]) =>
+        `${encodeURIComponent(k)}=${encodeURIComponent(v).replace(/%20/g, "+")}`,
+    )
     .join("&");
 }
 
-export function createVnpayPayment({ payment, ipAddr = "127.0.0.1", returnUrl, mode = "sandbox" }) {
+export function createVnpayPayment({
+  payment,
+  ipAddr = "127.0.0.1",
+  returnUrl,
+  mode = "sandbox",
+  now = new Date(),
+}) {
   const tmnCode = process.env.VNPAY_TMN_CODE;
   const hashSecret = process.env.VNPAY_HASH_SECRET;
   const baseUrl =
@@ -140,13 +196,22 @@ export function createVnpayPayment({ payment, ipAddr = "127.0.0.1", returnUrl, m
     throw new Error("VNPAY chưa cấu hình đầy đủ VNPAY_TMN_CODE/VNPAY_HASH_SECRET");
   }
 
-  const createDate = new Date();
-  const y = createDate.getUTCFullYear();
-  const m = String(createDate.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(createDate.getUTCDate()).padStart(2, "0");
-  const hh = String(createDate.getUTCHours()).padStart(2, "0");
-  const mm = String(createDate.getUTCMinutes()).padStart(2, "0");
-  const ss = String(createDate.getUTCSeconds()).padStart(2, "0");
+  const createDate = now instanceof Date ? now : new Date(now);
+  if (Number.isNaN(createDate.getTime())) {
+    throw new Error("Invalid VNPAY create date");
+  }
+
+  const configuredTtl =
+    Number.isFinite(DEFAULT_VNPAY_TTL_MINUTES) && DEFAULT_VNPAY_TTL_MINUTES > 0
+      ? DEFAULT_VNPAY_TTL_MINUTES
+      : 10;
+  const storedExpiry = payment?.expiresAt ? new Date(payment.expiresAt) : null;
+  const expireDate =
+    storedExpiry &&
+    !Number.isNaN(storedExpiry.getTime()) &&
+    storedExpiry.getTime() > createDate.getTime()
+      ? storedExpiry
+      : new Date(createDate.getTime() + configuredTtl * 60 * 1000);
 
   const vnpParams = {
     vnp_Version: "2.1.0",
@@ -155,16 +220,17 @@ export function createVnpayPayment({ payment, ipAddr = "127.0.0.1", returnUrl, m
     vnp_Amount: Math.round(payment.amount * 100),
     vnp_CurrCode: "VND",
     vnp_TxnRef: payment.reference,
-    vnp_OrderInfo: getOrderInfo(payment),
+    vnp_OrderInfo: getVnpOrderInfo(payment),
     vnp_OrderType: process.env.VNPAY_ORDER_TYPE || "other",
     vnp_Locale: "vn",
     vnp_ReturnUrl: returnUrl,
-    vnp_IpAddr: ipAddr,
-    vnp_CreateDate: `${y}${m}${d}${hh}${mm}${ss}`,
+    vnp_IpAddr: normalizeVnpIpAddress(ipAddr),
+    vnp_CreateDate: formatVnpDate(createDate),
+    vnp_ExpireDate: formatVnpDate(expireDate),
   };
 
   const signData = buildVnpHashData(vnpParams);
-  const secureHash = hmacSHA256(signData, hashSecret);
+  const secureHash = hmacSHA512(signData, hashSecret);
   const query = `${signData}&vnp_SecureHash=${secureHash}`;
 
   return {
@@ -174,16 +240,29 @@ export function createVnpayPayment({ payment, ipAddr = "127.0.0.1", returnUrl, m
   };
 }
 
+export function isVnpaySuccessful(payload = {}) {
+  return (
+    String(payload.vnp_ResponseCode || "") === "00" &&
+    String(payload.vnp_TransactionStatus || "") === "00"
+  );
+}
+
 export function verifyVnpayCallback(payload = {}) {
   const hashSecret = process.env.VNPAY_HASH_SECRET;
   if (!hashSecret) return false;
 
-  const working = { ...payload };
-  const secureHash = working.vnp_SecureHash;
-  delete working.vnp_SecureHash;
-  delete working.vnp_SecureHashType;
+  const secureHash = payload.vnp_SecureHash;
+  const working = Object.fromEntries(
+    Object.entries(payload).filter(
+      ([key, value]) =>
+        key.startsWith("vnp_") &&
+        !["vnp_SecureHash", "vnp_SecureHashType"].includes(key) &&
+        value !== undefined &&
+        value !== null,
+    ),
+  );
 
   const signData = buildVnpHashData(working);
-  const expected = hmacSHA256(signData, hashSecret);
+  const expected = hmacSHA512(signData, hashSecret);
   return safeCompareString(expected, secureHash);
 }

@@ -1970,56 +1970,16 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       size="small"
                       title={provider.provider === "momo" ? "MoMo" : "VNPAY"}
                     >
-                      <Row gutter={16}>
-                        <Col span={8}>
-                          <Form.Item label="Tên hiển thị">
-                            <Input
-                              value={provider.label}
-                              onChange={(e) =>
-                                setRestaurantForm((p) => {
-                                  const providers = [...(p.paymentSettings?.providers || [])];
-                                  providers[idx] = { ...providers[idx], label: e.target.value };
-                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
-                                })
-                              }
-                            />
-                          </Form.Item>
+                      <Row gutter={[12, 12]} align="middle" justify="space-between">
+                        <Col flex="auto">
+                          <Text type="secondary">
+                            {provider.provider === "momo"
+                              ? "Cho phép khách hàng thanh toán qua MoMo"
+                              : "Cho phép khách hàng thanh toán qua VNPAY"}
+                          </Text>
                         </Col>
-                        <Col span={5}>
-                          <Form.Item label="Thứ tự ưu tiên">
-                            <Input
-                              type="number"
-                              value={provider.priority}
-                              onChange={(e) =>
-                                setRestaurantForm((p) => {
-                                  const providers = [...(p.paymentSettings?.providers || [])];
-                                  providers[idx] = { ...providers[idx], priority: Number(e.target.value || 0) };
-                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
-                                })
-                              }
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={5}>
-                          <Form.Item label="Môi trường kết nối">
-                            <Select
-                              value={provider.mode || "sandbox"}
-                              onChange={(v) =>
-                                setRestaurantForm((p) => {
-                                  const providers = [...(p.paymentSettings?.providers || [])];
-                                  providers[idx] = { ...providers[idx], mode: v };
-                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
-                                })
-                              }
-                              options={[
-                                { value: "sandbox", label: "Kiểm thử" },
-                                { value: "production", label: "Vận hành thực tế" },
-                              ]}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={6}>
-                          <Form.Item label="Đang sử dụng">
+                        <Col>
+                          <Form.Item label="Đang sử dụng" style={{ marginBottom: 0 }}>
                             <Switch
                               checked={provider.active !== false}
                               onChange={(checked) =>
