@@ -1,13 +1,16 @@
-import React, { useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { Check, ChevronDown, ClipboardList, X } from "lucide-react";
 
+import { AuthContext } from "@/context/AuthContext";
 import useSocketOrder from "@/hooks/useSocketOrder";
 import { useNotification } from "@/hooks/useNotification";
+import { hasAnyPermission } from "@/utils/frontendPermissionAccess";
 
 import styles from "./PosIncomingTableOrderQueue.module.scss";
 
 const QR_ORDER_SOURCE = "customer_table_qr";
+const REJECT_PERMISSIONS = ["order.cancel", "payment.write"];
 
 const POS_INCOMING_TABLE_ORDERS = gql`
   query PosIncomingTableOrders($restaurantId: ID!, $limit: Int) {
@@ -74,9 +77,14 @@ const getErrorMessage = (error, fallback) =>
 
 export default function PosIncomingTableOrderQueue({
   restaurantId,
-  allowReject = true,
+  allowReject,
 }) {
+  const { user } = useContext(AuthContext) || {};
   const { showNotification } = useNotification();
+  const canReject =
+    typeof allowReject === "boolean"
+      ? allowReject
+      : hasAnyPermission(user, REJECT_PERMISSIONS);
   const [busyOrderId, setBusyOrderId] = useState("");
   const [rejectOrderId, setRejectOrderId] = useState("");
   const [rejectReason, setRejectReason] = useState("");
@@ -145,7 +153,7 @@ export default function PosIncomingTableOrderQueue({
 
   const handleReject = async (order) => {
     const reason = rejectReason.trim();
-    if (!allowReject || !order?.id || busyOrderId) return;
+    if (!canReject || !order?.id || busyOrderId) return;
     if (reason.length < 3) {
       setActionError("Vui lòng nhập lý do từ chối rõ ràng.");
       return;
@@ -209,7 +217,7 @@ export default function PosIncomingTableOrderQueue({
         ) : (
           pendingOrders.map((order) => {
             const isBusy = busyOrderId === order.id;
-            const isRejecting = allowReject && rejectOrderId === order.id;
+            const isRejecting = canReject && rejectOrderId === order.id;
             return (
               <article className={styles.card} key={order.id}>
                 <header className={styles.cardHeader}>
@@ -287,7 +295,7 @@ export default function PosIncomingTableOrderQueue({
                       <Check size={16} aria-hidden="true" />
                       {isBusy ? "Đang nhận…" : "Nhận & chuyển bếp"}
                     </button>
-                    {allowReject ? (
+                    {canReject ? (
                       <button
                         type="button"
                         className={styles.secondary}
