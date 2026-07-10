@@ -3,7 +3,7 @@
   "name": "staff-brand-flow-audit",
   "title": "Harden employee modal and staff brand flows",
   "description": "Trace and repair the BrandMembership-scoped employee create/update flow from GraphQL contract through manager UI actions.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack",
   "scope": "manager-staff",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "b64e2be47f8494f266bf5e40a08815626b04402a",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -27,7 +27,10 @@
     "src/hooks/useStaffManagement.js",
     "cohan-restaurant-backend/graphql/schema/index.js",
     "cohan-restaurant-backend/graphql/resolvers/staff/index.js",
-    "cohan-restaurant-backend/src/services/auth/staffRoleAssignment.service.js"
+    "cohan-restaurant-backend/graphql/resolvers/auth/emailVerification.mutation.js",
+    "cohan-restaurant-backend/tests/resolvers/staff-create-business-context.test.js",
+    "cohan-restaurant-backend/tests/resolvers/account-verification.service.test.js",
+    "cohan-restaurant-backend/tests/schema/staff-management-schema.test.js"
   ],
-  "notes": "Tracing schema -> resolver/service -> Apollo operations -> modal/page actions before applying the smallest compatible fix."
+  "notes": "Completed schema -> resolver/service -> Apollo operations -> modal/page action audit. Added BrandMembership-scoped create/update/delete/status/verification handling, rollback, role restrictions, no-op payroll-field normalization and regression tests. Tests/build were not executed because the GitHub connector environment has no repository runtime and the container could not resolve github.com."
 }
