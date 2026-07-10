@@ -44,10 +44,11 @@ const calcVariantCost = (variant) => {
   let hasCostLine = false;
   const total = lines.reduce((sum, line) => {
     const qty = normalizeLineQty(line);
+    const wastePct = Number(line?.wastePct) || 0;
     const unitCost = normalizeUnitCost(line);
     if (qty <= 0 || unitCost <= 0) return sum;
     hasCostLine = true;
-    return sum + qty * unitCost;
+    return sum + qty * (1 + wastePct / 100) * unitCost;
   }, 0);
   return { total, hasCostLine };
 };
@@ -157,10 +158,39 @@ const RecipeList = ({
   const [restoreRecipeMu] = useMutation(M_RESTORE_RECIPE);
 
   const recipesWithMeta = useMemo(() => {
-    const ingredientIdSet = new Set((ingredients || []).map((ing) => String(ing?.id || "")).filter(Boolean));
+    const ingredientById = new Map(
+      (ingredients || []).map((ingredient) => [String(ingredient?.id || ""), ingredient]),
+    );
+    const ingredientIdSet = new Set([...ingredientById.keys()].filter(Boolean));
+    const categoryLabelById = new Map(
+      (categoryOptions || []).map((option) => [String(option?.value || ""), option?.label]),
+    );
     const canDetectMissingIngredients = ingredientIdSet.size > 0;
+
     return (recipes || []).map((r) => {
-      const variants = Array.isArray(r?.servingVariants) ? r.servingVariants : [];
+      const variants = (Array.isArray(r?.servingVariants) ? r.servingVariants : []).map((variant) => {
+        const lines = getVariantLines(variant).map((line) => {
+          const ingredient = ingredientById.get(String(line?.ingredientId || ""));
+          return {
+            ...line,
+            ingredientName: line?.ingredientName || line?.name || ingredient?.name || "",
+            name: line?.name || line?.ingredientName || ingredient?.name || "",
+            unit: line?.unit || line?.baseUnit || ingredient?.baseUnit || "",
+            baseUnit: line?.baseUnit || ingredient?.baseUnit || "",
+            costPerBaseUnit:
+              line?.costPerBaseUnit ?? line?.unitCost ?? ingredient?.costPerBaseUnit ?? 0,
+          };
+        });
+        return { ...variant, ingredients: lines, components: lines };
+      });
+      const normalizedRecipe = {
+        ...r,
+        category:
+          r?.category ||
+          categoryLabelById.get(String(r?.categoryId || "")) ||
+          (r?.categoryId ? "Đã phân loại" : ""),
+        servingVariants: variants,
+      };
       const ids = new Set();
       const missingIds = new Set();
       variants.forEach((v) => {
@@ -172,10 +202,10 @@ const RecipeList = ({
           if (canDetectMissingIngredients && !ingredientIdSet.has(normalizedId)) missingIds.add(normalizedId);
         });
       });
-      const { minCost, hasAnyCost, estimatedCostValid, hasNoReplacementIngredient } = calcMinCost(r, ingredientIdSet, canDetectMissingIngredients);
+      const { minCost, hasAnyCost, estimatedCostValid, hasNoReplacementIngredient } = calcMinCost(normalizedRecipe, ingredientIdSet, canDetectMissingIngredients);
       const hasRecipe = variants.length > 0 || Boolean(r?.hasRecipe || r?.recipeId);
       return {
-        ...r,
+        ...normalizedRecipe,
         _meta: {
           hasRecipe,
           totalVariants: variants.length,
@@ -192,7 +222,7 @@ const RecipeList = ({
         },
       };
     });
-  }, [recipes, ingredients]);
+  }, [recipes, ingredients, categoryOptions]);
 
   const recipeTrashRows = useMemo(() => {
     return (trashData?.recipeTrash || []).map((row) => {
