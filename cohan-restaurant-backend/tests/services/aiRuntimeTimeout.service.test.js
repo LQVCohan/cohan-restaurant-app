@@ -10,21 +10,21 @@ afterEach(() => {
 });
 
 describe("AI runtime timeout policy", () => {
-  it("uses short interactive defaults and supports explicit overrides", () => {
+  it("uses quality-first defaults and supports explicit overrides", () => {
     expect(getAiRuntimeTimeouts({})).toEqual({
-      hostedMs: 8000,
-      localChatMs: 4000,
-      localEmbeddingMs: 2500,
+      hostedMs: 30000,
+      localChatMs: 15000,
+      localEmbeddingMs: 8000,
     });
 
     expect(getAiRuntimeTimeouts({
-      AI_CHATBOT_GEMINI_TIMEOUT_MS: "7000",
-      AI_CHATBOT_LOCAL_TIMEOUT_MS: "3500",
-      AI_CHATBOT_EMBEDDING_TIMEOUT_MS: "1800",
+      AI_CHATBOT_GEMINI_TIMEOUT_MS: "22000",
+      AI_CHATBOT_LOCAL_TIMEOUT_MS: "12000",
+      AI_CHATBOT_EMBEDDING_TIMEOUT_MS: "6000",
     })).toEqual({
-      hostedMs: 7000,
-      localChatMs: 3500,
-      localEmbeddingMs: 1800,
+      hostedMs: 22000,
+      localChatMs: 12000,
+      localEmbeddingMs: 6000,
     });
   });
 
