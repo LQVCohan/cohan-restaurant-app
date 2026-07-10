@@ -23,7 +23,27 @@ export default {
       if (typeof parent.reviewCount === "number") return parent.reviewCount;
       return Review.countDocuments({ targetType: "restaurant", targetId: String(parent._id || parent.id), status: "published" });
     },
-    ...Object.fromEntries(["businessStatus","publicationStatus","operationalStatus","openingStatus","openingStatusReason","nextOpeningTime","canView","canReserve","canOrder","canTableOrder","canDelivery","canPickup"].map((k)=>[k,(p)=>computeRestaurantAvailability(p)[k]])),
+    ...Object.fromEntries(
+      [
+        "businessStatus",
+        "publicationStatus",
+        "operationalStatus",
+        "openingStatus",
+        "openingStatusReason",
+        "nextOpeningTime",
+        "canView",
+        "canReserve",
+        "canOrder",
+        "canTableOrder",
+        "canDelivery",
+        "canPickup",
+      ].map((key) => [
+        key,
+        (parent) =>
+          parent?._availabilityAt?.[key] ??
+          computeRestaurantAvailability(parent)[key],
+      ]),
+    ),
   },
   RestaurantCategoryIndex: {
     id: (parent) => parent.id ?? String(parent._id),
