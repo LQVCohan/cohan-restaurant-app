@@ -61,6 +61,11 @@ function buildMutation() {
     requestPaymentForOrder: vi.fn().mockResolvedValue({ ok: true }),
     requestPaymentForTable: vi.fn().mockResolvedValue({ ok: true }),
     remindOrderItem: vi.fn().mockResolvedValue({ ok: true }),
+    adjustOrderItemQuantity: vi.fn().mockResolvedValue({ ok: true }),
+    requestOrderItemVoid: vi.fn().mockResolvedValue({ ok: true }),
+    reviewOrderItemVoid: vi.fn().mockResolvedValue({ ok: true }),
+    requestOrderItemReturn: vi.fn().mockResolvedValue({ ok: true }),
+    reviewOrderItemReturn: vi.fn().mockResolvedValue({ ok: true }),
   };
 }
 
@@ -263,5 +268,79 @@ describe("order mutation restaurant access guards", () => {
       }),
     );
     expect(mutation.remindOrderItem).toHaveBeenCalled();
+  });
+
+  it("requires order.update on the persisted restaurant before quantity adjustment", async () => {
+    modelMocks.Order.findById.mockReturnValue(
+      leanResult({ _id: "valid-order-1", restaurantId: "valid-restaurant-1" }),
+    );
+    const mutation = buildMutation();
+    const { withOrderRestaurantAccessGuards } = await import(
+      "../../graphql/resolvers/order/accessGuard.js"
+    );
+    const guarded = withOrderRestaurantAccessGuards(mutation);
+    const ctx = { user: { id: "server-1" } };
+
+    await guarded.adjustOrderItemQuantity(
+      null,
+      { input: { orderId: "valid-order-1", orderItemId: "valid-item-1", quantity: 2 } },
+      ctx,
+    );
+
+    expect(authorizationMocks.requireRestaurantPermission).toHaveBeenCalledWith(
+      ctx,
+      "valid-restaurant-1",
+      "order.update",
+    );
+    expect(mutation.adjustOrderItemQuantity).toHaveBeenCalled();
+  });
+
+  it("blocks a void request when persisted-order permission is denied", async () => {
+    modelMocks.Order.findById.mockReturnValue(
+      leanResult({ _id: "valid-order-1", restaurantId: "valid-restaurant-1" }),
+    );
+    authorizationMocks.requireRestaurantPermission.mockRejectedValue(
+      new Error("FORBIDDEN"),
+    );
+    const mutation = buildMutation();
+    const { withOrderRestaurantAccessGuards } = await import(
+      "../../graphql/resolvers/order/accessGuard.js"
+    );
+    const guarded = withOrderRestaurantAccessGuards(mutation);
+
+    await expect(
+      guarded.requestOrderItemVoid(
+        null,
+        { input: { orderId: "valid-order-1", orderItemId: "valid-item-1" } },
+        { user: { id: "foreign-staff" } },
+      ),
+    ).rejects.toThrow("FORBIDDEN");
+
+    expect(mutation.requestOrderItemVoid).not.toHaveBeenCalled();
+  });
+
+  it("requires order.cancel before reviewing a void request", async () => {
+    modelMocks.Order.findById.mockReturnValue(
+      leanResult({ _id: "valid-order-1", restaurantId: "valid-restaurant-1" }),
+    );
+    const mutation = buildMutation();
+    const { withOrderRestaurantAccessGuards } = await import(
+      "../../graphql/resolvers/order/accessGuard.js"
+    );
+    const guarded = withOrderRestaurantAccessGuards(mutation);
+    const ctx = { user: { id: "supervisor-1" } };
+
+    await guarded.reviewOrderItemVoid(
+      null,
+      { input: { orderId: "valid-order-1", orderItemId: "valid-item-1" } },
+      ctx,
+    );
+
+    expect(authorizationMocks.requireRestaurantPermission).toHaveBeenCalledWith(
+      ctx,
+      "valid-restaurant-1",
+      "order.cancel",
+    );
+    expect(mutation.reviewOrderItemVoid).toHaveBeenCalled();
   });
 });
