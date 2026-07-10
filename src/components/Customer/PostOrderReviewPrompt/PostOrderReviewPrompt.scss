@@ -14,7 +14,9 @@
   background:
     radial-gradient(circle at 0% 0%, rgba(15, 111, 102, 0.1), transparent 14rem),
     linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(251, 246, 237, 0.95));
-  box-shadow: 0 22px 52px rgba(48, 40, 30, 0.16), inset 0 1px rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 22px 52px rgba(48, 40, 30, 0.16),
+    inset 0 1px rgba(255, 255, 255, 0.9);
   color: #24303f;
 }
 
@@ -26,8 +28,8 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
   border: 0;
@@ -80,7 +82,7 @@
 
 .post-order-review__action,
 .post-order-review__submit {
-  min-height: 38px;
+  min-height: 40px;
   border: 1px solid rgba(15, 111, 102, 0.24);
   border-radius: 14px;
   background: linear-gradient(135deg, #0f6f66, #07544e);
@@ -89,6 +91,23 @@
   font-weight: 900;
   cursor: pointer;
   box-shadow: 0 12px 24px rgba(15, 111, 102, 0.2);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease;
+}
+
+.post-order-review__action:hover:not(:disabled),
+.post-order-review__submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 28px rgba(15, 111, 102, 0.25);
+}
+
+.post-order-review__action:disabled,
+.post-order-review__submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  box-shadow: none;
 }
 
 .post-order-review__form {
@@ -103,7 +122,12 @@
 }
 
 .post-order-review__stars button {
+  min-width: 36px;
+  min-height: 36px;
+  display: grid;
+  place-items: center;
   border: 0;
+  border-radius: 10px;
   background: transparent;
   color: rgba(168, 133, 95, 0.34);
   cursor: pointer;
@@ -124,10 +148,27 @@
   font: inherit;
 }
 
-.post-order-review__form textarea:focus {
-  outline: none;
+.post-order-review__form textarea:focus-visible,
+.post-order-review :where(button):focus-visible {
+  outline: 3px solid rgba(15, 111, 102, 0.22);
+  outline-offset: 2px;
+}
+
+.post-order-review__form textarea:focus-visible {
   border-color: rgba(15, 111, 102, 0.5);
   box-shadow: 0 0 0 4px rgba(15, 111, 102, 0.12);
+}
+
+.post-order-review__error {
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid rgba(189, 91, 67, 0.28);
+  border-radius: 12px;
+  background: #f8e2da;
+  color: #8b392d;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 @media (max-width: 640px) {
@@ -136,5 +177,22 @@
     right: 12px;
     bottom: 74px;
     width: auto;
+  }
+
+  .post-order-review__action,
+  .post-order-review__submit {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .post-order-review__action,
+  .post-order-review__submit {
+    transition: none;
+  }
+
+  .post-order-review__action:hover,
+  .post-order-review__submit:hover {
+    transform: none;
   }
 }
