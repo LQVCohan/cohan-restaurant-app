@@ -1,0 +1,33 @@
+{
+  "id": "07-10-vnpay-card-channel",
+  "name": "07-10-vnpay-card-channel",
+  "title": "Clarify card payment and allow VNPAY card-channel testing",
+  "description": "Make the POS card action explicit as an at-counter card payment and allow the shared VNPAY provider to select a configured payment channel such as VNBANK for sandbox card testing.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "vnpay-channel-and-pos-payment-label",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "fix/vnpay-card-channel-20260710",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "payment-provider-flow-audit-20260710",
+  "relatedFiles": [
+    ".env.example",
+    "cohan-restaurant-backend/src/services/payment/providers.js",
+    "cohan-restaurant-backend/tests/services/payment-providers.security.test.js",
+    "src/components/Dashboard_Manager/POS/components/modals/PaymentModal.jsx"
+  ],
+  "notes": "Use the existing provider boundary; no schema or new mutation is required because all VNPAY callers already route through createVnpayPayment.",
+  "meta": {
+    "skills": ["ponytail", "frontend-design", "ui-ux-pro-max"]
+  }
+}
