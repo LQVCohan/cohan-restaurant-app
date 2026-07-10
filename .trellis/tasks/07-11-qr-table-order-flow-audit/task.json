@@ -9,7 +9,8 @@
     "completed": [
       "static schema-resolver-service-frontend-POS flow trace",
       "static review of QR token scope, menu payload, order transaction, inventory reservation, staff acceptance and realtime payload",
-      "regression tests added for transaction sequencing, serialized retry, payment-pending capability and socket payload shape"
+      "regression tests added for transaction sequencing, serialized retry, payment-pending capability and socket payload shape",
+      "stale customer identity is cleared when a new table QR route instance opens"
     ],
     "notRun": [
       "targeted public table order backend Vitest",
@@ -25,7 +26,7 @@
       "Tracking/public status, table status and inventory reservation now commit with the order batch in one Mongo transaction.",
       "Concurrent duplicate submissions serialize on the existing active table-session row, avoiding a new index migration.",
       "Realtime failures after commit are logged instead of returning a false order failure to the customer.",
-      "Anonymous/linked identity storage remains scoped by restaurant and table in the frontend; session-specific identity hardening is outside this functional repair."
+      "A new QR route instance clears the previous diner identity choice/token before the table-order component initializes."
     ]
   }
 }
