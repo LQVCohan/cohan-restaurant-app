@@ -3,7 +3,7 @@
   "name": "table-3d-responsive-ui-upgrade",
   "title": "Upgrade table 3D modal on desktop and mobile",
   "description": "Refine the existing manager table 3D simulator into a clearer desktop workspace and a reliable single-column mobile workflow without changing business behavior.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-table-3d-responsive-ui",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": "9f7926d0f8f04ce29973f139a404fbe4e7b2b8c7",
+  "commit": "15c5bca0cd2e691f131bb5622e4903d66c80b3b8",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -30,8 +30,16 @@
     "src/components/Dashboard_Manager/Table/Table3DActionBarV2.jsx",
     "src/styles/Table3DModalResponsive.css",
     "src/styles/Table3DModalWorkflow.css",
-    "src/styles/Table3DMainModalRepair.css"
+    "src/styles/Table3DMainModalRepair.css",
+    "src/styles/Table3DModalContentSafety.css"
   ],
-  "notes": "Follow-up screenshot review found three presentation defects: raw license strings can enter compact model badges and overflow card bounds; the loading panel uses percentage insets that cover too much of the viewer; and the final repair stylesheet is imported before later table workflow/mobile styles. Reopened to fix those shared presentation boundaries without changing backend, GraphQL, AR persistence or callbacks.",
-  "meta": {}
+  "notes": "Completed screenshot follow-up. Compact catalog cards now keep only short semantic badges, so raw license strings no longer cross card boundaries. The final modal repair CSS is loaded after later table workflow/mobile styles. A narrow content-safety layer centers the loading card, constrains badge/card overflow, and keeps the disabled placement hint inside its action cell on desktop and mobile. No backend, GraphQL, permission, audit, AR persistence or callback behavior changed. No CI status or workflow was available for the implementation commit; local component tests, production build, 390x844/430x932 checks and physical phone validation were not run through the GitHub connector.",
+  "meta": {
+    "followUpCommits": [
+      "17d00049d133cb7cac71b133dfc8b8d8322feca5",
+      "7a02fba01e894edb86e2d0e1991a8d58a638c6a0",
+      "66d6e8b0a45852d979995c3d8a68c984ac0377aa",
+      "15c5bca0cd2e691f131bb5622e4903d66c80b3b8"
+    ]
+  }
 }
