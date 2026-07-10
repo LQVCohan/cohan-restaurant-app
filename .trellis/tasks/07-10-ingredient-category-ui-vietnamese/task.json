@@ -1,14 +1,15 @@
 {
   "id": "07-10-ingredient-category-ui-vietnamese",
   "title": "Tối ưu quản lý danh mục nguyên liệu và tên tiếng Việt có dấu",
-  "status": "completed",
+  "status": "in_progress",
   "scope": [
     "ingredient category sync naming",
-    "ingredient category management modal UI"
+    "ingredient category management modal UI",
+    "remove nested modal scrolling and improve sync success copy"
   ],
   "validation": [
-    "reviewed schema-to-resolver-to-hook-to-modal flow",
-    "reviewed stable slug mapping for legacy English categories",
-    "CI and local build not run"
+    "review schema-to-resolver-to-hook-to-modal flow",
+    "verify modal uses one vertical scroll container",
+    "CI and local build not requested"
   ]
 }
