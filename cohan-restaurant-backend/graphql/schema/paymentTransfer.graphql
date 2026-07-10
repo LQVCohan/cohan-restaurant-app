@@ -37,6 +37,17 @@ type TransferPaymentState {
   proofCycleStartedAt: DateTime
 }
 
+type TransferPaymentQueueSummary {
+  total: Int!
+  actionable: Int!
+  submitted: Int!
+  verifying: Int!
+  rejected: Int!
+  verified: Int!
+  failed: Int!
+  expired: Int!
+}
+
 extend type PaymentSession {
   transfer: TransferPaymentState
 }
@@ -70,6 +81,7 @@ input RejectTransferPaymentInput {
 
 extend type Query {
   transferPaymentQueue(restaurantId: ID!, status: TransferVerificationStatus, statuses: [TransferVerificationStatus!], limit: Int): [PaymentSession!]!
+  transferPaymentQueueSummary(restaurantId: ID!): TransferPaymentQueueSummary!
 }
 
 extend type Mutation {
