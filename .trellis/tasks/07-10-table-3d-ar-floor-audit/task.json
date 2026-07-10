@@ -1,6 +1,6 @@
 {
   "id": "07-10-table-3d-ar-floor-audit",
-  "title": "Tinh gọn modal xem bàn 3D và ổn định AR mặt sàn",
+  "title": "Tinh gọn modal xem bàn 3D và cải thiện AR mặt sàn",
   "status": "in_progress",
   "type": "frontend-fix",
   "scope": [
@@ -8,10 +8,10 @@
     "src/components/Dashboard_Manager/Table/Table3DActionBarV2.test.jsx",
     "src/components/Dashboard_Manager/Table/Table3DQuickGuide.jsx"
   ],
-  "rootCause": "The parent AR launcher still writes ar-scale=auto immediately before activateAR. On Android native Scene Viewer that permits resizing, while native instant/depth tracking transitions can look like the object grows, shrinks or drifts as device distance changes. The shared action boundary now selects WebXR when available and normalizes the launch to fixed scale, while retaining Scene Viewer and Quick Look as device fallbacks.",
+  "rootCause": "The previous follow-up forced WebXR-only and ar-scale=fixed at the shared launch boundary. That disabled the requested two-finger scaling and made floor acquisition harder on the tested Android device. The smallest corrective change removes the attribute interception, restores ar-scale=auto, keeps floor placement explicit, and gives native Scene Viewer first priority with WebXR and Quick Look as fallbacks.",
   "validation": {
     "planned": [
-      "npx vitest run src/components/Dashboard_Manager/Table/Table3DActionBarV2.test.jsx",
+      "npx vitest run src/components/Dashboard_Manager/Table/Table3DActionBarV2.test.jsx src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.test.jsx",
       "npm run check:conflicts",
       "npm run build",
       "manual Android AR test over HTTPS"
@@ -20,11 +20,12 @@
       "read AGENTS.md, Trellis workflow, ponytail and frontend-design skills",
       "traced catalog model metadata through the shared model-viewer modal, AR action boundary and native activateAR handoff",
       "inspected the only modal caller and the direct action-bar and modal tests",
-      "prefer WebXR at launch when immersive-ar is supported",
-      "force ar-scale=fixed at the launch boundary even when the legacy parent writes auto",
-      "retain scene-viewer and quick-look fallback for devices without WebXR",
-      "updated user guidance to wait for a stable floor and avoid pinch resizing",
-      "added regression coverage for WebXR preference, fixed scale and native fallback"
+      "removed the launch-time setAttribute interception that forced fixed scale",
+      "restored ar-scale=auto so native AR supports two-finger resizing",
+      "prioritized scene-viewer before webxr and quick-look for the Android floor-scan path",
+      "kept ar-placement=floor explicit at the launch boundary",
+      "updated scan guidance for lighting, textured reference points and slower placement",
+      "updated focused action-bar regression coverage"
     ],
     "notRun": [
       "Targeted Vitest, conflict check and build were not run because the GitHub connector does not provide a repository checkout with installed dependencies.",
