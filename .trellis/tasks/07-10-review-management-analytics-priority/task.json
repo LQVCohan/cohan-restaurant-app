@@ -1,26 +1,29 @@
 {
   "id": "07-10-review-management-analytics-priority",
   "title": "Ưu tiên phân tích và harden luồng review",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "fullstack-bugfix-ui",
   "scope": [
     "cohan-restaurant-backend/graphql/resolvers/review/query.js",
     "cohan-restaurant-backend/src/services/reviewInsight.service.js",
-    "cohan-restaurant-backend/tests/resolvers/review-transparent-flow.test.js",
+    "cohan-restaurant-backend/tests/resolvers/review-manager-report-queue.test.js",
+    "cohan-restaurant-backend/tests/services/reviewInsight.service.test.js",
     "src/components/Dashboard_Manager/Review/ReviewManagement.scss",
     "src/components/Dashboard_Manager/Review/components/ReviewsList.jsx",
+    "src/components/Dashboard_Manager/Review/components/ReviewsList.test.jsx",
     "src/components/Dashboard_Manager/Review/components/ReviewModal.jsx",
     "src/components/Dashboard_Manager/Review/components/ReviewModal.test.jsx",
     "src/components/Customer/RestaurantDetail/components/ReviewsSection/ReviewsSection.jsx",
-    "src/components/Customer/RestaurantDetail/components/ReviewsSection/ReviewsSection.test.jsx",
+    "src/components/Customer/RestaurantDetail/components/ReviewsSection/ReviewsSection.flow.test.jsx",
     "src/components/Customer/PostOrderReviewPrompt/PostOrderReviewPrompt.jsx",
+    "src/components/Customer/PostOrderReviewPrompt/PostOrderReviewPrompt.scss",
     "src/components/Customer/PostOrderReviewPrompt/PostOrderReviewPrompt.test.jsx"
   ],
   "validation": {
     "planned": [
-      "targeted backend review tests",
-      "targeted manager review component tests",
-      "targeted customer review component tests",
+      "npx vitest run cohan-restaurant-backend/tests/resolvers/review-manager-report-queue.test.js cohan-restaurant-backend/tests/services/reviewInsight.service.test.js",
+      "npx vitest run src/components/Dashboard_Manager/Review/components/ReviewsList.test.jsx src/components/Dashboard_Manager/Review/components/ReviewModal.test.jsx",
+      "npx vitest run src/components/Customer/RestaurantDetail/components/ReviewsSection/ReviewsSection.flow.test.jsx src/components/Customer/PostOrderReviewPrompt/PostOrderReviewPrompt.test.jsx",
       "npm run build",
       "browser smoke at 375, 768, 1024 and 1440 px"
     ],
@@ -28,8 +31,19 @@
       "read AGENTS.md and .trellis/workflow.md",
       "read ponytail, frontend-design, taste-ui-redesign, redesign-existing-projects, ui-ux-pro-max, web-design-guidelines and wcag-ui-audit skills",
       "traced schema, model, resolver/service, Apollo operations and manager/customer UI actions",
-      "identified analytics CSS order, report-backed visibility, illegal delete UI, stale official reply data and customer mutation feedback as root causes"
+      "moved manager analytics ahead of the review list and synchronized the sage/warm-neutral manager surface",
+      "included public reviews with pending reports in the manager reported queue without changing public visibility",
+      "removed the unsupported direct-delete action and retained status-based moderation",
+      "refetched manager list, statistics and analytics after official replies",
+      "aligned customer content validation with backend limits, refreshed create/report results and replaced the dead comment button with non-interactive information",
+      "added visible post-order review mutation errors",
+      "added focused backend and frontend regression tests"
     ],
-    "notRun": []
+    "notRun": [
+      "targeted Vitest commands were unavailable in the GitHub connector environment",
+      "npm run build was unavailable in the GitHub connector environment",
+      "browser visual checks at 375, 768, 1024 and 1440 px were unavailable in the GitHub connector environment",
+      "no GitHub Actions workflow was attached to the latest commit at the time of verification"
+    ]
   }
 }
