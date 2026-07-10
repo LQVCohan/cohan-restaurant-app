@@ -1,7 +1,36 @@
+import { notifyCustomerServiceRequest } from "../../../../src/services/notification/notificationWorkflow.service.js";
+
+const CUSTOMER_REQUEST_CREATED_EVENTS = new Set([
+  "CUSTOMER_STAFF_CALL_REQUESTED",
+  "CUSTOMER_PAYMENT_REQUESTED",
+]);
+
+async function dispatchCustomerRequestNotification(restaurantId, type, payload) {
+  if (!CUSTOMER_REQUEST_CREATED_EVENTS.has(String(type || "").toUpperCase())) return;
+
+  try {
+    await notifyCustomerServiceRequest({
+      restaurantId,
+      eventType: type,
+      request: payload?.request,
+      tableCode: payload?.tableCode || payload?.request?.tableCode || null,
+      orderCode: payload?.request?.orderCode || payload?.order?.orderCode || null,
+      message: payload?.message || payload?.request?.message || null,
+    });
+  } catch (error) {
+    console.warn(
+      `[NOTIFICATION] Customer request fan-out failed (${type}):`,
+      error?.message || error,
+    );
+  }
+}
+
 // ===============================
 // Gửi event cho trang quản lý / POS / Kitchen Display
 // ===============================
 export async function emitRestaurantEvent(ctx, restaurantId, type, payload) {
+  await dispatchCustomerRequestNotification(restaurantId, type, payload);
+
   if (!ctx?.io) return;
 
   ctx.io.to(`restaurant_${restaurantId}`).emit("orderEvents", {
