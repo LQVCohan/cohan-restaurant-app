@@ -19,6 +19,10 @@ import { withOrderConflictHardening } from "./orderConflictHardening.js";
 import { withCheckoutIdempotency } from "./checkoutIdempotency.js";
 import publicTableSessionQuery from "./publicTableSessionQuery.js";
 import publicTableOrderMutation from "./publicTableOrderMutation.js";
+import {
+  PublicTableOrderAccessMutation,
+  PublicTableOrderAccessQuery,
+} from "./publicTableOrderAccess.js";
 
 const PaymentGuardedOrderMutation = {
   ...OrderMutation,
@@ -46,12 +50,14 @@ export default {
     ...OrderCoreRecoveryQuery,
     ...publicTableSessionQuery,
     ...CustomerOrderHistoryQuery,
+    ...PublicTableOrderAccessQuery,
   },
   Mutation: {
     ...GuardedOrderMutation,
     ...OrderProofMutation,
     ...CustomerOrderHistoryMutation,
     ...publicTableOrderMutation,
+    ...PublicTableOrderAccessMutation,
   },
   Subscription: {
     ...OrderSubscription,
