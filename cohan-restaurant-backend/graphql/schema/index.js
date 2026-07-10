@@ -208,6 +208,7 @@ const files = [
   "role.graphql",
   "permission.graphql",
   "menu.graphql",
+  "customerMenuItemLocations.graphql",
   "category.graphql",
   "modifier.graphql",
   "floor_table.graphql",
