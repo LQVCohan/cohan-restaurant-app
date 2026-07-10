@@ -19,8 +19,15 @@
     "completed": [
       "read repository workflow and ponytail skill",
       "traced catalog model metadata through the modal, model-viewer and external AR action",
-      "reviewed the user's Android Scene Viewer screenshots"
+      "reviewed the user's Android Scene Viewer screenshots",
+      "reconciled already-loaded model-viewer instances so loading cannot remain at 0% after a missed load event",
+      "polled canActivateAR briefly after model load so the external AR button follows model-viewer's asynchronous AR-mode selection",
+      "replaced fixed AR scaling with auto scaling and removed the duplicate built-in cube action",
+      "updated focused tests for resizable AR, the hidden native slot, and cached model loading"
     ],
-    "notRun": []
+    "notRun": [
+      "Targeted Vitest, conflict check, and production build were not run because the GitHub connector does not provide a repository checkout with installed dependencies.",
+      "Physical Android floor-placement verification remains pending after the user pulls and restarts the local frontend."
+    ]
   }
 }
