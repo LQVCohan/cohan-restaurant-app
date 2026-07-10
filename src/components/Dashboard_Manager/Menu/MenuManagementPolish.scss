@@ -78,12 +78,62 @@
   border: 0 !important;
   border-radius: 0 !important;
   outline: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
 }
 
-.manager-layout--menu .toolbar-container--manager .search-wrapper .clear-btn {
-  position: static !important;
-  flex: 0 0 auto !important;
-  transform: none !important;
+/* Show menu photos as complete dish previews instead of over-cropped banners. */
+.manager-layout--menu .menu-item-card .card-image-wrapper {
+  height: 158px !important;
+  padding: 10px !important;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(31, 106, 96, 0.1), transparent 54%),
+    linear-gradient(145deg, #fffdf8, #f3eadf 58%, #e7eee9) !important;
+}
+
+.manager-layout--menu .menu-item-card .card-image-wrapper > img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  border-radius: 16px !important;
+  background: rgba(255, 255, 255, 0.5) !important;
+  filter: drop-shadow(0 12px 20px rgba(48, 40, 30, 0.12));
+}
+
+.manager-layout--menu .menu-item-card:hover .card-image-wrapper > img {
+  transform: scale(1.025) !important;
+}
+
+.manager-layout--menu .menu-item-card .card-image-wrapper .placeholder-img {
+  border-radius: 16px !important;
+}
+
+/* Menu-page modals close through X / Cancel / explicit actions, not backdrop clicks. */
+.modern-modal-overlay {
+  pointer-events: none !important;
+}
+
+.modern-modal-overlay > .modern-modal-container {
+  pointer-events: auto !important;
+}
+
+.modal-overlay:has(.menu-item-modal-modern),
+.modal-overlay:has(.dish-category-modal),
+.modal-overlay:has(.modern-category-modal),
+.modal-overlay:has(.price-edit-modal),
+.modal-overlay:has(.bulk-foryou-modal),
+.modal-overlay:has(.menu-confirm-dialog),
+.modal-overlay:has(.audit-log-modal),
+.modal-overlay:has(.mm-delete-confirm-body) {
+  pointer-events: none !important;
+}
+
+.modal-overlay:has(.menu-item-modal-modern) > .modal-container,
+.modal-overlay:has(.dish-category-modal) > .modal-container,
+.modal-overlay:has(.modern-category-modal) > .modal-container,
+.modal-overlay:has(.price-edit-modal) > .modal-container,
+.modal-overlay:has(.bulk-foryou-modal) > .modal-container,
+.modal-overlay:has(.menu-confirm-dialog) > .modal-container,
+.modal-overlay:has(.audit-log-modal) > .modal-container,
+.modal-overlay:has(.mm-delete-confirm-body) > .modal-container {
+  pointer-events: auto !important;
 }
