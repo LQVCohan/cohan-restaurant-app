@@ -17,7 +17,7 @@ Loading giả đi theo:
 
 ## Hướng sửa
 
-- Ngừng gọi `initScheduleHydrationPolish`; giữ các loading/error state thật trong component.
+- Xóa caller, util và stylesheet của `initScheduleHydrationPolish`; giữ các loading/error state thật trong component.
 - Modal có hai chế độ xem:
   - **Toàn thời gian**: mỗi ngày một ô, dựa trên `workingDays` và ngoại lệ đã duyệt.
   - **Bán thời gian**: mỗi ngày chia theo các block ca part-time; hiển thị giờ bắt đầu, giờ kết thúc và thời lượng.
@@ -31,6 +31,9 @@ Loading giả đi theo:
 - `src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModalInline.jsx`
 - `src/styles/AvailabilitySnapshotOverlayLight.css`
 - `src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.test.jsx`
+- `src/styles/schedule-polish.css`
+- Xóa `src/utils/scheduleHydrationPolish.js`.
+- Xóa `src/styles/schedule-hydration-polish.css`.
 - Task Trellis hiện tại.
 
 ## Ngoài phạm vi
