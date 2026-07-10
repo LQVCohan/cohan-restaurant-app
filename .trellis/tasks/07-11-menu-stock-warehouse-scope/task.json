@@ -1,0 +1,23 @@
+{
+  "id": "07-11-menu-stock-warehouse-scope",
+  "title": "Align menu stock with fulfillment warehouse",
+  "status": "ready_for_review",
+  "type": "backend-bugfix",
+  "priority": "P1",
+  "branch": "fix/menu-stock-warehouse-scope-20260711",
+  "base_branch": "main",
+  "createdAt": "2026-07-11",
+  "completedAt": null,
+  "rootCause": "MenuItem inventory fields aggregate StockItem balances across every warehouse in the restaurant, while menuItemLiveState and addCartItem calculate and reserve stock only in the first active fulfillment warehouse.",
+  "flow": "MenuItem/Recipe/Ingredient/StockItem/Warehouse models -> menuItemInventoryAvailability service -> MenuItem GraphQL fields -> useMenuManagement/MenuItemCard and customerMenuItem/FoodDetailV2 -> menuItemLiveState/addCartItem -> targeted service test",
+  "files": [
+    "cohan-restaurant-backend/src/services/menuItemInventoryAvailability.service.js",
+    "cohan-restaurant-backend/tests/services/menu-item-inventory-warehouse-scope.test.js"
+  ],
+  "validation": [
+    "focused warehouse-scope regression: 2 tests passed",
+    "backend full suite: 329 files and 2166 tests passed",
+    "backend lint, Menu RBAC and build passed",
+    "frontend lint passed; unrelated installTableDetailModalTabs unit test remains failing"
+  ]
+}
