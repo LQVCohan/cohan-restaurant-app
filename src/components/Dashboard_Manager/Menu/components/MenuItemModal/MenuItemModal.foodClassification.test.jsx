@@ -30,4 +30,19 @@ describe("MenuItemModal item contract", () => {
     expect(source).toContain("Bếp chính");
     expect(source).toContain("Quầy bar");
   });
+
+  it("supports independent portion and kilogram modes per preparation method", () => {
+    const source = fs.readFileSync(SOURCE_PATH, "utf8");
+
+    expect(source).toContain("const SERVING_MODE_OPTIONS");
+    expect(source).toContain('value: "PORTION"');
+    expect(source).toContain('value: "BY_WEIGHT"');
+    expect(source).toContain('label: "Theo phần"');
+    expect(source).toContain('label: "Theo kg"');
+    expect(source).toContain("handleServingModeChange");
+    expect(source).toContain('sellQty: 1');
+    expect(source).toContain('sellUnit: mode === "BY_WEIGHT" ? "kg" : "portion"');
+    expect(source).toContain('id={`serving-mode-${index}`}');
+    expect(source).toContain("một món vừa bán theo phần vừa bán theo kg");
+  });
 });
