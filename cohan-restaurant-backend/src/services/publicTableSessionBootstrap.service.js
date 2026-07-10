@@ -82,33 +82,30 @@ async function loadActiveSession({ rid, tid, tableCode, session }) {
   return query.lean({ virtuals: true });
 }
 
+function assertTableIsOpenForQrService(table) {
+  const tableStatus = String(table?.status || "").toLowerCase();
+  if (SESSION_BOOTSTRAP_TABLE_STATUSES.has(tableStatus)) return;
+  throw new GraphQLError(
+    ["available", "reserved"].includes(tableStatus)
+      ? "Nhân viên cần mở bàn sang trạng thái đang phục vụ trước khi khách xác nhận gọi món."
+      : "Bàn hiện chưa sẵn sàng để bắt đầu phiên gọi món.",
+    { extensions: { code: "TABLE_SESSION_NOT_OPEN" } },
+  );
+}
+
 export async function ensurePublicTableSessionForAccess(input = {}) {
   const initial = await loadScopedTable(input);
+  assertTableIsOpenForQrService(initial.table);
+
   const existing = await loadActiveSession(initial);
   if (existing) return existing;
-
-  const tableStatus = String(initial.table?.status || "").toLowerCase();
-  if (!SESSION_BOOTSTRAP_TABLE_STATUSES.has(tableStatus)) {
-    throw new GraphQLError(
-      ["available", "reserved"].includes(tableStatus)
-        ? "Nhân viên cần mở bàn sang trạng thái đang phục vụ trước khi khách xác nhận gọi món."
-        : "Bàn hiện chưa sẵn sàng để bắt đầu phiên gọi món.",
-      { extensions: { code: "TABLE_SESSION_NOT_OPEN" } },
-    );
-  }
 
   const transaction = await mongoose.startSession();
   let tableSession = null;
   try {
     await transaction.withTransaction(async () => {
       const current = await loadScopedTable({ ...input, session: transaction });
-      const currentStatus = String(current.table?.status || "").toLowerCase();
-      if (!SESSION_BOOTSTRAP_TABLE_STATUSES.has(currentStatus)) {
-        throw new GraphQLError(
-          "Trạng thái bàn vừa thay đổi. Vui lòng nhờ nhân viên kiểm tra.",
-          { extensions: { code: "TABLE_STATE_CHANGED" } },
-        );
-      }
+      assertTableIsOpenForQrService(current.table);
 
       const result = await ensureActiveTableSessionForDineInOrder({
         OrderModel: Order,
@@ -141,4 +138,5 @@ export async function ensurePublicTableSessionForAccess(input = {}) {
 export const __testables = {
   SESSION_BOOTSTRAP_TABLE_STATUSES,
   createUniqueSessionCode,
+  assertTableIsOpenForQrService,
 };
