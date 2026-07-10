@@ -1,16 +1,17 @@
 {
   "id": "07-10-menu-taste-profile-input",
-  "title": "Sửa lỗi lưu hồ sơ khẩu vị món ăn",
+  "title": "Sửa lỗi Apollo __typename trong mutation input",
   "status": "planning",
   "type": "bugfix",
   "scope": [
-    "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModal.jsx"
+    "src/apollo/client.js",
+    "src/apollo/client.test.js"
   ],
   "validation": {
     "planned": [
       "npm run check:conflicts",
       "npm run check:graphql",
-      "targeted Vitest for menu item taste-profile input when available"
+      "vitest run src/apollo/client.test.js"
     ],
     "completed": [],
     "notRun": []
