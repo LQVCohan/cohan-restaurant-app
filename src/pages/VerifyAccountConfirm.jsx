@@ -40,6 +40,85 @@ const pathChannel = (pathname) => {
   return "EMAIL";
 };
 
+const PasswordEyeIcon = ({ visible }) => (
+  <svg
+    aria-hidden="true"
+    className="brand-password-toggle__icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {visible ? (
+      <>
+        <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    ) : (
+      <>
+        <path d="m3 3 18 18" />
+        <path d="M10.6 10.6A2 2 0 0 0 12 14a2 2 0 0 0 1.4-.6" />
+        <path d="M7.1 7.6C4.2 9.2 2.5 12 2.5 12s3.5 6 9.5 6c1.6 0 3-.4 4.2-1" />
+        <path d="M14.2 6.3C19 7.1 21.5 12 21.5 12a17 17 0 0 1-2.2 3" />
+      </>
+    )}
+  </svg>
+);
+
+const PasswordVisibilityButton = ({ visible, onToggle, label }) => (
+  <button
+    type="button"
+    className="brand-password-toggle"
+    aria-label={`${visible ? "Ẩn" : "Hiện"} ${label}`}
+    aria-pressed={visible}
+    onClick={onToggle}
+  >
+    <PasswordEyeIcon visible={visible} />
+  </button>
+);
+
+function getPasswordStrength(value = "") {
+  if (!value) return { score: 0, tone: "empty", label: "Chưa nhập" };
+  const score = [
+    value.length >= 8,
+    /[a-z]/.test(value) && /[A-Z]/.test(value),
+    /\d/.test(value),
+    /[^A-Za-z0-9]/.test(value),
+  ].filter(Boolean).length;
+
+  if (score <= 1) return { score, tone: "weak", label: "Yếu" };
+  if (score <= 3) return { score, tone: "medium", label: "Trung bình" };
+  return { score, tone: "strong", label: "Mạnh" };
+}
+
+const PasswordStrengthMeter = ({ password, id }) => {
+  const strength = getPasswordStrength(password);
+  const helperText = password
+    ? `Độ mạnh: ${strength.label}`
+    : "Dùng ít nhất 8 ký tự, gồm chữ hoa, số và ký tự đặc biệt";
+
+  return (
+    <div
+      id={id}
+      className={`password-strength password-strength--${strength.tone}`}
+      role="status"
+      aria-live="polite"
+    >
+      <span className="password-strength__label">{helperText}</span>
+      <span className="password-strength__bars" aria-hidden="true">
+        {[0, 1, 2, 3].map((index) => (
+          <span
+            key={index}
+            className={index < strength.score ? "is-active" : ""}
+          />
+        ))}
+      </span>
+    </div>
+  );
+};
+
 function resolveVerifyError(error) {
   const graphError = error?.graphQLErrors?.[0];
   const code = String(
@@ -130,8 +209,20 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [visiblePasswords, setVisiblePasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
   const autoAcceptedRef = useRef(false);
   const isSms = channel === "SMS";
+
+  const togglePasswordVisibility = (field) => {
+    setVisiblePasswords((current) => ({
+      ...current,
+      [field]: !current[field],
+    }));
+  };
 
   useEffect(() => {
     if (token || invitationToken) {
@@ -388,33 +479,59 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
               >
                 <label>
                   <span>Mật khẩu tạm</span>
-                  <input
-                    type="password"
-                    autoComplete="current-password"
-                    value={currentPassword}
-                    onChange={(event) => setCurrentPassword(event.target.value)}
-                    placeholder="Nhập mật khẩu trong email"
-                  />
+                  <div className="brand-password-field">
+                    <input
+                      type={visiblePasswords.current ? "text" : "password"}
+                      autoComplete="current-password"
+                      value={currentPassword}
+                      onChange={(event) => setCurrentPassword(event.target.value)}
+                      placeholder="Nhập mật khẩu trong email"
+                    />
+                    <PasswordVisibilityButton
+                      visible={visiblePasswords.current}
+                      label="mật khẩu tạm"
+                      onToggle={() => togglePasswordVisibility("current")}
+                    />
+                  </div>
                 </label>
                 <label>
                   <span>Mật khẩu mới</span>
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Tối thiểu 8 ký tự, đủ mạnh"
+                  <div className="brand-password-field">
+                    <input
+                      type={visiblePasswords.new ? "text" : "password"}
+                      autoComplete="new-password"
+                      aria-describedby="forced-new-password-strength"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Tối thiểu 8 ký tự, đủ mạnh"
+                    />
+                    <PasswordVisibilityButton
+                      visible={visiblePasswords.new}
+                      label="mật khẩu mới"
+                      onToggle={() => togglePasswordVisibility("new")}
+                    />
+                  </div>
+                  <PasswordStrengthMeter
+                    id="forced-new-password-strength"
+                    password={password}
                   />
                 </label>
                 <label>
                   <span>Nhập lại mật khẩu mới</span>
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    placeholder="Nhập lại mật khẩu mới"
-                  />
+                  <div className="brand-password-field">
+                    <input
+                      type={visiblePasswords.confirm ? "text" : "password"}
+                      autoComplete="new-password"
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      placeholder="Nhập lại mật khẩu mới"
+                    />
+                    <PasswordVisibilityButton
+                      visible={visiblePasswords.confirm}
+                      label="mật khẩu xác nhận"
+                      onToggle={() => togglePasswordVisibility("confirm")}
+                    />
+                  </div>
                 </label>
               </div>
             )}
@@ -426,23 +543,42 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
               >
                 <label>
                   <span>Mật khẩu mới</span>
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Tối thiểu 8 ký tự, đủ mạnh"
+                  <div className="brand-password-field">
+                    <input
+                      type={visiblePasswords.new ? "text" : "password"}
+                      autoComplete="new-password"
+                      aria-describedby="invitation-new-password-strength"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Tối thiểu 8 ký tự, đủ mạnh"
+                    />
+                    <PasswordVisibilityButton
+                      visible={visiblePasswords.new}
+                      label="mật khẩu mới"
+                      onToggle={() => togglePasswordVisibility("new")}
+                    />
+                  </div>
+                  <PasswordStrengthMeter
+                    id="invitation-new-password-strength"
+                    password={password}
                   />
                 </label>
                 <label>
                   <span>Nhập lại mật khẩu</span>
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    placeholder="Nhập lại mật khẩu"
-                  />
+                  <div className="brand-password-field">
+                    <input
+                      type={visiblePasswords.confirm ? "text" : "password"}
+                      autoComplete="new-password"
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      placeholder="Nhập lại mật khẩu"
+                    />
+                    <PasswordVisibilityButton
+                      visible={visiblePasswords.confirm}
+                      label="mật khẩu xác nhận"
+                      onToggle={() => togglePasswordVisibility("confirm")}
+                    />
+                  </div>
                 </label>
               </div>
             )}
