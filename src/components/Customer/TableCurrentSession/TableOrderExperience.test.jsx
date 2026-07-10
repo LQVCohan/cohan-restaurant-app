@@ -193,9 +193,9 @@ describe("TableOrderExperience", () => {
     renderExperience();
 
     expect(await screen.findByRole("dialog", { name: "Lưu order và tích điểm" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Bỏ qua, không lưu tài khoản" }));
+    fireEvent.click(screen.getByRole("button", { name: "Đóng Lưu order và tích điểm" }));
 
-    fireEvent.click(screen.getByRole("button", { name: /Gọi món tại Bàn A01/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Gọi món tại A01/i }));
     expect(await screen.findByText("Cơm gà")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Chọn món" }));
     fireEvent.click(await screen.findByRole("button", { name: /Thêm vào đợt gọi món/i }));
