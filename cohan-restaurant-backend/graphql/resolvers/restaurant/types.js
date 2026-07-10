@@ -40,8 +40,12 @@ export default {
       ].map((key) => [
         key,
         (parent) =>
-          parent?._availabilityAt?.[key] ??
-          computeRestaurantAvailability(parent)[key],
+          Object.prototype.hasOwnProperty.call(
+            parent?._availabilityAt || {},
+            key,
+          )
+            ? parent._availabilityAt[key]
+            : computeRestaurantAvailability(parent)[key],
       ]),
     ),
   },
