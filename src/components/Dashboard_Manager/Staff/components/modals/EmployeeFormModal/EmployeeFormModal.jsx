@@ -676,6 +676,12 @@ const EmployeeFormModal = ({
       const hasPhone = formData.phone.trim().length > 0;
       const hasEmail = formData.email.trim().length > 0;
       const hasPassword = formData.password.trim().length > 0;
+      const emergencyContact = {
+        name: normalizeDraftText(formData.emergencyContact) || undefined,
+        phone: normalizeDraftText(formData.emergencyPhone) || undefined,
+        relation: normalizeDraftText(formData.emergencyRelation) || undefined,
+      };
+      const hasEmergencyContact = Object.values(emergencyContact).some(Boolean);
 
       const staffPayload = {
         fullName: formData.name.trim(),
@@ -693,11 +699,7 @@ const EmployeeFormModal = ({
         dateJoined,
         baseSalary,
         address: formData.address ? { line1: formData.address } : undefined,
-        emergencyContact: {
-          name: formData.emergencyContact || undefined,
-          phone: formData.emergencyPhone || undefined,
-          relation: formData.emergencyRelation || undefined,
-        },
+        ...(hasEmergencyContact ? { emergencyContact } : {}),
         noteInternal: formData.notes || undefined,
         status: "active",
       };
