@@ -42,26 +42,24 @@ const ACTION_CLASS = {
 const FIELD_LABELS = {
   name: "Tên món",
   description: "Mô tả",
-  basePrice: "Giá cơ bản",
+  basePrice: "Giá bán",
   price: "Giá bán",
   status: "Trạng thái bán",
   prepStation: "Khu vực chế biến",
-  isActive: "Đang hoạt động",
+  avgPrepTimeMin: "Thời gian chế biến",
   isAvailable: "Đang phục vụ",
-  thumbImage: "Hình ảnh",
   sortOrder: "Thứ tự hiển thị",
   order: "Thứ tự hiển thị",
 };
 
-const HIDDEN_FIELDS = new Set([
-  "_id",
-  "id",
-  "restaurantId",
-  "menuId",
-  "categoryId",
-  "createdAt",
-  "updatedAt",
-  "__v",
+const CREATE_FIELDS = new Set([
+  "name",
+  "description",
+  "basePrice",
+  "price",
+  "status",
+  "prepStation",
+  "avgPrepTimeMin",
 ]);
 
 const VALUE_LABELS = {
@@ -71,9 +69,6 @@ const VALUE_LABELS = {
   hidden: "Ẩn khỏi thực đơn",
   kitchen: "Bếp",
   bar: "Quầy bar",
-  create: "Tạo mới",
-  update: "Cập nhật",
-  delete: "Xóa",
 };
 
 const formatDateTime = (value) => {
@@ -96,42 +91,80 @@ const formatValue = (key, value) => {
       maximumFractionDigits: 0,
     }).format(Number(value));
   }
+  if (key === "avgPrepTimeMin" && Number.isFinite(Number(value))) {
+    return `${Number(value).toLocaleString("vi-VN")} phút`;
+  }
   if (typeof value === "number") return value.toLocaleString("vi-VN");
   if (typeof value === "string") return VALUE_LABELS[value] || value;
   if (Array.isArray(value)) return value.length ? value.join(", ") : "Không có";
   return "Đã thay đổi";
 };
 
-const compactObject = (obj = {}) => {
+const getVisibleEntries = (obj = {}, allowedFields) => {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) return [];
   return Object.entries(obj).filter(
-    ([key, value]) => !HIDDEN_FIELDS.has(key) && value !== undefined,
+    ([key, value]) =>
+      FIELD_LABELS[key] &&
+      (!allowedFields || allowedFields.has(key)) &&
+      value !== undefined,
   );
 };
 
-const renderKeyValueGrid = (title, data) => {
-  const entries = compactObject(data);
+const renderRows = (entries) => {
   if (!entries.length) return null;
-
   return (
-    <div className="alm-kv-block">
-      <strong>{title}</strong>
-      <div className="alm-kv-grid">
-        {entries.map(([key, value]) => {
-          const formattedValue = formatValue(key, value);
-          return (
-            <div className="alm-kv-row" key={key}>
-              <span>{FIELD_LABELS[key] || key}</span>
-              <b title={formattedValue}>{formattedValue}</b>
-            </div>
-          );
-        })}
-      </div>
+    <div className="alm-kv-grid">
+      {entries.map(([key, value]) => {
+        const formattedValue = formatValue(key, value);
+        return (
+          <div className="alm-kv-row" key={key}>
+            <span>{FIELD_LABELS[key]}</span>
+            <b title={formattedValue}>{formattedValue}</b>
+          </div>
+        );
+      })}
     </div>
   );
 };
 
-const renderDiff = (diff) => {
+const renderCreatedValues = (diff) => {
+  const source = diff?.after || diff;
+  const entries = getVisibleEntries(source, CREATE_FIELDS);
+  return renderRows(entries) || (
+    <span className="alm-muted">Món đã được tạo.</span>
+  );
+};
+
+const renderChangedValues = (before = {}, after = {}) => {
+  const entries = getVisibleEntries(after).filter(([key, value]) => {
+    const beforeValue = before?.[key];
+    return JSON.stringify(beforeValue) !== JSON.stringify(value);
+  });
+
+  if (!entries.length) {
+    return <span className="alm-muted">Không có thay đổi cần hiển thị.</span>;
+  }
+
+  return (
+    <div className="alm-kv-grid">
+      {entries.map(([key, afterValue]) => {
+        const beforeValue = before?.[key];
+        const beforeText = formatValue(key, beforeValue);
+        const afterText = formatValue(key, afterValue);
+        return (
+          <div className="alm-kv-row" key={key}>
+            <span>{FIELD_LABELS[key]}</span>
+            <b title={`${beforeText} → ${afterText}`}>
+              {beforeText} → {afterText}
+            </b>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const renderDiff = (diff, action) => {
   if (!diff || typeof diff !== "object") {
     return <span className="alm-muted">Không có thông tin chi tiết.</span>;
   }
@@ -139,17 +172,19 @@ const renderDiff = (diff) => {
   if (diff.type === "bulk_price_update") {
     return (
       <div className="alm-diff-summary">
-        <span>Giá món đã được điều chỉnh</span>
+        <span>Giá bán đã được điều chỉnh</span>
         <small>Giá mới: {formatValue("basePrice", diff.basePriceAfter)}</small>
       </div>
     );
   }
 
   if (diff.field) {
-    const fieldLabel = FIELD_LABELS[diff.field] || diff.field;
+    if (!FIELD_LABELS[diff.field] || diff.field === "thumbImage") {
+      return <span className="alm-muted">Thông tin món đã được cập nhật.</span>;
+    }
     return (
       <div className="alm-diff-summary">
-        <span>{fieldLabel}</span>
+        <span>{FIELD_LABELS[diff.field]}</span>
         <small>
           {formatValue(diff.field, diff.before)} → {formatValue(diff.field, diff.after)}
         </small>
@@ -158,16 +193,13 @@ const renderDiff = (diff) => {
   }
 
   if (diff.before || diff.after) {
-    return (
-      <div className="alm-diff-columns">
-        {renderKeyValueGrid("Trước khi sửa", diff.before)}
-        {renderKeyValueGrid("Sau khi sửa", diff.after)}
-      </div>
-    );
+    return renderChangedValues(diff.before, diff.after);
   }
 
-  return renderKeyValueGrid("Thông tin món", diff) || (
-    <span className="alm-muted">Không có thông tin cần hiển thị.</span>
+  if (action === "create") return renderCreatedValues(diff);
+
+  return renderRows(getVisibleEntries(diff)) || (
+    <span className="alm-muted">Không có thay đổi cần hiển thị.</span>
   );
 };
 
@@ -261,7 +293,9 @@ const AuditLogModal = ({
                       <span>{log.actorName || "Người quản lý"}</span>
                       {log.actorRole && <small>{log.actorRole}</small>}
                     </div>
-                    <div className="alm-entry-diff">{renderDiff(log.diff)}</div>
+                    <div className="alm-entry-diff">
+                      {renderDiff(log.diff, log.action)}
+                    </div>
                   </div>
                 </article>
               );
