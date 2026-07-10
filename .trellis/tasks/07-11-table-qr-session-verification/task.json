@@ -13,8 +13,8 @@
       "implemented table-scoped HttpOnly cookie transport without exposing the signed session token in GraphQL",
       "restricted unverified static QR access from order details, order submission, identity OTP, staff call and payment request",
       "added POS in-person verification cards with hidden confirmation codes and matching request labels",
-      "limited confirmation attempts to five per request token in five minutes",
-      "prevented available or reserved tables from bootstrapping a session before staff marks the table occupied",
+      "limited confirmation attempts to five per stable session-request-device scope in five minutes, including renewed request JWTs",
+      "prevented available or reserved tables from creating or reusing a QR verification session before staff marks the table occupied",
       "added backend and frontend regression test files for token scope, cookie scope, bootstrap rules, resolver guards, customer gate and POS code reveal"
     ],
     "notRun": [
