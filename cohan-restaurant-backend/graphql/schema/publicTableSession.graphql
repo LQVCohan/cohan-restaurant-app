@@ -64,6 +64,9 @@ type PublicActiveTableSessionOrdersResult {
   tableStatus: String
   canOrder: Boolean!
   orderBlockedReason: String
+  canRequestOrderAccess: Boolean!
+  orderAccessConfirmed: Boolean!
+  orderAccessBlockedReason: String
 }
 
 type PublicRequestTablePaymentResult {
@@ -115,6 +118,33 @@ type PublicSubmitTableOrderResult {
   order: PublicTableOrder
 }
 
+type PublicTableOrderAccessRequestResult {
+  ok: Boolean!
+  message: String
+  requestToken: String!
+  requestId: String!
+  requestLabel: String!
+  expiresAt: DateTime
+}
+
+type PublicTableOrderAccessConfirmationResult {
+  ok: Boolean!
+  message: String
+  orderSessionToken: String!
+  sessionId: ID!
+  expiresAt: DateTime
+}
+
+type TableQrOrderAccessRequest {
+  requestId: String!
+  requestLabel: String!
+  tableId: ID!
+  tableCode: String
+  requestedAt: DateTime
+  expiresAt: DateTime
+  confirmationCode: String!
+}
+
 input PublicRequestTablePaymentInput {
   restaurantId: ID!
   tableId: ID!
@@ -150,12 +180,29 @@ input PublicSubmitTableOrderInput {
   idempotencyKey: String!
 }
 
+input PublicTableOrderAccessRequestInput {
+  restaurantId: ID!
+  tableId: ID!
+  token: String!
+  deviceId: String!
+}
+
+input PublicTableOrderAccessConfirmInput {
+  requestToken: String!
+  deviceId: String!
+  confirmationCode: String!
+}
+
 extend type Query {
   publicActiveTableSessionOrders(
     restaurantId: ID!
     tableId: ID!
     token: String!
   ): PublicActiveTableSessionOrdersResult!
+
+  tableQrOrderAccessRequests(
+    restaurantId: ID!
+  ): [TableQrOrderAccessRequest!]!
 }
 
 extend type Mutation {
@@ -182,4 +229,12 @@ extend type Mutation {
   publicSubmitTableOrder(
     input: PublicSubmitTableOrderInput!
   ): PublicSubmitTableOrderResult!
+
+  publicRequestTableOrderAccess(
+    input: PublicTableOrderAccessRequestInput!
+  ): PublicTableOrderAccessRequestResult!
+
+  publicConfirmTableOrderAccess(
+    input: PublicTableOrderAccessConfirmInput!
+  ): PublicTableOrderAccessConfirmationResult!
 }
