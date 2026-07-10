@@ -9,7 +9,7 @@ import {
   CookingPot,
   FileText,
   Gauge,
-  MessagesSquare,
+  MessageSquare,
   Settings2,
   ShoppingBag,
   UserRound,
@@ -54,7 +54,7 @@ const secondaryActions = [
   { to: "/staff/profile", title: "Hồ sơ cá nhân", icon: UserRound },
   { to: "/staff/payslips", title: "Phiếu lương", icon: WalletCards },
   { to: "/staff/performance", title: "Hiệu suất", icon: Gauge },
-  { to: "/staff/contacts", title: "Liên lạc", icon: MessagesSquare },
+  { to: "/staff/contacts", title: "Liên lạc", icon: MessageSquare },
   { to: "/staff/settings", title: "Cài đặt", icon: Settings2 },
 ];
 
