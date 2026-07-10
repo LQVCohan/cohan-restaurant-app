@@ -31,6 +31,13 @@ const COST_LABELS = {
   other: "Chi phí khác",
 };
 
+const COST_ROWS = [
+  [COST_LABELS.cogs, "cogs", "red", "inventory", "cogs"],
+  [COST_LABELS.labor, "labor", "orange", "payroll", "labor"],
+  [COST_LABELS.operations, "operations", "blue", "operations", ""],
+  [COST_LABELS.other, "other", "slate", "other", ""],
+];
+
 const RECONCILIATION_STATUS_LABELS = {
   matched: "Đã khớp",
   amount_mismatch: "Lệch số tiền",
@@ -59,10 +66,17 @@ const getReconciliationStatusLabel = (status) =>
   status ||
   "Chưa rõ";
 
-const navigateTransactions = (query = {}) => {
+const navigateTransactions = (query = {}, restaurantId = "") => {
   window.dispatchEvent(
     new CustomEvent("manager:navigate", {
-      detail: { page: "transactions", query, source: "finance-dashboard" },
+      detail: {
+        page: "transactions",
+        query: {
+          ...query,
+          ...(restaurantId ? { restaurantId } : {}),
+        },
+        source: "finance-dashboard",
+      },
     }),
   );
 };
@@ -152,10 +166,6 @@ const FinanceDashboard = () => {
     "report.export",
     "system.manage",
   ]);
-  const canPersistCurrency = hasAnyPermission(user, [
-    "restaurant.write",
-    "system.manage",
-  ]);
 
   const {
     range,
@@ -187,6 +197,7 @@ const FinanceDashboard = () => {
     manualUsdToVndRate,
     displayedUsdToVndRate,
     persistSettings,
+    canPersistSettings: canPersistCurrency,
     loading: currencyLoading,
     error: currencyError,
   } = useRestaurantCurrency(restaurantId);
@@ -214,6 +225,11 @@ const FinanceDashboard = () => {
       return formatCurrencyAmount(converted, currency);
     },
     [activeCurrency, usdToVndRate],
+  );
+
+  const openTransactions = useCallback(
+    (query = {}) => navigateTransactions(query, restaurantId),
+    [restaurantId],
   );
 
   const safeCostBreakdown = useMemo(
@@ -291,7 +307,6 @@ const FinanceDashboard = () => {
     });
 
   const controlsDisabled = !restaurantId || !canQuery || loading;
-  const showDashboard = Boolean(restaurantId && !validationError);
 
   return (
     <main className="finance-dashboard finance-dashboard--polished">
@@ -441,30 +456,35 @@ const FinanceDashboard = () => {
           Không thể tải thiết lập tiền tệ của nhà hàng.
         </div>
       )}
-      {error && (
-        <div className="finance-error" role="alert">
-          Không thể tải dữ liệu tài chính. Vui lòng kiểm tra quyền truy cập hoặc
-          thử lại.
-        </div>
-      )}
 
       {!restaurantId ? (
         <section className="finance-page-state" aria-live="polite">
           <strong>Chọn nhà hàng để xem báo cáo</strong>
           <p>Dữ liệu tài chính luôn được giới hạn theo nhà hàng bạn quản lý.</p>
         </section>
-      ) : validationError ? null : loading ? (
-        <section className="finance-page-state finance-page-state--loading" aria-live="polite">
+      ) : validationError ? null : error ? (
+        <section className="finance-page-state" role="alert">
+          <strong>Không thể tải dữ liệu tài chính</strong>
+          <p>Vui lòng kiểm tra quyền truy cập hoặc thử tải lại dữ liệu.</p>
+          <button type="button" className="btn-secondary" onClick={() => refetch()}>
+            <RefreshCw size={16} aria-hidden="true" /> Thử lại
+          </button>
+        </section>
+      ) : loading ? (
+        <section
+          className="finance-page-state finance-page-state--loading"
+          aria-live="polite"
+        >
           <RefreshCw size={22} aria-hidden="true" />
           <strong>Đang tổng hợp dữ liệu tài chính</strong>
           <p>Hệ thống đang đối chiếu dòng tiền, hóa đơn và công nợ.</p>
         </section>
-      ) : showDashboard ? (
+      ) : (
         <>
           <section className="stats-section" aria-label="Chỉ số tài chính chính">
             <FinanceStats
               summary={summary}
-              onNavigate={navigateTransactions}
+              onNavigate={openTransactions}
               formatMoney={formatMoney}
             />
           </section>
@@ -492,46 +512,37 @@ const FinanceDashboard = () => {
                 <Route size={18} aria-hidden="true" />
               </div>
               <div className="card-body cost-structure">
-                {[
-                  [COST_LABELS.cogs, "cogs", "red", "inventory", "cogs"],
-                  [COST_LABELS.labor, "labor", "orange", "payroll", "labor"],
-                  [
-                    COST_LABELS.operations,
-                    "operations",
-                    "blue",
-                    "operations",
-                    "",
-                  ],
-                  [COST_LABELS.other, "other", "slate", "other", ""],
-                ].map(([label, key, color, category, subcategory]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    className="cost-row cost-drilldown"
-                    onClick={() =>
-                      navigateTransactions({
-                        tab: "journal",
-                        type: "OUTFLOW",
-                        category,
-                        subcategory,
-                      })
-                    }
-                  >
-                    <div className="label">
-                      <span>{label}</span>
-                      <strong>{formatMoney(safeCostBreakdown[key])}</strong>
-                    </div>
-                    <div className="progress" aria-hidden="true">
-                      <div
-                        className={`fill ${color}`}
-                        style={{ width: percent(safeCostBreakdown[key]) }}
-                      />
-                    </div>
-                    <div className="value">
-                      {percent(safeCostBreakdown[key])} tổng chi phí
-                    </div>
-                  </button>
-                ))}
+                {COST_ROWS.map(
+                  ([label, key, color, category, subcategory]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className="cost-row cost-drilldown"
+                      onClick={() =>
+                        openTransactions({
+                          tab: "journal",
+                          type: "OUTFLOW",
+                          category,
+                          subcategory,
+                        })
+                      }
+                    >
+                      <div className="label">
+                        <span>{label}</span>
+                        <strong>{formatMoney(safeCostBreakdown[key])}</strong>
+                      </div>
+                      <div className="progress" aria-hidden="true">
+                        <div
+                          className={`fill ${color}`}
+                          style={{ width: percent(safeCostBreakdown[key]) }}
+                        />
+                      </div>
+                      <div className="value">
+                        {percent(safeCostBreakdown[key])} tổng chi phí
+                      </div>
+                    </button>
+                  ),
+                )}
                 <div className="insight-text">
                   Chọn từng nhóm để mở đúng danh sách giao dịch chi liên quan.
                 </div>
@@ -547,7 +558,7 @@ const FinanceDashboard = () => {
                 <button
                   type="button"
                   className="text-btn"
-                  onClick={() => navigateTransactions({ tab: "reconciliation" })}
+                  onClick={() => openTransactions({ tab: "reconciliation" })}
                 >
                   Mở hàng đợi
                 </button>
@@ -585,24 +596,21 @@ const FinanceDashboard = () => {
               <div className="card-header warning-bg">
                 <div>
                   <h2>Khoản phải thu</h2>
-                  <p>Các hóa đơn còn thiếu tiền, ưu tiên theo hạn thanh toán.</p>
+                  <p>Các hóa đơn còn thiếu tiền trong phạm vi báo cáo.</p>
                 </div>
                 <button
                   type="button"
                   className="text-btn"
-                  onClick={() => navigateTransactions({ tab: "debt" })}
+                  onClick={() => openTransactions({ tab: "debt" })}
                 >
                   Xem công nợ
                 </button>
               </div>
-              <ReceivableDebts
-                debts={debts || []}
-                formatMoney={formatMoney}
-              />
+              <ReceivableDebts debts={debts || []} formatMoney={formatMoney} />
             </section>
           </div>
         </>
-      ) : null}
+      )}
     </main>
   );
 };
