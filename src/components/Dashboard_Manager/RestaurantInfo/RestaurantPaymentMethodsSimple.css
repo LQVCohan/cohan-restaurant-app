@@ -1,0 +1,60 @@
+/* Keep provider environment and priority as internal integration details.
+   Managers only need to see each supported method and whether it is enabled. */
+.manager-layout
+  .restaurant-management-container
+  .payment-provider-card
+  .ant-card-body
+  > .ant-row {
+  align-items: center;
+}
+
+.manager-layout
+  .restaurant-management-container
+  .payment-provider-card
+  .ant-card-body
+  > .ant-row
+  > .ant-col:nth-child(-n + 3) {
+  display: none !important;
+}
+
+.manager-layout
+  .restaurant-management-container
+  .payment-provider-card
+  .ant-card-body
+  > .ant-row
+  > .ant-col:last-child {
+  flex: 0 0 100%;
+  max-width: 100%;
+}
+
+.manager-layout
+  .restaurant-management-container
+  .payment-provider-card
+  .ant-form-item {
+  margin-bottom: 0;
+}
+
+.manager-layout
+  .restaurant-management-container
+  .payment-provider-card
+  .ant-form-item-row {
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.manager-layout
+  .restaurant-management-container
+  .payment-provider-card
+  .ant-form-item-label {
+  flex: 1 1 auto;
+  padding: 0;
+  text-align: left;
+}
+
+.manager-layout
+  .restaurant-management-container
+  .payment-provider-card
+  .ant-form-item-control {
+  flex: 0 0 auto;
+}
