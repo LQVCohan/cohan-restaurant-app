@@ -296,7 +296,11 @@ export const installTableDetailModalTabs = () => {
     const pendingModals = new Set();
 
     mutations.forEach((mutation) => {
-      const targetModal = mutation.target?.closest?.(".talite-modal");
+      const targetElement =
+        mutation.target?.nodeType === Node.ELEMENT_NODE
+          ? mutation.target
+          : mutation.target?.parentElement;
+      const targetModal = targetElement?.closest?.(".talite-modal");
       if (targetModal) pendingModals.add(targetModal);
 
       if (mutation.type === "characterData") return;
