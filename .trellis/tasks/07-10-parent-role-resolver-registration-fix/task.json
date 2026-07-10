@@ -3,7 +3,7 @@
   "name": "parent-role-resolver-registration-fix",
   "title": "Register ParentRole resolver for staff role list",
   "description": "Wire the existing ParentRole id resolver into the executable GraphQL resolver map so roleList can serialize lean MongoDB parent-role documents.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "backend",
   "scope": "manager-staff",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "ed8782c8fa7820214414ef8d2185214a9d5b145f",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -27,5 +27,5 @@
     "src/hooks/useStaffManagement.js",
     "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.jsx"
   ],
-  "notes": "Planning complete: the existing ParentRole.id resolver is exported by the role module but omitted from the root resolver map. The modal performs local validation, so clicking Next sends no request; it surfaces the earlier roleList query error."
+  "notes": "Fixed at the executable GraphQL resolver boundary: role.ParentRole is now registered in the root resolver map, and a focused resolver-index test resolves a lean ParentRole _id. Re-fetched both changed files from main and verified the expected wiring. Targeted Vitest, check:graphql, build, and browser replay were not run because this connector workspace has no runnable repository checkout; GitHub reported no status checks or pull-request workflow runs for the commit."
 }
