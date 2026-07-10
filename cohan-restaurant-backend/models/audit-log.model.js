@@ -29,6 +29,13 @@ AuditLogSchema.index({ targetType: 1, targetId: 1, createdAt: -1 });
 AuditLogSchema.index({ restaurantId: 1, createdAt: -1 });
 AuditLogSchema.index({ entity: 1, entityId: 1, createdAt: -1 });
 AuditLogSchema.index({ byUserId: 1, createdAt: -1 });
+AuditLogSchema.index({
+  restaurantId: 1,
+  module: 1,
+  entityId: 1,
+  "metadata.status": 1,
+  createdAt: -1,
+});
 
 AuditLogSchema.pre("validate", function fillCompatFields(next) {
   if (!this.entity && this.targetType) this.entity = this.targetType;
