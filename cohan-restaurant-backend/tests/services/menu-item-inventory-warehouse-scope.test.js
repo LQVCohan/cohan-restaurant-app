@@ -1,14 +1,18 @@
-import mongoose from "mongoose";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const modelMocks = vi.hoisted(() => ({
   Ingredient: { find: vi.fn() },
   Recipe: { findOne: vi.fn() },
-  StockItem: { aggregate: vi.fn() },
+  StockItem: { find: vi.fn() },
   Warehouse: { findOne: vi.fn() },
 }));
 
+const inventoryMocks = vi.hoisted(() => ({
+  checkAvailabilityForLinesTx: vi.fn(),
+}));
+
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/inventory.service.js", () => inventoryMocks);
 
 const RESTAURANT_ID = "507f1f77bcf86cd799439011";
 const MENU_ITEM_ID = "507f1f77bcf86cd799439012";
@@ -27,9 +31,8 @@ const warehouseQuery = (value) => {
   return { sort, lean };
 };
 
-const { getMenuItemInventoryAvailability } = await import(
-  "../../src/services/menuItemInventoryAvailability.service.js"
-);
+const { getMenuItemInventoryAvailability, getMenuItemVariantAvailability } =
+  await import("../../src/services/menuItemInventoryAvailability.service.js");
 
 describe("menu item inventory fulfillment warehouse scope", () => {
   beforeEach(() => {
@@ -59,23 +62,30 @@ describe("menu item inventory fulfillment warehouse scope", () => {
           _id: INGREDIENT_ID,
           name: "Nguyên liệu chính",
           baseUnit: "portion",
-          conversions: [],
           minStock: 0,
+        },
+      ]),
+    );
+    modelMocks.StockItem.find.mockReturnValue(
+      selectLeanQuery([
+        {
+          ingredientId: INGREDIENT_ID,
+          onHand: 100,
+          reserved: 0,
         },
       ]),
     );
     modelMocks.Warehouse.findOne.mockReturnValue(
       warehouseQuery({ _id: WAREHOUSE_ID }),
     );
-    modelMocks.StockItem.aggregate.mockResolvedValue([
-      {
-        ingredientId: new mongoose.Types.ObjectId(INGREDIENT_ID),
-        available: 100,
-      },
-    ]);
+    inventoryMocks.checkAvailabilityForLinesTx.mockResolvedValue({
+      isAvailable: true,
+      maxAvailable: 100,
+      shortages: [],
+    });
   });
 
-  it("uses the same first active warehouse as live-state and cart reservation", async () => {
+  it("uses the same first active warehouse and variant calculation as live-state", async () => {
     await expect(
       getMenuItemInventoryAvailability({
         restaurantId: RESTAURANT_ID,
@@ -93,11 +103,31 @@ describe("menu item inventory fulfillment warehouse scope", () => {
     });
     const warehouseLookup = modelMocks.Warehouse.findOne.mock.results[0].value;
     expect(warehouseLookup.sort).toHaveBeenCalledWith({ createdAt: 1, _id: 1 });
+    expect(inventoryMocks.checkAvailabilityForLinesTx).toHaveBeenCalledWith({
+      restaurantId: RESTAURANT_ID,
+      warehouseId: WAREHOUSE_ID,
+      lines: [
+        {
+          menuItemId: MENU_ITEM_ID,
+          quantity: 1,
+          servingKey: "default",
+        },
+      ],
+    });
+  });
 
-    const pipeline = modelMocks.StockItem.aggregate.mock.calls[0][0];
-    expect(String(pipeline[0].$match.restaurantId)).toBe(RESTAURANT_ID);
-    expect(String(pipeline[0].$match.warehouseId)).toBe(WAREHOUSE_ID);
-    expect(String(pipeline[0].$match.ingredientId.$in[0])).toBe(INGREDIENT_ID);
+  it("resolves an explicitly selected serving variant through the shared boundary", async () => {
+    await expect(
+      getMenuItemVariantAvailability({
+        restaurantId: RESTAURANT_ID,
+        menuItemId: MENU_ITEM_ID,
+        servingKey: "default",
+      }),
+    ).resolves.toMatchObject({
+      isAvailable: true,
+      maxAvailable: 100,
+      servingVariantKey: "default",
+    });
   });
 
   it("returns a safe error instead of combining stock when no active warehouse exists", async () => {
@@ -113,6 +143,6 @@ describe("menu item inventory fulfillment warehouse scope", () => {
       maxAvailable: 0,
       stockWarnings: ["Nhà hàng chưa có kho hoạt động."],
     });
-    expect(modelMocks.StockItem.aggregate).not.toHaveBeenCalled();
+    expect(inventoryMocks.checkAvailabilityForLinesTx).not.toHaveBeenCalled();
   });
 });
