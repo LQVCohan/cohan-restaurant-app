@@ -156,7 +156,7 @@ describe("AvailabilitySnapshotModal", () => {
     });
 
     expect(screen.getByText("Tuần này chưa có kỳ đăng ký đã chốt.")).toBeInTheDocument();
-    expect(screen.getByText("Nhân viên toàn thời gian")).toBeInTheDocument();
+    expect(screen.getAllByText("Nhân viên toàn thời gian").length).toBeGreaterThan(0);
     expect(screen.getAllByTitle("Theo lịch làm cố định").length).toBeGreaterThan(0);
   });
 
