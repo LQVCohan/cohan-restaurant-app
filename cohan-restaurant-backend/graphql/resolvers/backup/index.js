@@ -457,10 +457,13 @@ export default {
       const actorId = ctx?.user?.id || ctx?.user?._id;
       const finalChecklist = set.checklist || normalizeChecklist(doc.checklist);
       const finalStatus = set.status || doc.status;
-      if (finalStatus === "checklist_completed" && !allChecklistDone(finalChecklist)) {
-        throw badInput("Chỉ có thể hoàn tất lần kiểm tra sau khi đủ tất cả các bước.");
-      }
-      if (allChecklistDone(finalChecklist) && finalStatus === "planned") {
+      if (set.status === "checklist_completed") {
+        if (!allChecklistDone(finalChecklist)) {
+          throw badInput("Chỉ có thể hoàn tất lần kiểm tra sau khi đủ tất cả các bước.");
+        }
+        set.completedAt = new Date();
+        if (actorId && mongoose.isValidObjectId(actorId)) set.completedBy = actorId;
+      } else if (allChecklistDone(finalChecklist) && finalStatus === "planned") {
         set.status = "checklist_completed";
         set.completedAt = new Date();
         if (actorId && mongoose.isValidObjectId(actorId)) set.completedBy = actorId;
