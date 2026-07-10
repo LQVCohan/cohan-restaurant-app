@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   upsertTableCustomer: vi.fn(),
   findConfirmedByTable: vi.fn(),
   fetchOrderByTable: vi.fn(),
+  searchCustomers: vi.fn(),
   onUpdated: vi.fn(),
   showNotification: vi.fn(),
 }));
@@ -105,6 +106,7 @@ describe("TableActionsModal customer snapshot", () => {
 
     mocks.findConfirmedByTable.mockResolvedValue({ success: true, data: null });
     mocks.fetchOrderByTable.mockResolvedValue({ data: [] });
+    mocks.searchCustomers.mockResolvedValue({ data: { customers: [] } });
     mocks.upsertTableCustomer.mockResolvedValue({
       data: { upsertTableCustomer: savedCustomer },
     });
@@ -127,7 +129,7 @@ describe("TableActionsModal customer snapshot", () => {
         return [run, { data, loading: false, error: null, refetch }];
       }
       return [
-        vi.fn().mockResolvedValue({ data: { customers: [] } }),
+        mocks.searchCustomers,
         { data: null, loading: false, error: null },
       ];
     });
