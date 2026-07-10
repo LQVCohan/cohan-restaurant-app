@@ -9,11 +9,11 @@ import { sendStaffInvitationEmail } from "../../../src/services/auth/staffInvita
 const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
 const normalizePhone = (value) => String(value || "").trim();
 
-async function rollbackCreatedStaff({ brandId, staffId, cause }) {
+async function rollbackCreatedStaff({ staffId, cause }) {
   const cleanupErrors = [];
 
   try {
-    if (brandId) await BrandMembership.deleteOne({ brandId, userId: staffId });
+    await BrandMembership.deleteMany({ userId: staffId });
   } catch (error) {
     cleanupErrors.push(error);
   }
@@ -57,7 +57,6 @@ export function withStaffInvitationFlow(mutations = {}) {
         info,
       );
       const staffId = created?.id || created?._id;
-      const brandId = input.staffBusinessContext?.brandId || null;
       const restaurantId = input.staffBusinessContext?.restaurantId || null;
 
       if (!staffId) throw new Error("Không xác định được tài khoản nhân viên vừa tạo");
@@ -87,7 +86,7 @@ export function withStaffInvitationFlow(mutations = {}) {
           skipAuthorization: true,
         });
       } catch (error) {
-        await rollbackCreatedStaff({ brandId, staffId, cause: error });
+        await rollbackCreatedStaff({ staffId, cause: error });
         throw error;
       }
     },
