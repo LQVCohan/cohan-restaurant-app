@@ -37,6 +37,13 @@ describe("staff management GraphQL contract", () => {
     );
   });
 
+  it("accepts the emergency contact sent by the add-employee modal", () => {
+    const schema = createSchema();
+    const fields = schema.getType("CreateUserInput").getFields();
+
+    expect(String(fields.emergencyContact.type)).toBe("EmergencyContactInput");
+  });
+
   it("exposes a staff-scoped account status mutation", () => {
     const schema = createSchema();
     const mutationFields = schema.getMutationType().getFields();
