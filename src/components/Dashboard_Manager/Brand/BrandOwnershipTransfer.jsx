@@ -3,7 +3,6 @@ import { gql } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
 import { message } from "antd";
 import { MY_BRANDS_QUERY } from "@/hooks/useBrandManagement";
-import "./BrandMembershipActions.css";
 
 const UPDATE_BRAND_MEMBER = gql`
   mutation UpdateBrandMemberAccess($input: UpdateBrandMemberInput!) {
@@ -60,6 +59,7 @@ const ROLE_LABELS = {
   manager: "Quản lý chi nhánh",
   staff: "Nhân viên chi nhánh",
 };
+const ACCESS_ROLE_OPTIONS = ["admin", "manager"];
 
 const normalizeIds = (ids = []) => [...new Set(ids.filter(Boolean).map(String))];
 
@@ -86,7 +86,7 @@ function BrandMembershipAccessForm({
   assignedManagerByRestaurant,
 }) {
   const [membershipId, setMembershipId] = useState("");
-  const [role, setRole] = useState("staff");
+  const [role, setRole] = useState("");
   const [restaurantIds, setRestaurantIds] = useState([]);
   const [formError, setFormError] = useState("");
   const [updateMember, { loading }] = useMutation(UPDATE_BRAND_MEMBER, {
@@ -131,28 +131,21 @@ function BrandMembershipAccessForm({
       (member) => String(member.id) === String(nextMembershipId),
     );
     setMembershipId(String(nextMembershipId || ""));
-    setRole(nextMember?.role || "staff");
+    setRole(
+      ACCESS_ROLE_OPTIONS.includes(nextMember?.role) ? nextMember.role : "",
+    );
     setRestaurantIds(normalizeIds(nextMember?.restaurantIds));
     setFormError("");
   };
 
   const changeRole = (nextRole) => {
-    setRole(nextRole);
+    const normalizedRole = ACCESS_ROLE_OPTIONS.includes(nextRole) ? nextRole : "";
+    setRole(normalizedRole);
     setRestaurantIds((currentIds) => {
-      if (nextRole === "admin") return [];
-      if (nextRole === "manager") return currentIds.slice(0, 1);
+      if (normalizedRole === "admin") return [];
+      if (normalizedRole === "manager") return currentIds.slice(0, 1);
       return currentIds;
     });
-    setFormError("");
-  };
-
-  const toggleRestaurant = (restaurantId) => {
-    const normalizedId = String(restaurantId);
-    setRestaurantIds((currentIds) =>
-      currentIds.includes(normalizedId)
-        ? currentIds.filter((id) => id !== normalizedId)
-        : [...currentIds, normalizedId],
-    );
     setFormError("");
   };
 
@@ -161,12 +154,12 @@ function BrandMembershipAccessForm({
       setFormError("Chọn thành viên cần đổi quyền.");
       return;
     }
-    if (role === "manager" && restaurantIds.length !== 1) {
-      setFormError("Quản lý chi nhánh phải phụ trách đúng một chi nhánh.");
+    if (!ACCESS_ROLE_OPTIONS.includes(role)) {
+      setFormError("Chọn Quản trị chuỗi hoặc Quản lý chi nhánh.");
       return;
     }
-    if (role === "staff" && !restaurantIds.length) {
-      setFormError("Nhân viên phải được gán ít nhất một chi nhánh.");
+    if (role === "manager" && restaurantIds.length !== 1) {
+      setFormError("Quản lý chi nhánh phải phụ trách đúng một chi nhánh.");
       return;
     }
 
@@ -221,7 +214,7 @@ function BrandMembershipAccessForm({
         },
       });
       setMembershipId("");
-      setRole("staff");
+      setRole("");
       setRestaurantIds([]);
       message.success(
         cancellingInvitation ? "Đã hủy lời mời" : "Đã tháo quyền Brand",
@@ -277,8 +270,9 @@ function BrandMembershipAccessForm({
                   onChange={(event) => changeRole(event.target.value)}
                   disabled={!selectedMember}
                 >
-                  {Object.entries(ROLE_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
+                  <option value="">Chọn vai trò mới</option>
+                  {ACCESS_ROLE_OPTIONS.map((value) => (
+                    <option key={value} value={value}>{ROLE_LABELS[value]}</option>
                   ))}
                 </select>
               </label>
@@ -287,9 +281,9 @@ function BrandMembershipAccessForm({
                 type="button"
                 className="brand-button brand-button--primary"
                 onClick={saveAccess}
-                disabled={actionLoading || !selectedMember}
+                disabled={actionLoading || !selectedMember || !role}
               >
-                {loading ? "Đang lưu quyền..." : "Lưu quyền thành viên"}
+                {loading ? "Đang lưu quyền…" : "Lưu quyền thành viên"}
               </button>
 
               {cancelledInvitation ? (
@@ -299,7 +293,7 @@ function BrandMembershipAccessForm({
                   onClick={resendCancelledInvitation}
                   disabled={actionLoading}
                 >
-                  {resending ? "Đang gửi lại..." : "Mời lại"}
+                  {resending ? "Đang gửi lại…" : "Mời lại"}
                 </button>
               ) : selectedMember?.status !== "inactive" ? (
                 <button
@@ -309,7 +303,7 @@ function BrandMembershipAccessForm({
                   disabled={actionLoading}
                 >
                   {removing
-                    ? "Đang xử lý..."
+                    ? "Đang xử lý…"
                     : selectedMember?.status === "invited"
                       ? "Hủy lời mời"
                       : "Tháo quyền Brand"}
@@ -358,22 +352,13 @@ function BrandMembershipAccessForm({
               </label>
             )}
 
-            {selectedMember && role === "staff" && (
-              <fieldset className="brand-scope-fieldset">
-                <legend>Chi nhánh được làm việc</legend>
-                <div className="brand-scope-options">
-                  {restaurants.map((restaurant) => (
-                    <label key={restaurant.id}>
-                      <input
-                        type="checkbox"
-                        checked={restaurantIds.includes(String(restaurant.id))}
-                        onChange={() => toggleRestaurant(restaurant.id)}
-                      />
-                      <span>{restaurant.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
+            {selectedMember?.role === "staff" && !role && (
+              <div className="brand-scope-note" role="note">
+                <strong>Vai trò hiện tại: Nhân viên chi nhánh</strong>
+                <span>
+                  Chọn Quản lý chi nhánh hoặc Quản trị chuỗi để nâng quyền.
+                </span>
+              </div>
             )}
 
             <p className="brand-membership-actions__hint">
@@ -501,7 +486,7 @@ function BrandOwnershipTransferForm({ selectedBrand, members }) {
                 onClick={submitTransfer}
                 disabled={loading}
               >
-                {loading ? "Đang chuyển quyền..." : "Xác nhận chuyển quyền"}
+                {loading ? "Đang chuyển quyền…" : "Xác nhận chuyển quyền"}
               </button>
             </div>
 

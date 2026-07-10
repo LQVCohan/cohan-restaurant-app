@@ -1,0 +1,50 @@
+{
+  "id": "brand-management-ux",
+  "name": "brand-management-ux",
+  "title": "Tối ưu trang quản lý chuỗi",
+  "description": "Loại bỏ khả năng chuyển thành viên sang vai trò nhân viên tại bộ chỉnh quyền và tổ chức lại trang Brand để dễ quan sát, thao tác và dùng trên màn hình nhỏ.",
+  "status": "implemented_unverified",
+  "dev_type": "frontend",
+  "scope": "manager-brand-management",
+  "priority": "P1",
+  "createdAt": "2026-07-10",
+  "branch": "codex/brand-management-ux",
+  "base_branch": "main",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Brand/BrandManagement.jsx",
+    "src/components/Dashboard_Manager/Brand/BrandOwnershipTransfer.jsx",
+    "src/components/Dashboard_Manager/Brand/BrandOwnershipTransfer.test.jsx",
+    "src/components/Dashboard_Manager/Brand/BrandManagement.css",
+    "src/components/Dashboard_Manager/Brand/BrandManagementCompact.scss (removed)",
+    "src/components/Dashboard_Manager/Brand/BrandMembershipActions.css (removed)",
+    "src/layouts/ManagerLayout.scss"
+  ],
+  "validation": {
+    "planned": [
+      "targeted BrandOwnershipTransfer component test",
+      "frontend build",
+      "manual responsive code audit at desktop, 430x932 and 390x844"
+    ],
+    "completed": [
+      "BrandManagement, BrandManagement.cancelInvitation and BrandOwnershipTransfer component tests: 16 passed",
+      "targeted ESLint: 0 errors and 0 warnings",
+      "git diff --check",
+      "responsive and WCAG code audit for desktop, 430x932 and 390x844 breakpoints"
+    ],
+    "notRun": [
+      "GitHub Actions / CI per user request",
+      "production build could not complete because the shared node_modules lacks declared lucide-react; clean npm ci is blocked by the execution environment cache path"
+    ]
+  },
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "react-ui-performance",
+      "redesign-existing-projects",
+      "taste-ui-redesign",
+      "wcag-ui-audit",
+      "web-design-guidelines"
+    ]
+  }
+}
