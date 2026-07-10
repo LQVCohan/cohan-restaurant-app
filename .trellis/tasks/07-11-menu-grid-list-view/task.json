@@ -1,0 +1,24 @@
+{
+  "id": "07-11-menu-grid-list-view",
+  "title": "Khôi phục chế độ lưới và danh sách cho quản lý món",
+  "status": "in_progress",
+  "type": "frontend-ui-fix",
+  "scope": [
+    "src/components/Dashboard_Manager/Menu/MenuManagementManagerFixes.scss"
+  ],
+  "rootCause": "MenuManagement already owns currentView state and Toolbar already renders accessible grid/list controls, but MenuManagementManagerFixes.scss hides the view toggle and applies the same vertical list layout to both mm-grid--grid and mm-grid--list. The UI therefore exposes neither a switch nor distinct view modes.",
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "npm run build",
+      "manual desktop grid/list review",
+      "manual 390x844 and 430x932 responsive review"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, ui-ux-pro-max, taste-ui-redesign and redesign-existing-projects skills",
+      "traced MenuManagement currentView through Toolbar actions, result classes and MenuItemCard markup",
+      "inspected the latest component, toolbar and menu layout styles"
+    ],
+    "notRun": []
+  }
+}
