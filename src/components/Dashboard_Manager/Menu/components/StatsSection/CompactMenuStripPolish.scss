@@ -633,3 +633,83 @@
     }
   }
 }
+
+/* Match the legacy nested selector weight so operational actions never depend on hover. */
+.cms-container .cms-header .cms-actions .cms-btn-add {
+  min-height: 44px;
+  padding: 9px 14px;
+  border: 1px solid var(--cms-accent-dark);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--cms-accent), var(--cms-accent-dark));
+  color: #fffdf8;
+  font-size: 0.82rem;
+  font-weight: 780;
+}
+
+.cms-container .cms-header .cms-actions .cms-btn-add.cms-btn-add--secondary {
+  border-color: var(--cms-border-strong);
+  background: var(--cms-surface);
+  color: var(--cms-text);
+  box-shadow: none;
+}
+
+.cms-container .cms-card .cms-toolbar,
+.cms-container .cms-card:hover .cms-toolbar {
+  position: static;
+  z-index: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+.cms-container .cms-card .cms-toolbar .cms-tool-btn {
+  min-width: 0;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 8px;
+  border: 1px solid var(--cms-border);
+  border-radius: 10px;
+  background: var(--cms-surface);
+  color: var(--cms-text);
+  font-size: 0.7rem;
+  font-weight: 760;
+}
+
+.cms-container .cms-card .cms-toolbar .cms-tool-btn.is-edit {
+  border-color: rgba(31, 106, 96, 0.22);
+  background: #f2faf7;
+  color: var(--cms-accent-dark);
+}
+
+.cms-container .cms-card .cms-toolbar .cms-tool-btn.is-delete {
+  color: var(--cms-danger);
+}
+
+.cms-container .cms-card .cms-card-body .cms-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgba(222, 214, 203, 0.72);
+  border-radius: 12px;
+  background: rgba(247, 244, 237, 0.78);
+}
+
+@media (max-width: 720px) {
+  .cms-container .cms-card .cms-toolbar .cms-tool-btn {
+    min-height: 44px;
+    font-size: 0.76rem;
+  }
+}
