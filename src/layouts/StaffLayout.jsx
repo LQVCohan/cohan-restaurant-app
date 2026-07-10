@@ -72,7 +72,9 @@ const navGroups = [
       "/staff/schedule",
       "/staff/attendance",
       "/staff/leave",
+      "/staff/performance",
       "/staff/orders",
+      "/staff/reservation-changes",
       "/staff/kitchen",
       "/staff/contacts",
     ],
@@ -118,6 +120,12 @@ const staffPageMeta = [
       "Gửi đơn xin nghỉ phép, xem trạng thái duyệt và lịch sử đơn ngay trong khu vực nhân viên.",
   },
   {
+    path: "/staff/performance",
+    eyebrow: "Hiệu suất",
+    title: "Hiệu suất cá nhân",
+    description: "Xem điểm làm việc, sự cố liên quan và phản hồi hiệu suất của bạn.",
+  },
+  {
     path: "/staff/orders",
     eyebrow: "Vận hành đơn",
     title: "Order nội bộ",
@@ -125,17 +133,17 @@ const staffPageMeta = [
       "Tiếp nhận đơn, cập nhật trạng thái phục vụ và phối hợp với bếp theo quyền được cấp.",
   },
   {
+    path: "/staff/reservation-changes",
+    eyebrow: "Đặt bàn",
+    title: "Duyệt yêu cầu đổi đặt bàn",
+    description: "Kiểm tra yêu cầu đổi giờ hoặc đổi bàn trước khi cập nhật chính thức.",
+  },
+  {
     path: "/staff/kitchen",
     eyebrow: "Bếp / Quầy bar",
     title: "Điều phối khu chế biến",
     description:
       "Theo dõi món mới, món đang làm và món đã hoàn tất tại bếp chính hoặc quầy bar.",
-  },
-  {
-    path: "/staff/performance",
-    eyebrow: "Hiệu suất",
-    title: "Hiệu suất cá nhân",
-    description: "Xem điểm làm việc, sự cố liên quan và phản hồi hiệu suất của bạn.",
   },
   {
     path: "/staff/profile",
@@ -201,6 +209,7 @@ export default function StaffLayout({ children }) {
       { label: "Lịch cá nhân", to: "/staff/schedule" },
       { label: "Chỉnh công / tăng ca", to: "/staff/attendance" },
       { label: "Nghỉ phép", to: "/staff/leave" },
+      { label: "Hiệu suất", to: "/staff/performance" },
       { label: "Hồ sơ", to: "/staff/profile" },
       { label: "Thông báo", to: "/staff/notifications" },
       { label: "Liên lạc", to: "/staff/contacts" },
@@ -211,6 +220,11 @@ export default function StaffLayout({ children }) {
       },
       { label: "Phiếu lương", to: "/staff/payslips" },
       { label: "Order nội bộ", to: "/staff/orders", roles: STAFF_ORDER_ROLES },
+      {
+        label: "Đổi đặt bàn",
+        to: "/staff/reservation-changes",
+        roles: STAFF_ORDER_ROLES,
+      },
       { label: "Bếp / Quầy bar", to: "/staff/kitchen", roles: STAFF_KITCHEN_ROLES },
       { label: "Cài đặt", to: "/staff/settings" },
     ],
