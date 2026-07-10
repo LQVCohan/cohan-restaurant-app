@@ -7,7 +7,7 @@ import {
   CheckCheck,
   ChefHat,
   Clock,
-  HandHelping,
+  Hand,
 } from "lucide-react";
 import useCommunication from "@/hooks/useCommunication";
 import "./NotificationBell.scss";
@@ -27,7 +27,7 @@ const toTime = (iso) => {
 const resolveNotificationVisual = (type) => {
   const normalized = String(type || "").toLowerCase();
   if (normalized.includes("customer") && normalized.includes("request")) {
-    return { group: "request", icon: <HandHelping size={16} /> };
+    return { group: "request", icon: <Hand size={16} /> };
   }
   if (normalized.includes("payment") || normalized.includes("order")) {
     return { group: "order", icon: <Banknote size={16} /> };
