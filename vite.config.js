@@ -91,6 +91,7 @@ export default defineConfig(({ mode }) => {
   const devPort = toNumber(mergedEnv.VITE_DEV_PORT, 5173);
   const devHmrProtocol = mergedEnv.VITE_DEV_HMR_PROTOCOL || "ws";
   const devHmrClientPort = toNumber(mergedEnv.VITE_DEV_HMR_CLIENT_PORT, devPort);
+  const inferRequestHost = mergedEnv.VITE_DEV_INFER_REQUEST_HOST === "true";
   const devBackendUrl =
     mergedEnv.VITE_DEV_BACKEND_URL ||
     `http://127.0.0.1:${mergedEnv.VITE_BACKEND_PORT || "4000"}`;
@@ -124,13 +125,17 @@ export default defineConfig(({ mode }) => {
       host: devBindHost,
       port: devPort,
       allowedHosts,
-      origin: devOrigin,
-      hmr: {
-        protocol: devHmrProtocol,
-        host: devHost,
-        port: devPort,
-        clientPort: devHmrClientPort,
-      },
+      ...(inferRequestHost
+        ? {}
+        : {
+            origin: devOrigin,
+            hmr: {
+              protocol: devHmrProtocol,
+              host: devHost,
+              port: devPort,
+              clientPort: devHmrClientPort,
+            },
+          }),
       proxy: {
         "/graphql": {
           target: devBackendUrl,
