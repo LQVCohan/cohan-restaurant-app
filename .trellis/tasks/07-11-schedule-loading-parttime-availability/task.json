@@ -1,0 +1,27 @@
+{
+  "id": "07-11-schedule-loading-parttime-availability",
+  "title": "Bỏ loading giả và tối ưu lịch rảnh part-time",
+  "status": "in_progress",
+  "type": "frontend-fix",
+  "scope": [
+    "src/components/Dashboard_Manager/Schedule/ScheduleManagementPage.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModalInline.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.scss",
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "targeted AvailabilitySnapshotModal Vitest",
+      "npm run check:conflicts",
+      "npm run build",
+      "desktop and mobile visual review"
+    ],
+    "completed": [
+      "read repository workflow and relevant ponytail/UI skills",
+      "traced scheduling policy shift templates through manager and staff availability UIs",
+      "confirmed backend validates availability against configured shift templates and computes hours from template duration",
+      "confirmed hydration overlay is synthetic and independent from Apollo loading"
+    ],
+    "notRun": []
+  }
+}
