@@ -1,0 +1,35 @@
+{
+  "id": "07-10-review-management-analytics-priority",
+  "title": "Ưu tiên phân tích và harden luồng review",
+  "status": "in_progress",
+  "type": "fullstack-bugfix-ui",
+  "scope": [
+    "cohan-restaurant-backend/graphql/resolvers/review/query.js",
+    "cohan-restaurant-backend/src/services/reviewInsight.service.js",
+    "cohan-restaurant-backend/tests/resolvers/review-transparent-flow.test.js",
+    "src/components/Dashboard_Manager/Review/ReviewManagement.scss",
+    "src/components/Dashboard_Manager/Review/components/ReviewsList.jsx",
+    "src/components/Dashboard_Manager/Review/components/ReviewModal.jsx",
+    "src/components/Dashboard_Manager/Review/components/ReviewModal.test.jsx",
+    "src/components/Customer/RestaurantDetail/components/ReviewsSection/ReviewsSection.jsx",
+    "src/components/Customer/RestaurantDetail/components/ReviewsSection/ReviewsSection.test.jsx",
+    "src/components/Customer/PostOrderReviewPrompt/PostOrderReviewPrompt.jsx",
+    "src/components/Customer/PostOrderReviewPrompt/PostOrderReviewPrompt.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "targeted backend review tests",
+      "targeted manager review component tests",
+      "targeted customer review component tests",
+      "npm run build",
+      "browser smoke at 375, 768, 1024 and 1440 px"
+    ],
+    "completed": [
+      "read AGENTS.md and .trellis/workflow.md",
+      "read ponytail, frontend-design, taste-ui-redesign, redesign-existing-projects, ui-ux-pro-max, web-design-guidelines and wcag-ui-audit skills",
+      "traced schema, model, resolver/service, Apollo operations and manager/customer UI actions",
+      "identified analytics CSS order, report-backed visibility, illegal delete UI, stale official reply data and customer mutation feedback as root causes"
+    ],
+    "notRun": []
+  }
+}
