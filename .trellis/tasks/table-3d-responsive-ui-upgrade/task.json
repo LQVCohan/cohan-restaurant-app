@@ -3,7 +3,7 @@
   "name": "table-3d-responsive-ui-upgrade",
   "title": "Upgrade table 3D modal on desktop and mobile",
   "description": "Refine the existing manager table 3D simulator into a clearer desktop workspace and a reliable single-column mobile workflow without changing business behavior.",
-  "status": "completed",
+  "status": "in_progress",
   "dev_type": "frontend",
   "scope": "manager-table-3d-responsive-ui",
   "package": null,
@@ -11,7 +11,7 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": "2026-07-10",
+  "completedAt": null,
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
@@ -21,6 +21,7 @@
   "children": [],
   "parent": null,
   "relatedFiles": [
+    "src/main.jsx",
     "src/components/Dashboard_Manager/Table/TableManagement.jsx",
     "src/components/Dashboard_Manager/Table/Table3DSimulatorModal.jsx",
     "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.jsx",
@@ -31,6 +32,6 @@
     "src/styles/Table3DModalWorkflow.css",
     "src/styles/Table3DMainModalRepair.css"
   ],
-  "notes": "Implemented the final responsive layout contract in the existing repair stylesheet. Desktop now uses an available-height viewer workspace and structured action area; mobile uses a full-screen single-scroll flow with catalog-first ordering, horizontal model cards, safe-area spacing, 44px touch targets, and non-overlapping static actions. Backend, GraphQL, permissions, audit logging, AR persistence and component callbacks were not changed. No CI workflow was triggered for the commit; local build/component tests and physical phone validation were not available through the GitHub connector.",
+  "notes": "Follow-up screenshot review found three presentation defects: raw license strings can enter compact model badges and overflow card bounds; the loading panel uses percentage insets that cover too much of the viewer; and the final repair stylesheet is imported before later table workflow/mobile styles. Reopened to fix those shared presentation boundaries without changing backend, GraphQL, AR persistence or callbacks.",
   "meta": {}
 }
