@@ -12,6 +12,9 @@ import {
   verifyAnyToken,
 } from "../../../src/services/auth/accountVerification.service.js";
 import {
+  getStaffRestaurantIds,
+} from "../../../src/services/auth/restaurantScope.service.js";
+import {
   requestContactChangeOtp as requestContactChangeOtpService,
   confirmContactChangeOtp as confirmContactChangeOtpService,
   cancelContactChangeOtp as cancelContactChangeOtpService,
@@ -35,8 +38,17 @@ function idString(value) {
   return String(value);
 }
 
-function targetRestaurantIds(target) {
+async function targetRestaurantIds(target) {
+  const targetId = idString(target?._id || target?.id);
+  const targetType = String(
+    target?.userType || target?.roleName || target?.role?.slug || "",
+  ).toUpperCase();
+  const membershipRestaurantIds =
+    targetType === "STAFF" && targetId
+      ? await getStaffRestaurantIds(targetId)
+      : [];
   const ids = [
+    ...membershipRestaurantIds,
     target?.restaurantForStaff,
     target?.restaurantId,
     ...(Array.isArray(target?.restaurantIds) ? target.restaurantIds : []),
@@ -115,7 +127,7 @@ export async function assertCanResendForTarget(ctx, target) {
   if (currentUserId && currentUserId === targetUserId) return true;
 
   if (hasRole(ctx.user, ["manager", "hr"])) {
-    const restaurantIds = targetRestaurantIds(target);
+    const restaurantIds = await targetRestaurantIds(target);
     if (!restaurantIds.length) throw forbidden();
     if (await hasAccessToAnyTargetRestaurant(ctx, restaurantIds)) return true;
   }
