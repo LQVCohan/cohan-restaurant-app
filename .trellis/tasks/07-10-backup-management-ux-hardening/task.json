@@ -3,7 +3,7 @@
   "name": "backup-management-ux-hardening",
   "title": "Harden backup management UX and scope",
   "description": "Synchronize the backup page with the canonical manager restaurant scope, invalidate stale previews when restore inputs change, expose permission-aware controls, and compact the interface without changing snapshot semantics.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "feature-fix",
   "scope": "manager-backup",
   "package": null,
@@ -11,19 +11,20 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "codex/backup-management-ux-hardening",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": null,
+  "commit": "5dfbaade8b2be64cf2e483940726b4afe0aac131",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1330",
   "subtasks": [],
   "children": [],
   "parent": null,
   "relatedFiles": [
     "src/components/Dashboard_Manager/Backup/BackupManagement.jsx",
     "src/components/Dashboard_Manager/Backup/BackupManagement.scss",
-    "src/components/Dashboard_Manager/Backup/BackupManagement.test.jsx"
+    "src/components/Dashboard_Manager/Backup/BackupManagement.test.jsx",
+    "cohan-restaurant-backend/tests/services/review-insight.service.test.js"
   ],
-  "notes": "Keep BackupRun, snapshot schema, import/export service behavior, permission guards, audit logging, checksums, and conflict resolution semantics unchanged. Reuse useManagerRestaurantSelection and existing frontend permission helpers."
+  "notes": "BackupRun, snapshot schema, import/export service behavior, permission guards, audit logging, checksums, and conflict resolution semantics remain unchanged. The page now reuses useManagerRestaurantSelection, rejects stale restaurant data, invalidates changed restore previews, validates file/section inputs, and reflects backup.read/write/export/import. GitHub Actions run 29095427951 passed backend lint/tests/RBAC/build plus frontend conflict check/lint/unit/component/build/smoke. CI also exposed a stale English assertion in the current base review-insight test after its heuristic output was localized; the test assertion was aligned with the existing Vietnamese production summary without changing service behavior."
 }
