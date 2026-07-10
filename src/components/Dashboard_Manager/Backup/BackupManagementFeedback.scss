@@ -1,3 +1,15 @@
+@keyframes backup-notification-in {
+  from {
+    opacity: 0;
+    transform: translate3d(18px, -8px, 0) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
 .backup-management {
   &__run-action-block {
     width: min(100%, 620px);
@@ -29,17 +41,20 @@
 
   &__run-feedback {
     width: 100%;
-    min-height: 42px;
+    min-height: 44px;
     display: flex;
     align-items: flex-start;
-    gap: 8px;
-    padding: 10px 12px;
+    gap: 9px;
+    padding: 11px 13px;
     border: 1px solid var(--backup-line);
-    border-radius: 11px;
+    border-left-width: 4px;
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(38, 65, 54, 0.08);
     font-size: 0.77rem;
     font-weight: 680;
     line-height: 1.45;
     text-align: left;
+    overflow-wrap: anywhere;
 
     svg {
       flex: 0 0 auto;
@@ -48,15 +63,101 @@
 
     &.is-success {
       color: var(--backup-primary-dark);
-      border-color: rgba(63, 118, 100, 0.26);
-      background: var(--backup-primary-soft);
+      border-color: rgba(63, 118, 100, 0.3);
+      background: linear-gradient(135deg, #f7fffa, var(--backup-primary-soft));
     }
 
     &.is-error {
       color: var(--backup-danger);
-      border-color: rgba(161, 75, 70, 0.26);
-      background: var(--backup-danger-soft);
+      border-color: rgba(161, 75, 70, 0.34);
+      background: linear-gradient(135deg, #fffafa, var(--backup-danger-soft));
     }
+  }
+
+  // Action errors and successes already share this alert path in BackupManagement.jsx.
+  // Present them as one consistent, accessible notification instead of raw inline text.
+  > .backup-management__alert.is-error,
+  > .backup-management__alert.is-success {
+    position: fixed;
+    z-index: 1200;
+    top: max(16px, env(safe-area-inset-top));
+    right: max(16px, env(safe-area-inset-right));
+    width: min(430px, calc(100vw - 32px));
+    min-height: 58px;
+    padding: 14px 16px;
+    border-left-width: 5px;
+    border-radius: 14px;
+    box-shadow:
+      0 20px 54px rgba(25, 47, 40, 0.2),
+      0 4px 14px rgba(25, 47, 40, 0.1);
+    backdrop-filter: blur(12px);
+    animation: backup-notification-in 180ms ease-out both;
+    overflow-wrap: anywhere;
+  }
+
+  > .backup-management__alert.is-error {
+    background: rgba(255, 244, 242, 0.97);
+  }
+
+  > .backup-management__alert.is-success {
+    background: rgba(239, 249, 243, 0.97);
+  }
+
+  // Preview, validation and conflict errors are returned in result.errors instead of
+  // the action alert path. Keep them next to the affected data, but wrap them as notices.
+  &__error,
+  &__field-error {
+    position: relative;
+    min-height: 44px;
+    padding: 11px 12px 11px 42px;
+    border: 1px solid rgba(161, 75, 70, 0.25);
+    border-left-width: 4px;
+    border-radius: 11px;
+    background: linear-gradient(135deg, #fffafa, var(--backup-danger-soft));
+    box-shadow: 0 8px 20px rgba(104, 47, 44, 0.07);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+
+    &::before {
+      content: "!";
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      width: 20px;
+      height: 20px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--backup-danger);
+      font-size: 0.72rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+  }
+
+  &__result.is-blocked {
+    position: relative;
+    border-left-width: 5px;
+    border-color: rgba(161, 75, 70, 0.3);
+    background: linear-gradient(145deg, #fffdfc, var(--backup-danger-soft));
+    box-shadow: 0 12px 30px rgba(104, 47, 44, 0.09);
+
+    > h3 {
+      color: var(--backup-danger);
+    }
+  }
+
+  &__result.is-ready {
+    border-left-width: 5px;
+    box-shadow: 0 10px 26px rgba(45, 93, 77, 0.08);
+  }
+
+  &__permission-note {
+    border: 1px solid rgba(139, 100, 31, 0.2);
+    border-left: 4px solid rgba(139, 100, 31, 0.62);
+    box-shadow: 0 7px 18px rgba(116, 81, 20, 0.05);
+    overflow-wrap: anywhere;
   }
 }
 
@@ -79,8 +180,27 @@
 }
 
 @media (max-width: 560px) {
-  .backup-management__run-actions button {
-    width: 100%;
-    min-width: 0;
+  .backup-management {
+    &__run-actions button {
+      width: 100%;
+      min-width: 0;
+    }
+
+    > .backup-management__alert.is-error,
+    > .backup-management__alert.is-success {
+      top: max(10px, env(safe-area-inset-top));
+      right: 10px;
+      left: 10px;
+      width: auto;
+      min-height: 54px;
+      padding: 12px 13px;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backup-management > .backup-management__alert.is-error,
+  .backup-management > .backup-management__alert.is-success {
+    animation: none;
   }
 }
