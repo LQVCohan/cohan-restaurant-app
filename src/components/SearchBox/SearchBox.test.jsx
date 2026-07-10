@@ -139,13 +139,13 @@ describe("SearchBox", () => {
   });
 
   it("does not fall back to unscoped default items when an empty custom list is supplied", () => {
-    render(<SearchBox items={[]} />);
+    const { container } = render(<SearchBox items={[]} />);
     fireEvent.change(
       screen.getByPlaceholderText("Tìm kiếm mọi thứ trong trang..."),
       { target: { value: "Dashboard" } },
     );
 
     expect(screen.getByText(/Không tìm thấy kết quả/)).toBeInTheDocument();
-    expect(screen.queryByText("Dashboard")).not.toBeInTheDocument();
+    expect(container.querySelectorAll(".search-result-item")).toHaveLength(0);
   });
 });
