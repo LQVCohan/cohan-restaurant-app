@@ -1,11 +1,16 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import Table3DActionBarV2 from "./Table3DActionBarV2";
 
 vi.mock("@/components/common/Button", () => ({
   default: ({ children, ...props }) => <button {...props}>{children}</button>,
 }));
+
+afterEach(() => {
+  document.body.innerHTML = "";
+  vi.restoreAllMocks();
+});
 
 describe("Table3DActionBarV2", () => {
   const baseProps = {
@@ -47,7 +52,7 @@ describe("Table3DActionBarV2", () => {
     );
   });
 
-  it("calls the native AR handler", () => {
+  it("calls the native AR handler", async () => {
     const onOpenNativeAr = vi.fn();
 
     render(
@@ -59,6 +64,59 @@ describe("Table3DActionBarV2", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Mở camera AR/i }));
 
-    expect(onOpenNativeAr).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onOpenNativeAr).toHaveBeenCalledTimes(1));
+  });
+
+  it("prefers WebXR and keeps physical scale fixed during launch", async () => {
+    Object.defineProperty(navigator, "xr", {
+      configurable: true,
+      value: { isSessionSupported: vi.fn().mockResolvedValue(true) },
+    });
+
+    const shell = document.createElement("div");
+    shell.className = "table-3d-modal";
+    const viewer = document.createElement("model-viewer");
+    viewer.activateAR = vi.fn().mockResolvedValue(undefined);
+    shell.appendChild(viewer);
+    document.body.appendChild(shell);
+
+    const onOpenNativeAr = vi.fn(async () => {
+      viewer.setAttribute("ar-scale", "auto");
+      await viewer.activateAR();
+    });
+
+    render(
+      <Table3DActionBarV2
+        {...baseProps}
+        onOpenNativeAr={onOpenNativeAr}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Mở camera AR/i }));
+
+    await waitFor(() => expect(viewer.activateAR).toHaveBeenCalledTimes(1));
+    expect(viewer).toHaveAttribute("ar-modes", "webxr");
+    expect(viewer).toHaveAttribute("ar-scale", "fixed");
+  });
+
+  it("keeps the native fallback but disables resize without WebXR", async () => {
+    Object.defineProperty(navigator, "xr", {
+      configurable: true,
+      value: undefined,
+    });
+
+    const shell = document.createElement("div");
+    shell.className = "table-3d-modal";
+    const viewer = document.createElement("model-viewer");
+    shell.appendChild(viewer);
+    document.body.appendChild(shell);
+
+    render(<Table3DActionBarV2 {...baseProps} />);
+    fireEvent.click(screen.getByRole("button", { name: /Mở camera AR/i }));
+
+    await waitFor(() =>
+      expect(viewer).toHaveAttribute("ar-modes", "scene-viewer quick-look"),
+    );
+    expect(viewer).toHaveAttribute("ar-scale", "fixed");
   });
 });
