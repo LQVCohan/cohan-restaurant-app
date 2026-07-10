@@ -1,28 +1,37 @@
 {
   "id": "07-10-table-type-space-modal",
   "title": "Gộp loại bàn và không gian vào modal quản lý bàn",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-feature",
   "scope": [
     "src/components/Dashboard_Manager/Sidebar.jsx",
     "src/layouts/ManagerLayout.jsx",
-    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
-    "src/components/Dashboard_Manager/Table/TableManagement.test.jsx"
+    "src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.jsx",
+    "src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.scss",
+    "src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.test.jsx"
   ],
-  "rootCause": "The table settings modal is contextual to TableManagement but its trigger is still exposed as a standalone global navigation/search choice. The smallest correct fix is to remove that choice and pass the existing controlled-modal opener directly into the table page header.",
+  "rootCause": "The table settings modal is contextual to TableManagement but its trigger was still exposed as a standalone global navigation/search choice. The fix removes that choice and passes the existing controlled-modal opener directly into an in-page table management wrapper.",
   "validation": {
     "planned": [
-      "npx vitest run src/components/Dashboard_Manager/Table/TableManagement.test.jsx",
+      "npx vitest run src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.test.jsx",
       "npm run check:conflicts",
       "npm run build"
     ],
     "completed": [
       "read AGENTS.md and Trellis workflow",
       "read ponytail and ui-ux-pro-max skills",
-      "traced the current Sidebar and manager search action through ManagerLayout showTableSettings state to TableTypeManagementPage",
+      "traced Sidebar and manager search through ManagerLayout showTableSettings state to TableTypeManagementPage",
       "confirmed no other runtime caller references table-types",
-      "confirmed ManagementPageHeader secondaryActions accepts React icons and existing callbacks"
+      "removed the standalone sidebar item and manager search result",
+      "added a permission-gated in-page button using the existing controlled modal opener",
+      "kept stale table-types hash normalization, table.write permission checks, restaurant scope and modal CRUD unchanged",
+      "added focused component coverage for opening the modal and hiding the trigger without an opener"
     ],
-    "notRun": []
+    "notRun": [
+      "targeted Vitest was not executable in the GitHub connector environment",
+      "npm run check:conflicts was not executable in the GitHub connector environment",
+      "npm run build was not executable in the GitHub connector environment",
+      "desktop and mobile browser screenshots were not executable in the GitHub connector environment"
+    ]
   }
 }
