@@ -1,5 +1,10 @@
-import React, { useMemo, useState } from "react";
-import { gql, useMutation, useQuery } from "@apollo/client";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  gql,
+  useApolloClient,
+  useMutation,
+  useQuery,
+} from "@apollo/client";
 import "./ReviewModal.scss";
 
 const GET_REVIEW_DETAIL = gql`
@@ -70,31 +75,57 @@ const CREATE_REVIEW_COMMENT = gql`
   mutation CreateReviewComment($input: ReviewCommentInput!) {
     createReviewComment(input: $input) {
       id
+      reviewId
+      restaurantId
+      authorName
+      officialReply
+      content
+      status
+      createdAt
     }
   }
 `;
 
 function getStarRating(rating) {
-  return "★".repeat(rating) + "☆".repeat(5 - rating);
+  const safeRating = Math.max(0, Math.min(5, Number(rating || 0)));
+  return "★".repeat(safeRating) + "☆".repeat(5 - safeRating);
 }
 
 function getInitials(name = "") {
   return name
     .split(" ")
     .filter(Boolean)
-    .map((n) => n[0])
+    .map((part) => part[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);
 }
 
 function formatDate(dateString) {
+  if (!dateString) return "Chưa rõ thời gian";
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return "Chưa rõ thời gian";
   return date.toLocaleString("vi-VN");
 }
 
-const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
+function parseImages(value) {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+const ReviewModal = ({ visible, review, canReply = false, onClose }) => {
+  const client = useApolloClient();
+  const closeButtonRef = useRef(null);
+  const previousFocusRef = useRef(null);
   const [replyText, setReplyText] = useState("");
+  const [replyError, setReplyError] = useState("");
+  const [replySuccess, setReplySuccess] = useState("");
 
   const reviewId = review?.id;
   const { data: detailData, loading: detailLoading } = useQuery(
@@ -126,6 +157,31 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
     CREATE_REVIEW_COMMENT,
   );
 
+  useEffect(() => {
+    if (!visible) {
+      setReplyText("");
+      setReplyError("");
+      setReplySuccess("");
+      return undefined;
+    }
+
+    previousFocusRef.current = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusTimer = window.setTimeout(() => closeButtonRef.current?.focus(), 0);
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousFocusRef.current?.focus?.();
+    };
+  }, [onClose, visible]);
+
   const detail = detailData?.review || review;
   const comments = useMemo(
     () =>
@@ -135,36 +191,74 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
     [commentData],
   );
   const timeline = timelineData?.reviewTimeline || [];
+  const images = parseImages(detail?.images || review?.images);
 
   if (!visible) return null;
 
   const handleCreateReply = async () => {
-    if (!replyText.trim() || !detail?.id || !detail?.restaurantId) return;
-    await createReviewComment({
-      variables: {
-        input: {
-          reviewId: detail.id,
-          restaurantId: detail.restaurantId,
-          officialReply: true,
-          content: replyText.trim(),
+    const content = replyText.trim();
+    if (!content || !detail?.id || !detail?.restaurantId || creatingReply) return;
+
+    setReplyError("");
+    setReplySuccess("");
+    try {
+      const result = await createReviewComment({
+        variables: {
+          input: {
+            reviewId: detail.id,
+            restaurantId: detail.restaurantId,
+            officialReply: true,
+            content,
+          },
         },
-      },
-    });
-    setReplyText("");
-    await refetchComments();
+      });
+      if (!result?.data?.createReviewComment?.id) {
+        throw new Error("Backend không xác nhận phản hồi vừa tạo.");
+      }
+
+      setReplyText("");
+      setReplySuccess("Đã gửi phản hồi chính thức.");
+      await refetchComments();
+      await client.refetchQueries({
+        include: [
+          "GetReviews",
+          "GetReviewStats",
+          "GetReviewAnalytics",
+          "GetRestaurantReviews",
+          "GetRestaurantReviewStats",
+        ],
+      });
+    } catch (error) {
+      setReplyError(
+        error?.message || "Không thể gửi phản hồi. Vui lòng thử lại.",
+      );
+    }
   };
 
-  const images = detail?.images || JSON.parse(review?.images || "[]");
-
   return (
-    <div className="reviews-modal-overlay">
-      <div className="reviews-modal">
+    <div
+      className="reviews-modal-overlay"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose?.();
+      }}
+    >
+      <div
+        className="reviews-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="review-detail-title"
+      >
         <div className="reviews-modal__header">
-          <h3 className="reviews-modal__title">Chi tiết đánh giá</h3>
+          <h3 className="reviews-modal__title" id="review-detail-title">
+            Chi tiết đánh giá
+          </h3>
           <button
+            ref={closeButtonRef}
             type="button"
             className="reviews-modal__close"
             onClick={onClose}
+            aria-label="Đóng chi tiết đánh giá"
           >
             ×
           </button>
@@ -172,7 +266,7 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
 
         <div className="reviews-modal__body">
           {detailLoading ? (
-            <div>Đang tải chi tiết...</div>
+            <div role="status">Đang tải chi tiết...</div>
           ) : (
             <>
               <div className="reviews-modal__summary">
@@ -180,13 +274,18 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
                   <span>
                     Khách hàng: {detail?.customerName || review?.customer_name}
                   </span>
-                  <span>•</span>
+                  <span aria-hidden="true">•</span>
                   <span>
                     {formatDate(detail?.createdAt || review?.created_at)}
                   </span>
                 </div>
-                <div className="reviews-modal__rating">
-                  {getStarRating(detail?.rating || review?.rating)}{" "}
+                <div
+                  className="reviews-modal__rating"
+                  aria-label={`${detail?.rating || review?.rating} trên 5 sao`}
+                >
+                  <span aria-hidden="true">
+                    {getStarRating(detail?.rating || review?.rating)}
+                  </span>{" "}
                   <strong>{detail?.rating || review?.rating}/5</strong>
                 </div>
               </div>
@@ -204,14 +303,22 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
                   "Không gắn nhân viên"}
               </p>
               <p className="reviews-modal__performance-note">
-                Đánh giá công khai được dùng làm dữ liệu tham khảo hiệu suất ở lần
-                tính lại tiếp theo.
+                Đánh giá công khai được dùng làm dữ liệu tham khảo hiệu suất ở
+                lần tính lại tiếp theo.
               </p>
 
-              {!!images?.length && (
+              {!!images.length && (
                 <div className="reviews-modal__image-preview">
-                  {images.map((img) => (
-                    <img key={img} src={img} alt="Ảnh đánh giá" />
+                  {images.map((image, index) => (
+                    <img
+                      key={image}
+                      src={image}
+                      alt={`Ảnh đánh giá ${index + 1}`}
+                      width="220"
+                      height="160"
+                      loading="lazy"
+                      decoding="async"
+                    />
                   ))}
                 </div>
               )}
@@ -219,7 +326,7 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
               <div className="reviews-modal__reply-section">
                 <h4>Phản hồi của nhà hàng</h4>
                 {commentLoading ? (
-                  <div>Đang tải phản hồi...</div>
+                  <div role="status">Đang tải phản hồi...</div>
                 ) : comments.length === 0 ? (
                   <div className="reviews-empty-note">
                     Chưa có phản hồi nào.
@@ -232,7 +339,11 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
                           {comment.authorAvatar ? (
                             <img
                               src={comment.authorAvatar}
-                              alt={comment.authorName}
+                              alt={comment.authorName || "Người phản hồi"}
+                              width="40"
+                              height="40"
+                              loading="lazy"
+                              decoding="async"
                             />
                           ) : (
                             getInitials(comment.authorName)
@@ -257,7 +368,9 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
               <div className="reviews-modal__timeline">
                 <h4>Lịch sử xử lý</h4>
                 {timelineLoading ? (
-                  <div className="reviews-empty-note">Đang tải lịch sử...</div>
+                  <div className="reviews-empty-note" role="status">
+                    Đang tải lịch sử...
+                  </div>
                 ) : timeline.length ? (
                   <ol>
                     {timeline.map((event) => (
@@ -282,13 +395,33 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
 
               {canReply && (
                 <div className="reviews-modal__reply-box">
+                  <label htmlFor="official-review-reply">
+                    Phản hồi chính thức
+                  </label>
                   <textarea
+                    id="official-review-reply"
                     rows={3}
-                    aria-label="Nhập phản hồi từ nhà hàng"
+                    maxLength={2000}
                     placeholder="Nhập phản hồi từ nhà hàng..."
                     value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
+                    onChange={(event) => {
+                      setReplyText(event.target.value);
+                      setReplyError("");
+                      setReplySuccess("");
+                    }}
                   />
+                  <small>{replyText.length}/2000 ký tự</small>
+                </div>
+              )}
+
+              {replyError && (
+                <div className="reviews-error-box" role="alert">
+                  {replyError}
+                </div>
+              )}
+              {replySuccess && (
+                <div className="reviews-inline-message" role="status">
+                  {replySuccess}
                 </div>
               )}
             </>
