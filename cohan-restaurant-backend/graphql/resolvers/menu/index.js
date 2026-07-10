@@ -2,6 +2,7 @@
 
 import mongoose from "mongoose";
 import { MenuQuery } from "./query.js";
+import { CustomerMenuLocationQuery } from "./customerLocationQuery.js";
 import { MenuMutation } from "./mutation.js";
 import { CopyMenuMutation } from "./copyMutation.js";
 import { DeleteMenuMutation } from "./deleteMutation.js";
@@ -103,6 +104,7 @@ async function getItemAvailability(parent) {
 export default {
   Query: {
     ...MenuQuery,
+    ...CustomerMenuLocationQuery,
   },
 
   Mutation: {
