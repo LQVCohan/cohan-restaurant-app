@@ -1,5 +1,5 @@
 import { gql, useMutation, useQuery } from "@apollo/client";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FALLBACK_USD_TO_VND,
   getUsdToVndRate,
@@ -35,15 +35,16 @@ export function useRestaurantCurrency(restaurantId) {
   const [updateRestaurant] = useMutation(UPDATE_RESTAURANT_CURRENCY_MUTATION);
 
   const restaurant = data?.restaurant || null;
-  const defaultCurrency = normalizeCurrency(restaurant?.defaultCurrency, "VND");
+  const defaultCurrency = normalizeCurrency(
+    restaurant?.defaultCurrency,
+    "VND",
+  );
   const manualRate = Number(restaurant?.manualUsdToVndRate);
-  const safeManualRate =
-    Number.isFinite(manualRate) && manualRate > 0
-      ? manualRate
-      : FALLBACK_USD_TO_VND;
+  const hasManualRate = Number.isFinite(manualRate) && manualRate > 0;
+  const displayedManualRate = hasManualRate ? manualRate : FALLBACK_USD_TO_VND;
 
   const [activeCurrency, setActiveCurrency] = useState(defaultCurrency);
-  const [usdToVndRate, setUsdToVndRate] = useState(safeManualRate);
+  const [usdToVndRate, setUsdToVndRate] = useState(displayedManualRate);
   const [rateSource, setRateSource] = useState("fallback");
 
   useEffect(() => {
@@ -54,7 +55,7 @@ export function useRestaurantCurrency(restaurantId) {
     let cancelled = false;
     const run = async () => {
       const result = await getUsdToVndRate({
-        manualRate: safeManualRate,
+        manualRate: hasManualRate ? manualRate : undefined,
         timeoutMs: 1000,
       });
       if (cancelled) return;
@@ -65,26 +66,33 @@ export function useRestaurantCurrency(restaurantId) {
     return () => {
       cancelled = true;
     };
-  }, [restaurantId, safeManualRate]);
+  }, [hasManualRate, manualRate, restaurantId]);
 
-  const persistSettings = async (next = {}) => {
-    if (!restaurantId) return;
-    await updateRestaurant({
-      variables: {
-        id: restaurantId,
-        input: {
-          defaultCurrency: next.defaultCurrency
-            ? normalizeCurrency(next.defaultCurrency, "VND")
-            : defaultCurrency,
-          manualUsdToVndRate:
-            Number(next.manualUsdToVndRate) > 0
-              ? Number(next.manualUsdToVndRate)
-              : safeManualRate,
-        },
-      },
-    });
-    await refetch?.();
-  };
+  const persistSettings = useCallback(
+    async (next = {}) => {
+      if (!restaurantId) return null;
+
+      const input = {};
+      if (Object.prototype.hasOwnProperty.call(next, "defaultCurrency")) {
+        input.defaultCurrency = normalizeCurrency(next.defaultCurrency, "VND");
+      }
+      if (Object.prototype.hasOwnProperty.call(next, "manualUsdToVndRate")) {
+        const nextRate = Number(next.manualUsdToVndRate);
+        if (!Number.isFinite(nextRate) || nextRate <= 0) {
+          throw new Error("Tỷ giá USD sang VND phải lớn hơn 0.");
+        }
+        input.manualUsdToVndRate = nextRate;
+      }
+      if (Object.keys(input).length === 0) return null;
+
+      const result = await updateRestaurant({
+        variables: { id: restaurantId, input },
+      });
+      await refetch?.();
+      return result.data?.updateRestaurant || null;
+    },
+    [refetch, restaurantId, updateRestaurant],
+  );
 
   return useMemo(
     () => ({
@@ -95,19 +103,23 @@ export function useRestaurantCurrency(restaurantId) {
       setActiveCurrency,
       usdToVndRate,
       rateSource,
-      manualUsdToVndRate: safeManualRate,
+      manualUsdToVndRate: hasManualRate ? manualRate : null,
+      displayedUsdToVndRate: displayedManualRate,
       persistSettings,
       refetch,
     }),
     [
-      loading,
-      error,
-      defaultCurrency,
       activeCurrency,
-      usdToVndRate,
+      defaultCurrency,
+      displayedManualRate,
+      error,
+      hasManualRate,
+      loading,
+      manualRate,
+      persistSettings,
       rateSource,
-      safeManualRate,
       refetch,
+      usdToVndRate,
     ],
   );
 }
