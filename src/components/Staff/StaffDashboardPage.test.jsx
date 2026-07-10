@@ -47,12 +47,16 @@ describe("StaffDashboardPage", () => {
   it("keeps role tools visible and secondary utilities collapsed", () => {
     const { container } = renderDashboard();
 
-    expect(screen.getByRole("link", { name: /Đơn nội bộ/i })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /Bếp \/ Quầy bar/i })).not.toBeInTheDocument();
+    expect(
+      container.querySelector('.staff-dashboard-role-grid a[href="/staff/orders"]'),
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('.staff-dashboard-role-grid a[href="/staff/kitchen"]'),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("Tiện ích khác")).toBeInTheDocument();
     expect(container.querySelector("details.staff-dashboard-more")).not.toHaveAttribute("open");
     expect(
-      screen.getByRole("link", { name: /Hồ sơ cá nhân/i, hidden: true }),
+      container.querySelector('.staff-dashboard-more a[href="/staff/profile"]'),
     ).toBeInTheDocument();
   });
 
