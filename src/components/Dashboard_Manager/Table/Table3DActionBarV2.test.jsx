@@ -67,12 +67,7 @@ describe("Table3DActionBarV2", () => {
     await waitFor(() => expect(onOpenNativeAr).toHaveBeenCalledTimes(1));
   });
 
-  it("prefers WebXR and keeps physical scale fixed during launch", async () => {
-    Object.defineProperty(navigator, "xr", {
-      configurable: true,
-      value: { isSessionSupported: vi.fn().mockResolvedValue(true) },
-    });
-
+  it("prioritizes native floor scanning and keeps pinch scaling enabled", async () => {
     const shell = document.createElement("div");
     shell.className = "table-3d-modal";
     const viewer = document.createElement("model-viewer");
@@ -95,28 +90,25 @@ describe("Table3DActionBarV2", () => {
     fireEvent.click(screen.getByRole("button", { name: /Mở camera AR/i }));
 
     await waitFor(() => expect(viewer.activateAR).toHaveBeenCalledTimes(1));
-    expect(viewer).toHaveAttribute("ar-modes", "webxr");
-    expect(viewer).toHaveAttribute("ar-scale", "fixed");
+    expect(viewer).toHaveAttribute(
+      "ar-modes",
+      "scene-viewer webxr quick-look",
+    );
+    expect(viewer).toHaveAttribute("ar-placement", "floor");
+    expect(viewer).toHaveAttribute("ar-scale", "auto");
   });
 
-  it("keeps the native fallback but disables resize without WebXR", async () => {
-    Object.defineProperty(navigator, "xr", {
-      configurable: true,
-      value: undefined,
-    });
+  it("still calls the launcher when the model viewer is not mounted", async () => {
+    const onOpenNativeAr = vi.fn();
 
-    const shell = document.createElement("div");
-    shell.className = "table-3d-modal";
-    const viewer = document.createElement("model-viewer");
-    shell.appendChild(viewer);
-    document.body.appendChild(shell);
-
-    render(<Table3DActionBarV2 {...baseProps} />);
+    render(
+      <Table3DActionBarV2
+        {...baseProps}
+        onOpenNativeAr={onOpenNativeAr}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: /Mở camera AR/i }));
 
-    await waitFor(() =>
-      expect(viewer).toHaveAttribute("ar-modes", "scene-viewer quick-look"),
-    );
-    expect(viewer).toHaveAttribute("ar-scale", "fixed");
+    await waitFor(() => expect(onOpenNativeAr).toHaveBeenCalledTimes(1));
   });
 });
