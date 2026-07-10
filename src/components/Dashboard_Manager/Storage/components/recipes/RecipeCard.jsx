@@ -14,10 +14,10 @@ import { convertCurrencyAmount, normalizeCurrency } from "../../../../../utils/c
 import "./RecipeCard.scss";
 
 const MENU_ITEM_STATUS_META = {
-  available: { label: "Có sẵn", bg: "#dcfce7", color: "#166534" },
+  available: { label: "Đang bán", bg: "#dcfce7", color: "#166534" },
   unavailable: { label: "Tạm ngưng", bg: "#fee2e2", color: "#b91c1c" },
   out_of_stock: { label: "Hết món", bg: "#ffedd5", color: "#c2410c" },
-  hidden: { label: "Ẩn", bg: "#e2e8f0", color: "#334155" },
+  hidden: { label: "Đang ẩn", bg: "#e2e8f0", color: "#334155" },
 };
 
 const RecipeCard = ({
@@ -123,7 +123,7 @@ const RecipeCard = ({
                   fontWeight: 700,
                 }}
               >
-                Chưa có recipe
+                Chưa có công thức
               </span>
             )}
             {hasMissingCost && (
@@ -137,7 +137,7 @@ const RecipeCard = ({
                   fontWeight: 700,
                 }}
               >
-                Thiếu cost
+                Thiếu dữ liệu giá vốn
               </span>
             )}
             {hasMissingIngredient && (
@@ -152,7 +152,7 @@ const RecipeCard = ({
                 }}
                 title="Công thức đang tham chiếu nguyên liệu đã bị xóa hoặc không còn tồn tại."
               >
-                {`Thiếu NL (${missingIngredientCount})`}
+                {`Thiếu nguyên liệu (${missingIngredientCount})`}
               </span>
             )}
             {hasNoReplacementIngredient && (
@@ -165,9 +165,9 @@ const RecipeCard = ({
                   color: "#9a3412",
                   fontWeight: 700,
                 }}
-                title="Công thức đang có dòng chưa có nguyên liệu bù, không thể tin cậy chi phí ước tính."
+                title="Công thức có nguyên liệu không còn tồn tại nên chưa thể tính chính xác giá vốn."
               >
-                Chưa có nguyên liệu bù
+                Cần chọn nguyên liệu thay thế
               </span>
             )}
           </div>
@@ -182,13 +182,13 @@ const RecipeCard = ({
           <span className="rc-stat-label">Nguyên liệu</span>
         </div>
 
-        <div className="rc-stat-item" title="Số biến thể/Size">
+        <div className="rc-stat-item" title="Số biến thể của công thức">
           <Layers size={16} className="rc-stat-icon" />
           <span className="rc-stat-value">{totalVariants}</span>
-          <span className="rc-stat-label">Variants</span>
+          <span className="rc-stat-label">Biến thể</span>
         </div>
 
-        <div className="rc-stat-item is-cost" title="Giá vốn thấp nhất">
+        <div className="rc-stat-item is-cost" title="Giá vốn thấp nhất trong các biến thể">
           <DollarSign size={16} className="rc-stat-icon" />
           <span className="rc-stat-value">
             {estimatedCostValid
@@ -203,9 +203,9 @@ const RecipeCard = ({
                   { currency: activeCurrency },
                 )
               : "—"
-              : "N/A"}
+              : "Chưa tính được"}
           </span>
-          <span className="rc-stat-label">Min Cost</span>
+          <span className="rc-stat-label">Giá vốn thấp nhất</span>
         </div>
       </div>
 
@@ -248,7 +248,7 @@ const RecipeCard = ({
               type="button"
               className="rc-icon-btn rc-btn-delete"
               onClick={(e) => handleAction(e, onDelete)}
-              title="Xóa món"
+              title="Xóa công thức"
               aria-label={`Xóa công thức ${recipeName}`}
             >
               <Trash2 size={16} />
