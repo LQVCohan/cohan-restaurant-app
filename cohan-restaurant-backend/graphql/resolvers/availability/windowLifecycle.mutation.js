@@ -36,6 +36,26 @@ async function assertPeriodCanReceiveRegistration({
   }
 }
 
+async function atomicallyOpenWindow(windowDoc) {
+  const status = String(windowDoc?.status || "draft").toLowerCase();
+  if (status === "open") return windowDoc;
+  if (!["draft", "closed"].includes(status)) {
+    throw new Error("AVAILABILITY_WINDOW_INVALID_OPEN_TRANSITION");
+  }
+
+  const id = windowDoc?._id || windowDoc?.id;
+  const updated = await AvailabilityRegistrationWindow.findOneAndUpdate(
+    { _id: id, status: { $in: ["draft", "closed"] } },
+    {
+      $set: { status: "open" },
+      $unset: { closedAt: "", closedBy: "" },
+    },
+    { new: true },
+  );
+  if (!updated) throw new Error("AVAILABILITY_WINDOW_STATE_CHANGED");
+  return updated;
+}
+
 export default {
   createAvailabilityWindow: async (_, { input }, ctx) => {
     requireRoles(ctx, AVAILABILITY_WINDOW_ADMIN_ROLES);
@@ -54,7 +74,7 @@ export default {
     });
 
     const availabilityPolicy = policy?.availabilityRegistrationPolicy || {};
-    return createOrGetAvailabilityRegistrationWindow(
+    const windowDoc = await createOrGetAvailabilityRegistrationWindow(
       {
         ...input,
         periodStart: schedule.periodStart,
@@ -78,17 +98,15 @@ export default {
       },
       ctx.user.id,
     );
+
+    return schedule.mode === "manual"
+      ? atomicallyOpenWindow(windowDoc)
+      : windowDoc;
   },
 
   openAvailabilityWindow: async (_, { id }, ctx) => {
     requireRoles(ctx, AVAILABILITY_WINDOW_ADMIN_ROLES);
     const windowDoc = await getScopedWindow(id, ctx);
-    const status = String(windowDoc.status || "draft").toLowerCase();
-
-    if (status === "open") return windowDoc;
-    if (!["draft", "closed"].includes(status)) {
-      throw new Error("AVAILABILITY_WINDOW_INVALID_OPEN_TRANSITION");
-    }
 
     await assertPeriodCanReceiveRegistration({
       restaurantId: windowDoc.restaurantId,
@@ -96,16 +114,7 @@ export default {
       periodEnd: windowDoc.periodEnd,
     });
 
-    const updated = await AvailabilityRegistrationWindow.findOneAndUpdate(
-      { _id: id, status: { $in: ["draft", "closed"] } },
-      {
-        $set: { status: "open" },
-        $unset: { closedAt: "", closedBy: "" },
-      },
-      { new: true },
-    );
-    if (!updated) throw new Error("AVAILABILITY_WINDOW_STATE_CHANGED");
-    return updated;
+    return atomicallyOpenWindow(windowDoc);
   },
 
   closeAvailabilityWindow: async (_, { id }, ctx) => {
