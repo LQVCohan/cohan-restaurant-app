@@ -10,6 +10,7 @@ import user from "./user/index.js";
 import wallet from "./wallet/index.js";
 import permission from "./permission/index.js";
 import menu from "./menu/index.js";
+import menuPriceEvent from "./menuPriceEvent/index.js";
 import category from "./category/index.js";
 import modifierGroup from "./modifier/index.js";
 import table from "./table/index.js";
@@ -116,6 +117,7 @@ export default {
     ...(permission.Mutation || {}),
     ...(category.Mutation || {}),
     ...(menu.Mutation || {}),
+    ...(menuPriceEvent.Mutation || {}),
     ...(modifierGroup.Mutation || {}),
     ...(table.Mutation || {}),
     ...(floor.Mutation || {}),
