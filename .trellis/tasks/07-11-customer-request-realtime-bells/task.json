@@ -1,0 +1,33 @@
+{
+  "id": "07-11-customer-request-realtime-bells",
+  "title": "Đồng bộ yêu cầu khách tới POS và chuông quản lý, nhân viên",
+  "status": "in_progress",
+  "type": "cross-layer-bugfix-ui",
+  "scope": [
+    "cohan-restaurant-backend/src/services/notification/notificationWorkflow.service.js",
+    "cohan-restaurant-backend/graphql/resolvers/order/helper/emitOrderEvent.js",
+    "cohan-restaurant-backend/tests/orderCustomerRequestNotifications.test.js",
+    "src/components/Dashboard_Manager/POS/components/pos/CustomerRequestQueuePanel.jsx",
+    "src/components/Dashboard_Manager/POS/components/pos/CustomerRequestQueuePanel.module.scss",
+    "src/components/Dashboard_Manager/POS/components/pos/CustomerRequestQueuePanel.test.jsx",
+    "src/components/Staff/NotificationBell.jsx",
+    "src/components/Staff/NotificationBell.scss",
+    "src/layouts/StaffLayout.jsx",
+    "src/layouts/StaffLayout.scss"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run cohan-restaurant-backend/tests/orderCustomerRequestNotifications.test.js",
+      "npx vitest run src/components/Dashboard_Manager/POS/components/pos/CustomerRequestQueuePanel.test.jsx",
+      "npm run build",
+      "browser smoke at 390x844 and desktop POS"
+    ],
+    "completed": [
+      "read AGENTS.md and .trellis/workflow.md",
+      "read ponytail, ui-ux-pro-max, frontend-design, taste-ui-redesign and redesign-existing-projects skills",
+      "traced order customerRequests schema through GraphQL query/mutations, restaurant socket, POS queue, notification workflow, manager bell and staff notification pages",
+      "confirmed ACKNOWLEDGED is only persisted by acknowledgeCustomerServiceRequest after an authenticated actor accepts"
+    ],
+    "notRun": []
+  }
+}
