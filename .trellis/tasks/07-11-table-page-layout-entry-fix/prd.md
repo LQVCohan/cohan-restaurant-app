@@ -2,9 +2,9 @@
 
 ## Current behavior and root cause
 
-- `TableManagementSettingsEntry` renders a separate toolbar before the actual table page and offsets it with a negative margin, so the **Loại bàn & không gian** action floats outside the page header.
-- `TableManagementFinalQC.scss` forces the floor/filter panel into a full-width deck at a broad breakpoint and constrains table cards through competing late-stage rules. On scaled desktop viewports this produces a large empty surface, full-width filters, and narrow cards clustered on the left.
-- The modal CRUD flow, restaurant permission check, GraphQL schema/resolvers, and Apollo hooks are already correct.
+- `TableManagementSettingsEntry` rendered a separate toolbar before the actual table page and offset it with a negative margin, so **Loại bàn & không gian** floated outside the page header.
+- `TableManagementFinalQC.scss` forced the floor/filter panel into a full-width deck at a broad breakpoint. On scaled desktop viewports this produced a large empty surface, full-width filters, and narrow cards clustered on the left.
+- The modal CRUD flow, restaurant permission check, GraphQL schema/resolvers, and Apollo hooks were already correct.
 
 ## End-to-end flow
 
@@ -12,21 +12,20 @@
 2. `floor_table.graphql` exposes table/floor queries and mutations.
 3. Table/floor resolvers preserve restaurant permissions and validation.
 4. `useTableManagement` and `useFloorManagement` provide the Apollo operations.
-5. `ManagerLayout` grants `table.write`, owns `showTableSettings`, and passes the opener into the table page.
-6. `TableManagement` renders the operational header, floor filters, cards and actions.
+5. `ManagerLayout` grants `table.write`, owns `showTableSettings`, and passes the opener into the table page wrapper.
+6. `TableManagementSettingsEntry` mounts the action into the existing `ManagementPageHeader` control row and keeps `TableManagement` unchanged.
 7. `TableTypeManagementPage` remains the controlled modal for type/space CRUD.
 
 ## Visual direction
 
-Compact restaurant operations dashboard with a narrow stable floor/filter rail, fluid table cards, and all page-level actions grouped in the existing header.
+Compact restaurant operations dashboard with a narrow stable floor/filter rail, fluid table cards, and every page-level action grouped in the existing header.
 
-## Files to change
+## Files changed
 
-- `TableManagement.jsx`: accept the existing opener and render it as a header secondary action.
-- `TableManagementSettingsEntry.jsx`: remove the detached toolbar and forward the opener.
-- `TableManagementSettingsEntry.scss`: delete unused detached-toolbar styling.
-- `TableManagementFinalQC.scss`: replace the conflicting full-width deck with a concise responsive layout contract.
-- `TableManagementSettingsEntry.test.jsx`: verify the opener is forwarded and absent without permission.
+- `TableManagementSettingsEntry.jsx`: removes the detached toolbar and portals the permission-gated action into the existing header control row.
+- `TableManagementSettingsEntry.scss`: keeps only action ordering and mobile width rules.
+- `TableManagementFinalQC.scss`: replaces the conflicting full-width deck with a concise desktop rail, fluid table grid, and lower responsive collapse point.
+- `TableManagementSettingsEntry.test.jsx`: verifies the header action opens settings and remains absent without an opener.
 
 ## Acceptance criteria
 
@@ -41,6 +40,12 @@ Compact restaurant operations dashboard with a narrow stable floor/filter rail, 
 - `vitest run src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.test.jsx`
 - `vitest run src/components/Dashboard_Manager/Table/TableManagement.test.jsx`
 - `npm run build`
+
+## Validation result
+
+- Source files and import order were re-fetched after the writes.
+- GitHub currently reports no status checks for the final commit.
+- Vitest, build, and a rendered browser screenshot were not available through the GitHub connector session.
 
 ## Out of scope
 
