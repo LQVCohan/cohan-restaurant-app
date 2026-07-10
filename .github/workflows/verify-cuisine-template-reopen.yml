@@ -30,7 +30,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,8 +44,31 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Focused onboarding tests
-        run: npx vitest run src/components/Dashboard_Manager/Header.test.jsx src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.test.jsx
+      - name: Test Header reopen action
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout --signal=TERM --kill-after=10s 3m \
+            npx vitest run src/components/Dashboard_Manager/Header.test.jsx --maxWorkers=1 --reporter=verbose \
+            2>&1 | tee /tmp/header-test.log
+
+      - name: Test onboarding reopen signal
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout --signal=TERM --kill-after=10s 3m \
+            npx vitest run src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.test.jsx --maxWorkers=1 --reporter=verbose \
+            2>&1 | tee /tmp/onboarding-test.log
+
+      - name: Upload focused logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cuisine-template-reopen-focused-logs
+          path: |
+            /tmp/header-test.log
+            /tmp/onboarding-test.log
+          if-no-files-found: ignore
 
       - name: Check conflict markers
         run: npm run check:conflicts
