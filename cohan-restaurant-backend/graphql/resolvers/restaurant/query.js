@@ -603,9 +603,21 @@ async function publicRestaurants(_, { limit = 20, cursor, filter }) {
 }
 
 
-async function publicRestaurant(_, { id }) {
+async function publicRestaurant(_, { id, at }) {
   if (!mongoose.isValidObjectId(id)) throw badInput("Invalid ID");
-  return Restaurant.findOne(buildPublicRestaurantFilter({ _id: id })).lean();
+  const restaurant = await Restaurant.findOne(
+    buildPublicRestaurantFilter({ _id: id }),
+  ).lean();
+  if (!restaurant || !at) return restaurant;
+
+  const requestedAt = new Date(at);
+  if (Number.isNaN(requestedAt.getTime())) throw badInput("Invalid availability time");
+  return {
+    ...restaurant,
+    _availabilityAt: computeRestaurantAvailability(restaurant, {
+      now: requestedAt,
+    }),
+  };
 }
 async function similarRestaurants(_, { restaurantId, limit = 6 }) {
   const root = await Restaurant.findOne(buildPublicRestaurantFilter({ _id: restaurantId })).lean();
