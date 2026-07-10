@@ -172,7 +172,7 @@ export default function useStaffReports({
   const { data, loading, error, refetch } = useQuery(STAFF_REPORTS_QUERY, {
     variables,
     fetchPolicy: "cache-and-network",
-    skip: !startDate || !endDate,
+    skip: !restaurantId || !startDate || !endDate,
   });
 
   return {
