@@ -26,6 +26,7 @@
 - Redesign the page into a compact operational workspace using existing sage/warm-neutral direction, Lucide icons, responsive controls, visible focus, and useful loading/error/empty states.
 - Add focused resolver and component tests.
 - Align the existing dashboard scope regression test with the secure hook contract: a restaurant restored from an old account remains hidden until the current account scope is confirmed.
+- Repair two repository test-infrastructure blockers exposed by the changed-code CI run: a missing brace in the existing combo mutation mock and missing `ImageIcon`/`SearchCheck` exports in the temporary Lucide shim used by Vitest.
 
 ## Files to change
 
@@ -36,6 +37,8 @@
 - `cohan-restaurant-backend/tests/resolvers/payment-transfer-queue.test.js`: resolver filtering/summary regression coverage.
 - `src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.test.jsx`: scope and filter/count rendering coverage.
 - `src/hooks/useDashboard.test.jsx`: update the stale restored-scope assertion to match `useManagerRestaurantSelection`.
+- `src/components/Dashboard_Manager/Combo/ComboManagement.test.jsx`: repair the existing malformed `updateCombo` mock so changed component tests can parse.
+- `src/lib/lucideReactShim.jsx`: mirror the two icons imported by the transfer-review page in the test/build shim.
 
 ## Acceptance criteria
 
