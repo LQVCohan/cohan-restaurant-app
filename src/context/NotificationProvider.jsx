@@ -14,10 +14,42 @@ const ALERT_ERROR_PATTERN = /(lỗi|thất bại|không thể|failed|error)/i;
 const ALERT_WARNING_PATTERN =
   /(vui lòng|cần\s|không hợp lệ|không tìm thấy|không có quyền)/i;
 
+const TECHNICAL_COPY_REPLACEMENTS = [
+  [/\bEmail\s*\/\s*SMS provider\b/gi, "dịch vụ gửi email/SMS"],
+  [/\brestaurantId\b/gi, "nhà hàng"],
+  [/\btableId\b/gi, "bàn"],
+  [/\borderId\b/gi, "đơn hàng"],
+  [/\buserId\b/gi, "tài khoản"],
+  [/\bfront[-\s]?end\b/gi, "giao diện"],
+  [/\bback[-\s]?end\b/gi, "hệ thống xử lý"],
+  [/\bdatabase\b|\bdb\b|\bmongodb\b|\bmongo\b/gi, "dữ liệu"],
+  [/\bgraphql\b|\bapi\b|\bendpoint\b/gi, "kết nối hệ thống"],
+  [/\baccess token\b|\brefresh token\b|\bjwt\b|\btoken\b/gi, "phiên đăng nhập"],
+  [/\bserver\b/gi, "hệ thống"],
+  [/\bpayload\b/gi, "dữ liệu gửi đi"],
+  [/\bprovider\b/gi, "dịch vụ"],
+  [/\bchunk\b|\bmodule\b/gi, "thành phần giao diện"],
+  [/\brealtime\b/gi, "cập nhật mới"],
+  [/\bonline\b/gi, "trực tuyến"],
+  [/\bvr\b/gi, "ảnh 360"],
+  [/\bupload\b/gi, "tải lên"],
+  [/\bimport\b/gi, "nhập file"],
+  [/\bexport\b/gi, "xuất file"],
+];
+
+export const toUserFacingCopy = (value) => {
+  if (value == null) return value;
+  let message = String(value);
+  TECHNICAL_COPY_REPLACEMENTS.forEach(([pattern, replacement]) => {
+    message = message.replace(pattern, replacement);
+  });
+  return message.replace(/\s{2,}/g, " ").trim();
+};
+
 const toAlertMessage = (message) => {
   if (message == null) return ALERT_FALLBACK_MESSAGE;
-  if (message instanceof Error) return message.message || ALERT_FALLBACK_MESSAGE;
-  return String(message) || ALERT_FALLBACK_MESSAGE;
+  if (message instanceof Error) return toUserFacingCopy(message.message || ALERT_FALLBACK_MESSAGE);
+  return toUserFacingCopy(String(message) || ALERT_FALLBACK_MESSAGE);
 };
 
 const getAlertNotificationType = (message) => {
@@ -31,7 +63,7 @@ const getAlertNotificationType = (message) => {
  * UI-only toast/local notification provider.
  *
  * This provider intentionally stores short-lived interface feedback in React state.
- * It is not the persistent DB notification workflow used by NotificationBell.
+ * It is not the persistent notification workflow used by NotificationBell.
  */
 const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
@@ -47,9 +79,9 @@ const NotificationProvider = ({ children }) => {
           : { message, actionLabel: null, onAction: null };
       const n = {
         id,
-        message: normalized.message,
+        message: toUserFacingCopy(normalized.message),
         type,
-        actionLabel: normalized.actionLabel || null,
+        actionLabel: normalized.actionLabel ? toUserFacingCopy(normalized.actionLabel) : null,
         onAction:
           typeof normalized.onAction === "function" ? normalized.onAction : null,
       };

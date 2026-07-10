@@ -26,45 +26,27 @@ function readSessionValue(key) {
 
 function resolveVerificationError(error, channel = "email") {
   const first = error?.graphQLErrors?.[0];
-  const extensions = first?.extensions || {};
-  const code = String(extensions.code || "").toUpperCase();
-  const provider = extensions.provider ? ` Provider: ${extensions.provider}.` : "";
-  const detail = extensions.error ? ` Chi tiết: ${extensions.error}.` : "";
+  const code = String(first?.extensions?.code || "").toUpperCase();
   const isSms = channel === "sms";
+  const contactLabel = isSms ? "SMS" : "email";
 
-  if (code === "EMAIL_PROVIDER_NOT_CONFIGURED") {
-    return `Chưa gửi được email xác minh: backend chưa cấu hình SMTP hoặc App Password Gmail.${provider}${detail}`;
+  if (code.endsWith("PROVIDER_NOT_CONFIGURED") || code.endsWith("NOT_SENT")) {
+    return `Hiện chưa thể gửi ${contactLabel} xác minh. Vui lòng thử lại sau hoặc chọn phương thức xác minh khác.`;
   }
 
-  if (code === "SMS_PROVIDER_NOT_CONFIGURED") {
-    return `Chưa gửi được SMS xác minh: backend chưa cấu hình provider SMS.${provider}${detail}`;
-  }
-
-  if (code === "EMAIL_DELIVERY_FAILED") {
-    return `Gửi email xác minh thất bại: provider trả lỗi.${provider}${detail}`;
-  }
-
-  if (code === "SMS_DELIVERY_FAILED") {
-    return `Gửi SMS xác minh thất bại: provider trả lỗi.${provider}${detail}`;
+  if (code.endsWith("DELIVERY_FAILED")) {
+    return `Gửi ${contactLabel} xác minh chưa thành công. Vui lòng kiểm tra lại thông tin liên hệ hoặc thử lại sau.`;
   }
 
   if (code === "TOO_MANY_REQUESTS") {
-    return `Bạn vừa yêu cầu gửi lại ${isSms ? "SMS" : "email"}. Vui lòng đợi hết thời gian cooldown rồi thử lại.`;
-  }
-
-  if (code === "EMAIL_NOT_SENT") {
-    return `Email xác minh chưa được gửi. Trạng thái: ${extensions.deliveryStatus || "UNKNOWN"}.${provider}${detail}`;
-  }
-
-  if (code === "SMS_NOT_SENT") {
-    return `SMS xác minh chưa được gửi. Trạng thái: ${extensions.deliveryStatus || "UNKNOWN"}.${provider}${detail}`;
+    return `Bạn vừa yêu cầu gửi lại ${contactLabel}. Vui lòng đợi ít phút rồi thử lại.`;
   }
 
   if (error?.networkError) {
-    return "Không kết nối được backend. Hãy kiểm tra backend đã chạy và GraphQL endpoint đúng chưa.";
+    return "Kết nối không ổn định. Vui lòng kiểm tra mạng và thử lại.";
   }
 
-  return first?.message || error?.message || `Không thể gửi lại ${isSms ? "SMS" : "email"} xác minh.`;
+  return `Không thể gửi lại ${contactLabel} xác minh lúc này. Vui lòng thử lại sau.`;
 }
 
 export default function VerifyEmailPendingCompact() {
@@ -90,7 +72,7 @@ export default function VerifyEmailPendingCompact() {
     errorPolicy: "none",
     onCompleted: () => {
       setFeedbackType("success");
-      setFeedback("Email xác minh đã được backend gửi thành công. Hãy kiểm tra Inbox, Spam hoặc Promotions.");
+      setFeedback("Đã gửi email xác minh. Vui lòng kiểm tra Hộp thư đến, Spam hoặc Quảng cáo.");
     },
     onError: (err) => {
       setFeedbackType("error");
@@ -102,7 +84,7 @@ export default function VerifyEmailPendingCompact() {
     errorPolicy: "none",
     onCompleted: () => {
       setFeedbackType("success");
-      setFeedback("SMS xác minh đã được backend gửi thành công. Hãy kiểm tra tin nhắn trên điện thoại.");
+      setFeedback("Đã gửi SMS xác minh. Vui lòng kiểm tra tin nhắn trên điện thoại.");
     },
     onError: (err) => {
       setFeedbackType("error");

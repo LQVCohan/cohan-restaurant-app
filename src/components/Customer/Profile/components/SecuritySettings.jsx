@@ -98,7 +98,7 @@ const SecuritySettings = () => {
       showNotification(
         getCustomerActionErrorMessage(
           err,
-          "Lỗi: " + (err?.message || "Không thể đổi mật khẩu."),
+          err?.message || "Không thể đổi mật khẩu.",
         ),
         "error",
       );
@@ -108,20 +108,20 @@ const SecuritySettings = () => {
   const handleRevokeSession = async (id) => {
     try {
       await revokeSession({ variables: { id } });
-      showNotification("Đã đăng xuất phiên đã chọn.", "success");
+      showNotification("Đã đăng xuất lần đăng nhập đã chọn.", "success");
       refetch();
     } catch (err) {
-      showNotification(getCustomerActionErrorMessage(err, "Không thể đăng xuất phiên đã chọn."), "error");
+      showNotification(getCustomerActionErrorMessage(err, "Không thể đăng xuất lần đăng nhập đã chọn."), "error");
     }
   };
 
   const handleRevokeOther = async () => {
     try {
       const result = await revokeOther();
-      showNotification(`Đã đăng xuất ${result.data?.revokeOtherMyLoginSessions || 0} phiên khác.`, "success");
+      showNotification(`Đã đăng xuất ${result.data?.revokeOtherMyLoginSessions || 0} thiết bị khác.`, "success");
       refetch();
     } catch (err) {
-      showNotification(getCustomerActionErrorMessage(err, "Không thể đăng xuất các phiên khác."), "error");
+      showNotification(getCustomerActionErrorMessage(err, "Không thể đăng xuất các thiết bị khác."), "error");
     }
   };
 
@@ -144,7 +144,7 @@ const SecuritySettings = () => {
     <div className="security-settings fade-in">
       <section className="settings-card">
         <div className="card-header">
-          <h3>Đăng nhập & Bảo mật</h3>
+          <h3>Đăng nhập & bảo mật</h3>
           <p>Quản lý mật khẩu và các lớp bảo vệ tài khoản của bạn.</p>
         </div>
 
@@ -166,9 +166,9 @@ const SecuritySettings = () => {
 
         <div className="setting-row">
           <div className="setting-info">
-            <span className="label">Xác thực 2 yếu tố (2FA)</span>
+            <span className="label">Xác thực hai lớp</span>
             <span className="desc">
-              Tăng cường bảo mật bằng mã xác thực qua SMS/Email.
+              Tăng cường bảo mật bằng mã xác thực qua SMS hoặc email.
             </span>
           </div>
           <ToggleSwitch />
@@ -186,22 +186,22 @@ const SecuritySettings = () => {
         </button>
 
         <div className="session-list">
-          {sessionsLoading && <p className="session-empty">Đang tải phiên đăng nhập...</p>}
-          {!sessionsLoading && sessions.length === 0 && <p className="session-empty">Chưa có phiên đăng nhập nào.</p>}
+          {sessionsLoading && <p className="session-empty">Đang tải lịch sử đăng nhập...</p>}
+          {!sessionsLoading && sessions.length === 0 && <p className="session-empty">Chưa có lần đăng nhập nào.</p>}
           {sessions.map((session) => (
             <div key={session.id} className="session-item">
               <div className="session-icon" aria-hidden="true">{deviceIcon(session.userAgent)}</div>
               <div className="session-details">
                 <div className="session-name">
                   {deviceName(session.userAgent)}
-                  {session.isCurrent && <span className="badge-active">Phiên hiện tại</span>}
+                  {session.isCurrent && <span className="badge-active">Thiết bị hiện tại</span>}
                   <span className={session.isActive ? "badge-active" : "badge-revoked"}>
-                    {session.isActive ? "Đang hoạt động" : "Đã thu hồi"}
+                    {session.isActive ? "Đang hoạt động" : "Đã đăng xuất"}
                   </span>
                 </div>
                 <div className="session-meta">
-                  IP: {session.ip || "Không rõ"} • Đăng nhập: {formatDate(session.createdAt)}
-                  {session.revokedAt ? ` • Thu hồi: ${formatDate(session.revokedAt)}` : ""}
+                  Truy cập: {session.ip || "Không rõ"} • Đăng nhập: {formatDate(session.createdAt)}
+                  {session.revokedAt ? ` • Đăng xuất: ${formatDate(session.revokedAt)}` : ""}
                 </div>
               </div>
               {!session.isCurrent && session.isActive && (
@@ -251,7 +251,7 @@ const SecuritySettings = () => {
             <div className="setting-info">
               <span className="label">Xóa tài khoản</span>
               <span className="desc">
-                Tài khoản sẽ bị vô hiệu hóa trong 30 ngày và mọi phiên đăng nhập sẽ bị thu hồi.
+                Tài khoản sẽ bị vô hiệu hóa trong 30 ngày và mọi lần đăng nhập sẽ bị đăng xuất.
               </span>
             </div>
             <button type="button" className="btn-danger" onClick={() => setDeleteOpen(true)}>Xóa tài khoản</button>
@@ -262,7 +262,7 @@ const SecuritySettings = () => {
       <Modal
         isOpen={changePwdOpen}
         onClose={() => setChangePwdOpen(false)}
-        title="Đổi Mật Khẩu"
+        title="Đổi mật khẩu"
       >
         <div className="pwd-form-content">
           <div className="form-field">
@@ -320,58 +320,52 @@ const SecuritySettings = () => {
               onClick={submitPassword}
               disabled={loading}
             >
-              {loading ? "Đang xử lý..." : "Xác nhận"}
+              {loading ? "Đang lưu..." : "Lưu mật khẩu"}
             </button>
           </div>
         </div>
       </Modal>
 
-      {canDeleteAccount ? (
-        <Modal
-          isOpen={deleteOpen}
-          onClose={closeDeleteModal}
-          title="Xóa tài khoản"
-        >
-          <div className="pwd-form-content danger-confirm">
-            <p>
-              Tài khoản sẽ bị vô hiệu hóa và giữ trong thùng rác 30 ngày. Nhập{" "}
-              <strong>XOA TAI KHOAN</strong> để xác nhận.
-            </p>
-            <div className="form-field">
-              <label htmlFor="delete-account-current-password">
-                Mật khẩu hiện tại (nếu tài khoản có mật khẩu)
-              </label>
-              <input
-                id="delete-account-current-password"
-                type="password"
-                autoComplete="current-password"
-                value={deleteForm.currentPassword}
-                onChange={(e) => setDeleteForm((f) => ({ ...f, currentPassword: e.target.value }))}
-              />
-            </div>
-            <div className="form-field">
-              <label htmlFor="delete-account-confirm-text">Nhập XOA TAI KHOAN</label>
-              <input
-                id="delete-account-confirm-text"
-                autoComplete="off"
-                value={deleteForm.confirmText}
-                onChange={(e) => setDeleteForm((f) => ({ ...f, confirmText: e.target.value }))}
-              />
-            </div>
-            <div className="form-actions">
-              <button type="button" className="btn-cancel" onClick={closeDeleteModal}>Hủy</button>
-              <button
-                type="button"
-                className="btn-confirm btn-confirm-danger"
-                onClick={submitDeleteAccount}
-                disabled={deletingAccount || !deleteConfirmationValid}
-              >
-                {deletingAccount ? "Đang xử lý..." : "Xóa tài khoản"}
-              </button>
-            </div>
+      <Modal
+        isOpen={deleteOpen}
+        onClose={closeDeleteModal}
+        title="Xóa tài khoản"
+      >
+        <div className="pwd-form-content">
+          <p>
+            Nhập <strong>XOA TAI KHOAN</strong> để xác nhận. Tài khoản sẽ bị vô hiệu hóa trong 30 ngày trước khi xóa vĩnh viễn.
+          </p>
+          <div className="form-field">
+            <label htmlFor="delete-current-password">Mật khẩu hiện tại</label>
+            <input
+              id="delete-current-password"
+              type="password"
+              autoComplete="current-password"
+              value={deleteForm.currentPassword}
+              onChange={(e) => setDeleteForm((form) => ({ ...form, currentPassword: e.target.value }))}
+            />
           </div>
-        </Modal>
-      ) : null}
+          <div className="form-field">
+            <label htmlFor="delete-confirm-text">Nội dung xác nhận</label>
+            <input
+              id="delete-confirm-text"
+              value={deleteForm.confirmText}
+              onChange={(e) => setDeleteForm((form) => ({ ...form, confirmText: e.target.value }))}
+            />
+          </div>
+          <div className="form-actions">
+            <button type="button" className="btn-cancel" onClick={closeDeleteModal}>Hủy</button>
+            <button
+              type="button"
+              className="btn-danger"
+              onClick={submitDeleteAccount}
+              disabled={!deleteConfirmationValid || deletingAccount}
+            >
+              {deletingAccount ? "Đang xử lý..." : "Xóa tài khoản"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

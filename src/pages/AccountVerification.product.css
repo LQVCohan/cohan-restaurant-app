@@ -303,6 +303,42 @@
   animation: accountVerificationSpin 0.9s linear infinite;
 }
 
+.account-verification-page:has(input[autocomplete="current-password"]) {
+  padding-block: 72px 56px;
+}
+
+.account-verification-card:has(input[autocomplete="current-password"]) {
+  width: min(520px, 100%);
+  padding: clamp(24px, 4vw, 34px);
+}
+
+.account-verification-card:has(input[autocomplete="current-password"])::before,
+.account-verification-card:has(input[autocomplete="current-password"]) .account-verification-icon,
+.account-verification-card:has(input[autocomplete="current-password"]) .account-verification-contact {
+  display: none;
+}
+
+.account-verification-card:has(input[autocomplete="current-password"]) .account-verification-title {
+  margin-bottom: 8px;
+  font-size: clamp(1.85rem, 4vw, 2.35rem);
+  line-height: 1.02;
+}
+
+.account-verification-card:has(input[autocomplete="current-password"]) .account-verification-text {
+  margin-bottom: 18px;
+  font-size: 0.95rem;
+}
+
+.account-verification-card:has(input[autocomplete="current-password"]) .brand-invitation-password {
+  margin: 0;
+  padding: 16px;
+  gap: 12px;
+}
+
+.account-verification-card:has(input[autocomplete="current-password"]) .account-verification-actions {
+  margin-top: 16px;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .account-verification-card {
     animation: accountVerificationIn 0.56s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -322,6 +358,10 @@
 @media (max-width: 560px) {
   .account-verification-page {
     padding: 86px 14px 48px;
+  }
+
+  .account-verification-page:has(input[autocomplete="current-password"]) {
+    padding: 72px 14px 40px;
   }
 
   .account-verification-card {

@@ -1,9 +1,7 @@
 // src/hooks/useTableDraft.js
 
 const unavailable = async () => {
-  throw new Error(
-    "Table draft GraphQL operations are not available in the backend schema.",
-  );
+  throw new Error("Chức năng lưu bản nháp bàn chưa khả dụng. Vui lòng thử lại sau.");
 };
 
 /* ===================== Hook ===================== */
