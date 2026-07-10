@@ -110,3 +110,15 @@ export function normalizeFinanceDashboardResult(result, request = {}) {
 
   return { ...result, trend: Array.from(buckets.values()) };
 }
+
+export function includeResolvedReconciliationCount(result, resolvedCount = 0) {
+  return {
+    ...result,
+    reconciliationSummary: {
+      ...result?.reconciliationSummary,
+      matched:
+        Number(result?.reconciliationSummary?.matched || 0) +
+        Number(resolvedCount || 0),
+    },
+  };
+}
