@@ -1,0 +1,20 @@
+{
+  "id": "07-11-multi-warehouse-management",
+  "title": "Restore multi-warehouse management",
+  "status": "in_progress",
+  "area": "fullstack",
+  "createdAt": "2026-07-11",
+  "updatedAt": "2026-07-11",
+  "supersedes": "07-10-single-default-warehouse-ui",
+  "validation": {
+    "completed": [],
+    "notRun": [
+      "targeted inventory resolver Vitest",
+      "targeted warehouse management component Vitest",
+      "npm run check:graphql:operations",
+      "npm run check:conflicts",
+      "npm run build",
+      "browser smoke"
+    ]
+  }
+}
