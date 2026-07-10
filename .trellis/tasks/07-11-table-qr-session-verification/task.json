@@ -1,0 +1,22 @@
+{
+  "id": "07-11-table-qr-session-verification",
+  "title": "Require table-session verification before QR ordering",
+  "status": "planning",
+  "area": "fullstack-security",
+  "createdAt": "2026-07-11",
+  "updatedAt": "2026-07-11",
+  "validation": {
+    "completed": [
+      "static schema-resolver-service-frontend-POS flow trace",
+      "reviewed printed QR token, active table-session lifecycle, public actions and POS queue callers"
+    ],
+    "notRun": [
+      "targeted backend Vitest",
+      "targeted frontend component Vitest",
+      "npm run check:graphql:operations",
+      "npm run check:conflicts",
+      "npm run build",
+      "browser QR smoke"
+    ]
+  }
+}
