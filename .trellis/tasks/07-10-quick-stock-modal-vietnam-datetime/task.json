@@ -1,0 +1,15 @@
+{
+  "id": "07-10-quick-stock-modal-vietnam-datetime",
+  "title": "Nâng cấp modal nhập kho nhanh và chuẩn hóa giờ Việt Nam",
+  "status": "in_progress",
+  "scope": [
+    "quick stock modal visual hierarchy and responsive layout",
+    "Vietnam timezone-safe datetime initialization and submission",
+    "targeted component regression coverage"
+  ],
+  "validation": [
+    "review StockItem and StockMovement through receiveStock to QuickStockModal flow",
+    "verify default datetime is Asia/Ho_Chi_Minh and submit payload is ISO UTC",
+    "run targeted QuickStockModal component test when an executable checkout is available"
+  ]
+}
