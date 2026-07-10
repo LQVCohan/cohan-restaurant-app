@@ -1,0 +1,37 @@
+{
+  "id": "07-11-customer-dish-restaurant-stock-selector",
+  "title": "Chọn nhà hàng còn món trên trang chi tiết",
+  "status": "in_progress",
+  "type": "cross-layer-feature-fix",
+  "priority": "P1",
+  "base_branch": "main",
+  "createdAt": "2026-07-11",
+  "rootCause": "FoodDetailV2 loads one restaurant-scoped MenuItem and has no contract for equivalent menu items at other public restaurants. Manager MenuItem inventory fields and customer menuItemLiveState also use separate stock calculations, allowing maxAvailable to drift from the live orderability result.",
+  "flow": "MenuItem/Recipe/Ingredient/StockItem/Warehouse -> shared variant availability -> MenuItem inventory fields and menuItemLiveState -> customerMenuItemLocations + FoodDetailV2 restaurant selector -> addCartItem",
+  "files": [
+    "cohan-restaurant-backend/src/services/menuItemInventoryAvailability.service.js",
+    "cohan-restaurant-backend/graphql/resolvers/cart/customerQuery.js",
+    "cohan-restaurant-backend/graphql/schema/menu.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/menu/query.js",
+    "src/components/Customer/Food/FoodDetailV2.jsx",
+    "src/components/Customer/Food/FoodDetailV2.scss",
+    "cohan-restaurant-backend/tests/services/menu-item-inventory-warehouse-scope.test.js",
+    "cohan-restaurant-backend/tests/resolvers/customer-menu-item-locations.test.js",
+    "src/components/Customer/Food/FoodDetailV2.helpers.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "cd cohan-restaurant-backend && npx vitest run tests/services/menu-item-inventory-warehouse-scope.test.js tests/resolvers/customer-menu-item-locations.test.js",
+      "npx vitest run src/components/Customer/Food/FoodDetailV2.helpers.test.jsx",
+      "npm run check:graphql",
+      "npm run check:conflicts",
+      "npm run build"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, frontend-design and cross-layer guide",
+      "traced persistence, resolver/service, GraphQL operations, FoodDetailV2 actions and closest tests",
+      "fetched latest target files and inspected callers"
+    ],
+    "notRun": []
+  }
+}
