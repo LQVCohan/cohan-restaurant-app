@@ -1,28 +1,601 @@
 @use "./RecipeModal.base";
 
-/* Key là định danh nội bộ, useRecipes tự chuẩn hóa trước khi gửi GraphQL. */
-.recipe-variant-grid > :nth-child(2) {
-  display: none;
+/*
+ * Recipe editor polish.
+ * `key` là định danh nội bộ: schema vẫn nhận key, useRecipes tự chuẩn hóa trước mutation.
+ */
+body:has(.manager-layout) .modal-container.recipe-modal-shell {
+  --recipe-surface: #fffdf8;
+  --recipe-surface-soft: #f7f4ed;
+  --recipe-surface-muted: #efe9df;
+  --recipe-ink: #202a2f;
+  --recipe-text: #36413f;
+  --recipe-muted: #737c79;
+  --recipe-accent: #376456;
+  --recipe-accent-strong: #28504a;
+  --recipe-line: rgba(196, 186, 170, 0.7);
+  --recipe-line-soft: rgba(222, 214, 202, 0.86);
+  --recipe-danger: #a44843;
+  --recipe-danger-soft: #fff3f1;
+  width: min(1240px, calc(100vw - 40px)) !important;
+  max-width: min(1240px, calc(100vw - 40px)) !important;
+  height: min(92dvh, 860px) !important;
+  max-height: min(92dvh, 860px) !important;
+  border-radius: 24px !important;
 }
 
-/* Không để một dòng nhập tự do trông giống nguyên liệu đã được chọn thành công. */
-.recipeIngredientLine:not(.header):has(select:disabled) > div:first-child {
-  padding-bottom: 22px;
+body:has(.manager-layout) .modal-container.recipe-modal-shell > .modal-header {
+  min-height: 62px !important;
+  padding: 14px 20px !important;
 }
 
-.recipeIngredientLine:not(.header):has(select:disabled) > div:first-child::after {
-  content: "Chưa chọn được nguyên liệu. Hãy chọn một mục trong danh sách gợi ý.";
-  position: absolute;
-  left: 2px;
-  right: 2px;
-  bottom: 0;
-  color: #b54747;
-  font-size: 12px;
-  font-weight: 700;
+body:has(.manager-layout) .modal-container.recipe-modal-shell > .modal-header h3 {
+  font-size: 1.04rem !important;
+  font-weight: 760 !important;
+  letter-spacing: -0.022em !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .modal-body {
+  padding: 18px 20px 104px !important;
+  background:
+    radial-gradient(circle at 96% 0%, rgba(95, 141, 123, 0.08), transparent 21rem),
+    linear-gradient(180deg, #faf8f3 0%, #f4f0e8 100%) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-section {
+  margin-bottom: 14px !important;
+  padding: 17px !important;
+  border-radius: 20px !important;
+  border-color: var(--recipe-line-soft) !important;
+  background: rgba(255, 253, 248, 0.93) !important;
+  box-shadow:
+    0 14px 34px rgba(42, 52, 60, 0.052),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .section-header {
+  align-items: center !important;
+  margin-bottom: 13px !important;
+  padding-bottom: 11px !important;
+  border-bottom: 1px solid var(--recipe-line-soft) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .section-title {
+  color: var(--recipe-ink) !important;
+  font-size: 0.98rem !important;
+  font-weight: 760 !important;
+  letter-spacing: -0.018em !important;
+  text-wrap: balance;
+}
+
+/* Món đang áp dụng: gom thông tin thành một dải tóm tắt dễ quét. */
+body:has(.manager-layout) .modal-container.recipe-modal-shell
+  .recipe-section:first-of-type
+  > div[style*="justify-content"] {
+  min-height: 78px;
+  align-items: center !important;
+  padding: 14px 16px !important;
+  border: 1px solid var(--recipe-line-soft) !important;
+  border-radius: 16px !important;
+  background:
+    radial-gradient(circle at 94% 12%, rgba(95, 141, 123, 0.1), transparent 13rem),
+    linear-gradient(180deg, #fffdf8, #f8f5ee) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell
+  .recipe-section:first-of-type
+  > div[style*="justify-content"]
+  > div:first-child {
+  min-width: 0;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell
+  .recipe-section:first-of-type
+  > div[style*="justify-content"]
+  > div:first-child
+  > div:first-child {
+  overflow: hidden;
+  color: var(--recipe-ink) !important;
+  font-size: 1rem !important;
+  font-weight: 780 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tabs biến thể: rõ trạng thái, có thể cuộn ngang khi nhiều biến thể. */
+body:has(.manager-layout) .modal-container.recipe-modal-shell .method-tabs {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  margin-bottom: 13px !important;
+  padding: 6px !important;
+  overflow-x: auto;
+  border: 1px solid var(--recipe-line-soft) !important;
+  border-radius: 15px !important;
+  background: var(--recipe-surface-soft) !important;
+  scrollbar-width: thin;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .method-tab {
+  flex: 0 0 auto;
+  min-height: 38px !important;
+  padding: 8px 13px !important;
+  border-radius: 11px !important;
+  border-color: transparent !important;
+  background: transparent !important;
+  color: #5f6865 !important;
+  font-size: 0.84rem !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .method-tab:hover:not(.active) {
+  border-color: var(--recipe-line) !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+  color: var(--recipe-ink) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .method-tab.active {
+  border-color: #29383e !important;
+  background: #29383e !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(32, 42, 47, 0.16) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .method-tabs > .method-tab:last-child {
+  margin-left: auto;
+  border: 1px dashed rgba(55, 100, 86, 0.38) !important;
+  background: rgba(246, 250, 247, 0.9) !important;
+  color: var(--recipe-accent) !important;
+}
+
+/* Khối cấu hình biến thể: giảm card lồng nhau và cân lại nhịp đọc. */
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-editor {
+  overflow: visible !important;
+  border: 1px solid var(--recipe-line-soft) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 253, 248, 0.72) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-grid {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  gap: 13px 14px !important;
+  padding: 16px 16px 12px !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-grid > :nth-child(1) {
+  grid-column: span 4;
+}
+
+/* Key nội bộ không hiển thị cho người vận hành. */
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-grid > :nth-child(2) {
+  display: none !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-grid > :nth-child(3) {
+  grid-column: span 3;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-grid > :nth-child(4) {
+  grid-column: span 2;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-grid > :nth-child(5) {
+  grid-column: span 3;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-grid label {
+  color: #59635f !important;
+  font-size: 0.79rem !important;
+  font-weight: 680 !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-grid input,
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-grid select {
+  min-height: 44px !important;
+  border-radius: 12px !important;
+  border-color: var(--recipe-line-soft) !important;
+  background: var(--recipe-surface) !important;
+  font-size: 0.9rem !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-default-check {
+  grid-column: 1 / -1;
+  display: flex !important;
+  align-items: center !important;
+  min-height: 52px;
+  margin: 1px 0 0 !important;
+  padding: 9px 12px !important;
+  border: 1px solid var(--recipe-line-soft);
+  border-radius: 13px;
+  background: var(--recipe-surface-soft);
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-default-check label {
+  display: grid !important;
+  grid-template-columns: 18px auto;
+  align-items: center !important;
+  gap: 0 9px !important;
+  color: var(--recipe-ink) !important;
+  font-size: 0.84rem !important;
+  font-weight: 720 !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-default-check label::after {
+  content: "Tự động áp dụng khi khách không chọn biến thể khác.";
+  grid-column: 2;
+  margin-top: 3px;
+  color: var(--recipe-muted);
+  font-size: 0.73rem;
+  font-weight: 540;
   line-height: 1.35;
 }
 
-.recipeIngredientLine:not(.header):has(select:disabled) > div:first-child input {
-  border-color: #d98b86;
-  background: #fff8f7;
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-default-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--recipe-accent);
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-actions {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  padding: 0 16px 14px !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-actions .btn {
+  min-height: 36px !important;
+  padding-inline: 13px !important;
+  border-radius: 11px !important;
+  font-size: 0.79rem !important;
+}
+
+/* Bảng nguyên liệu: ưu tiên quét nhanh và phân biệt rõ đã chọn/chưa chọn. */
+body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredient-table {
+  margin: 0 16px 14px !important;
+  overflow: visible !important;
+  border: 1px solid var(--recipe-line-soft) !important;
+  border-radius: 16px !important;
+  background: var(--recipe-surface) !important;
+  box-shadow: 0 10px 28px rgba(42, 52, 60, 0.045) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipeIngredientLine {
+  grid-template-columns:
+    minmax(250px, 2.7fr) minmax(110px, 0.85fr) minmax(100px, 0.75fr)
+    minmax(110px, 0.85fr) 42px !important;
+  gap: 10px !important;
+  padding: 12px 14px !important;
+  border-bottom-color: var(--recipe-line-soft) !important;
+  background: rgba(255, 253, 248, 0.9) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipeIngredientLine.header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 5 !important;
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+  border-bottom: 1px solid var(--recipe-line) !important;
+  background: linear-gradient(180deg, #f7f4ed, #efe9df) !important;
+  color: #56605d !important;
+  font-size: 0.75rem !important;
+  font-weight: 760 !important;
+  letter-spacing: 0.018em !important;
+  text-transform: none !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell
+  .recipeIngredientLine:not(.header):hover,
+body:has(.manager-layout) .modal-container.recipe-modal-shell
+  .recipeIngredientLine:not(.header):focus-within {
+  z-index: 6;
+  background: #fffdf9 !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipeIngredientLine input,
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipeIngredientLine select {
+  min-height: 42px !important;
+  border-radius: 11px !important;
+  border-color: var(--recipe-line-soft) !important;
+  background: #ffffff !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-ingredient-picked {
+  min-height: 42px !important;
+  padding: 5px 6px 5px 11px;
+  border: 1px solid rgba(95, 141, 123, 0.24);
+  border-radius: 11px;
+  background: #f3f8f5;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-ingredient-picked::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 999px;
+  background: #5f8d7b;
+  box-shadow: 0 0 0 4px rgba(95, 141, 123, 0.13);
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-ingredient-picked strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--recipe-ink) !important;
+  font-size: 0.88rem;
+  font-weight: 720 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Chỉ báo lỗi sau khi người dùng đã nhập nhưng chưa chọn được một nguyên liệu thật. */
+body:has(.manager-layout) .modal-container.recipe-modal-shell
+  .recipeIngredientLine:not(.header):has(select:disabled):has(> div:first-child input:not(:placeholder-shown)):not(:focus-within)
+  > div:first-child {
+  padding-bottom: 27px;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell
+  .recipeIngredientLine:not(.header):has(select:disabled):has(> div:first-child input:not(:placeholder-shown)):not(:focus-within)
+  > div:first-child::after {
+  content: "Chưa chọn nguyên liệu. Hãy chọn một kết quả trong danh sách gợi ý.";
+  position: absolute;
+  right: 2px;
+  bottom: 0;
+  left: 2px;
+  color: var(--recipe-danger);
+  font-size: 0.72rem;
+  font-weight: 680;
+  line-height: 1.35;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell
+  .recipeIngredientLine:not(.header):has(select:disabled):has(> div:first-child input:not(:placeholder-shown)):not(:focus-within)
+  > div:first-child
+  input {
+  border-color: rgba(164, 72, 67, 0.52) !important;
+  background: var(--recipe-danger-soft) !important;
+  box-shadow: 0 0 0 3px rgba(164, 72, 67, 0.07) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredientSuggestDropdown {
+  z-index: 90 !important;
+  margin-top: 2px;
+  overflow: hidden;
+  border: 1px solid var(--recipe-line) !important;
+  border-radius: 14px !important;
+  background: rgba(255, 253, 248, 0.99) !important;
+  box-shadow: 0 20px 42px rgba(32, 42, 47, 0.2) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredientSuggestTitle {
+  padding: 9px 12px !important;
+  background: var(--recipe-surface-soft) !important;
+  color: #5f6865 !important;
+  font-size: 0.7rem !important;
+  letter-spacing: 0.04em !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredientSuggestItem {
+  min-height: 42px;
+  padding: 10px 12px !important;
+  border-radius: 9px;
+  color: var(--recipe-text) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredientSuggestItem:hover,
+body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredientSuggestItem:focus-visible {
+  outline: none;
+  background: #edf5f1 !important;
+  color: var(--recipe-accent-strong) !important;
+}
+
+/* Empty-result state phải nói rõ không có nguyên liệu khớp, tránh hiểu nhầm đã thêm. */
+body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredientSuggestEmpty {
+  display: grid;
+  gap: 4px;
+  padding: 16px 14px !important;
+  text-align: left !important;
+  font-size: 0 !important;
+  background: #fff8f6;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredientSuggestEmpty::before {
+  content: "Không tìm thấy nguyên liệu phù hợp";
+  color: var(--recipe-danger);
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredientSuggestEmpty::after {
+  content: "Kiểm tra chính tả hoặc tạo nguyên liệu trong mục Nguyên liệu trước khi thêm vào công thức.";
+  color: #786b68;
+  font-size: 0.73rem;
+  font-weight: 540;
+  line-height: 1.45;
+}
+
+/* Khi chưa có dòng nào, biến vùng thêm dòng thành empty state có hướng dẫn. */
+body:has(.manager-layout) .modal-container.recipe-modal-shell
+  .ingredient-table:not(:has(.recipeIngredientLine:not(.header)))
+  > div:last-child {
+  display: grid;
+  gap: 10px;
+  padding: 22px 14px 14px !important;
+  text-align: center;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell
+  .ingredient-table:not(:has(.recipeIngredientLine:not(.header)))
+  > div:last-child::before {
+  content: "Chưa có nguyên liệu trong biến thể này. Thêm dòng rồi chọn nguyên liệu từ danh sách gợi ý.";
+  max-width: 520px;
+  margin: 0 auto;
+  color: var(--recipe-muted);
+  font-size: 0.8rem;
+  font-weight: 560;
+  line-height: 1.5;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-add-line-btn {
+  min-height: 42px !important;
+  border-radius: 12px !important;
+  border-color: rgba(55, 100, 86, 0.34) !important;
+  background: #f3f8f5 !important;
+  color: var(--recipe-accent) !important;
+  font-size: 0.84rem !important;
+  font-weight: 720 !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-add-line-btn:hover {
+  border-color: rgba(55, 100, 86, 0.5) !important;
+  background: #e9f2ed !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .variant-footer {
+  margin: 14px 16px 16px !important;
+  padding: 14px 16px !important;
+  border-radius: 14px !important;
+  border-color: rgba(95, 141, 123, 0.24) !important;
+  background: linear-gradient(180deg, #f5f9f6, #edf4ef) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .variant-footer .label {
+  color: #54635e !important;
+  font-size: 0.82rem !important;
+  font-weight: 650 !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .variant-footer .value {
+  color: var(--recipe-accent-strong) !important;
+  font-size: 1.12rem !important;
+  font-weight: 790 !important;
+  font-variant-numeric: tabular-nums;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-missing-warning {
+  margin: 0 0 12px !important;
+  padding: 10px 12px !important;
+  border-color: rgba(164, 72, 67, 0.22) !important;
+  border-radius: 12px !important;
+  background: var(--recipe-danger-soft) !important;
+  color: var(--recipe-danger) !important;
+  font-size: 0.78rem !important;
+  font-weight: 650 !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-modal-footer-actions {
+  gap: 8px !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-modal-footer-actions .btn {
+  min-height: 42px !important;
+  border-radius: 12px !important;
+  padding-inline: 16px !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell button:focus-visible,
+body:has(.manager-layout) .modal-container.recipe-modal-shell input:focus-visible,
+body:has(.manager-layout) .modal-container.recipe-modal-shell select:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 4px rgba(55, 100, 86, 0.13) !important;
+}
+
+@media (max-width: 1100px) {
+  body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-grid > :not(:nth-child(2)) {
+    grid-column: auto !important;
+  }
+
+  body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-default-check {
+    grid-column: 1 / -1 !important;
+  }
+
+  body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredient-table {
+    overflow-x: auto !important;
+  }
+
+  body:has(.manager-layout) .modal-container.recipe-modal-shell .recipeIngredientLine {
+    min-width: 800px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  body:has(.manager-layout) .modal-overlay:has(.recipe-modal-shell) {
+    align-items: flex-end !important;
+    padding: 8px !important;
+  }
+
+  body:has(.manager-layout) .modal-container.recipe-modal-shell {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: calc(100dvh - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+    border-radius: 22px 22px 14px 14px !important;
+  }
+
+  body:has(.manager-layout) .modal-container.recipe-modal-shell .modal-body {
+    padding: 12px 12px 92px !important;
+  }
+
+  body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-section {
+    padding: 14px !important;
+    border-radius: 16px !important;
+  }
+
+  body:has(.manager-layout) .modal-container.recipe-modal-shell .section-header {
+    align-items: stretch !important;
+  }
+
+  body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-grid {
+    grid-template-columns: 1fr !important;
+    padding: 14px !important;
+  }
+
+  body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-default-check {
+    grid-column: auto !important;
+  }
+
+  body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-actions .btn {
+    width: 100%;
+  }
+
+  body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-modal-footer-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-modal-footer-actions .btn {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  body:has(.manager-layout) .modal-container.recipe-modal-shell
+    .recipe-modal-footer-actions
+    button[type="submit"] {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:has(.manager-layout) .modal-container.recipe-modal-shell,
+  body:has(.manager-layout) .modal-container.recipe-modal-shell * {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
