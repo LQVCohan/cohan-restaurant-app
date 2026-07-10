@@ -27,6 +27,7 @@ import "../../StorageRecipeModalSummaryHide.css";
 import "../../StorageRecipeModalPaletteBalance.css";
 import "../../StorageSageTone.scss";
 import "../../IngredientModalEnhancements.css";
+import "../../StorageRecipeModalCompactLayout.css";
 import "./Tabs.scss";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
