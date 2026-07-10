@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   legacyCreateStaff: vi.fn(),
   legacyUpdateStaff: vi.fn(),
+  legacyDeleteStaff: vi.fn(),
+  legacySetEmploymentStatus: vi.fn(),
   requireRestaurantAccess: vi.fn(async () => true),
   requireRestaurantPermission: vi.fn(async () => true),
   getStaffRestaurantIds: vi.fn(),
@@ -64,6 +66,8 @@ vi.mock("../../graphql/resolvers/staff/mutation.js", () => ({
   default: {
     createStaff: mocks.legacyCreateStaff,
     updateStaff: mocks.legacyUpdateStaff,
+    deleteStaff: mocks.legacyDeleteStaff,
+    setStaffEmploymentStatus: mocks.legacySetEmploymentStatus,
   },
 }));
 vi.mock("../../graphql/resolvers/staff/staffAvatar.mutation.js", () => ({
@@ -149,6 +153,8 @@ describe("staff active business context", () => {
     mocks.getStaffRestaurantIds.mockResolvedValue(["restaurant-active"]);
     mocks.legacyCreateStaff.mockResolvedValue({ id: "staff-1" });
     mocks.legacyUpdateStaff.mockResolvedValue({ id: "staff-1" });
+    mocks.legacyDeleteStaff.mockResolvedValue(true);
+    mocks.legacySetEmploymentStatus.mockResolvedValue({ id: "staff-1" });
     mocks.BrandMembership.findOneAndUpdate.mockResolvedValue({
       id: "membership-1",
     });
@@ -322,6 +328,100 @@ describe("staff active business context", () => {
       expect.objectContaining({
         input: expect.objectContaining({ baseSalary: 6_000_000 }),
       }),
+      context,
+      undefined,
+    );
+  });
+
+  it("routes account lock and unlock through the scoped staff updater", async () => {
+    const resolvers = (
+      await import("../../graphql/resolvers/staff/index.js")
+    ).default;
+
+    await resolvers.Mutation.setStaffAccountStatus(
+      null,
+      { userId: "staff-1", status: "blocked" },
+      context,
+    );
+
+    expect(mocks.requireRestaurantPermission).toHaveBeenCalledWith(
+      context,
+      "restaurant-active",
+      "staff.write",
+    );
+    expect(mocks.legacyUpdateStaff).toHaveBeenCalledWith(
+      null,
+      {
+        userId: "staff-1",
+        input: { status: "blocked" },
+        restaurantId: "restaurant-active",
+      },
+      context,
+      undefined,
+    );
+  });
+
+  it("rejects invalid account statuses before mutating staff", async () => {
+    const resolvers = (
+      await import("../../graphql/resolvers/staff/index.js")
+    ).default;
+
+    await expect(
+      resolvers.Mutation.setStaffAccountStatus(
+        null,
+        { userId: "staff-1", status: "owner" },
+        context,
+      ),
+    ).rejects.toThrow("Trạng thái tài khoản nhân viên không hợp lệ");
+
+    expect(mocks.legacyUpdateStaff).not.toHaveBeenCalled();
+  });
+
+  it("requires staff.write before soft deleting an employee", async () => {
+    const resolvers = (
+      await import("../../graphql/resolvers/staff/index.js")
+    ).default;
+
+    await expect(
+      resolvers.Mutation.deleteStaff(
+        null,
+        { userId: "staff-1" },
+        context,
+      ),
+    ).resolves.toBe(true);
+
+    expect(mocks.requireRestaurantPermission).toHaveBeenCalledWith(
+      context,
+      "restaurant-active",
+      "staff.write",
+    );
+    expect(mocks.legacyDeleteStaff).toHaveBeenCalledWith(
+      null,
+      { userId: "staff-1" },
+      context,
+      undefined,
+    );
+  });
+
+  it("requires staff.write before changing employment status", async () => {
+    const resolvers = (
+      await import("../../graphql/resolvers/staff/index.js")
+    ).default;
+
+    await resolvers.Mutation.setStaffEmploymentStatus(
+      null,
+      { userId: "staff-1", employmentStatus: "ON_LEAVE" },
+      context,
+    );
+
+    expect(mocks.requireRestaurantPermission).toHaveBeenCalledWith(
+      context,
+      "restaurant-active",
+      "staff.write",
+    );
+    expect(mocks.legacySetEmploymentStatus).toHaveBeenCalledWith(
+      null,
+      { userId: "staff-1", employmentStatus: "ON_LEAVE" },
       context,
       undefined,
     );
