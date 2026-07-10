@@ -1,1 +1,4 @@
-export { default } from "./StaffPerformancePage";
+import StaffPerformancePage from "./StaffPerformancePage";
+import "./StaffPerformanceResponsive.scss";
+
+export default StaffPerformancePage;
