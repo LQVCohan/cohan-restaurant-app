@@ -32,6 +32,7 @@ export { default as MenuAvailabilityWatch } from "./menu-availability-watch.mode
 export { default as Order } from "./order.model.js";
 export { default as PaymentTransaction } from "./payment-transaction.model.js";
 export { default as PaymentSession } from "./payment-session.model.js";
+export { default as PaymentProviderCredential } from "./payment-provider-credential.model.js";
 export { default as BankTransaction } from "./bank-transaction.model.js";
 export { default as PaymentReconciliation } from "./payment-reconciliation.model.js";
 export { default as PaymentRefund } from "./payment-refund.model.js";

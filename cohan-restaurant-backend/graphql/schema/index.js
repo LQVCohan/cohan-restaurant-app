@@ -218,6 +218,7 @@ const files = [
   "supply.graphql",
   "event_log.graphql",
   "payments.graphql",
+  "paymentCredentials.graphql",
   "paymentTransfer.graphql",
   "walletEnums.graphql",
   "wallet.graphql",

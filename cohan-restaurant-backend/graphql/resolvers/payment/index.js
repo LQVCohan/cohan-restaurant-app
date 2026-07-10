@@ -9,6 +9,10 @@ import MergedTablePaymentMutation from "./mergedTablePaymentMutation.js";
 import TransferPaymentMutation from "./transferMutation.js";
 import { PaymentResolvers } from "./types.js";
 import publicTablePaymentMutation from "./publicTablePaymentMutation.js";
+import {
+  PaymentCredentialMutation,
+  PaymentCredentialQuery,
+} from "./paymentCredential.js";
 import wallet from "../wallet/index.js";
 import {
   includeResolvedReconciliationCount,
@@ -39,6 +43,7 @@ export default {
     ...PaymentQuery,
     ...BankTransferPaymentQuery,
     ...(wallet.Query || {}),
+    ...PaymentCredentialQuery,
     financeDashboard,
   },
   Mutation: {
@@ -50,6 +55,7 @@ export default {
     ...publicTablePaymentMutation,
     ...(wallet.Mutation || {}),
     ...MergedTablePaymentMutation,
+    ...PaymentCredentialMutation,
   },
   ...PaymentResolvers,
 };

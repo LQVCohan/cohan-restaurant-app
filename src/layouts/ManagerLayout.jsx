@@ -36,6 +36,7 @@ const FinanceDashboard = lazy(() => import("@/components/Dashboard_Manager/Finan
 const TransactionManagement = lazy(() => import("@/components/Dashboard_Manager/Transactions/TransactionManagement"));
 const TransferPaymentReviewPage = lazy(() => import("@/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage"));
 const ManagerWalletPage = lazy(() => import("@/components/Dashboard_Manager/Wallet/ManagerWalletPage"));
+const PaymentProviderSettingsPage = lazy(() => import("@/components/Dashboard_Manager/PaymentSettings/PaymentProviderSettingsPage"));
 const PrintManagement = lazy(() => import("@/components/Dashboard_Manager/PrintManagement/PrintManagement"));
 const RbacManagement = lazy(() => import("@/components/Dashboard_Manager/RBAC/RbacManagement"));
 const SettingsManagement = lazy(() => import("@/components/Dashboard_Manager/Settings/SettingsManagement"));
@@ -55,7 +56,7 @@ const IS_TEST_ENV = import.meta.env.MODE === "test";
 
 const VALID_MANAGER_PAGES = new Set([
   "dashboard", "brands", "tables", "table-qr", "orders", "menu", "modifiers", "combos", "inventory", "staff", "customers",
-  "customer-analytics", "analytics", "transactions", "transfer-review", "wallet", "reports", "schedules",
+  "customer-analytics", "analytics", "transactions", "transfer-review", "payment-settings", "wallet", "reports", "schedules",
   "promotions", "finance", "payroll", "reviews", "settings", "rates", "setting",
   "backup", "logs", "print-management", "restaurant-info-management", "rbac", "system-users", "ai-handoff",
   "ai-chatbot-analytics", "ai-chatbot-settings", "ai-chatbot-knowledge",
@@ -109,6 +110,7 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   finance: ["finance.read", "payment.read"],
   transactions: ["transaction.read", "finance.read", "payment.read"],
   "transfer-review": ["payment.read", "reconciliation.read"],
+  "payment-settings": ["payment.read", "payment.write"],
   wallet: ["payment.read", "payment.write", "refund.write"],
   settings: ["system.manage"],
   rates: ["system.manage"],
@@ -144,6 +146,7 @@ const PAGE_CONFIG = {
   finance: page("Tài chính", "Theo dõi thu chi, công nợ, hoàn tiền và đối soát", "💰", ["finance", "thu", "chi", "công nợ", "profit"]),
   transactions: page("Giao dịch", "Theo dõi thanh toán, hoàn tiền và đối soát giao dịch", "💳", ["transaction", "giao dịch", "payment", "thanh toán", "refund", "đối soát"]),
   "transfer-review": page("Duyệt chuyển khoản", "Xem bằng chứng chuyển khoản, xác minh hoặc từ chối thanh toán", "🏦", ["transfer", "bank", "chuyển khoản", "xác minh", "duyệt thanh toán"]),
+  "payment-settings": page("Cổng thanh toán", "Kết nối tài khoản merchant MoMo và VNPAY cho từng chi nhánh", "🔐", ["payment", "merchant", "momo", "vnpay", "cổng thanh toán"]),
   wallet: page("Ví khách hàng", "Quản lý Cohan Balance, hoàn tiền về ví và điều chỉnh số dư", "👛", ["wallet", "ví", "balance", "refund", "hoàn tiền", "cohan balance"]),
   schedules: page("Lịch làm việc", "Lập ca làm theo ngày/tuần/tháng và phân công nhân sự", "📅", ["schedule", "ca làm", "shift", "lịch"]),
   promotions: page("Khuyến mãi", "Quản lý campaign, coupon, điều kiện và thời gian hiệu lực", "🎁", ["promotion", "coupon", "discount", "khuyến mãi"]),
@@ -443,6 +446,12 @@ const ManagerLayout = () => {
       case "finance": return <FinanceDashboard />;
       case "transactions": return <TransactionManagement />;
       case "transfer-review": return <TransferPaymentReviewPage />;
+      case "payment-settings": return (
+        <PaymentProviderSettingsPage
+          restaurantId={requestedRestaurantId || brandSelection.selectedRestaurantId || null}
+          restaurantName={brandSelection.selectedRestaurant?.name || ""}
+        />
+      );
       case "wallet": return <ManagerWalletPage />;
       case "settings":
       case "rates":

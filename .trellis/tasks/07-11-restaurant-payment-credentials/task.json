@@ -1,0 +1,41 @@
+{
+  "id": "07-11-restaurant-payment-credentials",
+  "name": "restaurant-payment-credentials",
+  "title": "Add restaurant payment provider configuration",
+  "description": "Let authorized restaurant managers configure encrypted MoMo and VNPAY merchant credentials from the manager UI without editing code or environment files.",
+  "status": "completed",
+  "dev_type": "fullstack",
+  "scope": "restaurant-payment-provider-credentials",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "completedAt": "2026-07-11",
+  "branch": "feat/restaurant-payment-credentials-20260711",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "c66e3f379d1c761fd2b5179e82422c2f0f6f35e5",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1344",
+  "subtasks": [],
+  "children": [],
+  "parent": "payment-provider-flow-audit-20260710",
+  "relatedFiles": [
+    "cohan-restaurant-backend/models/payment-provider-credential.model.js",
+    "cohan-restaurant-backend/models/payment-session.model.js",
+    "cohan-restaurant-backend/src/services/payment/paymentCredential.service.js",
+    "cohan-restaurant-backend/src/services/payment/providers.js",
+    "cohan-restaurant-backend/graphql/schema/paymentCredentials.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/payment/paymentCredential.js",
+    "cohan-restaurant-backend/src/server/createServer.js",
+    "src/components/Dashboard_Manager/PaymentSettings/PaymentProviderSettingsPage.jsx",
+    "src/components/Dashboard_Manager/PaymentSettings/PaymentProviderSettingsPage.scss",
+    "src/layouts/ManagerLayout.jsx",
+    "src/components/Dashboard_Manager/Sidebar.jsx",
+    "src/lib/lucideReactShim.jsx"
+  ],
+  "notes": "Restaurant-scoped credentials apply to reservation/order/POS payment sessions. Customer Cohan Balance topups remain platform-scoped because wallet funds belong to the COHAN platform. The branch was rebased onto main at 8edb635e7e9d11d259db5e0369fd410dcd504b0b. GitHub CI passed backend lint, full tests, Menu RBAC and build; frontend conflict checks, lint, unit tests, changed-component tests, production build and Playwright smoke tests on code commit c66e3f379d1c761fd2b5179e82422c2f0f6f35e5. No live MoMo or VNPAY merchant transaction was executed from CI.",
+  "meta": {
+    "skills": ["ponytail", "frontend-design", "taste-ui-redesign"]
+  }
+}
