@@ -5,9 +5,16 @@ import { computeRestaurantAvailability } from "../../../src/services/restaurantA
 const PUBLIC_BUSINESS_STATUSES = new Set(["active"]);
 const PUBLIC_PUBLICATION_STATUSES = new Set(["published"]);
 
-export async function getPublicRestaurantOrThrow(restaurantId, message = "Nhà hàng hiện chưa nhận đặt món.") {
+export async function getPublicRestaurantOrThrow(
+  restaurantId,
+  message = "Nhà hàng hiện chưa nhận đặt món.",
+  options = {},
+) {
   const restaurant = await Restaurant.findById(restaurantId).lean();
-  const availability = computeRestaurantAvailability(restaurant || {});
+  const availability = computeRestaurantAvailability(
+    restaurant || {},
+    options,
+  );
   const isPublic =
     !!restaurant &&
     PUBLIC_BUSINESS_STATUSES.has(String(availability.businessStatus || "")) &&
