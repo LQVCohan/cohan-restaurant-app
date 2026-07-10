@@ -676,6 +676,7 @@ input CreateUserInput {
   workingDays: [StaffWorkingDay!]
   dateJoined: DateTime
   noteInternal: String
+  emergencyContact: EmergencyContactInput
 
   hourlyRate: Float
   baseSalary: Int
