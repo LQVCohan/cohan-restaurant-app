@@ -1,0 +1,181 @@
+.staff-performance-page {
+  container-name: staff-performance;
+  container-type: inline-size;
+  min-width: 0;
+
+  .performance-hero,
+  .performance-controls,
+  .performance-kpis,
+  .performance-overview,
+  .performance-layout,
+  .performance-table-card {
+    min-width: 0;
+  }
+
+  // Keep the table full-width until a real detail panel is mounted.
+  .performance-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .performance-layout:has(> .performance-detail-panel) {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+  }
+
+  .performance-table-wrap {
+    max-width: 100%;
+    overscroll-behavior-inline: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .performance-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+
+    .control-group {
+      min-width: 0;
+
+      &.right {
+        flex-wrap: nowrap;
+      }
+    }
+  }
+}
+
+@container staff-performance (max-width: 1120px) {
+  .staff-performance-page {
+    .performance-layout:has(> .performance-detail-panel) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .performance-detail-panel {
+      position: static;
+    }
+
+    .performance-controls {
+      grid-template-columns: minmax(0, 1fr);
+
+      .control-group.right {
+        justify-content: flex-start;
+      }
+    }
+
+    .performance-kpis {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+}
+
+@container staff-performance (max-width: 760px) {
+  .staff-performance-page {
+    .performance-hero {
+      flex-direction: column;
+      align-items: stretch;
+
+      .hero-actions {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+    }
+
+    .performance-controls {
+      .control-group,
+      .control-group.right {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .control-group label,
+      .control-group select,
+      .control-group .search-control {
+        flex: 1 1 12rem;
+        min-width: 0;
+      }
+
+      .control-group input,
+      .control-group select,
+      .control-group .search-control input {
+        width: 100%;
+        min-width: 0;
+      }
+    }
+
+    .performance-kpis {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .performance-overview {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .performance-table {
+      min-width: 900px;
+    }
+  }
+}
+
+@container staff-performance (max-width: 520px) {
+  .staff-performance-page {
+    gap: 0.75rem;
+
+    .performance-hero {
+      padding: 1rem;
+      border-radius: 18px;
+
+      .hero-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
+      }
+
+      .hero-actions .btn-primary {
+        grid-column: 1 / -1;
+      }
+
+      .hero-actions .btn-primary,
+      .hero-actions .btn-secondary {
+        width: 100%;
+        min-height: 44px;
+        padding-inline: 0.65rem;
+      }
+    }
+
+    .performance-controls {
+      gap: 0.65rem;
+
+      .control-group,
+      .control-group.right {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.6rem;
+      }
+
+      .control-group label,
+      .control-group select,
+      .control-group .search-control {
+        width: 100%;
+      }
+
+      .control-group input,
+      .control-group select,
+      .control-group .search-control input {
+        min-height: 44px;
+        font-size: 1rem;
+      }
+    }
+
+    .performance-kpis {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.65rem;
+    }
+
+    .table-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .performance-table {
+      min-width: 860px;
+    }
+  }
+}
