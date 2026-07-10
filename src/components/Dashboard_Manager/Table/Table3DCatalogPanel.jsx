@@ -28,12 +28,9 @@ const BADGE_PRIORITY = ["3D", "AR", "Custom", "Online", "Upload", "Placeholder"]
 
 const getCompactBadges = (model) => {
   const badges = getModelAssetBadges(model);
-  return [...badges]
-    .sort((left, right) => {
-      const leftIndex = BADGE_PRIORITY.indexOf(left);
-      const rightIndex = BADGE_PRIORITY.indexOf(right);
-      return (leftIndex === -1 ? 99 : leftIndex) - (rightIndex === -1 ? 99 : rightIndex);
-    })
+  return badges
+    .filter((badge) => BADGE_PRIORITY.includes(badge))
+    .sort((left, right) => BADGE_PRIORITY.indexOf(left) - BADGE_PRIORITY.indexOf(right))
     .slice(0, 2);
 };
 
