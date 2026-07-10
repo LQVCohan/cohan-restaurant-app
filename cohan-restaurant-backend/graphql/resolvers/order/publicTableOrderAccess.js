@@ -82,6 +82,8 @@ export const PublicTableOrderAccessQuery = {
     );
     const operationalCanOrder = Boolean(result?.canOrder);
     const hasActiveSession = Boolean(result?.session?.id);
+    const tableStatus = String(result?.tableStatus || "").toLowerCase();
+    const canBootstrapSession = hasActiveSession || tableStatus === "occupied";
     const credentialContext = withTableOrderSessionCookieCredentials(
       ctx,
       args.tableId,
@@ -95,12 +97,14 @@ export const PublicTableOrderAccessQuery = {
       : false;
 
     const canRequestOrderAccess =
-      operationalCanOrder && !orderAccessConfirmed;
+      operationalCanOrder && canBootstrapSession && !orderAccessConfirmed;
     const orderAccessBlockedReason = !operationalCanOrder
       ? result?.orderBlockedReason || "Bàn hiện chưa sẵn sàng nhận món."
-      : !orderAccessConfirmed
-        ? "Cần xác nhận thiết bị với nhân viên tại bàn trước khi xem và gọi món."
-        : null;
+      : !canBootstrapSession
+        ? "Nhân viên cần mở bàn sang trạng thái đang phục vụ trước khi xác nhận gọi món."
+        : !orderAccessConfirmed
+          ? "Cần xác nhận thiết bị với nhân viên tại bàn trước khi xem và gọi món."
+          : null;
 
     return {
       ...result,
