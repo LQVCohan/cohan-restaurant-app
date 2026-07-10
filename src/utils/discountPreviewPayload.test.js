@@ -4,6 +4,7 @@ import {
   buildOrderDiscountPreviewInput,
   getDiscountBreakdownTotal,
   mapCartItemToOrderItemInput,
+  mapCartItemToReservationOrderItemInput,
   mapDeliveryMethodToOrderType,
   normalizeCouponCode,
 } from "./discountPreviewPayload";
@@ -126,6 +127,27 @@ describe("checkout/order payload safety", () => {
     expect(item).not.toHaveProperty("behaviorScore");
     expect(item).not.toHaveProperty("cartId");
     expect(item).not.toHaveProperty("cartItemId");
+  });
+
+  it("builds a schema-safe reservation add-on item with cart hold references", () => {
+    const item = mapCartItemToReservationOrderItemInput({
+      id: "dish-1",
+      name: "Phở bò",
+      price: 70000,
+      backendCartId: "cart-1",
+      backendCartItemId: "cart-item-1",
+      analytics: { source: "for_you" },
+    });
+
+    expect(item).toEqual(
+      expect.objectContaining({
+        dishId: "dish-1",
+        cartId: "cart-1",
+        cartItemId: "cart-item-1",
+      }),
+    );
+    expect(item).not.toHaveProperty("analytics");
+    expect(item).not.toHaveProperty("restaurantId");
   });
 
   it("includes backend cart hold references only for checkout calls that opt in", () => {
