@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Cart, Warehouse } from "../../../models/index.js";
-import { checkAvailabilityForLinesTx } from "../../../src/services/inventory.service.js";
+import { Cart } from "../../../models/index.js";
 import { resolveCustomerModifierSelection } from "../../../src/services/customerModifierSelection.service.js";
+import { getMenuItemVariantAvailability } from "../../../src/services/menuItemAvailability.service.js";
 
 const POLICY_MESSAGE =
   "Chính sách giữ chỗ tồn kho: mỗi lần thêm món sẽ giữ chỗ tối đa 5 phút. Hủy/thoát quá nhiều lần có thể bị cảnh báo hoặc tạm chặn.";
@@ -25,16 +25,6 @@ const requireSelfUserId = (inputUserId, ctx) => {
   }
   return authUserId;
 };
-
-async function resolveWarehouseId(restaurantId) {
-  const warehouse = await Warehouse.findOne({ restaurantId, isActive: true })
-    .sort({ createdAt: 1, _id: 1 })
-    .lean();
-  if (!warehouse?._id) {
-    throw new GraphQLError("No warehouse found for this restaurant");
-  }
-  return warehouse._id;
-}
 
 const getActiveHoldExpiry = (item, now) => {
   if (item?.holdStatus && item.holdStatus !== "active") return null;
@@ -85,8 +75,13 @@ export const CustomerCartQuery = {
       resolvedUserId = ctx.user.id;
     }
 
-    const [warehouseId, modifierSelection] = await Promise.all([
-      resolveWarehouseId(restaurantId),
+    const servingKey = getServingKey(servingVariantKey);
+    const [availability, modifierSelection] = await Promise.all([
+      getMenuItemVariantAvailability({
+        restaurantId,
+        menuItemId,
+        servingKey,
+      }),
       resolveCustomerModifierSelection({
         restaurantId,
         menuItemId,
@@ -94,15 +89,9 @@ export const CustomerCartQuery = {
         validateRequired: false,
       }),
     ]);
-    const servingKey = getServingKey(servingVariantKey);
     const now = new Date();
 
-    const [availability, carts, myCart] = await Promise.all([
-      checkAvailabilityForLinesTx({
-        restaurantId,
-        warehouseId,
-        lines: [{ menuItemId, quantity: 1, servingKey }],
-      }),
+    const [carts, myCart] = await Promise.all([
       Cart.find({
         status: "active",
         items: {
