@@ -117,7 +117,6 @@ const unlockPageScroll = () => {
   restoreWindowScroll(restoreY);
 };
 
-// --- Custom Hook: Animation Delay ---
 const useDelayUnmount = (isMounted, delayTime) => {
   const [shouldRender, setShouldRender] = useState(false);
 
@@ -134,20 +133,20 @@ const useDelayUnmount = (isMounted, delayTime) => {
   return shouldRender;
 };
 
-// --- Main Component ---
 const Modal = ({
   isOpen,
   onClose,
   title = null,
-  size = "md", // sm, md, lg, xl, full
-  position = "center", // center, top
+  size = "md",
+  position = "center",
   children,
   closeOnOverlayClick = true,
   closeOnEscape = true,
   onBeforeClose,
   className = "",
-  zIndex = 1000, // Hỗ trợ stack modals
+  zIndex = 1000,
   autoWrapBody = true,
+  showCloseButton = true,
 }) => {
   const shouldRender = useDelayUnmount(isOpen, 260);
   const modalRef = useRef(null);
@@ -163,8 +162,9 @@ const Modal = ({
   }, [onBeforeClose, onClose]);
   const shouldAutoWrapBody = autoWrapBody && !hasStructuredModalChildren(children);
   const usesStructuredHeader = hasStructuredModalHeader(children);
+  const shouldRenderDefaultHeader =
+    !usesStructuredHeader && Boolean(title || (onClose && showCloseButton));
 
-  // 1. Lock Body Scroll & Focus Trap
   useEffect(() => {
     if (!isOpen) return undefined;
 
@@ -184,7 +184,6 @@ const Modal = ({
     };
   }, [isOpen]);
 
-  // 2. Handle Key Press (Escape)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (isOpen && closeOnEscape && e.key === "Escape") {
@@ -215,7 +214,6 @@ const Modal = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, closeOnEscape, requestClose]);
 
-  // 3. Handle Overlay Click
   const handleOverlayClick = (e) => {
     if (
       closeOnOverlayClick &&
@@ -244,10 +242,10 @@ const Modal = ({
         ref={modalRef}
         tabIndex={-1}
       >
-        {!usesStructuredHeader && (title || onClose) && (
+        {shouldRenderDefaultHeader && (
           <header className="modal-header">
             {title ? <h2 id={titleId}>{title}</h2> : <span />}
-            {onClose && (
+            {onClose && showCloseButton && (
               <button
                 type="button"
                 className="modal-close"
