@@ -19,10 +19,10 @@ No data contract changes are required.
 - Base responsive stacking on the performance page container width, not only the browser viewport.
 - Keep filters, KPIs, overview cards, table scrolling, selection, review, recalculation, export, permissions, and restaurant scoping unchanged.
 
-## Files to change
+## Files changed
 
-- `src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.jsx`: expose whether the detail layout is active.
-- `src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.scss`: fix the grid root cause and improve narrow-container wrapping.
+- `src/components/Dashboard_Manager/Staff/components/Performance/index.js`: load the responsive override after the existing component stylesheet.
+- `src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformanceResponsive.scss`: fix the grid root cause and add container-width responsive behavior without rewriting the established stylesheet.
 
 ## Acceptance criteria
 
@@ -33,12 +33,23 @@ No data contract changes are required.
 5. The table remains horizontally scrollable only inside its card at small widths.
 6. Existing loading, empty, error, export, review, and recalculation behavior remains unchanged.
 
+## Implementation result
+
+- `.performance-layout` now defaults to one full-width column.
+- The fixed detail column is enabled only when `.performance-detail-panel` is actually mounted.
+- Named container queries stack the detail panel and adapt controls, KPI cards, overview cards, and table behavior to the real staff content width.
+- No backend, GraphQL, state, permission, restaurant-scope, or performance-score logic changed.
+
 ## Validation plan
 
 - `npm run check:conflicts`
 - `npm run test:performance`
 - `npm run build`
 - Visual checks at container widths representative of 1440, 1024, 768, 430x932, and 390x844 when a browser environment is available.
+
+## Validation result
+
+The updated import order and SCSS selectors were reviewed through the latest GitHub file contents. Automated tests, Vite build, and browser viewport checks were not run because the connected GitHub environment does not provide a repository execution/browser session and no workflow run was created for the commit.
 
 ## Out of scope
 
