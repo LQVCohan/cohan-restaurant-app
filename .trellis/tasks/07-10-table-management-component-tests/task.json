@@ -1,0 +1,33 @@
+{
+  "id": "07-10-table-management-component-tests",
+  "name": "table-management-component-tests",
+  "title": "Stabilize frontend component tests",
+  "description": "Fix stale UI assertions, shared test-runtime gaps, jsdom timer leaks, and unstable async mocks exposed by the frontend CI suite.",
+  "status": "completed",
+  "dev_type": "frontend",
+  "scope": "frontend-test-stability",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": "2026-07-10",
+  "branch": "fix/table-management-component-tests",
+  "base_branch": "main",
+  "commit": "0654777c82482921bd395b85ec523bdb6d3063cc",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1338",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Table/TableManagement.test.jsx",
+    "src/components/common/Modal.jsx",
+    "src/components/Customer/Profile/components/SecuritySettings.test.jsx",
+    "src/lib/lucideReactShim.jsx",
+    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.test.jsx",
+    "src/components/Dashboard_Manager/Sidebar.test.jsx",
+    "vite.config.js",
+    "vitest.config.js",
+    "src/test/setup.js",
+    "src/components/Customer/RestaurantDetail/components/ReviewsSection/ReviewsSection.flow.test.jsx",
+    "src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.customer.test.jsx"
+  ],
+  "notes": "No GraphQL, permission, table workflow, customer deletion, order settings, staff form, or POS business contract was changed. GitHub Actions passed backend checks, frontend conflict/lint/unit/Menu RBAC/component/build/smoke checks.",
+  "meta": {}
+}

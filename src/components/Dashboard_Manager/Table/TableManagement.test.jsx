@@ -9,6 +9,7 @@ import {
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
+import TableManagement from "./TableManagement.jsx";
 
 const tableManagementState = vi.hoisted(() => ({
   restaurantId: null,
@@ -107,9 +108,7 @@ vi.mock("./TableActionsLiteModal", () => ({
   },
 }));
 
-const renderTableManagement = async () => {
-  const module = await import("./TableManagement.jsx");
-  const TableManagement = module.default;
+const renderTableManagement = () => {
   const renderTree = () => (
     <MemoryRouter>
       <AuthContext.Provider
@@ -163,7 +162,6 @@ const setDefaultData = () => {
 };
 
 beforeEach(() => {
-  vi.resetModules();
   localStorage.clear();
   tableActionsModalState.renderCount = 0;
   tableActionsModalState.lastTable = null;
@@ -297,7 +295,8 @@ describe("TableManagement operations UI", () => {
     await renderTableManagement();
 
     fireEvent.click(screen.getByRole("button", { name: /Thêm bàn/i }));
-    expect(screen.getByRole("heading", { name: "Thêm bàn" })).toBeInTheDocument();
+    const addTableDialog = screen.getByRole("dialog");
+    expect(within(addTableDialog).getByText("Thêm bàn")).toBeInTheDocument();
     expect(
       screen.getByText("Thêm ảnh không gian sau khi tạo bàn"),
     ).toBeInTheDocument();
@@ -334,7 +333,7 @@ describe("TableManagement operations UI", () => {
 
     const occupiedCard = screen.getByText("VIP-02").closest("article");
     const paymentAction = within(occupiedCard).getByRole("button", {
-      name: "Thanh toán",
+      name: "T.Toán",
     });
 
     expect(paymentAction).toBeDisabled();

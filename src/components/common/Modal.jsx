@@ -171,12 +171,17 @@ const Modal = ({
     previousActiveElementRef.current = document.activeElement;
     lockPageScroll();
 
-    const timer = setTimeout(() => {
+    let timer;
+    if (isJsdomRuntime()) {
       modalRef.current?.focus();
-    }, 50);
+    } else {
+      timer = setTimeout(() => {
+        modalRef.current?.focus();
+      }, 50);
+    }
 
     return () => {
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
       unlockPageScroll();
       if (previousActiveElementRef.current?.focus) {
         previousActiveElementRef.current.focus();

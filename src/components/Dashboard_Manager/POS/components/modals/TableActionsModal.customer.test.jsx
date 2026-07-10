@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   upsertTableCustomer: vi.fn(),
   findConfirmedByTable: vi.fn(),
   fetchOrderByTable: vi.fn(),
+  searchCustomers: vi.fn(),
   onUpdated: vi.fn(),
   showNotification: vi.fn(),
 }));
@@ -105,6 +106,7 @@ describe("TableActionsModal customer snapshot", () => {
 
     mocks.findConfirmedByTable.mockResolvedValue({ success: true, data: null });
     mocks.fetchOrderByTable.mockResolvedValue({ data: [] });
+    mocks.searchCustomers.mockResolvedValue({ data: { customers: [] } });
     mocks.upsertTableCustomer.mockResolvedValue({
       data: { upsertTableCustomer: savedCustomer },
     });
@@ -127,7 +129,7 @@ describe("TableActionsModal customer snapshot", () => {
         return [run, { data, loading: false, error: null, refetch }];
       }
       return [
-        vi.fn().mockResolvedValue({ data: { customers: [] } }),
+        mocks.searchCustomers,
         { data: null, loading: false, error: null },
       ];
     });
@@ -147,7 +149,9 @@ describe("TableActionsModal customer snapshot", () => {
       />,
     );
 
-    expect(await screen.findByLabelText("Tên khách")).toHaveValue("Toàn");
+    await waitFor(() => {
+      expect(screen.getByLabelText("Tên khách")).toHaveValue("Toàn");
+    });
     expect(screen.getByLabelText("Số điện thoại")).toHaveValue("0900809090");
     expect(screen.getByLabelText("Email")).toHaveValue("toan@cohan.local");
     expect(screen.getByLabelText("Số khách")).toHaveValue(3);
@@ -170,8 +174,12 @@ describe("TableActionsModal customer snapshot", () => {
       />,
     );
 
-    const note = await screen.findByLabelText("Ghi chú");
-    fireEvent.change(note, { target: { value: "Cập nhật ghi chú" } });
+    await waitFor(() => {
+      expect(screen.getByLabelText("Tên khách")).toHaveValue("Toàn");
+    });
+    fireEvent.change(screen.getByLabelText("Ghi chú"), {
+      target: { value: "Cập nhật ghi chú" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Lưu thông tin khách" }));
 
     await waitFor(() => {

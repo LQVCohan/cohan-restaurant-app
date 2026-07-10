@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { staffPerformanceMonthRangeGuardPlugin } from './vite.config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,7 +33,11 @@ const tableManagementPaymentLabelGuardPlugin = () => ({
 });
 
 export default defineConfig({
-  plugins: [tableManagementPaymentLabelGuardPlugin(), react()],
+  plugins: [
+    staffPerformanceMonthRangeGuardPlugin(),
+    tableManagementPaymentLabelGuardPlugin(),
+    react(),
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

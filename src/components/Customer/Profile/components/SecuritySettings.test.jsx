@@ -89,7 +89,7 @@ describe("SecuritySettings account deletion", () => {
     expect(submitButton).toBeDisabled();
 
     fireEvent.change(
-      within(dialog).getByLabelText("Nhập XOA TAI KHOAN"),
+      within(dialog).getByLabelText("Nội dung xác nhận"),
       { target: { value: "XOA TAI KHOAN" } },
     );
 

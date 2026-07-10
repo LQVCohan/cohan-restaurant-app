@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import EmployeeFormModal from "./EmployeeFormModal";
 
 const testMocks = vi.hoisted(() => ({
@@ -60,6 +60,21 @@ const TEST_ROLE_LIST = [
   { id: "r-host", slug: "host", name: "Host" },
 ];
 
+const createMemoryStorage = () => {
+  const items = new Map();
+  return {
+    get length() {
+      return items.size;
+    },
+    clear: () => items.clear(),
+    getItem: (key) =>
+      items.has(String(key)) ? items.get(String(key)) : null,
+    key: (index) => Array.from(items.keys())[index] ?? null,
+    removeItem: (key) => items.delete(String(key)),
+    setItem: (key, value) => items.set(String(key), String(value)),
+  };
+};
+
 function ModalHarness({
   onSubmit = vi.fn(async () => {}),
   roleList = TEST_ROLE_LIST,
@@ -87,9 +102,10 @@ function ModalHarness({
 }
 
 const getDraftKeys = () =>
-  Object.keys(window.localStorage).filter((key) =>
-    key.includes("employee-form-modal"),
-  );
+  Array.from(
+    { length: window.localStorage.length },
+    (_, index) => window.localStorage.key(index),
+  ).filter((key) => key?.includes("employee-form-modal"));
 
 const fillStepOneAndGoNext = () => {
   const stepOneInputs = screen.getAllByRole("textbox");
@@ -103,8 +119,12 @@ const fillStepOneAndGoNext = () => {
 describe("EmployeeFormModal draft lifecycle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    window.localStorage.clear();
-    window.sessionStorage.clear();
+    vi.stubGlobal("localStorage", createMemoryStorage());
+    vi.stubGlobal("sessionStorage", createMemoryStorage());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("does not create a draft when the modal is opened and closed without input", async () => {

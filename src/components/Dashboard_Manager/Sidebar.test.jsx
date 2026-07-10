@@ -57,14 +57,18 @@ describe("Manager Sidebar", () => {
   it("prefers brand role over system role in the footer", () => {
     renderSidebar({ activeBrand: { id: "b1", membershipRole: "admin" } });
 
-    expect(screen.getByText(/Quản trị Brand/)).toBeInTheDocument();
-    expect(screen.getByTitle(/Vai trò trong thương hiệu: Quản trị Brand .* Phạm vi phụ trách: Toàn bộ Brand/)).toBeInTheDocument();
+    expect(screen.getByText(/Quản trị chuỗi/)).toBeInTheDocument();
+    expect(
+      screen.getByTitle(
+        "Cấp tài khoản: Quản lý | Quyền trong chuỗi: Quản trị chuỗi | Phạm vi phụ trách: Tất cả chi nhánh trong chuỗi",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("falls back to system role when no brand role exists", () => {
     renderSidebar({ activeBrand: { id: "b1" } });
 
-    expect(screen.getByText(/Quản lý hệ thống/)).toBeInTheDocument();
+    expect(screen.getByText(/^Quản lý · Chưa tham gia chuỗi$/)).toBeInTheDocument();
   });
 
   it("renders Home and Staff portal shortcuts for managers", () => {
