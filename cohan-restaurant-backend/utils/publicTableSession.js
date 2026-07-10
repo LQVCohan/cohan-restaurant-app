@@ -12,7 +12,11 @@ export const TABLE_IDENTITY_CANDIDATE_PURPOSE = "customer_table_identity_candida
 export const TABLE_IDENTITY_PURPOSE = "customer_table_identity";
 
 const ACTIVE_CUSTOMER_REQUEST_STATUSES = new Set(["PENDING", "ACKNOWLEDGED"]);
-const ORDERABLE_TABLE_STATUSES = new Set(["reserved", "occupied"]);
+const ORDERABLE_TABLE_STATUSES = new Set([
+  "reserved",
+  "occupied",
+  "payment_pending",
+]);
 
 function toIdString(value) {
   if (!value) return null;
