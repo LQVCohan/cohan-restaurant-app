@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
 import useCommunication from "@/hooks/useCommunication";
@@ -28,7 +28,9 @@ const roleLabelFallbacks = {
 };
 
 const getRoleLabel = (user, normalizedRole) => {
-  if (!user || typeof user !== "object") return roleLabelFallbacks[normalizedRole] || normalizedRole;
+  if (!user || typeof user !== "object") {
+    return roleLabelFallbacks[normalizedRole] || normalizedRole;
+  }
   return (
     roleLabelFallbacks[normalizedRole] ||
     getStaffRoleDisplayLabel(user.role || user.roleName || user.roleSlug || normalizedRole) ||
@@ -36,9 +38,9 @@ const getRoleLabel = (user, normalizedRole) => {
   );
 };
 
-const isActivePath = (location, target) => {
-  return location.pathname === target || (target !== "/staff/dashboard" && location.pathname.startsWith(target + "/"));
-};
+const isActivePath = (location, target) =>
+  location.pathname === target ||
+  (target !== "/staff/dashboard" && location.pathname.startsWith(`${target}/`));
 
 const StaffHandoffUnreadCount = ({ restaurantId }) => {
   const { notifications = [] } = useCommunication({
@@ -63,8 +65,27 @@ const StaffHandoffUnreadCount = ({ restaurantId }) => {
 };
 
 const navGroups = [
-  { label: "Công việc", keys: ["/staff/dashboard", "/staff/schedule", "/staff/attendance", "/staff/leave", "/staff/orders", "/staff/kitchen", "/staff/contacts"] },
-  { label: "Tài khoản", keys: ["/staff/profile", "/staff/notifications", "/staff/payslips", "/staff/settings"] },
+  {
+    label: "Công việc",
+    keys: [
+      "/staff/dashboard",
+      "/staff/schedule",
+      "/staff/attendance",
+      "/staff/leave",
+      "/staff/orders",
+      "/staff/kitchen",
+      "/staff/contacts",
+    ],
+  },
+  {
+    label: "Tài khoản",
+    keys: [
+      "/staff/profile",
+      "/staff/notifications",
+      "/staff/payslips",
+      "/staff/settings",
+    ],
+  },
   { label: "Hỗ trợ", keys: ["/staff/ai-handoff"] },
 ];
 
@@ -79,31 +100,36 @@ const staffPageMeta = [
     path: "/staff/schedule",
     eyebrow: "Lịch cá nhân",
     title: "Vận hành ca làm",
-    description: "Xem ca được phân, phản hồi lịch và thực hiện check-in/check-out đúng thời điểm.",
+    description:
+      "Xem ca được phân, phản hồi lịch và thực hiện check-in/check-out đúng thời điểm.",
   },
   {
     path: "/staff/attendance",
     eyebrow: "Chỉnh công & tăng ca",
     title: "Yêu cầu công cá nhân",
-    description: "Xem công trong ngày, gửi chỉnh công hoặc yêu cầu tăng ca cho quản lý duyệt.",
+    description:
+      "Xem công trong ngày, gửi chỉnh công hoặc yêu cầu tăng ca cho quản lý duyệt.",
   },
   {
     path: "/staff/leave",
     eyebrow: "Nghỉ phép nhân viên",
     title: "Tạo và theo dõi đơn nghỉ phép",
-    description: "Gửi đơn xin nghỉ phép, xem trạng thái duyệt và lịch sử đơn ngay trong khu vực nhân viên.",
+    description:
+      "Gửi đơn xin nghỉ phép, xem trạng thái duyệt và lịch sử đơn ngay trong khu vực nhân viên.",
   },
   {
     path: "/staff/orders",
     eyebrow: "Vận hành đơn",
     title: "Order nội bộ",
-    description: "Tiếp nhận đơn, cập nhật trạng thái phục vụ và phối hợp với bếp theo quyền được cấp.",
+    description:
+      "Tiếp nhận đơn, cập nhật trạng thái phục vụ và phối hợp với bếp theo quyền được cấp.",
   },
   {
     path: "/staff/kitchen",
     eyebrow: "Bếp / Quầy bar",
     title: "Điều phối khu chế biến",
-    description: "Theo dõi món mới, món đang làm và món đã hoàn tất tại bếp chính hoặc quầy bar.",
+    description:
+      "Theo dõi món mới, món đang làm và món đã hoàn tất tại bếp chính hoặc quầy bar.",
   },
   {
     path: "/staff/performance",
@@ -121,7 +147,8 @@ const staffPageMeta = [
     path: "/staff/notifications",
     eyebrow: "Nhắc việc",
     title: "Thông báo nhân viên",
-    description: "Theo dõi lịch mới, yêu cầu phản hồi và các cập nhật quan trọng từ quản lý.",
+    description:
+      "Theo dõi lịch mới, yêu cầu phản hồi và các cập nhật quan trọng từ quản lý.",
   },
   {
     path: "/staff/contacts",
@@ -150,8 +177,9 @@ const staffPageMeta = [
 ];
 
 const getStaffPageMeta = (pathname) =>
-  staffPageMeta.find((item) => pathname === item.path || pathname.startsWith(item.path + "/")) ||
-  staffPageMeta[0];
+  staffPageMeta.find(
+    (item) => pathname === item.path || pathname.startsWith(`${item.path}/`),
+  ) || staffPageMeta[0];
 
 export default function StaffLayout({ children }) {
   const { user, activeRestaurant, activeRestaurantId } = useContext(AuthContext);
@@ -163,6 +191,10 @@ export default function StaffLayout({ children }) {
   const restaurantLabel = activeRestaurant?.name || "Chưa xác định cơ sở làm việc";
   const pageMeta = useMemo(() => getStaffPageMeta(location.pathname), [location.pathname]);
 
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
+
   const navItems = useMemo(
     () => [
       { label: "Tổng quan", to: "/staff/dashboard" },
@@ -172,7 +204,11 @@ export default function StaffLayout({ children }) {
       { label: "Hồ sơ", to: "/staff/profile" },
       { label: "Thông báo", to: "/staff/notifications" },
       { label: "Liên lạc", to: "/staff/contacts" },
-      { label: "Bàn giao hỗ trợ", to: "/staff/ai-handoff", permissions: HANDOFF_PERMISSIONS },
+      {
+        label: "Bàn giao hỗ trợ",
+        to: "/staff/ai-handoff",
+        permissions: HANDOFF_PERMISSIONS,
+      },
       { label: "Phiếu lương", to: "/staff/payslips" },
       { label: "Order nội bộ", to: "/staff/orders", roles: STAFF_ORDER_ROLES },
       { label: "Bếp / Quầy bar", to: "/staff/kitchen", roles: STAFF_KITCHEN_ROLES },
@@ -184,7 +220,12 @@ export default function StaffLayout({ children }) {
   const visibleNavItems = useMemo(
     () =>
       navItems.filter((item) => {
-        if (Array.isArray(item.permissions) && !hasAnyPermission(user, item.permissions)) return false;
+        if (
+          Array.isArray(item.permissions) &&
+          !hasAnyPermission(user, item.permissions)
+        ) {
+          return false;
+        }
         if (!Array.isArray(item.roles)) return true;
         return item.roles.includes(normalizedRole);
       }),
@@ -202,7 +243,9 @@ export default function StaffLayout({ children }) {
               <p className="staff-shell__subtitle">{pageMeta.description}</p>
             </div>
             <div className="staff-shell__identity">
-              <div className="staff-shell__identity-avatar" aria-hidden="true">{(displayName || "NV").slice(0, 2).toUpperCase()}</div>
+              <div className="staff-shell__identity-avatar" aria-hidden="true">
+                {(displayName || "NV").slice(0, 2).toUpperCase()}
+              </div>
               <div className="staff-shell__identity-copy">
                 <div>{displayName || "Nhân viên"}</div>
                 <span>{roleLabel || "Chưa xác định vai trò"}</span>
@@ -212,8 +255,9 @@ export default function StaffLayout({ children }) {
             <button
               type="button"
               className="staff-shell__menu-button"
-              aria-label="Mở menu nhân viên"
+              aria-label={menuOpen ? "Đóng menu nhân viên" : "Mở menu nhân viên"}
               aria-expanded={menuOpen}
+              aria-controls="staff-shell-navigation"
               onClick={() => setMenuOpen((value) => !value)}
             >
               <span />
@@ -222,27 +266,36 @@ export default function StaffLayout({ children }) {
             </button>
           </div>
 
-          <nav className={`staff-shell__nav ${menuOpen ? "is-open" : ""}`} aria-label="Điều hướng khu vực nhân viên">
+          <nav
+            id="staff-shell-navigation"
+            className={`staff-shell__nav ${menuOpen ? "is-open" : ""}`}
+            aria-label="Điều hướng khu vực nhân viên"
+          >
             {navGroups.map((group) => {
-              const groupItems = visibleNavItems.filter((item) => group.keys.includes(item.to));
+              const groupItems = visibleNavItems.filter((item) =>
+                group.keys.includes(item.to),
+              );
               if (!groupItems.length) return null;
               return (
                 <div className="staff-shell__nav-group" key={group.label}>
                   <span>{group.label}</span>
-                  {groupItems.map((item) => (
-                    <Link
-                      key={item.to}
-                      className={`staff-shell__nav-link ${isActivePath(location, item.to) ? "is-active" : ""}`}
-                      to={item.to}
-                      onClick={() => setMenuOpen(false)}
-                      aria-current={isActivePath(location, item.to) ? "page" : undefined}
-                    >
-                      {item.label}
-                      {item.to === "/staff/ai-handoff" ? (
-                        <StaffHandoffUnreadCount restaurantId={activeRestaurantId} />
-                      ) : null}
-                    </Link>
-                  ))}
+                  {groupItems.map((item) => {
+                    const active = isActivePath(location, item.to);
+                    return (
+                      <Link
+                        key={item.to}
+                        className={`staff-shell__nav-link ${active ? "is-active" : ""}`}
+                        to={item.to}
+                        onClick={() => setMenuOpen(false)}
+                        aria-current={active ? "page" : undefined}
+                      >
+                        {item.label}
+                        {item.to === "/staff/ai-handoff" ? (
+                          <StaffHandoffUnreadCount restaurantId={activeRestaurantId} />
+                        ) : null}
+                      </Link>
+                    );
+                  })}
                 </div>
               );
             })}
