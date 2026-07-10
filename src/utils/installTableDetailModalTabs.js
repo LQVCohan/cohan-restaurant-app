@@ -113,8 +113,7 @@ const syncFooter = (modal, activeKey) => {
   const saveButton = getSaveButton(modal);
   if (!saveButton) return;
 
-  const saveLabel = normalizeText(saveButton.textContent);
-  if (saveLabel === "lưu thay đổi" || saveLabel === "lưu cấu hình") {
+  if (normalizeText(saveButton.textContent) === "lưu thay đổi") {
     saveButton.textContent = "Lưu cấu hình";
   }
   saveButton.hidden = !SAVE_TABS.has(activeKey);
