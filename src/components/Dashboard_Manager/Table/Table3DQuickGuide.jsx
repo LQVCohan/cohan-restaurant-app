@@ -21,12 +21,13 @@ export default function Table3DQuickGuide() {
           <Info size={14} aria-hidden="true" /> AR hoạt động thế nào?
         </summary>
         <p>
-          Lùi khỏi vị trí đặt khoảng 1,5–2 m, hướng camera xuống vùng sàn trống,
-          đủ sáng và di chuyển chậm sang hai bên. Chỉ đặt khi mặt sàn đã được nhận
-          diện ổn định. Sau khi đặt, không kéo hoặc chụm hai ngón vì tỷ lệ AR đã
-          được khóa để hạn chế mô hình phóng, thu hoặc trôi khi camera đổi khoảng
-          cách. Nếu model vẫn sai tỷ lệ, hãy dùng file có đơn vị mét chuẩn. Chế độ
-          xem thử này không thay đổi dữ liệu bàn hoặc sơ đồ tầng.
+          Giữ điện thoại cách vùng sàn khoảng 1–1,5 m, đủ sáng và quét chậm theo
+          vòng cung nhỏ. Giữ thêm mép tường, chân bàn hoặc chi tiết có độ tương
+          phản trong khung hình để thiết bị dễ bám điểm; tránh sàn quá tối, bóng
+          hoặc trống hoàn toàn. Chỉ chạm đặt khi dấu nhận diện đã đứng yên. Sau
+          khi đặt, dùng hai ngón tay để thu nhỏ hoặc phóng to mô hình và di chuyển
+          điện thoại chậm để hạn chế trôi vị trí. Chế độ xem thử này không thay
+          đổi dữ liệu bàn hoặc sơ đồ tầng.
         </p>
       </details>
     </div>
