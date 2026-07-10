@@ -1,0 +1,29 @@
+{
+  "id": "07-10-staff-dashboard-compact",
+  "title": "Tối ưu dashboard nhân viên gọn và rõ trên điện thoại",
+  "status": "in_progress",
+  "type": "frontend-redesign",
+  "scope": [
+    "src/components/Staff/StaffDashboardPage.jsx",
+    "src/components/Staff/StaffDashboardPage.scss",
+    "src/components/Staff/StaffDashboardPage.test.jsx",
+    "src/layouts/StaffLayout.scss"
+  ],
+  "rootCause": "StaffLayout already provides the page title, description and signed-in identity, but StaffDashboardPage repeats all three and then renders several overlapping task lists, nine action cards, role tools, profile preview and static reminder copy. On phone widths every section stacks into one long, noisy page.",
+  "flow": "AppRouter /staff/dashboard -> StaffLayout -> StaffDashboardPage -> frontendRoleAccess role gates -> route Links",
+  "validation": {
+    "planned": [
+      "targeted StaffDashboardPage Vitest",
+      "npm run check:conflicts",
+      "npm run build",
+      "manual review at 390x844 and 430x932 when a browser is available"
+    ],
+    "completed": [
+      "read AGENTS.md and .trellis/workflow.md",
+      "read ponytail, ui-ux-pro-max, frontend-design, taste-ui-redesign and redesign-existing-projects skills",
+      "traced AppRouter through StaffLayout, StaffDashboardPage and frontendRoleAccess",
+      "reviewed the supplied real-phone screenshots"
+    ],
+    "notRun": []
+  }
+}
