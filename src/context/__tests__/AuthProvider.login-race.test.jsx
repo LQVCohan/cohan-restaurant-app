@@ -61,6 +61,7 @@ function Consumer() {
       <div data-testid="session-state">{auth.sessionState}</div>
       <div data-testid="token">{auth.token || ""}</div>
       <div data-testid="user-id">{auth.user?.id || ""}</div>
+      <div data-testid="user-name">{auth.user?.fullName || ""}</div>
       <div data-testid="restaurants">
         {(auth.restaurants || []).map((restaurant) => restaurant.name).join(",")}
       </div>
@@ -68,6 +69,7 @@ function Consumer() {
         onClick={() =>
           auth.login("old-token", {
             id: "old-manager",
+            fullName: "Old Manager",
             roleName: "manager",
             emailVerified: true,
           })
@@ -79,6 +81,7 @@ function Consumer() {
         onClick={() =>
           auth.login("new-token", {
             id: "new-manager",
+            fullName: "New Manager",
             roleName: "manager",
             emailVerified: true,
           })
@@ -91,7 +94,7 @@ function Consumer() {
   );
 }
 
-describe("AuthProvider account cache reset", () => {
+describe("AuthProvider account switch isolation", () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
@@ -161,5 +164,104 @@ describe("AuthProvider account cache reset", () => {
       expect(screen.getByTestId("token")).toHaveTextContent("new-token");
       expect(screen.getByTestId("restaurants")).toHaveTextContent("COHAN Quận 1");
     });
+  });
+
+  it("ignores a refresh response that belongs to the previous session", async () => {
+    let finishRefresh;
+    global.fetch = vi.fn().mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishRefresh = resolve;
+        }),
+    );
+
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByText("login-new"));
+    await waitFor(() => {
+      expect(screen.getByTestId("user-id")).toHaveTextContent("new-manager");
+      expect(screen.getByTestId("user-name")).toHaveTextContent("New Manager");
+    });
+
+    await act(async () => {
+      finishRefresh({
+        ok: true,
+        json: async () => ({
+          token: "old-refresh-token",
+          user: {
+            id: "old-manager",
+            fullName: "Old Manager",
+            roleName: "manager",
+            emailVerified: true,
+          },
+        }),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("user-id")).toHaveTextContent("new-manager");
+    expect(screen.getByTestId("user-name")).toHaveTextContent("New Manager");
+    expect(screen.getByTestId("token")).toHaveTextContent("new-token");
+  });
+
+  it("ignores a late Me result from the account that already logged out", async () => {
+    let completeOldMe;
+    useQueryMock.mockImplementation((query, options = {}) => {
+      const queryText = getQueryText(query);
+      if (queryText.includes("query Me")) {
+        if (!options.skip && !completeOldMe) completeOldMe = options.onCompleted;
+        return defaultQueryResult();
+      }
+      if (queryText.includes("query AuthBusinessContext") && !options.skip) {
+        return businessContextResult;
+      }
+      return defaultQueryResult();
+    });
+
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("session-state")).toHaveTextContent("anonymous"),
+    );
+
+    fireEvent.click(screen.getByText("login-old"));
+    await waitFor(() => {
+      expect(screen.getByTestId("user-id")).toHaveTextContent("old-manager");
+      expect(completeOldMe).toEqual(expect.any(Function));
+    });
+
+    fireEvent.click(screen.getByText("logout"));
+    fireEvent.click(screen.getByText("login-new"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-id")).toHaveTextContent("new-manager");
+      expect(screen.getByTestId("user-name")).toHaveTextContent("New Manager");
+    });
+
+    act(() => {
+      completeOldMe({
+        me: {
+          id: "old-manager",
+          fullName: "Old Manager",
+          roleName: "manager",
+          emailVerified: true,
+        },
+      });
+    });
+
+    expect(screen.getByTestId("user-id")).toHaveTextContent("new-manager");
+    expect(screen.getByTestId("user-name")).toHaveTextContent("New Manager");
+    expect(screen.getByTestId("token")).toHaveTextContent("new-token");
   });
 });
