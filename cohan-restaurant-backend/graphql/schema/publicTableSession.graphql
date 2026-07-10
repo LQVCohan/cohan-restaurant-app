@@ -130,7 +130,6 @@ type PublicTableOrderAccessRequestResult {
 type PublicTableOrderAccessConfirmationResult {
   ok: Boolean!
   message: String
-  orderSessionToken: String!
   sessionId: ID!
   expiresAt: DateTime
 }
