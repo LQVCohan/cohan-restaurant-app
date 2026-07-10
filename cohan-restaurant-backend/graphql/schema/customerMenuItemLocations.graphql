@@ -1,0 +1,14 @@
+type CustomerMenuItemLocation {
+  menuItemId: ID!
+  restaurantId: ID!
+  menuItem: MenuItem!
+  restaurant: Restaurant!
+  inventoryStatus: MenuItemInventoryStatus!
+  maxAvailable: Int!
+  stockWarnings: [String!]!
+  isAvailable: Boolean!
+}
+
+extend type Query {
+  customerMenuItemLocations(menuItemId: ID!): [CustomerMenuItemLocation!]!
+}
