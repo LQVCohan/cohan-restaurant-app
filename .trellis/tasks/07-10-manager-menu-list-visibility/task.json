@@ -1,19 +1,31 @@
 {
   "id": "07-10-manager-menu-list-visibility",
   "title": "Hiển thị rõ danh sách thực đơn trên trang quản lý",
-  "status": "planning",
+  "status": "implemented_unverified",
   "type": "frontend-usability",
   "scope": [
-    "src/components/Dashboard_Manager/Menu/MenuManagement.jsx",
-    "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.jsx"
+    "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.jsx",
+    "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx",
+    "src/components/Dashboard_Manager/Menu/MenuManagementPolish.scss"
   ],
   "validation": {
     "planned": [
       "npm run check:conflicts",
-      "vitest run src/components/Dashboard_Manager/Menu",
+      "vitest run src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx",
       "npm run build"
     ],
-    "completed": [],
-    "notRun": []
+    "completed": [
+      "traced menus(restaurantId) through useMenuManagement, MenuManagement and CompactMenuStrip",
+      "reviewed the only CompactMenuStrip caller before changing the shared component",
+      "confirmed the menu list is always rendered and the page order places it directly below the manager header",
+      "added a focused regression test covering the legacy collapsed prop"
+    ],
+    "notRun": [
+      "npm run check:conflicts was unavailable in the GitHub connector environment",
+      "vitest run src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx was unavailable in the GitHub connector environment",
+      "npm run build was unavailable in the GitHub connector environment",
+      "browser visual review was unavailable in the GitHub connector environment",
+      "no GitHub Actions workflow run or commit status was associated with commit 6bda3d50013965375efa88697c217d9c8bfd9689"
+    ]
   }
 }
