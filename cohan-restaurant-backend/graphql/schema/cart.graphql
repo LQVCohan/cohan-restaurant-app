@@ -40,6 +40,7 @@ type CartItem {
   modifiers: [CartModifierSnapshot!]!
   holdExpiresAt: DateTime
   holdStatus: String
+  serviceAt: DateTime
 
   restaurant: Restaurant
   menuItem: MenuItem
@@ -110,6 +111,7 @@ input AddCartItemInput {
   note: String
   servingVariantKey: String
   selectedModifiers: [CartModifierSelectionInput!] = []
+  serviceAt: DateTime
   holdExpiresAt: DateTime
   holdStatus: String
 }
