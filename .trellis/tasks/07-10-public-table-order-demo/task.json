@@ -1,7 +1,7 @@
 {
   "id": "07-10-public-table-order-demo",
   "title": "Public table QR ordering demo",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "area": "fullstack",
   "createdAt": "2026-07-10",
   "updatedAt": "2026-07-10",
@@ -14,6 +14,10 @@
       "npm run check:conflicts",
       "npm run build",
       "browser smoke at 390x844 and 430x932"
+    ],
+    "notes": [
+      "GitHub connector does not expose a runnable repository checkout or browser.",
+      "Inventory is reserved authoritatively and atomically when the customer submits the QR order batch; a persistent anonymous browsing-cart hold was intentionally not added to the user-owned Cart model."
     ]
   }
 }
