@@ -20,7 +20,7 @@ const OrderManagement = lazy(() => import("../components/Dashboard_Manager/Order
 const MenuManagement = lazy(() => import("../components/Dashboard_Manager/Menu/MenuManagement"));
 const ComboManagement = lazy(() => import("../components/Dashboard_Manager/Combo/ComboManagement"));
 const ModifierManagement = lazy(() => import("../components/Dashboard_Manager/Modifier/ModifierManagement"));
-const TableManagement = lazy(() => import("../components/Dashboard_Manager/Table/TableManagement"));
+const TableManagement = lazy(() => import("../components/Dashboard_Manager/Table/TableManagementSettingsEntry"));
 const TableTypeManagementPage = lazy(() => import("../components/Dashboard_Manager/Table/TableTypeManagementPage"));
 const TableQrManagementPage = lazy(() => import("../components/Dashboard_Manager/Table/TableQrManagementPage"));
 const CustomerManagement = lazy(() => import("../components/Dashboard_Manager/Customer/CustomerManagement"));
@@ -129,7 +129,6 @@ const PAGE_CONFIG = {
   dashboard: page("Tổng quan", "Tổng quan hiệu suất và số liệu vận hành nhà hàng", "📊", ["overview", "thống kê", "kpi", "doanh thu", "dashboard"]),
   brands: page("Quản lý chuỗi", "Quản lý Brand, chi nhánh và chủ sở hữu", "🏢", ["brand", "chuỗi", "chi nhánh", "owner"]),
   tables: page("Quản lý bàn", "Theo dõi trạng thái bàn, sơ đồ tầng và đặt chỗ", "🪑", ["bàn", "table", "đặt bàn", "sơ đồ"]),
-  [TABLE_SETTINGS_ACTION]: page("Loại bàn & không gian", "Mở thiết lập loại bàn và không gian phục vụ", "🏷️", ["loại bàn", "table type", "không gian", "vip", "booth", "bar"]),
   "table-qr": page("QR truy cập bàn", "Sinh QR để khách quét tại bàn và xem order hiện tại", "📱", ["qr", "bàn", "quét", "order", "khách"]),
   orders: page("Quản lý đơn hàng", "Xử lý đơn tại chỗ, mang đi, giao hàng và thanh toán", "🧾", ["order", "đơn", "timeline", "thanh toán"]),
   menu: page("Quản lý menu", "Quản lý món ăn, giá bán, danh mục và trạng thái phục vụ", "🍜", ["món", "menu", "giá", "danh mục"]),
@@ -381,10 +380,6 @@ const ManagerLayout = () => {
     const handleManagerNavigate = (event) => {
       const pageId = event?.detail?.page;
       const query = event?.detail?.query || {};
-      if (pageId === TABLE_SETTINGS_ACTION) {
-        openTableSettings();
-        return;
-      }
       if (!pageId || !validPages.has(pageId) || !allowedPages.has(pageId)) return;
       setShowTableSettings(false);
       setCurrentPage(pageId);
@@ -401,21 +396,16 @@ const ManagerLayout = () => {
   const toggleSidebar = () => setSidebarOpen((prev) => !prev);
   const closeSidebar = () => setSidebarOpen(false);
   const handlePageChange = (pageId) => {
-    if (pageId === TABLE_SETTINGS_ACTION) {
-      openTableSettings();
-      return;
-    }
     setShowTableSettings(false);
     setCurrentPage(pageId);
   };
 
-  const managerSearchItems = useMemo(() => {
-    const ids = [...VALID_MANAGER_PAGES];
-    if (allowedPages.has(TABLE_SETTINGS_ACTION)) ids.push(TABLE_SETTINGS_ACTION);
-    return ids
+  const managerSearchItems = useMemo(
+    () => [...VALID_MANAGER_PAGES]
       .filter((id) => PAGE_CONFIG[id] && allowedPages.has(id))
-      .map((id) => ({ id, title: PAGE_CONFIG[id].title, description: PAGE_CONFIG[id].description, category: "Điều hướng", icon: PAGE_CONFIG[id].icon || "📍", type: "navigation", keywords: PAGE_CONFIG[id].keywords || [], route: id === TABLE_SETTINGS_ACTION ? "#tables" : `#${id}` }));
-  }, [allowedPages]);
+      .map((id) => ({ id, title: PAGE_CONFIG[id].title, description: PAGE_CONFIG[id].description, category: "Điều hướng", icon: PAGE_CONFIG[id].icon || "📍", type: "navigation", keywords: PAGE_CONFIG[id].keywords || [], route: `#${id}` })),
+    [allowedPages],
+  );
 
   const headerProps = {
     pageTitle: PAGE_CONFIG[currentPage]?.title || "Trang quản trị",
@@ -437,7 +427,7 @@ const ManagerLayout = () => {
     switch (currentPage) {
       case "dashboard": return <Dashboard />;
       case "brands": return <BrandManagement />;
-      case "tables": return <TableManagement />;
+      case "tables": return <TableManagement onOpenTableSettings={allowedPages.has(TABLE_SETTINGS_ACTION) ? openTableSettings : undefined} />;
       case "table-qr": return <TableQrManagementPage />;
       case "orders": return <OrderManagement />;
       case "menu": return <MenuManagement />;
