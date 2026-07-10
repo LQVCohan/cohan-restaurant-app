@@ -17,15 +17,12 @@ vi.mock("@apollo/client", () => ({
 }));
 
 vi.mock("antd", () => ({
-  Alert: ({ message, description, action }) => (
-    <section>
-      <strong>{message}</strong>
-      <span>{description}</span>
-      {action}
-    </section>
+  Button: ({ children, icon, ...props }) => (
+    <button {...props}>
+      {icon}
+      {children}
+    </button>
   ),
-  Button: ({ children, ...props }) => <button {...props}>{children}</button>,
-  Space: ({ children }) => <div>{children}</div>,
   Switch: ({ checked, onChange, loading, ...props }) => (
     <input
       {...props}
@@ -36,9 +33,6 @@ vi.mock("antd", () => ({
       onChange={(event) => onChange?.(event.target.checked)}
     />
   ),
-  Typography: {
-    Text: ({ children }) => <span>{children}</span>,
-  },
   message: {
     success: (...args) => successMock(...args),
     error: (...args) => errorMock(...args),
@@ -89,6 +83,11 @@ describe("RestaurantPublicationControl", () => {
 
   it("publishes the selected draft restaurant through the existing update mutation", async () => {
     render(<RestaurantPublicationControl restaurantId="restaurant-1" />);
+
+    expect(screen.getByText("Bản nháp")).toBeInTheDocument();
+    expect(
+      screen.getByText("Xuất hiện ở trang chính và danh sách nhà hàng."),
+    ).toBeInTheDocument();
 
     const publicationSwitch = screen.getByRole("switch", {
       name: "Hiển thị công khai",
