@@ -93,4 +93,15 @@ describe("table detail modal tabs", () => {
     );
     expect(screen.getByTestId("assistant")).not.toHaveAttribute("hidden");
   });
+
+  it("does not overwrite the existing save progress label", () => {
+    const modal = renderModal();
+    fireEvent.click(screen.getByRole("tab", { name: "Cấu hình" }));
+
+    const saveButton = screen.getByRole("button", { name: "Lưu cấu hình" });
+    saveButton.textContent = "Đang lưu…";
+    enhanceTableDetailModal(modal);
+
+    expect(screen.getByRole("button", { name: "Đang lưu…" })).toBeVisible();
+  });
 });
