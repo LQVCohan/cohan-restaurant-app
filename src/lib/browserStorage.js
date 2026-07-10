@@ -1,6 +1,10 @@
 const memoryStorage = new Map();
 const STORAGE_ORDER = ["local", "session"];
 const STORAGE_PROBE_KEY = "__cohan_storage_probe__";
+const STORAGE_KEY_ALIASES = {
+  auth_token: "cohan_access_token",
+  token: "cohan_access_token",
+};
 
 function resolveStorage(kind) {
   if (typeof window === "undefined") return null;
@@ -26,19 +30,26 @@ function forEachStorage(callback) {
 }
 
 export function readStorageValue(key) {
-  for (const kind of STORAGE_ORDER) {
-    const storage = resolveStorage(kind);
-    if (!storage) continue;
+  const keys = [key, STORAGE_KEY_ALIASES[key]].filter(Boolean);
 
-    try {
-      const value = storage.getItem(key);
-      if (value !== null) return value;
-    } catch {
-      continue;
+  for (const storageKey of keys) {
+    for (const kind of STORAGE_ORDER) {
+      const storage = resolveStorage(kind);
+      if (!storage) continue;
+
+      try {
+        const value = storage.getItem(storageKey);
+        if (value !== null) return value;
+      } catch {
+        continue;
+      }
     }
   }
 
-  return memoryStorage.has(key) ? memoryStorage.get(key) : null;
+  for (const storageKey of keys) {
+    if (memoryStorage.has(storageKey)) return memoryStorage.get(storageKey);
+  }
+  return null;
 }
 
 export function readStorageValueFrom(kind, key) {
