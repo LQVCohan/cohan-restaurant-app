@@ -120,8 +120,15 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBr
 
   const handleItemClick = useCallback((item) => {
     onPageChange(item.id);
-    const content = document.querySelector(".manager-layout__content");
-    if (content) content.scrollTop = 0;
+    window.requestAnimationFrame(() => {
+      const content = document.querySelector(".manager-layout__content");
+      if (!content) return;
+      if (typeof content.scrollTo === "function") {
+        content.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      } else {
+        content.scrollTop = 0;
+      }
+    });
     if (window.innerWidth <= 768) onClose();
   }, [onClose, onPageChange]);
 
