@@ -91,6 +91,22 @@ const findMatchingExistingVariant = (method, existingVariants = []) => {
   );
 };
 
+const SERVING_MODE_OPTIONS = [
+  {
+    value: "PORTION",
+    label: "Theo phần",
+    helper: "Giá bán áp dụng cho 1 phần.",
+  },
+  {
+    value: "BY_WEIGHT",
+    label: "Theo kg",
+    helper: "Giá bán áp dụng cho 1 kg.",
+  },
+];
+
+const normalizeServingMode = (value) =>
+  value === "BY_WEIGHT" ? "BY_WEIGHT" : "PORTION";
+
 const validatePreparationMethods = (methods = []) => {
   if (!Array.isArray(methods) || !methods.length) {
     throw new Error("Vui lòng thêm ít nhất một cách chế biến.");
@@ -114,10 +130,15 @@ const validatePreparationMethods = (methods = []) => {
       );
     }
 
+    const mode = normalizeServingMode(method?.mode);
+
     return {
       ...method,
       name,
       price,
+      mode,
+      sellQty: 1,
+      sellUnit: mode === "BY_WEIGHT" ? "kg" : "portion",
     };
   });
 };
@@ -150,7 +171,6 @@ const PREP_STATION_SET = new Set(
 );
 const normalizePrepStation = (value) =>
   PREP_STATION_SET.has(value) ? value : "kitchen";
-
 
 const FOR_YOU_DEFAULTS = {
   foodType: "UNKNOWN",
@@ -275,7 +295,9 @@ const buildRecipeForm = (methods = [], existingVariants = []) => {
         );
         const fallbackKey =
           method.name.toLowerCase().replace(/\s+/g, "_") || `sv_${index}`;
-        const mode = method.mode || existingVariant?.mode || "PORTION";
+        const mode = normalizeServingMode(
+          method.mode || existingVariant?.mode,
+        );
         const ingredients = existingVariant
           ? cloneIngredients(existingVariant.ingredients)
           : Array.isArray(method.ingredients)
@@ -286,12 +308,8 @@ const buildRecipeForm = (methods = [], existingVariants = []) => {
           key: method.key || existingVariant?.key || fallbackKey,
           name: method.name,
           mode,
-          sellQty:
-            Number(method.sellQty ?? existingVariant?.sellQty ?? 1) || 1,
-          sellUnit:
-            method.sellUnit ||
-            existingVariant?.sellUnit ||
-            (mode === "BY_WEIGHT" ? "kg" : "portion"),
+          sellQty: 1,
+          sellUnit: mode === "BY_WEIGHT" ? "kg" : "portion",
           ingredients,
           price: method.price,
           isDefault: !!method.isDefault,
@@ -555,22 +573,25 @@ const MenuItemModal = ({
         const methods =
           sourceVariants.length > 0
             ? normalizeDefaultVariant(
-                sourceVariants.map((servingVariant) => ({
-                  key: servingVariant.key || "",
-                  name: servingVariant.name || "",
-                  price:
-                    typeof servingVariant.price === "number"
-                      ? servingVariant.price
-                      : "",
-                  cookTime: currentItem.avgPrepTimeMin || "",
-                  mode: servingVariant.mode || "PORTION",
-                  sellQty: servingVariant.sellQty || 1,
-                  sellUnit: servingVariant.sellUnit || "portion",
-                  ingredients: Array.isArray(servingVariant.ingredients)
-                    ? cloneIngredients(servingVariant.ingredients)
-                    : [],
-                  isDefault: !!servingVariant.isDefault,
-                })),
+                sourceVariants.map((servingVariant) => {
+                  const mode = normalizeServingMode(servingVariant.mode);
+                  return {
+                    key: servingVariant.key || "",
+                    name: servingVariant.name || "",
+                    price:
+                      typeof servingVariant.price === "number"
+                        ? servingVariant.price
+                        : "",
+                    cookTime: currentItem.avgPrepTimeMin || "",
+                    mode,
+                    sellQty: 1,
+                    sellUnit: mode === "BY_WEIGHT" ? "kg" : "portion",
+                    ingredients: Array.isArray(servingVariant.ingredients)
+                      ? cloneIngredients(servingVariant.ingredients)
+                      : [],
+                    isDefault: !!servingVariant.isDefault,
+                  };
+                }),
               )
             : [{ ...defaultMethod }];
 
@@ -647,6 +668,24 @@ const MenuItemModal = ({
       preparationMethods: current.preparationMethods.map(
         (method, currentIndex) =>
           currentIndex === index ? { ...method, [field]: value } : method,
+      ),
+    }));
+  };
+
+  const handleServingModeChange = (index, value) => {
+    const mode = normalizeServingMode(value);
+    setFormData((current) => ({
+      ...current,
+      preparationMethods: current.preparationMethods.map(
+        (method, currentIndex) =>
+          currentIndex === index
+            ? {
+                ...method,
+                mode,
+                sellQty: 1,
+                sellUnit: mode === "BY_WEIGHT" ? "kg" : "portion",
+              }
+            : method,
       ),
     }));
   };
@@ -1456,6 +1495,36 @@ const MenuItemModal = ({
 
                   <div className="method-grid">
                     <div className="form-group full-width">
+                      <label htmlFor={`serving-mode-${index}`}>
+                        Kiểu tính giá <span className="req">*</span>
+                      </label>
+                      <select
+                        id={`serving-mode-${index}`}
+                        className="modern-select small"
+                        value={normalizeServingMode(method.mode)}
+                        onChange={(event) =>
+                          handleServingModeChange(index, event.target.value)
+                        }
+                        required
+                        disabled={isSaving}
+                      >
+                        {SERVING_MODE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="for-you-option-group__hint">
+                        {
+                          SERVING_MODE_OPTIONS.find(
+                            (option) =>
+                              option.value === normalizeServingMode(method.mode),
+                          )?.helper
+                        } Mỗi cách chế biến có thể chọn riêng để một món vừa bán theo phần vừa bán theo kg.
+                      </p>
+                    </div>
+
+                    <div className="form-group full-width">
                       <label>
                         Tên cách chế biến <span className="req">*</span>
                       </label>
@@ -1474,7 +1543,7 @@ const MenuItemModal = ({
 
                     <div className="form-group">
                       <label>
-                        <DollarSign size={12} /> Giá bán
+                        <DollarSign size={12} /> Giá bán / {normalizeServingMode(method.mode) === "BY_WEIGHT" ? "kg" : "phần"}
                       </label>
                       <input
                         type="number"
