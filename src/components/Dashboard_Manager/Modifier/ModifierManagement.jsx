@@ -7,7 +7,10 @@ import React, {
 } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import {
+  Check,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   CircleOff,
   Globe2,
   Layers3,
@@ -130,6 +133,13 @@ const GROUP_TYPE_OPTIONS = [
   { value: "CUSTOM", label: "Tuỳ chỉnh" },
 ];
 
+const FORM_STEPS = [
+  { id: 1, label: "Thông tin", shortLabel: "Nhóm" },
+  { id: 2, label: "Phạm vi", shortLabel: "Áp dụng" },
+  { id: 3, label: "Lựa chọn", shortLabel: "Tuỳ chọn" },
+  { id: 4, label: "Hoàn tất", shortLabel: "Lưu" },
+];
+
 export const blankOption = () => ({
   id: "",
   name: "",
@@ -229,9 +239,15 @@ export const normalizeModifierOptions = (
       return option;
     });
 
-  if (defaultIndex < 0 && selectionType === "single" && required && normalized[0]) {
+  if (
+    defaultIndex < 0 &&
+    selectionType === "single" &&
+    required &&
+    normalized[0]
+  ) {
     defaultIndex = 0;
   }
+
   return normalized.map((option, index) => ({
     ...option,
     isDefault: index === defaultIndex,
@@ -272,55 +288,107 @@ export const buildModifierInput = (form, restaurantId) => {
   };
 };
 
-export const getModifierFormValidationError = (form, restaurantId) => {
-  if (!restaurantId) return "Vui lòng chọn chi nhánh.";
-  if (!String(form.name || "").trim()) {
-    return "Tên nhóm tuỳ chọn là bắt buộc.";
-  }
-  if (form.coverage === "ITEMS" && !form.menuItemIds.length) {
-    return "Chọn ít nhất một món khi áp dụng theo món.";
+export const getModifierStepError = (step, form, restaurantId) => {
+  if (step === 1) {
+    if (!restaurantId) return "Vui lòng chọn chi nhánh.";
+    if (!String(form.name || "").trim()) {
+      return "Tên nhóm tuỳ chọn là bắt buộc.";
+    }
+
+    if (form.selectionType === "multiple") {
+      const minimum = Number(form.minSelected || 0);
+      const maximum =
+        form.maxSelected === "" || form.maxSelected == null
+          ? null
+          : Number(form.maxSelected);
+      if (!Number.isFinite(minimum) || minimum < (form.required ? 1 : 0)) {
+        return form.required
+          ? "Số lựa chọn tối thiểu phải từ 1 trở lên."
+          : "Số lựa chọn tối thiểu phải từ 0 trở lên.";
+      }
+      if (maximum != null && (!Number.isFinite(maximum) || maximum < 1)) {
+        return "Số lựa chọn tối đa phải từ 1 trở lên.";
+      }
+      if (maximum != null && maximum < minimum) {
+        return "Số lựa chọn tối đa phải lớn hơn hoặc bằng tối thiểu.";
+      }
+    }
+    return "";
   }
 
-  const namedOptions = form.options.filter((option) =>
-    String(option.name || "").trim(),
-  );
-  if (!namedOptions.length) return "Cần ít nhất một lựa chọn.";
-
-  const normalizedNames = namedOptions.map((option) =>
-    String(option.name).trim().toLocaleLowerCase("vi"),
-  );
-  if (new Set(normalizedNames).size !== normalizedNames.length) {
-    return "Tên các lựa chọn không được trùng nhau.";
+  if (step === 2) {
+    if (form.coverage === "ITEMS" && !form.menuItemIds.length) {
+      return "Chọn ít nhất một món khi áp dụng theo món.";
+    }
+    return "";
   }
 
-  const activeOptionCount = namedOptions.filter(
-    (option) => option.isActive !== false,
-  ).length;
-  if (form.isActive !== false && activeOptionCount === 0) {
-    return "Nhóm đang bật phải có ít nhất một lựa chọn đang bật.";
-  }
-
-  if (form.selectionType === "multiple") {
-    const minimum = Math.max(
-      form.required ? 1 : 0,
-      Number(form.minSelected || 0),
+  if (step === 3) {
+    const namedOptions = form.options.filter((option) =>
+      String(option.name || "").trim(),
     );
-    const maximum =
-      form.maxSelected === "" || form.maxSelected == null
-        ? null
-        : Number(form.maxSelected);
+    if (!namedOptions.length) return "Cần ít nhất một lựa chọn.";
 
-    if (minimum > activeOptionCount && form.isActive !== false) {
-      return "Số lựa chọn tối thiểu không được vượt quá số lựa chọn đang bật.";
+    const normalizedNames = namedOptions.map((option) =>
+      String(option.name).trim().toLocaleLowerCase("vi"),
+    );
+    if (new Set(normalizedNames).size !== normalizedNames.length) {
+      return "Tên các lựa chọn không được trùng nhau.";
     }
-    if (maximum != null && maximum < minimum) {
-      return "Số lựa chọn tối đa phải lớn hơn hoặc bằng tối thiểu.";
+
+    const activeOptionCount = namedOptions.filter(
+      (option) => option.isActive !== false,
+    ).length;
+    if (form.isActive !== false && activeOptionCount === 0) {
+      return "Nhóm đang bật phải có ít nhất một lựa chọn đang bật.";
     }
-    if (maximum != null && maximum > namedOptions.length) {
-      return "Số lựa chọn tối đa không được vượt quá số lựa chọn đang có.";
+
+    if (form.selectionType === "multiple") {
+      const minimum = Math.max(
+        form.required ? 1 : 0,
+        Number(form.minSelected || 0),
+      );
+      const maximum =
+        form.maxSelected === "" || form.maxSelected == null
+          ? null
+          : Number(form.maxSelected);
+
+      if (minimum > activeOptionCount && form.isActive !== false) {
+        return "Số lựa chọn tối thiểu không được vượt quá số lựa chọn đang bật.";
+      }
+      if (maximum != null && maximum > namedOptions.length) {
+        return "Số lựa chọn tối đa không được vượt quá số lựa chọn đang có.";
+      }
     }
   }
+
   return "";
+};
+
+export const getModifierStepState = (form, restaurantId) => {
+  const errors = {
+    1: getModifierStepError(1, form, restaurantId),
+    2: getModifierStepError(2, form, restaurantId),
+    3: getModifierStepError(3, form, restaurantId),
+    4: "",
+  };
+  const completedSteps = [];
+  let firstIncompleteStep = 4;
+
+  for (let step = 1; step <= 3; step += 1) {
+    if (errors[step]) {
+      firstIncompleteStep = step;
+      break;
+    }
+    completedSteps.push(step);
+  }
+
+  return { errors, completedSteps, firstIncompleteStep };
+};
+
+export const getModifierFormValidationError = (form, restaurantId) => {
+  const { errors } = getModifierStepState(form, restaurantId);
+  return errors[1] || errors[2] || errors[3] || "";
 };
 
 export const getModifierSubmitErrorMessage = (error) => {
@@ -375,6 +443,7 @@ const ModifierManagement = () => {
   const [groupTypeFilter, setGroupTypeFilter] = useState("all");
   const [itemSearch, setItemSearch] = useState("");
   const [editingId, setEditingId] = useState("");
+  const [activeStep, setActiveStep] = useState(1);
   const [form, setForm] = useState(() => blankForm(selectedRestaurantId));
   const [formError, setFormError] = useState("");
   const [toast, setToast] = useState("");
@@ -459,6 +528,16 @@ const ModifierManagement = () => {
     }),
     [form.coverage, form.menuItemIds.length, form.options, form.selectionType],
   );
+  const stepState = useMemo(
+    () => getModifierStepState(form, selectedRestaurantId),
+    [form, selectedRestaurantId],
+  );
+  const completedStepSet = useMemo(
+    () => new Set(stepState.completedSteps),
+    [stepState.completedSteps],
+  );
+  const canOpenStep = (step) =>
+    step === 1 || step <= stepState.firstIncompleteStep || completedStepSet.has(step);
 
   const scrollToEditor = () => {
     if (typeof window === "undefined") return;
@@ -473,6 +552,7 @@ const ModifierManagement = () => {
 
   const resetForm = () => {
     setEditingId("");
+    setActiveStep(1);
     setForm(blankForm(selectedRestaurantId));
     setFormError("");
     setItemSearch("");
@@ -485,24 +565,30 @@ const ModifierManagement = () => {
 
   const editGroup = (group) => {
     setEditingId(group.id);
+    setActiveStep(1);
     setForm(toForm(group, selectedRestaurantId));
     setFormError("");
     setItemSearch("");
     scrollToEditor();
   };
 
-  const updateForm = (patch) =>
+  const updateForm = (patch) => {
+    setFormError("");
     setForm((current) => ({ ...current, ...patch }));
+  };
 
-  const updateOption = (index, patch) =>
+  const updateOption = (index, patch) => {
+    setFormError("");
     setForm((current) => ({
       ...current,
       options: current.options.map((option, optionIndex) =>
         optionIndex === index ? { ...option, ...patch } : option,
       ),
     }));
+  };
 
-  const updateOptionPriceRule = (index, patch) =>
+  const updateOptionPriceRule = (index, patch) => {
+    setFormError("");
     setForm((current) => ({
       ...current,
       options: current.options.map((option, optionIndex) =>
@@ -514,8 +600,10 @@ const ModifierManagement = () => {
           : option,
       ),
     }));
+  };
 
-  const toggleDefaultOption = (index, checked) =>
+  const toggleDefaultOption = (index, checked) => {
+    setFormError("");
     setForm((current) => ({
       ...current,
       options: current.options.map((option, optionIndex) => ({
@@ -527,8 +615,10 @@ const ModifierManagement = () => {
             : option.isDefault,
       })),
     }));
+  };
 
-  const changeSelectionType = (selectionType) =>
+  const changeSelectionType = (selectionType) => {
+    setFormError("");
     setForm((current) => {
       const existingDefault = current.options.findIndex(
         (option) => option.isDefault,
@@ -552,8 +642,10 @@ const ModifierManagement = () => {
             : current.options,
       };
     });
+  };
 
-  const changeRequired = (required) =>
+  const changeRequired = (required) => {
+    setFormError("");
     setForm((current) => {
       const existingDefault = current.options.findIndex(
         (option) => option.isDefault,
@@ -575,14 +667,18 @@ const ModifierManagement = () => {
             : current.options,
       };
     });
+  };
 
-  const addOption = () =>
+  const addOption = () => {
+    setFormError("");
     setForm((current) => ({
       ...current,
       options: [...current.options, blankOption()],
     }));
+  };
 
   const removeOption = (index) => {
+    setFormError("");
     setForm((current) => {
       if (current.options.length <= 1) return current;
       const options = current.options.filter(
@@ -600,6 +696,7 @@ const ModifierManagement = () => {
   };
 
   const toggleMenuItem = (itemId) => {
+    setFormError("");
     const id = String(itemId);
     setForm((current) => {
       const ids = new Set(current.menuItemIds.map(String));
@@ -613,9 +710,39 @@ const ModifierManagement = () => {
     setSelectedRestaurantId(restaurantId);
     setForm(blankForm(restaurantId));
     setEditingId("");
+    setActiveStep(1);
     setFormError("");
     setToast("");
     setItemSearch("");
+  };
+
+  const moveToStep = (nextStep) => {
+    if (nextStep < activeStep) {
+      setFormError("");
+      setActiveStep(nextStep);
+      return;
+    }
+
+    const currentError = getModifierStepError(
+      activeStep,
+      form,
+      selectedRestaurantId,
+    );
+    if (currentError) {
+      setFormError(currentError);
+      return;
+    }
+
+    if (canOpenStep(nextStep)) {
+      setFormError("");
+      setActiveStep(nextStep);
+    }
+  };
+
+  const handleStepSelect = (step) => {
+    if (!canOpenStep(step)) return;
+    setFormError("");
+    setActiveStep(step);
   };
 
   const handleSubmit = async (event) => {
@@ -628,6 +755,7 @@ const ModifierManagement = () => {
       selectedRestaurantId,
     );
     if (validation) {
+      setActiveStep(stepState.firstIncompleteStep);
       setFormError(validation);
       return;
     }
@@ -655,7 +783,7 @@ const ModifierManagement = () => {
     if (
       !canDelete ||
       !group?.id ||
-      !window.confirm(`Xoá nhóm tuỳ chọn "${group.name}"?`)
+      !window.confirm(`Xoá nhóm tuỳ chọn “${group.name}”?`)
     ) {
       return;
     }
@@ -688,10 +816,8 @@ const ModifierManagement = () => {
         density="compact"
         statsPlacement="right"
         showTimeWidget={false}
-        eyebrow="Menu operations"
         title="Cấu hình tuỳ chọn món"
         icon={<SlidersHorizontal size={18} aria-hidden="true" />}
-        subtitle="Quản lý size, topping và cách chế biến cho từng món hoặc toàn menu."
         loading={loading}
         stats={[
           {
@@ -734,7 +860,7 @@ const ModifierManagement = () => {
         onTabChange={setStatusFilter}
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Tìm size, topping, độ cay..."
+        searchPlaceholder="Tìm size, topping, độ cay…"
         searchAriaLabel="Tìm nhóm tuỳ chọn"
         leftSlot={
           <label className="modifier-management__restaurant-filter">
@@ -816,7 +942,7 @@ const ModifierManagement = () => {
               <h2>Nhóm tại {selectedRestaurantName}</h2>
               <span>
                 {loading
-                  ? "Đang tải dữ liệu"
+                  ? "Đang tải dữ liệu…"
                   : `${visibleGroups.length}/${modifierGroups.length} nhóm phù hợp`}
               </span>
             </div>
@@ -990,11 +1116,6 @@ const ModifierManagement = () => {
                   ? form.name || "Nhóm tuỳ chọn"
                   : "Nhóm tuỳ chọn mới"}
               </h2>
-              <span>
-                {editingId
-                  ? "Kiểm tra cấu hình rồi lưu để áp dụng."
-                  : "Khai báo nhóm và các lựa chọn bên dưới."}
-              </span>
               <div className="modifier-management__editor-summary">
                 <span>{editorSummary.coverage}</span>
                 <span>{editorSummary.selection}</span>
@@ -1023,335 +1144,485 @@ const ModifierManagement = () => {
                 updating
               }
             >
-              <section className="modifier-form__section">
-                <div className="modifier-form__section-title">
-                  <span>01</span>
-                  <div>
-                    <h3>Thông tin nhóm</h3>
-                    <p>Tên và loại giúp nhân viên nhận biết cấu hình nhanh.</p>
-                  </div>
-                </div>
-
-                <label className="modifier-form__field">
-                  <span>Tên nhóm</span>
-                  <input
-                    value={form.name}
-                    onChange={(event) =>
-                      updateForm({ name: event.target.value })
-                    }
-                    placeholder="Ví dụ: Size, Topping, Độ cay"
-                    required
-                  />
-                </label>
-
-                <div className="modifier-form__row">
-                  <label className="modifier-form__field">
-                    <span>Loại nhóm</span>
-                    <select
-                      value={form.groupType}
-                      onChange={(event) =>
-                        updateForm({ groupType: event.target.value })
-                      }
+              <nav className="modifier-form__steps" aria-label="Các bước cấu hình">
+                {FORM_STEPS.map((step) => {
+                  const isComplete = completedStepSet.has(step.id);
+                  const isActive = activeStep === step.id;
+                  const isAvailable = canOpenStep(step.id);
+                  return (
+                    <button
+                      key={step.id}
+                      type="button"
+                      className={`modifier-form__step ${
+                        isActive ? "is-active" : ""
+                      } ${isComplete ? "is-complete" : ""}`}
+                      onClick={() => handleStepSelect(step.id)}
+                      disabled={!isAvailable}
+                      aria-current={isActive ? "step" : undefined}
                     >
-                      <option value="CUSTOM">Tuỳ chỉnh</option>
-                      <option value="SIZE">Kích cỡ</option>
-                      <option value="TOPPING">Topping</option>
-                      <option value="PREPARATION">Chế biến</option>
-                    </select>
-                  </label>
-                  <label className="modifier-form__field">
-                    <span>Kiểu chọn</span>
-                    <select
-                      value={form.selectionType}
-                      onChange={(event) =>
-                        changeSelectionType(event.target.value)
-                      }
-                    >
-                      <option value="single">Chọn một</option>
-                      <option value="multiple">Chọn nhiều</option>
-                    </select>
-                  </label>
-                </div>
+                      <span className="modifier-form__step-index">
+                        {isComplete ? (
+                          <Check size={14} aria-hidden="true" />
+                        ) : (
+                          String(step.id).padStart(2, "0")
+                        )}
+                      </span>
+                      <span className="modifier-form__step-copy">
+                        <strong>{step.label}</strong>
+                        <small>{step.shortLabel}</small>
+                      </span>
+                    </button>
+                  );
+                })}
+              </nav>
 
-                <div className="modifier-form__switches">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={form.required}
-                      onChange={(event) =>
-                        changeRequired(event.target.checked)
-                      }
-                    />
-                    Bắt buộc chọn
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={form.isActive !== false}
-                      onChange={(event) =>
-                        updateForm({ isActive: event.target.checked })
-                      }
-                    />
-                    Đang bật
-                  </label>
-                </div>
-
-                {form.selectionType === "multiple" && (
-                  <div className="modifier-form__row">
-                    <label className="modifier-form__field">
-                      <span>Tối thiểu</span>
-                      <input
-                        type="number"
-                        min={form.required ? 1 : 0}
-                        value={form.minSelected}
-                        onChange={(event) =>
-                          updateForm({ minSelected: event.target.value })
-                        }
-                      />
-                    </label>
-                    <label className="modifier-form__field">
-                      <span>Tối đa</span>
-                      <input
-                        type="number"
-                        min="1"
-                        value={form.maxSelected}
-                        onChange={(event) =>
-                          updateForm({ maxSelected: event.target.value })
-                        }
-                        placeholder="Không giới hạn"
-                      />
-                    </label>
-                  </div>
-                )}
-              </section>
-
-              <section className="modifier-form__section">
-                <div className="modifier-form__section-title">
-                  <span>02</span>
-                  <div>
-                    <h3>Phạm vi áp dụng</h3>
-                    <p>Áp dụng toàn menu hoặc giới hạn ở các món cụ thể.</p>
-                  </div>
-                </div>
-
-                <fieldset className="modifier-form__coverage">
-                  <legend>Chọn phạm vi</legend>
-                  <label>
-                    <input
-                      type="radio"
-                      name="coverage"
-                      value="GLOBAL"
-                      checked={form.coverage === "GLOBAL"}
-                      onChange={(event) =>
-                        updateForm({
-                          coverage: event.target.value,
-                          menuItemIds: [],
-                        })
-                      }
-                    />
-                    Toàn menu
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="coverage"
-                      value="ITEMS"
-                      checked={form.coverage === "ITEMS"}
-                      onChange={(event) =>
-                        updateForm({ coverage: event.target.value })
-                      }
-                    />
-                    Chọn món cụ thể
-                  </label>
-                </fieldset>
-
-                {form.coverage === "ITEMS" && (
-                  <div className="modifier-form__menu-block">
-                    <div className="modifier-form__menu-heading">
-                      <strong>Món áp dụng</strong>
-                      <span>{form.menuItemIds.length} món đã chọn</span>
-                    </div>
-                    <input
-                      type="search"
-                      aria-label="Tìm món để áp dụng"
-                      value={itemSearch}
-                      onChange={(event) => setItemSearch(event.target.value)}
-                      placeholder="Tìm món..."
-                    />
-                    <div
-                      className="modifier-form__menu-items"
-                      aria-label="Chọn món áp dụng modifier"
-                    >
-                      {visibleMenuItems.map((item) => (
-                        <label key={item.id}>
-                          <input
-                            type="checkbox"
-                            checked={selectedMenuItemIds.has(String(item.id))}
-                            onChange={() => toggleMenuItem(item.id)}
-                          />
-                          <span>{item.name}</span>
-                          <small>{formatMoney(item.basePrice)}</small>
-                        </label>
-                      ))}
-                      {!visibleMenuItems.length && (
-                        <p>Không có món phù hợp.</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </section>
-
-              <section className="modifier-form__section modifier-form__section--options">
-                <div className="modifier-form__options-heading">
-                  <div className="modifier-form__section-title">
-                    <span>03</span>
-                    <div>
-                      <h3>Lựa chọn</h3>
-                      <p>Chỉ một lựa chọn được đặt làm mặc định.</p>
-                    </div>
-                  </div>
-                  <button type="button" onClick={addOption}>
-                    <Plus size={14} aria-hidden="true" />
-                    Thêm lựa chọn
-                  </button>
-                </div>
-
-                <div className="modifier-form__options">
-                  {form.options.map((option, index) => (
-                    <div
-                      key={option.id || index}
-                      className="modifier-option-editor"
-                    >
-                      <div className="modifier-option-editor__heading">
-                        <span>Lựa chọn {index + 1}</span>
-                        <strong>
-                          {formatModifierPriceRule(option.priceRule)}
-                        </strong>
+              <div className="modifier-form__step-panel" aria-live="polite">
+                {activeStep === 1 && (
+                  <section className="modifier-form__section">
+                    <div className="modifier-form__section-title">
+                      <span>01</span>
+                      <div>
+                        <h3>Thông tin nhóm</h3>
+                        <p>Đặt tên, kiểu chọn và giới hạn khách được chọn.</p>
                       </div>
+                    </div>
+
+                    <label className="modifier-form__field">
+                      <span>Tên nhóm</span>
+                      <input
+                        name="modifierGroupName"
+                        autoComplete="off"
+                        value={form.name}
+                        onChange={(event) =>
+                          updateForm({ name: event.target.value })
+                        }
+                        placeholder="Ví dụ: Size, Topping, Độ cay…"
+                        required
+                      />
+                    </label>
+
+                    <div className="modifier-form__row">
                       <label className="modifier-form__field">
-                        <span>Tên lựa chọn</span>
-                        <input
-                          value={option.name}
+                        <span>Loại nhóm</span>
+                        <select
+                          name="modifierGroupType"
+                          value={form.groupType}
                           onChange={(event) =>
-                            updateOption(index, { name: event.target.value })
+                            updateForm({ groupType: event.target.value })
                           }
-                          placeholder="Ví dụ: Size L, thêm bò, ít cay"
-                          required={index === 0}
-                        />
+                        >
+                          <option value="CUSTOM">Tuỳ chỉnh</option>
+                          <option value="SIZE">Kích cỡ</option>
+                          <option value="TOPPING">Topping</option>
+                          <option value="PREPARATION">Chế biến</option>
+                        </select>
                       </label>
+                      <label className="modifier-form__field">
+                        <span>Kiểu chọn</span>
+                        <select
+                          name="modifierSelectionType"
+                          value={form.selectionType}
+                          onChange={(event) =>
+                            changeSelectionType(event.target.value)
+                          }
+                        >
+                          <option value="single">Chọn một</option>
+                          <option value="multiple">Chọn nhiều</option>
+                        </select>
+                      </label>
+                    </div>
+
+                    <div className="modifier-form__switches">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={form.required}
+                          onChange={(event) =>
+                            changeRequired(event.target.checked)
+                          }
+                        />
+                        Bắt buộc chọn
+                      </label>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={form.isActive !== false}
+                          onChange={(event) =>
+                            updateForm({ isActive: event.target.checked })
+                          }
+                        />
+                        Đang bật
+                      </label>
+                    </div>
+
+                    {form.selectionType === "multiple" && (
                       <div className="modifier-form__row">
                         <label className="modifier-form__field">
-                          <span>Quy tắc giá</span>
-                          <select
-                            value={option.priceRule.rule}
+                          <span>Tối thiểu</span>
+                          <input
+                            name="modifierMinSelected"
+                            type="number"
+                            inputMode="numeric"
+                            min={form.required ? 1 : 0}
+                            value={form.minSelected}
                             onChange={(event) =>
-                              updateOptionPriceRule(index, {
-                                rule: event.target.value,
-                              })
+                              updateForm({ minSelected: event.target.value })
                             }
-                          >
-                            <option value="DELTA">Cộng/trừ giá món</option>
-                            <option value="SET">Đặt lại giá món</option>
-                          </select>
+                          />
                         </label>
                         <label className="modifier-form__field">
-                          <span>
-                            {option.priceRule.rule === "SET"
-                              ? "Giá món mới"
-                              : "Số tiền thay đổi"}
-                          </span>
+                          <span>Tối đa</span>
                           <input
+                            name="modifierMaxSelected"
                             type="number"
-                            min={
-                              option.priceRule.rule === "SET" ? 0 : undefined
-                            }
-                            value={option.priceRule.amount}
+                            inputMode="numeric"
+                            min="1"
+                            value={form.maxSelected}
                             onChange={(event) =>
-                              updateOptionPriceRule(index, {
-                                amount: event.target.value,
-                              })
+                              updateForm({ maxSelected: event.target.value })
                             }
+                            placeholder="Không giới hạn"
                           />
                         </label>
                       </div>
-                      <div className="modifier-option-editor__checks">
-                        <label>
-                          <input
-                            type="checkbox"
-                            checked={option.isDefault}
-                            onChange={(event) =>
-                              toggleDefaultOption(index, event.target.checked)
-                            }
-                          />
-                          Mặc định
-                        </label>
-                        <label>
-                          <input
-                            type="checkbox"
-                            checked={option.isActive !== false}
-                            onChange={(event) =>
-                              updateOption(index, {
-                                isActive: event.target.checked,
-                              })
-                            }
-                          />
-                          Đang bật
-                        </label>
-                      </div>
+                    )}
+
+                    <div className="modifier-form__step-actions">
                       <button
                         type="button"
-                        className="modifier-option-editor__remove"
-                        onClick={() => removeOption(index)}
-                        disabled={form.options.length <= 1}
+                        className="modifier-management__ghost-button"
+                        onClick={resetForm}
                       >
-                        <Trash2 size={14} aria-hidden="true" />
-                        Xoá lựa chọn
+                        Huỷ
+                      </button>
+                      <button
+                        type="button"
+                        className="modifier-management__primary-button"
+                        onClick={() => moveToStep(2)}
+                      >
+                        Tiếp tục
+                        <ChevronRight size={15} aria-hidden="true" />
                       </button>
                     </div>
-                  ))}
-                </div>
-              </section>
+                  </section>
+                )}
 
-              <section className="modifier-form__section modifier-form__section--note">
-                <div className="modifier-form__section-title">
-                  <span>04</span>
-                  <div>
-                    <h3>Ghi chú nội bộ</h3>
-                    <p>Chỉ người quản lý thấy nội dung này.</p>
-                  </div>
-                </div>
-                <label className="modifier-form__field">
-                  <span>Ghi chú</span>
-                  <textarea
-                    value={form.note || ""}
-                    onChange={(event) =>
-                      updateForm({ note: event.target.value })
-                    }
-                    placeholder="Ví dụ: Dùng cho menu giao hàng cuối tuần"
-                    rows="3"
-                  />
-                </label>
-              </section>
+                {activeStep === 2 && (
+                  <section className="modifier-form__section">
+                    <div className="modifier-form__section-title">
+                      <span>02</span>
+                      <div>
+                        <h3>Phạm vi áp dụng</h3>
+                        <p>Áp dụng toàn menu hoặc chỉ cho các món cụ thể.</p>
+                      </div>
+                    </div>
 
-              <div className="modifier-form__actions">
-                <button
-                  type="button"
-                  className="modifier-management__ghost-button"
-                  onClick={resetForm}
-                >
-                  Huỷ
-                </button>
-                <button
-                  type="submit"
-                  className="modifier-management__primary-button"
-                >
-                  <Save size={15} aria-hidden="true" />
-                  {creating || updating
-                    ? "Đang lưu..."
-                    : editingId
-                      ? "Lưu thay đổi"
-                      : "Tạo nhóm"}
-                </button>
+                    <fieldset className="modifier-form__coverage">
+                      <legend>Chọn phạm vi</legend>
+                      <label>
+                        <input
+                          type="radio"
+                          name="coverage"
+                          value="GLOBAL"
+                          checked={form.coverage === "GLOBAL"}
+                          onChange={(event) =>
+                            updateForm({
+                              coverage: event.target.value,
+                              menuItemIds: [],
+                            })
+                          }
+                        />
+                        Toàn menu
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          name="coverage"
+                          value="ITEMS"
+                          checked={form.coverage === "ITEMS"}
+                          onChange={(event) =>
+                            updateForm({ coverage: event.target.value })
+                          }
+                        />
+                        Chọn món cụ thể
+                      </label>
+                    </fieldset>
+
+                    {form.coverage === "ITEMS" && (
+                      <div className="modifier-form__menu-block">
+                        <div className="modifier-form__menu-heading">
+                          <strong>Món áp dụng</strong>
+                          <span>{form.menuItemIds.length} món đã chọn</span>
+                        </div>
+                        <input
+                          name="modifierMenuSearch"
+                          type="search"
+                          autoComplete="off"
+                          aria-label="Tìm món để áp dụng"
+                          value={itemSearch}
+                          onChange={(event) => setItemSearch(event.target.value)}
+                          placeholder="Tìm món…"
+                        />
+                        <div
+                          className="modifier-form__menu-items"
+                          aria-label="Chọn món áp dụng modifier"
+                        >
+                          {visibleMenuItems.map((item) => (
+                            <label key={item.id}>
+                              <input
+                                type="checkbox"
+                                checked={selectedMenuItemIds.has(String(item.id))}
+                                onChange={() => toggleMenuItem(item.id)}
+                              />
+                              <span>{item.name}</span>
+                              <small>{formatMoney(item.basePrice)}</small>
+                            </label>
+                          ))}
+                          {!visibleMenuItems.length && (
+                            <p>Không có món phù hợp.</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="modifier-form__step-actions">
+                      <button
+                        type="button"
+                        className="modifier-management__ghost-button"
+                        onClick={() => moveToStep(1)}
+                      >
+                        <ChevronLeft size={15} aria-hidden="true" />
+                        Quay lại
+                      </button>
+                      <button
+                        type="button"
+                        className="modifier-management__primary-button"
+                        onClick={() => moveToStep(3)}
+                      >
+                        Tiếp tục
+                        <ChevronRight size={15} aria-hidden="true" />
+                      </button>
+                    </div>
+                  </section>
+                )}
+
+                {activeStep === 3 && (
+                  <section className="modifier-form__section modifier-form__section--options">
+                    <div className="modifier-form__options-heading">
+                      <div className="modifier-form__section-title">
+                        <span>03</span>
+                        <div>
+                          <h3>Lựa chọn</h3>
+                          <p>Thêm các lựa chọn và giá thay đổi tương ứng.</p>
+                        </div>
+                      </div>
+                      <button type="button" onClick={addOption}>
+                        <Plus size={14} aria-hidden="true" />
+                        Thêm lựa chọn
+                      </button>
+                    </div>
+
+                    <div className="modifier-form__options">
+                      {form.options.map((option, index) => (
+                        <div
+                          key={option.id || index}
+                          className="modifier-option-editor"
+                        >
+                          <div className="modifier-option-editor__heading">
+                            <span>Lựa chọn {index + 1}</span>
+                            <strong>
+                              {formatModifierPriceRule(option.priceRule)}
+                            </strong>
+                          </div>
+                          <label className="modifier-form__field">
+                            <span>Tên lựa chọn</span>
+                            <input
+                              name={`modifierOptionName-${index}`}
+                              autoComplete="off"
+                              value={option.name}
+                              onChange={(event) =>
+                                updateOption(index, {
+                                  name: event.target.value,
+                                })
+                              }
+                              placeholder="Ví dụ: Size L, thêm bò, ít cay…"
+                              required={index === 0}
+                            />
+                          </label>
+                          <div className="modifier-form__row">
+                            <label className="modifier-form__field">
+                              <span>Quy tắc giá</span>
+                              <select
+                                name={`modifierPriceRule-${index}`}
+                                value={option.priceRule.rule}
+                                onChange={(event) =>
+                                  updateOptionPriceRule(index, {
+                                    rule: event.target.value,
+                                  })
+                                }
+                              >
+                                <option value="DELTA">Cộng/trừ giá món</option>
+                                <option value="SET">Đặt lại giá món</option>
+                              </select>
+                            </label>
+                            <label className="modifier-form__field">
+                              <span>
+                                {option.priceRule.rule === "SET"
+                                  ? "Giá món mới"
+                                  : "Số tiền thay đổi"}
+                              </span>
+                              <input
+                                name={`modifierPriceAmount-${index}`}
+                                type="number"
+                                inputMode="numeric"
+                                min={
+                                  option.priceRule.rule === "SET"
+                                    ? 0
+                                    : undefined
+                                }
+                                value={option.priceRule.amount}
+                                onChange={(event) =>
+                                  updateOptionPriceRule(index, {
+                                    amount: event.target.value,
+                                  })
+                                }
+                              />
+                            </label>
+                          </div>
+                          <div className="modifier-option-editor__checks">
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={option.isDefault}
+                                onChange={(event) =>
+                                  toggleDefaultOption(
+                                    index,
+                                    event.target.checked,
+                                  )
+                                }
+                              />
+                              Mặc định
+                            </label>
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={option.isActive !== false}
+                                onChange={(event) =>
+                                  updateOption(index, {
+                                    isActive: event.target.checked,
+                                  })
+                                }
+                              />
+                              Đang bật
+                            </label>
+                          </div>
+                          <button
+                            type="button"
+                            className="modifier-option-editor__remove"
+                            onClick={() => removeOption(index)}
+                            disabled={form.options.length <= 1}
+                          >
+                            <Trash2 size={14} aria-hidden="true" />
+                            Xoá lựa chọn
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="modifier-form__step-actions">
+                      <button
+                        type="button"
+                        className="modifier-management__ghost-button"
+                        onClick={() => moveToStep(2)}
+                      >
+                        <ChevronLeft size={15} aria-hidden="true" />
+                        Quay lại
+                      </button>
+                      <button
+                        type="button"
+                        className="modifier-management__primary-button"
+                        onClick={() => moveToStep(4)}
+                      >
+                        Tiếp tục
+                        <ChevronRight size={15} aria-hidden="true" />
+                      </button>
+                    </div>
+                  </section>
+                )}
+
+                {activeStep === 4 && (
+                  <section className="modifier-form__section modifier-form__section--note">
+                    <div className="modifier-form__section-title">
+                      <span>04</span>
+                      <div>
+                        <h3>Hoàn tất</h3>
+                        <p>Kiểm tra nhanh rồi lưu cấu hình.</p>
+                      </div>
+                    </div>
+
+                    <div className="modifier-form__review">
+                      <div>
+                        <span>Tên nhóm</span>
+                        <strong>{form.name || "Chưa đặt tên"}</strong>
+                      </div>
+                      <div>
+                        <span>Phạm vi</span>
+                        <strong>{editorSummary.coverage}</strong>
+                      </div>
+                      <div>
+                        <span>Kiểu chọn</span>
+                        <strong>{editorSummary.selection}</strong>
+                      </div>
+                      <div>
+                        <span>Lựa chọn</span>
+                        <strong>{editorSummary.options}</strong>
+                      </div>
+                    </div>
+
+                    <label className="modifier-form__field">
+                      <span>Ghi chú nội bộ</span>
+                      <textarea
+                        name="modifierNote"
+                        autoComplete="off"
+                        value={form.note || ""}
+                        onChange={(event) =>
+                          updateForm({ note: event.target.value })
+                        }
+                        placeholder="Ví dụ: Dùng cho menu giao hàng cuối tuần…"
+                        rows="3"
+                      />
+                    </label>
+
+                    <div className="modifier-form__actions">
+                      <button
+                        type="button"
+                        className="modifier-management__ghost-button"
+                        onClick={() => moveToStep(3)}
+                      >
+                        <ChevronLeft size={15} aria-hidden="true" />
+                        Quay lại
+                      </button>
+                      <button
+                        type="button"
+                        className="modifier-management__ghost-button"
+                        onClick={resetForm}
+                      >
+                        Huỷ
+                      </button>
+                      <button
+                        type="submit"
+                        className="modifier-management__primary-button"
+                      >
+                        <Save size={15} aria-hidden="true" />
+                        {creating || updating
+                          ? "Đang lưu…"
+                          : editingId
+                            ? "Lưu thay đổi"
+                            : "Tạo nhóm"}
+                      </button>
+                    </div>
+                  </section>
+                )}
               </div>
             </fieldset>
           </form>
