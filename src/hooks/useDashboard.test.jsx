@@ -66,7 +66,7 @@ describe("useDashboard", () => {
       wrapper: createWrapper(() => contextValue),
     });
 
-    expect(result.current.selectedRestaurantId).toBe("restaurant-from-old-session");
+    expect(result.current.selectedRestaurantId).toBe("");
     expect(latestDashboardQueryOptions()?.skip).toBe(true);
 
     contextValue = {

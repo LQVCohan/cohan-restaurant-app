@@ -1,55 +1,27 @@
-$transfer-bg: #f5efe5;
-$transfer-border: rgba(133, 108, 74, 0.2);
-$transfer-text: #1f2d2a;
-$transfer-muted: #68766f;
+$transfer-text: #20312d;
+$transfer-muted: #687872;
 $transfer-primary: #2f756c;
-$transfer-primary-dark: #1f5d55;
-$transfer-primary-soft: #e9f5f1;
-$transfer-amber: #a87824;
-$transfer-danger: #a84545;
-$transfer-shadow: 0 22px 54px rgba(62, 47, 26, 0.1);
-$transfer-shadow-soft: 0 12px 28px rgba(62, 47, 26, 0.065);
+$transfer-primary-dark: #235f57;
+$transfer-primary-soft: #e8f4f0;
+$transfer-surface: #fffdf8;
+$transfer-surface-muted: #f6f2e9;
+$transfer-border: rgba(78, 96, 88, 0.16);
+$transfer-danger: #a14545;
+$transfer-warning: #946415;
+$transfer-shadow: 0 16px 42px rgba(42, 59, 52, 0.08);
 
 .transfer-review-page--polished {
-  --transfer-scroll-thumb: rgba(47, 117, 108, 0.38);
-  --transfer-scroll-track: rgba(233, 245, 241, 0.56);
+  --transfer-focus: rgba(47, 117, 108, 0.28);
+  --transfer-scroll-thumb: rgba(47, 117, 108, 0.34);
+  --transfer-scroll-track: rgba(232, 244, 240, 0.58);
 
-  position: relative;
   display: grid;
   width: min(100%, 1280px);
-  min-height: calc(100vh - 118px);
   margin: 0 auto;
-  padding: clamp(18px, 2.2vw, 28px);
-  gap: 16px;
-  overflow: clip;
+  padding: clamp(16px, 2vw, 28px);
+  gap: 14px;
   color: $transfer-text;
-  background:
-    radial-gradient(circle at 8% -12%, rgba(47, 117, 108, 0.13), transparent 28rem),
-    radial-gradient(circle at 92% 4%, rgba(168, 120, 36, 0.13), transparent 25rem),
-    linear-gradient(180deg, #fffbf4 0%, $transfer-bg 58%, #f8f3ea 100%);
-  border: 1px solid rgba(229, 217, 200, 0.72);
-  border-radius: 28px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
   font-variant-numeric: tabular-nums;
-
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    opacity: 0.42;
-    background-image:
-      linear-gradient(rgba(31, 45, 42, 0.035) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(31, 45, 42, 0.035) 1px, transparent 1px);
-    background-size: 34px 34px;
-    -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.62) 42%, transparent 92%);
-    mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.62) 42%, transparent 92%);
-  }
-
-  > * {
-    position: relative;
-    z-index: 1;
-  }
 
   *,
   *::before,
@@ -58,64 +30,54 @@ $transfer-shadow-soft: 0 12px 28px rgba(62, 47, 26, 0.065);
     min-width: 0;
   }
 
-  .transfer-review-header {
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.48fr);
-    align-items: stretch;
-    gap: 20px;
-    min-height: 232px;
-    margin: 0;
-    padding: clamp(20px, 3vw, 30px);
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.86);
-    border-radius: 26px;
-    background:
-      linear-gradient(90deg, rgba(47, 117, 108, 0.12), transparent 11px),
-      radial-gradient(circle at 86% -24%, rgba(47, 117, 108, 0.18), transparent 22rem),
-      linear-gradient(135deg, rgba(255, 253, 248, 0.96), rgba(248, 241, 230, 0.9));
-    box-shadow: $transfer-shadow, inset 0 1px rgba(255, 255, 255, 0.86);
-
-    &::after {
-      content: "";
-      position: absolute;
-      inset: auto -5rem -8rem auto;
-      width: 30rem;
-      height: 30rem;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(47, 117, 108, 0.12), transparent 68%);
-      pointer-events: none;
-    }
+  button,
+  input,
+  textarea {
+    font: inherit;
   }
 
-  .transfer-review-header-copy,
-  .transfer-review-header-actions {
-    position: relative;
-    z-index: 1;
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: 3px solid var(--transfer-focus);
+    outline-offset: 2px;
+  }
+
+  button:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .transfer-review-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 20px;
+    padding: clamp(20px, 2.6vw, 30px);
+    border: 1px solid $transfer-border;
+    border-radius: 24px;
+    background:
+      radial-gradient(circle at 100% 0, rgba(47, 117, 108, 0.12), transparent 24rem),
+      linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(247, 243, 234, 0.96));
+    box-shadow: $transfer-shadow;
   }
 
   .transfer-review-header-copy {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-
     h2 {
-      max-width: 760px;
       margin: 0;
       color: $transfer-text;
-      font-size: clamp(2rem, 3.2vw, 3.05rem);
-      font-weight: 930;
-      line-height: 0.98;
-      letter-spacing: -0.065em;
+      font-size: clamp(1.85rem, 3vw, 2.6rem);
+      font-weight: 850;
+      line-height: 1.05;
+      letter-spacing: -0.045em;
       text-wrap: balance;
     }
 
     > p:not(.transfer-review-eyebrow) {
-      max-width: 66ch;
-      margin: 12px 0 0;
+      max-width: 64ch;
+      margin: 10px 0 0;
       color: $transfer-muted;
       font-size: 0.95rem;
-      line-height: 1.62;
+      line-height: 1.55;
       text-wrap: pretty;
     }
   }
@@ -124,373 +86,456 @@ $transfer-shadow-soft: 0 12px 28px rgba(62, 47, 26, 0.065);
   .transfer-review-modal-eyebrow {
     display: inline-flex;
     width: fit-content;
-    margin: 0 0 9px;
-    padding: 5px 10px;
-    border: 1px solid rgba(47, 117, 108, 0.18);
-    border-radius: 999px;
+    margin: 0 0 8px;
     color: $transfer-primary-dark;
-    background: rgba(233, 245, 241, 0.78);
-    font-size: 0.74rem;
-    font-weight: 880;
-    letter-spacing: 0.03em;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
-  .transfer-review-context-pills {
+  .transfer-review-context {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 18px;
+    align-items: center;
+    gap: 7px 12px;
+    margin-top: 16px;
+    color: $transfer-muted;
+    font-size: 0.78rem;
+    font-weight: 650;
+
+    strong {
+      color: $transfer-primary-dark;
+      font-weight: 800;
+    }
 
     span {
       display: inline-flex;
-      min-height: 32px;
       align-items: center;
-      border: 1px solid $transfer-border;
-      border-radius: 999px;
-      background: rgba(255, 253, 248, 0.72);
-      color: $transfer-muted;
-      padding: 0 11px;
-      font-size: 0.78rem;
-      font-weight: 780;
-      white-space: nowrap;
-    }
-  }
+      gap: 6px;
 
-  .transfer-review-header-actions {
-    align-self: center;
-    display: grid;
-    align-content: center;
-    gap: 10px;
-    min-height: 132px;
-    padding: 16px;
-    border: 1px solid rgba(133, 108, 74, 0.14);
-    border-radius: 20px;
-    background: rgba(255, 253, 248, 0.66);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
-
-    select,
-    button {
-      display: inline-flex;
-      width: 100%;
-      min-height: 42px;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      border-radius: 14px;
-      padding: 0 12px;
-      font-weight: 820;
-      box-shadow: 0 10px 18px rgba(53, 66, 59, 0.045);
-    }
-
-    select {
-      border: 1px solid rgba(47, 117, 108, 0.23);
-      background: rgba(255, 255, 255, 0.9);
-      color: $transfer-text;
+      &::before {
+        content: "";
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: rgba(104, 120, 114, 0.62);
+      }
     }
   }
 
   .transfer-review-refresh,
   .transfer-review-primary,
   .transfer-review-danger-soft {
-    border: 1px solid rgba(47, 117, 108, 0.23);
-    color: $transfer-text;
-    background: rgba(255, 255, 255, 0.9);
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 13px;
+    padding: 0 15px;
+    font-weight: 780;
     cursor: pointer;
-    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
-
-    &:hover:not(:disabled) {
-      transform: translateY(-1px);
-      border-color: rgba(47, 117, 108, 0.44);
-      box-shadow: 0 14px 22px rgba(47, 117, 108, 0.12);
-    }
+    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
 
     &:disabled {
       cursor: not-allowed;
-      opacity: 0.6;
+      opacity: 0.56;
+    }
+  }
+
+  .transfer-review-refresh {
+    border: 1px solid rgba(47, 117, 108, 0.24);
+    color: $transfer-primary-dark;
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 8px 18px rgba(42, 59, 52, 0.05);
+
+    &:hover:not(:disabled) {
+      border-color: rgba(47, 117, 108, 0.48);
+      background: #ffffff;
+      box-shadow: 0 12px 24px rgba(47, 117, 108, 0.1);
     }
   }
 
   .transfer-review-primary {
-    border-color: $transfer-primary;
-    background: linear-gradient(180deg, $transfer-primary, $transfer-primary-dark);
+    border: 1px solid $transfer-primary-dark;
     color: #ffffff;
-    box-shadow: 0 14px 24px rgba(47, 117, 108, 0.18);
+    background: linear-gradient(180deg, $transfer-primary, $transfer-primary-dark);
+    box-shadow: 0 10px 20px rgba(35, 95, 87, 0.16);
+
+    &:hover:not(:disabled) {
+      box-shadow: 0 14px 26px rgba(35, 95, 87, 0.22);
+      transform: translateY(-1px);
+    }
   }
 
   .transfer-review-danger-soft {
-    border-color: rgba(168, 69, 69, 0.26);
-    background: #fff4f1;
+    border: 1px solid rgba(161, 69, 69, 0.24);
     color: $transfer-danger;
+    background: #fff5f2;
+
+    &:hover:not(:disabled) {
+      border-color: rgba(161, 69, 69, 0.46);
+      background: #ffefec;
+      transform: translateY(-1px);
+    }
   }
 
   .transfer-review-summary-strip {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
+    overflow: hidden;
+    border: 1px solid $transfer-border;
+    border-radius: 18px;
+    background: rgba(255, 253, 248, 0.9);
+    box-shadow: 0 10px 28px rgba(42, 59, 52, 0.055);
 
     article {
-      position: relative;
-      min-height: 112px;
-      overflow: hidden;
-      border: 1px solid $transfer-border;
-      border-radius: 22px;
-      background: rgba(255, 253, 248, 0.92);
-      padding: 17px 18px;
-      box-shadow: $transfer-shadow-soft;
+      display: flex;
+      min-height: 82px;
+      align-items: center;
+      gap: 12px;
+      padding: 15px 18px;
 
-      &::before {
-        content: "";
-        position: absolute;
-        top: -42px;
-        right: -36px;
-        width: 144px;
-        height: 144px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(47, 117, 108, 0.13), transparent 70%);
+      & + article {
+        border-left: 1px solid $transfer-border;
       }
 
-      &::after {
-        content: "";
-        position: absolute;
-        inset: auto 18px 13px;
-        height: 3px;
-        border-radius: 999px;
-        background: rgba(47, 117, 108, 0.2);
+      > svg {
+        flex: 0 0 auto;
+        color: $transfer-primary-dark;
       }
-    }
 
-    svg,
-    span,
-    strong {
-      position: relative;
-      z-index: 1;
-    }
+      div {
+        display: grid;
+        gap: 3px;
+      }
 
-    svg {
-      color: $transfer-primary-dark;
-    }
+      span {
+        color: $transfer-muted;
+        font-size: 0.76rem;
+        font-weight: 720;
+      }
 
-    span {
-      display: block;
-      margin-top: 8px;
-      color: $transfer-muted;
-      font-size: 0.77rem;
-      font-weight: 860;
-    }
-
-    strong {
-      display: block;
-      margin-top: 6px;
-      color: $transfer-text;
-      font-size: clamp(1.28rem, 1.9vw, 1.72rem);
-      line-height: 1.08;
-      letter-spacing: -0.04em;
-      font-weight: 930;
+      strong {
+        color: $transfer-text;
+        font-size: 1.45rem;
+        font-weight: 850;
+        line-height: 1;
+        letter-spacing: -0.035em;
+      }
     }
   }
 
   .transfer-review-tabs {
-    display: grid;
-    grid-template-columns: repeat(8, minmax(0, 1fr));
-    gap: 8px;
-    border: 1px solid rgba(133, 108, 74, 0.16);
-    border-radius: 22px;
-    background: rgba(255, 253, 248, 0.72);
-    padding: 9px;
-    box-shadow: $transfer-shadow-soft;
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--transfer-scroll-thumb) transparent;
+    padding: 2px 1px 6px;
 
     button {
+      display: inline-flex;
       min-height: 42px;
-      border: 1px solid rgba(133, 108, 74, 0.15);
-      border-radius: 14px;
-      background: rgba(255, 255, 255, 0.72);
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 9px;
+      border: 1px solid $transfer-border;
+      border-radius: 12px;
+      padding: 0 12px;
       color: $transfer-muted;
-      font-weight: 850;
-      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+      background: rgba(255, 253, 248, 0.82);
+      font-size: 0.82rem;
+      font-weight: 760;
       cursor: pointer;
+      transition: transform 180ms ease, border-color 180ms ease, color 180ms ease, background 180ms ease;
 
-      &:hover {
-        transform: translateY(-1px);
-        border-color: rgba(47, 117, 108, 0.24);
+      strong {
+        display: inline-grid;
+        min-width: 24px;
+        height: 24px;
+        place-items: center;
+        border-radius: 8px;
+        padding: 0 6px;
         color: $transfer-primary-dark;
+        background: $transfer-primary-soft;
+        font-size: 0.74rem;
+        font-weight: 850;
+      }
+
+      &:hover:not(.is-active) {
+        border-color: rgba(47, 117, 108, 0.36);
+        color: $transfer-primary-dark;
+        transform: translateY(-1px);
       }
 
       &.is-active {
         border-color: $transfer-primary-dark;
-        background: $transfer-primary-dark;
         color: #ffffff;
-        box-shadow: 0 12px 22px rgba(31, 93, 85, 0.16);
+        background: $transfer-primary-dark;
+        box-shadow: 0 9px 20px rgba(35, 95, 87, 0.15);
+
+        strong {
+          color: $transfer-primary-dark;
+          background: #ffffff;
+        }
       }
     }
   }
 
-  .transfer-review-notice,
-  .transfer-review-state {
+  .transfer-review-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
     border: 1px solid $transfer-border;
-    border-radius: 18px;
-    background: rgba(255, 253, 248, 0.86);
-    padding: 15px 17px;
+    border-radius: 14px;
+    padding: 13px 15px;
     color: $transfer-muted;
-    font-weight: 780;
-    box-shadow: $transfer-shadow-soft;
-  }
+    background: $transfer-surface;
+    font-size: 0.86rem;
+    font-weight: 680;
+    line-height: 1.45;
 
-  .transfer-review-notice.success {
-    border-color: rgba(47, 117, 108, 0.24);
-    color: $transfer-primary-dark;
-    background: $transfer-primary-soft;
-  }
+    svg {
+      flex: 0 0 auto;
+      margin-top: 1px;
+    }
 
-  .transfer-review-notice.error {
-    border-color: rgba(168, 69, 69, 0.22);
-    color: $transfer-danger;
-    background: #fff3f1;
-  }
+    &.success {
+      border-color: rgba(47, 117, 108, 0.24);
+      color: $transfer-primary-dark;
+      background: $transfer-primary-soft;
+    }
 
-  .transfer-review-notice.warning {
-    border-color: rgba(168, 120, 36, 0.25);
-    color: #80550f;
-    background: #fff5dc;
+    &.warning {
+      border-color: rgba(148, 100, 21, 0.24);
+      color: #7b5312;
+      background: #fff7df;
+    }
+
+    &.error {
+      border-color: rgba(161, 69, 69, 0.24);
+      color: $transfer-danger;
+      background: #fff2ef;
+    }
   }
 
   .transfer-review-state {
-    min-height: 132px;
     display: grid;
-    place-items: center;
-    text-align: center;
+    min-height: 176px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    border: 1px dashed rgba(47, 117, 108, 0.3);
+    border-radius: 18px;
+    padding: 22px;
+    background: rgba(255, 253, 248, 0.76);
+
+    &__icon {
+      display: inline-grid;
+      width: 48px;
+      height: 48px;
+      place-items: center;
+      border-radius: 15px;
+      color: $transfer-primary-dark;
+      background: $transfer-primary-soft;
+    }
+
+    strong {
+      display: block;
+      color: $transfer-text;
+      font-size: 1rem;
+      font-weight: 820;
+    }
+
+    p {
+      max-width: 66ch;
+      margin: 5px 0 0;
+      color: $transfer-muted;
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
   }
 
-  .transfer-review-state--loading {
-    background:
-      linear-gradient(90deg, rgba(255, 253, 248, 0.72), rgba(233, 245, 241, 0.58), rgba(255, 253, 248, 0.72));
-    background-size: 220% 100%;
-    animation: transfer-loading 1.3s ease-in-out infinite;
+  .is-spinning {
+    animation: transfer-spin 0.9s linear infinite;
   }
 
   .transfer-review-content {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-    max-height: clamp(420px, 64vh, 720px);
-    overflow: auto;
-    overscroll-behavior: contain;
-    scrollbar-gutter: stable;
-    scrollbar-width: thin;
-    scrollbar-color: var(--transfer-scroll-thumb) var(--transfer-scroll-track);
-    padding-right: 4px;
+    gap: 12px;
   }
 
   .transfer-review-card {
+    position: relative;
     display: grid;
     gap: 14px;
-    align-content: start;
-    border: 1px solid $transfer-border;
-    border-radius: 22px;
-    background: linear-gradient(180deg, rgba(255, 253, 248, 0.95), rgba(250, 244, 234, 0.82));
-    box-shadow: $transfer-shadow-soft;
     overflow: hidden;
+    border: 1px solid $transfer-border;
+    border-radius: 19px;
+    background: rgba(255, 253, 248, 0.94);
+    box-shadow: 0 10px 28px rgba(42, 59, 52, 0.055);
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: rgba(104, 120, 114, 0.28);
+    }
+
+    &--submitted::before,
+    &--verifying::before {
+      background: #b88024;
+    }
+
+    &--verified::before {
+      background: $transfer-primary;
+    }
+
+    &--rejected::before,
+    &--failed::before {
+      background: $transfer-danger;
+    }
   }
 
   .transfer-review-card-header {
     display: flex;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 14px;
-    padding: 17px 17px 0;
+    gap: 16px;
+    padding: 18px 20px 0 22px;
 
     h3 {
-      margin: 5px 0 0;
+      margin: 4px 0 0;
       color: $transfer-text;
-      font-size: clamp(1.32rem, 2vw, 1.82rem);
-      font-weight: 930;
-      letter-spacing: -0.046em;
+      font-size: clamp(1.35rem, 2.1vw, 1.8rem);
+      font-weight: 860;
+      line-height: 1.08;
+      letter-spacing: -0.04em;
     }
   }
 
   .transfer-review-reference {
     margin: 0;
     color: $transfer-primary-dark;
-    font-size: 0.78rem;
-    font-weight: 900;
+    font-size: 0.76rem;
+    font-weight: 850;
+    letter-spacing: 0.035em;
+    overflow-wrap: anywhere;
   }
 
   .transfer-review-subtitle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 8px;
     margin: 7px 0 0;
     color: $transfer-muted;
     font-size: 0.78rem;
-    font-weight: 760;
+    font-weight: 650;
     line-height: 1.45;
   }
 
   .transfer-review-status {
     display: inline-flex;
-    min-height: 30px;
+    min-height: 31px;
     flex: 0 0 auto;
     align-items: center;
-    border-radius: 999px;
+    border: 1px solid transparent;
+    border-radius: 10px;
     padding: 0 10px;
-    font-size: 0.74rem;
-    font-weight: 880;
+    font-size: 0.73rem;
+    font-weight: 800;
     white-space: nowrap;
-  }
 
-  .transfer-review-status--success {
-    background: $transfer-primary-soft;
-    color: $transfer-primary-dark;
-  }
+    &--success {
+      border-color: rgba(47, 117, 108, 0.18);
+      color: $transfer-primary-dark;
+      background: $transfer-primary-soft;
+    }
 
-  .transfer-review-status--warning,
-  .transfer-review-status--info {
-    background: #fff5d9;
-    color: #815511;
-  }
+    &--warning,
+    &--info {
+      border-color: rgba(148, 100, 21, 0.18);
+      color: $transfer-warning;
+      background: #fff5d8;
+    }
 
-  .transfer-review-status--danger {
-    background: #fff3f1;
-    color: $transfer-danger;
-  }
+    &--danger {
+      border-color: rgba(161, 69, 69, 0.18);
+      color: $transfer-danger;
+      background: #fff1ef;
+    }
 
-  .transfer-review-status--muted {
-    background: rgba(104, 118, 111, 0.1);
-    color: $transfer-muted;
+    &--muted {
+      border-color: rgba(104, 120, 114, 0.14);
+      color: $transfer-muted;
+      background: rgba(104, 120, 114, 0.08);
+    }
   }
 
   .transfer-review-card-body {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(210px, 0.58fr);
-    gap: 12px;
-    padding: 0 17px;
+    grid-template-columns: minmax(0, 1.45fr) minmax(230px, 0.55fr);
+    gap: 14px;
+    padding: 0 20px 0 22px;
   }
 
-  .transfer-review-detail-list,
-  .transfer-review-proof-panel {
+  .transfer-review-detail-list {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-content: start;
-    gap: 8px;
-    border: 1px solid rgba(133, 108, 74, 0.13);
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.64);
-    padding: 12px;
+    gap: 0;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid rgba(78, 96, 88, 0.12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.54);
   }
 
   .transfer-review-detail-row {
     display: grid;
-    grid-template-columns: minmax(110px, 0.44fr) minmax(0, 1fr);
+    grid-template-columns: minmax(112px, 0.42fr) minmax(0, 1fr);
     gap: 10px;
     align-items: start;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(78, 96, 88, 0.1);
 
-    span {
+    &:nth-child(odd) {
+      border-right: 1px solid rgba(78, 96, 88, 0.1);
+    }
+
+    &:nth-last-child(-n + 2) {
+      border-bottom: 0;
+    }
+
+    dt {
       color: $transfer-muted;
-      font-size: 0.74rem;
-      font-weight: 820;
+      font-size: 0.72rem;
+      font-weight: 720;
+      line-height: 1.42;
     }
 
-    strong {
+    dd {
+      margin: 0;
       color: $transfer-text;
-      font-size: 0.82rem;
-      font-weight: 860;
+      font-size: 0.8rem;
+      font-weight: 760;
       line-height: 1.42;
-      word-break: break-word;
+      overflow-wrap: anywhere;
     }
+  }
+
+  .transfer-review-proof-panel {
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    border: 1px solid rgba(78, 96, 88, 0.12);
+    border-radius: 14px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.54);
   }
 
   .transfer-review-proof-heading {
@@ -498,15 +543,15 @@ $transfer-shadow-soft: 0 12px 28px rgba(62, 47, 26, 0.065);
     align-items: center;
     gap: 8px;
     color: $transfer-muted;
-    font-size: 0.77rem;
-    font-weight: 850;
+    font-size: 0.76rem;
+    font-weight: 760;
   }
 
   .transfer-review-proof-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    max-height: 164px;
+    max-height: 176px;
     overflow: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--transfer-scroll-thumb) var(--transfer-scroll-track);
@@ -516,57 +561,61 @@ $transfer-shadow-soft: 0 12px 28px rgba(62, 47, 26, 0.065);
     overflow: hidden;
     aspect-ratio: 1;
     border: 1px solid rgba(47, 117, 108, 0.18);
-    border-radius: 14px;
-    background: #ffffff;
+    border-radius: 11px;
     padding: 0;
+    background: $transfer-surface-muted;
     cursor: zoom-in;
 
     img {
+      display: block;
       width: 100%;
       height: 100%;
       object-fit: cover;
-      display: block;
-      transition: transform 0.2s ease;
+      transition: transform 200ms ease;
     }
 
     &:hover img {
-      transform: scale(1.04);
+      transform: scale(1.035);
     }
   }
 
   .transfer-review-empty-proof {
-    grid-column: 1 / -1;
-    min-height: 86px;
     display: grid;
+    min-height: 96px;
+    grid-column: 1 / -1;
     place-items: center;
-    margin: 0;
-    border: 1px dashed rgba(47, 117, 108, 0.2);
-    border-radius: 14px;
+    align-content: center;
+    gap: 7px;
+    border: 1px dashed rgba(47, 117, 108, 0.22);
+    border-radius: 11px;
     color: $transfer-muted;
-    font-size: 0.82rem;
-    font-weight: 780;
+    font-size: 0.78rem;
+    font-weight: 680;
+    text-align: center;
   }
 
   .transfer-review-card-actions {
     display: flex;
+    min-height: 61px;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    border-top: 1px solid rgba(133, 108, 74, 0.13);
-    padding: 14px 17px 17px;
+    gap: 9px;
+    border-top: 1px solid rgba(78, 96, 88, 0.11);
+    padding: 12px 20px 14px 22px;
+    background: rgba(246, 242, 233, 0.46);
 
-    button {
-      min-height: 38px;
-      border-radius: 999px;
-      padding: 0 14px;
-      font-weight: 850;
+    .transfer-review-primary,
+    .transfer-review-danger-soft {
+      min-height: 40px;
+      border-radius: 11px;
     }
 
     p {
       margin: 0;
       color: $transfer-muted;
       font-size: 0.82rem;
-      font-weight: 780;
+      font-weight: 680;
+      line-height: 1.45;
     }
   }
 
@@ -574,191 +623,308 @@ $transfer-shadow-soft: 0 12px 28px rgba(62, 47, 26, 0.065);
   .transfer-proof-lightbox {
     position: fixed;
     inset: 0;
-    z-index: 70;
+    z-index: 1200;
     display: grid;
     place-items: center;
-    background: rgba(31, 45, 42, 0.28);
-    -webkit-backdrop-filter: blur(5px);
-    backdrop-filter: blur(5px);
     padding: 18px;
+    background: rgba(24, 39, 34, 0.48);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
   }
 
   .transfer-review-modal-card {
     position: relative;
     width: min(100%, 520px);
-    max-height: min(84vh, 760px);
+    max-height: min(88dvh, 760px);
     overflow-y: auto;
-    border: 1px solid rgba(255, 255, 255, 0.78);
-    border-radius: 22px;
-    background: linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(250, 244, 234, 0.94));
-    color: $transfer-text;
-    box-shadow: $transfer-shadow;
+    border: 1px solid rgba(255, 255, 255, 0.76);
+    border-radius: 20px;
     padding: 22px;
+    color: $transfer-text;
+    background: linear-gradient(180deg, #fffdf8, #f7f2e8);
+    box-shadow: 0 28px 80px rgba(24, 39, 34, 0.28);
+    scrollbar-width: thin;
+    scrollbar-color: var(--transfer-scroll-thumb) var(--transfer-scroll-track);
 
     h3 {
-      margin: 0 0 14px;
+      margin: 0 38px 15px 0;
       color: $transfer-text;
-      font-size: 1.4rem;
-      letter-spacing: -0.04em;
+      font-size: 1.45rem;
+      font-weight: 840;
+      letter-spacing: -0.035em;
+    }
+
+    > .transfer-review-primary,
+    > .transfer-review-danger-soft {
+      width: 100%;
+      margin-top: 15px;
     }
   }
 
   .transfer-review-modal-close,
-  .transfer-proof-lightbox button {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    width: 34px;
-    height: 34px;
-    border: 1px solid rgba(133, 108, 74, 0.18);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.82);
+  .transfer-proof-lightbox__content > button {
+    display: inline-grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border: 1px solid rgba(78, 96, 88, 0.18);
+    border-radius: 12px;
     color: $transfer-text;
+    background: rgba(255, 255, 255, 0.9);
     cursor: pointer;
+  }
+
+  .transfer-review-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
   }
 
   .transfer-review-modal-summary {
     display: flex;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
-    border: 1px solid rgba(133, 108, 74, 0.15);
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.72);
+    margin-bottom: 13px;
+    border: 1px solid rgba(78, 96, 88, 0.13);
+    border-radius: 13px;
     padding: 12px;
-    margin-bottom: 12px;
+    background: rgba(255, 255, 255, 0.66);
 
     span {
       color: $transfer-muted;
-      font-weight: 800;
+      font-size: 0.8rem;
+      font-weight: 720;
+      overflow-wrap: anywhere;
     }
 
     strong {
+      flex: 0 0 auto;
       color: $transfer-text;
-      font-weight: 930;
+      font-weight: 850;
     }
   }
 
   .transfer-review-field {
     display: grid;
     gap: 6px;
-    margin-top: 10px;
+    margin-top: 11px;
     color: $transfer-muted;
     font-size: 0.78rem;
-    font-weight: 820;
+    font-weight: 760;
 
     input,
     textarea {
       width: 100%;
-      min-height: 42px;
-      border: 1px solid rgba(47, 117, 108, 0.2);
-      border-radius: 14px;
-      background: rgba(255, 255, 255, 0.9);
-      color: $transfer-text;
+      min-height: 44px;
+      border: 1px solid rgba(47, 117, 108, 0.22);
+      border-radius: 12px;
       padding: 0 12px;
-      font: inherit;
-      font-weight: 760;
+      color: $transfer-text;
+      background: rgba(255, 255, 255, 0.92);
+      font-size: 0.92rem;
+      font-weight: 620;
     }
 
     textarea {
-      min-height: 96px;
+      min-height: 100px;
       padding: 10px 12px;
       resize: vertical;
     }
   }
 
-  .transfer-review-modal-card > .transfer-review-primary,
-  .transfer-review-modal-card > .transfer-review-danger-soft {
-    width: 100%;
-    min-height: 44px;
-    margin-top: 14px;
-    border-radius: 14px;
-    font-weight: 880;
+  .transfer-review-helper {
+    margin: 8px 0 0;
+    color: $transfer-muted;
+    font-size: 0.78rem;
+    line-height: 1.45;
   }
 
-  .transfer-proof-lightbox img {
-    max-width: min(92vw, 980px);
-    max-height: 84vh;
-    border-radius: 18px;
-    box-shadow: $transfer-shadow;
+  .transfer-proof-lightbox__content {
+    position: relative;
+    display: grid;
+    max-width: min(96vw, 1080px);
+    max-height: 90dvh;
+    place-items: center;
+
+    > button {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 1;
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      max-height: 90dvh;
+      border-radius: 16px;
+      object-fit: contain;
+      box-shadow: 0 30px 90px rgba(18, 29, 25, 0.4);
+    }
   }
 
-  .transfer-review-content::-webkit-scrollbar,
+  .transfer-review-tabs::-webkit-scrollbar,
   .transfer-review-proof-list::-webkit-scrollbar,
   .transfer-review-modal-card::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
   }
 
-  .transfer-review-content::-webkit-scrollbar-track,
-  .transfer-review-proof-list::-webkit-scrollbar-track,
-  .transfer-review-modal-card::-webkit-scrollbar-track {
-    border-radius: 999px;
-    background: var(--transfer-scroll-track);
-  }
-
-  .transfer-review-content::-webkit-scrollbar-thumb,
+  .transfer-review-tabs::-webkit-scrollbar-thumb,
   .transfer-review-proof-list::-webkit-scrollbar-thumb,
   .transfer-review-modal-card::-webkit-scrollbar-thumb {
     border-radius: 999px;
     background: var(--transfer-scroll-thumb);
   }
-
-  button:focus-visible,
-  select:focus-visible,
-  input:focus-visible,
-  textarea:focus-visible {
-    outline: 3px solid rgba(47, 117, 108, 0.2);
-    outline-offset: 2px;
-  }
 }
 
-@keyframes transfer-loading {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
+@keyframes transfer-spin {
+  to { transform: rotate(360deg); }
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1000px) {
   .transfer-review-page--polished {
-    .transfer-review-header,
-    .transfer-review-summary-strip,
-    .transfer-review-content,
     .transfer-review-card-body {
       grid-template-columns: 1fr;
     }
 
-    .transfer-review-tabs {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+    .transfer-review-proof-list {
+      grid-template-columns: repeat(4, minmax(84px, 1fr));
+      max-height: none;
     }
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 720px) {
   .transfer-review-page--polished {
-    padding: 14px;
-    border-radius: 20px;
+    padding: 12px;
 
-    .transfer-review-header,
-    .transfer-review-summary-strip article,
-    .transfer-review-card,
-    .transfer-review-tabs {
+    .transfer-review-header {
+      grid-template-columns: 1fr;
+      gap: 16px;
       border-radius: 18px;
+      padding: 20px;
     }
 
-    .transfer-review-tabs {
+    .transfer-review-refresh {
+      width: 100%;
+    }
+
+    .transfer-review-context {
+      display: grid;
+      gap: 5px;
+
+      span::before {
+        display: none;
+      }
+    }
+
+    .transfer-review-summary-strip {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+      border-radius: 15px;
+
+      article {
+        min-height: 76px;
+        padding: 13px 14px;
+
+        & + article {
+          border-left: 0;
+        }
+
+        &:nth-child(even) {
+          border-left: 1px solid $transfer-border;
+        }
+
+        &:nth-child(n + 3) {
+          border-top: 1px solid $transfer-border;
+        }
+      }
     }
 
-    .transfer-review-content,
+    .transfer-review-state {
+      grid-template-columns: auto minmax(0, 1fr);
+
+      .transfer-review-refresh {
+        grid-column: 1 / -1;
+      }
+    }
+
+    .transfer-review-card-header {
+      display: grid;
+      padding: 17px 16px 0 19px;
+    }
+
+    .transfer-review-status {
+      width: fit-content;
+    }
+
+    .transfer-review-card-body {
+      padding: 0 16px 0 19px;
+    }
+
+    .transfer-review-detail-list {
+      grid-template-columns: 1fr;
+    }
+
+    .transfer-review-detail-row {
+      grid-template-columns: minmax(105px, 0.42fr) minmax(0, 1fr);
+
+      &:nth-child(odd) {
+        border-right: 0;
+      }
+
+      &:nth-last-child(-n + 2) {
+        border-bottom: 1px solid rgba(78, 96, 88, 0.1);
+      }
+
+      &:last-child {
+        border-bottom: 0;
+      }
+    }
+
     .transfer-review-proof-list {
-      max-height: none;
-      overflow: visible;
-      scrollbar-gutter: auto;
-      padding-right: 0;
+      grid-template-columns: repeat(3, minmax(78px, 1fr));
+    }
+
+    .transfer-review-card-actions {
+      padding: 12px 16px 14px 19px;
+
+      .transfer-review-primary,
+      .transfer-review-danger-soft {
+        width: 100%;
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .transfer-review-page--polished {
+    .transfer-review-summary-strip article {
+      gap: 8px;
+      padding: 12px;
+
+      strong {
+        font-size: 1.28rem;
+      }
+    }
+
+    .transfer-review-proof-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .transfer-review-detail-row {
       grid-template-columns: 1fr;
       gap: 3px;
+    }
+
+    .transfer-review-modal-card {
+      padding: 19px;
+    }
+
+    .transfer-review-modal-summary {
+      align-items: flex-start;
+      flex-direction: column;
     }
   }
 }

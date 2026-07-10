@@ -15,7 +15,7 @@ const apolloState = vi.hoisted(() => ({
 const apolloMocks = vi.hoisted(() => ({
   refetch: vi.fn(async () => ({ data: {} })),
   createCombo: vi.fn(async () => ({ data: { createCombo: { id: "c-new" } } })),
-  updateCombo: vi.fn(async () => ({ data: { updateCombo: { id: "c1" } })),
+  updateCombo: vi.fn(async () => ({ data: { updateCombo: { id: "c1" } } })),
   deleteCombo: vi.fn(async () => ({ data: { deleteCombo: true } })),
   toggleCombo: vi.fn(async () => ({ data: { toggleComboStatus: { id: "c1", isActive: false } } })),
 }));
