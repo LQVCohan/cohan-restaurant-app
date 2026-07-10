@@ -1,0 +1,29 @@
+{
+  "id": "backup-run-action-feedback",
+  "name": "backup-run-action-feedback",
+  "title": "Clarify backup run actions and feedback",
+  "description": "Make the create, save, and cancel actions in the backup checklist self-explanatory and show contextual feedback beside the controls.",
+  "status": "in_progress",
+  "dev_type": "feature-fix",
+  "scope": "manager-backup",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "codex/backup-run-action-feedback",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Backup/BackupManagement.jsx",
+    "src/components/Dashboard_Manager/Backup/BackupManagement.scss",
+    "src/components/Dashboard_Manager/Backup/BackupManagement.test.jsx"
+  ],
+  "notes": "Keep BackupRun schema, GraphQL operations, permissions, audit logging, restaurant scoping, and snapshot behavior unchanged. Reuse the existing status notice pattern and native confirmation instead of adding a toast dependency or new abstraction."
+}
