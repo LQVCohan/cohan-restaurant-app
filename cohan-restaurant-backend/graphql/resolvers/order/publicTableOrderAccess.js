@@ -9,6 +9,7 @@ import {
   requestPublicTableOrderAccess,
   validatePublicTableOrderSessionAccess,
 } from "../../../src/services/publicTableOrderAccess.service.js";
+import { ensurePublicTableSessionForAccess } from "../../../src/services/publicTableSessionBootstrap.service.js";
 import {
   setTableOrderSessionCookies,
   withTableOrderSessionCookieCredentials,
@@ -53,14 +54,12 @@ export const PublicTableOrderAccessQuery = {
       : false;
 
     const canRequestOrderAccess =
-      hasActiveSession && operationalCanOrder && !orderAccessConfirmed;
-    const orderAccessBlockedReason = !hasActiveSession
-      ? "Nhân viên cần mở phiên phục vụ cho bàn trước khi khách gọi món."
-      : !operationalCanOrder
-        ? result?.orderBlockedReason || "Bàn hiện chưa sẵn sàng nhận món."
-        : !orderAccessConfirmed
-          ? "Cần xác nhận thiết bị với nhân viên tại bàn trước khi xem và gọi món."
-          : null;
+      operationalCanOrder && !orderAccessConfirmed;
+    const orderAccessBlockedReason = !operationalCanOrder
+      ? result?.orderBlockedReason || "Bàn hiện chưa sẵn sàng nhận món."
+      : !orderAccessConfirmed
+        ? "Cần xác nhận thiết bị với nhân viên tại bàn trước khi xem và gọi món."
+        : null;
 
     return {
       ...result,
@@ -89,6 +88,7 @@ export const PublicTableOrderAccessQuery = {
 
 export const PublicTableOrderAccessMutation = {
   async publicRequestTableOrderAccess(_parent, { input }, ctx) {
+    await ensurePublicTableSessionForAccess(input || {});
     const result = await requestPublicTableOrderAccess(input || {});
     try {
       await emitRestaurantEvent(
