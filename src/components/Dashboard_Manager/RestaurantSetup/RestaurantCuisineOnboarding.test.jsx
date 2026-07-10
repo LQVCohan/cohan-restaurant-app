@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { message } from "antd";
 import { useMutation, useQuery } from "@apollo/client/react";
@@ -28,7 +28,15 @@ const templates = [
     ingredientCount: 10,
     menuCount: 3,
     menuItemCount: 6,
-    featuredItems: ["Phở bò", "Cơm gà"],
+    recipeCount: 6,
+    dishNames: [
+      "Phở bò",
+      "Cơm gà",
+      "Bún thịt nướng",
+      "Cơm thịt kho trứng",
+      "Đậu hũ sốt hành",
+      "Trứng chiên cơm trắng",
+    ],
   },
   {
     key: "korean",
@@ -39,7 +47,15 @@ const templates = [
     ingredientCount: 10,
     menuCount: 3,
     menuItemCount: 6,
-    featuredItems: ["Bibimbap", "Bulgogi"],
+    recipeCount: 6,
+    dishNames: [
+      "Cơm trộn Bibimbap",
+      "Canh kimchi đậu hũ",
+      "Bò Bulgogi",
+      "Gà sốt cay Hàn Quốc",
+      "Cơm cuộn rong biển",
+      "Đậu hũ sốt cay",
+    ],
   },
 ];
 
@@ -108,6 +124,36 @@ describe("RestaurantCuisineOnboarding", () => {
       />,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("shows backend counts and the complete dish list in a native disclosure", () => {
+    render(
+      <RestaurantCuisineOnboarding
+        restaurant={{ id: "r1", name: "Cohan Quận 1", initialSetup: { status: "pending" } }}
+      />,
+    );
+
+    const querySource = operationSource(useQuery.mock.calls[0][0]);
+    expect(querySource).toContain("recipeCount");
+    expect(querySource).toContain("dishNames");
+
+    const firstCard = document.body.querySelectorAll(".cuisine-template-card")[0];
+    expect(firstCard).toHaveTextContent("6Món");
+    expect(firstCard).toHaveTextContent("10Nguyên liệu");
+    expect(firstCard).toHaveTextContent("6Công thức");
+
+    const summaryText = within(firstCard).getByText("Xem 6 món sẽ được tạo");
+    const summary = summaryText.closest("summary");
+    const details = summary.closest("details");
+    expect(summary).toBeInTheDocument();
+    expect(details).not.toHaveAttribute("open");
+
+    fireEvent.click(summary);
+    expect(details).toHaveAttribute("open");
+    templates[0].dishNames.forEach((dishName) => {
+      expect(within(details).getByText(dishName)).toBeInTheDocument();
+    });
+    expect(screen.getAllByRole("radio")[0]).toBeChecked();
   });
 
   it("selects and applies a cuisine package", async () => {
