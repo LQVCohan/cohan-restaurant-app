@@ -267,6 +267,24 @@ export const buildModifierSelectionKey = (modifiers = []) =>
     .sort()
     .join("|");
 
+export const findAddedCartLine = ({
+  items = [],
+  menuItemId,
+  servingVariantKey,
+  note,
+  modifiers = [],
+}) => {
+  const wantedKey = buildModifierSelectionKey(modifiers);
+  return (items || []).find(
+    (item) =>
+      String(item.menuItemId) === String(menuItemId) &&
+      String(item.servingVariantKey || "portion") ===
+        String(servingVariantKey || "portion") &&
+      normalizeNote(item.note) === normalizeNote(note) &&
+      buildModifierSelectionKey(item.modifiers || []) === wantedKey,
+  );
+};
+
 export const getModifierSelectionError = (groups = [], selected = {}) => {
   for (const group of groups || []) {
     const selectedIds = Array.isArray(selected[group.id]) ? selected[group.id] : [];
@@ -886,16 +904,12 @@ const FoodDetailV2 = () => {
   };
 
   const syncAddedLine = (cartData) => {
-    const wantedKey = buildModifierSelectionKey(modifierSelections);
-    const returnedItem = (cartData?.items || []).find((item) => {
-      const itemKey = buildModifierSelectionKey(item.modifiers || []);
-      return (
-        String(item.menuItemId) === String(dish.id) &&
-        String(item.servingVariantKey || "portion") ===
-          String(resolvedServingVariantKey) &&
-        normalizeNote(item.note) === normalizeNote(note) &&
-        itemKey === wantedKey
-      );
+    const returnedItem = findAddedCartLine({
+      items: cartData?.items,
+      menuItemId: dish.id,
+      servingVariantKey: resolvedServingVariantKey,
+      note,
+      modifiers: modifierSelections,
     });
     if (!returnedItem) return false;
 
