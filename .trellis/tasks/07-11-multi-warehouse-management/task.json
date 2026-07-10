@@ -1,7 +1,7 @@
 {
   "id": "07-11-multi-warehouse-management",
   "title": "Restore multi-warehouse management",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "area": "fullstack",
   "createdAt": "2026-07-11",
   "updatedAt": "2026-07-11",
@@ -15,6 +15,11 @@
       "npm run check:conflicts",
       "npm run build",
       "browser smoke"
+    ],
+    "notes": [
+      "GitHub connector does not expose a runnable repository checkout or browser.",
+      "Static review completed for query, CRUD, permission, selector, count and transfer boundaries.",
+      "The first warehouse is still created transactionally with each new restaurant."
     ]
   }
 }
