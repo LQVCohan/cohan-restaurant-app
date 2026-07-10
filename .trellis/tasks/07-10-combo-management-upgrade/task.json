@@ -1,7 +1,7 @@
 {
   "id": "07-10-combo-management-upgrade",
   "title": "Nâng cấp giao diện và luồng quản lý combo",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-backend-bugfix",
   "scope": [
     "src/components/Dashboard_Manager/Combo/ComboManagement.jsx",
@@ -20,8 +20,18 @@
     ],
     "completed": [
       "traced Combo model through GraphQL schema/resolver, Apollo operations and manager UI actions",
-      "reviewed menu item query behavior, manager route permission and shared Modal sizing"
+      "reviewed menu item query behavior, manager route permission and shared Modal sizing",
+      "reviewed the final JSX, resolver and SCSS diffs for balanced delimiters, existing imports and GraphQL contract alignment",
+      "added frontend coverage for create, modal close, unique item selection, legacy item snapshots, toggle and delete flows",
+      "added resolver coverage for integer quantities, duplicate items, restaurant-scoped updates and escaped manager search"
     ],
-    "notRun": []
+    "notRun": [
+      "npm run check:conflicts could not run because the GitHub connector does not provide a repository runtime",
+      "npm run check:graphql could not run because the GitHub connector does not provide a repository runtime",
+      "the targeted frontend and backend Vitest files could not run because the repository could not be cloned in the container environment",
+      "npm run build could not run because the repository could not be cloned in the container environment",
+      "browser checks at 390x844, 430x932 and a real phone were not available",
+      "no GitHub Actions workflow run or commit status was associated with commit 761d70216722d2185fdabf0ea3a20e266bb3b959"
+    ]
   }
 }
