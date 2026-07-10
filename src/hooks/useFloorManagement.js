@@ -11,11 +11,7 @@ const Q_FLOORS = gql`
       planImage
       isActive
       isWatching
-
-      # Dữ liệu layout (tường, cửa, bếp, quầy bar...)
       layout
-
-      # Kích thước / meta (nếu có dùng)
       meta {
         width
         height
@@ -43,6 +39,34 @@ const Q_PUBLIC_FLOORS = gql`
   }
 `;
 
+const TABLE_FIELDS = gql`
+  fragment FloorManagementTableFields on Table {
+    id
+    label: code
+    capacity
+    type
+    deposit
+    photos
+    vrUrl
+    notes
+    tags
+    position {
+      x
+      y
+      w
+      h
+      rotation
+      shape
+      path
+    }
+    status
+    isViewingLocked
+    viewLockUserId
+    viewLockExpiresAt
+    viewLockViewerName
+  }
+`;
+
 const Q_TABLES = gql`
   query Tables(
     $restaurantId: ID!
@@ -56,32 +80,10 @@ const Q_TABLES = gql`
       status: $status
       limit: $limit
     ) {
-      id
-      label: code
-      capacity
-      type
-      deposit
-      photos
-      vrUrl
-      notes
-      tags
-      visualConfig
-      position {
-        x
-        y
-        w
-        h
-        rotation
-        shape
-        path
-      }
-      status
-      isViewingLocked
-      viewLockUserId
-      viewLockExpiresAt
-      viewLockViewerName
+      ...FloorManagementTableFields
     }
   }
+  ${TABLE_FIELDS}
 `;
 
 const Q_PUBLIC_TABLES = gql`
@@ -97,32 +99,10 @@ const Q_PUBLIC_TABLES = gql`
       status: $status
       limit: $limit
     ) {
-      id
-      label: code
-      capacity
-      type
-      deposit
-      photos
-      vrUrl
-      notes
-      tags
-      visualConfig
-      position {
-        x
-        y
-        w
-        h
-        rotation
-        shape
-        path
-      }
-      status
-      isViewingLocked
-      viewLockUserId
-      viewLockExpiresAt
-      viewLockViewerName
+      ...FloorManagementTableFields
     }
   }
+  ${TABLE_FIELDS}
 `;
 
 const M_CREATE_FLOOR = gql`
@@ -146,14 +126,9 @@ const M_CREATE_FLOOR = gql`
 `;
 
 /**
- * Hook quản lý tầng + bàn + layout
- *
- * @param restaurantId: ID nhà hàng
- * @param initialFloorLevel: level ban đầu muốn chọn
- * @param initialFloorId: nếu có id tầng cụ thể ban đầu
- * @param tableStatus: filter status bàn (optional)
- * @param tableLimit: limit số bàn (default 200)
- * @param publicAccess: dùng query public cho màn khách hàng
+ * Shared floor and table data for manager/customer floor maps.
+ * Per-table model/AR metadata is intentionally excluded; floor maps use only
+ * operational position plus photos and 360° panorama content.
  */
 export default function useFloorManagement({
   restaurantId,
@@ -164,7 +139,6 @@ export default function useFloorManagement({
   enabled = true,
   publicAccess = false,
 }) {
-  // 1. Query floors
   const {
     data: floorsData,
     loading: floorsLoading,
@@ -178,40 +152,35 @@ export default function useFloorManagement({
 
   const floors = useMemo(
     () => (publicAccess ? floorsData?.publicFloors : floorsData?.floors) ?? [],
-    [floorsData, publicAccess]
+    [floorsData, publicAccess],
   );
   const [createFloorMut] = useMutation(M_CREATE_FLOOR);
-
-  // 2. Active level / floor
   const [activeLevel, setActiveLevel] = useState(initialFloorLevel ?? null);
 
-  // Helper: tra id từ level / level từ id
-  const getIdFromLevel = (lvl) =>
-    floors.find((f) => Number(f.level) === Number(lvl))?.id ?? null;
+  const getIdFromLevel = (level) =>
+    floors.find((floor) => Number(floor.level) === Number(level))?.id ?? null;
 
   const getLevelFromId = (id) =>
-    floors.find((f) => String(f.id) === String(id))?.level ?? null;
+    floors.find((floor) => String(floor.id) === String(id))?.level ?? null;
 
-  // Nếu chưa có activeLevel mà có initialFloorId -> map sang level
   useEffect(() => {
     if (activeLevel == null && initialFloorId && floors.length) {
-      const f = floors.find((x) => String(x.id) === String(initialFloorId));
-      if (f?.level != null) setActiveLevel(Number(f.level));
+      const initialFloor = floors.find(
+        (floor) => String(floor.id) === String(initialFloorId),
+      );
+      if (initialFloor?.level != null) setActiveLevel(Number(initialFloor.level));
     }
-  }, [floors, initialFloorId, activeLevel]);
+  }, [activeLevel, floors, initialFloorId]);
 
-  // Tầng đang active (object đầy đủ)
   const activeFloorData = useMemo(
     () =>
-      floors.find((f) => Number(f.level) === Number(activeLevel)) ??
+      floors.find((floor) => Number(floor.level) === Number(activeLevel)) ??
       floors[0] ??
       null,
-    [floors, activeLevel]
+    [activeLevel, floors],
   );
-
   const activeFloorId = activeFloorData?.id ?? null;
 
-  // 3. Query tables của tầng đang chọn
   const {
     data: tablesData,
     loading: tablesLoading,
@@ -230,13 +199,12 @@ export default function useFloorManagement({
 
   const tables = useMemo(
     () => (publicAccess ? tablesData?.publicTables : tablesData?.tables) ?? [],
-    [tablesData, publicAccess]
+    [publicAccess, tablesData],
   );
 
-  // Helpers set floor theo id
   const setActiveFloorById = (id) => {
-    const lvl = getLevelFromId(id);
-    if (lvl != null) setActiveLevel(lvl);
+    const level = getLevelFromId(id);
+    if (level != null) setActiveLevel(level);
   };
 
   const createFloor = useCallback(
@@ -250,25 +218,21 @@ export default function useFloorManagement({
       layout = [],
       meta = { width: 2000, height: 2000 },
     }) => {
-      if (!restaurantId) {
-        throw new Error("Missing restaurantId");
-      }
+      if (!restaurantId) throw new Error("Missing restaurantId");
       if (publicAccess) {
         throw new Error("Không thể tạo tầng từ màn khách hàng.");
       }
+
       const normalizedName = String(name || "").trim();
-      if (!normalizedName) {
-        throw new Error("Tên tầng không được để trống.");
-      }
+      if (!normalizedName) throw new Error("Tên tầng không được để trống.");
 
       const computedLevel =
         level != null
           ? Number(level)
-          : (floors || []).reduce(
+          : floors.reduce(
               (max, floor) => Math.max(max, Number(floor?.level || 0)),
-              0
+              0,
             ) + 1;
-
       if (!Number.isFinite(computedLevel) || computedLevel < 1) {
         throw new Error("Level tầng không hợp lệ.");
       }
@@ -295,17 +259,14 @@ export default function useFloorManagement({
       await refetchFloors();
       return created;
     },
-    [restaurantId, floors, createFloorMut, refetchFloors, publicAccess]
+    [createFloorMut, floors, publicAccess, refetchFloors, restaurantId],
   );
 
   return {
-    // floors
     floors,
     floorsLoading,
     floorsError,
     refetchFloors,
-
-    // active floor
     activeLevel,
     setActiveLevel,
     activeFloorData,
@@ -313,14 +274,10 @@ export default function useFloorManagement({
     setActiveFloorById,
     getIdFromLevel,
     getLevelFromId,
-
-    // tables
     tables,
     tablesLoading,
     tablesError,
     refetchTables,
-
-    // mutations
     createFloor,
   };
 }
