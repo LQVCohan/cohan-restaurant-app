@@ -12,18 +12,22 @@ permissions:
 jobs:
   apply-and-verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Apply focused payment patch on latest main files
+      - name: Apply focused patch and verify
+        id: apply
+        continue-on-error: true
+        shell: bash
         run: |
-          git fetch origin main
-          python - <<'PY'
+          set -o pipefail
+          {
+            git fetch origin main
+            python - <<'PY'
           from pathlib import Path
-          import re
           import subprocess
 
           def read(path):
@@ -36,15 +40,8 @@ jobs:
               text = read(path)
               count = text.count(old)
               if count != 1:
-                  raise SystemExit(f"Expected exactly one match in {path}, found {count}: {old[:120]!r}")
+                  raise RuntimeError(f"Expected exactly one match in {path}, found {count}: {old[:120]!r}")
               write(path, text.replace(old, new, 1))
-
-          def replace_regex_once(path, pattern, replacement):
-              text = read(path)
-              updated, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
-              if count != 1:
-                  raise SystemExit(f"Expected exactly one regex match in {path}, found {count}: {pattern}")
-              write(path, updated)
 
           server = "cohan-restaurant-backend/src/server/createServer.js"
           subprocess.run(["git", "checkout", "origin/main", "--", server], check=True)
@@ -52,8 +49,7 @@ jobs:
           replace_once(
               server,
               'import { applyPaymentProviderCallback, createReservationPayment, getPaymentSessionById, listReservationPayments, reconcileBankTransferWebhook } from "../services/payment/paymentSession.service.js";',
-              '''import { applyPaymentProviderCallback, createReservationPayment, getPaymentSessionById, listReservationPayments, reconcileBankTransferWebhook } from "../services/payment/paymentSession.service.js";
-          import { isVnpaySuccessful, verifyMomoCallback, verifyVnpayCallback } from "../services/payment/providers.js";''',
+              'import { applyPaymentProviderCallback, createReservationPayment, getPaymentSessionById, listReservationPayments, reconcileBankTransferWebhook } from "../services/payment/paymentSession.service.js";\nimport { isVnpaySuccessful, verifyMomoCallback, verifyVnpayCallback } from "../services/payment/providers.js";',
           )
           replace_once(
               server,
@@ -62,7 +58,7 @@ jobs:
           )
 
           helper_marker = 'export function buildContentSecurityPolicyDirectives({ inProduction, allowedOrigins, s3PublicBase, allowUnsafeInlineStyle }) {'
-          helpers = r'''function escapeHtml(value) {
+          helpers = '''function escapeHtml(value) {
             return String(value ?? "")
               .replaceAll("&", "&amp;")
               .replaceAll("<", "&lt;")
@@ -121,8 +117,10 @@ jobs:
           '''
           replace_once(server, helper_marker, helpers + helper_marker)
 
-          route_pattern = r'  app\.post\("/api/payments/webhooks/:provider".*?\n  app\.get\("/api/reverse-geocode"'
-          route_replacement = r'''  app.get("/api/payments/webhooks/vnpay", async (req, reply) => {
+          text = read(server)
+          route_start = text.index('  app.post("/api/payments/webhooks/:provider"')
+          route_end = text.index('  app.get("/api/reverse-geocode"', route_start)
+          routes = '''  app.get("/api/payments/webhooks/vnpay", async (req, reply) => {
             try {
               const payload = { ...(req.query || {}) };
               const signatureValid = verifyVnpayCallback({ ...payload });
@@ -210,8 +208,8 @@ jobs:
             }
           });
 
-          app.get("/api/reverse-geocode"'''
-          replace_regex_once(server, route_pattern, route_replacement)
+          '''
+          write(server, text[:route_start] + routes + text[route_end:])
 
           service = "cohan-restaurant-backend/src/services/payment/paymentSession.service.js"
           replace_once(
@@ -249,77 +247,20 @@ jobs:
           )
 
           providers = "cohan-restaurant-backend/src/services/payment/providers.js"
-          replace_regex_once(
+          text = read(providers)
+          mutation_start = text.index("  const isValid = safeCompareString(expected, secureHash);")
+          mutation_end = text.index("  return isValid;", mutation_start) + len("  return isValid;")
+          write(
               providers,
-              r'''  const isValid = safeCompareString\(expected, secureHash\);\n\n  if \(\n    isValid &&\n    String\(payload\.vnp_ResponseCode \|\| ""\) === "00" &&\n    !isVnpaySuccessful\(payload\)\n  \) \{\n    // The payment service historically maps VNPAY by responseCode\. Normalize a\n    // signed non-success transaction so it cannot be settled as successful\.\n    payload\.vnp_ResponseCode = String\(payload\.vnp_TransactionStatus \|\| "99"\);\n  \}\n\n  return isValid;''',
-              '  return safeCompareString(expected, secureHash);',
+              text[:mutation_start] + "  return safeCompareString(expected, secureHash);" + text[mutation_end:],
           )
 
           component = "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx"
-          old_controls = '''                      <Row gutter={16}>
-                        <Col span={8}>
-                          <Form.Item label="Tên hiển thị">
-                            <Input
-                              value={provider.label}
-                              onChange={(e) =>
-                                setRestaurantForm((p) => {
-                                  const providers = [...(p.paymentSettings?.providers || [])];
-                                  providers[idx] = { ...providers[idx], label: e.target.value };
-                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
-                                })
-                              }
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={5}>
-                          <Form.Item label="Thứ tự ưu tiên">
-                            <Input
-                              type="number"
-                              value={provider.priority}
-                              onChange={(e) =>
-                                setRestaurantForm((p) => {
-                                  const providers = [...(p.paymentSettings?.providers || [])];
-                                  providers[idx] = { ...providers[idx], priority: Number(e.target.value || 0) };
-                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
-                                })
-                              }
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={5}>
-                          <Form.Item label="Môi trường kết nối">
-                            <Select
-                              value={provider.mode || "sandbox"}
-                              onChange={(v) =>
-                                setRestaurantForm((p) => {
-                                  const providers = [...(p.paymentSettings?.providers || [])];
-                                  providers[idx] = { ...providers[idx], mode: v };
-                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
-                                })
-                              }
-                              options={[
-                                { value: "sandbox", label: "Kiểm thử" },
-                                { value: "production", label: "Vận hành thực tế" },
-                              ]}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={6}>
-                          <Form.Item label="Đang sử dụng">
-                            <Switch
-                              checked={provider.active !== false}
-                              onChange={(checked) =>
-                                setRestaurantForm((p) => {
-                                  const providers = [...(p.paymentSettings?.providers || [])];
-                                  providers[idx] = { ...providers[idx], active: checked };
-                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
-                                })
-                              }
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>'''
-          new_controls = '''                      <Row gutter={[12, 12]} align="middle" justify="space-between">
+          text = read(component)
+          card_start = text.index('className="profile-section-card payment-provider-card"')
+          row_start = text.index('                      <Row gutter={16}>', card_start)
+          row_end = text.index('                      </Row>', row_start) + len('                      </Row>')
+          controls = '''                      <Row gutter={[12, 12]} align="middle" justify="space-between">
                         <Col flex="auto">
                           <Text type="secondary">
                             {provider.provider === "momo"
@@ -342,14 +283,15 @@ jobs:
                           </Form.Item>
                         </Col>
                       </Row>'''
-          replace_once(component, old_controls, new_controls)
+          write(component, text[:row_start] + controls + text[row_end:])
 
           main = "src/main.jsx"
-          replace_once(
-              main,
+          text = read(main)
+          text = text.replace(
               'import "./components/Dashboard_Manager/RestaurantInfo/RestaurantPaymentMethodsSimple.css";\n',
               "",
           )
+          write(main, text)
           for obsolete in [
               "src/components/Dashboard_Manager/RestaurantInfo/RestaurantPaymentMethodsSimple.css",
               "src/components/Dashboard_Manager/RestaurantInfo/RestaurantPaymentMethodsSimple.test.js",
@@ -424,11 +366,12 @@ jobs:
 
           component_test = "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx"
           text = read(component_test)
-          marker = "\n});\n"
-          index = text.rfind(marker)
-          if index < 0:
-              raise SystemExit("Could not find final describe terminator in RestaurantInfoManagement.test.jsx")
-          payment_test = r'''
+          if 'shows only customer-facing MoMo and VNPAY controls' not in text:
+              marker = "\n});\n"
+              index = text.rfind(marker)
+              if index < 0:
+                  raise RuntimeError("Could not find final describe terminator in RestaurantInfoManagement.test.jsx")
+              payment_test = '''
 
             it("shows only customer-facing MoMo and VNPAY controls", async () => {
               render(<RestaurantInfoManagement />);
@@ -457,33 +400,40 @@ jobs:
                 updateRestaurantMock.mock.calls[0][0].variables.input.paymentSettings.providers,
               ).toEqual(restaurant.paymentSettings.providers);
             });'''
-          write(component_test, text[:index] + payment_test + text[index:])
+              write(component_test, text[:index] + payment_test + text[index:])
           PY
 
-      - name: Review syntax and patch integrity
-        run: |
-          git diff --check
-          node --check cohan-restaurant-backend/src/services/payment/providers.js
-          node --check cohan-restaurant-backend/src/services/payment/paymentSession.service.js
-          node --check cohan-restaurant-backend/src/server/createServer.js
+            git diff --check
+            node --check cohan-restaurant-backend/src/services/payment/providers.js
+            node --check cohan-restaurant-backend/src/services/payment/paymentSession.service.js
+            node --check cohan-restaurant-backend/src/server/createServer.js
+            npm ci
+            npm --prefix cohan-restaurant-backend ci
+            npm --prefix cohan-restaurant-backend test -- tests/services/payment-providers.security.test.js tests/server/payment-provider-callback-contract.test.js
+            npx vitest run src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx
+            npm run check:graphql
+            npm run build
+          } 2>&1 | tee /tmp/payment-provider-flow.log
 
-      - name: Install dependencies
-        run: |
-          npm ci
-          npm --prefix cohan-restaurant-backend ci
-
-      - name: Run focused tests and build
-        run: |
-          npm --prefix cohan-restaurant-backend test -- tests/services/payment-providers.security.test.js tests/server/payment-provider-callback-contract.test.js
-          npx vitest run src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx
-          npm run check:graphql
-          npm run build
-
-      - name: Commit verified focused update
+      - name: Commit verified patch
+        if: steps.apply.outcome == 'success'
         run: |
           rm .github/workflows/one-shot-payment-provider-flow.yml
           git config user.name "COHAN Agent"
           git config user.email "actions@users.noreply.github.com"
           git add -A
           git commit -m "fix(payment): finalize provider callback flow"
+          git push origin HEAD:fix/payment-provider-flow-20260710
+
+      - name: Commit diagnostic on failure
+        if: steps.apply.outcome != 'success'
+        run: |
+          git reset --hard "$GITHUB_SHA"
+          rm .github/workflows/one-shot-payment-provider-flow.yml
+          mkdir -p .trellis/tasks/payment-provider-flow-audit-20260710/diagnostics
+          cp /tmp/payment-provider-flow.log .trellis/tasks/payment-provider-flow-audit-20260710/diagnostics/one-shot.log
+          git config user.name "COHAN Agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(payment): record patch diagnostic"
           git push origin HEAD:fix/payment-provider-flow-20260710
