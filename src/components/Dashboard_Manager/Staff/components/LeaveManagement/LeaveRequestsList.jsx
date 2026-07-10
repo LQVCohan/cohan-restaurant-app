@@ -198,7 +198,7 @@ const LeaveRequestsList = ({
                           onClick={async () => {
                             try {
                               await onApprove(req.id, "Duyệt đơn");
-                              alert("✅ Duyệt đơn thành công và đã gửi email cho nhân viên.");
+                              alert("✅ Duyệt đơn thành công. Hệ thống đã ghi nhận quyết định.");
                             } catch (err) {
                               alert(`⚠️ ${getLeaveActionErrorMessage(err, err?.message || "Duyệt đơn thất bại")}`);
                             }
@@ -213,7 +213,7 @@ const LeaveRequestsList = ({
                             if (!reason) return;
                             try {
                               await onReject(req.id, reason);
-                              alert("✅ Từ chối đơn thành công và đã gửi email cho nhân viên.");
+                              alert("✅ Từ chối đơn thành công. Hệ thống đã ghi nhận quyết định.");
                             } catch (err) {
                               alert(`⚠️ ${getLeaveActionErrorMessage(err, err?.message || "Từ chối đơn thất bại")}`);
                             }
