@@ -204,6 +204,6 @@ describe("ComboManagement", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Xóa Combo sáng" }));
     await waitFor(() => expect(apolloMocks.deleteCombo).toHaveBeenCalledWith({ variables: { id: "c1" } }));
-    expect(window.confirm).toHaveBeenCalledWith("Xóa combo “Combo sáng”? ".trim());
+    expect(window.confirm).toHaveBeenCalledWith("Xóa combo “Combo sáng”?");
   });
 });
