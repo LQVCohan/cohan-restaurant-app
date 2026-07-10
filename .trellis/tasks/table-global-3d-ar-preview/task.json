@@ -1,0 +1,32 @@
+{
+  "id": "table-global-3d-ar-preview",
+  "name": "table-global-3d-ar-preview",
+  "title": "Add global table 3D and AR preview",
+  "description": "Add one manager-level preview modal for choosing existing, online, or uploaded table models and checking them in camera AR without attaching data to a concrete table.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-table-global-3d-ar-preview",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DActionBarV2.jsx",
+    "src/components/Dashboard_Manager/Table/TableManagement.test.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.test.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DActionBarV2.test.jsx"
+  ],
+  "notes": "This is a session/catalog preview flow only. It reuses the existing catalog, URL import, authenticated GLB upload, camera fallback and model-viewer native AR. It must not restore per-table visualConfig persistence or AR-derived floor coordinates."
+}
