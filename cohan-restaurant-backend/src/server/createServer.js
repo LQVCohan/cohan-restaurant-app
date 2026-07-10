@@ -128,6 +128,43 @@ export function getVnpayIpnValidationError({ signatureValid, payment, payload = 
   return null;
 }
 
+export async function settleVerifiedVnpayReturn({
+  provider,
+  payload,
+  payment,
+  verified,
+  successful,
+  io,
+}) {
+  if (
+    String(provider || "").toLowerCase() !== "vnpay" ||
+    !verified ||
+    !successful ||
+    !payment
+  ) {
+    return payment;
+  }
+
+  const updatedPayment = await applyPaymentProviderCallback({
+    provider: "vnpay",
+    payload: { ...(payload || {}) },
+    source: "return_fallback",
+  });
+
+  if (
+    updatedPayment?.status === "success" &&
+    !updatedPayment?.realtimeEmitSkipped
+  ) {
+    await emitPaymentRealtime({
+      io,
+      payment: updatedPayment,
+      eventType: "PAYMENT_VERIFIED",
+    });
+  }
+
+  return updatedPayment;
+}
+
 export function buildContentSecurityPolicyDirectives({ inProduction, allowedOrigins, s3PublicBase, allowUnsafeInlineStyle }) {
   if (!inProduction) return false;
   const styleSrc = ["'self'", "https://fonts.googleapis.com"];
@@ -453,6 +490,14 @@ export async function createServer() {
           ? Number(payload.resultCode) === 0
           : provider === "vnpay" && isVnpaySuccessful(payload)
       );
+      await settleVerifiedVnpayReturn({
+        provider,
+        payload,
+        payment,
+        verified,
+        successful,
+        io: app.io,
+      });
       return reply
         .type("text/html; charset=utf-8")
         .send(buildPaymentReturnPage({
@@ -469,7 +514,7 @@ export async function createServer() {
         .send(buildPaymentReturnPage({
           provider,
           verified: false,
-          successful: false,
+         successful: false,
           paymentFound: false,
           reference,
         }));
@@ -641,12 +686,12 @@ export async function createServer() {
         if (!socket.user?.id) throw new Error("Unauthorized");
         await requireRestaurantPermission({ user: socket.user }, restaurantId, PERMISSIONS.ORDER_READ);
 
-      if (!restaurantId) return;
-      const roomName = `restaurant_${restaurantId}`;
-      socket.join(roomName);
-      app.log.info(`👋 Socket ${socket.id} joined room ${roomName}`);
-      socket.emit("joinedRoom", { room: roomName });
-      if (typeof ack === "function") ack({ ok: true });
+        if (!restaurantId) return;
+        const roomName = `restaurant_${restaurantId}`;
+        socket.join(roomName);
+        app.log.info(`👋 Socket ${socket.id} joined room ${roomName}`);
+        socket.emit("joinedRoom", { room: roomName });
+        if (typeof ack === "function") ack({ ok: true });
       } catch { if (typeof ack === "function") ack({ ok: false, code: "FORBIDDEN" }); }
     });
 
