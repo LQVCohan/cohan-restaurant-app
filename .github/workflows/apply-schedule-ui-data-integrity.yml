@@ -7,6 +7,9 @@ on:
     paths:
       - scripts/apply-schedule-ui-data-integrity.py
       - .github/workflows/apply-schedule-ui-data-integrity.yml
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
