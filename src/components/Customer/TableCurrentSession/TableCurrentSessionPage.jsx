@@ -24,9 +24,6 @@ const PUBLIC_ACTIVE_TABLE_SESSION_ORDERS = gql`
       tableCode
       session {
         id
-        orderCode
-        orderKind
-        currentStatus
         payment {
           status
           requestedAt
@@ -36,18 +33,12 @@ const PUBLIC_ACTIVE_TABLE_SESSION_ORDERS = gql`
         requestId
         type
         status
-        message
         createdAt
-        acknowledgedAt
-        resolvedAt
       }
       orders {
         id
-        orderCode
-        orderKind
         currentStatus
         createdAt
-        note
         totals {
           grandTotal
         }
@@ -59,8 +50,6 @@ const PUBLIC_ACTIVE_TABLE_SESSION_ORDERS = gql`
           id
           name
           quantity
-          unit
-          servingKey
           unitPrice
           modifiersPrice
           lineSubtotal
@@ -116,25 +105,25 @@ const HIDDEN_ORDER_STATUSES = new Set(["completed", "cancelled", "failed"]);
 const formatStatusLabel = (status) => {
   const normalized = String(status || "").trim().toLowerCase();
   const labels = {
-    pending: "Chờ xác nhận",
-    confirmed: "Đã xác nhận",
-    customer_attached: "Đã gắn khách",
+    pending: "Chờ nhà hàng xác nhận",
+    confirmed: "Nhà hàng đã xác nhận",
+    customer_attached: "Đã ghi nhận",
     preparing: "Đang chuẩn bị",
     ready: "Sẵn sàng phục vụ",
     served: "Đã phục vụ",
     completed: "Đã hoàn tất",
     cancelled: "Đã hủy",
-    failed: "Thất bại",
+    failed: "Không thể phục vụ",
   };
 
-  return labels[normalized] || (normalized ? normalized.replace(/_/g, " ") : "Đang xử lý");
+  return labels[normalized] || "Đang được xử lý";
 };
 
 const getStatusTone = (status) => {
   const normalized = String(status || "").trim().toLowerCase();
 
   if (["served", "completed"].includes(normalized)) return "success";
-  if (["ready"].includes(normalized)) return "ready";
+  if (normalized === "ready") return "ready";
   if (["preparing", "confirmed"].includes(normalized)) return "progress";
   if (["cancelled", "failed"].includes(normalized)) return "danger";
   return "pending";
@@ -142,16 +131,16 @@ const getStatusTone = (status) => {
 
 const getRequestTypeLabel = (type) => {
   const normalized = String(type || "").trim().toUpperCase();
-  if (normalized === "STAFF_CALL") return "Gọi nhân viên";
-  if (normalized === "PAYMENT_REQUEST") return "Yêu cầu thanh toán";
+  if (normalized === "STAFF_CALL") return "Hỗ trợ tại bàn";
+  if (normalized === "PAYMENT_REQUEST") return "Thanh toán";
   return "Yêu cầu hỗ trợ";
 };
 
 const getRequestStatusLabel = (status) => {
   const normalized = String(status || "").trim().toUpperCase();
-  if (normalized === "ACKNOWLEDGED") return "Nhân viên đã tiếp nhận";
-  if (normalized === "RESOLVED") return "Đã hoàn tất";
-  return "Đang chờ nhân viên";
+  if (normalized === "ACKNOWLEDGED") return "Nhân viên đã nhận yêu cầu";
+  if (normalized === "RESOLVED") return "Đã hỗ trợ xong";
+  return "Đã gửi, vui lòng chờ trong giây lát";
 };
 
 const isActiveCustomerRequest = (request) =>
@@ -163,8 +152,17 @@ const isStaffCallRequest = (request) =>
 const getPublicTableErrorText = (inputError) => {
   const message = String(inputError?.message || "").trim();
 
-  if (!message || message.includes("Invalid table access token")) {
+  if (
+    !message ||
+    /invalid table access token|invalid restaurantid|invalid tableid|table not found/i.test(
+      message,
+    )
+  ) {
     return INVALID_TABLE_LINK_MESSAGE;
+  }
+
+  if (/failed to fetch|network|load failed/i.test(message)) {
+    return "Kết nối chưa ổn định. Vui lòng thử lại.";
   }
 
   return message;
@@ -181,31 +179,19 @@ const getItemSubtotal = (item) => {
   return (unitPrice + modifiersPrice) * quantity;
 };
 
-const normalizeBatchOrders = (orders = []) => {
-  return [...orders]
+const normalizeBatchOrders = (orders = []) =>
+  [...orders]
     .filter((order) => {
       const currentStatus = String(order?.currentStatus || "").trim().toLowerCase();
       const paymentStatus = String(order?.payment?.status || "").trim().toLowerCase();
-
-      return (
-        order?.orderKind !== "table_session" &&
-        !HIDDEN_ORDER_STATUSES.has(currentStatus) &&
-        paymentStatus !== "paid"
-      );
+      return !HIDDEN_ORDER_STATUSES.has(currentStatus) && paymentStatus !== "paid";
     })
     .sort((left, right) => {
       const leftTime = left?.createdAt ? new Date(left.createdAt).getTime() : 0;
       const rightTime = right?.createdAt ? new Date(right.createdAt).getTime() : 0;
-
-      if (leftTime !== rightTime) {
-        return leftTime - rightTime;
-      }
-
-      return String(left?.orderCode || left?.id || "").localeCompare(
-        String(right?.orderCode || right?.id || ""),
-      );
+      if (leftTime !== rightTime) return leftTime - rightTime;
+      return String(left?.id || "").localeCompare(String(right?.id || ""));
     });
-};
 
 const buildItemStatusStats = (orders = []) => {
   const stats = { total: 0, working: 0, ready: 0, served: 0 };
@@ -226,8 +212,15 @@ const buildItemStatusStats = (orders = []) => {
 };
 
 const formatLastUpdated = (value) => {
-  if (!value) return "Chưa cập nhật";
+  if (!value) return "đang tải";
   return value.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+};
+
+const formatOrderTime = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
 };
 
 const TableSessionState = ({ title, message, role = "status" }) => (
@@ -263,19 +256,16 @@ const TableCurrentSessionPage = () => {
   const hasRouteParams = Boolean(restaurantId && tableId);
   const hasTableAccessToken = Boolean(tableAccessToken);
 
-  const {
-    data,
-    previousData,
-    loading,
-    error,
-    refetch,
-  } = useQuery(PUBLIC_ACTIVE_TABLE_SESSION_ORDERS, {
-    variables: { restaurantId, tableId, token: tableAccessToken },
-    skip: !hasRouteParams || !hasTableAccessToken,
-    fetchPolicy: "cache-and-network",
-    pollInterval: isPageVisible ? TABLE_SESSION_POLL_MS : 0,
-    notifyOnNetworkStatusChange: true,
-  });
+  const { data, previousData, loading, error, refetch } = useQuery(
+    PUBLIC_ACTIVE_TABLE_SESSION_ORDERS,
+    {
+      variables: { restaurantId, tableId, token: tableAccessToken },
+      skip: !hasRouteParams || !hasTableAccessToken,
+      fetchPolicy: "cache-and-network",
+      pollInterval: isPageVisible ? TABLE_SESSION_POLL_MS : 0,
+      notifyOnNetworkStatusChange: true,
+    },
+  );
 
   const [requestTablePayment, { loading: requestingPayment }] = useMutation(
     PUBLIC_REQUEST_TABLE_PAYMENT,
@@ -291,9 +281,7 @@ const TableCurrentSessionPage = () => {
   const isRefreshingTable = loading && Boolean(tableSessionData);
 
   useEffect(() => {
-    if (tableSessionData) {
-      setLastUpdatedAt(new Date());
-    }
+    if (tableSessionData) setLastUpdatedAt(new Date());
   }, [tableSessionData]);
 
   useEffect(() => {
@@ -302,7 +290,6 @@ const TableCurrentSessionPage = () => {
     const handleVisibilityChange = () => {
       const visible = isTablePageVisible();
       setIsPageVisible(visible);
-
       if (visible && hasRouteParams && hasTableAccessToken) {
         refetch?.().catch(() => {});
       }
@@ -316,18 +303,12 @@ const TableCurrentSessionPage = () => {
     () => normalizeBatchOrders(tableSessionData?.orders || []),
     [tableSessionData?.orders],
   );
-
   const activeCustomerRequests = useMemo(
     () => (tableSessionData?.customerRequests || []).filter(isActiveCustomerRequest),
     [tableSessionData?.customerRequests],
   );
   const activeStaffCallRequest = activeCustomerRequests.find(isStaffCallRequest);
-
-  const itemStatusStats = useMemo(
-    () => buildItemStatusStats(batchOrders),
-    [batchOrders],
-  );
-
+  const itemStatusStats = useMemo(() => buildItemStatusStats(batchOrders), [batchOrders]);
   const temporaryTotal = useMemo(
     () => batchOrders.reduce((sum, order) => sum + Number(order?.totals?.grandTotal || 0), 0),
     [batchOrders],
@@ -337,10 +318,7 @@ const TableCurrentSessionPage = () => {
     const sessionRequested =
       tableSessionData?.session?.payment?.status === "payment_requested" ||
       Boolean(tableSessionData?.session?.payment?.requestedAt);
-
-    if (sessionRequested) {
-      return true;
-    }
+    if (sessionRequested) return true;
 
     return batchOrders.some(
       (order) =>
@@ -359,23 +337,16 @@ const TableCurrentSessionPage = () => {
 
   const handleManualRefresh = async () => {
     if (!hasTableAccessToken) {
-      setFeedback({
-        type: "error",
-        text: INVALID_TABLE_LINK_MESSAGE,
-      });
+      setFeedback({ type: "error", text: INVALID_TABLE_LINK_MESSAGE });
       return;
     }
 
     setManualRefreshing(true);
-
     try {
       await refetch();
       setFeedback(null);
     } catch (refreshError) {
-      setFeedback({
-        type: "error",
-        text: getPublicTableErrorText(refreshError),
-      });
+      setFeedback({ type: "error", text: getPublicTableErrorText(refreshError) });
     } finally {
       setManualRefreshing(false);
     }
@@ -383,22 +354,15 @@ const TableCurrentSessionPage = () => {
 
   const handleRequestPayment = async () => {
     if (!hasTableAccessToken) {
-      setFeedback({
-        type: "error",
-        text: INVALID_TABLE_LINK_MESSAGE,
-      });
+      setFeedback({ type: "error", text: INVALID_TABLE_LINK_MESSAGE });
       return;
     }
 
     setFeedback(null);
-
     try {
       const { data: mutationData } = await requestTablePayment({
-        variables: {
-          input: buildRequestInput(),
-        },
+        variables: { input: buildRequestInput() },
       });
-
       const result = mutationData?.publicRequestTablePayment;
 
       if (!result?.ok) {
@@ -409,57 +373,43 @@ const TableCurrentSessionPage = () => {
         return;
       }
 
-      if (result.warning === true || (result.pendingOrderCodes || []).length > 0) {
-        setFeedback({
-          type: "warning",
-          text: "Còn món chưa phục vụ xong, nhân viên sẽ kiểm tra lại.",
-        });
-      } else {
-        setFeedback({
-          type: "success",
-          text: "Đã gửi yêu cầu thanh toán. Nhân viên sẽ đến hỗ trợ.",
-        });
-      }
-
+      setFeedback({
+        type:
+          result.warning === true || (result.pendingOrderCodes || []).length > 0
+            ? "warning"
+            : "success",
+        text:
+          result.warning === true || (result.pendingOrderCodes || []).length > 0
+            ? "Một số món vẫn đang được chuẩn bị. Nhân viên sẽ kiểm tra trước khi thanh toán."
+            : "Đã gửi yêu cầu thanh toán. Nhân viên sẽ đến hỗ trợ bạn.",
+      });
       await refetch();
     } catch (mutationError) {
-      setFeedback({
-        type: "error",
-        text: getPublicTableErrorText(mutationError),
-      });
+      setFeedback({ type: "error", text: getPublicTableErrorText(mutationError) });
     }
   };
 
   const handleCallStaff = async () => {
     if (!hasTableAccessToken) {
-      setFeedback({
-        type: "error",
-        text: INVALID_TABLE_LINK_MESSAGE,
-      });
+      setFeedback({ type: "error", text: INVALID_TABLE_LINK_MESSAGE });
       return;
     }
 
     setFeedback(null);
-
     try {
       const { data: mutationData } = await callStaffForTable({
-        variables: {
-          input: buildRequestInput("Khách cần hỗ trợ tại bàn."),
-        },
+        variables: { input: buildRequestInput("Khách cần hỗ trợ tại bàn.") },
       });
       const result = mutationData?.publicCallStaffForTable;
-
       setFeedback({
         type: result?.ok ? "success" : "error",
-        text: result?.message || "Không thể gọi nhân viên lúc này.",
+        text: result?.ok
+          ? "Đã gọi nhân viên. Vui lòng chờ trong giây lát."
+          : result?.message || "Không thể gọi nhân viên lúc này.",
       });
-
       await refetch();
     } catch (mutationError) {
-      setFeedback({
-        type: "error",
-        text: getPublicTableErrorText(mutationError),
-      });
+      setFeedback({ type: "error", text: getPublicTableErrorText(mutationError) });
     }
   };
 
@@ -496,24 +446,29 @@ const TableCurrentSessionPage = () => {
     <main className="customer-table-session-page" aria-labelledby="table-session-title">
       <div className="customer-table-session-page__container">
         <header className="customer-table-session-page__header">
-          <div>
-            <p className="customer-table-session-page__eyebrow">Thông tin bàn hiện tại</p>
+          <div className="customer-table-session-page__intro">
+            <p className="customer-table-session-page__eyebrow">Bàn của bạn</p>
             <h1 id="table-session-title">
               {tableSessionData?.tableCode
                 ? `Bàn ${tableSessionData.tableCode}`
                 : `Bàn ${tableId}`}
             </h1>
             <p className="customer-table-session-page__live-note" role="status" aria-live="polite">
-              Tự động cập nhật trạng thái món mỗi 12 giây. Cập nhật gần nhất: {formatLastUpdated(lastUpdatedAt)}.
+              Thông tin món được cập nhật tự động
+              <span aria-hidden="true">•</span>
+              Cập nhật lúc {formatLastUpdated(lastUpdatedAt)}
             </p>
           </div>
           <div className="customer-table-session-page__header-actions">
-            <span className={`customer-table-session-page__live-pill ${isRefreshingTable ? "is-refreshing" : ""}`} role="status">
-              {isRefreshingTable ? "Đang cập nhật" : "Live"}
+            <span
+              className={`customer-table-session-page__live-pill ${isRefreshingTable ? "is-refreshing" : ""}`}
+              role="status"
+            >
+              {isRefreshingTable ? "Đang cập nhật" : "Đã cập nhật"}
             </span>
             {paymentRequested && (
               <span className="customer-table-session-page__badge" role="status">
-                Đã gọi thanh toán
+                Đã yêu cầu thanh toán
               </span>
             )}
             <button
@@ -522,7 +477,7 @@ const TableCurrentSessionPage = () => {
               onClick={handleManualRefresh}
               disabled={manualRefreshing || requestingPayment || callingStaff}
             >
-              {manualRefreshing ? "Đang làm mới…" : "Làm mới"}
+              {manualRefreshing ? "Đang cập nhật…" : "Cập nhật ngay"}
             </button>
           </div>
         </header>
@@ -538,20 +493,33 @@ const TableCurrentSessionPage = () => {
         )}
 
         {error && tableSessionData && (
-          <div className="customer-table-session-page__feedback customer-table-session-page__feedback--warning" role="status" aria-live="polite">
-            Đang hiển thị dữ liệu gần nhất. {getPublicTableErrorText(error)}
+          <div
+            className="customer-table-session-page__feedback customer-table-session-page__feedback--warning"
+            role="status"
+            aria-live="polite"
+          >
+            Kết nối chưa ổn định. Bạn đang xem thông tin cập nhật gần nhất.
           </div>
         )}
 
         {activeCustomerRequests.length > 0 && (
-          <section className="customer-table-session-page__request-card" aria-label="Yêu cầu đang xử lý">
-            <strong>Yêu cầu đang xử lý</strong>
+          <section
+            className="customer-table-session-page__request-card"
+            aria-label="Nhân viên đang hỗ trợ"
+          >
+            <div className="customer-table-session-page__request-heading">
+              <strong>Nhân viên đang hỗ trợ</strong>
+              <span>{activeCustomerRequests.length} yêu cầu</span>
+            </div>
             <div className="customer-table-session-page__request-list" role="list">
               {activeCustomerRequests.map((request) => (
-                <div className="customer-table-session-page__request-item" key={request.requestId || `${request.type}-${request.createdAt}`} role="listitem">
+                <div
+                  className="customer-table-session-page__request-item"
+                  key={request.requestId || `${request.type}-${request.createdAt}`}
+                  role="listitem"
+                >
                   <span>{getRequestTypeLabel(request.type)}</span>
-                  <p>{request.message || getRequestStatusLabel(request.status)}</p>
-                  <em>{getRequestStatusLabel(request.status)}</em>
+                  <p>{getRequestStatusLabel(request.status)}</p>
                 </div>
               ))}
             </div>
@@ -559,30 +527,50 @@ const TableCurrentSessionPage = () => {
         )}
 
         {batchOrders.length > 0 && (
-          <section className="customer-table-session-page__status-summary" aria-label="Tóm tắt trạng thái món" role="list">
-            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--total" role="listitem">
-              <span>Tổng món</span>
-              <strong>{itemStatusStats.total}</strong>
+          <section
+            className="customer-table-session-page__status-summary"
+            aria-labelledby="table-session-progress-title"
+          >
+            <div className="customer-table-session-page__status-summary-heading">
+              <p>Tiến độ món</p>
+              <strong id="table-session-progress-title">
+                {itemStatusStats.served}/{itemStatusStats.total} món đã phục vụ
+              </strong>
             </div>
-            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--working" role="listitem">
-              <span>Đang xử lý</span>
-              <strong>{itemStatusStats.working}</strong>
-            </div>
-            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--ready" role="listitem">
-              <span>Sẵn sàng</span>
-              <strong>{itemStatusStats.ready}</strong>
-            </div>
-            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--served" role="listitem">
-              <span>Đã phục vụ</span>
-              <strong>{itemStatusStats.served}</strong>
+            <div className="customer-table-session-page__status-grid" role="list">
+              <div className="customer-table-session-page__status-stat" role="listitem">
+                <span>Tổng món</span>
+                <strong>{itemStatusStats.total}</strong>
+              </div>
+              <div
+                className="customer-table-session-page__status-stat customer-table-session-page__status-stat--working"
+                role="listitem"
+              >
+                <span>Đang chuẩn bị</span>
+                <strong>{itemStatusStats.working}</strong>
+              </div>
+              <div
+                className="customer-table-session-page__status-stat customer-table-session-page__status-stat--ready"
+                role="listitem"
+              >
+                <span>Sẵn sàng</span>
+                <strong>{itemStatusStats.ready}</strong>
+              </div>
+              <div
+                className="customer-table-session-page__status-stat customer-table-session-page__status-stat--served"
+                role="listitem"
+              >
+                <span>Đã phục vụ</span>
+                <strong>{itemStatusStats.served}</strong>
+              </div>
             </div>
           </section>
         )}
 
         {!batchOrders.length ? (
           <section className="customer-table-session-page__empty" role="status" aria-live="polite">
-            <h2>Bàn hiện chưa có món đang phục vụ.</h2>
-            <p>Khi có món mới được ghi nhận, danh sách sẽ hiện tại đây.</p>
+            <h2>Chưa có món nào tại bàn</h2>
+            <p>Nhấn “Gọi món tại bàn” để chọn món. Món đã gửi sẽ xuất hiện tại đây.</p>
             {tableSessionData?.session && (
               <button
                 type="button"
@@ -590,68 +578,96 @@ const TableCurrentSessionPage = () => {
                 disabled={Boolean(activeStaffCallRequest) || requestingPayment || callingStaff}
                 onClick={handleCallStaff}
               >
-                {callingStaff ? "Đang gọi nhân viên…" : activeStaffCallRequest ? "Đã gọi nhân viên" : "Gọi nhân viên"}
+                {callingStaff
+                  ? "Đang gọi nhân viên…"
+                  : activeStaffCallRequest
+                    ? "Đã gọi nhân viên"
+                    : "Gọi nhân viên"}
               </button>
             )}
           </section>
         ) : (
           <div className="customer-table-session-page__body">
-            <section className="customer-table-session-page__batches" aria-label="Các đợt món đang phục vụ">
-              {batchOrders.map((order, index) => (
-                <article key={order.id} className="customer-table-session-page__batch-card">
-                  <div className="customer-table-session-page__batch-header">
-                    <div>
-                      <h2>{`Đợt ${index + 1}`}</h2>
-                      <p>{order.orderCode || `BATCH-${index + 1}`}</p>
-                    </div>
-                    <span className={`customer-table-session-page__status-pill customer-table-session-page__status-pill--${getStatusTone(order.currentStatus)}`}>
-                      {formatStatusLabel(order.currentStatus)}
-                    </span>
-                  </div>
+            <section
+              className="customer-table-session-page__batches"
+              aria-labelledby="table-session-orders-title"
+            >
+              <div className="customer-table-session-page__section-heading">
+                <div>
+                  <p>Món đã gọi</p>
+                  <h2 id="table-session-orders-title">Danh sách tại bàn</h2>
+                </div>
+                <span>{batchOrders.length} lần gọi món</span>
+              </div>
 
-                  <ul className="customer-table-session-page__item-list">
-                    {(order.items || []).map((item) => (
-                      <li key={item.id || `${order.id}-${item.name}`} className="customer-table-session-page__item">
-                        <div className="customer-table-session-page__item-main">
+              {batchOrders.map((order, index) => {
+                const orderedAt = formatOrderTime(order.createdAt);
+                return (
+                  <article key={order.id} className="customer-table-session-page__batch-card">
+                    <div className="customer-table-session-page__batch-header">
+                      <div>
+                        <h3>{`Lần gọi món ${index + 1}`}</h3>
+                        {orderedAt && <p>Gọi lúc {orderedAt}</p>}
+                      </div>
+                      <span
+                        className={`customer-table-session-page__status-pill customer-table-session-page__status-pill--${getStatusTone(order.currentStatus)}`}
+                      >
+                        {formatStatusLabel(order.currentStatus)}
+                      </span>
+                    </div>
+
+                    <ul className="customer-table-session-page__item-list">
+                      {(order.items || []).map((item) => (
+                        <li
+                          key={item.id || `${order.id}-${item.name}`}
+                          className="customer-table-session-page__item"
+                        >
                           <div className="customer-table-session-page__item-row">
                             <strong>{item.name}</strong>
                             <span>{formatPrice(getItemSubtotal(item))}</span>
                           </div>
                           <div className="customer-table-session-page__item-meta">
-                            <span>Số lượng: {item.quantity}</span>
-                            {item.unit && <span>Đơn vị: {item.unit}</span>}
-                            {item.servingKey && <span>Phần: {item.servingKey}</span>}
+                            <span>Số lượng {item.quantity}</span>
                             {item.status && (
-                              <span className={`customer-table-session-page__item-status customer-table-session-page__item-status--${getStatusTone(item.status)}`}>
-                                Trạng thái: {formatStatusLabel(item.status)}
+                              <span
+                                className={`customer-table-session-page__item-status customer-table-session-page__item-status--${getStatusTone(item.status)}`}
+                              >
+                                {formatStatusLabel(item.status)}
                               </span>
                             )}
                           </div>
                           {item.note && (
                             <p className="customer-table-session-page__item-note">
-                              Ghi chú: {item.note}
+                              Ghi chú của bạn: {item.note}
                             </p>
                           )}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                        </li>
+                      ))}
+                    </ul>
 
-                  <div className="customer-table-session-page__batch-total">
-                    <span>Tạm tính đợt</span>
-                    <strong>{formatPrice(order?.totals?.grandTotal || 0)}</strong>
-                  </div>
-                </article>
-              ))}
+                    <div className="customer-table-session-page__batch-total">
+                      <span>Tạm tính lần này</span>
+                      <strong>{formatPrice(order?.totals?.grandTotal || 0)}</strong>
+                    </div>
+                  </article>
+                );
+              })}
             </section>
 
-            <aside className="customer-table-session-page__summary-card" aria-label="Tạm tính và thao tác tại bàn">
+            <aside
+              className="customer-table-session-page__summary-card"
+              aria-labelledby="table-session-payment-title"
+            >
+              <div className="customer-table-session-page__summary-heading">
+                <p>Thanh toán</p>
+                <h2 id="table-session-payment-title">Tạm tính tại bàn</h2>
+              </div>
               <div className="customer-table-session-page__summary-row customer-table-session-page__summary-row--muted">
-                <span>Đợt đang phục vụ</span>
+                <span>Số lần gọi món</span>
                 <strong>{batchOrders.length}</strong>
               </div>
               <div className="customer-table-session-page__summary-row customer-table-session-page__summary-row--total">
-                <span>Tạm tính</span>
+                <span>Tổng tạm tính</span>
                 <strong>{formatPrice(temporaryTotal)}</strong>
               </div>
               <div className="customer-table-session-page__actions">
@@ -664,8 +680,8 @@ const TableCurrentSessionPage = () => {
                   {requestingPayment
                     ? "Đang gửi yêu cầu…"
                     : paymentRequested
-                      ? "Đã gọi thanh toán"
-                      : "Gọi thanh toán"}
+                      ? "Đã yêu cầu thanh toán"
+                      : "Yêu cầu thanh toán"}
                 </button>
                 <button
                   type="button"
@@ -673,11 +689,15 @@ const TableCurrentSessionPage = () => {
                   disabled={Boolean(activeStaffCallRequest) || requestingPayment || callingStaff}
                   onClick={handleCallStaff}
                 >
-                  {callingStaff ? "Đang gọi nhân viên…" : activeStaffCallRequest ? "Đã gọi nhân viên" : "Gọi nhân viên"}
+                  {callingStaff
+                    ? "Đang gọi nhân viên…"
+                    : activeStaffCallRequest
+                      ? "Đã gọi nhân viên"
+                      : "Gọi nhân viên"}
                 </button>
               </div>
               <p className="customer-table-session-page__hint">
-                Đây là tạm tính của các đợt gọi món đang phục vụ, không phải hóa đơn đã thanh toán.
+                Nhân viên sẽ kiểm tra và xác nhận số tiền khi bạn thanh toán.
               </p>
             </aside>
           </div>
