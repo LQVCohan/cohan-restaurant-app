@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation } from "@apollo/client";
 import {
   CheckCircle2,
@@ -66,11 +67,16 @@ export default function WarehouseManagementDialog({
 
   useEffect(() => {
     if (!open) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const handleEscape = (event) => {
       if (event.key === "Escape" && !busy) onClose?.();
     };
     document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, [busy, onClose, open]);
 
   if (!open) return null;
@@ -196,7 +202,7 @@ export default function WarehouseManagementDialog({
     }
   };
 
-  return (
+  return createPortal(
     <div
       className="warehouse-manager-backdrop"
       onMouseDown={(event) => {
@@ -390,6 +396,7 @@ export default function WarehouseManagementDialog({
           )}
         </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
