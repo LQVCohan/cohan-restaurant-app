@@ -1,0 +1,33 @@
+{
+  "id": "07-10-menu-serving-mode",
+  "name": "menu-serving-mode",
+  "title": "Expose portion and weight pricing in menu item modal",
+  "description": "Expose the existing recipe serving mode contract in the manager menu item modal so each serving variant can be priced by portion or by kilogram.",
+  "status": "in_progress",
+  "dev_type": "feature",
+  "scope": "manager-menu-item-modal",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/models/recipe.model.js",
+    "cohan-restaurant-backend/graphql/schema/inventory.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/inventory/recipe.mutation.js",
+    "src/hooks/useRecipes.js",
+    "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModal.jsx",
+    "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModalPolish.scss",
+    "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModal.foodClassification.test.jsx"
+  ],
+  "notes": "Backend and Apollo contracts already support multiple PORTION/BY_WEIGHT serving variants. The implementation only exposes and normalizes that existing contract in the manager menu item modal."
+}
