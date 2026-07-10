@@ -160,10 +160,20 @@ export function calculatePartTimePayrollBreakdown(
     Number(breakdown.allowance || 0) +
     Number(breakdown.bonus || 0) +
     Number(breakdown.otherAddition || 0);
-  const totalDeduction = Math.max(
-    Number(breakdown.totalDeduction || 0) - Number(breakdown.insuranceTotal || 0),
+  const existingNonTaxDeduction = Math.max(
+    Number(breakdown.totalDeduction || 0) -
+      Number(breakdown.insuranceTotal || 0) -
+      Number(breakdown.personalIncomeTax || 0),
     0,
   );
+  const taxableIncome = Math.max(
+    totalIncome - Number(settings.personalIncomeTaxFreeThreshold || 0),
+    0,
+  );
+  const personalIncomeTax = settings.enablePersonalIncomeTax
+    ? taxableIncome * Number(settings.personalIncomeTaxRate || 0)
+    : 0;
+  const totalDeduction = existingNonTaxDeduction + personalIncomeTax;
 
   return {
     ...breakdown,
@@ -180,6 +190,7 @@ export function calculatePartTimePayrollBreakdown(
     insuranceTotal: 0,
     insuranceEmployerTotal: 0,
     insuranceEligible: false,
+    personalIncomeTax,
     totalIncome,
     totalDeduction,
     netSalary: Math.max(totalIncome - totalDeduction, 0),
@@ -581,7 +592,10 @@ async function assertResult({ brandId, restaurantId, staff, periods }) {
   }
 
   for (const period of periods) {
-    const itemCount = await PayrollItem.countDocuments({ periodId: period._id });
+    const itemCount = await PayrollItem.countDocuments({
+      periodId: period._id,
+      employeeId: { $in: staff.map((row) => row._id) },
+    });
     if (itemCount !== staff.length) {
       throw new Error(
         `DEMO_PAYROLL_ITEM_COUNT_MISMATCH: period=${period._id} expected=${staff.length} actual=${itemCount}`,
