@@ -102,10 +102,12 @@ const SORT_OPTIONS = [
 const MenuDetailView = ({
   restaurant,
   canOrder = true,
+  initialTimeSlot = null,
+  serviceAt = null,
   onBack,
   onOpenFoodDetail,
 }) => {
-  const [timeSlot, setTimeSlot] = useState("lunch");
+  const [timeSlot, setTimeSlot] = useState(initialTimeSlot || "lunch");
   const [activeCat, setActiveCat] = useState("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -119,6 +121,10 @@ const MenuDetailView = ({
   const { preferences } = useFoodPreferences({ skip: !isAuthenticated });
   const hasFoodPreferences = hasMeaningfulFoodPreferences(preferences);
   const restaurantId = restaurant?.id || restaurant?._id || "";
+  const bookingSlot = TIME_SLOTS.find((slot) => slot.id === initialTimeSlot);
+  const matchesBookingTimeSlot =
+    !initialTimeSlot || timeSlot === initialTimeSlot;
+  const canOrderSelectedSlot = canOrder && matchesBookingTimeSlot;
   const { getPromotionForMenuItem, getPromotionLabel } =
     useActiveMenuPromotions(restaurantId);
 
@@ -130,6 +136,10 @@ const MenuDetailView = ({
   useEffect(() => {
     setActiveCat("all");
   }, [timeSlot]);
+
+  useEffect(() => {
+    if (initialTimeSlot) setTimeSlot(initialTimeSlot);
+  }, [initialTimeSlot]);
 
   const {
     data: categoriesData,
@@ -264,6 +274,7 @@ const MenuDetailView = ({
       restaurantId: item?.restaurantId || restaurantId,
       timeSlot,
       categoryId: item?.categoryId || null,
+      serviceAt,
       selectedVariantKey:
         item?.defaultServingKey ||
         item?.servingVariants?.find((variant) => variant?.isDefault)?.key ||
@@ -424,7 +435,12 @@ const MenuDetailView = ({
           </div>
         </nav>
 
-        {!canOrder ? (
+        {!matchesBookingTimeSlot ? (
+          <div className="menu-inline-note" role="alert">
+            <strong>Món không thuộc khung giờ đặt bàn.</strong>{" "}
+            Lịch của bạn dùng thực đơn {bookingSlot?.label || initialTimeSlot}.
+          </div>
+        ) : !canOrder ? (
           <div className="menu-inline-note" role="status">
             <strong>Bạn vẫn có thể xem chi tiết và chọn món trước.</strong>{" "}
             {getCannotOrderReason(restaurant?.openingStatus)}
@@ -470,7 +486,7 @@ const MenuDetailView = ({
                     item={item}
                     to={navigation.to}
                     state={navigation.state}
-                    disabled={!canOrder}
+                    disabled={!canOrderSelectedSlot}
                     onClick={openDetail}
                   />
                 );
