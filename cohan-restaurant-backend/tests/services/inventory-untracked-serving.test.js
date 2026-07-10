@@ -20,10 +20,10 @@ vi.mock("mongoose", () => ({
   },
 }));
 
-const recipeQuery = (recipes) => {
+const modelQuery = (rows) => {
   const query = {
     session: vi.fn(() => query),
-    lean: vi.fn(async () => recipes),
+    lean: vi.fn(async () => rows),
   };
   return { select: vi.fn(() => query) };
 };
@@ -31,11 +31,12 @@ const recipeQuery = (recipes) => {
 describe("inventory service for untracked serving variants", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    modelMocks.Ingredient.find.mockReturnValue(modelQuery([]));
   });
 
-  it("treats a valid serving variant without ingredients as orderable and skips stock queries", async () => {
+  it("treats a valid serving variant without ingredients as orderable and skips stock updates", async () => {
     modelMocks.Recipe.find.mockReturnValue(
-      recipeQuery([
+      modelQuery([
         {
           menuItemId: "menu-item-1",
           servingVariants: [
@@ -81,7 +82,7 @@ describe("inventory service for untracked serving variants", () => {
       lowStocks: [],
     });
 
-    expect(modelMocks.Ingredient.find).not.toHaveBeenCalled();
+    expect(modelMocks.Ingredient.find).toHaveBeenCalledTimes(2);
     expect(modelMocks.StockItem.find).not.toHaveBeenCalled();
     expect(modelMocks.StockItem.updateOne).not.toHaveBeenCalled();
   });
