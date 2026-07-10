@@ -1,7 +1,12 @@
 // src/graphql/resolvers/inventory/stockItem.mutation.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { StockItem, StockMovement, Ingredient } from "../../../models/index.js";
+import {
+  StockItem,
+  StockMovement,
+  Ingredient,
+  Warehouse,
+} from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
@@ -19,7 +24,7 @@ export default {
       expiry,
       supplierNote,
     },
-    ctx
+    ctx,
   ) => {
     if (
       ![restaurantId, warehouseId, ingredientId].every(mongoose.isValidObjectId)
@@ -55,7 +60,7 @@ export default {
             },
             $setOnInsert: { reserved: 0 },
           },
-          { new: true, upsert: true, runValidators: true, session }
+          { new: true, upsert: true, runValidators: true, session },
         );
 
         await StockMovement.create(
@@ -76,14 +81,14 @@ export default {
               },
             },
           ],
-          { session }
+          { session },
         );
 
         // V1 source-of-truth: Last purchase price (low-risk, dễ kiểm soát)
         await Ingredient.updateOne(
           { _id: ingredientId, restaurantId },
           { $set: { costPerBaseUnit: nCost } },
-          { session }
+          { session },
         );
       });
 
@@ -102,7 +107,7 @@ export default {
   upsertStockItem: async (
     _p,
     { restaurantId, warehouseId, ingredientId, onHand, reserved, batches },
-    ctx
+    ctx,
   ) => {
     if (
       ![restaurantId, warehouseId, ingredientId].every(mongoose.isValidObjectId)
@@ -122,7 +127,7 @@ export default {
     const doc = await StockItem.findOneAndUpdate(
       { restaurantId, warehouseId, ingredientId },
       update,
-      { new: true, upsert: true, runValidators: true }
+      { new: true, upsert: true, runValidators: true },
     ).lean({ virtuals: true });
 
     return doc;
@@ -132,7 +137,7 @@ export default {
   adjustStock: async (
     _p,
     { restaurantId, warehouseId, ingredientId, qty, reason },
-    ctx
+    ctx,
   ) => {
     if (
       ![restaurantId, warehouseId, ingredientId].every(mongoose.isValidObjectId)
@@ -153,7 +158,7 @@ export default {
         await StockItem.findOneAndUpdate(
           { restaurantId, warehouseId, ingredientId },
           { $inc: { onHand: nQty } },
-          { new: true, upsert: true, runValidators: true, session }
+          { new: true, upsert: true, runValidators: true, session },
         );
 
         await StockMovement.create(
@@ -163,12 +168,12 @@ export default {
               warehouseId,
               ingredientId,
               type: "adjustment",
-              qty: nQty, // signed
+              qty: nQty,
               reason,
               meta: {},
             },
           ],
-          { session }
+          { session },
         );
       });
 
@@ -190,14 +195,17 @@ export default {
   transferStock: async (
     _p,
     { restaurantId, fromWarehouseId, toWarehouseId, ingredientId, qty, reason },
-    ctx
+    ctx,
   ) => {
     if (
       ![restaurantId, fromWarehouseId, toWarehouseId, ingredientId].every(
-        mongoose.isValidObjectId
+        mongoose.isValidObjectId,
       )
     ) {
       throw new GraphQLError("Invalid ids");
+    }
+    if (String(fromWarehouseId) === String(toWarehouseId)) {
+      throw new GraphQLError("Kho nguồn và kho đích phải khác nhau.");
     }
 
     const nQty = Number(qty);
@@ -206,6 +214,17 @@ export default {
     }
 
     await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_WRITE);
+
+    const warehouseCount = await Warehouse.countDocuments({
+      _id: { $in: [fromWarehouseId, toWarehouseId] },
+      restaurantId,
+      isActive: true,
+    });
+    if (warehouseCount !== 2) {
+      throw new GraphQLError(
+        "Kho nguồn và kho đích phải đang hoạt động trong cùng nhà hàng.",
+      );
+    }
 
     const session = await mongoose.startSession();
     try {
@@ -217,12 +236,14 @@ export default {
         }).session(session);
 
         if (!src) {
-          throw new GraphQLError(
-            "Source stock item not found (no stock in fromWarehouse)"
-          );
+          throw new GraphQLError("Kho nguồn chưa có nguyên liệu này.");
         }
-        if ((src.onHand ?? 0) < nQty) {
-          throw new GraphQLError("Insufficient stock at source warehouse");
+
+        const available = Number(src.onHand || 0) - Number(src.reserved || 0);
+        if (available < nQty) {
+          throw new GraphQLError(
+            "Số lượng chuyển vượt quá tồn khả dụng của kho nguồn.",
+          );
         }
 
         src.onHand -= nQty;
@@ -230,8 +251,11 @@ export default {
 
         await StockItem.findOneAndUpdate(
           { restaurantId, warehouseId: toWarehouseId, ingredientId },
-          { $inc: { onHand: nQty } },
-          { new: true, upsert: true, runValidators: true, session }
+          {
+            $inc: { onHand: nQty },
+            $setOnInsert: { reserved: 0 },
+          },
+          { new: true, upsert: true, runValidators: true, session },
         );
 
         await StockMovement.create(
@@ -255,7 +279,7 @@ export default {
               meta: { fromWarehouseId },
             },
           ],
-          { session }
+          { session },
         );
       });
 
