@@ -1,0 +1,24 @@
+{
+  "id": "07-11-brand-staff-workforce-seed",
+  "title": "Seed complete brand staff workforce demo",
+  "status": "in_progress",
+  "area": "backend-demo-data",
+  "createdAt": "2026-07-11",
+  "updatedAt": "2026-07-11",
+  "validation": {
+    "completed": [
+      "audited staff profile, scheduling, two-week roster, payroll readiness and brand membership seeds",
+      "confirmed runtime payroll calculation is centralized in payrollRuntime.service.js",
+      "selected a single orchestrator seed to reuse existing scripts and avoid duplicating their detailed scenarios"
+    ],
+    "notRun": [
+      "targeted Vitest",
+      "seed execution against MongoDB",
+      "backend build"
+    ],
+    "notes": [
+      "Default target brand is 6a5018c92a9577d6a9cf4bad and default restaurant is 6a5018c92a9577d6a9cf4bb1; both remain environment-overridable.",
+      "The seed is local/demo only and must keep scriptSafety enforcement."
+    ]
+  }
+}
