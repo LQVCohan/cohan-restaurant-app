@@ -40,6 +40,8 @@ AuditLogSchema.index({
 const comparable = (value) => JSON.stringify(value ?? null);
 
 export function isMeaningfulAuditPayload(payload = {}) {
+  const entity = String(payload?.entity || payload?.targetType || "");
+  if (entity !== "MenuItem") return true;
   if (String(payload?.action || "").toLowerCase() !== "update") return true;
 
   const diff = payload?.diff || {
