@@ -3,7 +3,7 @@
   "name": "staff-role-list-parent-id-fix",
   "title": "Fix staff role list parent id serialization",
   "description": "Map lean ParentRole _id values to the non-null GraphQL id field so the add-employee modal can consume roleList data from MongoDB.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "backend",
   "scope": "manager-staff",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "1d6ff598b505977e40dde2fdd827296a5cd4bb46",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -26,5 +26,5 @@
     "src/hooks/useStaffManagement.js",
     "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.jsx"
   ],
-  "notes": "Flow traced: Mongo Role/ParentRole -> UserQuery.roleList -> Role.parentRole GraphQL field -> Apollo roleList -> EmployeeFormModal validation. The role query requests parentRole.id, but populated lean ParentRole values only expose _id and no ParentRole type resolver currently maps it to id."
+  "notes": "Flow traced: Mongo Role/ParentRole -> UserQuery.roleList -> GraphQL Role.parentRole -> Apollo roleList -> EmployeeFormModal validation. The selected restaurant and role query both run; serialization failed because ParentRole.id is non-null while populated lean values exposed only _id. Added the missing ParentRole id resolver and a focused regression test. Targeted tests, build, and browser checks were not run because the connector environment has no runnable checkout."
 }
