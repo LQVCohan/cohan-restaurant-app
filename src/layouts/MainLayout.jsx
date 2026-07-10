@@ -6,6 +6,7 @@ import Cart from "../components/Customer/Homepage_Client/components/Cart";
 import TodayMealWizard from "../components/Customer/TodayMealWizard/TodayMealWizard";
 import PostOrderReviewPrompt from "../components/Customer/PostOrderReviewPrompt/PostOrderReviewPrompt";
 import MobileCustomerShell from "../components/Customer/MobileCustomerShell/MobileCustomerShell";
+import FoodDetailRestaurantSelectorMount from "../components/Customer/Food/FoodDetailRestaurantSelectorMount";
 import { useCart } from "../context/CartProvider";
 import { useCustomerCartActions } from "../hooks/useCustomerCartActions";
 import useIsMobile from "../hooks/useIsMobile";
@@ -83,6 +84,8 @@ export default function MainLayout({ children }) {
     </React.Suspense>
   ) : null;
 
+  const foodRestaurantSelector = <FoodDetailRestaurantSelectorMount />;
+
   if (isMobile) {
     return (
       <>
@@ -92,6 +95,7 @@ export default function MainLayout({ children }) {
         >
           {children}
         </MobileCustomerShell>
+        {foodRestaurantSelector}
         {tableOrderExperience}
         {cartPanel}
         {location.pathname === "/" && <TodayMealWizard />}
@@ -104,6 +108,7 @@ export default function MainLayout({ children }) {
     <>
       <Header onCartToggle={() => setIsCartOpen(true)} cartItemCount={getTotalItems()} />
       <main className="customer-experience-main">{children}</main>
+      {foodRestaurantSelector}
       {tableOrderExperience}
       {cartPanel}
       {!isFocusedTableFlow && <TodayMealWizard />}
