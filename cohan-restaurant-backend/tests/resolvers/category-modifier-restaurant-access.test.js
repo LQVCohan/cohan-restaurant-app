@@ -15,10 +15,12 @@ const modelMocks = vi.hoisted(() => ({
 
 const guardMocks = vi.hoisted(() => ({ requireRestaurantAccess: vi.fn() }));
 const authMocks = vi.hoisted(() => ({ requireRole: vi.fn() }));
+const permissionMocks = vi.hoisted(() => ({ hasAnyPermission: vi.fn() }));
 
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../graphql/guards.js", () => guardMocks);
 vi.mock("../../utils/authz.js", () => authMocks);
+vi.mock("../../src/services/auth/authorization.service.js", () => permissionMocks);
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn((v) => String(v || "").startsWith("valid-")),
@@ -34,6 +36,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
   authMocks.requireRole.mockReturnValue(undefined);
+  permissionMocks.hasAnyPermission.mockResolvedValue(true);
 });
 
 describe("category + modifier restaurant access guards", () => {
@@ -117,5 +120,34 @@ describe("category + modifier restaurant access guards", () => {
     modelMocks.ModifierGroup.findById.mockResolvedValueOnce(group);
     await expect(ModifierMutation.removeModifierOption(null, { groupId: "valid-g1", optionId: "valid-o1" }, {})).rejects.toThrow("FORBIDDEN_SCOPE");
     expect(group.save).not.toHaveBeenCalled();
+  });
+
+  it("preserves an explicitly inactive category on create", async () => {
+    guardMocks.requireRestaurantAccess.mockResolvedValueOnce(true);
+    modelMocks.Category.findOneAndUpdate.mockResolvedValueOnce({
+      toObject: () => ({ id: "valid-c1", name: "Đồ uống", isActive: false }),
+    });
+
+    const { CategoryMutation } = await import("../../graphql/resolvers/category/mutation.js");
+    const result = await CategoryMutation.createCategory(
+      null,
+      {
+        input: {
+          restaurantId: "valid-r1",
+          name: "Đồ uống",
+          isActive: false,
+        },
+      },
+      { user: { id: "valid-u1" } }
+    );
+
+    expect(modelMocks.Category.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        $setOnInsert: expect.objectContaining({ isActive: false }),
+      }),
+      expect.objectContaining({ new: true, upsert: true })
+    );
+    expect(result.isActive).toBe(false);
   });
 });
