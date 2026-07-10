@@ -7,6 +7,7 @@ const refresh = vi.fn(async () => undefined);
 const restoreSupply = vi.fn(async () => ({ data: {} }));
 const refetchTrash = vi.fn(async () => ({ data: { supplyTrash: [] } }));
 const showNotification = vi.fn();
+const supplyRows = [];
 
 vi.mock("../../../../../utils/debounce", () => ({
   debounce: (fn) => fn,
@@ -32,7 +33,7 @@ vi.mock("@/hooks/useNotification", () => ({
 
 vi.mock("../../../../../hooks/useSupply", () => ({
   default: () => ({
-    supplies: [],
+    supplies: supplyRows,
     supplyCategories: ["drink", "tissue", "other"],
     getStockItem: vi.fn(() => null),
     loading: false,
@@ -48,10 +49,11 @@ vi.mock("../../../../../hooks/useSupply", () => ({
 }));
 
 vi.mock("./SupplyCard", () => ({
-  default: ({ supply, onDelete }) => (
+  default: ({ supply, onDelete, onTransferClick }) => (
     <article>
       <h3>{supply.name}</h3>
       <button type="button" onClick={onDelete}>Xóa vật tư</button>
+      {onTransferClick && <button type="button" onClick={() => onTransferClick(supply)}>Chuyển kho</button>}
     </article>
   ),
 }));
@@ -81,6 +83,7 @@ vi.mock("@/utils/inventorySupplySupplierPrintErrorMessages", () => ({
 describe("SupplyList inventory regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    supplyRows.splice(0);
   });
 
   it("shows the active supply toolbar and switches to an empty trash state", () => {
@@ -107,5 +110,31 @@ describe("SupplyList inventory regression", () => {
 
     expect(refresh).toHaveBeenCalled();
     expect(refetchTrash).toHaveBeenCalled();
+  });
+
+  it("only exposes transfer when the restaurant has at least two active warehouses", () => {
+    supplyRows.push({ id: "supply-1", name: "Khăn giấy", unit: "pack" });
+
+    const { unmount } = render(
+      <SupplyList
+        restaurantId="res-1"
+        warehouseId="wh-1"
+        warehouses={[{ id: "wh-1", name: "Kho chính", isActive: true }]}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Chuyển kho" })).not.toBeInTheDocument();
+
+    unmount();
+    render(
+      <SupplyList
+        restaurantId="res-1"
+        warehouseId="wh-1"
+        warehouses={[
+          { id: "wh-1", name: "Kho chính", isActive: true },
+          { id: "wh-2", name: "Kho phụ", isActive: true },
+        ]}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Chuyển kho" })).toBeInTheDocument();
   });
 });
