@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { eachDayOfInterval, format } from "date-fns";
 import { vi } from "date-fns/locale";
 import "./AvailabilitySnapshotModal.scss";
@@ -16,6 +16,13 @@ const PART_TIME_TYPES = new Set([
   "contract",
 ]);
 const DAY_KEYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+const EMPLOYMENT_TYPE_LABELS = {
+  full_time: "Toàn thời gian",
+  part_time: "Bán thời gian",
+  probation: "Thử việc",
+  seasonal: "Thời vụ",
+  contract: "Hợp đồng",
+};
 
 const getWorkingDayKey = (date) => DAY_KEYS[new Date(date).getDay()];
 const getWeekDays = (weekStart, weekEnd) =>
@@ -28,18 +35,26 @@ const toDateKey = (value) => {
 };
 
 const CELL_UI = {
-  available: { short: "OK", label: "Có thể làm", tone: "available" },
-  working_day: { short: "WD", label: "Theo workingDays", tone: "available" },
-  unavailable_exception: { short: "OFF", label: "Báo bận", tone: "warning" },
-  unavailable: { short: "OFF", label: "Không khả dụng", tone: "unavailable" },
+  available: { short: "Rảnh", label: "Có thể làm", tone: "available" },
+  working_day: { short: "Cố định", label: "Theo lịch làm cố định", tone: "available" },
+  unavailable_exception: { short: "Bận", label: "Báo bận", tone: "warning" },
+  unavailable: { short: "Nghỉ", label: "Không khả dụng", tone: "unavailable" },
   not_registered: { short: "—", label: "Chưa đăng ký", tone: "neutral" },
 };
 
 function getCellUi(cell) {
-  return CELL_UI[cell?.state] || {
-    short: "—",
-    label: cell?.label || "Không rõ",
-    tone: cell?.className || "neutral",
+  const configured = CELL_UI[cell?.state];
+  if (!configured) {
+    return {
+      short: "—",
+      label: cell?.label || "Không rõ",
+      tone: cell?.className || "neutral",
+    };
+  }
+
+  return {
+    ...configured,
+    label: cell?.label || configured.label,
   };
 }
 
@@ -100,6 +115,20 @@ const AvailabilitySnapshotModalContent = (props) => {
   const [roleDepartment, setRoleDepartment] = useState("all");
   const [onlyMissing, setOnlyMissing] = useState(false);
   const [onlyShiftType, setOnlyShiftType] = useState("all");
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
 
   const shiftTypes = useMemo(
     () => normalizeShiftDefinitions({ shiftTemplates, shiftRules }),
@@ -176,7 +205,7 @@ const AvailabilitySnapshotModalContent = (props) => {
                   : [];
               const hasException = exceptionSlots.some(
                 (slot) =>
-                  format(new Date(slot.date), "yyyy-MM-dd") === dayKey &&
+                  toDateKey(slot.date) === dayKey &&
                   String(slot.shiftType || "").toLowerCase() === shift.key &&
                   String(slot.status || "").toLowerCase() === "unavailable",
               );
@@ -189,7 +218,7 @@ const AvailabilitySnapshotModalContent = (props) => {
               } else if (worksToday) {
                 cellMap[slotKey] = {
                   state: "working_day",
-                  label: "Theo workingDays",
+                  label: "Theo lịch làm cố định",
                   className: "available",
                 };
               } else {
@@ -213,17 +242,29 @@ const AvailabilitySnapshotModalContent = (props) => {
             const slots = Array.isArray(submission?.slots) ? submission.slots : [];
             const matched = slots.find(
               (slot) =>
-                format(new Date(slot.date), "yyyy-MM-dd") === dayKey &&
+                toDateKey(slot.date) === dayKey &&
                 String(slot.shiftType || "").toLowerCase() === shift.key,
             );
-            cellMap[slotKey] =
-              matched?.status === "available"
-                ? { state: "available", label: "Có thể làm", className: "available" }
-                : {
-                    state: "not_registered",
-                    label: "Chưa đăng ký",
-                    className: "neutral",
-                  };
+            const matchedStatus = String(matched?.status || "").toLowerCase();
+            if (matchedStatus === "available") {
+              cellMap[slotKey] = {
+                state: "available",
+                label: "Có thể làm",
+                className: "available",
+              };
+            } else if (matchedStatus === "unavailable") {
+              cellMap[slotKey] = {
+                state: "unavailable",
+                label: "Không khả dụng",
+                className: "unavailable",
+              };
+            } else {
+              cellMap[slotKey] = {
+                state: "not_registered",
+                label: "Chưa đăng ký",
+                className: "neutral",
+              };
+            }
           });
         });
 
@@ -242,20 +283,31 @@ const AvailabilitySnapshotModalContent = (props) => {
     [days, shiftTypes, staffList, submissionByStaff],
   );
 
-  const roleDepartmentOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          staffList
-            .flatMap((p) => [
-              String(p.roleName || p.role?.name || p.roleSlug || "").toLowerCase(),
-              String(p.department || "").toLowerCase(),
-            ])
-            .filter(Boolean),
-        ),
-      ),
-    [staffList],
-  );
+  const roleDepartmentOptions = useMemo(() => {
+    const options = new Map();
+    staffList.forEach((person) => {
+      const roleValue = String(
+        person.roleName || person.role?.name || person.roleSlug || "",
+      )
+        .trim()
+        .toLowerCase();
+      const roleLabel = String(
+        person.roleName || person.role?.name || person.roleSlug || "",
+      ).trim();
+      const departmentValue = String(person.department || "")
+        .trim()
+        .toLowerCase();
+      const departmentLabel = String(
+        person.departmentLabel || person.department || "",
+      ).trim();
+
+      if (roleValue && !options.has(roleValue)) options.set(roleValue, roleLabel);
+      if (departmentValue && !options.has(departmentValue)) {
+        options.set(departmentValue, departmentLabel);
+      }
+    });
+    return Array.from(options, ([value, label]) => ({ value, label }));
+  }, [staffList]);
   const employmentOptions = useMemo(
     () =>
       Array.from(
@@ -264,7 +316,10 @@ const AvailabilitySnapshotModalContent = (props) => {
             .map((p) => String(p.employmentType || "").toLowerCase())
             .filter(Boolean),
         ),
-      ),
+      ).map((value) => ({
+        value,
+        label: EMPLOYMENT_TYPE_LABELS[value] || value,
+      })),
     [staffList],
   );
 
@@ -334,7 +389,12 @@ const AvailabilitySnapshotModalContent = (props) => {
               khi xếp và công bố lịch làm việc.
             </p>
           </div>
-          <button type="button" className="btn-close-snapshot" onClick={onClose}>
+          <button
+            type="button"
+            className="btn-close-snapshot"
+            aria-label="Đóng lịch rảnh đã đăng ký"
+            onClick={onClose}
+          >
             Đóng
           </button>
         </header>
@@ -345,65 +405,117 @@ const AvailabilitySnapshotModalContent = (props) => {
             <strong>{summary.total}</strong>
           </div>
           <div>
-            <span>Có dữ liệu chính thức</span>
+            <span>Đủ dữ liệu xếp ca</span>
             <strong>{summary.official}</strong>
           </div>
           <div>
-            <span>Thiếu / chưa rõ</span>
+            <span>Chưa đủ dữ liệu</span>
             <strong>{summary.missing}</strong>
           </div>
           <div>
-            <span>Chờ duyệt muộn</span>
+            <span>Thay đổi chờ duyệt</span>
             <strong>{summary.late}</strong>
           </div>
         </section>
 
-        <section className="availability-snapshot-controls">
-          <input
-            placeholder="Tìm tên hoặc mã nhân viên"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select value={employmentType} onChange={(e) => setEmploymentType(e.target.value)}>
-            <option value="all">Tất cả loại hợp đồng</option>
-            {employmentOptions.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </select>
-          <select value={roleDepartment} onChange={(e) => setRoleDepartment(e.target.value)}>
-            <option value="all">Tất cả vai trò / phòng ban</option>
-            {roleDepartmentOptions.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </select>
-          <select value={onlyShiftType} onChange={(e) => setOnlyShiftType(e.target.value)}>
-            <option value="all">Mọi ca</option>
-            {shiftTypes.map((s) => (
-              <option key={s.key} value={s.key}>
-                {s.label}
-              </option>
-            ))}
-          </select>
+        <section
+          className="availability-snapshot-controls"
+          aria-label="Bộ lọc lịch rảnh nhân viên"
+        >
+          <label className="availability-filter-field availability-filter-search">
+            <span>Tìm nhân viên</span>
+            <input
+              aria-label="Tìm nhân viên"
+              placeholder="Nhập tên hoặc mã nhân viên"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </label>
+          <label className="availability-filter-field">
+            <span>Loại hợp đồng</span>
+            <select
+              aria-label="Loại hợp đồng"
+              value={employmentType}
+              onChange={(e) => setEmploymentType(e.target.value)}
+            >
+              <option value="all">Tất cả loại hợp đồng</option>
+              {employmentOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="availability-filter-field">
+            <span>Vai trò / phòng ban</span>
+            <select
+              aria-label="Vai trò hoặc phòng ban"
+              value={roleDepartment}
+              onChange={(e) => setRoleDepartment(e.target.value)}
+            >
+              <option value="all">Tất cả vai trò / phòng ban</option>
+              {roleDepartmentOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="availability-filter-field">
+            <span>Ca có thể làm</span>
+            <select
+              aria-label="Ca có thể làm"
+              value={onlyShiftType}
+              onChange={(e) => setOnlyShiftType(e.target.value)}
+            >
+              <option value="all">Mọi ca</option>
+              {shiftTypes.map((shift) => (
+                <option key={shift.key} value={shift.key}>
+                  {shift.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="toggle-missing">
             <input
               type="checkbox"
               checked={onlyMissing}
               onChange={(e) => setOnlyMissing(e.target.checked)}
             />
-            Chỉ hiện nhân viên thiếu đăng ký
+            <span>Chỉ hiện nhân viên thiếu đăng ký</span>
           </label>
         </section>
 
-        <div className="availability-legend-row">
-          <span><i className="available" /> OK: Có thể làm</span>
-          <span><i className="available" /> WD: Theo workingDays</span>
-          <span><i className="warning" /> OFF: Báo bận</span>
-          <span><i className="unavailable" /> OFF: Không khả dụng</span>
-          <span><i className="neutral" /> —: Chưa đăng ký</span>
+        <div className="availability-results-bar" role="status" aria-live="polite">
+          <span>
+            Đang hiển thị <strong>{filteredRows.length}</strong> / {rows.length} nhân viên
+          </span>
+          {search ||
+          employmentType !== "all" ||
+          roleDepartment !== "all" ||
+          onlyShiftType !== "all" ||
+          onlyMissing ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setEmploymentType("all");
+                setRoleDepartment("all");
+                setOnlyShiftType("all");
+                setOnlyMissing(false);
+              }}
+            >
+              Xóa bộ lọc
+            </button>
+          ) : null}
+        </div>
+
+        <div className="availability-legend-row" aria-label="Chú giải trạng thái lịch rảnh">
+          <span><i className="available" /> Rảnh: nhân viên có thể làm</span>
+          <span><i className="available" /> Cố định: theo lịch làm đã thiết lập</span>
+          <span><i className="warning" /> Bận: đã báo ngoại lệ</span>
+          <span><i className="unavailable" /> Nghỉ: không khả dụng</span>
+          <span><i className="neutral" /> —: chưa đăng ký</span>
         </div>
 
         {!hasWindow ? (
@@ -420,9 +532,20 @@ const AvailabilitySnapshotModalContent = (props) => {
             Không thể tải lịch rảnh đã đăng ký: {error.message || String(error)}
           </div>
         ) : null}
-        {loading ? <div className="availability-loading-state">Đang tải...</div> : null}
+        {loading ? (
+          <div className="availability-loading-state" role="status" aria-live="polite">
+            Đang tải dữ liệu nhân viên và lịch rảnh của tuần này...
+          </div>
+        ) : null}
 
-        {!loading && !error && (rows.length > 0 || hasWindow) ? (
+        {!loading && !error && rows.length === 0 ? (
+          <div className="availability-empty-state" role="status">
+            <strong>Chưa có nhân viên để hiển thị.</strong>
+            <span>Kiểm tra lại nhà hàng đang chọn hoặc trạng thái làm việc của nhân viên.</span>
+          </div>
+        ) : null}
+
+        {!loading && !error && rows.length > 0 ? (
           <div className="availability-table-shell">
             <table className="availability-snapshot-table">
               <thead>
@@ -471,7 +594,7 @@ const AvailabilitySnapshotModalContent = (props) => {
                         {hasLateChangePending ? (
                           <em>Chờ duyệt thay đổi muộn</em>
                         ) : null}
-                        {pendingSlotsCount > 0 ? <small>Pending: {pendingSlotsCount}</small> : null}
+                        {pendingSlotsCount > 0 ? <small>Chờ duyệt: {pendingSlotsCount}</small> : null}
                       </td>
                       {days.flatMap((d) =>
                         shiftTypes.map((s) => {
@@ -486,7 +609,8 @@ const AvailabilitySnapshotModalContent = (props) => {
                             <td
                               key={`${person.id}-${key}`}
                               className={`availability-cell ${ui.tone}`}
-                              title={cell.label}
+                              title={ui.label}
+                              aria-label={`${person.fullName || "Nhân viên"}, ${format(d, "dd/MM")}, ${s.label}: ${ui.label}`}
                             >
                               <span>{ui.short}</span>
                             </td>

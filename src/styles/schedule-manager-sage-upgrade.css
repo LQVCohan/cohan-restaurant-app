@@ -393,26 +393,26 @@
   color: var(--schedule-primary-hover) !important;
 }
 
-.manager-page-shell--schedules .schedule-container.schedule-container .toolbar-group--actions .btn-availability-snapshot.schedule-toolbar-utility-action {
+.manager-page-shell--schedules .schedule-container.schedule-container .toolbar-group--actions .btn-availability-snapshot {
   border-color: rgba(47, 125, 104, 0.3) !important;
   background: #e5f2ec !important;
   color: #2f6f5e !important;
   box-shadow: 0 7px 16px rgba(47, 125, 104, 0.1) !important;
 }
 
-.manager-page-shell--schedules .schedule-container.schedule-container .toolbar-group--actions .btn-availability-snapshot.schedule-toolbar-utility-action:hover:not(:disabled) {
+.manager-page-shell--schedules .schedule-container.schedule-container .toolbar-group--actions .btn-availability-snapshot:hover:not(:disabled) {
   border-color: rgba(47, 125, 104, 0.45) !important;
   background: #d8ebe2 !important;
 }
 
-.manager-page-shell--schedules .schedule-container.schedule-container .toolbar-group--actions .btn-auto-schedule.schedule-toolbar-assist-action {
+.manager-page-shell--schedules .schedule-container.schedule-container .toolbar-group--actions .btn-auto-schedule {
   border-color: #3f7563 !important;
   background: #3f7563 !important;
   color: #ffffff !important;
   box-shadow: 0 9px 20px rgba(47, 101, 82, 0.17) !important;
 }
 
-.manager-page-shell--schedules .schedule-container.schedule-container .toolbar-group--actions .btn-auto-schedule.schedule-toolbar-assist-action:hover:not(:disabled) {
+.manager-page-shell--schedules .schedule-container.schedule-container .toolbar-group--actions .btn-auto-schedule:hover:not(:disabled) {
   border-color: #315f50 !important;
   background: #315f50 !important;
   color: #ffffff !important;

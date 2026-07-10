@@ -1,0 +1,49 @@
+{
+  "id": "07-10-schedule-ui-data-integrity",
+  "name": "schedule-ui-data-integrity",
+  "title": "Upgrade manager schedule UI and availability data integrity",
+  "description": "Align the registered-availability modal with the current schedule-week queries, show real loading/error/unavailable states, and polish the sage responsive interface.",
+  "status": "completed",
+  "dev_type": "frontend",
+  "scope": "manager-schedule-ui-data",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": "2026-07-10",
+  "branch": "fix/schedule-ui-data-integrity-20260710",
+  "base_branch": "main",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Schedule/ScheduleManagement.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.scss",
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.test.jsx",
+    "src/styles/schedule-manager-sage-upgrade.css"
+  ],
+  "validation": {
+    "passed": [
+      "focused AvailabilitySnapshotModal Vitest: 15 tests",
+      "npm run check:conflicts",
+      "npm run check:graphql:schema",
+      "npm run build",
+      "standard CI backend lint, tests, Menu RBAC, and build"
+    ],
+    "knownBaseline": [
+      "npm run check:graphql:operations reaches an existing JS parse error in src/components/Dashboard_Manager/Combo/ComboManagement.test.jsx:18",
+      "standard frontend unit run: 346/347 tests passed; existing useDashboard.test.jsx:69 assertion failed and AuthProvider.logout-route-order.test.jsx reported two async timer leaks"
+    ],
+    "notRun": [
+      "authenticated browser visual verification on the user's live local database",
+      "full component and Playwright smoke suites were skipped by standard CI after the unrelated unit baseline failure"
+    ]
+  },
+  "meta": {
+    "skills": [
+      "ponytail",
+      "ui-ux-pro-max",
+      "frontend-design",
+      "taste-ui-redesign",
+      "redesign-existing-projects"
+    ]
+  }
+}

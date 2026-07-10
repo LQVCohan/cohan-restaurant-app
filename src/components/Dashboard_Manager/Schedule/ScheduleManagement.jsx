@@ -1298,6 +1298,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const {
     data: staffData,
     loading: staffLoading,
+    error: staffError,
     refetch: refetchStaffList,
   } = useQuery(GET_STAFF_LIST, {
     variables: { restaurantId: effectiveRestaurantId || undefined },
@@ -1424,6 +1425,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   ].join(":");
   const {
     data: managerAvailabilityWindowsData,
+    loading: managerAvailabilityWindowsLoading,
     error: managerAvailabilityWindowsError,
     refetch: refetchManagerWindows,
   } = useQuery(GET_AVAILABILITY_WINDOWS, {
@@ -1442,8 +1444,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
         const start = new Date(item.periodStart);
         const end = new Date(item.periodEnd);
         return (
-          start.getTime() === nextWeekStart.getTime() &&
-          end.getTime() === nextWeekEnd.getTime()
+          toDateKey(start) === toDateKey(nextWeekStart) &&
+          toDateKey(end) === toDateKey(nextWeekEnd)
         );
       }) || null
     );
@@ -1462,8 +1464,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
         const start = new Date(item.periodStart);
         const end = new Date(item.periodEnd);
         return (
-          start.getTime() === availabilityTargetStart.getTime() &&
-          end.getTime() === availabilityTargetEnd.getTime()
+          toDateKey(start) === toDateKey(availabilityTargetStart) &&
+          toDateKey(end) === toDateKey(availabilityTargetEnd)
         );
       }) || null
     );
@@ -1479,8 +1481,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
         const start = new Date(item.periodStart);
         const end = new Date(item.periodEnd);
         return (
-          start.getTime() === currentWeekStart.getTime() &&
-          end.getTime() === currentWeekEnd.getTime()
+          toDateKey(start) === toDateKey(currentWeekStart) &&
+          toDateKey(end) === toDateKey(currentWeekEnd)
         );
       }) || null
     );
@@ -2153,23 +2155,25 @@ const ScheduleManagement = ({ readOnly = false }) => {
   }, [selectedShift, shifts]);
   const managerAvailabilitySubmissions =
     managerAvailabilitySubmissionsData?.staffAvailabilitySubmissions || [];
-  const { data: managerScheduleWeekSubmissionsData } = useQuery(
-    GET_AVAILABILITY_SUBMISSIONS,
-    {
-      variables: {
-        restaurantId: effectiveRestaurantId,
-        windowId: managerScheduleWeekWindow?.id,
-      },
-      fetchPolicy: "network-only",
-      skip: !effectiveRestaurantId || !managerScheduleWeekWindow?.id,
+  const {
+    data: managerScheduleWeekSubmissionsData,
+    loading: managerScheduleWeekSubmissionsLoading,
+    error: managerScheduleWeekSubmissionsError,
+    refetch: refetchManagerScheduleWeekSubmissions,
+  } = useQuery(GET_AVAILABILITY_SUBMISSIONS, {
+    variables: {
+      restaurantId: effectiveRestaurantId,
+      windowId: managerScheduleWeekWindow?.id,
     },
-  );
+    fetchPolicy: "network-only",
+    skip: !effectiveRestaurantId || !managerScheduleWeekWindow?.id,
+  });
   const managerScheduleWeekSubmissions =
     managerScheduleWeekSubmissionsData?.staffAvailabilitySubmissions || [];
   const partTimeStaff = useMemo(
     () =>
       staff.filter((person) =>
-        ["part_time", "seasonal"].includes(
+        ["part_time", "seasonal", "probation", "contract"].includes(
           String(person.employmentType || "").toLowerCase(),
         ),
       ),
@@ -4500,17 +4504,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
               </button>
             ) : null}
 
-            {!readOnly ? (
-              <button
-                type="button"
-                className="secondary-action"
-                onClick={() => setIsAutoScheduleOpen(true)}
-              >
-                <Sparkles size={17} />
-                Tự động xếp ca
-              </button>
-            ) : null}
-
             <button
               type="button"
               className="secondary-action"
@@ -5010,8 +5003,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
               className="btn-availability-snapshot"
               onClick={() => {
                 setIsAvailabilitySnapshotOpen(true);
-                refetchManagerWindows?.();
-                refetchManagerSubmissions?.();
+                refetchManagerWindows?.().catch(() => {});
+                refetchStaffList?.().catch(() => {});
+                if (managerScheduleWeekWindow?.id) {
+                  refetchManagerScheduleWeekSubmissions?.().catch(() => {});
+                }
               }}
             >
               <CalendarCheck2 size={16} />
@@ -5752,14 +5748,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
         shiftTemplates={schedulingPolicy?.shiftTemplates}
         shiftRules={configuredShiftTypes}
         loading={
-          availabilityWindowsState.loading ||
-          availabilitySubmissionsState.loading
+          staffLoading ||
+          managerAvailabilityWindowsLoading ||
+          managerScheduleWeekSubmissionsLoading
         }
         error={
+          staffError ||
           managerAvailabilityWindowsError ||
-          managerAvailabilitySubmissionsError ||
-          availabilityWindowsState.error ||
-          availabilitySubmissionsState.error ||
+          managerScheduleWeekSubmissionsError ||
           null
         }
       />
