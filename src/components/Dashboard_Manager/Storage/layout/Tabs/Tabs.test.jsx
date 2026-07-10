@@ -1,7 +1,7 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import Tabs from "./Tabs";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import Tabs, { getRequestedStorageTab } from "./Tabs";
 
 vi.mock("../../components/common/StorageGridPaginationBridge", () => ({
   default: () => null,
@@ -14,7 +14,11 @@ const tabs = [
   { id: "inventory", label: "Kiểm kê" },
 ];
 
-describe("Storage Tabs view mode", () => {
+beforeEach(() => {
+  history.replaceState(null, "", "/manager#inventory");
+});
+
+describe("Storage Tabs", () => {
   it("defaults to cards and keeps horizontal list selected between catalog tabs", () => {
     const onTabChange = vi.fn();
     const { container, rerender } = render(
@@ -36,5 +40,60 @@ describe("Storage Tabs view mode", () => {
 
     rerender(<Tabs tabs={tabs} activeTab="inventory" onTabChange={onTabChange} />);
     expect(container.querySelector(".sm-view-toggle")).toHaveClass("is-hidden");
+  });
+
+  it("accepts only tab ids that exist in the current storage tabs", () => {
+    expect(getRequestedStorageTab(tabs, "?tab=recipes")).toBe("recipes");
+    expect(getRequestedStorageTab(tabs, "?tab=unknown")).toBe("");
+  });
+
+  it("opens the requested tab from the manager URL on mount", async () => {
+    history.replaceState(null, "", "/manager?tab=recipes#inventory");
+    const onTabChange = vi.fn();
+
+    render(
+      <Tabs tabs={tabs} activeTab="ingredients" onTabChange={onTabChange} />,
+    );
+
+    await waitFor(() => expect(onTabChange).toHaveBeenCalledWith("recipes"));
+  });
+
+  it("switches tab when manager search navigates while inventory is already open", () => {
+    const onTabChange = vi.fn();
+    render(
+      <Tabs tabs={tabs} activeTab="ingredients" onTabChange={onTabChange} />,
+    );
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent("manager:navigation-query", {
+          detail: { page: "inventory", query: { tab: "inventory" } },
+        }),
+      );
+    });
+
+    expect(onTabChange).toHaveBeenCalledWith("inventory");
+  });
+
+  it("ignores invalid tabs and navigation events for another page", () => {
+    const onTabChange = vi.fn();
+    render(
+      <Tabs tabs={tabs} activeTab="ingredients" onTabChange={onTabChange} />,
+    );
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent("manager:navigation-query", {
+          detail: { page: "inventory", query: { tab: "unknown" } },
+        }),
+      );
+      window.dispatchEvent(
+        new CustomEvent("manager:navigation-query", {
+          detail: { page: "transactions", query: { tab: "recipes" } },
+        }),
+      );
+    });
+
+    expect(onTabChange).not.toHaveBeenCalled();
   });
 });
