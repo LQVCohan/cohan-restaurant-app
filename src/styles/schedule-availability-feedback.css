@@ -1,0 +1,37 @@
+.schedule-availability-action-error {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(180, 83, 62, 0.28);
+  border-radius: 14px;
+  background: #fff4f0;
+  color: #7a3024;
+  box-shadow: 0 8px 20px rgba(92, 39, 28, 0.08);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.schedule-availability-action-error strong {
+  display: block;
+  margin-bottom: 2px;
+  color: #61261d;
+}
+
+.schedule-availability-action-error button {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid rgba(122, 48, 36, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  color: inherit;
+  cursor: pointer;
+}
+
+.schedule-availability-action-error button:focus-visible {
+  outline: 3px solid rgba(122, 48, 36, 0.24);
+  outline-offset: 2px;
+}
