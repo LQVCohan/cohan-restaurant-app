@@ -221,13 +221,7 @@ async function buildNeeds({ restaurantId, lines, session }) {
     }
 
     const comps = arr(serving?.ingredients);
-    if (!comps.length) {
-      throw new Error(
-        `ServingVariant has no ingredients for menuItem ${
-          line.menuItemId
-        } (key=${s(serving.key)})`
-      );
-    }
+    if (!comps.length) continue;
 
     for (const c of comps)
       if (c?.ingredientId) ingIdsSet.add(String(c.ingredientId));
