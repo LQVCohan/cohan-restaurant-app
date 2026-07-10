@@ -27,6 +27,12 @@ vi.mock("mongoose", () => ({
   },
 }));
 
+const buildMenuFindChain = (documents = []) => ({
+  sort: vi.fn(() => ({
+    lean: vi.fn().mockResolvedValue(documents),
+  })),
+});
+
 const buildMenuItemFindChain = (documents = []) => ({
   sort: vi.fn(() => ({
     limit: vi.fn(() => ({
@@ -35,19 +41,55 @@ const buildMenuItemFindChain = (documents = []) => ({
   })),
 });
 
-describe("manager menu item list visibility", () => {
+describe("manager menu list visibility", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    modelMocks.Menu.find.mockReturnValue(buildMenuFindChain([]));
     modelMocks.Menu.findOne.mockReturnValue({
       select: vi.fn(() => ({
         lean: vi.fn().mockResolvedValue({ _id: "valid-menu-1" }),
       })),
     });
     modelMocks.MenuItem.find.mockReturnValue(buildMenuItemFindChain([]));
+    authorizationMocks.hasPermission.mockResolvedValue(false);
     authorizationMocks.requireRestaurantPermission.mockResolvedValue(true);
   });
 
-  it("returns all statuses for an authorized manager when no status filter is selected", async () => {
+  it("returns active and inactive menus to an authorized manager", async () => {
+    authorizationMocks.hasPermission.mockResolvedValue(true);
+    const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
+    const ctx = { user: { id: "valid-user-1" } };
+
+    await MenuQuery.menus(null, { restaurantId: "valid-r1" }, ctx);
+
+    expect(authorizationMocks.hasPermission).toHaveBeenCalledWith(
+      ctx.user,
+      "menu.read",
+    );
+    expect(authorizationMocks.requireRestaurantPermission).toHaveBeenCalledWith(
+      ctx,
+      "valid-r1",
+      "menu.read",
+    );
+    expect(modelMocks.Menu.find).toHaveBeenCalledWith({
+      restaurantId: "valid-r1",
+    });
+  });
+
+  it("keeps inactive menus hidden from public browsing", async () => {
+    const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
+
+    await MenuQuery.menus(null, { restaurantId: "valid-r1" }, {});
+
+    expect(authorizationMocks.hasPermission).not.toHaveBeenCalled();
+    expect(authorizationMocks.requireRestaurantPermission).not.toHaveBeenCalled();
+    expect(modelMocks.Menu.find).toHaveBeenCalledWith({
+      restaurantId: "valid-r1",
+      isActive: true,
+    });
+  });
+
+  it("returns all item statuses for an authorized manager when no status filter is selected", async () => {
     authorizationMocks.hasPermission.mockResolvedValue(true);
     const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
 
@@ -79,7 +121,7 @@ describe("manager menu item list visibility", () => {
     });
   });
 
-  it("keeps the public status restriction for unauthenticated browsing", async () => {
+  it("keeps the public item status restriction for unauthenticated browsing", async () => {
     const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
 
     await MenuQuery.menuItemsConnection(
