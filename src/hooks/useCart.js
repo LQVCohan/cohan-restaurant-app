@@ -22,6 +22,7 @@ export const buildCartLineIdentity = (item = {}) =>
     item.id,
     item.restaurantId,
     item.servingVariantKey || item.servingKey || "portion",
+    item.serviceAt || "",
     String(item.note || "").trim(),
     buildModifiersKey(item.modifiers || item.selectedModifiers || []),
   ].join("::");
