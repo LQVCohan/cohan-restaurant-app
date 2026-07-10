@@ -1,18 +1,128 @@
 .talite-modal[data-table-detail-tabs-ready="true"] {
+  --tdm-ink: #24323b;
+  --tdm-muted: #66736f;
+  --tdm-subtle: #857d73;
+  --tdm-sage: #1f6a60;
+  --tdm-sage-strong: #17554d;
+  --tdm-sage-soft: #e4f1ec;
+  --tdm-sage-mist: #f2faf7;
+  --tdm-paper: #fffdf9;
+  --tdm-canvas: #f7f3eb;
+  --tdm-line: #ded6cb;
+  --tdm-line-strong: #cfc3b4;
+  --tdm-danger: #9a413d;
+  --tdm-danger-soft: #faece8;
+  --tdm-warning: #8a6127;
+  --tdm-warning-soft: #fff4df;
+
   display: grid !important;
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
+  width: min(1080px, calc(100vw - 32px)) !important;
+  max-height: min(860px, calc(100dvh - 32px)) !important;
   overflow: hidden !important;
+  border: 1px solid rgba(255, 253, 249, 0.86) !important;
+  border-radius: 24px !important;
+  color: var(--tdm-ink) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(31, 106, 96, 0.1), transparent 24rem),
+    linear-gradient(180deg, var(--tdm-paper), var(--tdm-canvas)) !important;
+  box-shadow:
+    0 34px 92px rgba(18, 30, 31, 0.32),
+    0 0 0 1px rgba(255, 253, 249, 0.68) !important;
+}
+
+.talite-backdrop:has(.talite-modal[data-table-detail-tabs-ready="true"]) {
+  padding: 16px;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(31, 106, 96, 0.2), transparent 34rem),
+    rgba(19, 28, 31, 0.62) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(108%);
+  backdrop-filter: blur(10px) saturate(108%);
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-header {
+  min-height: 76px !important;
+  padding: 16px 20px !important;
+  border-bottom: 1px solid rgba(222, 214, 203, 0.86) !important;
+  background: rgba(255, 253, 249, 0.94) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-header > div:first-child {
+  min-width: 0;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-title {
+  margin: 0 !important;
+  color: var(--tdm-ink) !important;
+  font-size: clamp(1.08rem, 1.5vw, 1.3rem) !important;
+  font-weight: 860 !important;
+  letter-spacing: -0.04em !important;
+  line-height: 1.2 !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-title b {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin-left: 4px;
+  border: 1px solid rgba(31, 106, 96, 0.18);
+  border-radius: 9px;
+  padding: 2px 9px;
+  color: var(--tdm-sage-strong) !important;
+  background: var(--tdm-sage-mist);
+  font-variant-numeric: tabular-nums;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-subtitle {
+  max-width: 68ch;
+  margin: 5px 0 0 !important;
+  color: var(--tdm-muted) !important;
+  font-size: 0.82rem !important;
+  line-height: 1.45 !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-close {
+  display: inline-grid !important;
+  place-items: center !important;
+  flex: 0 0 44px !important;
+  width: 44px !important;
+  height: 44px !important;
+  border: 1px solid rgba(222, 214, 203, 0.92) !important;
+  border-radius: 14px !important;
+  color: var(--tdm-subtle) !important;
+  background: rgba(255, 253, 249, 0.9) !important;
+  font-size: 24px !important;
+  transition:
+    color 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-close:hover:not(:disabled) {
+  border-color: rgba(154, 65, 61, 0.22) !important;
+  color: var(--tdm-danger) !important;
+  background: var(--tdm-danger-soft) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-close:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-close:focus-visible {
+  outline: 3px solid rgba(31, 106, 96, 0.22) !important;
+  outline-offset: 2px !important;
 }
 
 .table-detail-tabs {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   min-width: 0;
   padding: 8px 14px;
   border-bottom: 1px solid rgba(222, 214, 203, 0.9);
   background:
-    linear-gradient(90deg, rgba(255, 253, 249, 0.98), rgba(242, 250, 247, 0.92));
+    linear-gradient(90deg, rgba(255, 253, 249, 0.98), rgba(242, 250, 247, 0.94));
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   scrollbar-width: thin;
@@ -33,42 +143,73 @@
     flex: 0 0 auto;
     align-items: center;
     justify-content: center;
+    gap: 8px;
     min-height: 44px;
     border: 1px solid transparent;
-    border-radius: 12px;
-    padding: 0 13px;
-    color: #5f6c68;
+    border-radius: 13px;
+    padding: 0 14px;
+    color: #596762;
     background: transparent;
     font: inherit;
-    font-size: 0.8rem;
-    font-weight: 800;
+    font-size: 0.82rem;
+    font-weight: 820;
     line-height: 1;
     cursor: pointer;
     transition:
-      color 0.16s ease,
-      background 0.16s ease,
-      border-color 0.16s ease,
-      box-shadow 0.16s ease,
-      transform 0.16s ease;
+      color 0.18s ease,
+      background 0.18s ease,
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      transform 0.18s ease;
+
+    &::before {
+      content: "";
+      width: 17px;
+      height: 17px;
+      flex: 0 0 17px;
+      background: currentColor;
+      -webkit-mask: var(--tdm-tab-icon) center / contain no-repeat;
+      mask: var(--tdm-tab-icon) center / contain no-repeat;
+    }
 
     &::after {
       content: "";
       position: absolute;
-      right: 12px;
+      right: 13px;
       bottom: 4px;
-      left: 12px;
+      left: 13px;
       height: 2px;
       border-radius: 999px;
-      background: #1f6a60;
+      background: var(--tdm-sage);
       opacity: 0;
       transform: scaleX(0.55);
-      transition: opacity 0.16s ease, transform 0.16s ease;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    &[data-table-detail-tab="overview"] {
+      --tdm-tab-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='7' height='9' x='3' y='3' rx='1'/%3E%3Crect width='7' height='5' x='14' y='3' rx='1'/%3E%3Crect width='7' height='9' x='14' y='12' rx='1'/%3E%3Crect width='7' height='5' x='3' y='16' rx='1'/%3E%3C/svg%3E");
+    }
+
+    &[data-table-detail-tab="configuration"] {
+      --tdm-tab-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cline x1='21' x2='14' y1='4' y2='4'/%3E%3Cline x1='10' x2='3' y1='4' y2='4'/%3E%3Cline x1='21' x2='12' y1='12' y2='12'/%3E%3Cline x1='8' x2='3' y1='12' y2='12'/%3E%3Cline x1='21' x2='16' y1='20' y2='20'/%3E%3Cline x1='12' x2='3' y1='20' y2='20'/%3E%3Cline x1='14' x2='14' y1='2' y2='6'/%3E%3Cline x1='8' x2='8' y1='10' y2='14'/%3E%3Cline x1='16' x2='16' y1='18' y2='22'/%3E%3C/svg%3E");
+    }
+
+    &[data-table-detail-tab="operations"] {
+      --tdm-tab-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-4l-3 9L9 3l-3 9H2'/%3E%3C/svg%3E");
+    }
+
+    &[data-table-detail-tab="booking"] {
+      --tdm-tab-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4'/%3E%3Cpath d='M16 2v4'/%3E%3Crect width='18' height='18' x='3' y='4' rx='2'/%3E%3Cpath d='M3 10h18'/%3E%3Cpath d='m9 16 2 2 4-4'/%3E%3C/svg%3E");
+    }
+
+    &[data-table-detail-tab="assistant"] {
+      --tdm-tab-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z'/%3E%3Cpath d='M5 3v4'/%3E%3Cpath d='M19 17v4'/%3E%3Cpath d='M3 5h4'/%3E%3Cpath d='M17 19h4'/%3E%3C/svg%3E");
     }
 
     &:hover {
-      color: #17554d;
       border-color: rgba(31, 106, 96, 0.16);
-      background: rgba(255, 253, 249, 0.82);
+      color: var(--tdm-sage-strong);
+      background: rgba(255, 253, 249, 0.86);
     }
 
     &:active {
@@ -81,10 +222,10 @@
     }
 
     &[aria-selected="true"] {
-      color: #17554d;
-      border-color: rgba(31, 106, 96, 0.24);
-      background: rgba(220, 239, 233, 0.82);
-      box-shadow: 0 8px 18px rgba(31, 106, 96, 0.08);
+      border-color: rgba(31, 106, 96, 0.25);
+      color: var(--tdm-sage-strong);
+      background: rgba(220, 239, 233, 0.86);
+      box-shadow: 0 9px 20px rgba(31, 106, 96, 0.09);
 
       &::after {
         opacity: 1;
@@ -97,9 +238,21 @@
 .talite-modal[data-table-detail-tabs-ready="true"] .talite-body {
   min-height: 0 !important;
   max-height: none !important;
+  padding: 16px 18px 20px !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
-  scroll-padding-block: 12px 84px;
+  scroll-padding-block: 14px 92px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(31, 106, 96, 0.24) transparent;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-body::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(31, 106, 96, 0.22);
 }
 
 .talite-modal[data-table-detail-tabs-ready="true"] .talite-body > [hidden],
@@ -108,34 +261,615 @@
 }
 
 .talite-modal[data-table-detail-tabs-ready="true"] .talite-info {
-  margin-bottom: 12px !important;
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 0 !important;
+  margin: 0 0 14px !important;
+  padding: 10px !important;
+  border: 1px solid rgba(222, 214, 203, 0.9) !important;
+  border-radius: 18px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 253, 249, 0.98), rgba(242, 250, 247, 0.78)) !important;
+  box-shadow: 0 12px 28px rgba(55, 48, 38, 0.06) !important;
 }
 
-.talite-modal[data-table-detail-active-tab="overview"]
-  .talite-group[data-table-detail-section="operations"] {
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-info
+  > .kv[data-table-detail-summary="code"] {
+  display: none !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-info > .kv {
+  position: relative;
+  display: grid !important;
+  align-content: center;
+  gap: 3px !important;
+  min-width: 0;
+  min-height: 58px !important;
+  margin: 0 !important;
+  padding: 8px 13px !important;
+  border: 0 !important;
+  border-right: 1px solid rgba(222, 214, 203, 0.74) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-info > .kv:last-of-type {
+  border-right: 0 !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-info .k {
+  color: var(--tdm-muted) !important;
+  font-size: 0.7rem !important;
+  font-weight: 720 !important;
+  letter-spacing: 0.035em;
+  line-height: 1.25 !important;
+  text-transform: uppercase;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-info .v {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--tdm-ink) !important;
+  font-size: 0.9rem !important;
+  font-weight: 820 !important;
+  line-height: 1.3 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-info
+  > .kv[data-table-detail-summary="status"] {
+  --tdm-status-ink: #176357;
+  --tdm-status-bg: #e3f3ec;
+  margin-left: 8px !important;
+  border: 1px solid rgba(31, 106, 96, 0.16) !important;
+  border-radius: 13px !important;
+  background: var(--tdm-status-bg) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-info
+  > .kv[data-table-detail-summary="status"]
+  .v {
+  color: var(--tdm-status-ink) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-info
+  > .kv[data-table-status-tone="busy"] {
+  --tdm-status-ink: #9a413d;
+  --tdm-status-bg: #faece8;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-info
+  > .kv[data-table-status-tone="reserved"] {
+  --tdm-status-ink: #805b24;
+  --tdm-status-bg: #fff4df;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-info
+  > .kv[data-table-status-tone="cleaning"] {
+  --tdm-status-ink: #315d79;
+  --tdm-status-bg: #eaf4fa;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-info
+  > .kv[data-table-status-tone="payment"] {
+  --tdm-status-ink: #755128;
+  --tdm-status-bg: #f9eddd;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-info
+  > .kv[data-table-status-tone="offline"] {
+  --tdm-status-ink: #5e6266;
+  --tdm-status-bg: #eff0f1;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-group {
+  position: relative !important;
+  margin: 0 0 12px !important;
+  padding: 16px !important;
+  overflow: visible !important;
+  border: 1px solid rgba(222, 214, 203, 0.88) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 253, 249, 0.9) !important;
+  box-shadow: 0 12px 28px rgba(55, 48, 38, 0.045) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-group::before,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-group::after {
+  display: none !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-group[data-table-detail-kind="status"] {
   border-color: rgba(31, 106, 96, 0.24) !important;
   background:
-    linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(242, 250, 247, 0.84)) !important;
+    linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(242, 250, 247, 0.86)) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-group[data-table-detail-kind="promotion"],
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-group[data-table-detail-kind="policy"] {
+  border-color: rgba(138, 97, 39, 0.2) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(255, 248, 236, 0.82)) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-group[data-table-detail-kind="assistant"] {
+  border-color: rgba(31, 106, 96, 0.22) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(31, 106, 96, 0.11), transparent 18rem),
+    rgba(255, 253, 249, 0.94) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-group-header {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 11px !important;
+  min-height: 40px !important;
+  margin: 0 0 14px !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-group-header > div {
+  min-width: 0;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-group-icon {
+  --tdm-group-icon: var(--tdm-tab-icon);
+  display: inline-grid !important;
+  place-items: center !important;
+  flex: 0 0 38px !important;
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  min-height: 38px !important;
+  border: 1px solid rgba(31, 106, 96, 0.16) !important;
+  border-radius: 12px !important;
+  color: var(--tdm-sage-strong) !important;
+  background: var(--tdm-sage-mist) !important;
+  font-size: 0 !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-group-icon::before {
+  content: "";
+  width: 19px;
+  height: 19px;
+  background: currentColor;
+  -webkit-mask: var(--tdm-group-icon) center / contain no-repeat;
+  mask: var(--tdm-group-icon) center / contain no-repeat;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-group[data-table-detail-kind="basics"]
+  .talite-group-icon {
+  --tdm-group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cline x1='21' x2='14' y1='4' y2='4'/%3E%3Cline x1='10' x2='3' y1='4' y2='4'/%3E%3Cline x1='21' x2='12' y1='12' y2='12'/%3E%3Cline x1='8' x2='3' y1='12' y2='12'/%3E%3Cline x1='21' x2='16' y1='20' y2='20'/%3E%3Cline x1='12' x2='3' y1='20' y2='20'/%3E%3Cline x1='14' x2='14' y1='2' y2='6'/%3E%3Cline x1='8' x2='8' y1='10' y2='14'/%3E%3Cline x1='16' x2='16' y1='18' y2='22'/%3E%3C/svg%3E");
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-group[data-table-detail-kind="status"]
+  .talite-group-icon {
+  --tdm-group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-4l-3 9L9 3l-3 9H2'/%3E%3C/svg%3E");
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-group[data-table-detail-kind="move"]
+  .talite-group-icon {
+  --tdm-group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 22V4c0-.6.4-1 1-1h10c.6 0 1 .4 1 1v18'/%3E%3Cpath d='M6 12H4c-.6 0-1 .4-1 1v9'/%3E%3Cpath d='M18 9h2c.6 0 1 .4 1 1v12'/%3E%3Cpath d='M10 6h4'/%3E%3Cpath d='M10 10h4'/%3E%3Cpath d='M10 14h4'/%3E%3Cpath d='M10 18h4'/%3E%3C/svg%3E");
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-group[data-table-detail-kind="swap"]
+  .talite-group-icon {
+  --tdm-group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m2 9 3-3 3 3'/%3E%3Cpath d='M13 18H7a2 2 0 0 1-2-2V6'/%3E%3Cpath d='m22 15-3 3-3-3'/%3E%3Cpath d='M11 6h6a2 2 0 0 1 2 2v10'/%3E%3C/svg%3E");
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-group[data-table-detail-kind="merge"]
+  .talite-group-icon {
+  --tdm-group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 4v6a2 2 0 0 0 2 2h12'/%3E%3Cpath d='M4 20v-6a2 2 0 0 1 2-2'/%3E%3Cpath d='m14 8 4 4-4 4'/%3E%3C/svg%3E");
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-group[data-table-detail-kind="promotion"]
+  .talite-group-icon {
+  --tdm-group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='8' width='18' height='4' rx='1'/%3E%3Cpath d='M12 8v13'/%3E%3Cpath d='M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7'/%3E%3Cpath d='M7.5 8a2.5 2.5 0 1 1 0-5C11 3 12 8 12 8Z'/%3E%3Cpath d='M16.5 8a2.5 2.5 0 1 0 0-5C13 3 12 8 12 8Z'/%3E%3C/svg%3E");
+  color: var(--tdm-warning) !important;
+  background: var(--tdm-warning-soft) !important;
+  border-color: rgba(138, 97, 39, 0.18) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-group[data-table-detail-kind="policy"]
+  .talite-group-icon {
+  --tdm-group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='8' height='4' x='8' y='2' rx='1'/%3E%3Cpath d='M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M12 11h4'/%3E%3Cpath d='M12 16h4'/%3E%3Cpath d='M8 11h.01'/%3E%3Cpath d='M8 16h.01'/%3E%3C/svg%3E");
+  color: var(--tdm-warning) !important;
+  background: var(--tdm-warning-soft) !important;
+  border-color: rgba(138, 97, 39, 0.18) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-group[data-table-detail-kind="assistant"]
+  .talite-group-icon {
+  --tdm-group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z'/%3E%3Cpath d='M5 3v4'/%3E%3Cpath d='M19 17v4'/%3E%3Cpath d='M3 5h4'/%3E%3Cpath d='M17 19h4'/%3E%3C/svg%3E");
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-group-header .talite-label {
+  margin: 0 0 4px !important;
+  color: var(--tdm-ink) !important;
+  font-size: 0.92rem !important;
+  font-weight: 840 !important;
+  letter-spacing: -0.015em;
+  line-height: 1.3 !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-group-sub,
+.talite-modal[data-table-detail-tabs-ready="true"] .hint {
+  color: var(--tdm-muted) !important;
+  font-size: 0.79rem !important;
+  line-height: 1.45 !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .grid2 {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: start !important;
+  gap: 14px !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .grid2 > div {
+  min-width: 0;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .grid2 > div > .talite-label,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-vr-field > .talite-label,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-upload .talite-label,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-promo-box > .talite-label {
+  display: block;
+  margin: 0 0 7px !important;
+  color: #34423f !important;
+  font-size: 0.79rem !important;
+  font-weight: 780 !important;
+  line-height: 1.35 !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-input,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-body input,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-body select,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-body textarea {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-height: 44px !important;
+  border: 1px solid rgba(207, 195, 180, 0.94) !important;
+  border-radius: 12px !important;
+  padding: 10px 12px !important;
+  color: var(--tdm-ink) !important;
+  background: rgba(255, 253, 249, 0.96) !important;
+  font-size: 0.88rem !important;
+  line-height: 1.35 !important;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-body textarea {
+  min-height: 96px !important;
+  resize: vertical;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-input:hover:not(:disabled),
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-body input:hover:not(:disabled),
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-body select:hover:not(:disabled),
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-body textarea:hover:not(:disabled) {
+  border-color: rgba(31, 106, 96, 0.36) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-input:focus,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-body input:focus,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-body select:focus,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-body textarea:focus {
+  border-color: rgba(31, 106, 96, 0.68) !important;
+  outline: none !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 3px rgba(31, 106, 96, 0.14) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-vr-block,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-upload,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-promo-box,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-ai-card,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-visual-card {
+  border-color: rgba(222, 214, 203, 0.88) !important;
+  border-radius: 15px !important;
+  background: rgba(255, 253, 249, 0.76) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-vr-block {
+  gap: 12px !important;
+  padding: 14px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(31, 106, 96, 0.08), transparent 16rem),
+    rgba(248, 250, 247, 0.88) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-vr-title {
+  color: var(--tdm-ink) !important;
+  font-size: 0.9rem !important;
+  font-weight: 840 !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-vr-badge,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-step-chip {
+  border-color: rgba(31, 106, 96, 0.2) !important;
+  color: var(--tdm-sage-strong) !important;
+  background: var(--tdm-sage-mist) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-file-picker {
+  min-height: 52px;
+  border: 1px dashed rgba(31, 106, 96, 0.32) !important;
+  border-radius: 13px !important;
+  padding: 9px !important;
+  background: rgba(242, 250, 247, 0.72) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-vr-preview {
+  height: clamp(180px, 28vh, 260px) !important;
+  border-radius: 12px !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-vr-feedback,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-vr-empty,
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-vr-state {
+  min-height: 38px;
+  border-radius: 11px !important;
+  padding: 9px 11px !important;
+  font-size: 0.78rem !important;
+  line-height: 1.4 !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-promo-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 7px 10px !important;
+  max-height: 156px !important;
+  overflow: auto !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-check {
+  min-height: 40px !important;
+  border: 1px solid rgba(222, 214, 203, 0.72);
+  border-radius: 11px;
+  padding: 8px 10px;
+  background: rgba(255, 253, 249, 0.84);
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-check input {
+  width: 17px !important;
+  height: 17px !important;
+  min-height: 17px !important;
+  accent-color: var(--tdm-sage);
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-quick {
+  align-items: stretch !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-perk {
+  min-height: 34px;
+  border-color: rgba(31, 106, 96, 0.18) !important;
+  color: var(--tdm-sage-strong);
+  background: var(--tdm-sage-mist) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-perk button {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  color: var(--tdm-danger);
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-ai-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-ai-grid .btn {
+  min-height: 50px !important;
+  white-space: normal !important;
+  text-align: center !important;
+  line-height: 1.3 !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-ai-card {
+  padding: 13px !important;
+  border-left: 3px solid rgba(31, 106, 96, 0.38) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-ai-card strong {
+  color: var(--tdm-ink) !important;
+  font-size: 0.84rem;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-ai-card p {
+  color: var(--tdm-muted) !important;
+  font-size: 0.79rem !important;
+  line-height: 1.5 !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .chips {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
+  gap: 9px !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .chip {
+  position: relative;
+  min-height: 42px !important;
+  border: 1px solid rgba(207, 195, 180, 0.9) !important;
+  border-radius: 12px !important;
+  padding: 8px 12px 8px 30px !important;
+  color: #50605b !important;
+  background: rgba(255, 253, 249, 0.9) !important;
+  font-weight: 760 !important;
+  text-align: left;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .chip::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #93a09b;
+  box-shadow: 0 0 0 4px rgba(103, 118, 112, 0.1);
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .chip:hover:not(:disabled) {
+  border-color: rgba(31, 106, 96, 0.34) !important;
+  color: var(--tdm-sage-strong) !important;
+  transform: translateY(-1px);
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .chip.active {
+  border-color: rgba(31, 106, 96, 0.42) !important;
+  color: var(--tdm-sage-strong) !important;
+  background: var(--tdm-sage-soft) !important;
+  box-shadow: 0 0 0 3px rgba(31, 106, 96, 0.1) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .chip.active::before {
+  background: var(--tdm-sage);
+  box-shadow: 0 0 0 4px rgba(31, 106, 96, 0.12);
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .btn,
+.talite-modal[data-table-detail-tabs-ready="true"] button.btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 44px !important;
+  border-radius: 12px !important;
+  padding: 9px 14px !important;
+  font-size: 0.82rem !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+  transition:
+    color 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .btn:focus-visible,
+.talite-modal[data-table-detail-tabs-ready="true"] .chip:focus-visible {
+  outline: 3px solid rgba(31, 106, 96, 0.2) !important;
+  outline-offset: 2px !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .btn.primary,
+.talite-modal[data-table-detail-tabs-ready="true"] button.btn.primary,
+.talite-modal[data-table-detail-tabs-ready="true"] .btn.success,
+.talite-modal[data-table-detail-tabs-ready="true"] button.btn.success {
+  border-color: var(--tdm-sage-strong) !important;
+  color: #fffdf8 !important;
+  background: linear-gradient(180deg, var(--tdm-sage), var(--tdm-sage-strong)) !important;
+  box-shadow: 0 10px 20px rgba(31, 106, 96, 0.16) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .btn.ghost,
+.talite-modal[data-table-detail-tabs-ready="true"] button.btn.ghost,
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .btn:not(.primary):not(.success):not(.danger) {
+  border-color: rgba(207, 195, 180, 0.9) !important;
+  color: var(--tdm-ink) !important;
+  background: rgba(255, 253, 249, 0.9) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .btn.danger,
+.talite-modal[data-table-detail-tabs-ready="true"] button.btn.danger {
+  border-color: rgba(154, 65, 61, 0.22) !important;
+  color: var(--tdm-danger) !important;
+  background: var(--tdm-danger-soft) !important;
+  box-shadow: none !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"] .btn.danger:hover:not(:disabled) {
+  border-color: var(--tdm-danger) !important;
+  color: #fff !important;
+  background: var(--tdm-danger) !important;
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-body
+  > .actions-end[data-table-detail-kind="danger"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  margin: 16px 0 2px !important;
+  padding: 16px !important;
+  border: 1px solid rgba(154, 65, 61, 0.16);
+  border-radius: 16px;
+  background: rgba(250, 236, 232, 0.46);
+}
+
+.talite-modal[data-table-detail-tabs-ready="true"]
+  .talite-body
+  > .actions-end[data-table-detail-kind="danger"]
+  > .talite-group {
+  flex: 1 1 auto;
+  margin: 0 !important;
+  border-color: rgba(154, 65, 61, 0.14) !important;
+  box-shadow: none !important;
 }
 
 .table-detail-tab-state {
   display: flex;
   align-items: center;
   min-width: 0;
-  max-width: 62ch;
-  color: #66736f;
-  font-size: 0.76rem;
-  font-weight: 650;
-  line-height: 1.35;
+  max-width: 64ch;
+  color: var(--tdm-muted);
+  font-size: 0.77rem;
+  font-weight: 680;
+  line-height: 1.4;
 
   &::before {
     content: "";
     width: 8px;
     height: 8px;
     flex: 0 0 8px;
-    margin-right: 8px;
+    margin-right: 9px;
     border-radius: 999px;
-    background: #1f6a60;
+    background: var(--tdm-sage);
     box-shadow: 0 0 0 4px rgba(31, 106, 96, 0.1);
   }
 }
@@ -144,21 +878,53 @@
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  gap: 14px !important;
+  gap: 16px !important;
+  min-height: 70px !important;
+  padding: 12px 18px !important;
+  border-top: 1px solid rgba(222, 214, 203, 0.9) !important;
+  background: rgba(255, 253, 249, 0.96) !important;
+  box-shadow: 0 -16px 34px rgba(55, 48, 38, 0.07) !important;
 }
 
 .talite-modal[data-table-detail-tabs-ready="true"] .talite-footer .actions {
+  display: flex !important;
   flex: 0 0 auto;
+  gap: 9px !important;
 }
 
-.talite-modal[data-table-detail-active-tab="configuration"]
-  .talite-body > .actions-end[data-table-detail-section="configuration"] {
-  margin-top: 14px !important;
-  padding-top: 14px !important;
-  border-top: 1px solid rgba(154, 65, 61, 0.16);
+.talite-modal[data-table-detail-tabs-ready="true"] .talite-footer .btn.primary {
+  min-width: 142px;
+}
+
+@media (max-width: 980px) {
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-info {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-info > .kv {
+    border: 1px solid rgba(222, 214, 203, 0.72) !important;
+    border-radius: 12px !important;
+    background: rgba(255, 253, 249, 0.72) !important;
+  }
+
+  .talite-modal[data-table-detail-tabs-ready="true"]
+    .talite-info
+    > .kv[data-table-detail-summary="status"] {
+    margin-left: 0 !important;
+  }
+
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-ai-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 @media (max-width: 760px) {
+  .talite-backdrop:has(.talite-modal[data-table-detail-tabs-ready="true"]) {
+    align-items: stretch !important;
+    padding: 0 !important;
+  }
+
   .talite-modal[data-table-detail-tabs-ready="true"] {
     width: 100% !important;
     height: 100dvh !important;
@@ -166,14 +932,27 @@
     border-radius: 0 !important;
   }
 
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-header {
+    min-height: 70px !important;
+    padding: 13px 14px !important;
+  }
+
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-subtitle {
+    display: none;
+  }
+
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-title {
+    font-size: 1.06rem !important;
+  }
+
   .table-detail-tabs {
-    gap: 4px;
+    gap: 5px;
     padding: 7px 10px;
 
     button {
       min-height: 44px;
       padding-inline: 12px;
-      font-size: 0.78rem;
+      font-size: 0.8rem;
     }
   }
 
@@ -181,19 +960,69 @@
     padding: 12px 12px 18px !important;
   }
 
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-info {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .talite-modal[data-table-detail-tabs-ready="true"] .grid2,
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-promo-list {
+    grid-template-columns: 1fr !important;
+  }
+
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-input,
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-body input,
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-body select,
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-body textarea {
+    font-size: 16px !important;
+  }
+
   .talite-modal[data-table-detail-tabs-ready="true"] .talite-footer {
     align-items: stretch !important;
     gap: 10px !important;
-    padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
+    min-height: 76px !important;
+    padding: 10px 12px max(12px, env(safe-area-inset-bottom)) !important;
   }
 
   .table-detail-tab-state {
     flex: 1 1 auto;
-    font-size: 0.73rem;
+    font-size: 0.74rem;
+  }
+
+  .talite-modal[data-table-detail-tabs-ready="true"]
+    .talite-body
+    > .actions-end[data-table-detail-kind="danger"] {
+    align-items: stretch !important;
+    flex-direction: column !important;
   }
 }
 
 @media (max-width: 520px) {
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-info {
+    grid-template-columns: 1fr !important;
+  }
+
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-info > .kv {
+    min-height: 52px !important;
+  }
+
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-vr-header,
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-upload-header,
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-vr-next-step {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+  }
+
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-vr-inline-actions,
+  .talite-modal[data-table-detail-tabs-ready="true"] .actions-end {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .talite-modal[data-table-detail-tabs-ready="true"] .talite-vr-inline-actions .btn,
+  .talite-modal[data-table-detail-tabs-ready="true"] .actions-end .btn {
+    width: 100% !important;
+  }
+
   .talite-modal[data-table-detail-tabs-ready="true"] .talite-footer {
     display: grid !important;
     grid-template-columns: 1fr !important;
@@ -201,18 +1030,21 @@
 
   .talite-modal[data-table-detail-tabs-ready="true"] .talite-footer .actions {
     display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
     width: 100%;
   }
 
   .talite-modal[data-table-detail-tabs-ready="true"] .talite-footer .btn {
-    min-height: 46px !important;
+    min-height: 48px !important;
+    width: 100%;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .talite-modal[data-table-detail-tabs-ready="true"] *,
   .table-detail-tabs button,
   .table-detail-tabs button::after {
-    transition: none;
+    scroll-behavior: auto !important;
+    transition: none !important;
   }
 }
