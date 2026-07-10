@@ -1,0 +1,27 @@
+{
+  "id": "07-10-custom-table-builder-mobile",
+  "title": "Sửa modal tạo mẫu bàn trên điện thoại",
+  "status": "in_progress",
+  "type": "frontend-fix",
+  "scope": [
+    "src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.jsx",
+    "src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DSimulatorModal.scss"
+  ],
+  "rootCause": "CustomTableModelBuilderModal currently renders a legacy DOM contract while Table3DSimulatorModal.scss styles the newer builder contract. The modal is auto-wrapped by the shared Modal, tab buttons miss their component classes, form controls miss local classes, and the phone breakpoint stacks all four modes into one long column. This causes the title, close control, tabs, fields and scrolling region to stretch or overlap on 390-430px screens.",
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx",
+      "npm run check:conflicts",
+      "npm run build",
+      "manual responsive check at 390x844 and 430x932"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, frontend-design, taste-ui-redesign, redesign-existing-projects, ui-ux-pro-max and ponytail skills",
+      "traced Table3DSimulatorModalV2 -> CustomTableModelBuilderModal -> local form/upload/AI actions",
+      "inspected shared Modal markup and mobile behavior",
+      "compared the current builder DOM with the existing SCSS contract and earlier intended implementation"
+    ],
+    "notRun": []
+  }
+}
