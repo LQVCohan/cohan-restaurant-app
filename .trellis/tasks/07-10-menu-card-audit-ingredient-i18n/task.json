@@ -1,0 +1,21 @@
+{
+  "id": "07-10-menu-card-audit-ingredient-i18n",
+  "title": "Fix menu card variants, audit history and ingredient Vietnamese labels",
+  "status": "in_progress",
+  "branch": "main",
+  "createdAt": "2026-07-10",
+  "scope": [
+    "src/components/Dashboard_Manager/Storage/components/ingredients/IngredientModal.jsx",
+    "src/components/Dashboard_Manager/Menu/components/MenuItemCard/MenuItemCard.jsx",
+    "src/components/Dashboard_Manager/Menu/MenuManagementCardCompactFix.scss",
+    "src/components/Dashboard_Manager/Menu/components/AuditLogModal/AuditLogModal.jsx",
+    "cohan-restaurant-backend/graphql/resolvers/menu/mutation.js",
+    "cohan-restaurant-backend/tests/resolvers/menu-audit-noop.test.js"
+  ],
+  "validation": [
+    "targeted audit resolver test",
+    "existing IngredientModal component test if runtime is available",
+    "frontend build if runtime is available",
+    "visual check menu card and audit modal"
+  ]
+}
