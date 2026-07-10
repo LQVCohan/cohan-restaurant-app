@@ -65,7 +65,18 @@ jobs:
         run: npm --prefix cohan-restaurant-backend ci
 
       - name: Run focused availability modal tests
-        run: npx vitest run src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.test.jsx
+        shell: bash
+        run: |
+          set -o pipefail
+          npx vitest run src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.test.jsx 2>&1 | tee /tmp/schedule-focused-test.log
+
+      - name: Upload focused test diagnostic
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schedule-focused-test-diagnostic
+          path: /tmp/schedule-focused-test.log
+          if-no-files-found: error
 
       - name: Check conflict markers
         run: npm run check:conflicts
