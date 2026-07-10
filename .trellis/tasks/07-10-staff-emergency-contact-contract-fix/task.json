@@ -3,7 +3,7 @@
   "name": "staff-emergency-contact-contract-fix",
   "title": "Fix staff emergency contact create contract",
   "description": "Align the add/edit employee GraphQL contract with the Staff emergencyContacts persistence model and expose the primary contact to the current UI.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack",
   "scope": "manager-staff",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "e9389f3d2b6e9e7ce458180cf334b220643a5b3f",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -26,7 +26,8 @@
     "cohan-restaurant-backend/graphql/resolvers/staff/index.js",
     "cohan-restaurant-backend/src/security/userDtos.js",
     "cohan-restaurant-backend/tests/schema/staff-management-schema.test.js",
-    "cohan-restaurant-backend/tests/resolvers/staff-create-business-context.test.js"
+    "cohan-restaurant-backend/tests/resolvers/staff-create-business-context.test.js",
+    "cohan-restaurant-backend/tests/resolvers/user-sanitization.test.js"
   ],
-  "notes": "Planning complete. The modal sends singular emergencyContact, CreateUserInput omits it, and the Staff model persists plural emergencyContacts. A schema-only change would pass validation but lose data, so the resolver boundary must normalize both create and update."
+  "notes": "Fixed the full emergency-contact contract: CreateUserInput now accepts the singular UI field; the modal omits it when all values are blank; the staff resolver maps it to the model's emergencyContacts array on create/update while preserving secondary contacts; and the private DTO exposes the primary contact back to the UI. Added schema, resolver, and DTO regression coverage. Verification was performed by re-fetching the committed files; automated tests were not run because this connector workspace has no runnable repository checkout."
 }
