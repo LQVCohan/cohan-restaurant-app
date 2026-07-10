@@ -15,6 +15,23 @@
   display: none !important;
 }
 
+/* Put restaurant menus directly under the page header; secondary KPIs follow them. */
+.manager-layout--menu .mm-page-container > .management-page-header {
+  order: -4;
+}
+
+.manager-layout--menu .mm-page-container > .mm-stats-section {
+  order: -3;
+}
+
+.manager-layout--menu .mm-page-container > .mm-ops-kpi {
+  order: -2;
+}
+
+.manager-layout--menu .mm-page-container > .mm-body {
+  order: -1;
+}
+
 /* Compact cards keep their rounded inner regions, but action menus may escape the card. */
 .manager-layout--menu .mm-grid--grid .menu-item-card,
 .manager-layout--menu .mm-grid--grid.mm-grid--sparse .menu-item-card {
