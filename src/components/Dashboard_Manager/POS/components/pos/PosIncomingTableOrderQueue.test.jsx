@@ -57,6 +57,39 @@ const qrOrder = {
   ],
 };
 
+const accessRequest = {
+  requestId: "request-1",
+  requestLabel: "A1B2",
+  tableId: "64b000000000000000000009",
+  tableCode: "B03",
+  requestedAt: "2026-07-10T12:01:00.000Z",
+  expiresAt: "2026-07-10T12:06:00.000Z",
+  confirmationCode: "493201",
+};
+
+function setQueryData({ requests = [], orders = [qrOrder] } = {}) {
+  mocks.useQuery.mockReturnValue({
+    data: {
+      tableQrOrderAccessRequests: requests,
+      ordersByRestaurantNow: {
+        edges: [
+          ...orders.map((order) => ({ node: order })),
+          {
+            node: {
+              ...qrOrder,
+              id: "64b000000000000000000004",
+              tableCode: "B02",
+              clientMeta: { source: "pos" },
+            },
+          },
+        ],
+      },
+    },
+    loading: false,
+    refetch: mocks.refetch,
+  });
+}
+
 describe("PosIncomingTableOrderQueue", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -75,25 +108,7 @@ describe("PosIncomingTableOrderQueue", () => {
         },
       },
     });
-    mocks.useQuery.mockReturnValue({
-      data: {
-        ordersByRestaurantNow: {
-          edges: [
-            { node: qrOrder },
-            {
-              node: {
-                ...qrOrder,
-                id: "64b000000000000000000004",
-                tableCode: "B02",
-                clientMeta: { source: "pos" },
-              },
-            },
-          ],
-        },
-      },
-      loading: false,
-      refetch: mocks.refetch,
-    });
+    setQueryData();
     mocks.useMutation.mockImplementation((document) => {
       const name = operationName(document);
       if (name === "ConfirmPosTableOrder") return [mocks.confirmOrder];
@@ -121,5 +136,24 @@ describe("PosIncomingTableOrderQueue", () => {
       "Đã nhận order của bàn A01 và chuyển món vào bếp.",
       "success",
     );
+  });
+
+  it("keeps the table confirmation code hidden until staff confirms they reached the matching table", () => {
+    setQueryData({ requests: [accessRequest], orders: [] });
+
+    render(<PosIncomingTableOrderQueue restaurantId={restaurantId} />);
+
+    expect(screen.getByText("Bàn B03")).toBeInTheDocument();
+    expect(screen.getByText("#A1B2")).toBeInTheDocument();
+    expect(screen.queryByText("493201")).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Đã tới đúng bàn – hiện mã" }),
+    );
+
+    expect(screen.getByText("493201")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Chỉ đọc cho khách đang cầm thiết bị/i),
+    ).toBeInTheDocument();
   });
 });
