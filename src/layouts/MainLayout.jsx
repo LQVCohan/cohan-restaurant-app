@@ -34,6 +34,7 @@ export default function MainLayout({ children }) {
   const isPublicTableRoute = location.pathname.startsWith("/table/");
   const isFocusedTableFlow =
     location.pathname === "/scan-table" || isPublicTableRoute;
+  const publicTableRouteKey = `${location.pathname}${location.search || ""}`;
 
   React.useEffect(() => {
     const handler = () => setIsCartOpen(true);
@@ -78,7 +79,7 @@ export default function MainLayout({ children }) {
 
   const tableOrderExperience = isPublicTableRoute ? (
     <React.Suspense fallback={null}>
-      <TableOrderRouteExperience />
+      <TableOrderRouteExperience key={publicTableRouteKey} />
     </React.Suspense>
   ) : null;
 
