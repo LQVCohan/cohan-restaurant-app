@@ -1,6 +1,6 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import AvailabilitySnapshotModal from "./AvailabilitySnapshotModal";
 
 const weekStart = new Date("2026-05-25T00:00:00.000Z"); // Monday
@@ -12,7 +12,17 @@ const renderModal = (props = {}) => render(<AvailabilitySnapshotModal isOpen onC
 
 describe("AvailabilitySnapshotModal", () => {
   it("uses shiftTemplates array key and renders shift header", () => {
-    renderModal();
+    renderModal({
+      staffList: [
+        {
+          id: "f1",
+          fullName: "FT",
+          employeeCode: "F1",
+          employmentType: "full_time",
+          workingDays: ["MON"],
+        },
+      ],
+    });
     expect(screen.getAllByText("Ca sáng").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/06:00/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/14:00/).length).toBeGreaterThan(0);
@@ -32,7 +42,7 @@ describe("AvailabilitySnapshotModal", () => {
       availabilitySubmissions: [{ staffId: "p1", status: "approved", slots: [], pendingSlots: [{ date: "2026-05-25", shiftType: "morning", status: "available" }] }],
     });
     expect(screen.queryByTitle("Có thể làm")).not.toBeInTheDocument();
-    expect(screen.getByText(/Pending: 1/i)).toBeInTheDocument();
+    expect(screen.getByText(/Chờ duyệt: 1/i)).toBeInTheDocument();
   });
 
   it("late_change_requested uses official slots and shows warning", () => {
@@ -46,7 +56,7 @@ describe("AvailabilitySnapshotModal", () => {
 
   it("full-time workingDays MON shows available on Monday", () => {
     renderModal({ staffList: [{ id: "f1", fullName: "FT", employeeCode: "F1", employmentType: "full_time", workingDays: ["MON"] }] });
-    expect(screen.getAllByTitle("Theo workingDays").length).toBeGreaterThan(0);
+    expect(screen.getAllByTitle("Theo lịch làm cố định").length).toBeGreaterThan(0);
   });
 
   it("full-time unavailable_exception marks Báo bận", () => {
@@ -89,7 +99,7 @@ describe("AvailabilitySnapshotModal", () => {
 
     expect(screen.getByText("Tuần này chưa có kỳ đăng ký đã chốt.")).toBeInTheDocument();
     expect(screen.getByText("Nhân viên toàn thời gian")).toBeInTheDocument();
-    expect(screen.getAllByTitle("Theo workingDays").length).toBeGreaterThan(0);
+    expect(screen.getAllByTitle("Theo lịch làm cố định").length).toBeGreaterThan(0);
   });
 
   it("matches availability window by date key even with different periodEnd timestamp/timezone", () => {
@@ -117,9 +127,72 @@ describe("AvailabilitySnapshotModal", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders filter controls", () => {
-    renderModal();
-    expect(screen.getByPlaceholderText(/Tìm tên hoặc mã nhân viên/i)).toBeInTheDocument();
+  it("renders filter controls with localized enum labels", () => {
+    renderModal({
+      staffList: [
+        {
+          id: "f1",
+          fullName: "Nhân viên chính thức",
+          employeeCode: "FT01",
+          employmentType: "full_time",
+          workingDays: ["MON"],
+        },
+      ],
+    });
+    expect(screen.getByPlaceholderText(/Nhập tên hoặc mã nhân viên/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Chỉ hiện nhân viên thiếu đăng ký/i)).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Toàn thời gian" })).toBeInTheDocument();
+  });
+
+  it("part-time unavailable slot remains unavailable instead of becoming missing", () => {
+    renderModal({
+      staffList: [
+        {
+          id: "p1",
+          fullName: "Nhân viên bán thời gian",
+          employeeCode: "PT01",
+          employmentType: "part_time",
+        },
+      ],
+      availabilitySubmissions: [
+        {
+          employeeId: "p1",
+          status: "approved",
+          slots: [
+            {
+              date: "2026-05-25",
+              shiftType: "morning",
+              status: "unavailable",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(screen.getAllByTitle("Không khả dụng").length).toBeGreaterThan(0);
+  });
+
+  it("shows a distinct empty state when the selected restaurant has no staff", () => {
+    renderModal({ staffList: [], availabilityWindows: [] });
+    expect(screen.getByText("Chưa có nhân viên để hiển thị.")).toBeInTheDocument();
+  });
+
+  it("closes with Escape", () => {
+    const onClose = vi.fn();
+    render(
+      <AvailabilitySnapshotModal
+        isOpen
+        onClose={onClose}
+        weekStart={weekStart}
+        weekEnd={weekEnd}
+        availabilityWindows={windows}
+        shiftTemplates={shifts}
+        staffList={[]}
+        availabilitySubmissions={[]}
+      />,
+    );
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
