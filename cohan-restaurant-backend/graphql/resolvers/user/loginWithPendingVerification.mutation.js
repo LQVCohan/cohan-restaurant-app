@@ -224,6 +224,28 @@ export async function loginWithPendingVerification(
   const ok = user.checkPassword ? await user.checkPassword(password) : false;
   if (!ok) await failLogin();
 
+  const isPendingStaffEmailLogin =
+    String(user.userType || "").toUpperCase() === "STAFF" &&
+    String(user.status || "").toLowerCase() === "pending" &&
+    Boolean(normalizedEmail) &&
+    normalizedEmail === String(user.email || "").trim().toLowerCase() &&
+    user.emailVerified !== true;
+
+  if (isPendingStaffEmailLogin) {
+    const now = new Date();
+    user.emailVerified = true;
+    user.emailVerifiedAt = now;
+    user.verifiedAt = user.verifiedAt || now;
+    user.status = "active";
+    user.verificationLastChannel = "email";
+    user.verificationLastStatus = "verified";
+    user.verificationLastError = null;
+    user.emailVerifyToken = null;
+    user.emailVerifyTokenHash = null;
+    user.emailVerifyTokenExp = null;
+    await user.save();
+  }
+
   if (String(user.status || "").toLowerCase() === "pending" && activationSatisfied(user)) {
     user.status = "active";
     user.verifiedAt = user.verifiedAt || new Date();
