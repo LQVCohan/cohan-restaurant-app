@@ -7,7 +7,10 @@
     "src/components/Dashboard_Manager/Schedule/ScheduleManagementPage.jsx",
     "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModalInline.jsx",
     "src/styles/AvailabilitySnapshotOverlayLight.css",
-    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.test.jsx"
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.test.jsx",
+    "src/styles/schedule-polish.css",
+    "src/utils/scheduleHydrationPolish.js (deleted)",
+    "src/styles/schedule-hydration-polish.css (deleted)"
   ],
   "validation": {
     "planned": [
@@ -22,6 +25,7 @@
       "confirmed backend validates availability against configured shift templates and computes hours from template duration",
       "confirmed hydration overlay is synthetic and independent from Apollo loading",
       "removed initScheduleHydrationPolish from the schedule page",
+      "removed the obsolete hydration stylesheet import, helper, and stylesheet",
       "split manager availability review into day-level full-time and shift-block part-time tables",
       "displayed configured start/end times and computed shift duration",
       "preserved shift types referenced by existing part-time submissions",
