@@ -1,14 +1,13 @@
 {
   "id": "07-10-custom-table-builder-mobile",
   "title": "Sửa modal tạo mẫu bàn trên điện thoại",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-fix",
   "scope": [
-    "src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.jsx",
-    "src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx",
-    "src/components/Dashboard_Manager/Table/Table3DSimulatorModal.scss"
+    "src/styles/CustomTableBuilderResponsiveFix.css",
+    "src/main.jsx"
   ],
-  "rootCause": "CustomTableModelBuilderModal currently renders a legacy DOM contract while Table3DSimulatorModal.scss styles the newer builder contract. The modal is auto-wrapped by the shared Modal, tab buttons miss their component classes, form controls miss local classes, and the phone breakpoint stacks all four modes into one long column. This causes the title, close control, tabs, fields and scrolling region to stretch or overlap on 390-430px screens.",
+  "rootCause": "CustomTableModelBuilderModal renders a legacy DOM contract while its original SCSS primarily targets a newer builder contract. The shared modal wrapper, direct tab buttons, unclassified form controls and the one-column phone breakpoint therefore receive incomplete or conflicting styles. Because later global responsive styles load after the component SCSS, the close control and layout can also be stretched again on portal-rendered mobile views.",
   "validation": {
     "planned": [
       "npx vitest run src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx",
@@ -19,9 +18,17 @@
     "completed": [
       "read AGENTS.md, Trellis workflow, frontend-design, taste-ui-redesign, redesign-existing-projects, ui-ux-pro-max and ponytail skills",
       "traced Table3DSimulatorModalV2 -> CustomTableModelBuilderModal -> local form/upload/AI actions",
-      "inspected shared Modal markup and mobile behavior",
-      "compared the current builder DOM with the existing SCSS contract and earlier intended implementation"
+      "inspected shared Modal markup, component SCSS, global responsive import order and the only caller",
+      "compared the current builder DOM with the existing SCSS contract and earlier intended implementation",
+      "added one final scoped stylesheet matching the current DOM without changing React or data flow",
+      "forced a stable 44px close control, compact two-column phone mode selector, one internal scroll area, single-column mobile fields and full-width mobile actions",
+      "loaded the repair after ResponsiveFoundation.css so later global rules cannot override it",
+      "re-fetched the written stylesheet and main entry import to verify the committed content",
+      "checked the latest code commit for GitHub workflow runs and combined statuses; none were available"
     ],
-    "notRun": []
+    "notRun": [
+      "Targeted Vitest, conflict check and production build were not run because the GitHub connector does not provide a repository checkout with installed dependencies.",
+      "390x844, 430x932 and physical Android browser validation remain pending because no browser/device session is available through the connector."
+    ]
   }
 }
