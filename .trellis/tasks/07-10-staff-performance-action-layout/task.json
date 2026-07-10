@@ -1,15 +1,14 @@
 {
   "id": "07-10-staff-performance-action-layout",
   "title": "Move staff performance actions into contextual sections",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-refactor",
   "scope": [
     "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.jsx",
-    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.scss",
     "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformanceResponsive.scss",
     "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.layout.test.jsx"
   ],
-  "rootCause": "StaffManagement already supplies the page header and sub-navigation, so the performance hero duplicates page identity and groups unrelated actions. Period reset belongs with date filters, while CSV export and recalculation belong with the performance table data they affect.",
+  "rootCause": "StaffManagement already supplies the page header and sub-navigation, so the performance hero duplicated page identity and grouped unrelated actions. Period reset belongs with date filters, while CSV export and recalculation belong with the performance table data they affect.",
   "validation": {
     "planned": [
       "npx vitest run src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.layout.test.jsx",
@@ -20,9 +19,19 @@
       "read AGENTS.md and Trellis workflow",
       "read ponytail, ui-ux-pro-max, frontend-design, redesign-existing-projects, taste-ui-redesign and web-design-guidelines skills",
       "traced StaffManagement -> StaffPerformancePage -> useStaffPerformance/local actions -> page sections",
-      "confirmed the hero title duplicates the shared staff header and page navigation",
-      "confirmed no backend, GraphQL contract, permission or restaurant-scope change is required"
+      "confirmed the hero title duplicated the shared staff header and page navigation",
+      "confirmed no backend, GraphQL contract, permission or restaurant-scope change was required",
+      "removed the duplicate performance hero",
+      "moved the current-period reset into the period filter group",
+      "moved CSV export and full-period recalculation into the performance table header",
+      "added manager-token styling, keyboard focus, mobile touch targets and reduced-motion handling",
+      "added a focused layout test for action placement, hero removal and no-restaurant behavior"
     ],
-    "notRun": []
+    "notRun": [
+      "targeted Vitest was not executable in the GitHub connector environment",
+      "npm run check:conflicts was not executable in the GitHub connector environment",
+      "npm run build was not executable in the GitHub connector environment",
+      "desktop and mobile browser screenshots were not executable in the GitHub connector environment"
+    ]
   }
 }
