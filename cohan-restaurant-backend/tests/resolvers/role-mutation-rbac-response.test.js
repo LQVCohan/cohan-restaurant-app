@@ -54,6 +54,13 @@ describe("RoleMutation RBAC response shape", () => {
     modelMocks.ParentRole.findById.mockResolvedValue(parentRole);
   });
 
+  it("maps a lean ParentRole _id to the non-null GraphQL id field", async () => {
+    const { default: roleTypes } = await import("../../graphql/resolvers/role/types.js");
+
+    expect(roleTypes.ParentRole.id({ _id: "parent-staff" })).toBe("parent-staff");
+    expect(roleTypes.ParentRole.id({ id: "parent-virtual", _id: "parent-db" })).toBe("parent-virtual");
+  });
+
   it("createRole returns parentRole, directPermissions, effective permissions, and logs audit", async () => {
     const createdRoleId = "role-created";
     modelMocks.Role.create.mockResolvedValue({ _id: createdRoleId });
