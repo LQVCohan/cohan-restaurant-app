@@ -178,16 +178,19 @@ const SupplyCard = ({
             >
               <PackageMinus size={15} /> Xuất
             </button>
-            <button
-              className="sc-btn variant-icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                onTransferClick?.(supply);
-              }}
-              title="Chuyển kho"
-            >
-              <ArrowRightLeft size={15} />
-            </button>
+            {onTransferClick && (
+              <button
+                className="sc-btn variant-icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTransferClick(supply);
+                }}
+                title="Chuyển kho"
+                aria-label={`Chuyển kho ${supply?.name || "vật tư"}`}
+              >
+                <ArrowRightLeft size={15} />
+              </button>
+            )}
           </div>
 
           <div className="sc-group-right">
