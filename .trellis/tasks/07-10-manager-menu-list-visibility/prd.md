@@ -1,38 +1,41 @@
-# PRD — Hiển thị rõ danh sách thực đơn trên trang quản lý
+# PRD — Hiển thị danh sách thực đơn trong modal
 
 ## Hiện trạng
 
-- Dữ liệu menu đã được tải qua `useMenuManagement` và đã có component `CompactMenuStrip` hỗ trợ chọn, tạo, sửa, ẩn/hiện, sao chép và xóa menu.
-- Khu vực này dùng tiêu đề thiên về thống kê “Thực đơn theo khung giờ”, nằm sau các KPI và có thể thu gọn, nên người dùng dễ hiểu đây chỉ là dải thống kê thay vì nơi quản lý các menu của nhà hàng.
+- Dữ liệu menu đã được tải đúng qua `useMenuManagement` và `CompactMenuStrip` đã có đầy đủ thao tác chọn, tạo, sửa, ẩn/hiện, sao chép, xem lịch sử và xóa.
+- Trên phần hành động đầu trang, người dùng dễ nhận ra “Danh mục món” và “Nhóm thực đơn” nhưng không có điểm vào rõ ràng mang tên “Danh sách thực đơn”.
+- Danh sách menu đang chiếm một vùng lớn trên trang nên vẫn có thể bị hiểu nhầm là phần tổng quan theo khung giờ thay vì một chức năng quản lý riêng.
 
 ## Luồng thật
 
 `Menu` schema/resolver → `menus(restaurantId)` → `useMenuManagement` → `MenuManagement.jsx` → `CompactMenuStrip.jsx` → thao tác tạo/sửa/ẩn/hiện/sao chép/xóa.
 
-Không có sai lệch dữ liệu hoặc quyền. Vấn đề nằm ở thứ tự và cách trình bày trên giao diện.
+Không có sai lệch dữ liệu, quyền hoặc restaurant scope. Vấn đề nằm ở điểm vào và cách trình bày trên giao diện.
 
 ## Nguyên nhân gốc
 
-Chức năng quản lý menu đã tồn tại nhưng bị giảm độ ưu tiên thị giác: nằm sau KPI, có khả năng thu gọn và dùng copy chưa nói rõ đây là danh sách menu của nhà hàng.
+Chức năng quản lý menu đã tồn tại nhưng chưa có một nhãn hành động rõ ràng để phân biệt với “Nhóm thực đơn”. Người dùng nhìn thấy phần nhóm danh mục trước nhưng không nhận ra nơi xem danh sách menu thực tế.
 
 ## Phạm vi
 
-- Đưa khu vực danh sách menu lên ngay dưới header trang quản lý thực đơn bằng thứ tự trình bày của page shell.
-- Giữ khu vực này luôn mở trên trang quản lý thực đơn.
-- Đổi tiêu đề và mô tả để thể hiện rõ đây là nơi chọn và quản lý các menu của nhà hàng.
-- Giữ nguyên query, mutation, quyền, restaurant scope, audit log và các modal hiện tại.
+- Biến khu vực hiện tại thành một điểm vào rõ ràng mang tên “Danh sách thực đơn”.
+- Mở toàn bộ 4 khung giờ và các menu hiện có trong modal kích thước lớn.
+- Tái sử dụng nguyên dữ liệu và callback hiện có cho chọn, tạo, sửa, ẩn/hiện, sao chép, lịch sử, xóa và kiểm tra tồn kho.
+- Đóng modal danh sách trước khi mở modal tạo/sửa/xóa khác để tránh chồng lớp thao tác.
+- Giữ nguyên query, mutation, quyền, restaurant scope, audit log và các modal nghiệp vụ hiện tại.
 
 ## File thay đổi
 
-- `src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.jsx`: luôn hiển thị danh sách menu, bỏ nút thu gọn và cập nhật tiêu đề/mô tả rõ nghĩa quản lý.
-- `src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx`: kiểm tra danh sách vẫn hiện khi caller cũ truyền trạng thái thu gọn.
-- `src/components/Dashboard_Manager/Menu/MenuManagementPolish.scss`: ưu tiên khu vực menu ngay dưới header, trước các KPI và danh sách món.
+- `src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.jsx`: thêm điểm vào “Xem danh sách thực đơn” và chuyển lưới quản lý menu vào modal dùng `Modal` chung.
+- `src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx`: kiểm tra mở modal, hiển thị đủ khung giờ, chọn khung giờ trống và khôi phục menu đang ẩn.
 
 ## Tiêu chí nghiệm thu
 
-- Người dùng mở trang quản lý thực đơn thấy ngay danh sách menu của nhà hàng dưới header.
-- Các menu vẫn chọn được theo khung giờ và các nút tạo, sửa, ẩn/hiện, sao chép, xóa hoạt động như trước theo quyền.
-- Khu vực menu không còn bị thu gọn khỏi màn hình.
+- Người dùng thấy rõ khu vực “Danh sách thực đơn” và nút “Xem danh sách thực đơn”.
+- Modal hiển thị đủ 4 khung giờ, kể cả khung giờ chưa có menu.
+- Menu đang ẩn vẫn xuất hiện và có thao tác hiển thị lại.
+- Chọn menu hoặc khung giờ cập nhật bộ lọc món như trước.
+- Các thao tác theo quyền vẫn dùng callback hiện có, không tạo luồng GraphQL mới.
 - Không thay đổi backend hoặc GraphQL contract.
 
 ## Validation
@@ -40,10 +43,10 @@ Chức năng quản lý menu đã tồn tại nhưng bị giảm độ ưu tiên
 - `npm run check:conflicts`
 - `vitest run src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx`
 - `npm run build`
-- Browser smoke trên trang `/manager#menu`.
+- Browser smoke trên trang `/manager#menu`, gồm desktop và mobile.
 
 ## Ngoài phạm vi
 
 - Không tạo route quản lý menu mới.
 - Không thay đổi schema, resolver hoặc dữ liệu menu.
-- Không thiết kế lại toàn bộ trang quản lý thực đơn.
+- Không thiết kế lại danh mục món hoặc nhóm thực đơn.
