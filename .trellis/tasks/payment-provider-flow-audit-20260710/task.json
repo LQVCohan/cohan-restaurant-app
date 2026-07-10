@@ -1,0 +1,35 @@
+{
+  "id": "payment-provider-flow-audit-20260710",
+  "name": "payment-provider-flow-audit-20260710",
+  "title": "Harden MoMo and VNPAY payment flow and simplify restaurant payment UI",
+  "description": "Audit the live payment path, align VNPAY callback handling with the provider contract, preserve MoMo behavior, and remove sandbox environment controls from the restaurant manager UI.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "payment-provider-callbacks-and-restaurant-payment-settings-ui",
+  "package": null,
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "fix/payment-provider-flow-20260710",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/payment/providers.js",
+    "cohan-restaurant-backend/src/services/payment/paymentSession.service.js",
+    "cohan-restaurant-backend/src/server/createServer.js",
+    "cohan-restaurant-backend/tests/services/payment-providers.security.test.js",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx"
+  ],
+  "notes": "Official-provider review found that VNPAY requires GMT+7 timestamps, vnp_ExpireDate, GET IPN with RspCode/Message, HMAC-SHA512 in the current Node sample, and both response and transaction status for success. The manager UI must not expose sandbox/production terminology.",
+  "meta": {
+    "skills": ["ponytail", "frontend-design", "taste-ui-redesign", "redesign-existing-projects", "ui-ux-pro-max"]
+  }
+}
