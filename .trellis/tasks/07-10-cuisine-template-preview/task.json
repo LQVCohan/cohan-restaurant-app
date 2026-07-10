@@ -1,35 +1,33 @@
 {
   "id": "07-10-cuisine-template-preview",
   "name": "cuisine-template-preview",
-  "title": "Show complete starter template contents before restaurant setup",
-  "description": "Expose each cuisine template's full dish list and recipe count, then present them through an accessible expandable card in the new-restaurant onboarding dialog.",
-  "status": "completed",
-  "dev_type": "fullstack",
+  "title": "Show and reopen starter template contents before restaurant setup",
+  "description": "Expose each cuisine template's full dish list and recipe count, present them through an accessible expandable card, and keep a persistent reopen action while the selected restaurant is still pending setup.",
+  "status": "in_progress",
+  "dev_type": "frontend",
   "scope": "restaurant-initial-setup",
   "priority": "P1",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": "2026-07-10",
-  "branch": "feat/cuisine-template-preview-20260710",
+  "completedAt": null,
+  "branch": "fix/cuisine-template-reopen-20260710",
   "base_branch": "main",
   "relatedFiles": [
-    "cohan-restaurant-backend/src/services/restaurantCuisineTemplate.service.js",
-    "cohan-restaurant-backend/graphql/schema/restaurantInitialSetup.graphql",
-    "cohan-restaurant-backend/tests/services/restaurant-cuisine-template.service.test.js",
+    "src/components/Dashboard_Manager/Header.jsx",
+    "src/components/Dashboard_Manager/Header.test.jsx",
     "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.jsx",
-    "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.scss",
     "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.test.jsx"
   ],
   "validation": {
     "passed": [
-      "targeted backend cuisine template test",
-      "targeted RestaurantCuisineOnboarding component test",
-      "npm run check:graphql",
+      "previous cuisine template preview backend and frontend validation"
+    ],
+    "pending": [
+      "focused Header and RestaurantCuisineOnboarding tests",
       "npm run check:conflicts",
       "npm run build",
-      "standard CI backend lint, tests, Menu RBAC and build",
-      "standard CI frontend unit tests and Menu RBAC"
+      "standard frontend and backend CI"
     ],
     "notRun": [
       "authenticated browser visual verification on the user's localhost data",
