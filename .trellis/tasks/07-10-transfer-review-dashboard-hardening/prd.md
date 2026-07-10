@@ -3,7 +3,7 @@
 ## Current behavior and root cause
 
 - `PaymentSession.transfer.status` is persisted correctly and the existing verify/reject mutations preserve restaurant permission checks, transactions, audit logs, and realtime events.
-- `TransferPaymentReviewPage` initializes its own restaurant from `AuthContext.restaurants[0]` instead of the canonical manager scope in `ManagerLayout`. Switching the header brand/restaurant can therefore leave the page querying another restaurant.
+- `TransferPaymentReviewPage` initializes its own restaurant from `AuthContext.restaurants[0]` instead of the canonical manager scope shared through `useManagerRestaurantSelection`. Switching the header brand/restaurant can therefore leave the page querying another restaurant.
 - KPI values are reduced from the currently filtered queue, so they are not an overview of the full restaurant queue.
 - The `ALL` tab sends no status filter. `transferPaymentQueue` treats an omitted filter as the operational default (`SUBMITTED`, `VERIFYING`, `REJECTED`, `VERIFIED`), excluding `FAILED` and `EXPIRED`.
 - The screen allocates too much height to decorative surfaces and provides weak loading, empty, and no-restaurant guidance.
@@ -14,12 +14,12 @@
 2. `paymentTransfer.graphql` exposes the queue and verify/reject inputs.
 3. `bankTransferQuery.js` enforces `payment.read`, expires stale sessions, queries MongoDB, and sanitizes sessions.
 4. `transferMutation.js` enforces `payment.write`, updates payment/order state in the existing transaction, logs, and emits realtime events.
-5. `ManagerLayout.jsx` owns the canonical manager brand/restaurant selection.
+5. `useManagerRestaurantSelection.js` resolves and synchronizes the canonical manager brand/restaurant scope used by the header.
 6. `TransferPaymentReviewPage.jsx` queries the queue, renders proof/actions, and invokes verify/reject mutations.
 
 ## Scope
 
-- Pass the canonical selected restaurant and scoped restaurant options from `ManagerLayout`.
+- Reuse `useManagerRestaurantSelection` directly in the page so the queue follows the same canonical restaurant scope without adding a new prop chain through `ManagerLayout`.
 - Add an exact MongoDB-backed queue summary query with the same restaurant permission guard.
 - Make `ALL` explicitly request all reviewable terminal and non-terminal statuses represented by the UI.
 - Keep queue rows server-filtered while rendering exact global counts in KPI and tab badges.
@@ -30,8 +30,7 @@
 
 - `cohan-restaurant-backend/graphql/schema/paymentTransfer.graphql`: summary type and query contract.
 - `cohan-restaurant-backend/graphql/resolvers/payment/bankTransferQuery.js`: exact grouped counts with restaurant scoping.
-- `src/layouts/ManagerLayout.jsx`: pass canonical scope to the page.
-- `src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.jsx`: query/interaction/state corrections.
+- `src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.jsx`: canonical scope, query, interaction, and state corrections.
 - `src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPagePolish.scss`: compact responsive visual system.
 - `cohan-restaurant-backend/tests/resolvers/payment-transfer-queue.test.js`: resolver filtering/summary regression coverage.
 - `src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.test.jsx`: scope and filter/count rendering coverage.
