@@ -41,6 +41,14 @@ export async function emitDriverEvent(ctx, driverId, type, payload) {
 
   console.log(`[SOCKET.IO] -> ${room} (${type})`);
 }
-export async function emitOrderEvent(ctx, restaurantId, type, order) {
-  return emitRestaurantEvent(ctx, restaurantId, type, { order });
+
+export async function emitOrderEvent(ctx, restaurantId, type, orderOrPayload) {
+  const payload =
+    orderOrPayload &&
+    typeof orderOrPayload === "object" &&
+    Object.prototype.hasOwnProperty.call(orderOrPayload, "order")
+      ? orderOrPayload
+      : { order: orderOrPayload };
+
+  return emitRestaurantEvent(ctx, restaurantId, type, payload);
 }
