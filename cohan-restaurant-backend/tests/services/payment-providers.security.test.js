@@ -36,6 +36,21 @@ function signVnpay(payload) {
     .digest("hex");
 }
 
+function createVnpayFixture(now = new Date("2026-07-10T13:15:20.000Z")) {
+  return createVnpayPayment({
+    payment: {
+      _id: "payment-1",
+      amount: 150000,
+      reference: "VNPAY-REF-1",
+      expiresAt: new Date("2026-07-10T13:25:20.000Z"),
+      metadata: { orderInfo: "Thanh toán hóa đơn COHAN #1" },
+    },
+    ipAddr: "::ffff:127.0.0.1",
+    returnUrl: "https://api.example.com/api/payments/return/vnpay",
+    now,
+  });
+}
+
 describe("payment provider signature checks", () => {
   beforeEach(() => {
     process.env.MOMO_ACCESS_KEY = "access";
@@ -43,6 +58,7 @@ describe("payment provider signature checks", () => {
     process.env.VNPAY_TMN_CODE = "TESTCODE";
     process.env.VNPAY_HASH_SECRET = "vnp-secret";
     process.env.PAYMENT_SESSION_TTL_MINUTES = "10";
+    delete process.env.VNPAY_BANK_CODE;
   });
 
   it("accepts and rejects momo signatures", () => {
@@ -138,18 +154,7 @@ describe("payment provider signature checks", () => {
 
   it("creates a VNPAY URL with GMT+7 dates, expiry and SHA512 checksum", () => {
     const now = new Date("2026-07-10T13:15:20.000Z");
-    const result = createVnpayPayment({
-      payment: {
-        _id: "payment-1",
-        amount: 150000,
-        reference: "VNPAY-REF-1",
-        expiresAt: new Date("2026-07-10T13:25:20.000Z"),
-        metadata: { orderInfo: "Thanh toán hóa đơn COHAN #1" },
-      },
-      ipAddr: "::ffff:127.0.0.1",
-      returnUrl: "https://api.example.com/api/payments/return/vnpay",
-      now,
-    });
+    const result = createVnpayFixture(now);
 
     const url = new URL(result.payUrl);
     const params = Object.fromEntries(url.searchParams.entries());
@@ -161,7 +166,19 @@ describe("payment provider signature checks", () => {
     expect(params.vnp_ExpireDate).toBe("20260710202520");
     expect(params.vnp_IpAddr).toBe("127.0.0.1");
     expect(params.vnp_OrderInfo).toBe("Thanh toan hoa don COHAN 1");
+    expect(params.vnp_BankCode).toBeUndefined();
     expect(signature).toHaveLength(128);
+    expect(signature).toBe(signVnpay(params));
+  });
+
+  it("includes the configured VNPAY bank channel in the signed URL", () => {
+    process.env.VNPAY_BANK_CODE = " vnbank ";
+    const result = createVnpayFixture();
+    const params = Object.fromEntries(new URL(result.payUrl).searchParams.entries());
+    const signature = params.vnp_SecureHash;
+    delete params.vnp_SecureHash;
+
+    expect(params.vnp_BankCode).toBe("VNBANK");
     expect(signature).toBe(signVnpay(params));
   });
 });
