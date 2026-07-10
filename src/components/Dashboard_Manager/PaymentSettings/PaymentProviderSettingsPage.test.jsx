@@ -77,21 +77,34 @@ describe("PaymentProviderSettingsPage", () => {
   it("shows only masked identifiers and never rehydrates secrets", () => {
     render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
 
-    expect(screen.getByRole("heading", { name: "Cấu hình cổng thanh toán" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Kết nối MoMo và VNPAY" })).toBeInTheDocument();
     expect(screen.getByText("MOM••••1234")).toBeInTheDocument();
     expect(screen.getByText("VNP••••5678")).toBeInTheDocument();
     expect(screen.queryByDisplayValue(/secret/i)).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Secret Key")).toHaveValue("");
-    expect(screen.getByLabelText("Hash Secret")).toHaveValue("");
+    expect(screen.getByLabelText("Khóa bảo mật (Secret Key)")).toHaveValue("");
+    expect(screen.getByLabelText("Khóa bảo mật (Hash Secret)")).toHaveValue("");
+  });
+
+  it("links managers to the official provider setup guides", () => {
+    render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
+
+    expect(screen.getByRole("link", { name: /Hướng dẫn lấy thông tin từ MoMo/i })).toHaveAttribute(
+      "href",
+      "https://developers.momo.vn/v3/vi/docs/payment/onboarding/integration-process/",
+    );
+    expect(screen.getByRole("link", { name: /Hướng dẫn lấy thông tin từ VNPAY/i })).toHaveAttribute(
+      "href",
+      "https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html",
+    );
   });
 
   it("saves a complete MoMo credential payload for the selected restaurant", async () => {
     render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
 
-    fireEvent.change(screen.getByLabelText("Partner Code"), { target: { value: "PARTNER_NEW" } });
-    fireEvent.change(screen.getByLabelText("Access Key"), { target: { value: "ACCESS_NEW" } });
-    fireEvent.change(screen.getByLabelText("Secret Key"), { target: { value: "SECRET_NEW" } });
-    fireEvent.click(screen.getByRole("button", { name: /Thay tài khoản/i }));
+    fireEvent.change(screen.getByLabelText("Mã đối tác (Partner Code)"), { target: { value: "PARTNER_NEW" } });
+    fireEvent.change(screen.getByLabelText("Khóa truy cập (Access Key)"), { target: { value: "ACCESS_NEW" } });
+    fireEvent.change(screen.getByLabelText("Khóa bảo mật (Secret Key)"), { target: { value: "SECRET_NEW" } });
+    fireEvent.click(screen.getByRole("button", { name: /Cập nhật kết nối/i }));
 
     await waitFor(() => {
       expect(saveCredentialMock).toHaveBeenCalledWith({
