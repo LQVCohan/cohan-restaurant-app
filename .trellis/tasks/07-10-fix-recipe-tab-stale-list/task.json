@@ -1,0 +1,7 @@
+{
+  "id": "07-10-fix-recipe-tab-stale-list",
+  "title": "Fix recipe list staying empty after returning to the tab",
+  "status": "in_progress",
+  "createdAt": "2026-07-10",
+  "updatedAt": "2026-07-10"
+}
