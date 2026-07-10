@@ -65,11 +65,28 @@ async function runIngredientCategorySync(restaurantId, ctx) {
 
     stats.totalIngredients = ingredients.length;
 
-    const existingBySlug = new Map(
-      existingCategories
-        .map((c) => [c.slug, c])
-        .filter(([slug]) => Boolean(slug)),
-    );
+    const existingBySlug = new Map();
+    const duplicateCategoryIds = [];
+    for (const category of existingCategories) {
+      const canonicalSlug = toIngredientCategorySlug(category.name || category.slug);
+      if (!canonicalSlug) continue;
+
+      const selected = existingBySlug.get(canonicalSlug);
+      if (!selected) {
+        existingBySlug.set(canonicalSlug, category);
+        continue;
+      }
+
+      const categoryIsCanonical = category.slug === canonicalSlug;
+      const selectedIsCanonical = selected.slug === canonicalSlug;
+      if (categoryIsCanonical && !selectedIsCanonical) {
+        duplicateCategoryIds.push(selected._id);
+        existingBySlug.set(canonicalSlug, category);
+      } else {
+        duplicateCategoryIds.push(category._id);
+      }
+    }
+
     const existingById = new Map(
       existingCategories.map((c) => [String(c._id), c]).filter(([id]) => Boolean(id)),
     );
@@ -121,7 +138,7 @@ async function runIngredientCategorySync(restaurantId, ctx) {
 
       categoryOps.push({
         updateOne: {
-          filter: { restaurantId, slug },
+          filter: existing ? { _id: existing._id, restaurantId } : { restaurantId, slug },
           update: {
             $set: {
               name,
@@ -139,6 +156,14 @@ async function runIngredientCategorySync(restaurantId, ctx) {
 
     if (categoryOps.length) {
       await IngredientCategory.bulkWrite(categoryOps, { session });
+    }
+
+    if (duplicateCategoryIds.length) {
+      await IngredientCategory.updateMany(
+        { _id: { $in: duplicateCategoryIds }, restaurantId },
+        { $set: { isActive: false, usageCount: 0 } },
+        { session },
+      );
     }
 
     const syncedCategories = await IngredientCategory.find({
