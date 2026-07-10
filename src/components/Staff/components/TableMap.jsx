@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { ChevronDown, Star, Users } from "lucide-react";
 import "./TableMap.scss";
 
+const MOBILE_FILTER_QUERY = "(max-width: 560px)";
+
 const getTableCode = (table) =>
   table?.tableCode || table?.code || table?.name || "Chưa đặt mã";
 
@@ -15,6 +17,10 @@ const getOperationalStatus = (status) => {
   return { key: "serving", label: "Đang phục vụ" };
 };
 
+const getDefaultFilterOpen = () =>
+  typeof window === "undefined" ||
+  !window.matchMedia?.(MOBILE_FILTER_QUERY).matches;
+
 export default function TableMap({
   tables = [],
   onSelect,
@@ -22,11 +28,22 @@ export default function TableMap({
   floors = [],
 }) {
   const [floor, setFloor] = useState(floors[0] || "");
+  const [filterOpen, setFilterOpen] = useState(getDefaultFilterOpen);
 
   React.useEffect(() => {
     if (!floor && floors.length) setFloor(floors[0]);
     if (floor && floors.length && !floors.includes(floor)) setFloor(floors[0]);
   }, [floor, floors]);
+
+  React.useEffect(() => {
+    const media = window.matchMedia?.(MOBILE_FILTER_QUERY);
+    if (!media) return undefined;
+
+    const syncFilter = () => setFilterOpen(!media.matches);
+    syncFilter();
+    media.addEventListener?.("change", syncFilter);
+    return () => media.removeEventListener?.("change", syncFilter);
+  }, []);
 
   const currentFloorTables = tables.filter((table) => table.floor === floor);
   const servingCount = currentFloorTables.filter(
@@ -45,7 +62,12 @@ export default function TableMap({
         </div>
       </div>
 
-      <details className="floor-filter" data-testid="floor-filter">
+      <details
+        className="floor-filter"
+        data-testid="floor-filter"
+        open={filterOpen}
+        onToggle={(event) => setFilterOpen(event.currentTarget.open)}
+      >
         <summary>
           <span>
             <small>Bộ lọc bàn</small>
