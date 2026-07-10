@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Modal from "../../../../common/Modal";
 import Button from "../../../../common/Button";
 import { toIngredientCategoryVi } from "../../../../../utils/ingredientCategoryI18n";
@@ -79,6 +79,7 @@ const IngredientCategoryManagerModal = ({
   const [lastSyncReport, setLastSyncReport] = useState(null);
   const [error, setError] = useState("");
   const [pendingCreatedCategory, setPendingCreatedCategory] = useState(null);
+  const listRef = useRef(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -93,19 +94,17 @@ const IngredientCategoryManagerModal = ({
   }, [isOpen]);
 
   const manualCount = useMemo(
-    () => (categories || []).filter((cat) => cat.source !== "sync").length,
+    () => categories.filter((cat) => cat.source !== "sync").length,
     [categories],
   );
   const syncCount = useMemo(
-    () => (categories || []).filter((cat) => cat.source === "sync").length,
+    () => categories.filter((cat) => cat.source === "sync").length,
     [categories],
   );
 
   const filtered = useMemo(() => {
-    const key = String(search || "")
-      .trim()
-      .toLowerCase();
-    return [...(categories || [])]
+    const key = normalizeText(search);
+    return [...categories]
       .filter((cat) => matchCategory(cat, key, sourceFilter))
       .sort((a, b) => (a.name || "").localeCompare(b.name || "", "vi"));
   }, [categories, search, sourceFilter]);
@@ -118,8 +117,13 @@ const IngredientCategoryManagerModal = ({
   }, [filtered, currentPage]);
 
   useEffect(() => {
+    if (!isOpen) return;
+    listRef.current?.scrollTo({ top: 0 });
+  }, [isOpen, currentPage, search, sourceFilter]);
+
+  useEffect(() => {
     if (!pendingCreatedCategory) return;
-    const sortedAll = [...(categories || [])].sort((a, b) =>
+    const sortedAll = [...categories].sort((a, b) =>
       (a.name || "").localeCompare(b.name || "", "vi"),
     );
     const created = sortedAll.find((cat) => {
@@ -145,9 +149,8 @@ const IngredientCategoryManagerModal = ({
     const createdIndex = nextFiltered.findIndex(
       (cat) => getCategoryId(cat) === getCategoryId(created),
     );
-    const nextPage = createdIndex >= 0 ? Math.floor(createdIndex / PAGE_SIZE) + 1 : 1;
 
-    setPage(nextPage);
+    setPage(createdIndex >= 0 ? Math.floor(createdIndex / PAGE_SIZE) + 1 : 1);
     setPendingCreatedCategory(null);
   }, [categories, pendingCreatedCategory, search, sourceFilter]);
 
@@ -213,14 +216,8 @@ const IngredientCategoryManagerModal = ({
               <p>Tên danh mục tiếng Việt có dấu được giữ nguyên; đồng bộ chỉ chuẩn hóa nhóm và liên kết nguyên liệu.</p>
             </div>
             <div className="hero-stats compact" aria-label="Thống kê danh mục">
-              <div>
-                <strong>{categories.length}</strong>
-                <span>Tổng danh mục</span>
-              </div>
-              <div>
-                <strong>{filtered.length}</strong>
-                <span>Đang hiển thị</span>
-              </div>
+              <div><strong>{categories.length}</strong><span>Tổng danh mục</span></div>
+              <div><strong>{filtered.length}</strong><span>Đang hiển thị</span></div>
             </div>
           </section>
 
@@ -235,15 +232,12 @@ const IngredientCategoryManagerModal = ({
             <aside className="cat-manager-side-panel">
               <div className="category-action-card manual-card primary-action">
                 <div className="im-section-header compact">
-                  <div className="icon-box">
-                    <FolderPlus size={16} />
-                  </div>
+                  <div className="icon-box"><FolderPlus size={16} /></div>
                   <div className="header-text">
                     <h4 className="im-section-title">Tạo danh mục mới</h4>
                     <p className="im-section-desc">Có thể nhập đầy đủ dấu tiếng Việt.</p>
                   </div>
                 </div>
-
                 <div className="quick-create-row">
                   <div className="input-with-icon flex-1">
                     <Layers size={16} className="icon" />
@@ -262,12 +256,7 @@ const IngredientCategoryManagerModal = ({
                       disabled={loading}
                     />
                   </div>
-                  <Button
-                    type="button"
-                    onClick={create}
-                    disabled={loading || !name.trim()}
-                    className="btn-save"
-                  >
+                  <Button type="button" onClick={create} disabled={loading || !name.trim()} className="btn-save">
                     Thêm
                   </Button>
                 </div>
@@ -275,9 +264,7 @@ const IngredientCategoryManagerModal = ({
 
               <div className="category-action-card sync-card secondary-action">
                 <div className="im-section-header compact">
-                  <div className="icon-box warning">
-                    <Database size={16} />
-                  </div>
+                  <div className="icon-box warning"><Database size={16} /></div>
                   <div className="header-text">
                     <h4 className="im-section-title">Quét và đồng bộ</h4>
                     <p className="im-section-desc">Tự gom nguyên liệu vào nhóm phù hợp, tên nhóm có dấu.</p>
@@ -303,13 +290,9 @@ const IngredientCategoryManagerModal = ({
                   disabled={loading}
                 >
                   {loading ? (
-                    <span className="loading-state">
-                      <span className="spinner" /> Đang quét...
-                    </span>
+                    <span className="loading-state"><span className="spinner" /> Đang quét...</span>
                   ) : (
-                    <>
-                      <RefreshCw size={16} /> Quét nguyên liệu
-                    </>
+                    <><RefreshCw size={16} /> Quét nguyên liệu</>
                   )}
                 </Button>
               </div>
@@ -323,20 +306,15 @@ const IngredientCategoryManagerModal = ({
 
               <section className="last-sync-card">
                 <div className="im-section-header compact">
-                  <div className="icon-box bg-slate">
-                    <Clock size={16} />
-                  </div>
+                  <div className="icon-box bg-slate"><Clock size={16} /></div>
                   <div className="header-text">
                     <h4 className="im-section-title">Lần quét gần nhất</h4>
                     <p className="im-section-desc">Tóm tắt kết quả để kiểm tra nhanh.</p>
                   </div>
                 </div>
-
                 {summary ? (
                   <div className="last-sync-content">
-                    <div className="last-sync-time">
-                      <CheckCircle2 size={15} /> {fmtDateTime(lastSyncAt)}
-                    </div>
+                    <div className="last-sync-time"><CheckCircle2 size={15} /> {fmtDateTime(lastSyncAt)}</div>
                     <p>{formatSyncSummary(summary)}</p>
                   </div>
                 ) : (
@@ -348,14 +326,10 @@ const IngredientCategoryManagerModal = ({
             <section className="category-list-panel manager-grade-list">
               <div className="list-panel-top">
                 <div className="im-section-header list-header">
-                  <div className="icon-box">
-                    <Layers size={18} />
-                  </div>
+                  <div className="icon-box"><Layers size={18} /></div>
                   <div className="header-text">
                     <h4 className="im-section-title">Danh mục hiện có</h4>
-                    <p className="im-section-desc">
-                      {filtered.length} kết quả · Trang {currentPage}/{pageCount}
-                    </p>
+                    <p className="im-section-desc">{filtered.length} kết quả · Trang {currentPage}/{pageCount}</p>
                   </div>
                 </div>
                 <span className="list-count-pill">{pageRows.length}/{filtered.length}</span>
@@ -395,7 +369,7 @@ const IngredientCategoryManagerModal = ({
                 </div>
               </div>
 
-              <div className="list-container main-scroll-list">
+              <div ref={listRef} className="list-container main-scroll-list">
                 {pageRows.map((cat) => (
                   <div key={getCategoryId(cat)} className="list-item">
                     <div className="item-info">
@@ -404,12 +378,9 @@ const IngredientCategoryManagerModal = ({
                         <span className={`badge ${cat.source === "sync" ? "badge-sync" : "badge-manual"}`}>
                           {cat.source === "sync" ? "TỪ DỮ LIỆU" : "TỰ TẠO"}
                         </span>
-                        <span className="usage-count">
-                          Đang dùng cho <b>{cat.usageCount || 0}</b> nguyên liệu
-                        </span>
+                        <span className="usage-count">Đang dùng cho <b>{cat.usageCount || 0}</b> nguyên liệu</span>
                       </div>
                     </div>
-
                     <div className="item-actions">
                       <button
                         type="button"
@@ -468,9 +439,7 @@ const IngredientCategoryManagerModal = ({
               </div>
 
               <div className="pagination-premium">
-                <span className="page-info">
-                  Hiển thị {pageRows.length} / {filtered.length} danh mục
-                </span>
+                <span className="page-info">Hiển thị {pageRows.length} / {filtered.length} danh mục</span>
                 <div className="page-controls">
                   <button
                     type="button"
@@ -497,13 +466,7 @@ const IngredientCategoryManagerModal = ({
 
       <Modal.Footer className="cat-manager-footer">
         <span className="footer-helper">Danh mục được dùng để lọc nguyên liệu, kiểm kê và lập công thức.</span>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={requestClose}
-          disabled={loading}
-          className="btn-cancel"
-        >
+        <Button type="button" variant="secondary" onClick={requestClose} disabled={loading} className="btn-cancel">
           Đóng
         </Button>
       </Modal.Footer>
