@@ -1,0 +1,33 @@
+{
+  "id": "07-10-menu-time-slot-management",
+  "title": "Hiển thị quản lý thực đơn theo từng khung giờ",
+  "status": "in_progress",
+  "type": "fullstack-bugfix-ui",
+  "scope": [
+    "cohan-restaurant-backend/graphql/schema/menu.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/menu/query.js",
+    "cohan-restaurant-backend/tests/resolvers/menu-manager-list-visibility.test.js",
+    "src/hooks/useMenuManagement.js",
+    "src/components/Dashboard_Manager/Menu/MenuManagement.jsx",
+    "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.jsx",
+    "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStripPolish.scss",
+    "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "npm run check:graphql",
+      "npx vitest run cohan-restaurant-backend/tests/resolvers/menu-manager-list-visibility.test.js",
+      "npx vitest run src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx",
+      "npm run build",
+      "browser smoke at 375, 768, 1024 and 1440 px"
+    ],
+    "completed": [
+      "read AGENTS.md and .trellis/workflow.md",
+      "read ponytail, ui-ux-pro-max, frontend-design, react-ui-performance, redesign-existing-projects, web-design-guidelines and wcag-ui-audit skills",
+      "traced Menu schema and resolver through useMenuManagement to MenuManagement and CompactMenuStrip",
+      "inspected all current useMenuManagement callers before changing its contract",
+      "confirmed public menu browsing must continue filtering inactive menus"
+    ],
+    "notRun": []
+  }
+}
