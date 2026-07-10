@@ -44,6 +44,24 @@ describe("useManagerRestaurantSelection", () => {
     expect(result.current.restaurantOptions[0]).toMatchObject({ id: "r1", name: "Cohan 1" });
   });
 
+  it("không phát restaurantId lưu cũ ra caller trước khi xác nhận scope", async () => {
+    localStorage.setItem("manager.selectedRestaurantId", "stale-restaurant");
+    const observedIds = [];
+    const { Wrapper } = createMutableWrapper({
+      restaurants: [{ id: "r1" }, { id: "r2" }],
+      restaurantsLoading: false,
+    });
+    const { result } = renderHook(() => {
+      const selection = useManagerRestaurantSelection();
+      observedIds.push(selection.selectedRestaurantId);
+      return selection;
+    }, { wrapper: Wrapper });
+
+    expect(observedIds[0]).toBe("");
+    expect(observedIds).not.toContain("stale-restaurant");
+    await waitFor(() => expect(result.current.selectedRestaurantId).toBe("r1"));
+  });
+
   it("đổi selectedRestaurantId nếu id cũ không còn trong list", async () => {
     const { state, Wrapper } = createMutableWrapper({ restaurants: [{ id: "r1" }, { id: "r2" }], restaurantsLoading: false });
     const { result, rerender } = renderHook(() => useManagerRestaurantSelection(), {
