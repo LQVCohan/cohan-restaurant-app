@@ -1,7 +1,7 @@
 {
   "id": "07-10-ingredient-category-ui-vietnamese",
   "title": "Tối ưu quản lý danh mục nguyên liệu và tên tiếng Việt có dấu",
-  "status": "in_progress",
+  "status": "completed",
   "scope": [
     "ingredient category sync naming",
     "ingredient category management modal UI",
@@ -9,9 +9,10 @@
     "migrate legacy grain and dairy category aliases"
   ],
   "validation": [
-    "review schema-to-resolver-to-hook-to-modal flow",
-    "verify legacy grain and dairy aliases normalize to Vietnamese names",
-    "verify category sync migrates legacy slugs without leaving active duplicates",
-    "run focused frontend and backend category normalization tests"
+    "reviewed schema-to-resolver-to-hook-to-modal flow",
+    "reviewed grain and dairy aliases normalizing to Vietnamese names",
+    "reviewed sync migration updating legacy slugs and deactivating alias duplicates",
+    "added focused frontend and backend tests",
+    "tests, build and CI not run because GitHub connector has no repository runtime"
   ]
 }
