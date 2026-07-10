@@ -111,6 +111,20 @@ const toDateTimeInput = (value, boundary = "start") => {
   return value;
 };
 
+export const buildStaffReportsInput = ({
+  restaurantId,
+  startDate,
+  endDate,
+  compareStartDate,
+  compareEndDate,
+}) => ({
+  restaurantId: restaurantId || undefined,
+  startDate: toDateTimeInput(startDate, "start"),
+  endDate: toDateTimeInput(endDate, "end"),
+  compareStartDate: toDateTimeInput(compareStartDate, "start"),
+  compareEndDate: toDateTimeInput(compareEndDate, "end"),
+});
+
 export const buildPresetRange = (preset) => {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -144,13 +158,13 @@ export default function useStaffReports({
 }) {
   const variables = useMemo(
     () => ({
-      input: {
-        restaurantId: restaurantId || undefined,
-        startDate: toDateTimeInput(startDate, "start"),
-        endDate: toDateTimeInput(endDate, "end"),
-        compareStartDate: toDateTimeInput(compareStartDate, "start"),
-        compareEndDate: toDateTimeInput(compareEndDate, "end"),
-      },
+      input: buildStaffReportsInput({
+        restaurantId,
+        startDate,
+        endDate,
+        compareStartDate,
+        compareEndDate,
+      }),
     }),
     [compareEndDate, compareStartDate, endDate, restaurantId, startDate]
   );
