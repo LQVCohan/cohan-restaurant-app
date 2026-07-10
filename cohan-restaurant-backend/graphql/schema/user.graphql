@@ -777,7 +777,7 @@ type Query {
   customerListSummaries(restaurantId: ID!, userIds: [ID!]!): [CustomerListSummary!]!
   customerAnalytics(restaurantId: ID!): CustomerAnalyticsSummary!
   customerRankSettings(restaurantId: ID!): CustomerRankSettings!
-  roleList: [Role!]!
+  roleList(restaurantId: ID): [Role!]!
   staffPrivateProfile(id: ID!): StaffPrivateProfile!
   schedulePublications(restaurantId: ID!, periodStart: DateTime, periodEnd: DateTime): [SchedulePublication!]!
   schedulePublishValidation(restaurantId: ID!, periodStart: DateTime!, periodEnd: DateTime!, mandatoryShiftRoles: JSON): SchedulePublishValidationResult!
