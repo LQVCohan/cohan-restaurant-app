@@ -1,13 +1,12 @@
 {
   "id": "07-10-recipe-min-cost-unit-conversion",
   "title": "Sửa giá vốn thấp nhất theo quy đổi đơn vị",
-  "status": "planning",
+  "status": "implemented_unverified",
   "type": "bugfix",
   "scope": [
     "src/components/Dashboard_Manager/Storage/components/recipes/RecipeList.jsx",
     "src/components/Dashboard_Manager/Storage/components/recipes/RecipeList.test.jsx",
-    "src/components/Dashboard_Manager/Storage/components/recipes/RecipeCard.jsx",
-    "src/components/Dashboard_Manager/Storage/components/recipes/RecipeModal.jsx"
+    "src/components/Dashboard_Manager/Storage/components/recipes/RecipeCard.jsx"
   ],
   "validation": {
     "planned": [
@@ -15,7 +14,18 @@
       "vitest run src/components/Dashboard_Manager/Storage/components/recipes/RecipeList.test.jsx",
       "npm run build"
     ],
-    "completed": [],
-    "notRun": []
+    "completed": [
+      "traced Ingredient schema and recipe model through inventory GraphQL, recipe resolvers, Apollo operations, useRecipes, RecipeList and RecipeCard",
+      "confirmed RecipeModal already uses the shared toBaseQty helper while RecipeList previously multiplied display quantity directly by costPerBaseUnit",
+      "reviewed the final diffs for the unit conversion, Vietnamese labels and focused regression test",
+      "verified the regression fixture arithmetic: 100 g x 50 VND/g + 0.1 kg x 220000 VND/kg = 27000 VND"
+    ],
+    "notRun": [
+      "npm run check:conflicts was unavailable in the GitHub connector environment",
+      "vitest run src/components/Dashboard_Manager/Storage/components/recipes/RecipeList.test.jsx was unavailable in the GitHub connector environment",
+      "npm run build was unavailable in the GitHub connector environment",
+      "browser visual review was unavailable in the GitHub connector environment",
+      "no GitHub Actions workflow run or commit status was associated with commit b6783cbe56d018a37146f89dda2c59a4939a877d"
+    ]
   }
 }
