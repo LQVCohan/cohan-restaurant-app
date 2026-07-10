@@ -7,6 +7,7 @@ import {
   Customer,
   PaymentTransaction,
   EventLog,
+  Cart,
 } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
@@ -219,9 +220,73 @@ function normalizePaymentMethod(method) {
   return normalized;
 }
 
-function computeDeposit({ baseDeposit, linkedMenuSubtotal, menuDepositPercent }) {
-  const menuPart = Math.round(Math.max(0, Number(linkedMenuSubtotal || 0)) * (Math.max(0, Number(menuDepositPercent || 50)) / 100));
+export function computeDeposit({ baseDeposit, linkedMenuSubtotal, menuDepositPercent = 50 }) {
+  const menuPart = Math.round(
+    Math.max(0, Number(linkedMenuSubtotal || 0)) *
+      (Math.max(0, Number(menuDepositPercent)) / 100),
+  );
   return Math.max(0, Number(baseDeposit || 0)) + menuPart;
+}
+
+async function resolveLinkedCartSubtotal({
+  linkedCartItemIds,
+  userId,
+  restaurantId,
+  serviceAt,
+  session,
+}) {
+  const ids = [...new Set((linkedCartItemIds || []).map(String).filter(Boolean))];
+  if (!ids.length) return 0;
+  if (ids.some((id) => !mongoose.isValidObjectId(id))) {
+    throw new GraphQLError("Dòng giỏ hàng không hợp lệ.", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+
+  const cart = await Cart.findOne({
+    userId: toObjectId(userId, "userId"),
+    status: "active",
+  }).session(session);
+  if (!cart) {
+    throw new GraphQLError("Không tìm thấy giỏ hàng đang giữ món.", {
+      extensions: { code: "CART_NOT_FOUND" },
+    });
+  }
+
+  const wanted = new Set(ids);
+  const items = (cart.items || []).filter((item) => wanted.has(String(item._id)));
+  if (items.length !== wanted.size) {
+    throw new GraphQLError("Một hoặc nhiều dòng giỏ hàng không còn tồn tại.", {
+      extensions: { code: "CART_ITEM_NOT_FOUND" },
+    });
+  }
+
+  const arrivalMs = new Date(serviceAt).getTime();
+  const now = Date.now();
+  for (const item of items) {
+    const itemServiceMs = new Date(item.serviceAt).getTime();
+    if (
+      String(item.restaurantId) !== String(restaurantId) ||
+      item.holdStatus !== "active" ||
+      !item.holdExpiresAt ||
+      new Date(item.holdExpiresAt).getTime() <= now ||
+      !Number.isFinite(itemServiceMs) ||
+      Math.abs(itemServiceMs - arrivalMs) > 60_000
+    ) {
+      throw new GraphQLError(
+        "Món giữ trong giỏ không còn hợp lệ cho thời gian đặt bàn này.",
+        { extensions: { code: "CART_HOLD_INVALID" } },
+      );
+    }
+  }
+
+  return items.reduce(
+    (sum, item) =>
+      sum +
+      (Number(item.price || 0) + Number(item.modifiersPrice || 0)) *
+        Number(item.quantity || 1),
+    0,
+  );
 }
 
 async function resolveReservationUser(input, ctx, session = null) {
@@ -352,14 +417,23 @@ export const ReservationMutation = {
         });
 
         const policy = restaurant?.reservationSettings || {};
-        const depositAmount =
-          Number(input.depositAmount) > 0
-            ? Number(input.depositAmount)
-            : computeDeposit({
-                baseDeposit: policy.baseDepositAmount || table.deposit || 0,
-                linkedMenuSubtotal: input.linkedMenuSubtotal || 0,
-                menuDepositPercent: policy.menuDepositPercent || 50,
-              });
+        const linkedMenuSubtotal = await resolveLinkedCartSubtotal({
+          linkedCartItemIds: input.linkedCartItemIds,
+          userId,
+          restaurantId: input.restaurantId,
+          serviceAt: arrival,
+          session,
+        });
+        const hasTableDeposit =
+          table.deposit !== null && table.deposit !== undefined;
+        const baseDeposit = hasTableDeposit
+          ? Number(table.deposit)
+          : Number(policy.baseDepositAmount || 0);
+        const depositAmount = computeDeposit({
+          baseDeposit,
+          linkedMenuSubtotal,
+          menuDepositPercent: 50,
+        });
 
         const paymentMethod = normalizePaymentMethod(input.paymentMethod);
         const paidNow = paymentMethod === "cash" && depositAmount > 0;
@@ -379,7 +453,7 @@ export const ReservationMutation = {
               customerEmail: resolvedIdentity.customerEmail || user.email || "",
               partySize: Number(input.partySize || 2),
               note: input.note || "",
-              linkedMenuSubtotal: Number(input.linkedMenuSubtotal || 0),
+              linkedMenuSubtotal,
               depositAmount,
               depositStatus:
                 depositAmount <= 0 ? "unpaid" : paidNow ? "paid" : "pending",
