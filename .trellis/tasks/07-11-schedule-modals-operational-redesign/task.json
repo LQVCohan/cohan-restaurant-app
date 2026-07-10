@@ -1,0 +1,30 @@
+{
+  "id": "07-11-schedule-modals-operational-redesign",
+  "title": "Nâng cấp modal thêm ca và cài đặt ca",
+  "status": "in_progress",
+  "type": "frontend-ui",
+  "scope": [
+    "src/components/Dashboard_Manager/Schedule/components/AddShiftModal.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/ShiftRulesModal.jsx",
+    "src/styles/add-shift-modal-polish.css",
+    "src/styles/add-shift-modal-fixes.css (deleted)",
+    "src/styles/schedule-rules-modal-polish.css",
+    "src/styles/schedule-polish.css",
+    "targeted component tests"
+  ],
+  "validation": {
+    "planned": [
+      "targeted AddShiftModal and ShiftRulesModal Vitest",
+      "npm run check:conflicts",
+      "npm run build",
+      "visual review at desktop, tablet and 390px mobile"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail and ui-ux-pro-max skills",
+      "traced Shift and SchedulingPolicy flows through resolver/service, Apollo mutations, ScheduleManagement and modal actions",
+      "confirmed AddShiftModal desktop grid is activated by viewport width while the modal remains at the default medium width",
+      "confirmed both modals are affected by multiple late-loaded style layers and technical wording"
+    ],
+    "notRun": []
+  }
+}
