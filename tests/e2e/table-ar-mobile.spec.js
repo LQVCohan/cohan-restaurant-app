@@ -184,10 +184,6 @@ test.describe("manager table AR mobile smoke", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       window.sessionStorage.setItem("cohan_access_token", "e2e-token");
-      Object.defineProperty(navigator, "mediaDevices", {
-        configurable: true,
-        value: { getUserMedia: async () => ({ getTracks: () => [] }) },
-      });
       Object.defineProperty(navigator, "xr", {
         configurable: true,
         value: undefined,
@@ -196,7 +192,7 @@ test.describe("manager table AR mobile smoke", () => {
     await mockBackend(page);
   });
 
-  test("opens the global table model and camera AR preview", async ({ page }) => {
+  test("opens the global table model and native AR preview", async ({ page }) => {
     await page.goto("/manager#tables");
 
     await expect(
@@ -217,7 +213,7 @@ test.describe("manager table AR mobile smoke", () => {
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: /Xem camera 2D/i }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: /Mở camera AR/i }),
     ).toBeVisible();
