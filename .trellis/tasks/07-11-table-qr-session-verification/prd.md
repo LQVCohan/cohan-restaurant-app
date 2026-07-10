@@ -12,12 +12,14 @@ QR in trên bàn là token tĩnh. Người đi ngang có thể quét QR của b�
 
 1. QR tĩnh chỉ xác định nhà hàng/bàn và cho phép tạo yêu cầu xác nhận.
 2. Yêu cầu xác nhận phải gắn với active `table_session` hiện tại và một `deviceId` trình duyệt.
-3. POS/staff thấy yêu cầu theo bàn và mã yêu cầu; mã 6 số chỉ hiện sau thao tác rõ ràng “Đã tới bàn – hiện mã”.
-4. Khách nhập mã staff đọc tại bàn. Backend mới cấp `orderSessionToken` ngắn hạn.
-5. Token phải gắn `restaurantId + tableId + tableSessionId + deviceHash + requestId`.
-6. Quyền gửi thêm món bị khóa khi phiên chuyển sang thanh toán; token mất hiệu lực hoàn toàn khi phiên đóng, đã thanh toán hoặc phiên mới được mở.
-7. Gửi order, xem order, gọi nhân viên, yêu cầu thanh toán và OTP liên kết khách đều phải có token phiên hợp lệ.
-8. Một phiên bàn có thể có tối đa 5 yêu cầu xác nhận đang chờ; cùng thiết bị được tái sử dụng yêu cầu chưa hết hạn.
+3. Nếu bàn đã ở trạng thái `occupied` nhưng chưa có session, backend chỉ được tạo một session rỗng; bàn `available/reserved` phải được staff mở phục vụ trước.
+4. POS/staff thấy yêu cầu theo bàn và mã yêu cầu; mã 6 số chỉ hiện sau thao tác rõ ràng “Đã tới bàn – hiện mã”.
+5. Khách nhập mã staff đọc tại bàn. Backend mới cấp `orderSessionToken` ngắn hạn.
+6. Token phải gắn `restaurantId + tableId + tableSessionId + deviceHash + requestId`.
+7. Quyền gửi thêm món bị khóa khi phiên chuyển sang thanh toán; token mất hiệu lực hoàn toàn khi phiên đóng, đã thanh toán hoặc phiên mới được mở.
+8. Gửi order, xem order, gọi nhân viên, yêu cầu thanh toán và OTP liên kết khách đều phải có token phiên hợp lệ.
+9. Một phiên bàn có thể có tối đa 5 yêu cầu xác nhận đang chờ; cùng thiết bị được tái sử dụng yêu cầu chưa hết hạn.
+10. Mỗi request token chỉ được thử mã xác nhận tối đa 5 lần trong 5 phút.
 
 ## Ràng buộc
 
@@ -27,6 +29,7 @@ QR in trên bàn là token tĩnh. Người đi ngang có thể quét QR của b�
 - Session token được giữ trong cookie HttpOnly theo từng bàn; frontend không lưu token trong Web Storage.
 - Không thay đổi quy tắc order QR phải chờ staff/POS nhận trước khi vào bếp.
 - Giữ restaurant scoping và quyền `order.read` cho hàng đợi staff.
+- Chỉ một thiết bị được xác nhận hoạt động tại một thời điểm trong phiên bàn; xác nhận thiết bị mới sẽ vô hiệu thiết bị cũ.
 
 ## Ngoài phạm vi
 
@@ -34,6 +37,7 @@ QR in trên bàn là token tĩnh. Người đi ngang có thể quét QR của b�
 - SMS OTP thật.
 - Cho nhiều thiết bị cùng gọi món mà không xác nhận riêng từng thiết bị.
 - Tự động xác nhận chỉ vì thiết bị đã từng dùng ở phiên bàn cũ.
+- Rate limit phân tán bằng Redis cho nhiều backend instance.
 
 ## Tiêu chí nghiệm thu
 
@@ -42,5 +46,6 @@ QR in trên bàn là token tĩnh. Người đi ngang có thể quét QR của b�
 - Staff phải mở mã từ UI hàng đợi; mã khớp đúng request label và bàn.
 - Token phiên của bàn A không dùng cho bàn B, phiên khác hoặc device khác.
 - Phiên `ready_to_pay/payment_requested` không thể gửi thêm món; phiên `closed/cancelled/paid` không dùng lại token.
+- Bàn `available/reserved` không thể tự mở session chỉ bằng QR.
 - Sau xác nhận một lần, cùng browser có thể gọi nhiều đợt món trong đúng phiên bàn.
 - Refresh trang giữ quyền bằng cookie HttpOnly; phiên bàn mới không dùng lại token cũ.
