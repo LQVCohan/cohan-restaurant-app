@@ -6,7 +6,10 @@ import Cart from "../../Customer/Homepage_Client/components/Cart";
 import { useCart } from "../../../context/CartProvider";
 import { formatCurrency } from "../../../utils/formatters";
 import { useCustomerCartActions } from "../../../hooks/useCustomerCartActions";
-import { buildFoodDetailPath } from "../../../utils/customerFoodNavigation";
+import {
+  buildFoodDetailPath,
+  resolveMenuTimeSlotAt,
+} from "../../../utils/customerFoodNavigation";
 import { openAiMenuAssistant } from "@/utils/aiChatbotEvents";
 import { AuthContext } from "@/context/AuthContext";
 import { useNotification } from "@/hooks/useNotification";
@@ -60,8 +63,8 @@ const TOGGLE_RESTAURANT_FAVORITE = gql`
 `;
 
 const GET_CUSTOMER_RESTAURANT_BY_ID = gql`
-  query GetCustomerRestaurantById($id: ID!) {
-    publicRestaurant(id: $id) {
+  query GetCustomerRestaurantById($id: ID!, $at: DateTime) {
+    publicRestaurant(id: $id, at: $at) {
       id
       name
       cuisineType
@@ -179,7 +182,11 @@ const RestaurantMenu = () => {
   const searchParams = useMemo(() => new URLSearchParams(search), [search]);
   const restaurantParam = searchParams.get("restaurantId");
   const returnTo = searchParams.get("returnTo");
+  const serviceAt = searchParams.get("serviceAt");
   const bookingAddonMode = returnTo === "booking" && Boolean(restaurantParam);
+  const bookingTimeSlot = bookingAddonMode
+    ? resolveMenuTimeSlotAt(serviceAt)
+    : null;
   const { user, isAuthenticated } = useContext(AuthContext) || {};
   const roleName = String(
     user?.roleName || user?.role?.slug || user?.role?.name || "",
@@ -242,7 +249,7 @@ const RestaurantMenu = () => {
   const { data: restaurantByIdData, loading: restaurantByIdLoading } = useQuery(
     GET_CUSTOMER_RESTAURANT_BY_ID,
     {
-      variables: { id: restaurantParam },
+      variables: { id: restaurantParam, at: serviceAt || null },
       skip: !restaurantParam,
       fetchPolicy: "network-only",
     },
@@ -321,12 +328,22 @@ const RestaurantMenu = () => {
     const found = normalizedRestaurants.find(
       (restaurant) => String(restaurant.id) === String(restaurantParam),
     );
+    const detailRestaurant = restaurantByIdData?.publicRestaurant;
+    if (
+      serviceAt &&
+      detailRestaurant?.id &&
+      String(detailRestaurant.id) === String(restaurantParam)
+    ) {
+      setSelectedRes(normalizeRestaurant(detailRestaurant));
+      return;
+    }
+
     if (found) {
       setSelectedRes(found);
       return;
     }
 
-    const detailRestaurant = restaurantByIdData?.publicRestaurant;
+
     if (
       detailRestaurant?.id &&
       String(detailRestaurant.id) === String(restaurantParam)
@@ -337,6 +354,7 @@ const RestaurantMenu = () => {
     normalizedRestaurants,
     restaurantByIdData?.publicRestaurant,
     restaurantParam,
+    serviceAt,
   ]);
 
   useEffect(() => {
@@ -391,6 +409,7 @@ const RestaurantMenu = () => {
                 note,
                 servingVariantKey,
                 selectedModifiers,
+                serviceAt: item.serviceAt || serviceAt || null,
               },
             },
           });
@@ -604,6 +623,8 @@ const RestaurantMenu = () => {
         <MenuDetailView
           restaurant={selectedRes}
           canOrder={Boolean(selectedRes?.canOrder)}
+          initialTimeSlot={bookingTimeSlot}
+          serviceAt={serviceAt}
           onBack={handleMenuBack}
           onOpenFoodDetail={handleOpenFoodDetail}
         />
