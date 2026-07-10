@@ -5,18 +5,28 @@ const dateOnly = (value) => dayjs(value).format("YYYY-MM-DD");
 const badRange = (message) => {
   const error = new Error(message);
   error.code = "BAD_USER_INPUT";
+  error.extensions = { code: "BAD_USER_INPUT" };
   return error;
+};
+
+const parseDate = (value) => {
+  const parsed = dayjs(value);
+  const datePrefix = /^(\d{4}-\d{2}-\d{2})/.exec(String(value || ""))?.[1];
+  if (
+    !parsed.isValid() ||
+    (datePrefix && parsed.format("YYYY-MM-DD") !== datePrefix)
+  ) {
+    throw badRange("Khoảng ngày tài chính không hợp lệ.");
+  }
+  return parsed;
 };
 
 const validateExplicitRange = (dateFrom, dateTo) => {
   if (!dateFrom || !dateTo) {
     throw badRange("Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc.");
   }
-  const from = dayjs(dateFrom);
-  const to = dayjs(dateTo);
-  if (!from.isValid() || !to.isValid()) {
-    throw badRange("Khoảng ngày tài chính không hợp lệ.");
-  }
+  const from = parseDate(dateFrom);
+  const to = parseDate(dateTo);
   if (from.startOf("day").isAfter(to.startOf("day"))) {
     throw badRange("Ngày bắt đầu không được sau ngày kết thúc.");
   }
