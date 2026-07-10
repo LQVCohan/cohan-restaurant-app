@@ -12,6 +12,9 @@ on:
       - src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.scss
       - src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.test.jsx
       - .github/workflows/verify-cuisine-template-preview.yml
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
