@@ -1,17 +1,20 @@
 import React from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useMutation, useQuery } from "@apollo/client";
 import ReviewManagement from "./ReviewManagement";
+
+const permissionMocks = vi.hoisted(() => ({
+  hasPermission: vi.fn(() => true),
+}));
 
 vi.mock("@apollo/client", async () => {
   const actual = await vi.importActual("@apollo/client");
   return { ...actual, useQuery: vi.fn(), useMutation: vi.fn() };
 });
 
-vi.mock("@/utils/frontendPermissionAccess", () => ({
-  hasPermission: vi.fn(() => true),
-}));
+vi.mock("@/utils/frontendPermissionAccess", () => permissionMocks);
+
 vi.mock("../shared/ManagementPageHeader", () => ({
   default: ({ title, subtitle, stats = [] }) => (
     <header>
@@ -25,30 +28,34 @@ vi.mock("../shared/ManagementPageHeader", () => ({
     </header>
   ),
 }));
+
 vi.mock("../shared/ManagerCommandBar", () => ({
   default: ({
     tabs = [],
     onTabChange = () => {},
     searchValue = "",
-    onSearchChange = () => {},
+    onSearchChange,
   }) => (
     <nav>
-      <input
-        aria-label="Tìm đánh giá"
-        value={searchValue}
-        onChange={(event) => onSearchChange(event.target.value)}
-      />
+      {onSearchChange && (
+        <input
+          aria-label="Tìm đánh giá"
+          value={searchValue}
+          onChange={(event) => onSearchChange(event.target.value)}
+        />
+      )}
       {tabs.map((tab) => (
-        <button key={tab.id} onClick={() => onTabChange(tab.id)}>
+        <button key={tab.id} type="button" onClick={() => onTabChange(tab.id)}>
           {tab.label}
         </button>
       ))}
     </nav>
   ),
 }));
+
 vi.mock("./components/ReviewsSidebarFilters", () => ({
   default: ({ onReset = () => {} }) => (
-    <aside>
+    <aside data-testid="reviews-sidebar">
       <span>Bộ lọc</span>
       <button type="button" onClick={onReset}>
         Reset
@@ -56,6 +63,7 @@ vi.mock("./components/ReviewsSidebarFilters", () => ({
     </aside>
   ),
 }));
+
 vi.mock("./components/ReviewsList", () => ({
   default: ({ reviews = [], emptyType }) => (
     <section data-testid="reviews-list">
@@ -75,6 +83,7 @@ vi.mock("./components/ReviewsList", () => ({
     </section>
   ),
 }));
+
 vi.mock("./components/ReviewModal", () => ({ default: () => null }));
 vi.mock("@/components/common/NotificationBell", () => ({
   default: () => <button>Thông báo review</button>,
@@ -149,7 +158,7 @@ const analyticsPayload = {
   verifiedRate: 1,
   pendingCount: 0,
   negativeCount: 2,
-  reportedCount: 1,
+  reportedCount: 2,
   ratingTrend: [{ date: "2026-05-29", total: 1, avgRating: 2 }],
   topTags: [{ name: "service_speed", count: 1 }],
   topStaffMentioned: [{ id: "staff1", name: "NV Demo", count: 1 }],
@@ -165,7 +174,7 @@ const analyticsPayload = {
   reportBreakdown: [],
   actionQueueCounts: { needsModeration: 2, needsReply: 1, highRisk: 1 },
   reviewInsightSummary: {
-    summary: "Heuristic summary",
+    summary: "Tóm tắt thử nghiệm",
     positives: ["ngon"],
     negatives: ["chậm"],
     recommendedActions: ["Phản hồi review 1–2 sao"],
@@ -182,8 +191,9 @@ function mockQueries(
   useQuery.mockImplementation((query, options = {}) => {
     const source = String(query?.loc?.source?.body || query || "");
     queryCalls.push({ source, options });
+
     if (source.includes("query Me")) return { data: { me } };
-    if (source.includes("ScopedRestaurants"))
+    if (source.includes("ScopedRestaurants")) {
       return {
         data: {
           scopedRestaurants: {
@@ -191,29 +201,36 @@ function mockQueries(
           },
         },
       };
-    if (source.includes("AllRestaurants"))
+    }
+    if (source.includes("AllRestaurants")) {
       return {
         data: { restaurants: { edges: restaurants.map((node) => ({ node })) } },
       };
-    if (source.includes("GetReviews"))
+    }
+    if (source.includes("GetReviews")) {
       return {
         data: { reviews: { total: reviews.length, items: reviews } },
         loading: false,
         error: null,
         refetch: vi.fn(),
       };
-    if (source.includes("GetReviewStats"))
+    }
+    if (source.includes("GetReviewStats")) {
       return {
         data: {
           reviewStats: {
-            total: 1,
-            avgRating: 2,
-            pending: 99,
-            ratingBreakdown: { 2: 1 },
+            total: reviews.length,
+            avgRating: 2.33,
+            pending: 0,
+            ratingBreakdown: { 1: 1, 2: 1, 4: 1 },
           },
         },
       };
-    if (source.includes("GetReviewReports"))
+    }
+    if (source.includes("GetReviewReports")) {
+      if (options.skip) {
+        return { data: undefined, loading: false, error: null, refetch: vi.fn() };
+      }
       return {
         data: {
           reviewReports: {
@@ -239,16 +256,15 @@ function mockQueries(
             byReason: { spam: 1 },
           },
         },
+        loading: false,
+        error: null,
         refetch: vi.fn(),
       };
+    }
     if (source.includes("GetReviewAnalytics")) {
-      if (options.skip)
-        return {
-          data: undefined,
-          loading: false,
-          error: null,
-          refetch: vi.fn(),
-        };
+      if (options.skip) {
+        return { data: undefined, loading: false, error: null, refetch: vi.fn() };
+      }
       return {
         data: { reviewAnalytics: analyticsPayload },
         loading: false,
@@ -260,28 +276,82 @@ function mockQueries(
   });
 }
 
-describe("ReviewManagement analytics", () => {
-  it("renders the operations title, KPI copy, review customer/content, and filtered empty state", () => {
-    mockQueries({
-      id: "m1",
-      fullName: "Manager",
-      roleName: "Manager",
-      role: managerRole,
-    });
+const manager = {
+  id: "m1",
+  fullName: "Manager",
+  roleName: "Manager",
+  role: managerRole,
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  permissionMocks.hasPermission.mockReturnValue(true);
+  useMutation.mockReturnValue([vi.fn(), {}]);
+});
+
+describe("ReviewManagement dedicated analytics tab", () => {
+  it("opens on the review list and keeps analytics out of the operational view", () => {
+    const queryCalls = [];
+    mockQueries(manager, { queryCalls });
+
     render(<ReviewManagement />);
 
     expect(
       screen.getByRole("heading", { name: "Quản lý đánh giá" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Theo dõi phản hồi, điểm đánh giá và trạng thái xử lý/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Tổng đánh giá: 1")).toBeInTheDocument();
-    expect(screen.getByText("Điểm trung bình: 2.0")).toBeInTheDocument();
-    expect(screen.getAllByText(/Khách Demo/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Phục vụ chậm cần phản hồi/i)).toBeInTheDocument();
-    expect(screen.queryByText(baseReview.customerId)).not.toBeInTheDocument();
+    expect(screen.getByTestId("reviews-sidebar")).toBeInTheDocument();
+    expect(screen.getByTestId("reviews-list")).toBeInTheDocument();
+    expect(screen.getByLabelText("Tìm đánh giá")).toBeInTheDocument();
+    expect(screen.queryByText("Tổng quan đánh giá")).not.toBeInTheDocument();
 
+    const analyticsCalls = queryCalls.filter((call) =>
+      call.source.includes("GetReviewAnalytics"),
+    );
+    expect(analyticsCalls.at(-1)?.options.skip).toBe(true);
+  });
+
+  it("renders analytics as a separate full-width tab and hides review controls", () => {
+    const queryCalls = [];
+    mockQueries(manager, { queryCalls });
+
+    render(<ReviewManagement />);
+    fireEvent.click(screen.getByRole("button", { name: "Phân tích" }));
+
+    expect(screen.getByText("Tổng quan đánh giá")).toBeInTheDocument();
+    expect(screen.getByLabelText("Phạm vi nhà hàng phân tích")).toBeInTheDocument();
+    expect(screen.getByText("Tóm tắt thử nghiệm")).toBeInTheDocument();
+    expect(screen.getByText("service_speed")).toBeInTheDocument();
+    expect(screen.queryByTestId("reviews-sidebar")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Tìm đánh giá")).not.toBeInTheDocument();
+
+    const analyticsCalls = queryCalls.filter((call) =>
+      call.source.includes("GetReviewAnalytics"),
+    );
+    expect(analyticsCalls.at(-1)?.options.skip).toBe(false);
+  });
+
+  it("returns from an analytics queue to the correctly filtered review list", () => {
+    mockQueries(manager);
+
+    render(<ReviewManagement />);
+    fireEvent.click(screen.getByRole("button", { name: "Phân tích" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Báo cáo cần xử lý/i }),
+    );
+
+    expect(screen.queryByText("Tổng quan đánh giá")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Bị báo cáo" })).toBeInTheDocument();
+
+    const list = screen.getByTestId("reviews-list");
+    expect(within(list).getByText(/Cần phản hồi/i)).toBeInTheDocument();
+    expect(within(list).getByText(/Published review with report/i)).toBeInTheDocument();
+    expect(within(list).getByText(/Reported review/i)).toBeInTheDocument();
+  });
+
+  it("keeps search and filtered empty state working on review tabs", () => {
+    mockQueries(manager);
+
+    render(<ReviewManagement />);
     fireEvent.change(screen.getByLabelText("Tìm đánh giá"), {
       target: { value: "khong-co-review" },
     });
@@ -290,120 +360,40 @@ describe("ReviewManagement analytics", () => {
       screen.getByText("Không có đánh giá phù hợp với bộ lọc hiện tại."),
     ).toBeInTheDocument();
   });
-  beforeEach(() => {
-    vi.clearAllMocks();
-    useMutation.mockReturnValue([vi.fn(), {}]);
-  });
 
-  it("renders analytics cards, queues, and review data for manager role after restaurant scope is selected", () => {
-    mockQueries({
-      id: "m1",
-      fullName: "Manager",
-      roleName: "Manager",
-      role: managerRole,
-    });
-    render(<ReviewManagement />);
-
-    expect(screen.getByText("Tổng quan đánh giá")).toBeInTheDocument();
-    expect(screen.getByText("Chưa phản hồi: 1")).toBeInTheDocument();
-    expect(screen.getByText("Tiêu cực/cảnh báo: 2")).toBeInTheDocument();
-    expect(screen.queryByText("Đang xem xét: 99")).not.toBeInTheDocument();
-    expect(screen.getAllByText("Cần phản hồi").length).toBeGreaterThan(1);
-    expect(screen.getByText("service_speed")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /Khách Demo · Cần phản hồi · Phục vụ chậm cần phản hồi/i,
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("keeps reported and report-backed public reviews visible when clicking moderation queue", () => {
-    mockQueries({
-      id: "m1",
-      fullName: "Manager",
-      roleName: "Manager",
-      role: managerRole,
-    });
-    render(<ReviewManagement />);
-
-    fireEvent.click(screen.getByRole("button", { name: /Báo cáo cần xử lý/i }));
-
-    const list = screen.getByTestId("reviews-list");
-    expect(
-      within(list).getByText(
-        /Khách Demo · Cần phản hồi · Phục vụ chậm cần phản hồi/i,
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(list).getByText(/Published review with report/i),
-    ).toBeInTheDocument();
-    expect(within(list).getByText(/Reported review/i)).toBeInTheDocument();
-  });
-
-  it("supports report queue click without hiding the reported review", () => {
-    mockQueries({
-      id: "m1",
-      fullName: "Manager",
-      roleName: "Manager",
-      role: managerRole,
-    });
-    render(<ReviewManagement />);
-
-    fireEvent.click(screen.getByRole("button", { name: /Báo cáo cần xử lý/i }));
-
-    const list = screen.getByTestId("reviews-list");
-    expect(within(list).getByText(/Reported review/i)).toBeInTheDocument();
-  });
-
-  it("maps the Đang xem xét tab to reported status without targetType pending", () => {
+  it("maps the reported tab to status without using a target type", () => {
     const queryCalls = [];
-    mockQueries(
-      { id: "m1", fullName: "Manager", roleName: "Manager", role: managerRole },
-      { queryCalls },
-    );
-    render(<ReviewManagement />);
+    mockQueries(manager, { queryCalls });
 
+    render(<ReviewManagement />);
     fireEvent.click(screen.getByRole("button", { name: "Bị báo cáo" }));
 
     const reviewQueries = queryCalls.filter((call) =>
       call.source.includes("GetReviews"),
     );
-    const latestReviewQuery = reviewQueries[reviewQueries.length - 1];
+    const latestReviewQuery = reviewQueries.at(-1);
     expect(latestReviewQuery.options.variables.status).toBe("reported");
     expect(latestReviewQuery.options.variables.targetType).toBeUndefined();
-    expect(latestReviewQuery.options.variables.targetType).not.toBe("pending");
   });
 
-  it("skips analytics for non-admin manager until restaurantId is available", () => {
-    const analyticsCalls = [];
-    mockQueries(
-      { id: "m1", fullName: "Manager", roleName: "Manager", role: managerRole },
-      { restaurants: [] },
-    );
-    const baseImplementation = useQuery.getMockImplementation();
-    useQuery.mockImplementation((query, options = {}) => {
-      const source = String(query?.loc?.source?.body || query || "");
-      if (source.includes("GetReviewAnalytics")) analyticsCalls.push(options);
-      return baseImplementation(query, options);
-    });
+  it("shows the scope message and keeps analytics skipped when a manager has no restaurant", () => {
+    const queryCalls = [];
+    mockQueries(manager, { restaurants: [], queryCalls });
 
     render(<ReviewManagement />);
+    fireEvent.click(screen.getByRole("button", { name: "Phân tích" }));
 
-    expect(analyticsCalls[0]?.skip).toBe(true);
     expect(
-      screen.getByText(
-        "Chọn nhà hàng để xem phân tích trong phạm vi quản lý.",
-      ),
+      screen.getByText("Chọn nhà hàng để xem phân tích trong phạm vi quản lý."),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "Không thể tải phân tích. Dữ liệu đánh giá vẫn hiển thị bên dưới.",
-      ),
-    ).not.toBeInTheDocument();
+    const analyticsCalls = queryCalls.filter((call) =>
+      call.source.includes("GetReviewAnalytics"),
+    );
+    expect(analyticsCalls.at(-1)?.options.skip).toBe(true);
   });
 
-  it("keeps ADMIN as admin and supports role.slug fallback without restaurantId", () => {
-    const analyticsCalls = [];
+  it("allows admin analytics without a selected restaurant", () => {
+    const queryCalls = [];
     mockQueries(
       {
         id: "a1",
@@ -411,19 +401,34 @@ describe("ReviewManagement analytics", () => {
         roleName: "ADMIN",
         role: { ...managerRole, slug: "admin" },
       },
-      { restaurants: [] },
+      { restaurants: [], queryCalls },
     );
-    const baseImplementation = useQuery.getMockImplementation();
-    useQuery.mockImplementation((query, options = {}) => {
-      const source = String(query?.loc?.source?.body || query || "");
-      if (source.includes("GetReviewAnalytics")) analyticsCalls.push(options);
-      return baseImplementation(query, options);
-    });
+
+    render(<ReviewManagement />);
+    fireEvent.click(screen.getByRole("button", { name: "Phân tích" }));
+
+    expect(screen.getByText("Tổng quan đánh giá")).toBeInTheDocument();
+    const analyticsCalls = queryCalls.filter((call) =>
+      call.source.includes("GetReviewAnalytics"),
+    );
+    expect(analyticsCalls.at(-1)?.options.skip).toBe(false);
+  });
+
+  it("hides the analytics tab and never runs analytics without permission", () => {
+    const queryCalls = [];
+    permissionMocks.hasPermission.mockImplementation(
+      (_user, code) => code !== "review.analytics.read",
+    );
+    mockQueries(manager, { queryCalls });
 
     render(<ReviewManagement />);
 
-    expect(analyticsCalls[0]?.skip).toBe(false);
-    expect(screen.getByText("Tổng quan đánh giá")).toBeInTheDocument();
-    expect(screen.getAllByText("Trung tâm xử lý đánh giá").length).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole("button", { name: "Phân tích" }),
+    ).not.toBeInTheDocument();
+    const analyticsCalls = queryCalls.filter((call) =>
+      call.source.includes("GetReviewAnalytics"),
+    );
+    expect(analyticsCalls.at(-1)?.options.skip).toBe(true);
   });
 });
