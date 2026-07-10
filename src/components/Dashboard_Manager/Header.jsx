@@ -32,11 +32,13 @@ const readSelectedRestaurantId = () =>
     ? ""
     : localStorage.getItem("manager.selectedRestaurantId") || "";
 
+const EMPTY_NOTIFICATIONS = [];
+
 const Header = ({
   pageTitle = "Tổng quan",
   onToggleSidebar,
   sidebarOpen = false,
-  notifications = [],
+  notifications = EMPTY_NOTIFICATIONS,
   searchItems = [],
   scopeSelector = null,
   onSelectSearchResult,
