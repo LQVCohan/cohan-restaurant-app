@@ -24,11 +24,11 @@
 ## Phạm vi thay đổi
 
 - `cohan-restaurant-backend/graphql/resolvers/inventory/categoryAi.shared.js`: thêm chuẩn hóa tên danh mục nguyên liệu sang tiếng Việt có dấu, gồm alias cũ `grain` và `dairy`; không thay đổi logic danh mục vật tư.
-- `cohan-restaurant-backend/graphql/resolvers/inventory/ingredientCategory.mutation.js`: dùng tên tiếng Việt khi tạo, đổi tên và đồng bộ; nâng cấp slug cũ ngay trên bản ghi hiện có và vô hiệu hóa bản ghi alias trùng.
-- `cohan-restaurant-backend/graphql/resolvers/inventory/ingredient.mutation.js`: dùng chung helper chuẩn hóa để luồng import/API cũ không tạo thêm tên tiếng Anh.
+- `cohan-restaurant-backend/graphql/resolvers/inventory/ingredientCategory.mutation.js`: dùng tên tiếng Việt khi đồng bộ; nâng cấp slug cũ ngay trên bản ghi hiện có và vô hiệu hóa bản ghi alias trùng.
 - `src/utils/ingredientCategoryI18n.js`: hiển thị tiếng Việt cho dữ liệu legacy trước khi quét lại.
-- `src/components/Dashboard_Manager/Storage/components/ingredients/IngredientCategoryManagerModal.jsx`: giảm thông tin kỹ thuật, Việt hóa nhãn, hiển thị tóm tắt đồng bộ dễ đọc, làm rõ hỗ trợ tên có dấu và xóa bản vá đặt lại vị trí cuộn cũ.
-- `src/components/Dashboard_Manager/Storage/components/ingredients/IngredientCategoryManagerModal.scss`: dùng một vùng cuộn duy nhất ở thân modal, để danh sách tự mở rộng theo nội dung và không cắt nửa dòng.
+- `cohan-restaurant-backend/tests/resolvers/ingredient-category-normalization.test.js`: kiểm tra alias backend.
+- `src/utils/ingredientCategoryI18n.test.js`: kiểm tra nhãn hiển thị frontend.
+- `cohan-restaurant-backend/graphql/resolvers/inventory/ingredient.mutation.js` đã được kiểm tra nhưng không sửa: luồng UI hiện gửi `ingredientCategoryId`, còn lỗi được xử lý đúng tại ranh giới đồng bộ dùng chung.
 
 ## Tiêu chí chấp nhận
 
@@ -38,9 +38,7 @@
 - Bản ghi alias cũ không còn xuất hiện như một danh mục hoạt động trùng sau khi quét.
 - Danh mục tùy chỉnh như `Đồ khô`, `Nước sốt nhà làm` giữ nguyên dấu tiếng Việt.
 - Slug vẫn không dấu để chống trùng và truy vấn ổn định.
-- Modal hiển thị nhãn tiếng Việt, tóm tắt đồng bộ dễ đọc, danh sách và hành động chính rõ ràng hơn.
-- Danh sách không còn scrollbar lồng và không hiển thị dòng bị cắt phía trên thanh phân trang.
-- Thông báo sau khi quét bắt đầu bằng `Quét thành công` và nêu số danh mục mới, danh mục cập nhật, nguyên liệu gán lại và lỗi.
+- Modal hiển thị nhãn tiếng Việt ngay cả với dữ liệu cũ trước khi quét lại.
 - Không thay đổi schema GraphQL, quyền kho, phạm vi nhà hàng, audit log hoặc giao thức Apollo.
 
 ## Ngoài phạm vi
