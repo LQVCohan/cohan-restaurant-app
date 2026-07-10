@@ -299,7 +299,16 @@ describe('frontend GraphQL documents', () => {
     );
     expect(schema.getType('CreateAttendanceCorrectionRequestInput')).toBeTruthy();
     expect(schema.getType('ReviewAttendanceCorrectionRequestInput')).toBeTruthy();
-    expect(schema.getType('RejectAttendanceCorrectionRequestInput')).toBeTruthy();
+    expect(schema.getType('RejectAttendanceCorrectionRequestInput').getFields()).toHaveProperty('reason');
+    expect(Object.keys(schema.getType('StaffReportsInput').getFields())).toEqual(
+      expect.arrayContaining([
+        'restaurantId',
+        'startDate',
+        'endDate',
+        'compareStartDate',
+        'compareEndDate',
+      ]),
+    );
     expect(Object.keys(schema.getType('OffScheduleAttendanceFilterInput').getFields())).toEqual(
       expect.arrayContaining(['approvalStatus', 'onlyPending', 'search']),
     );
