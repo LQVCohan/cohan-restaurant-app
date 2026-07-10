@@ -15,6 +15,8 @@ const tableManagementState = vi.hoisted(() => ({
   tables: [],
   tablesLoading: false,
   tablesError: null,
+  createTable: vi.fn(),
+  refetchTables: vi.fn(),
 }));
 
 const floorManagementState = vi.hoisted(() => ({
@@ -25,17 +27,12 @@ const floorManagementState = vi.hoisted(() => ({
   setActiveLevel: vi.fn(),
   getIdFromLevel: vi.fn(),
   getLevelFromId: vi.fn((floorId) => (floorId === "floor-1" ? 1 : 2)),
+  createFloor: vi.fn(),
 }));
 
 const tableActionsModalState = vi.hoisted(() => ({
   renderCount: 0,
   lastTable: null,
-}));
-
-const table3dModalState = vi.hoisted(() => ({
-  open: false,
-  table: null,
-  floor: null,
 }));
 
 vi.mock("@/hooks/useTableManagement", () => ({
@@ -46,9 +43,9 @@ vi.mock("@/hooks/useTableManagement", () => ({
       tablesLoading: tableManagementState.tablesLoading,
       tablesError: tableManagementState.tablesError,
       setTableStatus: vi.fn(),
-      createTable: vi.fn(),
+      createTable: tableManagementState.createTable,
       updateTable: vi.fn(),
-      refetchTables: vi.fn(),
+      refetchTables: tableManagementState.refetchTables,
       moveTable: vi.fn(),
       deleteTable: vi.fn(),
       fetchTableByCode: vi.fn(),
@@ -69,7 +66,7 @@ vi.mock("@/hooks/useFloorManagement", () => ({
       setActiveLevel: floorManagementState.setActiveLevel,
       getIdFromLevel: floorManagementState.getIdFromLevel,
       getLevelFromId: floorManagementState.getLevelFromId,
-      createFloor: vi.fn(),
+      createFloor: floorManagementState.createFloor,
     };
   },
 }));
@@ -102,15 +99,6 @@ vi.mock("@/utils/vrStorage", () => ({
   loadTableVrImage: () => "",
 }));
 
-vi.mock("./Table3DSimulatorModal", () => ({
-  default: ({ open, table, floor }) => {
-    table3dModalState.open = open;
-    table3dModalState.table = table;
-    table3dModalState.floor = floor;
-    return open ? <div data-testid="table-3d-modal">3D {table?.code}</div> : null;
-  },
-}));
-
 vi.mock("./TableActionsLiteModal", () => ({
   default: ({ table }) => {
     tableActionsModalState.renderCount += 1;
@@ -120,9 +108,8 @@ vi.mock("./TableActionsLiteModal", () => ({
 }));
 
 const renderTableManagement = async () => {
-  const mod = await import("./TableManagement.jsx");
-  const TableManagement = mod.default;
-
+  const module = await import("./TableManagement.jsx");
+  const TableManagement = module.default;
   const renderTree = () => (
     <MemoryRouter>
       <AuthContext.Provider
@@ -137,6 +124,7 @@ const renderTableManagement = async () => {
       </AuthContext.Provider>
     </MemoryRouter>
   );
+
   const view = render(renderTree());
   return {
     ...view,
@@ -158,6 +146,7 @@ const setDefaultData = () => {
       floorId: "floor-1",
       type: "standard",
       deposit: 0,
+      position: { x: 50, y: 50 },
     },
     {
       id: "table-id-raw-2",
@@ -167,7 +156,8 @@ const setDefaultData = () => {
       floorId: "floor-2",
       type: "vip",
       deposit: 200000,
-      visualConfig: { label: "Round VIP" },
+      vrUrl: "/vr/table/table-id-raw-2",
+      position: { x: 130, y: 50 },
     },
   ];
 };
@@ -177,18 +167,20 @@ beforeEach(() => {
   localStorage.clear();
   tableActionsModalState.renderCount = 0;
   tableActionsModalState.lastTable = null;
-  table3dModalState.open = false;
-  table3dModalState.table = null;
-  table3dModalState.floor = null;
   tableManagementState.restaurantId = null;
   tableManagementState.tablesLoading = false;
   tableManagementState.tablesError = null;
+  tableManagementState.createTable.mockReset();
+  tableManagementState.createTable.mockResolvedValue({ id: "table-new" });
+  tableManagementState.refetchTables.mockReset();
+  tableManagementState.refetchTables.mockResolvedValue({ data: { tables: [] } });
   floorManagementState.restaurantId = null;
   floorManagementState.floorsLoading = false;
   floorManagementState.floorsError = null;
   floorManagementState.setActiveLevel.mockClear();
   floorManagementState.getIdFromLevel.mockClear();
   floorManagementState.getLevelFromId.mockClear();
+  floorManagementState.createFloor.mockReset();
   setDefaultData();
 });
 
@@ -226,7 +218,7 @@ describe("TableManagement operations UI", () => {
     });
   });
 
-  it("renders the table code instead of exposing the raw table id", async () => {
+  it("renders table codes instead of exposing raw ids", async () => {
     await renderTableManagement();
 
     expect(screen.getByText("A1")).toBeInTheDocument();
@@ -241,18 +233,35 @@ describe("TableManagement operations UI", () => {
       target: { value: "ZZZ" },
     });
 
-    expect(screen.getByText("Không có bàn phù hợp với bộ lọc hiện tại.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Không có bàn phù hợp với bộ lọc hiện tại."),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reset" })).toBeInTheDocument();
   });
 
-  it("opens the detail modal when the detail button is clicked", async () => {
+  it("opens the detail modal from the normal detail action", async () => {
     await renderTableManagement();
 
     const tableCard = screen.getByText("A1").closest("article");
-    const detailButton = within(tableCard).getByRole("button", {
-      name: /Mở cấu hình bàn A1/i,
+    fireEvent.click(
+      within(tableCard).getByRole("button", {
+        name: /Mở cấu hình bàn A1/i,
+      }),
+    );
+
+    expect(screen.getByTestId("table-actions-lite-modal")).toBeInTheDocument();
+    expect(tableActionsModalState.lastTable?.code).toBe("A1");
+  });
+
+  it("opens table details to add a panorama when the table has no 360 content", async () => {
+    await renderTableManagement();
+
+    const tableCard = screen.getByText("A1").closest("article");
+    const panoramaButton = within(tableCard).getByRole("button", {
+      name: /Thêm ảnh 360 cho bàn A1/i,
     });
-    fireEvent.click(detailButton);
+    expect(panoramaButton).toHaveTextContent("Thêm ảnh 360°");
+    fireEvent.click(panoramaButton);
 
     expect(screen.getByTestId("table-actions-lite-modal")).toBeInTheDocument();
     expect(tableActionsModalState.lastTable?.code).toBe("A1");
@@ -274,20 +283,50 @@ describe("TableManagement operations UI", () => {
     expect(tableActionsModalState.lastTable?.joinGroupId).toBe("group-1");
   });
 
-  it("opens 3D and AR with the concrete table and floor", async () => {
+  it("removes all table 3D and AR entry points", async () => {
     await renderTableManagement();
 
-    const tableCard = screen.getByText("A1").closest("article");
-    const arButton = within(tableCard).getByRole("button", {
-      name: /Mở 3D và AR cho bàn A1/i,
-    });
-    expect(arButton).toHaveClass("btn-mini--3d");
-    fireEvent.click(arButton);
+    expect(screen.queryByText("Mô phỏng 3D")).not.toBeInTheDocument();
+    expect(screen.queryByText("3D / AR")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Mở 3D và AR/i }),
+    ).not.toBeInTheDocument();
+  });
 
-    expect(screen.getByTestId("table-3d-modal")).toBeInTheDocument();
-    expect(table3dModalState.open).toBe(true);
-    expect(table3dModalState.table?.code).toBe("A1");
-    expect(table3dModalState.floor?.id).toBe("floor-1");
+  it("creates a table with operational fields only", async () => {
+    await renderTableManagement();
+
+    fireEvent.click(screen.getByRole("button", { name: /Thêm bàn/i }));
+    expect(screen.getByRole("heading", { name: "Thêm bàn" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Thêm ảnh không gian sau khi tạo bàn"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/mô phỏng 3D/i)).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Số bàn *"), {
+      target: { value: "A2" },
+    });
+    fireEvent.change(screen.getByLabelText("Tầng *"), {
+      target: { value: "floor-1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Tạo bàn" }));
+
+    await waitFor(() => {
+      expect(tableManagementState.createTable).toHaveBeenCalledWith(
+        expect.objectContaining({
+          restaurantId: "restaurant-1",
+          code: "A2",
+          capacity: 4,
+          floorId: "floor-1",
+          type: "standard",
+          status: "available",
+          position: expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
+        }),
+      );
+    });
+    expect(tableManagementState.createTable.mock.calls[0][0]).not.toHaveProperty(
+      "visualConfig",
+    );
   });
 
   it("disables POS-managed quick actions with the guard reason", async () => {
