@@ -5,7 +5,7 @@ import {
   CheckCircle2,
   Clock3,
   CreditCard,
-  HandHelping,
+  Hand,
 } from "lucide-react";
 import useSocketOrder from "@/hooks/useSocketOrder";
 import styles from "./CustomerRequestQueuePanel.module.scss";
@@ -168,7 +168,7 @@ export default function CustomerRequestQueuePanel({ restaurantId, onOpenPayment 
 
   const acceptPaymentRequest = async (request) => {
     const accepted = await acknowledge(request);
-    if (accepted) onOpenPayment?.(request.orderId);
+    if (accepted) await onOpenPayment?.(request.orderId);
   };
 
   if (!rows.length) return null;
@@ -223,7 +223,7 @@ export default function CustomerRequestQueuePanel({ restaurantId, onOpenPayment 
           const isAcknowledged = request.status === "ACKNOWLEDGED";
           const isPending = request.status === "PENDING";
           const isBusy = busyRequestId === request.requestId;
-          const Icon = isStaffCall ? HandHelping : CreditCard;
+          const Icon = isStaffCall ? Hand : CreditCard;
 
           return (
             <article
