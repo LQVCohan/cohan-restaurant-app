@@ -83,7 +83,7 @@ export const PublicTableOrderAccessQuery = {
     const operationalCanOrder = Boolean(result?.canOrder);
     const hasActiveSession = Boolean(result?.session?.id);
     const tableStatus = String(result?.tableStatus || "").toLowerCase();
-    const canBootstrapSession = hasActiveSession || tableStatus === "occupied";
+    const canBootstrapSession = tableStatus === "occupied";
     const credentialContext = withTableOrderSessionCookieCredentials(
       ctx,
       args.tableId,
