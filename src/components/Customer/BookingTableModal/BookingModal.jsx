@@ -184,6 +184,7 @@ const BookingModal = ({
   tableId,
   tableCapacity,
   tableFloor,
+  initialDraft,
   onBookingConfirmed,
 }) => {
   const { user } = useContext(AuthContext) || {};
@@ -249,7 +250,9 @@ const BookingModal = ({
   }, [tablesData, tableId, tableCode, tableCapacity, tableFloor]);
 
   const capacity = Math.max(1, Number(selectedTable?.capacity || tableCapacity || 1));
-  const tableDeposit = Number(selectedTable?.deposit);
+  const hasTableDeposit =
+    selectedTable?.deposit !== null && selectedTable?.deposit !== undefined;
+  const tableDeposit = hasTableDeposit ? Number(selectedTable.deposit) : Number.NaN;
   const policyDeposit = Number(restaurant?.reservationSettings?.baseDepositAmount);
   const deposit = Number.isFinite(tableDeposit)
     ? Math.max(0, tableDeposit)
@@ -267,15 +270,15 @@ const BookingModal = ({
   const menuSubtotal = useMemo(
     () =>
       restaurantCartItems.reduce(
-        (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1),
+        (sum, item) =>
+          sum +
+          (Number(item.price || 0) + Number(item.modifiersPrice || 0)) *
+            Number(item.quantity || 1),
         0,
       ),
     [restaurantCartItems],
   );
-  const menuDepositPercent = Math.max(
-    0,
-    Number(restaurant?.reservationSettings?.menuDepositPercent ?? 50),
-  );
+  const menuDepositPercent = 50;
   const menuDeposit = Math.round(menuSubtotal * (menuDepositPercent / 100));
   const totalDeposit = deposit + menuDeposit;
 
@@ -332,21 +335,43 @@ const BookingModal = ({
   useEffect(() => {
     if (!isOpen) return;
     const today = new Date().toLocaleDateString("en-CA");
-    setFormData({
-      customerName: user?.fullName || user?.name || "",
-      customerPhone: user?.phone || user?.phoneNumber || "",
-      customerEmail: user?.email || "",
-      partySize: Math.min(2, capacity),
-      date: today,
-      time: "",
-      timeOut: "",
-      openEnded: false,
-      notes: "",
-    });
-    setSelectedRequests([]);
+    const draftMatchesTable =
+      initialDraft?.tableId &&
+      String(initialDraft.tableId) === String(tableId);
+    setFormData(
+      draftMatchesTable
+        ? {
+            customerName: user?.fullName || user?.name || "",
+            customerPhone: user?.phone || user?.phoneNumber || "",
+            customerEmail: user?.email || "",
+            partySize: Math.min(2, capacity),
+            date: today,
+            time: "",
+            timeOut: "",
+            openEnded: false,
+            notes: "",
+            ...initialDraft.formData,
+          }
+        : {
+            customerName: user?.fullName || user?.name || "",
+            customerPhone: user?.phone || user?.phoneNumber || "",
+            customerEmail: user?.email || "",
+            partySize: Math.min(2, capacity),
+            date: today,
+            time: "",
+            timeOut: "",
+            openEnded: false,
+            notes: "",
+          },
+    );
+    setSelectedRequests(
+      draftMatchesTable && Array.isArray(initialDraft.selectedRequests)
+        ? initialDraft.selectedRequests
+        : [],
+    );
     setErrors({});
     setShowSummary(false);
-  }, [isOpen, user, capacity]);
+  }, [isOpen, user, capacity, initialDraft, tableId]);
 
   useEffect(() => {
     setFormData((current) => {
@@ -490,7 +515,16 @@ const BookingModal = ({
       returnTo: "booking",
       serviceAt,
     });
-    navigate(`/cus-menu?${params.toString()}`);
+    navigate(`/cus-menu?${params.toString()}`, {
+      state: {
+        bookingDraft: {
+          tableId: selectedTable.id,
+          tableFloor,
+          formData,
+          selectedRequests,
+        },
+      },
+    });
   };
 
   const handleConfirm = async () => {
@@ -519,8 +553,9 @@ const BookingModal = ({
         customerName: formData.customerName.trim(),
         customerPhone: formData.customerPhone.trim() || null,
         customerEmail: formData.customerEmail.trim() || null,
-        depositAmount: totalDeposit,
-        linkedMenuSubtotal: menuSubtotal,
+        linkedCartItemIds: restaurantCartItems
+          .map((item) => item.backendCartItemId)
+          .filter(Boolean),
         isUnlimitedTime: formData.openEnded,
         paymentMethod: "momo",
       });
