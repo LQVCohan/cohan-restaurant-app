@@ -106,6 +106,10 @@ export default function FoodDetailRestaurantSelectorMount() {
   const location = useLocation();
   const navigate = useNavigate();
   const foodId = getFoodIdFromPath(location.pathname);
+  const bookingServiceAt = useMemo(
+    () => new URLSearchParams(location.search).get("serviceAt"),
+    [location.search],
+  );
   const [portalHost, setPortalHost] = useState(null);
 
   const { data, loading, error, refetch } = useQuery(
@@ -123,7 +127,7 @@ export default function FoodDetailRestaurantSelectorMount() {
   );
 
   useEffect(() => {
-    if (!foodId || typeof document === "undefined") {
+    if (!foodId || bookingServiceAt || typeof document === "undefined") {
       setPortalHost(null);
       return undefined;
     }
@@ -155,10 +159,10 @@ export default function FoodDetailRestaurantSelectorMount() {
       observer.disconnect();
       host?.remove();
     };
-  }, [foodId]);
+  }, [bookingServiceAt, foodId]);
 
   useEffect(() => {
-    if (!foodId || !locations.length) return;
+    if (!foodId || bookingServiceAt || !locations.length) return;
     if (location.state?.restaurantSelectionMode === "manual") return;
 
     const preferred = getPreferredRestaurantLocation(locations, foodId);
@@ -180,7 +184,13 @@ export default function FoodDetailRestaurantSelectorMount() {
         },
       },
     );
-  }, [foodId, location.state?.restaurantSelectionMode, locations, navigate]);
+  }, [
+    bookingServiceAt,
+    foodId,
+    location.state?.restaurantSelectionMode,
+    locations,
+    navigate,
+  ]);
 
   const handleSelect = (option) => {
     const nextMenuItemId = option?.menuItemId || option?.menuItem?.id;
@@ -200,7 +210,7 @@ export default function FoodDetailRestaurantSelectorMount() {
     );
   };
 
-  if (!foodId || !portalHost) return null;
+  if (!foodId || bookingServiceAt || !portalHost) return null;
 
   return createPortal(
     <section
