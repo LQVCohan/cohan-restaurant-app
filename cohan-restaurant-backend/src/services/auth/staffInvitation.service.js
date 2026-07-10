@@ -26,9 +26,10 @@ export function buildStaffInvitationMail({ staff, initialPassword }) {
   const name = String(staff?.fullName || staff?.employeeCode || "bạn").trim();
 
   if (!email || !password) {
-    throw new GraphQLError("STAFF_INVITATION_CREDENTIALS_MISSING", {
-      extensions: { code: "BAD_USER_INPUT" },
-    });
+    throw new GraphQLError(
+      "Thiếu email hoặc mật khẩu ban đầu để gửi thông tin đăng nhập nhân viên.",
+      { extensions: { code: "STAFF_INVITATION_CREDENTIALS_MISSING" } },
+    );
   }
 
   const loginUrl = buildLoginUrl(email);
@@ -106,12 +107,15 @@ export async function sendStaffInvitationEmail({ staff, initialPassword }) {
 
   const rejected = Array.isArray(result?.rejected) ? result.rejected : [];
   if (result?.skipped || rejected.length > 0) {
-    throw new GraphQLError("STAFF_INVITATION_EMAIL_NOT_SENT", {
-      extensions: {
-        code: "STAFF_INVITATION_EMAIL_NOT_SENT",
-        deliveryError: result?.error || null,
+    throw new GraphQLError(
+      "Không thể gửi email đăng nhập cho nhân viên. Vui lòng kiểm tra cấu hình email và thử lại.",
+      {
+        extensions: {
+          code: "STAFF_INVITATION_EMAIL_NOT_SENT",
+          deliveryError: result?.error || null,
+        },
       },
-    });
+    );
   }
 
   return {
