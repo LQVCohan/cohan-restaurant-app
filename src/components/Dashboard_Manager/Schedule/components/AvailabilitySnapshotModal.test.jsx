@@ -3,15 +3,28 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import AvailabilitySnapshotModal from "./AvailabilitySnapshotModal";
 
-const weekStart = new Date("2026-05-25T00:00:00.000Z"); // Monday
+const weekStart = new Date("2026-05-25T00:00:00.000Z");
 const weekEnd = new Date("2026-05-31T00:00:00.000Z");
 const windows = [{ periodStart: weekStart.toISOString(), periodEnd: weekEnd.toISOString() }];
 const shifts = [{ key: "morning", label: "Ca sáng", startTime: "06:00", endTime: "14:00" }];
 
-const renderModal = (props = {}) => render(<AvailabilitySnapshotModal isOpen onClose={() => {}} weekStart={weekStart} weekEnd={weekEnd} availabilityWindows={windows} shiftTemplates={shifts} staffList={[]} availabilitySubmissions={[]} {...props} />);
+const renderModal = (props = {}) =>
+  render(
+    <AvailabilitySnapshotModal
+      isOpen
+      onClose={() => {}}
+      weekStart={weekStart}
+      weekEnd={weekEnd}
+      availabilityWindows={windows}
+      shiftTemplates={shifts}
+      staffList={[]}
+      availabilitySubmissions={[]}
+      {...props}
+    />,
+  );
 
 describe("AvailabilitySnapshotModal", () => {
-  it("uses shiftTemplates array key and renders shift header", () => {
+  it("uses shiftTemplates and shows configured time and duration", () => {
     renderModal({
       staffList: [
         {
@@ -23,9 +36,54 @@ describe("AvailabilitySnapshotModal", () => {
         },
       ],
     });
-    expect(screen.getAllByText("Ca sáng").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Ca sáng/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/06:00/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/14:00/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/8 giờ/)).toBeInTheDocument();
+  });
+
+  it("shows four-hour part-time blocks separately", () => {
+    renderModal({
+      shiftTemplates: [
+        { key: "full", label: "Full-time sáng", startTime: "07:00", endTime: "15:00" },
+        { key: "lunch", label: "Part-time cao điểm trưa", startTime: "11:00", endTime: "15:00" },
+      ],
+      staffList: [
+        { id: "p1", fullName: "PT", employeeCode: "P1", employmentType: "part_time" },
+      ],
+      availabilitySubmissions: [
+        {
+          staffId: "p1",
+          status: "approved",
+          slots: [{ date: "2026-05-25", shiftType: "lunch", status: "available" }],
+        },
+      ],
+    });
+
+    expect(screen.getByText("Nhân viên bán thời gian")).toBeInTheDocument();
+    expect(screen.getAllByText(/4 giờ/).length).toBeGreaterThan(0);
+    expect(screen.getAllByTitle("Có thể làm").length).toBeGreaterThan(0);
+  });
+
+  it("full-time uses one day cell instead of repeating every shift template", () => {
+    renderModal({
+      shiftTemplates: [
+        { key: "morning", label: "Ca sáng", startTime: "07:00", endTime: "15:00" },
+        { key: "lunch", label: "Part-time trưa", startTime: "11:00", endTime: "15:00" },
+        { key: "evening", label: "Ca tối", startTime: "15:00", endTime: "23:00" },
+      ],
+      staffList: [
+        {
+          id: "f1",
+          fullName: "FT",
+          employeeCode: "F1",
+          employmentType: "full_time",
+          workingDays: ["MON"],
+        },
+      ],
+    });
+
+    expect(screen.getAllByTitle("Theo lịch làm cố định")).toHaveLength(1);
   });
 
   it("part-time approved slot shows Có thể làm", () => {
@@ -109,35 +167,19 @@ describe("AvailabilitySnapshotModal", () => {
         onClose={() => {}}
         weekStart={new Date("2026-05-25T00:00:00.000Z")}
         weekEnd={new Date("2026-05-31T12:34:56.000Z")}
-        availabilityWindows={[
-          {
-            periodStart: "2026-05-25T00:00:00.000Z",
-            periodEnd: "2026-05-31T23:59:59.999+07:00",
-            status: "open",
-          },
-        ]}
+        availabilityWindows={[{ periodStart: "2026-05-25T00:00:00.000Z", periodEnd: "2026-05-31T23:59:59.999+07:00", status: "open" }]}
         shiftTemplates={shifts}
         staffList={[]}
         availabilitySubmissions={[]}
       />,
     );
 
-    expect(
-      screen.queryByText("Tuần này chưa có kỳ đăng ký đã chốt."),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Tuần này chưa có kỳ đăng ký đã chốt.")).not.toBeInTheDocument();
   });
 
   it("renders filter controls with localized enum labels", () => {
     renderModal({
-      staffList: [
-        {
-          id: "f1",
-          fullName: "Nhân viên chính thức",
-          employeeCode: "FT01",
-          employmentType: "full_time",
-          workingDays: ["MON"],
-        },
-      ],
+      staffList: [{ id: "f1", fullName: "Nhân viên chính thức", employeeCode: "FT01", employmentType: "full_time", workingDays: ["MON"] }],
     });
     expect(screen.getByPlaceholderText(/Nhập tên hoặc mã nhân viên/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Chỉ hiện nhân viên thiếu đăng ký/i)).toBeInTheDocument();
@@ -146,29 +188,9 @@ describe("AvailabilitySnapshotModal", () => {
 
   it("part-time unavailable slot remains unavailable instead of becoming missing", () => {
     renderModal({
-      staffList: [
-        {
-          id: "p1",
-          fullName: "Nhân viên bán thời gian",
-          employeeCode: "PT01",
-          employmentType: "part_time",
-        },
-      ],
-      availabilitySubmissions: [
-        {
-          employeeId: "p1",
-          status: "approved",
-          slots: [
-            {
-              date: "2026-05-25",
-              shiftType: "morning",
-              status: "unavailable",
-            },
-          ],
-        },
-      ],
+      staffList: [{ id: "p1", fullName: "Nhân viên bán thời gian", employeeCode: "PT01", employmentType: "part_time" }],
+      availabilitySubmissions: [{ employeeId: "p1", status: "approved", slots: [{ date: "2026-05-25", shiftType: "morning", status: "unavailable" }] }],
     });
-
     expect(screen.getAllByTitle("Không khả dụng").length).toBeGreaterThan(0);
   });
 
@@ -179,19 +201,7 @@ describe("AvailabilitySnapshotModal", () => {
 
   it("closes with Escape", () => {
     const onClose = vi.fn();
-    render(
-      <AvailabilitySnapshotModal
-        isOpen
-        onClose={onClose}
-        weekStart={weekStart}
-        weekEnd={weekEnd}
-        availabilityWindows={windows}
-        shiftTemplates={shifts}
-        staffList={[]}
-        availabilitySubmissions={[]}
-      />,
-    );
-
+    render(<AvailabilitySnapshotModal isOpen onClose={onClose} weekStart={weekStart} weekEnd={weekEnd} availabilityWindows={windows} shiftTemplates={shifts} staffList={[]} availabilitySubmissions={[]} />);
     fireEvent.keyDown(window, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
