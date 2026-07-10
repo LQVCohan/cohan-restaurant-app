@@ -4427,9 +4427,10 @@ ${reviewLine}`
           },
         },
       });
-      throw new Error(
-        `Trạng thái đơn nghỉ đã được duyệt trong DB nhưng gửi email thất bại: ${mailErr.message}`,
-      );
+      console.warn("[leave] Approval saved but decision email failed", {
+        requestId: String(request._id),
+        error: mailErr.message,
+      });
     }
     return mapLeaveOutput(populated);
   },
@@ -4517,9 +4518,10 @@ ${reviewLine}`
           },
         },
       });
-      throw new Error(
-        `Trạng thái đơn nghỉ đã được từ chối trong DB nhưng gửi email thất bại: ${mailErr.message}`,
-      );
+      console.warn("[leave] Rejection saved but decision email failed", {
+        requestId: String(request._id),
+        error: mailErr.message,
+      });
     }
     return mapLeaveOutput(populated);
   },
