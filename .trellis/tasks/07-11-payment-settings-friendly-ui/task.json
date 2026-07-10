@@ -1,0 +1,33 @@
+{
+  "id": "07-11-payment-settings-friendly-ui",
+  "name": "payment-settings-friendly-ui",
+  "title": "Simplify restaurant payment settings UI",
+  "description": "Make the MoMo and VNPAY connection screen understandable to restaurant managers, add recognizable provider branding and official setup links, and preserve the existing secure credential flow.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-payment-settings-ui",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "07-11-restaurant-payment-credentials",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/PaymentSettings/PaymentProviderSettingsPage.jsx",
+    "src/components/Dashboard_Manager/PaymentSettings/PaymentProviderSettingsPage.scss",
+    "src/components/Dashboard_Manager/PaymentSettings/PaymentProviderSettingsPage.test.jsx",
+    "src/layouts/ManagerLayout.jsx"
+  ],
+  "notes": "Frontend-only refinement. GraphQL credential contract, encryption, permission checks and runtime payment resolution remain unchanged.",
+  "meta": {
+    "skills": ["ponytail", "frontend-design", "taste-ui-redesign", "ui-ux-pro-max"]
+  }
+}
