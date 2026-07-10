@@ -1,0 +1,31 @@
+{
+  "id": "07-11-brand-header-compact",
+  "name": "brand-header-compact",
+  "title": "Tối ưu header quản lý chuỗi",
+  "description": "Thu gọn và cân lại header Brand, nhóm KPI, phạm vi và hành động theo một hierarchy rõ ràng trên desktop và mobile.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-brand-header",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Brand/BrandManagement.jsx",
+    "src/components/Dashboard_Manager/Brand/BrandManagement.css"
+  ],
+  "validation": {
+    "planned": [
+      "vitest run src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx",
+      "npm run build",
+      "manual responsive audit at 1440, 1024, 768, 430 and 390 px"
+    ],
+    "completed": [],
+    "notRun": []
+  },
+  "meta": {
+    "skills": ["ponytail", "ui-ux-pro-max", "frontend-design", "wcag-ui-audit"]
+  }
+}
