@@ -288,6 +288,17 @@ const cache = new InMemoryCache({
             };
           },
         },
+        menuItemsWithRecipes: {
+          keyArgs: ["restaurantId", "timeSlot", "search", "categoryId", "first", "after"],
+          merge(_existing, incoming) {
+            if (!incoming) return incoming;
+            return {
+              ...incoming,
+              items: [...(incoming.items || [])],
+              pageInfo: incoming.pageInfo ? { ...incoming.pageInfo } : incoming.pageInfo,
+            };
+          },
+        },
       },
     },
     MenuItem: {
