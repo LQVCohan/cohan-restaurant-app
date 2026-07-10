@@ -1,0 +1,32 @@
+{
+  "id": "07-10-staff-order-flow-audit",
+  "title": "Kiểm tra và sửa luồng order của staff",
+  "status": "in_progress",
+  "type": "full-stack-bugfix",
+  "scope": [
+    "src/components/Staff/StaffOrderingScoped.jsx",
+    "src/components/Staff/StaffOrdering.jsx",
+    "src/components/Staff/components/TableMap.jsx",
+    "src/components/Staff/components/TableMap.test.jsx",
+    "cohan-restaurant-backend/graphql/resolvers/order/accessGuard.js",
+    "cohan-restaurant-backend/graphql/resolvers/order/mutation.js",
+    "cohan-restaurant-backend/tests/resolvers/order-restaurant-access-guard.test.js"
+  ],
+  "rootCause": "The staff order screen resolves restaurant scope twice, maps table fields/statuses inconsistently, and emits quick-action names that its caller does not handle. Persisted item adjustment mutations also bypass the shared order restaurant/permission guard, while payment requests reject cashier accounts that carry payment.write but not order.update.",
+  "flow": "AppRouter /staff/orders -> StaffOrderingScoped/AuthProvider scope -> StaffOrdering GraphQL operations -> order schema -> composed order resolver guards/lifecycles -> inventory, kitchen and realtime side effects",
+  "validation": {
+    "planned": [
+      "vitest run src/components/Staff/components/TableMap.test.jsx src/components/Staff/StaffOrdering.semantic.test.jsx",
+      "vitest run --config vitest.backend.config.js cohan-restaurant-backend/tests/resolvers/order-restaurant-access-guard.test.js",
+      "npm run check:conflicts",
+      "npm run check:graphql",
+      "npm run build"
+    ],
+    "completed": [
+      "read repository workflow and relevant UI/ponytail skills",
+      "traced staff route, restaurant scope, UI actions, GraphQL schema, resolver composition, permissions, inventory/kitchen and realtime paths",
+      "audited existing tests and staff role permission seeds"
+    ],
+    "notRun": []
+  }
+}
