@@ -3,7 +3,16 @@ import { createPortal } from "react-dom";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { message } from "antd";
-import { FiArrowRight, FiCheck, FiClock, FiPackage, FiX } from "react-icons/fi";
+import {
+  FiArrowRight,
+  FiBookOpen,
+  FiCheck,
+  FiChevronDown,
+  FiClock,
+  FiList,
+  FiPackage,
+  FiX,
+} from "react-icons/fi";
 import { MY_BRANDS_QUERY } from "@/hooks/useBrandManagement";
 import "./RestaurantCuisineOnboarding.scss";
 
@@ -18,7 +27,8 @@ const GET_CUISINE_TEMPLATES = gql`
       ingredientCount
       menuCount
       menuItemCount
-      featuredItems
+      recipeCount
+      dishNames
     }
   }
 `;
@@ -76,7 +86,7 @@ const getErrorMessage = (error, fallback) =>
 
 const readFocusable = (node) =>
   [...(node?.querySelectorAll(
-    'button:not([disabled]), input:not([disabled]), [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    'button:not([disabled]), input:not([disabled]), summary, [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
   ) || [])].filter((element) => !element.hasAttribute("hidden"));
 
 export default function RestaurantCuisineOnboarding({ restaurant }) {
@@ -205,14 +215,15 @@ export default function RestaurantCuisineOnboarding({ restaurant }) {
           aria-label="Để sau"
           disabled={busy}
         >
-          <FiX />
+          <FiX aria-hidden="true" />
         </button>
 
         <div className="cuisine-onboarding__intro">
           <span className="cuisine-onboarding__eyebrow">THIẾT LẬP CHI NHÁNH MỚI</span>
           <h2 id="cuisine-onboarding-title">Chọn mô hình ẩm thực cho {restaurant.name}</h2>
           <p id="cuisine-onboarding-description">
-            COHAN sẽ tạo nguyên liệu, menu theo buổi, món ăn và công thức mẫu. Tất cả dữ liệu đều có thể chỉnh sửa trước khi xuất bản.
+            Xem trước dữ liệu của từng mẫu rồi chọn gói phù hợp. COHAN sẽ tạo món ăn,
+            nguyên liệu và công thức chế biến để bạn tiếp tục chỉnh sửa trước khi xuất bản.
           </p>
           <div className="cuisine-onboarding__draft-note">
             <FiClock aria-hidden="true" /> Chi nhánh vẫn ở trạng thái bản nháp sau khi thiết lập.
@@ -220,64 +231,113 @@ export default function RestaurantCuisineOnboarding({ restaurant }) {
         </div>
 
         {loading ? (
-          <div className="cuisine-onboarding__status" role="status">Đang tải các mô hình ẩm thực...</div>
+          <div className="cuisine-onboarding__status" role="status">
+            Đang tải các mô hình ẩm thực…
+          </div>
         ) : queryError ? (
           <div className="cuisine-onboarding__error" role="alert">
             {getErrorMessage(queryError, "Không thể tải danh sách mô hình ẩm thực.")}
+          </div>
+        ) : templates.length === 0 ? (
+          <div className="cuisine-onboarding__status" role="status">
+            Chưa có mô hình ẩm thực để lựa chọn.
           </div>
         ) : (
           <fieldset className="cuisine-onboarding__templates" disabled={busy}>
             <legend className="sr-only">Mô hình ẩm thực</legend>
             {templates.map((template) => {
               const selected = selectedKey === template.key;
+              const dishNames = Array.isArray(template.dishNames) ? template.dishNames : [];
+
               return (
-                <label
+                <article
                   key={template.key}
                   className={`cuisine-template-card ${selected ? "cuisine-template-card--selected" : ""}`}
                 >
-                  <input
-                    type="radio"
-                    name="restaurant-cuisine-template"
-                    value={template.key}
-                    checked={selected}
-                    onChange={(event) => {
-                      setSelectedKey(event.target.value);
-                      setSubmitError("");
-                    }}
-                  />
-                  <span className="cuisine-template-card__icon" aria-hidden="true">
-                    {TEMPLATE_ICONS[template.key] || "🍽️"}
-                  </span>
-                  <span className="cuisine-template-card__body">
-                    <span className="cuisine-template-card__heading">
-                      <strong>{template.name}</strong>
-                      {selected && <FiCheck aria-label="Đã chọn" />}
+                  <label className="cuisine-template-card__select">
+                    <input
+                      type="radio"
+                      name="restaurant-cuisine-template"
+                      value={template.key}
+                      checked={selected}
+                      onChange={(event) => {
+                        setSelectedKey(event.target.value);
+                        setSubmitError("");
+                      }}
+                    />
+                    <span className="cuisine-template-card__icon" aria-hidden="true">
+                      {TEMPLATE_ICONS[template.key] || "🍽️"}
                     </span>
-                    <span className="cuisine-template-card__description">{template.description}</span>
-                    <span className="cuisine-template-card__metrics">
-                      <span><FiPackage aria-hidden="true" /> {template.ingredientCount} nguyên liệu</span>
-                      <span>{template.menuCount} menu</span>
-                      <span>{template.menuItemCount} món</span>
+                    <span className="cuisine-template-card__body">
+                      <span className="cuisine-template-card__heading">
+                        <strong>{template.name}</strong>
+                        {selected ? (
+                          <span className="cuisine-template-card__selected-label">
+                            <FiCheck aria-hidden="true" /> Đã chọn
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="cuisine-template-card__description">
+                        {template.description}
+                      </span>
+                      <span className="cuisine-template-card__metrics">
+                        <span>
+                          <FiList aria-hidden="true" />
+                          <strong>{template.menuItemCount}</strong>
+                          <small>Món</small>
+                        </span>
+                        <span>
+                          <FiPackage aria-hidden="true" />
+                          <strong>{template.ingredientCount}</strong>
+                          <small>Nguyên liệu</small>
+                        </span>
+                        <span>
+                          <FiBookOpen aria-hidden="true" />
+                          <strong>{template.recipeCount}</strong>
+                          <small>Công thức</small>
+                        </span>
+                      </span>
                     </span>
-                    <span className="cuisine-template-card__featured">
-                      {template.featuredItems.join(" · ")}
-                    </span>
-                  </span>
-                </label>
+                  </label>
+
+                  <details className="cuisine-template-card__details">
+                    <summary>
+                      <span>Xem {dishNames.length || template.menuItemCount} món sẽ được tạo</span>
+                      <FiChevronDown aria-hidden="true" />
+                    </summary>
+                    <ul>
+                      {dishNames.map((dishName) => (
+                        <li key={dishName}>{dishName}</li>
+                      ))}
+                    </ul>
+                  </details>
+                </article>
               );
             })}
           </fieldset>
         )}
 
-        {submitError && <div className="cuisine-onboarding__error" role="alert">{submitError}</div>}
+        {submitError ? (
+          <div className="cuisine-onboarding__error" role="alert">{submitError}</div>
+        ) : null}
 
         <div className="cuisine-onboarding__footer">
           <div>
-            <button type="button" className="cuisine-onboarding__text-button" onClick={() => setDismissed(true)} disabled={busy}>
+            <button
+              type="button"
+              className="cuisine-onboarding__text-button"
+              onClick={() => setDismissed(true)}
+              disabled={busy}
+            >
               Để sau
             </button>
-            <button type="button" className="cuisine-onboarding__text-button" onClick={handleSkip} disabled={busy}>
-              {skipping ? "Đang chuyển..." : "Tôi sẽ tự thiết lập"}
+            <button
+              type="button"
+              className="cuisine-onboarding__text-button"
+              onClick={handleSkip}
+              disabled={busy}
+            >
+              {skipping ? "Đang chuyển…" : "Tôi sẽ tự thiết lập"}
             </button>
           </div>
           <button
@@ -286,8 +346,8 @@ export default function RestaurantCuisineOnboarding({ restaurant }) {
             onClick={handleApply}
             disabled={!selectedTemplate || loading || busy || Boolean(queryError)}
           >
-            {applying ? "Đang tạo dữ liệu mẫu..." : "Thiết lập nhà hàng"}
-            {!applying && <FiArrowRight aria-hidden="true" />}
+            {applying ? "Đang tạo dữ liệu mẫu…" : "Thiết lập nhà hàng"}
+            {!applying ? <FiArrowRight aria-hidden="true" /> : null}
           </button>
         </div>
       </div>
