@@ -32,6 +32,13 @@
     cursor: pointer;
   }
 
+  &__header-actions {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
   &__brand {
     min-width: 0;
     display: inline-flex;
@@ -82,6 +89,20 @@
       width: 20px;
       height: 20px;
     }
+
+    &:hover,
+    &.is-active {
+      color: var(--mobile-shell-accent);
+      background: #fff0e5;
+      box-shadow: inset 0 0 0 1px rgba(233, 101, 33, 0.22);
+    }
+  }
+
+  &__brand:focus-visible,
+  &__cart:focus-visible,
+  &__nav-item:focus-visible {
+    outline: 3px solid rgba(233, 101, 33, 0.26);
+    outline-offset: 2px;
   }
 
   &__cart-count {

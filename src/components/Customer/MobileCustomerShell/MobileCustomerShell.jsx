@@ -5,6 +5,7 @@ import {
   Home,
   LayoutDashboard,
   ReceiptText,
+  ScanLine,
   ShoppingCart,
   Store,
   UserRound,
@@ -31,9 +32,19 @@ const resolveTitle = (pathname) => {
   if (pathname.startsWith("/orders")) return "Đơn hàng";
   if (pathname.startsWith("/cart")) return "Giỏ hàng";
   if (pathname.startsWith("/checkout")) return "Thanh toán";
+  if (pathname.startsWith("/scan-table")) return "Quét mã bàn";
+  if (pathname.startsWith("/table/")) return "Bàn hiện tại";
+  if (pathname.startsWith("/track-delivery/")) return "Theo dõi đơn";
   if (pathname.startsWith("/profile")) return "Tài khoản";
   if (pathname.startsWith("/coupons")) return "Ưu đãi";
   if (pathname.startsWith("/combos")) return "Combo";
+  if (pathname.startsWith("/favorites")) return "Món yêu thích";
+  if (pathname.startsWith("/address-book")) return "Sổ địa chỉ";
+  if (pathname.startsWith("/help-center")) return "Trợ giúp";
+  if (pathname.startsWith("/notifications")) return "Thông báo";
+  if (pathname.startsWith("/wallet")) return "Ví của tôi";
+  if (pathname.startsWith("/contact")) return "Liên hệ";
+  if (pathname.startsWith("/search")) return "Tìm kiếm";
   return "Cohan";
 };
 
@@ -62,6 +73,9 @@ export default function MobileCustomerShell({
     (item) => !item.requiresAuth || Boolean(user && canAccessRoute(user, item.to)),
   );
   const navItemCount = visibleNavItems.length + 1;
+  const isTableQrFlow =
+    location.pathname === "/scan-table" ||
+    location.pathname.startsWith("/table/");
 
   return (
     <div className="mobile-customer-shell">
@@ -80,7 +94,7 @@ export default function MobileCustomerShell({
           <span>{resolveTitle(location.pathname)}</span>
         </button>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="mobile-customer-shell__header-actions">
           {showManagerShortcut && (
             <button
               type="button"
@@ -92,6 +106,15 @@ export default function MobileCustomerShell({
               <LayoutDashboard aria-hidden="true" />
             </button>
           )}
+          <button
+            type="button"
+            className={`mobile-customer-shell__cart mobile-customer-shell__scan${isTableQrFlow ? " is-active" : ""}`}
+            onClick={() => navigate("/scan-table")}
+            aria-label="Quét mã QR tại bàn"
+            title="Quét mã QR tại bàn"
+          >
+            <ScanLine aria-hidden="true" />
+          </button>
           <CustomerNotificationBell />
           <button
             type="button"

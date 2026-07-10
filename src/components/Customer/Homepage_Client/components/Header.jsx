@@ -1,5 +1,5 @@
 import React, { useContext, useState, useRef, useEffect, useMemo } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import useBrandManagement from "@/hooks/useBrandManagement";
@@ -190,17 +190,24 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
             { path: "/restaurants", label: "Nhà hàng" },
             { path: "/cus-menu", label: "Thực đơn" },
             { path: "/combos", label: "Combo" },
-            { path: "/contact", label: "Liên hệ" },
+            { path: "/scan-table", label: "Quét QR" },
           ].map((link) => (
-            <button
+            <NavLink
               key={link.path}
-              className={`header__nav-link ${
-                location.pathname === link.path ? "is-active" : ""
-              }`}
-              onClick={() => goto(link.path)}
+              to={link.path}
+              end={link.path === "/"}
+              className={({ isActive }) =>
+                `header__nav-link ${
+                  isActive ||
+                  (link.path === "/scan-table" &&
+                    location.pathname.startsWith("/table/"))
+                    ? "is-active"
+                    : ""
+                }`
+              }
             >
               {link.label}
-            </button>
+            </NavLink>
           ))}
         </nav>
 

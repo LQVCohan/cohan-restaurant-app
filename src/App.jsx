@@ -31,7 +31,9 @@ function ScopedAiChatbotWidget() {
     location.pathname.startsWith("/login") ||
     location.pathname.startsWith("/business/register") ||
     location.pathname.startsWith("/manager") ||
-    location.pathname.startsWith("/preview/")
+    location.pathname.startsWith("/preview/") ||
+    location.pathname === "/scan-table" ||
+    location.pathname.startsWith("/table/")
   ) {
     return null;
   }
