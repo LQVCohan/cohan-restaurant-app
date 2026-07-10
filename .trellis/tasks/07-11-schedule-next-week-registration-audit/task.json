@@ -1,12 +1,15 @@
 {
   "id": "07-11-schedule-next-week-registration-audit",
   "title": "Fix next-week availability registration and audit schedule page",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "area": "fullstack",
   "createdAt": "2026-07-11",
   "updatedAt": "2026-07-11",
   "validation": {
-    "completed": [],
+    "completed": [
+      "static schema-service-resolver-frontend flow audit",
+      "static review of manager registration action, publication guards, timezone boundaries and DOM panel ownership"
+    ],
     "notRun": [
       "targeted availability service/resolver Vitest",
       "targeted ScheduleManagement Vitest",
@@ -15,6 +18,13 @@
       "npm run check:conflicts",
       "npm run build",
       "browser smoke"
+    ],
+    "notes": [
+      "GitHub connector does not expose a runnable checkout or browser.",
+      "Manual next-week registration now opens on the first action and is protected by backend lifecycle/publication guards.",
+      "The large manager schedule component still mixes some lazy auto-schedule error state with availability panel props; runtime validation is required before claiming the entire page is error-free.",
+      "Staff scheduling policy query still relies on fallback values for probation/contract rows, and autoCreateWindow has no scheduler implementation in this task.",
+      "No migration was added for historical availability windows created with old noncanonical timezone boundaries."
     ]
   }
 }
