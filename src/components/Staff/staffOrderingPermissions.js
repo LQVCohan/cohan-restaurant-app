@@ -21,7 +21,7 @@ export function getStaffOrderingPermissions(
     canAssignCustomer: isElevated || isServer || isHost,
     canRemoveCustomer: isElevated || isHost,
     canCreateOrder: isRemoteOrder ? isElevated : canMutateOrder,
-    canRequestPayment: isElevated || isServer || isCashier,
+    canRequestPayment: canMutateOrder,
     canRemindItems: canMutateOrder,
     canAdjustItemQuantity: canMutateOrder,
     canRequestItemVoid: canMutateOrder,
@@ -29,6 +29,6 @@ export function getStaffOrderingPermissions(
     canEditPendingItem: canMutateOrder,
     canApplyCoupon: isElevated,
     canMoveOrMerge: isElevated,
-    canCheckout: isElevated || isServer || isCashier,
+    canCheckout: canMutateOrder,
   };
 }
