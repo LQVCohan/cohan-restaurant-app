@@ -73,6 +73,7 @@ import { installMergedTableLifecycleUi } from "./utils/installMergedTableLifecyc
 import { installTableEmptyStateEnhancement } from "./utils/installTableEmptyStateEnhancement";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 import "./styles/ResponsiveFoundation.css";
+import "./styles/CustomTableBuilderResponsiveFix.css";
 
 const normalizeLegacyManagerHash = () => {
   if (
