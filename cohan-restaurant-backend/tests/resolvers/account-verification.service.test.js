@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const restaurantScopeMocks = vi.hoisted(() => ({
   canAccessRestaurant: vi.fn(async () => true),
+  getStaffRestaurantIds: vi.fn(async () => []),
 }));
 const { store, mailerSendMail, eventLogCreate } = vi.hoisted(() => ({
   store: new Map(),
@@ -48,6 +49,7 @@ vi.mock("../../models/index.js", () => ({ User: MockUser, Restaurant: { exists: 
 vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
   ...(await importOriginal()),
   canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+  getStaffRestaurantIds: restaurantScopeMocks.getStaffRestaurantIds,
 }));
 vi.mock("../../lib/mailer.js", () => ({
   mailer: { sendMail: mailerSendMail },
@@ -64,6 +66,8 @@ describe("accountVerification.service", () => {
     mailerSendMail.mockReset();
     eventLogCreate.mockReset();
     restaurantScopeMocks.canAccessRestaurant.mockClear();
+    restaurantScopeMocks.getStaffRestaurantIds.mockReset();
+    restaurantScopeMocks.getStaffRestaurantIds.mockResolvedValue([]);
     const { Restaurant } = await import("../../models/index.js");
     Restaurant.exists.mockReset();
     Restaurant.exists.mockResolvedValue(true);
@@ -227,12 +231,14 @@ describe("accountVerification.service", () => {
 });
 
 describe("emailVerification resend scope", () => {
-  it("allows manager for assigned staff in scope", async () => {
+  it("allows manager for assigned staff from BrandMembership scope", async () => {
+    restaurantScopeMocks.getStaffRestaurantIds.mockResolvedValue(["restaurant-b"]);
     const { assertCanResendForTarget } = await emailVerificationResolverPromise;
     await expect(assertCanResendForTarget(
       { user: { id: "manager-1", roleName: "manager" } },
-      { _id: "staff-1", userType: "STAFF", restaurantForStaff: "restaurant-b" },
+      { _id: "staff-1", userType: "STAFF" },
     )).resolves.toBe(true);
+    expect(restaurantScopeMocks.getStaffRestaurantIds).toHaveBeenCalledWith("staff-1");
     expect(restaurantScopeMocks.canAccessRestaurant).toHaveBeenCalledWith(
       expect.objectContaining({ id: "manager-1" }),
       "restaurant-b",
