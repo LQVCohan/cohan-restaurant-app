@@ -50,6 +50,7 @@ import {
 } from "../../../utils/forYouAnalytics";
 import { recordForYouItemInteraction } from "../../../utils/forYouBehaviorSignals";
 import { getForYouReasonType } from "../../../utils/forYouRanking";
+import { resolveMenuTimeSlotAt } from "../../../utils/customerFoodNavigation";
 import Cart from "../Homepage_Client/components/Cart";
 import FoodAvailabilityWatchPanel from "./FoodAvailabilityWatchPanel";
 import "./FoodDetailV2.scss";
@@ -103,8 +104,8 @@ const CUSTOMER_MENU_ITEM = gql`
 `;
 
 const PUBLIC_RESTAURANT = gql`
-  query PublicRestaurantForFoodDetailV2($id: ID!) {
-    publicRestaurant(id: $id) {
+  query PublicRestaurantForFoodDetailV2($id: ID!, $at: DateTime) {
+    publicRestaurant(id: $id, at: $at) {
       id
       name
       canOrder
@@ -462,6 +463,19 @@ const FoodDetailV2 = () => {
     queryParams.get("restaurantId") ||
     null;
   const selectedVariantHint = location.state?.selectedVariantKey || null;
+  const serviceAt =
+    location.state?.serviceAt || queryParams.get("serviceAt") || null;
+  const selectedTimeSlot =
+    location.state?.timeSlot || queryParams.get("timeSlot") || null;
+  const expectedTimeSlot = serviceAt
+    ? resolveMenuTimeSlotAt(serviceAt)
+    : null;
+  const menuTimeSlotMismatch = Boolean(
+    serviceAt &&
+      selectedTimeSlot &&
+      expectedTimeSlot &&
+      selectedTimeSlot !== expectedTimeSlot,
+  );
 
   const { user, isAuthenticated } = useContext(AuthContext) || {};
   const roleName = String(
@@ -574,7 +588,7 @@ const FoodDetailV2 = () => {
   const { data: restaurantData, loading: restaurantLoading } = useQuery(
     PUBLIC_RESTAURANT,
     {
-      variables: { id: dish?.restaurantId },
+      variables: { id: dish?.restaurantId, at: serviceAt },
       skip: !dish?.restaurantId,
       fetchPolicy: "cache-and-network",
     },
@@ -793,10 +807,11 @@ const FoodDetailV2 = () => {
   const [addCartItem, { loading: adding }] = useMutation(ADD_CART_ITEM);
   const availability = getMenuItemAvailability(dish || {});
   const catalogOrderable = dish ? canCustomerOrderMenuItem(dish) : false;
-  const restaurantCanOrder = Boolean(restaurant?.canOrder);
-  const restaurantBlockedReason = getCannotOrderReason(
-    restaurant?.openingStatus,
-  );
+  const restaurantCanOrder =
+    Boolean(restaurant?.canOrder) && !menuTimeSlotMismatch;
+  const restaurantBlockedReason = menuTimeSlotMismatch
+    ? "Món này không phục vụ trong khung giờ đặt bàn."
+    : getCannotOrderReason(restaurant?.openingStatus);
   const maxAvailable = Number(liveState?.maxAvailableQty || 0);
   const outOfStock =
     !catalogOrderable ||
@@ -887,6 +902,7 @@ const FoodDetailV2 = () => {
         restaurantId: dish.restaurantId,
         menuId: dish.menuId,
         categoryId: dish.categoryId,
+        serviceAt,
         name: returnedItem.name || dish.name,
         price: Number(returnedItem.price || baseUnitPrice),
         modifiersPrice: Number(returnedItem.modifiersPrice || 0),
@@ -950,6 +966,7 @@ const FoodDetailV2 = () => {
             note: normalizeNote(note) || null,
             servingVariantKey: selectedVariant.key,
             selectedModifiers: modifierSelections,
+            serviceAt,
           },
         },
       });
