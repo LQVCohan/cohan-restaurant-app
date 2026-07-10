@@ -8,8 +8,11 @@ import {
   classifyCategoryFromName,
   INGREDIENT_CATEGORY_RULES,
   slugify,
+  toEnglishCategoryName,
   toVietnameseIngredientCategoryName,
 } from "./categoryAi.shared.js";
+
+const toIngredientCategorySlug = (name) => slugify(toEnglishCategoryName(name));
 
 const classifyCategoryFromIngredient = (ingredient, existingCategoryName) => {
   const currentName = String(existingCategoryName || ingredient?.category || "").trim();
@@ -80,7 +83,7 @@ async function runIngredientCategorySync(restaurantId, ctx) {
         const linked = existingById.get(String(ingredient.ingredientCategoryId || ""));
         const result = classifyCategoryFromIngredient(ingredient, linked?.name);
         const normalizedName = toVietnameseIngredientCategoryName(result.categoryName);
-        const slug = slugify(normalizedName);
+        const slug = toIngredientCategorySlug(normalizedName);
         if (!slug) {
           stats.skipped += 1;
           continue;
@@ -153,7 +156,7 @@ async function runIngredientCategorySync(restaurantId, ctx) {
     for (const ingredient of ingredients) {
       const target = targetCategoryByIngredientId.get(String(ingredient._id));
       const current = toVietnameseIngredientCategoryName(ingredient.category);
-      const targetSlug = slugify(target);
+      const targetSlug = toIngredientCategorySlug(target);
       const targetCategory = syncedCategoryBySlug.get(targetSlug);
       if (!target) {
         stats.skipped += 1;
@@ -237,7 +240,7 @@ export default {
     await requireRestaurantPermission(ctx, input.restaurantId, PERMISSIONS.INVENTORY_WRITE);
     const name = toVietnameseIngredientCategoryName(input?.name);
     if (!name) throw new GraphQLError("Category name is required");
-    const slug = slugify(name);
+    const slug = toIngredientCategorySlug(name);
     if (!slug) throw new GraphQLError("Category name is invalid");
 
     const doc = await IngredientCategory.findOneAndUpdate(
@@ -268,7 +271,7 @@ export default {
       let renamedName = null;
       if (typeof name === "string") {
         const nextName = toVietnameseIngredientCategoryName(name);
-        const nextSlug = slugify(nextName);
+        const nextSlug = toIngredientCategorySlug(nextName);
         if (!nextName || !nextSlug) {
           throw new GraphQLError("Category name is invalid");
         }
