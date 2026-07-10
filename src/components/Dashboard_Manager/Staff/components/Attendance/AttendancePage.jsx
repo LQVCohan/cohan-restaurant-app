@@ -25,6 +25,16 @@ import {
 import { buildAttendanceReconciliationSummary } from "./attendanceReconciliationUtils";
 
 
+export const resolveAttendanceRestaurantId = ({
+  queryRestaurantId,
+  userRestaurantId,
+  records = [],
+}) =>
+  queryRestaurantId ||
+  userRestaurantId ||
+  records[0]?.restaurantId ||
+  null;
+
 const getRestaurantIdFromUrl = () => {
   if (typeof window === "undefined") return "";
   return new URLSearchParams(window.location.search || "").get("restaurantId") || "";
@@ -713,11 +723,11 @@ const AttendancePage = ({ restaurantId: scopedRestaurantId = "" } = {}) => {
     }
   };
 
-  const effectiveRestaurantId =
-    queryRestaurantId ||
-    userRestaurantId ||
-    records[0]?.restaurantId ||
-    null;
+  const effectiveRestaurantId = resolveAttendanceRestaurantId({
+    queryRestaurantId,
+    userRestaurantId,
+    records,
+  });
 
   const isReviewer = canReviewCorrection(user);
   const isSubmittingCorrection = createCorrectionState.loading;
