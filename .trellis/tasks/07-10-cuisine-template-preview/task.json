@@ -1,0 +1,51 @@
+{
+  "id": "07-10-cuisine-template-preview",
+  "name": "cuisine-template-preview",
+  "title": "Show complete starter template contents before restaurant setup",
+  "description": "Expose each cuisine template's full dish list and recipe count, then present them through an accessible expandable card in the new-restaurant onboarding dialog.",
+  "status": "completed",
+  "dev_type": "fullstack",
+  "scope": "restaurant-initial-setup",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": "2026-07-10",
+  "branch": "feat/cuisine-template-preview-20260710",
+  "base_branch": "main",
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/restaurantCuisineTemplate.service.js",
+    "cohan-restaurant-backend/graphql/schema/restaurantInitialSetup.graphql",
+    "cohan-restaurant-backend/tests/services/restaurant-cuisine-template.service.test.js",
+    "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.jsx",
+    "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.scss",
+    "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.test.jsx"
+  ],
+  "validation": {
+    "passed": [
+      "targeted backend cuisine template test",
+      "targeted RestaurantCuisineOnboarding component test",
+      "npm run check:graphql",
+      "npm run check:conflicts",
+      "npm run build",
+      "standard CI backend lint, tests, Menu RBAC and build",
+      "standard CI frontend unit tests and Menu RBAC"
+    ],
+    "notRun": [
+      "authenticated browser visual verification on the user's localhost data",
+      "real-device mobile verification"
+    ]
+  },
+  "meta": {
+    "skills": [
+      "ponytail",
+      "ui-ux-pro-max",
+      "frontend-design",
+      "redesign-existing-projects",
+      "taste-ui-redesign",
+      "react-ui-performance",
+      "web-design-guidelines",
+      "wcag-ui-audit"
+    ]
+  }
+}

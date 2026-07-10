@@ -15,7 +15,9 @@ type RestaurantCuisineTemplate {
   ingredientCount: Int!
   menuCount: Int!
   menuItemCount: Int!
+  recipeCount: Int!
   featuredItems: [String!]!
+  dishNames: [String!]!
 }
 
 type RestaurantCuisineTemplateApplyResult {

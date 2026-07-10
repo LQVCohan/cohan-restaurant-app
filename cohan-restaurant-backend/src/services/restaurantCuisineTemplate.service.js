@@ -40,7 +40,16 @@ async function safeAuditLog(payload) {
 }
 
 export function listCuisineTemplates() {
-  return listRestaurantCuisineTemplateSummaries();
+  return listRestaurantCuisineTemplateSummaries().map((summary) => {
+    const template = getRestaurantCuisineTemplate(summary.key);
+    const menuCatalog = template?.sections?.menuCatalog;
+
+    return {
+      ...summary,
+      recipeCount: menuCatalog?.recipes?.length || 0,
+      dishNames: (menuCatalog?.menuItems || []).map((item) => item.name),
+    };
+  });
 }
 
 export function buildCuisineTemplateSnapshot({ restaurant, template, actorId } = {}) {

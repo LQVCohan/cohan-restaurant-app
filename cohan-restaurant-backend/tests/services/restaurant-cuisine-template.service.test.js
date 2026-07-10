@@ -6,22 +6,32 @@ import {
   getRestaurantCuisineTemplate,
   listRestaurantCuisineTemplateSummaries,
 } from "../../src/data/restaurantCuisineTemplates.js";
+import { listCuisineTemplates } from "../../src/services/restaurantCuisineTemplate.service.js";
 
 function collectLegacyIds(items = []) {
   return new Set(items.map((item) => item.legacyId).filter(Boolean));
 }
 
 describe("restaurant cuisine starter templates", () => {
-  it("provides seven versioned packages with ten ingredients each", () => {
+  it("provides seven versioned packages with complete preview counts and dish names", () => {
     expect(RESTAURANT_CUISINE_TEMPLATES).toHaveLength(7);
     expect(listRestaurantCuisineTemplateSummaries()).toHaveLength(7);
 
+    const summaries = listCuisineTemplates();
+    expect(summaries).toHaveLength(7);
+
     for (const template of RESTAURANT_CUISINE_TEMPLATES) {
+      const summary = summaries.find((item) => item.key === template.key);
+      const menuCatalog = template.sections.menuCatalog;
+
       expect(template.version).toBeGreaterThan(0);
       expect(template.ingredientCount).toBe(10);
       expect(template.sections.inventoryMaster.ingredients).toHaveLength(10);
-      expect(template.menuCount).toBe(template.sections.menuCatalog.menus.length);
-      expect(template.menuItemCount).toBe(template.sections.menuCatalog.menuItems.length);
+      expect(template.menuCount).toBe(menuCatalog.menus.length);
+      expect(template.menuItemCount).toBe(menuCatalog.menuItems.length);
+      expect(summary?.recipeCount).toBe(menuCatalog.recipes.length);
+      expect(summary?.dishNames).toEqual(menuCatalog.menuItems.map((item) => item.name));
+      expect(summary?.dishNames).toHaveLength(template.menuItemCount);
       expect(getRestaurantCuisineTemplate(template.key)?.key).toBe(template.key);
     }
   });
