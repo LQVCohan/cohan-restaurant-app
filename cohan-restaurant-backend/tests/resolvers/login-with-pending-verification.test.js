@@ -57,7 +57,7 @@ function mockUserLookup(user) {
     populate: vi.fn().mockReturnValue({
       lean: vi.fn().mockImplementation(async () => ({
         ...user,
-        role: { slug: "manager" },
+        role: user.role || { slug: "manager" },
       })),
     }),
   });
@@ -105,7 +105,7 @@ describe("loginWithPendingVerification", () => {
     );
   });
 
-  it("keeps an unverified pending account on the verification-session path", async () => {
+  it("keeps an unverified pending non-staff account on the verification-session path", async () => {
     const user = userDocument();
     mockUserLookup(user);
 
@@ -122,6 +122,61 @@ describe("loginWithPendingVerification", () => {
       "login_pending_verification",
       expect.objectContaining({ status: "pending" }),
     );
+  });
+
+  it("verifies and activates a pending staff account after a successful email login", async () => {
+    const user = userDocument({
+      userType: "STAFF",
+      role: { slug: "staff" },
+      emailVerifyToken: "legacy-token",
+      emailVerifyTokenHash: "legacy-hash",
+      emailVerifyTokenExp: new Date(Date.now() + 60_000),
+    });
+    mockUserLookup(user);
+
+    const result = await loginWithPendingVerification(
+      null,
+      { email: "PAL@COHAN.LOCAL", password: "correct-password" },
+      { request: { ip: "127.0.0.1", headers: {} } },
+    );
+
+    expect(user.checkPassword).toHaveBeenCalledWith("correct-password");
+    expect(user.save).toHaveBeenCalledOnce();
+    expect(user).toMatchObject({
+      status: "active",
+      emailVerified: true,
+      verificationLastChannel: "email",
+      verificationLastStatus: "verified",
+      verificationLastError: null,
+      emailVerifyToken: null,
+      emailVerifyTokenHash: null,
+      emailVerifyTokenExp: null,
+    });
+    expect(user.emailVerifiedAt).toBeInstanceOf(Date);
+    expect(user.verifiedAt).toBeInstanceOf(Date);
+    expect(result).toMatchObject({
+      token: "access-token",
+      user: { status: "active", emailVerified: true },
+    });
+  });
+
+  it("does not email-verify pending staff when they log in with a username", async () => {
+    const user = userDocument({
+      userType: "STAFF",
+      username: "staff.one",
+      role: { slug: "staff" },
+    });
+    mockUserLookup(user);
+
+    const result = await loginWithPendingVerification(
+      null,
+      { username: user.username, password: "correct-password" },
+      { request: { ip: "127.0.0.1", headers: {} } },
+    );
+
+    expect(user.save).not.toHaveBeenCalled();
+    expect(user.emailVerified).toBe(false);
+    expect(result.user.status).toBe("pending");
   });
 
   it("still rejects blocked accounts even when their email is verified", async () => {
