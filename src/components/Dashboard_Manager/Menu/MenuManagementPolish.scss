@@ -97,6 +97,50 @@
   outline: 0 !important;
 }
 
+/* The React state and card layouts already support grid/list; keep their switch visible. */
+.manager-layout--menu .toolbar-container--manager .view-toggle {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  gap: 2px !important;
+  padding: 3px !important;
+  border: 1px solid var(--mm-work-border, #d8d2c8) !important;
+  border-radius: 13px !important;
+  background: rgba(255, 253, 249, 0.98) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.88) !important;
+}
+
+.manager-layout--menu .toolbar-container--manager .view-toggle .toggle-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--mm-work-muted, #667085) !important;
+  box-shadow: none !important;
+}
+
+.manager-layout--menu .toolbar-container--manager .view-toggle .toggle-btn:hover:not(.active) {
+  background: #f2faf7 !important;
+  color: var(--mm-work-accent-dark, #17554d) !important;
+}
+
+.manager-layout--menu .toolbar-container--manager .view-toggle .toggle-btn.active {
+  background: var(--mm-work-accent-soft, #e8f4ef) !important;
+  color: var(--mm-work-accent-dark, #17554d) !important;
+  box-shadow: 0 5px 12px rgba(31, 106, 96, 0.13) !important;
+}
+
+.manager-layout--menu .toolbar-container--manager .view-toggle .toggle-btn svg {
+  width: 17px !important;
+  height: 17px !important;
+}
+
 /* Show menu photos as complete dish previews instead of over-cropped banners. */
 .manager-layout--menu .menu-item-card .card-image-wrapper {
   height: 158px !important;
@@ -239,6 +283,17 @@
 
   .modal-overlay .modal-container.menu-item-modal-modern .method-card .method-grid {
     grid-template-columns: minmax(145px, 1fr) minmax(128px, 0.82fr) minmax(128px, 0.78fr) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .manager-layout--menu .toolbar-container--manager .view-toggle {
+    width: 100% !important;
+  }
+
+  .manager-layout--menu .toolbar-container--manager .view-toggle .toggle-btn {
+    flex: 1 1 50% !important;
+    width: auto !important;
   }
 }
 
