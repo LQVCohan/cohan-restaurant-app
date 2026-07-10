@@ -200,6 +200,7 @@ describe("ComboManagement", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Tắt Combo sáng" }));
     await waitFor(() => expect(apolloMocks.toggleCombo).toHaveBeenCalledWith({ variables: { id: "c1", isActive: false } }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Xóa Combo sáng" })).toBeEnabled());
 
     fireEvent.click(screen.getByRole("button", { name: "Xóa Combo sáng" }));
     await waitFor(() => expect(apolloMocks.deleteCombo).toHaveBeenCalledWith({ variables: { id: "c1" } }));
