@@ -4,6 +4,7 @@ import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { ConfirmedOrderPrintMutation } from "./confirmedOrderPrintMutation.js";
+import { emitOrderEvent } from "./helper/emitOrderEvent.js";
 
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -41,6 +42,36 @@ async function loadScopedOrder({ orderId, restaurantId, ctx, permissionCode }) {
     await requireRestaurantAccess(ctx, order.restaurantId);
   }
   return order;
+}
+
+async function runPersistedOrderMutation({
+  mutation,
+  mutationName,
+  permissionCode,
+  parent,
+  args,
+  ctx,
+  info,
+}) {
+  const persistedOrder = await loadScopedOrder({
+    orderId: args?.input?.orderId,
+    ctx,
+    permissionCode,
+  });
+  const result = await mutation[mutationName].call(
+    mutation,
+    parent,
+    args,
+    ctx,
+    info,
+  );
+  await emitOrderEvent(
+    ctx,
+    persistedOrder.restaurantId,
+    "ORDER_UPDATED",
+    result,
+  );
+  return result;
 }
 
 async function assertOrderIdsBelongToRestaurant({ restaurantId, orderIds }) {
@@ -154,48 +185,63 @@ export function withOrderRestaurantAccessGuards(mutation = {}) {
     },
 
     async adjustOrderItemQuantity(parent, args, ctx, info) {
-      await loadScopedOrder({
-        orderId: args?.input?.orderId,
-        ctx,
+      return runPersistedOrderMutation({
+        mutation,
+        mutationName: "adjustOrderItemQuantity",
         permissionCode: PERMISSIONS.ORDER_UPDATE,
+        parent,
+        args,
+        ctx,
+        info,
       });
-      return mutation.adjustOrderItemQuantity.call(mutation, parent, args, ctx, info);
     },
 
     async requestOrderItemVoid(parent, args, ctx, info) {
-      await loadScopedOrder({
-        orderId: args?.input?.orderId,
-        ctx,
+      return runPersistedOrderMutation({
+        mutation,
+        mutationName: "requestOrderItemVoid",
         permissionCode: PERMISSIONS.ORDER_UPDATE,
+        parent,
+        args,
+        ctx,
+        info,
       });
-      return mutation.requestOrderItemVoid.call(mutation, parent, args, ctx, info);
     },
 
     async reviewOrderItemVoid(parent, args, ctx, info) {
-      await loadScopedOrder({
-        orderId: args?.input?.orderId,
-        ctx,
+      return runPersistedOrderMutation({
+        mutation,
+        mutationName: "reviewOrderItemVoid",
         permissionCode: PERMISSIONS.ORDER_CANCEL,
+        parent,
+        args,
+        ctx,
+        info,
       });
-      return mutation.reviewOrderItemVoid.call(mutation, parent, args, ctx, info);
     },
 
     async requestOrderItemReturn(parent, args, ctx, info) {
-      await loadScopedOrder({
-        orderId: args?.input?.orderId,
-        ctx,
+      return runPersistedOrderMutation({
+        mutation,
+        mutationName: "requestOrderItemReturn",
         permissionCode: PERMISSIONS.ORDER_UPDATE,
+        parent,
+        args,
+        ctx,
+        info,
       });
-      return mutation.requestOrderItemReturn.call(mutation, parent, args, ctx, info);
     },
 
     async reviewOrderItemReturn(parent, args, ctx, info) {
-      await loadScopedOrder({
-        orderId: args?.input?.orderId,
-        ctx,
+      return runPersistedOrderMutation({
+        mutation,
+        mutationName: "reviewOrderItemReturn",
         permissionCode: PERMISSIONS.ORDER_CANCEL,
+        parent,
+        args,
+        ctx,
+        info,
       });
-      return mutation.reviewOrderItemReturn.call(mutation, parent, args, ctx, info);
     },
   };
 }
