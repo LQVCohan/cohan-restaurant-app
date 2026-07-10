@@ -1,0 +1,31 @@
+{
+  "id": "07-10-staff-order-mobile-selection-flow",
+  "title": "Tối ưu luồng chọn bàn sang menu trên mobile",
+  "status": "in_progress",
+  "type": "frontend-responsive-flow",
+  "scope": [
+    "src/components/Staff/StaffOrdering.jsx",
+    "src/components/Staff/StaffOrdering.scss",
+    "src/components/Staff/components/MenuOrdering.jsx",
+    "src/components/Staff/components/MenuOrdering.scss",
+    "src/components/Staff/components/CartBottomSheet.scss",
+    "src/components/Staff/components/StaffProofCaptureModal.scss",
+    "src/components/Staff/StaffOrdering.selection.test.jsx",
+    "src/components/Staff/components/MenuOrdering.test.jsx"
+  ],
+  "rootCause": "Selecting a table only updates selectedTableId, so the mobile screen remains on the table tab and renders the desktop-oriented selected-table side panel. The selected table is not restored after reload, while the menu item, cart and proof branches still use fixed vh sizing and desktop spacing that can overflow mobile browser chrome and safe areas.",
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Staff/StaffOrdering.selection.test.jsx src/components/Staff/components/MenuOrdering.test.jsx",
+      "npm run check:conflicts",
+      "npm run build",
+      "manual 390x844 and 430x932 flow review"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, taste-ui-redesign, redesign-existing-projects and ponytail skills",
+      "traced TABLES_QUERY through StaffOrdering mapping, selectedTableId, TableMap selection, MenuOrdering, CartBottomSheet and StaffProofCaptureModal",
+      "inspected the current mobile screenshots and latest target files"
+    ],
+    "notRun": []
+  }
+}
