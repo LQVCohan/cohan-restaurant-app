@@ -1,0 +1,26 @@
+{
+  "id": "07-10-table3d-ar-loading-scale-fix",
+  "title": "Sửa trạng thái tải và kích thước AR bàn 3D",
+  "status": "in_progress",
+  "type": "frontend-fix",
+  "scope": [
+    "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DQuickGuide.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.test.jsx"
+  ],
+  "rootCause": "The modal only samples model-viewer's load and canActivateAR state through a post-render effect. Cached/fast models can already be loaded before listeners attach, leaving progress at 0% and the external AR button disabled while model-viewer's built-in AR control is active. The modal also sets ar-scale=fixed, preventing users from correcting oversized native AR placement.",
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.test.jsx",
+      "npm run check:conflicts",
+      "npm run build",
+      "manual Android ngrok AR floor scan"
+    ],
+    "completed": [
+      "read repository workflow and ponytail skill",
+      "traced catalog model metadata through the modal, model-viewer and external AR action",
+      "reviewed the user's Android Scene Viewer screenshots"
+    ],
+    "notRun": []
+  }
+}
