@@ -1,0 +1,300 @@
+name: apply AI knowledge bulk approval fix
+
+on:
+  push:
+    branches:
+      - fix/ai-knowledge-bulk-approve
+    paths:
+      - .github/workflows/apply-ai-knowledge-bulk-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/ai-knowledge-bulk-approve
+          fetch-depth: 0
+
+      - name: Patch suggestion bulk approval
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          page_path = Path("src/components/Dashboard_Manager/Customer/AiChatbotKnowledgePage.jsx")
+          page = page_path.read_text(encoding="utf-8")
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected 1 match, found {count}")
+              return text.replace(old, new, 1)
+
+          page = replace_once(
+              page,
+              '''  const suggestions = (
+            suggestionsQuery.data?.restaurantAiChatbotKnowledgeSuggestions || []
+          ).filter(Boolean);
+          const feedback = (
+          ''',
+              '''  const suggestions = (
+            suggestionsQuery.data?.restaurantAiChatbotKnowledgeSuggestions || []
+          ).filter(Boolean);
+          const allSuggestionsSelected =
+            suggestions.length > 0 &&
+            suggestions.every((item) => selectedSuggestions.includes(item.id));
+          const feedback = (
+          ''',
+              "all suggestions selected state",
+          )
+
+          page = replace_once(
+              page,
+              '''  const selectedAction = (ids, action, message) =>
+            runAction(() => action({ variables: { input: { ids } } }), message);
+          ''',
+              '''  const approveSuggestionItem = (item) =>
+            approveSuggestion({
+              variables: {
+                id: item.id,
+                input: {
+                  title: item.suggestedTitle || item.question,
+                  content: item.suggestedContent || item.question,
+                  category: item.category || "suggestion",
+                  tags: item.tags || [],
+                  enabled: true,
+                  priority: 20,
+                  sourceType: "suggestion",
+                },
+              },
+            });
+          const approveSelectedSuggestions = () =>
+            runAction(
+              async () => {
+                for (const item of suggestions) {
+                  if (selectedSuggestions.includes(item.id)) {
+                    await approveSuggestionItem(item);
+                  }
+                }
+                setSelectedSuggestions([]);
+              },
+              `Đã duyệt ${selectedSuggestions.length} gợi ý thành tri thức.`,
+            );
+          const selectedAction = (ids, action, message) =>
+            runAction(() => action({ variables: { input: { ids } } }), message);
+          ''',
+              "bulk approval handler",
+          )
+
+          page = replace_once(
+              page,
+              '''          <span className="ai-admin-selection">
+                    {selectedSuggestions.length} mục đã chọn
+                  </span>
+                  <button
+                    type="button"
+                    className="ai-admin-button--secondary"
+                    disabled={!canModerateAi || !selectedSuggestions.length}
+                    title={disabledModerateTitle}
+                    onClick={() =>
+                      selectedAction(
+                        selectedSuggestions,
+                        bulkDismissSuggestion,
+                        "Đã bỏ qua các gợi ý đã chọn.",
+                      )
+                    }
+                  >
+                    Bỏ qua
+                  </button>
+          ''',
+              '''          <span className="ai-admin-selection">
+                    {selectedSuggestions.length} mục đã chọn
+                  </span>
+                  <button
+                    type="button"
+                    className="ai-admin-button--secondary"
+                    disabled={!canModerateAi || !suggestions.length}
+                    title={disabledModerateTitle}
+                    onClick={() =>
+                      setSelectedSuggestions(
+                        allSuggestionsSelected
+                          ? []
+                          : suggestions.map((item) => item.id),
+                      )
+                    }
+                  >
+                    {allSuggestionsSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!canModerateAi || !selectedSuggestions.length}
+                    title={disabledModerateTitle}
+                    onClick={approveSelectedSuggestions}
+                  >
+                    Duyệt mục đã chọn
+                  </button>
+                  <button
+                    type="button"
+                    className="ai-admin-button--secondary"
+                    disabled={!canModerateAi || !selectedSuggestions.length}
+                    title={disabledModerateTitle}
+                    onClick={() =>
+                      selectedAction(
+                        selectedSuggestions,
+                        bulkDismissSuggestion,
+                        "Đã bỏ qua các gợi ý đã chọn.",
+                      )
+                    }
+                  >
+                    Bỏ qua
+                  </button>
+          ''',
+              "suggestion bulk controls",
+          )
+
+          page = replace_once(
+              page,
+              '''              <input
+                        className="ai-admin-card__checkbox"
+                        type="checkbox"
+                        checked={selectedSuggestions.includes(item.id)}
+          ''',
+              '''              <input
+                        className="ai-admin-card__checkbox"
+                        aria-label={`suggestion-${item.id}`}
+                        type="checkbox"
+                        checked={selectedSuggestions.includes(item.id)}
+          ''',
+              "suggestion checkbox label",
+          )
+
+          page = replace_once(
+              page,
+              '''                      () =>
+                                approveSuggestion({
+                                  variables: {
+                                    id: item.id,
+                                    input: {
+                                      title: item.suggestedTitle || item.question,
+                                      content: item.suggestedContent || item.question,
+                                      category: item.category || "suggestion",
+                                      tags: item.tags || [],
+                                      enabled: true,
+                                      priority: 20,
+                                      sourceType: "suggestion",
+                                    },
+                                  },
+                                }),
+          ''',
+              '''                      () => approveSuggestionItem(item),
+          ''',
+              "reuse suggestion approval",
+          )
+
+          page_path.write_text(page, encoding="utf-8")
+
+          test_path = Path("src/components/Dashboard_Manager/Customer/AiChatbotKnowledgePage.test.jsx")
+          test = test_path.read_text(encoding="utf-8")
+
+          test = replace_once(
+              test,
+              '''  bulkDismissSuggestion: vi.fn(async () => ({})), bulkDeleteSuggestion: vi.fn(async () => ({})),
+          ''',
+              '''  approveSuggestion: vi.fn(async () => ({})), bulkDismissSuggestion: vi.fn(async () => ({})), bulkDeleteSuggestion: vi.fn(async () => ({})),
+          ''',
+              "approval mock",
+          )
+
+          test = replace_once(
+              test,
+              '''    if (t.includes("importRestaurantAiChatbotKnowledge")) return [m.importKnowledge, {}];
+              if (t.includes("bulkDismissRestaurantAiChatbotKnowledgeSuggestions")) return [m.bulkDismissSuggestion, {}];
+          ''',
+              '''    if (t.includes("importRestaurantAiChatbotKnowledge")) return [m.importKnowledge, {}];
+              if (t.includes("approveRestaurantAiChatbotKnowledgeSuggestion")) return [m.approveSuggestion, {}];
+              if (t.includes("bulkDismissRestaurantAiChatbotKnowledgeSuggestions")) return [m.bulkDismissSuggestion, {}];
+          ''',
+              "approval mutation mock",
+          )
+
+          test = replace_once(
+              test,
+              '''  it("suggestions bulk actions call mutations", async () => {
+            render(<AiChatbotKnowledgePage />);
+            fireEvent.click(screen.getByRole("button", { name: "Gợi ý" }));
+            fireEvent.click(screen.getByRole("checkbox"));
+            fireEvent.click(screen.getAllByRole("button", { name: "Bỏ qua" })[0]);
+            fireEvent.click(screen.getAllByRole("button", { name: "Xóa" })[0]);
+            fireEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Xóa" }));
+            await waitFor(() => expect(m.bulkDismissSuggestion).toHaveBeenCalled());
+            expect(m.bulkDeleteSuggestion).toHaveBeenCalled();
+          });
+          ''',
+              '''  it("suggestions bulk actions select all, approve, dismiss and delete", async () => {
+            render(<AiChatbotKnowledgePage />);
+            fireEvent.click(screen.getByRole("button", { name: "Gợi ý" }));
+
+            fireEvent.click(screen.getByRole("button", { name: "Chọn tất cả" }));
+            expect(screen.getByRole("button", { name: "Bỏ chọn tất cả" })).toBeInTheDocument();
+            fireEvent.click(screen.getByRole("button", { name: "Duyệt mục đã chọn" }));
+            await waitFor(() =>
+              expect(m.approveSuggestion).toHaveBeenCalledWith({
+                variables: {
+                  id: "s1",
+                  input: {
+                    title: "sq",
+                    content: "sq",
+                    category: "suggestion",
+                    tags: [],
+                    enabled: true,
+                    priority: 20,
+                    sourceType: "suggestion",
+                  },
+                },
+              }),
+            );
+
+            await waitFor(() =>
+              expect(screen.getByRole("button", { name: "Chọn tất cả" })).toBeInTheDocument(),
+            );
+            fireEvent.click(screen.getByRole("button", { name: "Chọn tất cả" }));
+            fireEvent.click(screen.getAllByRole("button", { name: "Bỏ qua" })[0]);
+            fireEvent.click(screen.getAllByRole("button", { name: "Xóa" })[0]);
+            fireEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Xóa" }));
+            await waitFor(() => expect(m.bulkDismissSuggestion).toHaveBeenCalled());
+            expect(m.bulkDeleteSuggestion).toHaveBeenCalled();
+          });
+          ''',
+              "suggestion bulk action test",
+          )
+
+          test_path.write_text(test, encoding="utf-8")
+          PY
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run targeted test
+        run: npx vitest run src/components/Dashboard_Manager/Customer/AiChatbotKnowledgePage.test.jsx
+
+      - name: Commit fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/apply-ai-knowledge-bulk-fix.yml
+          git add src/components/Dashboard_Manager/Customer/AiChatbotKnowledgePage.jsx \
+            src/components/Dashboard_Manager/Customer/AiChatbotKnowledgePage.test.jsx
+          git commit -m "fix(ai): approve selected knowledge suggestions"
+          git push origin HEAD:fix/ai-knowledge-bulk-approve
