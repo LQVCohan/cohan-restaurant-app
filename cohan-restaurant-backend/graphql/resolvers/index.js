@@ -156,6 +156,9 @@ export default {
   ...(brand.BrandMembership ? { BrandMembership: brand.BrandMembership } : {}),
   ...(user.User ? { User: user.User } : {}),
   ...(permission.Permission ? { Permission: permission.Permission } : {}),
+  ...(availability.AvailabilityWindow
+    ? { AvailabilityWindow: availability.AvailabilityWindow }
+    : {}),
   ...(menu.Menu ? { Menu: menu.Menu } : {}),
   ...(category.Category ? { Category: category.Category } : {}),
   ...(modifierGroup.Modifier ? { Modifier: modifierGroup.Modifier } : {}),
