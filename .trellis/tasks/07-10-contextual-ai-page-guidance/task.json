@@ -2,25 +2,22 @@
   "id": "07-10-contextual-ai-page-guidance",
   "title": "Hướng dẫn AI theo trang hiện tại cho khách hàng và nhân viên",
   "status": "in_progress",
-  "type": "full-stack-chatbot-navigation",
+  "type": "backend-chatbot-navigation",
   "scope": [
-    "src/utils/aiChatbotFeatureMap.js",
-    "src/utils/aiChatbotFeatureMap.test.js",
     "cohan-restaurant-backend/src/services/ai/restaurantChatbot.service.js",
-    "cohan-restaurant-backend/src/services/ai/restaurantChatbotCore.service.js",
     "cohan-restaurant-backend/tests/services/restaurantChatbot.pageGuidance.test.js"
   ],
   "validation": {
     "planned": [
-      "npx vitest run src/utils/aiChatbotFeatureMap.test.js",
       "npx vitest run cohan-restaurant-backend/tests/services/restaurantChatbot.pageGuidance.test.js"
     ],
     "completed": [
       "read AGENTS.md, .trellis/workflow.md and ponytail skill",
-      "traced AppRouter staff routes through chatbot pageContext, feature matches, backend sanitization and UI action navigation",
+      "traced AppRouter staff routes through chatbot pageContext, backend response actions and the existing React Router action handler",
       "confirmed the floating chatbot is already visible on staff routes",
-      "confirmed only staff schedule currently has a feature-map action",
-      "identified client feature matches as untrusted and planned backend path-based role filtering"
+      "confirmed the existing widget already renders safe link actions as navigation buttons",
+      "confirmed only staff schedule currently has frontend feature-map coverage",
+      "selected the shared backend service as the smallest safe boundary for staff page context, role-aware shortcuts and final action filtering"
     ],
     "notRun": []
   }
