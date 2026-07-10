@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
 
+import TableOrderAccessGate from "./TableOrderAccessGate";
 import TableOrderExperience from "./TableOrderExperience";
 import TableProofUpdateNotifier from "./TableProofUpdateNotifier";
 
@@ -33,6 +34,7 @@ export default function TableOrderRouteExperience() {
 
   return (
     <React.Fragment key={routeInstanceKey}>
+      <TableOrderAccessGate />
       <TableOrderExperience />
       <TableProofUpdateNotifier />
     </React.Fragment>
