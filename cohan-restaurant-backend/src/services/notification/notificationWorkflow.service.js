@@ -70,11 +70,24 @@ export async function reviewerIds(restaurantId) {
 
 async function activeRestaurantStaffIds(restaurantId) {
   if (!restaurantId) return [];
+  const restaurant = await Restaurant.findById(restaurantId).select("brandId").lean();
+  const membershipIds = restaurant?.brandId
+    ? uniq((await BrandMembership.find({
+        brandId: restaurant.brandId,
+        status: "active",
+        role: "staff",
+        restaurantIds: restaurant._id,
+      }).select("userId").lean()).map((item) => item.userId))
+    : [];
+
   const users = await User.find({
     userType: "STAFF",
     status: "active",
     deletedAt: null,
-    restaurantForStaff: restaurantId,
+    $or: [
+      { _id: { $in: membershipIds } },
+      { restaurantForStaff: restaurantId },
+    ],
   }).select("_id").lean();
   return uniq(users.map((user) => user._id));
 }
