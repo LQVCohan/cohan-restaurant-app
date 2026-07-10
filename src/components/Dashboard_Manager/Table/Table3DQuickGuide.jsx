@@ -21,10 +21,11 @@ export default function Table3DQuickGuide() {
           <Info size={14} aria-hidden="true" /> AR hoạt động thế nào?
         </summary>
         <p>
-          Mở camera AR rồi di chuyển thiết bị chậm quanh khu vực cần đặt bàn. Khi
-          thiết bị nhận diện được mặt sàn, bạn có thể đặt tạm mô hình để đánh giá
-          kiểu dáng, tỉ lệ và khoảng trống. Chế độ xem thử này không thay đổi dữ
-          liệu bàn hoặc sơ đồ tầng.
+          Lùi khỏi vị trí đặt khoảng 1,5–2 m, hướng camera xuống vùng sàn trống,
+          đủ sáng và di chuyển chậm sang hai bên. Tránh quét giường, ghế hoặc đồ
+          vật vì thiết bị có thể nhận nhầm chúng là mặt phẳng đặt bàn. Sau khi đặt,
+          dùng hai ngón tay để thu nhỏ hoặc phóng to mô hình cho đúng tỉ lệ thực tế.
+          Chế độ xem thử này không thay đổi dữ liệu bàn hoặc sơ đồ tầng.
         </p>
       </details>
     </div>
