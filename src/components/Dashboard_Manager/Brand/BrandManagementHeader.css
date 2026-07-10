@@ -1,0 +1,285 @@
+/* Late, page-scoped contract for the Brand management header. */
+.manager-layout .brand-management > .management-page-header.density-compact {
+  display: grid !important;
+  grid-template-columns: minmax(210px, 240px) minmax(420px, 1fr) minmax(150px, 170px) !important;
+  grid-template-rows: auto auto !important;
+  grid-template-areas:
+    "brand-title brand-stats brand-actions"
+    "brand-meta brand-stats brand-actions";
+  align-items: stretch !important;
+  gap: 0.4rem 0.75rem !important;
+  min-height: 0;
+  padding: 0.75rem 0.85rem !important;
+  border-radius: 18px !important;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-left {
+  grid-area: brand-title;
+  min-width: 0;
+  padding: 0 0.75rem 0 0 !important;
+  border-right: 1px dashed var(--bm-border) !important;
+  border-bottom: 0 !important;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-eyebrow {
+  font-size: 0.6rem !important;
+  letter-spacing: 0.085em !important;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-title {
+  gap: 0.5rem !important;
+  margin: 0.2rem 0 0.25rem !important;
+  font-size: clamp(1.25rem, 1.6vw, 1.5rem) !important;
+  line-height: 1.08 !important;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-title__icon {
+  position: relative;
+  width: 30px !important;
+  height: 30px !important;
+  flex: 0 0 30px;
+  overflow: hidden;
+  border-color: var(--bm-border) !important;
+  border-radius: 9px !important;
+  color: transparent;
+  font-size: 0 !important;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-title__icon::before {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  content: "▦";
+  color: var(--bm-primary-hover);
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-subtitle {
+  max-width: 29ch !important;
+  margin: 0 !important;
+  font-size: 0.72rem !important;
+  line-height: 1.4 !important;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-right {
+  display: contents !important;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-stats-grid {
+  grid-area: brand-stats;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  align-self: stretch !important;
+  gap: 1px !important;
+  min-width: 0;
+  margin: 0 !important;
+  overflow: hidden;
+  border: 1px solid var(--bm-border) !important;
+  border-radius: 14px !important;
+  background: var(--bm-border);
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-stat-card {
+  display: flex !important;
+  align-items: center !important;
+  min-width: 0;
+  min-height: 72px !important;
+  gap: 0.6rem !important;
+  padding: 0.65rem 0.75rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: rgba(251, 253, 252, 0.9) !important;
+  box-shadow: none !important;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-stat-card__icon {
+  width: 30px !important;
+  height: 30px !important;
+  flex: 0 0 30px;
+  border: 1px solid rgba(83, 108, 97, 0.14);
+  border-radius: 9px !important;
+  background: var(--bm-surface-soft) !important;
+  color: var(--bm-primary-hover);
+  font-size: 0.78rem;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-stat-card__body {
+  min-width: 0;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-stat-card__label {
+  overflow: hidden;
+  color: var(--bm-muted);
+  font-size: 0.68rem !important;
+  line-height: 1.15 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-stat-card__value {
+  color: var(--bm-ink);
+  font-size: 1.22rem !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-controls-row {
+  grid-area: brand-actions;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  gap: 0.45rem !important;
+  min-width: 0 !important;
+  padding: 0 0 0 0.75rem !important;
+  border-top: 0 !important;
+  border-left: 1px dashed var(--bm-border) !important;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-select,
+.manager-layout .brand-management > .management-page-header.density-compact .mph-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 44px !important;
+  height: 44px !important;
+  border-radius: 11px !important;
+  font-size: 0.78rem !important;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-btn {
+  justify-content: center !important;
+  padding-inline: 0.7rem !important;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-footer-row {
+  grid-area: brand-meta;
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start !important;
+  gap: 0.35rem;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0.1rem 0.75rem 0 0 !important;
+  border: 0 !important;
+  color: var(--bm-muted);
+  font-size: 0.66rem !important;
+}
+
+.manager-layout .brand-management > .management-page-header.density-compact .mph-footer-row > div {
+  overflow: hidden;
+  max-width: 100%;
+  padding: 0.28rem 0.48rem;
+  border: 1px solid rgba(83, 108, 97, 0.15);
+  border-radius: 999px;
+  background: rgba(249, 252, 250, 0.78);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1120px) {
+  .manager-layout .brand-management > .management-page-header.density-compact {
+    grid-template-columns: minmax(200px, 230px) minmax(0, 1fr) !important;
+    grid-template-rows: auto auto auto !important;
+    grid-template-areas:
+      "brand-title brand-stats"
+      "brand-meta brand-stats"
+      "brand-actions brand-actions";
+  }
+
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-controls-row {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 0.65rem 0 0 !important;
+    border-top: 1px dashed var(--bm-border) !important;
+    border-left: 0 !important;
+  }
+
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-select {
+    flex: 1 1 230px;
+    width: auto !important;
+    max-width: 320px;
+  }
+
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-btn {
+    width: auto !important;
+    min-width: 130px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .manager-layout .brand-management > .management-page-header.density-compact {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas:
+      "brand-title"
+      "brand-meta"
+      "brand-stats"
+      "brand-actions";
+    gap: 0.6rem !important;
+    padding: 0.75rem !important;
+  }
+
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-left {
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-subtitle {
+    max-width: none !important;
+  }
+
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-footer-row {
+    padding: 0 !important;
+  }
+
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-controls-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-top: 0.65rem !important;
+  }
+
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-select {
+    width: 100% !important;
+    max-width: none;
+  }
+
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-btn {
+    width: auto !important;
+    min-width: 118px !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-stat-card {
+    flex-direction: column;
+    align-items: flex-start !important;
+    justify-content: center;
+    min-height: 68px !important;
+    gap: 0.25rem !important;
+    padding: 0.55rem !important;
+  }
+
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-stat-card__icon {
+    width: 25px !important;
+    height: 25px !important;
+    flex-basis: 25px;
+  }
+
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-controls-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-btn {
+    width: 100% !important;
+  }
+}
