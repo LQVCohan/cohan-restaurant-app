@@ -3,7 +3,7 @@
   "name": "backup-run-action-feedback",
   "title": "Clarify backup run actions and feedback",
   "description": "Make the create, save, and cancel actions in the backup checklist self-explanatory and show contextual feedback beside the controls.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "feature-fix",
   "scope": "manager-backup",
   "package": null,
@@ -11,19 +11,19 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "codex/backup-run-action-feedback",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": null,
+  "commit": "ad742837cbf3c9c5cfa17750c8851f74c4677b95",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1334",
   "subtasks": [],
   "children": [],
   "parent": null,
   "relatedFiles": [
     "src/components/Dashboard_Manager/Backup/BackupManagement.jsx",
-    "src/components/Dashboard_Manager/Backup/BackupManagement.scss",
+    "src/components/Dashboard_Manager/Backup/BackupManagementFeedback.scss",
     "src/components/Dashboard_Manager/Backup/BackupManagement.test.jsx"
   ],
-  "notes": "Keep BackupRun schema, GraphQL operations, permissions, audit logging, restaurant scoping, and snapshot behavior unchanged. Reuse the existing status notice pattern and native confirmation instead of adding a toast dependency or new abstraction."
+  "notes": "BackupRun schema, GraphQL operations, permissions, audit logging, restaurant scoping, and snapshot behavior remain unchanged. Frontend lint, unit tests, changed component tests, build, and Playwright smoke tests passed in GitHub Actions run 29098531385. The backend job failure is unrelated to this frontend-only change and comes from existing confirmed-order print/order access tests using a missing Order.findOneAndUpdate mock."
 }
