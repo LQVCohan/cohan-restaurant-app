@@ -2,8 +2,8 @@
   "id": "staff-role-list-permission-fix",
   "name": "staff-role-list-permission-fix",
   "title": "Fix employee modal role list authorization",
-  "description": "Allow staff-management users to load authoritative role options through the effective staff.read permission instead of fixed role slugs.",
-  "status": "in_progress",
+  "description": "Make legacy role checks honor inherited parent roles so authorized restaurant-management accounts can load authoritative staff roles.",
+  "status": "completed",
   "dev_type": "backend",
   "scope": "manager-staff",
   "package": null,
@@ -11,20 +11,21 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "8a2e8aaaa73f328f3f15c78108bea02a13e83b5b",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": null,
   "relatedFiles": [
+    "cohan-restaurant-backend/utils/authz.js",
+    "cohan-restaurant-backend/tests/utils/authz.test.js",
     "cohan-restaurant-backend/graphql/resolvers/user/query.js",
-    "cohan-restaurant-backend/tests/resolvers/user-auth-me.test.js",
     "src/hooks/useStaffManagement.js",
     "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.jsx"
   ],
-  "notes": "The selected restaurant reaches StaffManagement and the employee modal. Step-one validation blocks because roleList errors before createStaff is called. The root authorization boundary is the roleList resolver, which still checks fixed role names instead of the effective staff.read permission used by current RBAC flows."
+  "notes": "The selected restaurant reaches the modal correctly. Step-one validation blocks because roleList is rejected before createStaff runs. The authenticated role is populated with parentRole, but the shared legacy hasRole helper ignored that inherited management role. The helper now evaluates parentRole slug/name and has a focused regression test. Targeted tests and builds were not run because the connector environment has no runnable repository checkout."
 }
