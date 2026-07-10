@@ -2,34 +2,41 @@
 
 ## Current behavior
 
-The frontend already sends `pageContext.pathname`, but the chatbot previously used it only as raw context. Reservation answers could restart the workflow from the beginning, and other customer pages were not explicitly identified as the page the user was currently viewing.
+The floating chatbot is already mounted on `/staff/...` routes because the app only hides it on login, manager, preview and selected table-session routes. However, the feature map exposes only the staff schedule page, so employees cannot reliably ask for operational guidance and receive direct buttons for dashboard, orders, kitchen, attendance, leave, payslips or other staff screens.
 
-Example: on `/restaurants`, asking “làm sao để đặt bàn” should begin with choosing a restaurant from the current list. On `/cart`, asking “cách thanh toán” should continue from reviewing the cart instead of explaining how to find the cart.
+Customer navigation already has broad feature coverage, but staff and customer actions must continue to be filtered by the authenticated role before they are returned to the UI.
+
+## End-to-end flow
+
+`AppRouter staff/customer routes -> ScopedAiChatbotWidget visibility -> AiChatbotWidget pageContext + featureMatches -> AskAiChatbot GraphQL input -> chatbot resolver/service -> sanitizeFeatureMatches -> deterministic actions -> widget action button -> React Router navigation`.
 
 ## Scope
 
-- Resolve customer-facing pages from `pageContext.pathname` at the shared chatbot service boundary.
-- Add a safe current-page context entry before calling the AI provider so how-to answers begin from the page already open.
-- Derive restaurant scope from restaurant, coupon and table-session routes.
-- Derive the selected menu item from `/food/:foodId` so backend ownership/scope verification can run.
-- Keep deterministic remaining-step reservation guidance for restaurant list, restaurant detail and table-layout pages.
-- Remove the internal current-page action before returning actions to the UI.
-- Preserve existing safety, permissions, restaurant validation, sources and provider fallback behavior.
+- Keep the chatbot visible on the existing staff routes.
+- Add feature-map entries for every registered staff page, using the same role lists as `AppRouter`.
+- Return role-appropriate shortcut actions for generic help requests on staff and customer pages.
+- Resolve staff pages from `pageContext.pathname` at the shared chatbot service boundary so guidance starts from the current screen.
+- Enforce backend path-based role filtering for `/staff/...` and `/manager/...` actions because client feature matches are untrusted.
+- Preserve customer current-page guidance, deterministic reservation guidance, safety checks, restaurant validation, sources and provider fallback behavior.
 
 ## Acceptance criteria
 
-1. Customer routes registered in `AppRouter` are recognized with a human-readable current-page label.
-2. How-to answers identify the current page and continue from it instead of repeating completed navigation.
-3. On `/restaurants`, `/restaurant/:id` and `/restaurant/:id/layout`, reservation guidance starts at the correct remaining step.
-4. Restaurant IDs in customer URLs are still validated by the existing backend scope resolver.
-5. Food-detail URLs supply the menu item ID to the existing backend verification flow.
-6. The internal current-page context entry never appears as a visible action.
-7. Questions unrelated to navigation/how-to behavior keep their original answer.
-8. No schema, resolver or frontend contract change is required.
+1. A server/host/cashier can receive a direct button to `/staff/orders`, but a kitchen-only role cannot.
+2. A chef/cook/kitchen helper/bartender can receive a direct button to `/staff/kitchen`, but a customer cannot.
+3. Shared staff roles can receive direct buttons for dashboard, performance, schedule, attendance, leave, profile, notifications, contacts, AI handoff, payslips and settings.
+4. Generic staff help returns useful role-appropriate shortcuts instead of only the existing schedule entry.
+5. Generic customer help continues to return direct customer shortcuts without exposing staff or manager routes.
+6. Staff route pathnames are represented as current-page context for how-to answers.
+7. Forged client feature matches cannot expose staff or manager actions to unauthorized roles.
+8. Existing customer and reservation behavior remains unchanged.
+
+## Validation
+
+- `npx vitest run src/utils/aiChatbotFeatureMap.test.js`
+- `npx vitest run cohan-restaurant-backend/tests/services/restaurantChatbot.pageGuidance.test.js`
 
 ## Out of scope
 
-- Automatically clicking controls or submitting forms for the user.
-- Completing orders, payments, reservations or profile updates on behalf of the user.
-- Manager and staff page guidance.
-- Changing the existing decision to hide the floating widget on `/scan-table` and `/table/...`; those routes are context-ready for other chatbot callers, but widget visibility remains unchanged.
+- Automatically performing staff operations, changing order states, approving leave or submitting forms.
+- Changing route permissions or backend business-data authorization.
+- Enabling the widget on routes where the app intentionally hides it.
