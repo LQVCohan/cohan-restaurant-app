@@ -31,6 +31,32 @@ describe("restaurantCapabilityGuards", () => {
     expect(result.availability).toBeTruthy();
   });
 
+  it("evaluates order capability at the requested booking time", async () => {
+    const guards = await import("../../graphql/resolvers/shared/restaurantCapabilityGuards.js");
+    model.Restaurant.findById.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        _id: "r1",
+        status: "active",
+        publicationStatus: "published",
+        operationalStatus: "normal",
+        timezone: "Asia/Ho_Chi_Minh",
+        capabilities: { acceptsOrders: true },
+        weeklyOpeningHours: {
+          saturday: [{ open: "08:00", close: "09:00" }],
+        },
+      }),
+    });
+
+    const result = await guards.getPublicRestaurantOrThrow(
+      "r1",
+      undefined,
+      { now: new Date("2026-07-11T08:30:00+07:00") },
+    );
+
+    expect(result.availability.openingStatus).toBe("open");
+    expect(result.availability.canOrder).toBe(true);
+  });
+
   it("assertRestaurantCanOrder throws when canOrder=false", async () => {
     const guards = await import("../../graphql/resolvers/shared/restaurantCapabilityGuards.js");
     expect(() => guards.assertRestaurantCanOrder({ canOrder: false })).toThrow();
