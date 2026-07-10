@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
 import useCommunication from "@/hooks/useCommunication";
+import StaffQrOrderRealtimeNotice from "@/components/Staff/StaffQrOrderRealtimeNotice";
 import "./StaffLayout.scss";
 import "./StaffWorkspaceOverrides.scss";
 import {
@@ -13,6 +14,7 @@ import { hasAnyPermission } from "@/utils/frontendPermissionAccess";
 import { getStaffRoleDisplayLabel } from "@/utils/staffRoleOptions";
 
 const HANDOFF_PERMISSIONS = ["ai.chatbot.handoff", "ai.chatbot.moderate"];
+const ORDER_NOTICE_PERMISSIONS = ["order.read", "order.update"];
 
 const getDisplayName = (user) => {
   if (!user || typeof user !== "object") return null;
@@ -198,6 +200,11 @@ export default function StaffLayout({ children }) {
   const roleLabel = getRoleLabel(user, normalizedRole);
   const restaurantLabel = activeRestaurant?.name || "Chưa xác định cơ sở làm việc";
   const pageMeta = useMemo(() => getStaffPageMeta(location.pathname), [location.pathname]);
+  const orderNoticeRestaurantId =
+    activeRestaurantId || user?.restaurantForStaff || activeRestaurant?.id || null;
+  const canReceiveOrderNotice =
+    STAFF_ORDER_ROLES.includes(normalizedRole) ||
+    hasAnyPermission(user, ORDER_NOTICE_PERMISSIONS);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -248,6 +255,10 @@ export default function StaffLayout({ children }) {
 
   return (
     <div className="staff-shell">
+      <StaffQrOrderRealtimeNotice
+        restaurantId={orderNoticeRestaurantId}
+        enabled={canReceiveOrderNotice}
+      />
       <header className="staff-shell__header">
         <div className="staff-shell__inner">
           <div className="staff-shell__topbar">
