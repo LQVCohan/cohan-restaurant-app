@@ -1,5 +1,5 @@
-// Compact card layout fix for menu management.
-// Restores the intended compact grid cards and removes the horizontal-row overflow/chồng issue.
+// Final compact layout for manager menu cards.
+// Keep card-specific overrides here so page polish files do not need another patch layer.
 
 .mm-page-container .mm-menu-results-shell,
 .mm-page-container .mm-menu-results-shell--sparse {
@@ -9,8 +9,8 @@
 .mm-page-container .mm-grid--grid,
 .mm-page-container .mm-grid--grid.mm-grid--sparse {
   display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(286px, 1fr)) !important;
-  align-items: stretch !important;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)) !important;
+  align-items: start !important;
   gap: 16px !important;
   width: 100% !important;
 }
@@ -25,29 +25,52 @@
 .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card {
   display: flex !important;
   flex-direction: column !important;
-  min-width: 0 !important;
   width: 100% !important;
+  min-width: 0 !important;
   min-height: 0 !important;
   height: auto !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   border-radius: 18px !important;
 }
 
+/* A stable 16:9 food frame makes real photos feel intentional instead of squeezed. */
 .mm-page-container .mm-grid--grid .menu-item-card .card-image-wrapper,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .card-image-wrapper {
-  height: 88px !important;
-  min-height: 88px !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  aspect-ratio: 16 / 9 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
   border-right: 0 !important;
   border-bottom: 1px solid rgba(128, 109, 83, 0.14) !important;
   border-radius: 18px 18px 0 0 !important;
+  background: linear-gradient(145deg, #f4f1eb, #e6eee9) !important;
 }
 
 .mm-page-container .mm-grid--grid .menu-item-card .card-image-wrapper img,
-.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .card-image-wrapper img,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .card-image-wrapper img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center 46% !important;
+  border-radius: 18px 18px 0 0 !important;
+  background: transparent !important;
+  filter: none !important;
+  transform: scale(1.001) !important;
+  transition: transform 0.35s ease !important;
+}
+
+.mm-page-container .mm-grid--grid .menu-item-card:hover .card-image-wrapper img,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card:hover .card-image-wrapper img {
+  transform: scale(1.035) !important;
+}
+
 .mm-page-container .mm-grid--grid .menu-item-card .placeholder-img,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .placeholder-img {
   width: 100% !important;
   height: 100% !important;
+  border-radius: 18px 18px 0 0 !important;
 }
 
 .mm-page-container .mm-grid--grid .menu-item-card .badge-wrapper,
@@ -58,80 +81,155 @@
   left: auto !important;
 }
 
+.mm-page-container .mm-grid--grid .menu-item-card .status-badge,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .status-badge {
+  padding: 5px 9px !important;
+  font-size: 10px !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12) !important;
+}
+
 .mm-page-container .mm-grid--grid .menu-item-card .card-body,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .card-body {
   min-width: 0 !important;
-  padding: 13px 14px 12px !important;
+  padding: 12px 13px !important;
   gap: 8px !important;
 }
 
 .mm-page-container .mm-grid--grid .menu-item-card .info-top,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .info-top {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto !important;
-  gap: 4px 10px !important;
-  align-items: start !important;
-}
-
-.mm-page-container .mm-grid--grid .menu-item-card .category-name,
-.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .category-name,
-.mm-page-container .mm-grid--grid .menu-item-card .item-name,
-.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .item-name {
-  grid-column: 1 !important;
+  display: block !important;
   min-width: 0 !important;
 }
 
+.mm-page-container .mm-grid--grid .menu-item-card .category-name,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .category-name {
+  margin: 0 0 3px !important;
+  color: #6f5f4d !important;
+  font-size: 0.66rem !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.055em !important;
+}
+
 .mm-page-container .mm-grid--grid .menu-item-card .item-name,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .item-name {
-  min-height: 2.45em !important;
-  -webkit-line-clamp: 2 !important;
-  font-size: 0.98rem !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  font-size: 1rem !important;
   line-height: 1.25 !important;
+  -webkit-line-clamp: 2 !important;
 }
 
 .mm-page-container .mm-grid--grid .menu-item-card__meta-row,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card__meta-row {
-  grid-column: 2 !important;
-  grid-row: 1 / span 2 !important;
-  align-items: flex-end !important;
-  max-width: 118px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  max-width: none !important;
+  margin: 8px 0 0 !important;
 }
 
 .mm-page-container .mm-grid--grid .menu-item-card__price,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card__price {
-  font-size: 0.94rem !important;
+  flex: 0 0 auto !important;
+  font-size: 0.98rem !important;
   white-space: nowrap !important;
 }
 
 .mm-page-container .mm-grid--grid .menu-item-card__quick-note,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card__quick-note {
-  max-width: 118px !important;
+  max-width: 58% !important;
+  min-height: 22px !important;
+  padding: 3px 7px !important;
   overflow: hidden !important;
+  font-size: 10px !important;
+  white-space: nowrap !important;
   text-overflow: ellipsis !important;
 }
 
-.mm-page-container .mm-grid--grid .menu-item-card__for-you-badge,
-.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card__for-you-badge,
+/* A completed recommendation profile needs no permanent badge on every card. */
+.mm-page-container .mm-grid--grid .menu-item-card__for-you-badge--ready,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card__for-you-badge--ready {
+  display: none !important;
+}
+
+.mm-page-container .mm-grid--grid .menu-item-card__for-you-badge--missing,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card__for-you-badge--missing {
+  padding: 4px 8px !important;
+  font-size: 10px !important;
+}
+
 .mm-page-container .mm-grid--grid .availability-warning,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .availability-warning {
-  max-width: 100% !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin: 0 !important;
+  padding: 7px 8px !important;
+  border-radius: 10px !important;
+  font-size: 10.5px !important;
+  box-shadow: none !important;
+}
+
+.mm-page-container .mm-grid--grid .availability-warning span,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .availability-warning span {
+  -webkit-line-clamp: 1 !important;
 }
 
 .mm-page-container .mm-grid--grid .menu-item-card__warning-cta,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card__warning-cta {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 7px 8px !important;
+  border-radius: 10px !important;
+}
+
+.mm-page-container .mm-grid--grid .menu-item-card__warning-cta-title,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card__warning-cta-title {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  font-size: 10.5px !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+}
+
+.mm-page-container .mm-grid--grid .menu-item-card__warning-cta-description,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card__warning-cta-description {
   display: none !important;
+}
+
+.mm-page-container .mm-grid--grid .menu-item-card__warning-cta-button,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card__warning-cta-button {
+  flex: 0 0 auto !important;
+  margin-left: auto !important;
+  padding: 4px 7px !important;
+  font-size: 10px !important;
 }
 
 .mm-page-container .mm-grid--grid .variants-list,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .variants-list {
-  margin-top: 2px !important;
+  margin-top: 0 !important;
   padding: 8px !important;
   overflow: hidden !important;
+  border-radius: 11px !important;
+}
+
+/* Price is already visible above; one/default variant does not need a second table. */
+.mm-page-container .mm-grid--grid .variants-list:has(.list-content > .variant-row:only-child),
+.mm-page-container .mm-grid--grid.mm-grid--sparse .variants-list:has(.list-content > .variant-row:only-child) {
+  display: none !important;
+}
+
+.mm-page-container .mm-grid--grid .variants-list .list-header,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .variants-list .list-header {
+  margin-bottom: 6px !important;
+  padding-bottom: 4px !important;
+  font-size: 9px !important;
 }
 
 .mm-page-container .mm-grid--grid .variants-list .list-content,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .variants-list .list-content {
-  max-height: 58px !important;
+  max-height: 54px !important;
   overflow: hidden !important;
 }
 
@@ -139,12 +237,13 @@
 .mm-page-container .mm-grid--grid.mm-grid--sparse .variants-list .variant-row {
   min-width: 0 !important;
   gap: 5px !important;
-  font-size: 0.78rem !important;
+  margin-bottom: 5px !important;
+  font-size: 0.75rem !important;
 }
 
 .mm-page-container .mm-grid--grid .variants-list .v-name,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .variants-list .v-name {
-  max-width: 52% !important;
+  max-width: 54% !important;
 }
 
 .mm-page-container .mm-grid--grid .variants-list .v-price,
@@ -154,34 +253,66 @@
   white-space: nowrap !important;
 }
 
+.mm-page-container .mm-grid--grid .variants-list .variant-more,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .variants-list .variant-more {
+  margin-top: 5px !important;
+  padding-top: 5px !important;
+  font-size: 10px !important;
+}
+
+/* One primary action, two compact utility actions, and one status control. */
 .mm-page-container .mm-grid--grid .menu-item-card .card-actions,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .card-actions {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 7px !important;
-  padding: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 8px !important;
   border-left: 0 !important;
   border-top: 1px solid rgba(128, 109, 83, 0.14) !important;
   background: rgba(248, 246, 241, 0.76) !important;
 }
 
+.mm-page-container .mm-grid--grid .menu-item-card .card-actions .divider,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .card-actions .divider {
+  display: none !important;
+}
+
 .mm-page-container .mm-grid--grid .menu-item-card .card-actions .action-btn,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .card-actions .action-btn {
-  width: 100% !important;
-  min-width: 0 !important;
-  min-height: 32px !important;
-  padding: 6px 8px !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  min-height: 36px !important;
+  padding: 6px !important;
+  border-radius: 10px !important;
   white-space: nowrap !important;
 }
 
-.mm-page-container .mm-grid--grid .menu-item-card .card-actions .action-btn.delete,
-.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .card-actions .action-btn.delete {
-  width: 100% !important;
+.mm-page-container .mm-grid--grid .menu-item-card .card-actions .action-btn.edit,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .card-actions .action-btn.edit {
+  flex: 1 1 auto !important;
+  width: auto !important;
+}
+
+.mm-page-container .mm-grid--grid .menu-item-card .card-actions .action-btn.history span,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .card-actions .action-btn.history span {
+  display: none !important;
 }
 
 .mm-page-container .mm-grid--grid .menu-item-card .status-dropdown,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .status-dropdown {
+  flex: 1 1 auto !important;
   min-width: 0 !important;
+}
+
+.mm-page-container .mm-grid--grid .menu-item-card .status-dropdown .status-trigger,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .status-dropdown .status-trigger {
+  width: 100% !important;
+}
+
+.mm-page-container .mm-grid--grid .menu-item-card .card-actions .action-btn.delete,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .card-actions .action-btn.delete {
+  flex: 0 0 40px !important;
+  width: 40px !important;
 }
 
 .mm-page-container .mm-grid--grid .menu-item-card .status-dropdown-menu,
@@ -191,19 +322,41 @@
   max-width: calc(100vw - 32px) !important;
 }
 
+/* List view keeps the same compact information hierarchy. */
 .mm-page-container .mm-grid--list .menu-item-card {
   display: grid !important;
-  grid-template-columns: 76px minmax(0, 1fr) minmax(190px, 220px) !important;
-  min-height: 124px !important;
+  grid-template-columns: 124px minmax(0, 1fr) minmax(220px, 260px) !important;
+  min-height: 150px !important;
   overflow: visible !important;
 }
 
 .mm-page-container .mm-grid--list .menu-item-card .card-image-wrapper {
-  height: auto !important;
-  min-height: 124px !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 150px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
   border-right: 1px solid rgba(128, 109, 83, 0.14) !important;
   border-bottom: 0 !important;
   border-radius: 18px 0 0 18px !important;
+}
+
+.mm-page-container .mm-grid--list .menu-item-card .card-image-wrapper img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  border-radius: 18px 0 0 18px !important;
+}
+
+.mm-page-container .mm-grid--list .menu-item-card .card-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-content: center !important;
+  gap: 7px !important;
+  padding: 10px !important;
+  border-left: 1px solid rgba(128, 109, 83, 0.14) !important;
+  border-top: 0 !important;
 }
 
 @media (min-width: 1280px) {
@@ -216,7 +369,25 @@
 @media (max-width: 1120px) {
   .mm-page-container .mm-grid--grid,
   .mm-page-container .mm-grid--grid.mm-grid--sparse {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .mm-page-container .mm-grid--grid,
+  .mm-page-container .mm-grid--grid.mm-grid--sparse {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .mm-page-container .mm-grid--list .menu-item-card {
+    grid-template-columns: 110px minmax(0, 1fr) !important;
+  }
+
+  .mm-page-container .mm-grid--list .menu-item-card .card-actions {
+    grid-column: 1 / -1 !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    border-left: 0 !important;
+    border-top: 1px solid rgba(128, 109, 83, 0.14) !important;
   }
 }
 
@@ -226,16 +397,31 @@
     grid-template-columns: 1fr !important;
   }
 
-  .mm-page-container .mm-grid--grid .menu-item-card__meta-row,
-  .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card__meta-row {
-    grid-column: 1 !important;
-    grid-row: auto !important;
-    align-items: flex-start !important;
-    max-width: none !important;
+  .mm-page-container .mm-grid--grid .menu-item-card .card-image-wrapper,
+  .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card .card-image-wrapper {
+    aspect-ratio: 16 / 10 !important;
+  }
+
+  .mm-page-container .mm-grid--list .menu-item-card {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .mm-page-container .mm-grid--list .menu-item-card .card-image-wrapper {
+    height: auto !important;
+    min-height: 0 !important;
+    aspect-ratio: 16 / 10 !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(128, 109, 83, 0.14) !important;
+    border-radius: 18px 18px 0 0 !important;
+  }
+
+  .mm-page-container .mm-grid--list .menu-item-card .card-image-wrapper img {
+    border-radius: 18px 18px 0 0 !important;
   }
 
   .mm-page-container .mm-grid--grid .menu-item-card__quick-note,
   .mm-page-container .mm-grid--grid.mm-grid--sparse .menu-item-card__quick-note {
-    max-width: none !important;
+    max-width: 62% !important;
   }
 }
