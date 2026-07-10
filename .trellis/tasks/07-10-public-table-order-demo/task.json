@@ -1,0 +1,19 @@
+{
+  "id": "07-10-public-table-order-demo",
+  "title": "Public table QR ordering demo",
+  "status": "in_progress",
+  "area": "fullstack",
+  "createdAt": "2026-07-10",
+  "updatedAt": "2026-07-10",
+  "validation": {
+    "completed": [],
+    "notRun": [
+      "targeted backend Vitest",
+      "targeted frontend Vitest",
+      "npm run check:graphql:operations",
+      "npm run check:conflicts",
+      "npm run build",
+      "browser smoke at 390x844 and 430x932"
+    ]
+  }
+}
