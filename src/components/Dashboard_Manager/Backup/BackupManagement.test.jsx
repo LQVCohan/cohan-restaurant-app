@@ -208,7 +208,7 @@ beforeEach(() => {
         schemaVersion: 1,
         createdAt: "2026-06-02T00:00:00.000Z",
         warnings: ["preview warning"],
-        counts: [{ key: "systemSettings", label: "Cài đặt vận hành", count: 1, enabled: true }],
+        counts: [{ key: "systemSettings", label: "System settings", count: 1, enabled: true }],
       },
     },
   });
@@ -237,7 +237,7 @@ beforeEach(() => {
         mode: "clone",
         warnings: ["preview ok"],
         errors: [],
-        changes: [{ section: "systemSettings", action: "create", label: "Cài đặt vận hành", count: 1 }],
+        changes: [{ section: "systemSettings", action: "create", label: "System settings", count: 1 }],
         conflictSummary: [],
         conflicts: [],
       },
@@ -317,12 +317,13 @@ const previewImportWithFile = async () => {
   fireEvent.change(getBackupFileInput(), {
     target: { files: [new File(["{}"], "backup.json", { type: "application/json" })] },
   });
-  await waitFor(() => expect(screen.getByRole("button", { name: /Xem trước khôi phục/ })).not.toBeDisabled());
-  fireEvent.click(screen.getByRole("button", { name: /Xem trước khôi phục/ }));
+  const previewButton = screen.getByRole("button", { name: "Kiểm tra trước khi khôi phục" });
+  await waitFor(() => expect(previewButton).not.toBeDisabled());
+  fireEvent.click(previewButton);
   await waitFor(() => expect(previewImport).toHaveBeenCalled());
 };
 
-describe("BackupManagement scope and snapshot UI", () => {
+describe("BackupManagement scope and user-facing wording", () => {
   it("queries the canonical manager restaurant instead of the first auth restaurant", async () => {
     renderPage();
     await waitFor(() => expect(latestQueryOptions("BackupReadiness")?.variables).toEqual({ restaurantId: "r2" }));
@@ -340,27 +341,28 @@ describe("BackupManagement scope and snapshot UI", () => {
       </AuthContext.Provider>,
     );
     await waitFor(() => expect(latestQueryOptions("BackupReadiness")?.variables.restaurantId).toBe("r1"));
-    await waitFor(() => expect(screen.getByLabelText("Khôi phục vào nhà hàng")).toHaveValue("r1"));
+    await waitFor(() => expect(screen.getByLabelText("Nhà hàng nhận dữ liệu")).toHaveValue("r1"));
   });
 
   it("ignores readiness returned for another restaurant", () => {
     queryState.readinessRestaurantId = "r1";
     renderPage();
-    expect(screen.getByText(/Dữ liệu trả về không thuộc chi nhánh/)).toBeInTheDocument();
-    expect(screen.getByText("An toàn: Cần rà soát")).toBeInTheDocument();
+    expect(screen.getByText(/Thông tin nhận được không thuộc chi nhánh/)).toBeInTheDocument();
+    expect(screen.getByText("Mức sẵn sàng: Cần xem lại")).toBeInTheDocument();
   });
 
-  it("renders compact export/import workflows and the runtime-data warning", () => {
+  it("uses plain Vietnamese for the main workflow without exposing internal terms", () => {
     renderPage();
-    expect(screen.getByRole("heading", { name: "Tải file cấu hình" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Khôi phục từ file" })).toBeInTheDocument();
-    expect(screen.getAllByText(/Đơn hàng, giao dịch và dữ liệu vận hành không nằm trong snapshot/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Tạo file sao lưu" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Khôi phục cài đặt" })).toBeInTheDocument();
+    expect(screen.getAllByText(/Đơn hàng, thanh toán và dữ liệu đang vận hành không được lưu/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/backup\.(read|write|export|import)|audit log|snapshot|JSON/i)).not.toBeInTheDocument();
   });
 
   it("creates a manual backup run with the backend-supported scope", async () => {
     renderPage();
     fireEvent.click(screen.getByLabelText("Kiểm tra báo cáo cuối ngày"));
-    fireEvent.click(screen.getByRole("button", { name: "Bắt đầu checklist mới" }));
+    fireEvent.click(screen.getByRole("button", { name: "Bắt đầu lần kiểm tra mới" }));
     await waitFor(() => expect(createBackupRun).toHaveBeenCalled());
     const input = createBackupRun.mock.calls[0][0].variables.input;
     expect(input.restaurantId).toBe("r2");
@@ -370,30 +372,30 @@ describe("BackupManagement scope and snapshot UI", () => {
     expect(input.scope.reportsAndReconciliation).toBe(false);
   });
 
-  it("explains the three checklist actions and reports creation locally", async () => {
+  it("explains the three preparation actions and reports creation locally", async () => {
     renderPage();
-    expect(screen.getByRole("button", { name: "Bắt đầu checklist mới" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Lưu checklist hiện tại" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Hủy lần chuẩn bị" })).toBeDisabled();
-    expect(screen.getByText(/Hủy chỉ đóng lần chuẩn bị, không xóa cấu hình hoặc file sao lưu/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Bắt đầu lần kiểm tra mới" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Lưu lần đang kiểm tra" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Hủy lần kiểm tra" })).toBeDisabled();
+    expect(screen.getByText(/Hủy chỉ đóng lần kiểm tra, không xóa cài đặt hoặc file sao lưu/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Bắt đầu checklist mới" }));
-    expect(await screen.findByText(/Đã bắt đầu checklist mới/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Bắt đầu lần kiểm tra mới" }));
+    expect(await screen.findByText(/Đã bắt đầu lần kiểm tra mới/i)).toBeInTheDocument();
   });
 
   it("requires at least one export section", () => {
     renderPage();
-    const exportPanel = screen.getByRole("region", { name: "Tải file sao lưu" });
+    const exportPanel = screen.getByRole("region", { name: "Tạo file sao lưu" });
     fireEvent.click(within(exportPanel).getByRole("button", { name: "Bỏ chọn tất cả" }));
-    expect(within(exportPanel).getByText("Chọn ít nhất một hạng mục để tạo file.")).toBeInTheDocument();
-    expect(within(exportPanel).getByRole("button", { name: /Xem nội dung/ })).toBeDisabled();
-    expect(within(exportPanel).getByRole("button", { name: /Tải file sao lưu/ })).toBeDisabled();
+    expect(within(exportPanel).getByText("Chọn ít nhất một nội dung để tạo file.")).toBeInTheDocument();
+    expect(within(exportPanel).getByRole("button", { name: "Kiểm tra nội dung file" })).toBeDisabled();
+    expect(within(exportPanel).getByRole("button", { name: "Tải file sao lưu" })).toBeDisabled();
   });
 
   it("selects sections and previews the real export payload", async () => {
     renderPage();
     fireEvent.click(screen.getAllByLabelText("Cài đặt vận hành")[0]);
-    fireEvent.click(screen.getByRole("button", { name: /Xem nội dung/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Kiểm tra nội dung file" }));
     await waitFor(() => expect(previewExport).toHaveBeenCalled());
     expect(previewExport.mock.calls[0][0].variables.input).toMatchObject({
       restaurantId: "r2",
@@ -401,31 +403,40 @@ describe("BackupManagement scope and snapshot UI", () => {
     });
   });
 
-  it("downloads the exported base64 file", async () => {
+  it("uses the local Vietnamese section name in the export preview", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Kiểm tra nội dung file" }));
+    await waitFor(() => expect(previewExport).toHaveBeenCalled());
+    expect(await screen.findByText("Cài đặt vận hành")).toBeInTheDocument();
+    expect(screen.queryByText("System settings")).not.toBeInTheDocument();
+  });
+
+  it("downloads the exported base64 file without exposing a checksum", async () => {
     const appendSpy = vi.spyOn(document.body, "appendChild");
     renderPage();
-    fireEvent.click(screen.getByRole("button", { name: /Tải file sao lưu/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Tải file sao lưu" }));
     await waitFor(() => expect(exportBackup).toHaveBeenCalled());
     expect(URL.createObjectURL).toHaveBeenCalled();
     expect(appendSpy).toHaveBeenCalled();
-    expect(await screen.findByText(/Mã kiểm tra: sha256:abc/)).toBeInTheDocument();
+    expect(await screen.findByText("Đã tải file backup.json.")).toBeInTheDocument();
+    expect(screen.queryByText(/sha256|Mã kiểm tra/i)).not.toBeInTheDocument();
   });
 
-  it("rejects a non-JSON file before calling the backend", async () => {
+  it("rejects an unsupported file before calling the backend", async () => {
     renderPage();
     fireEvent.change(getBackupFileInput(), {
       target: { files: [new File(["x"], "backup.txt", { type: "text/plain" })] },
     });
-    expect(await screen.findByText("Chỉ chấp nhận file sao lưu định dạng JSON.")).toBeInTheDocument();
+    expect(await screen.findByText(/File không đúng định dạng sao lưu/)).toBeInTheDocument();
     expect(previewImport).not.toHaveBeenCalled();
   });
 
-  it("previews import and enables apply only after explicit confirmation", async () => {
+  it("previews import and enables restore only after explicit confirmation", async () => {
     renderPage();
     await previewImportWithFile();
-    const importButton = screen.getByRole("button", { name: /Áp dụng khôi phục/ });
+    const importButton = screen.getByRole("button", { name: "Khôi phục cài đặt" });
     expect(importButton).toBeDisabled();
-    fireEvent.click(screen.getByLabelText(/Tôi đã xem đúng nhà hàng đích/));
+    fireEvent.click(screen.getByLabelText(/Tôi đã kiểm tra đúng nhà hàng/));
     expect(importButton).not.toBeDisabled();
     fireEvent.click(importButton);
     await waitFor(() => expect(importBackup).toHaveBeenCalled());
@@ -435,69 +446,70 @@ describe("BackupManagement scope and snapshot UI", () => {
   it("invalidates preview and confirmation when restore inputs change", async () => {
     renderPage();
     await previewImportWithFile();
-    fireEvent.click(screen.getByLabelText(/Tôi đã xem đúng nhà hàng đích/));
-    expect(screen.getByRole("button", { name: /Áp dụng khôi phục/ })).not.toBeDisabled();
-    fireEvent.change(screen.getByLabelText("Khôi phục vào nhà hàng"), { target: { value: "r1" } });
-    expect(screen.queryByLabelText(/Tôi đã xem đúng nhà hàng đích/)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Áp dụng khôi phục/ })).toBeDisabled();
+    fireEvent.click(screen.getByLabelText(/Tôi đã kiểm tra đúng nhà hàng/));
+    expect(screen.getByRole("button", { name: "Khôi phục cài đặt" })).not.toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Nhà hàng nhận dữ liệu"), { target: { value: "r1" } });
+    expect(screen.queryByLabelText(/Tôi đã kiểm tra đúng nhà hàng/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Khôi phục cài đặt" })).toBeDisabled();
   });
 
-  it("shows backend preview errors inline", async () => {
+  it("replaces an unknown English backend error with a useful Vietnamese message", async () => {
     previewExport.mockRejectedValueOnce(new Error("resolver missing"));
     renderPage();
-    fireEvent.click(screen.getByRole("button", { name: /Xem nội dung/ }));
-    expect(await screen.findByText(/resolver missing/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Kiểm tra nội dung file" }));
+    expect(await screen.findByText("Không thể kiểm tra nội dung file sao lưu. Hãy thử lại.")).toBeInTheDocument();
+    expect(screen.queryByText(/resolver missing/i)).not.toBeInTheDocument();
   });
 });
 
-describe("BackupManagement checklist run feedback", () => {
+describe("BackupManagement preparation feedback", () => {
   beforeEach(() => {
     queryState.runs = [runFor()];
   });
 
   it("reports save separately from cancellation", async () => {
     renderPage();
-    fireEvent.click(screen.getByRole("button", { name: "Lưu checklist hiện tại" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lưu lần đang kiểm tra" }));
     await waitFor(() => expect(updateBackupRun).toHaveBeenCalled());
     expect(updateBackupRun.mock.calls[0][0].variables.input.status).toBeUndefined();
-    expect(await screen.findByText(/Đã lưu checklist, phạm vi và ghi chú/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Đã lưu các việc đã kiểm tra, nội dung được chọn và ghi chú/i)).toBeInTheDocument();
   });
 
   it("does not cancel until the user confirms", () => {
     window.confirm.mockReturnValueOnce(false);
     renderPage();
-    fireEvent.click(screen.getByRole("button", { name: "Hủy lần chuẩn bị" }));
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("không xóa cấu hình nhà hàng"));
+    fireEvent.click(screen.getByRole("button", { name: "Hủy lần kiểm tra" }));
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("không xóa cài đặt nhà hàng"));
     expect(updateBackupRun).not.toHaveBeenCalled();
   });
 
-  it("sends cancelled status and explains that configuration is preserved", async () => {
+  it("sends cancelled status and explains that settings are preserved", async () => {
     renderPage();
-    fireEvent.click(screen.getByRole("button", { name: "Hủy lần chuẩn bị" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hủy lần kiểm tra" }));
     await waitFor(() => expect(updateBackupRun).toHaveBeenCalled());
     expect(updateBackupRun.mock.calls[0][0].variables.input.status).toBe("cancelled");
-    expect(await screen.findByText(/Cấu hình nhà hàng và các file sao lưu đã tải không bị xóa/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Cài đặt nhà hàng và các file đã tải không bị xóa/i)).toBeInTheDocument();
   });
 });
 
-describe("BackupManagement conflict resolver UI", () => {
-  it("renders conflict summary and field diffs", async () => {
+describe("BackupManagement duplicate-data choices", () => {
+  it("renders the summary and field differences in plain Vietnamese", async () => {
     previewImport.mockResolvedValueOnce(conflictPreviewPayload());
     renderPage();
     await previewImportWithFile();
-    expect(await screen.findByRole("heading", { name: "Chọn cách xử lý" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Chọn nội dung muốn giữ" })).toBeInTheDocument();
     expect(screen.getByText("Tổng mục")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Xem khác biệt"));
-    expect(screen.getByText(/Giá bán: file=50000/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Xem điểm khác nhau"));
+    expect(screen.getByText(/Giá bán: trong file 50000 · hiện có 55000/)).toBeInTheDocument();
   });
 
   it("sends changed conflict resolutions in the import payload", async () => {
     previewImport.mockResolvedValueOnce(conflictPreviewPayload());
     renderPage();
     await previewImportWithFile();
-    fireEvent.change(screen.getByLabelText("Cách xử lý PHO"), { target: { value: "use_source" } });
-    fireEvent.click(screen.getByLabelText(/Tôi đã xem đúng nhà hàng đích/));
-    fireEvent.click(screen.getByRole("button", { name: /Áp dụng khôi phục/ }));
+    fireEvent.change(screen.getByLabelText("Cách xử lý cho Phở bò"), { target: { value: "use_source" } });
+    fireEvent.click(screen.getByLabelText(/Tôi đã kiểm tra đúng nhà hàng/));
+    fireEvent.click(screen.getByRole("button", { name: "Khôi phục cài đặt" }));
     await waitFor(() => expect(importBackup).toHaveBeenCalled());
     expect(importBackup.mock.calls[0][0].variables.input.conflictResolutions).toEqual(
       expect.arrayContaining([
@@ -510,30 +522,48 @@ describe("BackupManagement conflict resolver UI", () => {
     previewImport.mockResolvedValueOnce(conflictPreviewPayload());
     renderPage();
     await previewImportWithFile();
-    fireEvent.change(screen.getByLabelText("Cách xử lý PHO"), { target: { value: "rename_source" } });
-    expect(screen.queryByLabelText(/Tôi đã xem đúng nhà hàng đích/)).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Tên mới PHO"), { target: { value: "PHO-NEW" } });
-    expect(screen.getByLabelText(/Tôi đã xem đúng nhà hàng đích/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Cách xử lý cho Phở bò"), { target: { value: "rename_source" } });
+    expect(screen.queryByLabelText(/Tôi đã kiểm tra đúng nhà hàng/)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Tên mới cho Phở bò"), { target: { value: "PHO-NEW" } });
+    expect(screen.getByLabelText(/Tôi đã kiểm tra đúng nhà hàng/)).toBeInTheDocument();
   });
 
-  it("bulk keep target updates supported conflicts", async () => {
+  it("bulk keep-current updates supported conflicts", async () => {
     previewImport.mockResolvedValueOnce(conflictPreviewPayload());
     renderPage();
     await previewImportWithFile();
-    fireEvent.change(screen.getByLabelText("Cách xử lý PHO"), { target: { value: "use_source" } });
-    fireEvent.click(screen.getByRole("button", { name: "Giữ bản hiện tại" }));
-    expect(screen.getByLabelText("Cách xử lý PHO")).toHaveValue("keep_target");
+    fireEvent.change(screen.getByLabelText("Cách xử lý cho Phở bò"), { target: { value: "use_source" } });
+    fireEvent.click(screen.getByRole("button", { name: "Giữ dữ liệu hiện có" }));
+    expect(screen.getByLabelText("Cách xử lý cho Phở bò")).toHaveValue("keep_target");
   });
 
-  it("allows a blocking conflict only after a non-skip resolution is selected", async () => {
+  it("allows a required conflict only after a non-skip choice is selected", async () => {
     previewImport.mockResolvedValueOnce(conflictPreviewPayload({
       conflict: { severity: "blocking", defaultResolution: "skip" },
       preview: { valid: false },
     }));
     renderPage();
     await previewImportWithFile();
-    expect(screen.queryByLabelText(/Tôi đã xem đúng nhà hàng đích/)).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Cách xử lý PHO"), { target: { value: "use_source" } });
-    expect(screen.getByLabelText(/Tôi đã xem đúng nhà hàng đích/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Tôi đã kiểm tra đúng nhà hàng/)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Cách xử lý cho Phở bò"), { target: { value: "use_source" } });
+    expect(screen.getByLabelText(/Tôi đã kiểm tra đúng nhà hàng/)).toBeInTheDocument();
+  });
+
+  it("hides internal keys and translates an unlabeled singleton conflict", async () => {
+    previewImport.mockResolvedValueOnce(conflictPreviewPayload({
+      conflict: {
+        id: "restaurantProfile:singleton:restaurantProfile",
+        section: "restaurantProfile",
+        entityType: "Singleton",
+        entityKey: "restaurantProfile",
+        label: null,
+        reason: "Singleton configuration differs from target.",
+      },
+    }));
+    renderPage();
+    await previewImportWithFile();
+    expect(screen.getAllByText(/Thông tin nhà hàng/).length).toBeGreaterThan(0);
+    expect(screen.getByText("Cài đặt trong file khác với cài đặt hiện có.")).toBeInTheDocument();
+    expect(screen.queryByText(/restaurantProfile|Singleton configuration differs from target/i)).not.toBeInTheDocument();
   });
 });
