@@ -4,8 +4,6 @@ import {
   Activity,
   AlertCircle,
   Clock,
-  Database,
-  FileText,
   RefreshCw,
   User,
 } from "lucide-react";
@@ -19,23 +17,20 @@ const AUDIT_LOGS_QUERY = gql`
       total
       items {
         id
-        restaurantId
-        entity
-        entityId
         action
-        byUserId
         diff
+        actorName
+        actorRole
         createdAt
-        updatedAt
       }
     }
   }
 `;
 
 const ACTION_LABELS = {
-  create: "Tạo mới",
-  update: "Cập nhật",
-  delete: "Xóa",
+  create: "Đã tạo món",
+  update: "Đã cập nhật món",
+  delete: "Đã xóa món",
 };
 
 const ACTION_CLASS = {
@@ -44,31 +39,74 @@ const ACTION_CLASS = {
   delete: "delete",
 };
 
+const FIELD_LABELS = {
+  name: "Tên món",
+  description: "Mô tả",
+  basePrice: "Giá cơ bản",
+  price: "Giá bán",
+  status: "Trạng thái bán",
+  prepStation: "Khu vực chế biến",
+  isActive: "Đang hoạt động",
+  isAvailable: "Đang phục vụ",
+  thumbImage: "Hình ảnh",
+  sortOrder: "Thứ tự hiển thị",
+  order: "Thứ tự hiển thị",
+};
+
+const HIDDEN_FIELDS = new Set([
+  "_id",
+  "id",
+  "restaurantId",
+  "menuId",
+  "categoryId",
+  "createdAt",
+  "updatedAt",
+  "__v",
+]);
+
+const VALUE_LABELS = {
+  available: "Đang bán",
+  unavailable: "Tạm ngưng bán",
+  out_of_stock: "Hết món",
+  hidden: "Ẩn khỏi thực đơn",
+  kitchen: "Bếp",
+  bar: "Quầy bar",
+  create: "Tạo mới",
+  update: "Cập nhật",
+  delete: "Xóa",
+};
+
 const formatDateTime = (value) => {
-  if (!value) return "--";
+  if (!value) return "Không rõ thời gian";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return new Intl.DateTimeFormat("vi-VN", {
     dateStyle: "short",
-    timeStyle: "medium",
+    timeStyle: "short",
   }).format(date);
 };
 
-const formatValue = (value) => {
-  if (value === null || value === undefined || value === "") return "--";
+const formatValue = (key, value) => {
+  if (value === null || value === undefined || value === "") return "Chưa có";
   if (typeof value === "boolean") return value ? "Có" : "Không";
-  if (typeof value === "number") return value.toLocaleString("vi-VN");
-  if (typeof value === "string") return value;
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
+  if (["basePrice", "price"].includes(key) && Number.isFinite(Number(value))) {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      maximumFractionDigits: 0,
+    }).format(Number(value));
   }
+  if (typeof value === "number") return value.toLocaleString("vi-VN");
+  if (typeof value === "string") return VALUE_LABELS[value] || value;
+  if (Array.isArray(value)) return value.length ? value.join(", ") : "Không có";
+  return "Đã thay đổi";
 };
 
 const compactObject = (obj = {}) => {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) return [];
-  return Object.entries(obj).filter(([, value]) => value !== undefined);
+  return Object.entries(obj).filter(
+    ([key, value]) => !HIDDEN_FIELDS.has(key) && value !== undefined,
+  );
 };
 
 const renderKeyValueGrid = (title, data) => {
@@ -79,12 +117,15 @@ const renderKeyValueGrid = (title, data) => {
     <div className="alm-kv-block">
       <strong>{title}</strong>
       <div className="alm-kv-grid">
-        {entries.map(([key, value]) => (
-          <div className="alm-kv-row" key={key}>
-            <span>{key}</span>
-            <b title={formatValue(value)}>{formatValue(value)}</b>
-          </div>
-        ))}
+        {entries.map(([key, value]) => {
+          const formattedValue = formatValue(key, value);
+          return (
+            <div className="alm-kv-row" key={key}>
+              <span>{FIELD_LABELS[key] || key}</span>
+              <b title={formattedValue}>{formattedValue}</b>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -92,27 +133,25 @@ const renderKeyValueGrid = (title, data) => {
 
 const renderDiff = (diff) => {
   if (!diff || typeof diff !== "object") {
-    return <span className="alm-muted">Không có chi tiết thay đổi.</span>;
+    return <span className="alm-muted">Không có thông tin chi tiết.</span>;
   }
 
   if (diff.type === "bulk_price_update") {
     return (
       <div className="alm-diff-summary">
-        <span>Sửa giá hàng loạt</span>
-        <small>
-          {diff.mode === "PERCENT" ? "Theo phần trăm" : "Theo số tiền"} · Giá trị:{" "}
-          {formatValue(diff.value)} · Giá sau: {formatValue(diff.basePriceAfter)}
-        </small>
+        <span>Giá món đã được điều chỉnh</span>
+        <small>Giá mới: {formatValue("basePrice", diff.basePriceAfter)}</small>
       </div>
     );
   }
 
   if (diff.field) {
+    const fieldLabel = FIELD_LABELS[diff.field] || diff.field;
     return (
       <div className="alm-diff-summary">
-        <span>Thay đổi trường: {diff.field}</span>
+        <span>{fieldLabel}</span>
         <small>
-          Trước: {formatValue(diff.before)} → Sau: {formatValue(diff.after)}
+          {formatValue(diff.field, diff.before)} → {formatValue(diff.field, diff.after)}
         </small>
       </div>
     );
@@ -121,14 +160,14 @@ const renderDiff = (diff) => {
   if (diff.before || diff.after) {
     return (
       <div className="alm-diff-columns">
-        {renderKeyValueGrid("Trước", diff.before)}
-        {renderKeyValueGrid("Sau", diff.after)}
+        {renderKeyValueGrid("Trước khi sửa", diff.before)}
+        {renderKeyValueGrid("Sau khi sửa", diff.after)}
       </div>
     );
   }
 
-  return renderKeyValueGrid("Chi tiết", diff) || (
-    <span className="alm-muted">Không có chi tiết thay đổi.</span>
+  return renderKeyValueGrid("Thông tin món", diff) || (
+    <span className="alm-muted">Không có thông tin cần hiển thị.</span>
   );
 };
 
@@ -142,12 +181,8 @@ const AuditLogModal = ({
   limit = 50,
 }) => {
   const filter = useMemo(
-    () => ({
-      restaurantId,
-      entity,
-      entityId,
-    }),
-    [entity, entityId, restaurantId]
+    () => ({ restaurantId, entity, entityId }),
+    [entity, entityId, restaurantId],
   );
 
   const shouldSkip = !isOpen || !restaurantId || !entity || !entityId;
@@ -172,13 +207,9 @@ const AuditLogModal = ({
       <Modal.Header>{title}</Modal.Header>
       <Modal.Body>
         <div className="alm-header-row">
-          <div className="alm-meta-pill">
-            <Database size={15} />
-            <span>{entity || "--"}</span>
-          </div>
-          <div className="alm-meta-pill">
-            <FileText size={15} />
-            <span>{entityId || "--"}</span>
+          <div className="alm-header-copy">
+            <strong>Lịch sử hoạt động</strong>
+            <span>Theo dõi những lần tạo, chỉnh sửa hoặc xóa món.</span>
           </div>
           <button
             type="button"
@@ -186,37 +217,40 @@ const AuditLogModal = ({
             onClick={() => refetch?.()}
             disabled={loading || shouldSkip}
           >
-            <RefreshCw size={15} /> Làm mới
+            <RefreshCw size={15} className={loading ? "is-spinning" : ""} />
+            Cập nhật
           </button>
         </div>
 
         {error && (
           <div className="alm-alert">
             <AlertCircle size={18} />
-            <span>{error.message || "Không thể tải lịch sử thay đổi."}</span>
+            <span>Không thể tải lịch sử món. Vui lòng thử lại.</span>
           </div>
         )}
 
         {loading && logs.length === 0 ? (
-          <div className="alm-state">Đang tải lịch sử thay đổi...</div>
+          <div className="alm-state">Đang tải lịch sử món...</div>
         ) : logs.length === 0 ? (
           <div className="alm-empty">
             <Activity size={34} />
-            <strong>Chưa có lịch sử thay đổi</strong>
-            <span>Các thao tác tạo, sửa, xóa hoặc sửa giá sẽ xuất hiện tại đây.</span>
+            <strong>Chưa có thay đổi nào</strong>
+            <span>Các lần tạo, chỉnh sửa hoặc xóa món sẽ xuất hiện tại đây.</span>
           </div>
         ) : (
           <div className="alm-timeline">
-            <div className="alm-total">Hiển thị {logs.length}/{total} bản ghi gần nhất</div>
+            <div className="alm-total">
+              {total === 1 ? "1 thay đổi" : `${total} thay đổi`}
+            </div>
             {logs.map((log) => {
               const actionClass = ACTION_CLASS[log.action] || "update";
               return (
                 <article className="alm-entry" key={log.id}>
-                  <div className={`alm-entry-dot ${actionClass}`}></div>
+                  <div className={`alm-entry-dot ${actionClass}`} />
                   <div className="alm-entry-card">
                     <div className="alm-entry-top">
                       <span className={`alm-action ${actionClass}`}>
-                        {ACTION_LABELS[log.action] || log.action}
+                        {ACTION_LABELS[log.action] || "Đã thay đổi món"}
                       </span>
                       <span className="alm-time">
                         <Clock size={14} /> {formatDateTime(log.createdAt)}
@@ -224,7 +258,8 @@ const AuditLogModal = ({
                     </div>
                     <div className="alm-entry-sub">
                       <User size={14} />
-                      <span>Người thao tác: {log.byUserId || "--"}</span>
+                      <span>{log.actorName || "Người quản lý"}</span>
+                      {log.actorRole && <small>{log.actorRole}</small>}
                     </div>
                     <div className="alm-entry-diff">{renderDiff(log.diff)}</div>
                   </div>
