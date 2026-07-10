@@ -2,7 +2,7 @@
 
 ## Current behavior
 
-`StaffManagement` already renders the shared staff header and sub-page navigation. `StaffPerformancePage` adds another large hero containing the same page identity plus three actions with different scopes.
+`StaffManagement` already renders the shared staff header and sub-page navigation. `StaffPerformancePage` added another large hero containing the same page identity plus three actions with different scopes.
 
 ## Real flow
 
@@ -16,7 +16,7 @@ No schema, resolver, service, GraphQL operation, permission, or restaurant-scope
 
 ## Root cause
 
-The hero duplicates navigation-level information and groups unrelated actions by visual convenience rather than by task context. The date reset belongs with period filters; export and recalculation belong with the performance table.
+The hero duplicated navigation-level information and grouped unrelated actions by visual convenience rather than by task context. The date reset belongs with period filters; export and recalculation belong with the performance table.
 
 ## Scope
 
@@ -35,9 +35,23 @@ The hero duplicates navigation-level information and groups unrelated actions by
 5. Narrow layouts stack controls without horizontal page overflow.
 6. No backend or data-contract files change.
 
+## Implementation result
+
+- The duplicated hero was removed from `StaffPerformancePage`.
+- The current-period reset now sits with the date and restaurant filters.
+- CSV export, loading feedback and full-period recalculation now sit in the performance table header.
+- The responsive override reuses manager sage tokens, preserves visible focus, uses 44px mobile targets and honors reduced motion.
+- A focused component test verifies the new action locations and the absence of the hero.
+
 ## Files
 
 - `StaffPerformancePage.jsx`: relocate actions and remove duplicated hero.
-- `StaffPerformancePage.scss`: style contextual controls and table actions.
-- `StaffPerformanceResponsive.scss`: remove obsolete hero rules and adapt new action groups.
-- `StaffPerformancePage.layout.test.jsx`: verify action placement and hero removal.
+- `StaffPerformanceResponsive.scss`: style the contextual action groups and responsive states.
+- `StaffPerformancePage.layout.test.jsx`: verify action placement, hero removal and no-restaurant state.
+
+## Validation plan
+
+- `npx vitest run src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.layout.test.jsx`
+- `npm run check:conflicts`
+- `npm run build`
+- Browser review at desktop and 390/430px mobile widths.
