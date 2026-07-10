@@ -1,0 +1,30 @@
+{
+  "id": "07-10-contextual-ai-page-guidance",
+  "title": "Hướng dẫn AI theo trang hiện tại",
+  "status": "implemented_unverified",
+  "type": "backend-chatbot-behavior",
+  "scope": [
+    "cohan-restaurant-backend/src/services/ai/restaurantChatbot.service.js",
+    "cohan-restaurant-backend/tests/services/restaurantChatbot.pageGuidance.test.js"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run cohan-restaurant-backend/tests/services/restaurantChatbot.pageGuidance.test.js"
+    ],
+    "completed": [
+      "read AGENTS.md, .trellis/workflow.md and ponytail skill",
+      "traced pageContext from AiChatbotWidget through GraphQL resolver to the shared chatbot service",
+      "compared all customer-facing AppRouter routes with the existing chatbot feature coverage",
+      "resolved customer pages and dynamic route identifiers at the shared backend boundary",
+      "added current-page guidance context without changing the GraphQL or frontend contract",
+      "kept deterministic remaining-step guidance for the reservation flow",
+      "removed the internal current-page context action before returning UI actions",
+      "added focused route, scope, menu-item and answer regression tests",
+      "reviewed the latest branch files for syntax and unintended manager/staff coverage"
+    ],
+    "notRun": [
+      "targeted Vitest was unavailable in the GitHub connector environment",
+      "backend build/runtime smoke test was unavailable in the GitHub connector environment"
+    ]
+  }
+}
