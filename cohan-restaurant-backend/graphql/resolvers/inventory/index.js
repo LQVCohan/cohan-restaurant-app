@@ -8,11 +8,15 @@ import stockQ from "./stock.query.js";
 import stockM from "./stock.mutation.js";
 import recipeQ from "./recipe.query.js";
 import recipeM from "./recipe.mutation.js";
+import { createRecipePriceHistoryMutations } from "./recipePriceHistoryMutation.js";
 import consumeM from "./consume.mutation.js";
 import reservationM from "./reservation.mutation.js";
 import movementQ from "./movement.query.js";
 import inventoryCount from "./inventoryCount.js";
 import typesResolvers from "./types.js";
+
+const recipePriceHistoryM = createRecipePriceHistoryMutations(recipeM);
+
 export default {
   Query: {
     ...ingredientQ,
@@ -29,6 +33,7 @@ export default {
     ...warehouseM,
     ...stockM,
     ...recipeM,
+    ...recipePriceHistoryM,
     ...consumeM,
     ...reservationM,
     ...inventoryCount.Mutation,
