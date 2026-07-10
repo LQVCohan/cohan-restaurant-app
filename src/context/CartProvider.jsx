@@ -45,6 +45,7 @@ const MY_CART = gql`
         }
         holdExpiresAt
         holdStatus
+        serviceAt
       }
     }
   }
@@ -104,6 +105,7 @@ const mapServerCartItem = (cartId, item = {}) => ({
   })),
   holdExpiresAt: item.holdExpiresAt || null,
   holdStatus: item.holdStatus || "active",
+  serviceAt: item.serviceAt || null,
   backendCartId: cartId,
   backendCartItemId: item.id,
 });
