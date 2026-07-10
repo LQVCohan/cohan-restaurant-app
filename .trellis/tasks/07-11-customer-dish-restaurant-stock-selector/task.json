@@ -1,37 +1,50 @@
 {
   "id": "07-11-customer-dish-restaurant-stock-selector",
   "title": "Chọn nhà hàng còn món trên trang chi tiết",
-  "status": "in_progress",
+  "status": "ready_for_review",
   "type": "cross-layer-feature-fix",
   "priority": "P1",
   "base_branch": "main",
   "createdAt": "2026-07-11",
-  "rootCause": "FoodDetailV2 loads one restaurant-scoped MenuItem and has no contract for equivalent menu items at other public restaurants. Manager MenuItem inventory fields and customer menuItemLiveState also use separate stock calculations, allowing maxAvailable to drift from the live orderability result.",
-  "flow": "MenuItem/Recipe/Ingredient/StockItem/Warehouse -> shared variant availability -> MenuItem inventory fields and menuItemLiveState -> customerMenuItemLocations + FoodDetailV2 restaurant selector -> addCartItem",
+  "rootCause": "The customer detail route owned only one restaurant-scoped MenuItem and had no public contract for equivalent items at other restaurants. Manager inventory fields and the runtime customer live-state resolver also calculated the default serving through separate paths, so maxAvailable could drift.",
+  "flow": "MenuItem/Recipe/Ingredient/StockItem/Warehouse -> shared serving-variant availability -> MenuItem inventory fields and menuItemLiveState -> customerMenuItemLocations -> food-detail restaurant selector -> route reload with the selected restaurant MenuItem -> addCartItem",
   "files": [
+    "cohan-restaurant-backend/src/services/menuItemAvailability.service.js",
     "cohan-restaurant-backend/src/services/menuItemInventoryAvailability.service.js",
     "cohan-restaurant-backend/graphql/resolvers/cart/customerQuery.js",
-    "cohan-restaurant-backend/graphql/schema/menu.graphql",
-    "cohan-restaurant-backend/graphql/resolvers/menu/query.js",
-    "src/components/Customer/Food/FoodDetailV2.jsx",
-    "src/components/Customer/Food/FoodDetailV2.scss",
+    "cohan-restaurant-backend/graphql/schema/customerMenuItemLocations.graphql",
+    "cohan-restaurant-backend/graphql/schema/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/menu/customerLocationQuery.js",
+    "cohan-restaurant-backend/graphql/resolvers/menu/index.js",
+    "src/components/Customer/Food/FoodDetailRestaurantSelectorMount.jsx",
+    "src/components/Customer/Food/FoodDetailRestaurantSelectorMount.scss",
+    "src/layouts/MainLayout.jsx",
     "cohan-restaurant-backend/tests/services/menu-item-inventory-warehouse-scope.test.js",
     "cohan-restaurant-backend/tests/resolvers/customer-menu-item-locations.test.js",
-    "src/components/Customer/Food/FoodDetailV2.helpers.test.jsx"
+    "src/components/Customer/Food/FoodDetailRestaurantSelectorMount.test.jsx"
   ],
   "validation": {
     "planned": [
       "cd cohan-restaurant-backend && npx vitest run tests/services/menu-item-inventory-warehouse-scope.test.js tests/resolvers/customer-menu-item-locations.test.js",
-      "npx vitest run src/components/Customer/Food/FoodDetailV2.helpers.test.jsx",
+      "npx vitest run src/components/Customer/Food/FoodDetailRestaurantSelectorMount.test.jsx",
       "npm run check:graphql",
       "npm run check:conflicts",
-      "npm run build"
+      "npm run build",
+      "manual desktop and mobile food-detail review with one closed/out-of-stock and one open/in-stock restaurant"
     ],
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail, frontend-design and cross-layer guide",
-      "traced persistence, resolver/service, GraphQL operations, FoodDetailV2 actions and closest tests",
-      "fetched latest target files and inspected callers"
+      "traced persistence, resolver/service, GraphQL operations, food detail navigation and add-cart restaurant scope",
+      "replaced the manager-only inventory calculation with a compatibility re-export to one shared variant availability service",
+      "made the runtime customer live-state resolver use the same warehouse, recipe variant and inventory calculation",
+      "added a public query that finds active public restaurants carrying the same exact dish name or shared code, computes each location stock and removes duplicate restaurant entries",
+      "added a food-detail selector that lists every matching restaurant and automatically redirects to an accepting restaurant with verified stock",
+      "kept manual restaurant selection, deep links, default serving key and restaurant-scoped cart input aligned",
+      "added focused backend and frontend regression tests and reviewed latest file contents after each write"
     ],
-    "notRun": []
+    "notRun": [
+      "Targeted Vitest suites, GraphQL check, conflict check and production build were not run because the GitHub connector does not provide a repository checkout with installed dependencies.",
+      "Desktop/mobile visual verification and a real database scenario with stock 0 versus stock 20 remain for the local environment."
+    ]
   }
 }
