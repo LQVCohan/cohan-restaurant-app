@@ -5,6 +5,7 @@ import {
   InventoryCount,
   StockItem,
   StockMovement,
+  Warehouse,
 } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
@@ -35,6 +36,22 @@ const createCode = () => {
 
 const ensureObjectId = (value, fieldName) => {
   if (!mongoose.isValidObjectId(value)) throw new GraphQLError(`${fieldName} is invalid`);
+};
+
+const assertWarehouseBelongsToRestaurant = async ({ restaurantId, warehouseId }) => {
+  const warehouse = await Warehouse.findOne({
+    _id: warehouseId,
+    restaurantId,
+    isActive: { $ne: false },
+  })
+    .select({ _id: 1 })
+    .lean();
+
+  if (!warehouse) {
+    throw new GraphQLError("Warehouse does not belong to this restaurant", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
 };
 
 const getCount = async (id) => {
@@ -137,6 +154,7 @@ export default {
       ensureObjectId(restaurantId, "restaurantId");
       ensureObjectId(warehouseId, "warehouseId");
       await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_WRITE);
+      await assertWarehouseBelongsToRestaurant({ restaurantId, warehouseId });
 
       const start = parseDate(periodStart, "periodStart");
       const end = parseDate(periodEnd, "periodEnd");
@@ -255,7 +273,9 @@ export default {
     cancelInventoryCount: async (_, { id }, ctx) => {
       const count = await getCount(id);
       await requireRestaurantPermission(ctx, count.restaurantId, PERMISSIONS.STOCK_WRITE);
-      if (count.status === "closed") throw new GraphQLError("Closed counts cannot be cancelled");
+      if (count.status !== "draft") {
+        throw new GraphQLError("Only draft counts can be cancelled");
+      }
       count.status = "cancelled";
       await count.save();
       return count.toObject({ virtuals: true });
