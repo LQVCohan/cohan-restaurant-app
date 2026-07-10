@@ -1,0 +1,32 @@
+{
+  "id": "staff-emergency-contact-contract-fix",
+  "name": "staff-emergency-contact-contract-fix",
+  "title": "Fix staff emergency contact create contract",
+  "description": "Align the add/edit employee GraphQL contract with the Staff emergencyContacts persistence model and expose the primary contact to the current UI.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "manager-staff",
+  "package": null,
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/schema/user.graphql",
+    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.jsx",
+    "cohan-restaurant-backend/graphql/resolvers/staff/index.js",
+    "cohan-restaurant-backend/src/security/userDtos.js",
+    "cohan-restaurant-backend/tests/schema/staff-management-schema.test.js",
+    "cohan-restaurant-backend/tests/resolvers/staff-create-business-context.test.js"
+  ],
+  "notes": "Planning complete. The modal sends singular emergencyContact, CreateUserInput omits it, and the Staff model persists plural emergencyContacts. A schema-only change would pass validation but lose data, so the resolver boundary must normalize both create and update."
+}
