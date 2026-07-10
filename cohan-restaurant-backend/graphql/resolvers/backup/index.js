@@ -13,6 +13,11 @@ import {
 
 const VALID_STATUS = new Set(["planned", "checklist_completed", "cancelled"]);
 const MAX_LIMIT = 100;
+const PRE_EXPORT_CHECKLIST_FIELDS = [
+  "reportsChecked",
+  "transactionsReconciled",
+  "settingsReviewed",
+];
 
 const DEFAULT_CHECKLIST = {
   reportsChecked: false,
@@ -38,9 +43,9 @@ const RISK_DEFS = [
   ["reportsChecked", "reports_not_checked", "Báo cáo cuối ngày chưa kiểm tra"],
   ["transactionsReconciled", "transactions_not_reconciled", "Giao dịch chưa đối soát"],
   ["settingsReviewed", "settings_not_reviewed", "Cấu hình hệ thống chưa rà soát"],
-  ["exportPrepared", "export_not_prepared", "Dữ liệu export/snapshot chưa chuẩn bị"],
-  ["safeCopyStored", "safe_copy_not_stored", "Bản sao an toàn chưa được lưu"],
-  ["operatorRecorded", "operator_not_recorded", "Chưa ghi nhận người thực hiện và thời điểm"],
+  ["exportPrepared", "export_not_prepared", "File sao lưu chưa được tạo"],
+  ["safeCopyStored", "safe_copy_not_stored", "File sao lưu chưa được lưu ở nơi an toàn"],
+  ["operatorRecorded", "operator_not_recorded", "Chưa ghi nhận người thực hiện"],
 ];
 
 const badInput = (message) => new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
@@ -64,6 +69,23 @@ function normalizeChecklist(checklist = {}) {
   };
 }
 
+function checklistFromUserInput(checklist = {}, previous = DEFAULT_CHECKLIST) {
+  const current = normalizeChecklist(previous);
+  const next = { ...current };
+
+  for (const field of PRE_EXPORT_CHECKLIST_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(checklist, field)) {
+      next[field] = Boolean(checklist[field]);
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(checklist, "safeCopyStored")) {
+    next.safeCopyStored = current.exportPrepared ? Boolean(checklist.safeCopyStored) : false;
+  }
+
+  return next;
+}
+
 function normalizeScope(scope = {}) {
   return {
     ordersAndPayments: Boolean(scope.ordersAndPayments ?? DEFAULT_SCOPE.ordersAndPayments),
@@ -81,6 +103,10 @@ function allChecklistDone(checklist) {
   return Object.values(checklist).every(Boolean);
 }
 
+function missingPreExportChecks(checklist) {
+  return PRE_EXPORT_CHECKLIST_FIELDS.filter((field) => !checklist[field]);
+}
+
 async function assertAccess(ctx, restaurantId, permissions = ["system.manage"]) {
   await requireAnyPermission(ctx, [...permissions, "system.manage"]);
   if (!mongoose.isValidObjectId(restaurantId)) throw badInput("Invalid restaurantId");
@@ -88,6 +114,21 @@ async function assertAccess(ctx, restaurantId, permissions = ["system.manage"]) 
   const restaurant = await Restaurant.findById(restaurantId).lean();
   if (!restaurant) throw notFound("Restaurant not found");
   return restaurant;
+}
+
+async function requireExportReadyRun(restaurantId) {
+  const run = await BackupRun.findOne({ restaurantId, status: "planned" })
+    .sort({ createdAt: -1 });
+  if (!run) {
+    throw badInput("Hãy bắt đầu và lưu lần kiểm tra trước khi tải file sao lưu.");
+  }
+
+  const checklist = normalizeChecklist(run.checklist);
+  if (missingPreExportChecks(checklist).length) {
+    throw badInput("Hãy hoàn tất và lưu 3 việc bắt buộc trước khi tải file sao lưu.");
+  }
+
+  return run;
 }
 
 function toView(doc) {
@@ -112,10 +153,9 @@ function buildRisks(checklist) {
     label,
     severity: "warning",
     resolved: Boolean(checklist[field]),
-    description: checklist[field] ? "Đã hoàn tất." : "Cần hoàn tất trước khi chốt checklist sao lưu cấu hình.",
+    description: checklist[field] ? "Đã hoàn tất." : "Cần hoàn tất trước khi kết thúc lần sao lưu.",
   }));
 }
-
 
 function configFileName(snapshot) {
   const name = String(snapshot?.source?.restaurantName || "restaurant")
@@ -205,7 +245,6 @@ export default {
         throw badInput(error.message || "Cannot build restaurant config backup preview");
       }
     },
-
   },
   Mutation: {
     createBackupRun: async (_, { input }, ctx) => {
@@ -213,7 +252,7 @@ export default {
       await assertAccess(ctx, restaurantId, ["backup.write"]);
       const actorId = ctx?.user?.id || ctx?.user?._id;
 
-      const checklist = normalizeChecklist({ ...DEFAULT_CHECKLIST, ...(input?.checklist || {}) });
+      const checklist = checklistFromUserInput(input?.checklist, DEFAULT_CHECKLIST);
       const scope = normalizeScope({ ...DEFAULT_SCOPE, ...(input?.scope || {}) });
       const note = sanitizeNote(input?.note);
       const status = allChecklistDone(checklist) ? "checklist_completed" : "planned";
@@ -247,16 +286,28 @@ export default {
       return toView(created);
     },
 
-
-
     exportRestaurantConfigBackup: async (_, { input }, ctx) => {
       const restaurantId = input?.restaurantId;
       await assertAccess(ctx, restaurantId, ["backup.export"]);
       const actorId = ctx?.user?.id || ctx?.user?._id;
+      const backupRun = await requireExportReadyRun(restaurantId);
       try {
         const snapshot = await buildRestaurantConfigSnapshot({ restaurantId, sections: input?.sections, actorId });
         const json = JSON.stringify(snapshot, null, 2);
         const contentBase64 = Buffer.from(json, "utf8").toString("base64");
+
+        const nextChecklist = {
+          ...normalizeChecklist(backupRun.checklist),
+          exportPrepared: true,
+          operatorRecorded: true,
+        };
+        backupRun.checklist = nextChecklist;
+        backupRun.status = allChecklistDone(nextChecklist) ? "checklist_completed" : "planned";
+        if (backupRun.status === "checklist_completed") {
+          backupRun.completedAt = new Date();
+          if (actorId && mongoose.isValidObjectId(actorId)) backupRun.completedBy = actorId;
+        }
+        await backupRun.save();
 
         await safeAuditLog({
           action: "CONFIG_BACKUP_EXPORTED",
@@ -266,7 +317,12 @@ export default {
           restaurantId,
           actorId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
           byUserId: actorId && mongoose.isValidObjectId(actorId) ? actorId : undefined,
-          after: { checksum: snapshot.checksum, counts: snapshot.counts, sections: Object.keys(snapshot.sections || {}) },
+          after: {
+            backupRunId: String(backupRun._id),
+            checksum: snapshot.checksum,
+            counts: snapshot.counts,
+            sections: Object.keys(snapshot.sections || {}),
+          },
         });
 
         return {
@@ -384,7 +440,7 @@ export default {
       const before = toView(doc);
       const set = {};
       if (input?.checklist) {
-        set.checklist = normalizeChecklist({ ...normalizeChecklist(doc.checklist), ...input.checklist });
+        set.checklist = checklistFromUserInput(input.checklist, doc.checklist);
       }
       if (input?.scope) {
         set.scope = normalizeScope({ ...normalizeScope(doc.scope), ...input.scope });
@@ -401,7 +457,13 @@ export default {
       const actorId = ctx?.user?.id || ctx?.user?._id;
       const finalChecklist = set.checklist || normalizeChecklist(doc.checklist);
       const finalStatus = set.status || doc.status;
-      if (finalStatus === "checklist_completed" || (allChecklistDone(finalChecklist) && finalStatus === "planned")) {
+      if (set.status === "checklist_completed") {
+        if (!allChecklistDone(finalChecklist)) {
+          throw badInput("Chỉ có thể hoàn tất lần kiểm tra sau khi đủ tất cả các bước.");
+        }
+        set.completedAt = new Date();
+        if (actorId && mongoose.isValidObjectId(actorId)) set.completedBy = actorId;
+      } else if (allChecklistDone(finalChecklist) && finalStatus === "planned") {
         set.status = "checklist_completed";
         set.completedAt = new Date();
         if (actorId && mongoose.isValidObjectId(actorId)) set.completedBy = actorId;

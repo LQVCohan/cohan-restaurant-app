@@ -1,0 +1,23 @@
+{
+  "id": "backup-checklist-enforcement",
+  "name": "backup-checklist-enforcement",
+  "title": "Enforce backup checklist before config export",
+  "description": "Make the backup checklist control config export and record post-export steps automatically.",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "manager-backup",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "fix/backup-checklist-enforcement-20260710",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/resolvers/backup/index.js",
+    "cohan-restaurant-backend/tests/resolvers/backup-config.resolver.test.js"
+  ],
+  "notes": "Keep the existing GraphQL export input and frontend caller unchanged. Enforce the lifecycle at the shared resolver boundary so every caller receives the same protection."
+}

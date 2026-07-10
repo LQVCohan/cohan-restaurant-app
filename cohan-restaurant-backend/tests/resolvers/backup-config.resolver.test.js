@@ -23,6 +23,7 @@ vi.mock("../../models/index.js", () => models);
 const restaurantId = "507f1f77bcf86cd799439011";
 const targetRestaurantId = "507f1f77bcf86cd799439012";
 const actorId = "507f1f77bcf86cd799439013";
+const runId = "507f1f77bcf86cd799439014";
 const lean = (value) => ({ lean: vi.fn().mockResolvedValue(value) });
 const snapshot = {
   kind: "cohan.restaurant_config_snapshot",
@@ -35,20 +36,57 @@ const snapshot = {
 };
 const base64 = Buffer.from(JSON.stringify(snapshot), "utf8").toString("base64");
 
+const makeRun = (overrides = {}) => ({
+  _id: runId,
+  restaurantId,
+  status: "planned",
+  checklist: {
+    reportsChecked: true,
+    transactionsReconciled: true,
+    settingsReviewed: true,
+    exportPrepared: false,
+    safeCopyStored: false,
+    operatorRecorded: false,
+  },
+  scope: {},
+  note: "",
+  createdAt: new Date("2026-07-10T10:00:00.000Z"),
+  updatedAt: new Date("2026-07-10T10:00:00.000Z"),
+  completedAt: null,
+  createdBy: actorId,
+  completedBy: null,
+  save: vi.fn().mockResolvedValue(undefined),
+  ...overrides,
+});
+
 async function resolver() {
   return (await import("../../graphql/resolvers/backup/index.js")).default;
 }
 
 describe("backup config resolver", () => {
+  let activeRun;
+
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    activeRun = makeRun();
     requireAnyPermission.mockResolvedValue(true);
     requireRestaurantAccess.mockResolvedValue(true);
     models.Restaurant.findById.mockReturnValue(lean({ _id: restaurantId, name: "Target" }));
-    models.BackupRun.findOne.mockReturnValue({ sort: vi.fn(() => lean(null)) });
+    models.BackupRun.findOne.mockImplementation((filter = {}) => {
+      if (filter.status === "planned") {
+        return { sort: vi.fn().mockResolvedValue(activeRun) };
+      }
+      return { sort: vi.fn(() => lean(null)) };
+    });
     models.BackupRun.find.mockReturnValue({ sort: vi.fn(() => ({ skip: vi.fn(() => ({ limit: vi.fn(() => lean([])) })) })) });
-    models.BackupRun.create.mockResolvedValue({ _id: "507f1f77bcf86cd799439099", restaurantId: targetRestaurantId, status: "checklist_completed", checklist: {}, scope: {}, note: "Imported", createdAt: new Date("2026-06-02T00:00:00.000Z") });
+    models.BackupRun.create.mockImplementation(async (payload) => ({
+      _id: "507f1f77bcf86cd799439099",
+      createdAt: new Date("2026-06-02T00:00:00.000Z"),
+      updatedAt: new Date("2026-06-02T00:00:00.000Z"),
+      ...payload,
+    }));
+    models.BackupRun.findById.mockResolvedValue(activeRun);
     models.AuditLog.create.mockResolvedValue({});
     service.buildSectionCounts.mockReturnValue([{ key: "systemSettings", label: "Cấu hình hệ thống", count: 1, enabled: true }]);
     service.buildRestaurantConfigSnapshot.mockResolvedValue(snapshot);
@@ -63,7 +101,112 @@ describe("backup config resolver", () => {
     expect(requireAnyPermission).toHaveBeenCalledWith(expect.objectContaining({ user: expect.any(Object) }), ["backup.export", "system.manage"]);
     expect(requireRestaurantAccess).toHaveBeenCalledWith(expect.objectContaining({ user: expect.any(Object) }), restaurantId);
     expect(service.buildRestaurantConfigSnapshot).toHaveBeenCalled();
-    expect(models.AuditLog.create).toHaveBeenCalledWith(expect.objectContaining({ action: "CONFIG_BACKUP_EXPORTED" }));
+    expect(models.AuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      action: "CONFIG_BACKUP_EXPORTED",
+      after: expect.objectContaining({ backupRunId: runId }),
+    }));
+  });
+
+  it("rejects export when no active preparation run exists", async () => {
+    activeRun = null;
+    const r = await resolver();
+    await expect(
+      r.Mutation.exportRestaurantConfigBackup(null, { input: { restaurantId } }, { user: { id: actorId } }),
+    ).rejects.toThrow(/bắt đầu và lưu lần kiểm tra/i);
+    expect(service.buildRestaurantConfigSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("rejects export until the three pre-export checks are saved", async () => {
+    activeRun.checklist.settingsReviewed = false;
+    const r = await resolver();
+    await expect(
+      r.Mutation.exportRestaurantConfigBackup(null, { input: { restaurantId } }, { user: { id: actorId } }),
+    ).rejects.toThrow(/3 việc bắt buộc/i);
+    expect(service.buildRestaurantConfigSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("marks file creation and the operator automatically after export", async () => {
+    const r = await resolver();
+    await r.Mutation.exportRestaurantConfigBackup(null, { input: { restaurantId } }, { user: { id: actorId } });
+    expect(activeRun.checklist).toMatchObject({
+      exportPrepared: true,
+      operatorRecorded: true,
+      safeCopyStored: false,
+    });
+    expect(activeRun.status).toBe("planned");
+    expect(activeRun.save).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not let create input fake automatic or post-export checks", async () => {
+    const r = await resolver();
+    await r.Mutation.createBackupRun(null, {
+      input: {
+        restaurantId,
+        checklist: {
+          reportsChecked: true,
+          transactionsReconciled: true,
+          settingsReviewed: true,
+          exportPrepared: true,
+          operatorRecorded: true,
+          safeCopyStored: true,
+        },
+      },
+    }, { user: { id: actorId } });
+    expect(models.BackupRun.create).toHaveBeenCalledWith(expect.objectContaining({
+      status: "planned",
+      checklist: expect.objectContaining({
+        reportsChecked: true,
+        transactionsReconciled: true,
+        settingsReviewed: true,
+        exportPrepared: false,
+        operatorRecorded: false,
+        safeCopyStored: false,
+      }),
+    }));
+  });
+
+  it("allows safe-copy confirmation only after a file was exported", async () => {
+    const r = await resolver();
+    await r.Mutation.updateBackupRun(null, {
+      input: {
+        id: runId,
+        restaurantId,
+        checklist: { safeCopyStored: true, exportPrepared: true, operatorRecorded: true },
+      },
+    }, { user: { id: actorId } });
+    expect(activeRun.checklist).toMatchObject({
+      exportPrepared: false,
+      operatorRecorded: false,
+      safeCopyStored: false,
+    });
+
+    activeRun.checklist.exportPrepared = true;
+    activeRun.checklist.operatorRecorded = true;
+    await r.Mutation.updateBackupRun(null, {
+      input: { id: runId, restaurantId, checklist: { safeCopyStored: true } },
+    }, { user: { id: actorId } });
+    expect(activeRun.checklist.safeCopyStored).toBe(true);
+    expect(activeRun.status).toBe("checklist_completed");
+    expect(activeRun.completedAt).toBeInstanceOf(Date);
+  });
+
+  it("keeps completed import history editable when its legacy checklist is partial", async () => {
+    activeRun.status = "checklist_completed";
+    activeRun.checklist = {
+      reportsChecked: false,
+      transactionsReconciled: false,
+      settingsReviewed: true,
+      exportPrepared: true,
+      safeCopyStored: false,
+      operatorRecorded: true,
+    };
+    const r = await resolver();
+    const result = await r.Mutation.updateBackupRun(null, {
+      input: { id: runId, restaurantId, note: "Đã kiểm tra lịch sử khôi phục" },
+    }, { user: { id: actorId } });
+    expect(result.status).toBe("checklist_completed");
+    expect(result.note).toBe("Đã kiểm tra lịch sử khôi phục");
+    expect(activeRun.save).toHaveBeenCalledTimes(1);
   });
 
   it("backupReadiness default scope does not claim runtime data backup", async () => {
