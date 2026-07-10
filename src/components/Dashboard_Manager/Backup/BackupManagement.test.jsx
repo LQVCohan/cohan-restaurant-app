@@ -13,12 +13,10 @@ const previewImport = vi.fn();
 const importBackup = vi.fn();
 const createBackupRun = vi.fn();
 const updateBackupRun = vi.fn();
-
 const scopeState = vi.hoisted(() => ({ current: null }));
 const permissionState = vi.hoisted(() => ({
   allowed: new Set(["backup.read", "backup.write", "backup.export", "backup.import"]),
 }));
-
 const queryState = {
   readinessRestaurantId: "",
   runRestaurantId: "",
@@ -33,15 +31,10 @@ vi.mock("@apollo/client", () => ({
   useMutation: (...args) => useMutationMock(...args),
   useLazyQuery: (...args) => useLazyQueryMock(...args),
 }));
-
-vi.mock("../../../hooks/useManagerRestaurantSelection", () => ({
-  default: () => scopeState.current,
-}));
-
+vi.mock("../../../hooks/useManagerRestaurantSelection", () => ({ default: () => scopeState.current }));
 vi.mock("../../../utils/frontendPermissionAccess", () => ({
   hasPermission: (_user, code) => permissionState.allowed.has(code),
 }));
-
 vi.mock("../shared/ManagementPageHeader", () => ({
   default: ({ title, subtitle, customControls, stats = [] }) => (
     <header>
@@ -57,14 +50,12 @@ const restaurants = [
   { id: "r1", name: "Nhà hàng 1" },
   { id: "r2", name: "Nhà hàng 2" },
 ];
-
 const makeScope = (restaurantId = "r2") => ({
   restaurantOptions: restaurants,
   selectedRestaurantId: restaurantId,
   selectedRestaurant: restaurants.find((restaurant) => restaurant.id === restaurantId),
   restaurantsLoading: false,
 });
-
 const checklist = {
   reportsChecked: false,
   transactionsReconciled: false,
@@ -73,7 +64,6 @@ const checklist = {
   safeCopyStored: false,
   operatorRecorded: false,
 };
-
 const backupScope = {
   ordersAndPayments: false,
   tablesAndFloorPlan: true,
@@ -84,24 +74,20 @@ const backupScope = {
   customersAndPromotions: true,
   reportsAndReconciliation: false,
 };
-
 const readinessFor = (restaurantId) => ({
   restaurantId,
   ready: false,
-  risks: [
-    {
-      key: "reportsChecked",
-      label: "Báo cáo cuối ngày chưa kiểm tra",
-      severity: "warning",
-      resolved: false,
-      description: "Cần hoàn tất",
-    },
-  ],
+  risks: [{
+    key: "reportsChecked",
+    label: "Báo cáo cuối ngày chưa kiểm tra",
+    severity: "warning",
+    resolved: false,
+    description: "Cần hoàn tất",
+  }],
   checklist,
   scope: backupScope,
   lastRun: null,
 });
-
 const runFor = (restaurantId = "r2", overrides = {}) => ({
   id: "run-1",
   restaurantId,
@@ -114,21 +100,15 @@ const runFor = (restaurantId = "r2", overrides = {}) => ({
   scope: backupScope,
   ...overrides,
 });
-
 const renderPage = () => render(
   <AuthContext.Provider value={{ user: { id: "manager-1", roleName: "manager" }, restaurants }}>
     <BackupManagement />
   </AuthContext.Provider>,
 );
-
-const getBackupFileInput = () => screen.getByLabelText(/File sao lưu/, {
-  selector: 'input[type="file"]',
-});
-
+const getBackupFileInput = () => screen.getByLabelText(/File sao lưu/, { selector: 'input[type="file"]' });
 const latestQueryOptions = (operationName) => [...useQueryMock.mock.calls]
   .reverse()
   .find(([query]) => String(query).includes(`query ${operationName}`))?.[1];
-
 const conflictPreviewPayload = (overrides = {}) => ({
   data: {
     previewRestaurantConfigImport: {
@@ -140,29 +120,23 @@ const conflictPreviewPayload = (overrides = {}) => ({
       warnings: [],
       errors: [],
       changes: [],
-      conflictSummary: [
-        { key: "section:menuCatalog", label: "section menuCatalog", count: 1, enabled: true },
-      ],
-      conflicts: [
-        {
-          id: "menuCatalog:MenuItem:PHO",
-          section: "menuCatalog",
-          entityType: "MenuItem",
-          entityKey: "PHO",
-          label: "Phở bò",
-          severity: "warning",
-          reason: "MenuItem with the same key already exists in target restaurant.",
-          sourceLegacyId: "old-item",
-          targetId: "target-item",
-          defaultResolution: "keep_target",
-          allowedResolutions: ["use_source", "keep_target", "merge", "rename_source", "skip"],
-          warnings: [],
-          fieldDiffs: [
-            { field: "basePrice", sourceValuePreview: "50000", targetValuePreview: "55000", severity: "warning" },
-          ],
-          ...overrides.conflict,
-        },
-      ],
+      conflictSummary: [{ key: "section:menuCatalog", label: "section menuCatalog", count: 1, enabled: true }],
+      conflicts: [{
+        id: "menuCatalog:MenuItem:PHO",
+        section: "menuCatalog",
+        entityType: "MenuItem",
+        entityKey: "PHO",
+        label: "Phở bò",
+        severity: "warning",
+        reason: "MenuItem with the same key already exists in target restaurant.",
+        sourceLegacyId: "old-item",
+        targetId: "target-item",
+        defaultResolution: "keep_target",
+        allowedResolutions: ["use_source", "keep_target", "merge", "rename_source", "skip"],
+        warnings: [],
+        fieldDiffs: [{ field: "basePrice", sourceValuePreview: "50000", targetValuePreview: "55000", severity: "warning" }],
+        ...overrides.conflict,
+      }],
       ...overrides.preview,
     },
   },
@@ -172,23 +146,23 @@ beforeEach(() => {
   vi.clearAllMocks();
   scopeState.current = makeScope("r2");
   permissionState.allowed = new Set(["backup.read", "backup.write", "backup.export", "backup.import"]);
-  queryState.readinessRestaurantId = "";
-  queryState.runRestaurantId = "";
-  queryState.readinessError = null;
-  queryState.runsError = null;
-  queryState.runs = [];
-
+  Object.assign(queryState, {
+    readinessRestaurantId: "",
+    runRestaurantId: "",
+    readinessError: null,
+    runsError: null,
+    runs: [],
+  });
   useQueryMock.mockImplementation((query, options = {}) => {
     const text = String(query);
     const requestedRestaurantId = options.variables?.restaurantId || "";
     if (text.includes("query BackupRuns")) {
-      const restaurantId = queryState.runRestaurantId || requestedRestaurantId;
       return {
         data: { backupRuns: queryState.runs },
         loading: false,
         error: queryState.runsError,
         refetch: vi.fn(),
-        variables: { restaurantId },
+        variables: { restaurantId: queryState.runRestaurantId || requestedRestaurantId },
       };
     }
     const restaurantId = queryState.readinessRestaurantId || requestedRestaurantId;
@@ -199,7 +173,6 @@ beforeEach(() => {
       refetch: vi.fn(),
     };
   });
-
   previewExport.mockResolvedValue({
     data: {
       restaurantConfigBackupPreview: {
@@ -212,7 +185,6 @@ beforeEach(() => {
       },
     },
   });
-
   exportBackup.mockResolvedValue({
     data: {
       exportRestaurantConfigBackup: {
@@ -226,7 +198,6 @@ beforeEach(() => {
       },
     },
   });
-
   previewImport.mockResolvedValue({
     data: {
       previewRestaurantConfigImport: {
@@ -243,7 +214,6 @@ beforeEach(() => {
       },
     },
   });
-
   importBackup.mockResolvedValue({
     data: {
       importRestaurantConfigBackup: {
@@ -266,14 +236,8 @@ beforeEach(() => {
       },
     },
   });
-
-  createBackupRun.mockResolvedValue({
-    data: { createBackupRun: runFor("r2", { id: "br-new" }) },
-  });
-  updateBackupRun.mockResolvedValue({
-    data: { updateBackupRun: runFor("r2", { id: "br1" }) },
-  });
-
+  createBackupRun.mockResolvedValue({ data: { createBackupRun: runFor("r2", { id: "br-new" }) } });
+  updateBackupRun.mockResolvedValue({ data: { updateBackupRun: runFor("r2", { id: "br1" }) } });
   useLazyQueryMock.mockImplementation(() => [previewExport, { loading: false }]);
   useMutationMock.mockImplementation((mutation, options = {}) => {
     const text = String(mutation);
@@ -306,7 +270,6 @@ beforeEach(() => {
     if (text.includes("importRestaurantConfigBackup")) return [importBackup, { loading: false }];
     return [vi.fn(), { loading: false }];
   });
-
   global.URL.createObjectURL = vi.fn(() => "blob:backup");
   global.URL.revokeObjectURL = vi.fn();
   vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
@@ -378,7 +341,6 @@ describe("BackupManagement scope and user-facing wording", () => {
     expect(screen.getByRole("button", { name: "Lưu lần đang kiểm tra" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Hủy lần kiểm tra" })).toBeDisabled();
     expect(screen.getByText(/Hủy chỉ đóng lần kiểm tra, không xóa cài đặt hoặc file sao lưu/i)).toBeInTheDocument();
-
     fireEvent.click(screen.getByRole("button", { name: "Bắt đầu lần kiểm tra mới" }));
     expect(await screen.findByText(/Đã bắt đầu lần kiểm tra mới/i)).toBeInTheDocument();
   });
@@ -407,7 +369,7 @@ describe("BackupManagement scope and user-facing wording", () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Kiểm tra nội dung file" }));
     await waitFor(() => expect(previewExport).toHaveBeenCalled());
-    expect(await screen.findByText("Cài đặt vận hành")).toBeInTheDocument();
+    expect((await screen.findAllByText("Cài đặt vận hành")).length).toBeGreaterThan(2);
     expect(screen.queryByText("System settings")).not.toBeInTheDocument();
   });
 
@@ -463,9 +425,7 @@ describe("BackupManagement scope and user-facing wording", () => {
 });
 
 describe("BackupManagement preparation feedback", () => {
-  beforeEach(() => {
-    queryState.runs = [runFor()];
-  });
+  beforeEach(() => { queryState.runs = [runFor()]; });
 
   it("reports save separately from cancellation", async () => {
     renderPage();
@@ -503,7 +463,7 @@ describe("BackupManagement duplicate-data choices", () => {
     expect(screen.getByText(/Giá bán: trong file 50000 · hiện có 55000/)).toBeInTheDocument();
   });
 
-  it("sends changed conflict resolutions in the import payload", async () => {
+  it("sends changed choices in the restore payload", async () => {
     previewImport.mockResolvedValueOnce(conflictPreviewPayload());
     renderPage();
     await previewImportWithFile();
