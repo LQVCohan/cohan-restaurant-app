@@ -22,10 +22,11 @@ export default function Table3DQuickGuide() {
         </summary>
         <p>
           Lùi khỏi vị trí đặt khoảng 1,5–2 m, hướng camera xuống vùng sàn trống,
-          đủ sáng và di chuyển chậm sang hai bên. Tránh quét giường, ghế hoặc đồ
-          vật vì thiết bị có thể nhận nhầm chúng là mặt phẳng đặt bàn. Sau khi đặt,
-          dùng hai ngón tay để thu nhỏ hoặc phóng to mô hình cho đúng tỉ lệ thực tế.
-          Chế độ xem thử này không thay đổi dữ liệu bàn hoặc sơ đồ tầng.
+          đủ sáng và di chuyển chậm sang hai bên. Chỉ đặt khi mặt sàn đã được nhận
+          diện ổn định. Sau khi đặt, không kéo hoặc chụm hai ngón vì tỷ lệ AR đã
+          được khóa để hạn chế mô hình phóng, thu hoặc trôi khi camera đổi khoảng
+          cách. Nếu model vẫn sai tỷ lệ, hãy dùng file có đơn vị mét chuẩn. Chế độ
+          xem thử này không thay đổi dữ liệu bàn hoặc sơ đồ tầng.
         </p>
       </details>
     </div>
