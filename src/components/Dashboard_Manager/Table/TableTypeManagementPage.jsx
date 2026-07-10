@@ -1,6 +1,6 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { gql, useMutation } from "@apollo/client";
-import { AuthContext } from "@/context/AuthContext";
+import { Building2, Tags, X } from "lucide-react";
 import useTableManagement from "@/hooks/useTableManagement";
 import useFloorManagement from "@/hooks/useFloorManagement";
 import { useNotification } from "@/hooks/useNotification";
@@ -12,7 +12,6 @@ import {
 } from "@/utils/tableManagementOptions";
 import Modal from "../../../components/common/Modal";
 import Button from "../../../components/common/Button";
-import TableManagement from "./TableManagement";
 import "./TableTypeManagementPage.scss";
 
 const M_UPDATE_FLOOR = gql`
@@ -43,24 +42,19 @@ const EMPTY_TABLE_FORM = {
   type: "standard",
 };
 
-const getInitialRestaurantId = (restaurants = []) => {
-  const stored = localStorage.getItem("manager.selectedRestaurantId");
-  if (stored) return stored;
-  const first = restaurants[0];
-  return first ? String(first.id ?? first.restaurantId ?? "") : "";
-};
-
 const sortByCode = (a, b) =>
   String(a.code || "").localeCompare(String(b.code || ""), "vi", {
     numeric: true,
   });
 
-export default function TableTypeManagementPage() {
-  const { restaurants = [] } = useContext(AuthContext) || {};
+export default function TableTypeManagementPage({
+  isOpen = false,
+  onClose,
+  restaurantId = null,
+  restaurantName = "",
+}) {
   const { showNotification } = useNotification();
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState(() =>
-    getInitialRestaurantId(restaurants),
-  );
+  const scopedRestaurantId = isOpen ? restaurantId : null;
   const [activeTab, setActiveTab] = useState(TYPE_TAB);
   const [selectedType, setSelectedType] = useState(ALL_TYPES);
   const [searchQuery, setSearchQuery] = useState("");
@@ -73,30 +67,6 @@ export default function TableTypeManagementPage() {
   const [editingFloorId, setEditingFloorId] = useState("");
   const [editingFloorName, setEditingFloorName] = useState("");
 
-  useEffect(() => {
-    if (!selectedRestaurantId && restaurants.length) {
-      setSelectedRestaurantId(getInitialRestaurantId(restaurants));
-    }
-  }, [restaurants, selectedRestaurantId]);
-
-  useEffect(() => {
-    const handleScopeSelection = (event) => {
-      if (event?.detail?.key !== "manager.selectedRestaurantId") return;
-      const nextRestaurantId = String(event.detail.value || "");
-      if (!nextRestaurantId) return;
-      setSelectedRestaurantId(nextRestaurantId);
-      setSelectedType(ALL_TYPES);
-      setSearchQuery("");
-      setShowAddTable(false);
-      setEditingTableId("");
-      setEditingFloorId("");
-    };
-    window.addEventListener("manager:scope-selection", handleScopeSelection);
-    return () =>
-      window.removeEventListener("manager:scope-selection", handleScopeSelection);
-  }, []);
-
-  const restaurantId = selectedRestaurantId || null;
   const {
     tables = [],
     tablesLoading,
@@ -106,16 +76,31 @@ export default function TableTypeManagementPage() {
     moveTable,
     deleteTable,
     refetchTables,
-  } = useTableManagement({ restaurantId });
+  } = useTableManagement({ restaurantId: scopedRestaurantId });
   const {
     floors = [],
     floorsLoading,
     floorsError,
     createFloor,
     refetchFloors,
-  } = useFloorManagement({ restaurantId, enabled: Boolean(restaurantId) });
+  } = useFloorManagement({
+    restaurantId: scopedRestaurantId,
+    enabled: Boolean(scopedRestaurantId),
+  });
   const [updateFloor] = useMutation(M_UPDATE_FLOOR);
   const [deleteFloor] = useMutation(M_DELETE_FLOOR);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setActiveTab(TYPE_TAB);
+    setSelectedType(ALL_TYPES);
+    setSearchQuery("");
+    setBusyKey("");
+    setShowAddTable(false);
+    setEditingTableId("");
+    setEditingFloorId("");
+    setNewSpaceName("");
+  }, [isOpen, restaurantId]);
 
   useEffect(() => {
     if (!tableForm.floorId && floors[0]?.id) {
@@ -123,10 +108,6 @@ export default function TableTypeManagementPage() {
     }
   }, [floors, tableForm.floorId]);
 
-  const selectedRestaurant = restaurants.find(
-    (restaurant) =>
-      String(restaurant.id ?? restaurant.restaurantId) === String(restaurantId),
-  );
   const floorById = useMemo(
     () => new Map(floors.map((floor) => [String(floor.id), floor])),
     [floors],
@@ -149,7 +130,9 @@ export default function TableTypeManagementPage() {
           tableCodes: matchingTables
             .map((table) => table.code)
             .filter(Boolean)
-            .sort((a, b) => String(a).localeCompare(String(b), "vi", { numeric: true }))
+            .sort((a, b) =>
+              String(a).localeCompare(String(b), "vi", { numeric: true }),
+            )
             .slice(0, 4),
         };
       }),
@@ -168,14 +151,6 @@ export default function TableTypeManagementPage() {
       })
       .sort(sortByCode);
   }, [floorById, searchQuery, selectedType, tables]);
-
-  const closeModal = () => {
-    window.dispatchEvent(
-      new CustomEvent("manager:navigate", {
-        detail: { page: "tables", source: "table-type-space-modal" },
-      }),
-    );
-  };
 
   const getFloorName = (floorId) =>
     floorById.get(String(floorId))?.name || "Chưa xác định";
@@ -208,7 +183,7 @@ export default function TableTypeManagementPage() {
         (table) => String(table.floorId) === String(tableForm.floorId),
       ).length;
       await createTable({
-        restaurantId,
+        restaurantId: scopedRestaurantId,
         floorId: tableForm.floorId,
         code,
         capacity,
@@ -522,399 +497,390 @@ export default function TableTypeManagementPage() {
   };
 
   return (
-    <div className="ttm-host">
-      <TableManagement />
-      <Modal
-        isOpen
-        onClose={closeModal}
-        size="xl"
-        autoWrapBody={false}
-        className="ttm-modal"
-      >
-        <Modal.Header className="ttm-modal__header" onClose={closeModal}>
-          <div>
-            <span className="ttm-modal__eyebrow">Thiết lập bàn ăn</span>
-            <h2>Loại bàn &amp; không gian</h2>
-            <p>
-              {selectedRestaurant?.name || "Chi nhánh đang chọn"} · Quản lý phân loại bàn
-              và khu vực phục vụ trong cùng một nơi.
-            </p>
-          </div>
-        </Modal.Header>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="xl"
+      autoWrapBody={false}
+      className="ttm-modal"
+    >
+      <Modal.Header className="ttm-modal__header" onClose={onClose}>
+        <div>
+          <span className="ttm-modal__eyebrow">Thiết lập bàn ăn</span>
+          <h2>Loại bàn &amp; không gian</h2>
+          <p>
+            {restaurantName || "Chi nhánh đang chọn"} · Quản lý phân loại bàn và khu vực
+            phục vụ trong cùng một nơi.
+          </p>
+        </div>
+      </Modal.Header>
 
-        <Modal.Body className="ttm-modal__body">
-          <div className="ttm-tabs" role="tablist" aria-label="Thiết lập bàn ăn">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === TYPE_TAB}
-              className={`ttm-tab ${activeTab === TYPE_TAB ? "is-active" : ""}`}
-              onClick={() => setActiveTab(TYPE_TAB)}
-            >
-              <span aria-hidden="true">🏷️</span>
-              Loại bàn
-              <strong>{tables.length}</strong>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === SPACE_TAB}
-              className={`ttm-tab ${activeTab === SPACE_TAB ? "is-active" : ""}`}
-              onClick={() => setActiveTab(SPACE_TAB)}
-            >
-              <span aria-hidden="true">🏢</span>
-              Không gian
-              <strong>{floors.length}</strong>
-            </button>
-          </div>
+      <Modal.Body className="ttm-modal__body">
+        <div className="ttm-tabs" role="tablist" aria-label="Thiết lập bàn ăn">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === TYPE_TAB}
+            className={`ttm-tab ${activeTab === TYPE_TAB ? "is-active" : ""}`}
+            onClick={() => setActiveTab(TYPE_TAB)}
+          >
+            <span aria-hidden="true"><Tags size={18} /></span>
+            Loại bàn
+            <strong>{tables.length}</strong>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === SPACE_TAB}
+            className={`ttm-tab ${activeTab === SPACE_TAB ? "is-active" : ""}`}
+            onClick={() => setActiveTab(SPACE_TAB)}
+          >
+            <span aria-hidden="true"><Building2 size={18} /></span>
+            Không gian
+            <strong>{floors.length}</strong>
+          </button>
+        </div>
 
-          {activeTab === TYPE_TAB ? (
-            <section className="ttm-panel" role="tabpanel" aria-label="Quản lý loại bàn">
-              <div className="ttm-panel__heading">
-                <div>
-                  <span>Danh mục hệ thống</span>
-                  <h3>Phân loại và quản lý từng bàn</h3>
-                  <p>
-                    Sáu mã loại được giữ cố định để đồng bộ đặt bàn, POS và báo cáo.
-                  </p>
-                </div>
-                <Button variant="primary" size="sm" onClick={handleOpenAddTable}>
-                  + Thêm bàn
-                </Button>
+        {activeTab === TYPE_TAB ? (
+          <section className="ttm-panel" role="tabpanel" aria-label="Quản lý loại bàn">
+            <div className="ttm-panel__heading">
+              <div>
+                <span>Danh mục hệ thống</span>
+                <h3>Phân loại và quản lý từng bàn</h3>
+                <p>Sáu mã loại được giữ cố định để đồng bộ đặt bàn, POS và báo cáo.</p>
               </div>
+              <Button variant="primary" size="sm" onClick={handleOpenAddTable}>
+                + Thêm bàn
+              </Button>
+            </div>
 
-              <div className="ttm-type-grid">
+            <div className="ttm-type-grid">
+              <button
+                type="button"
+                className={`ttm-type-card ${selectedType === ALL_TYPES ? "is-active" : ""}`}
+                onClick={() => setSelectedType(ALL_TYPES)}
+                aria-pressed={selectedType === ALL_TYPES}
+              >
+                <span className="ttm-type-card__code">all</span>
+                <strong>Tất cả bàn</strong>
+                <span>{tables.length} bàn</span>
+                <small>Toàn bộ không gian phục vụ</small>
+              </button>
+              {typeSummaries.map((item) => (
                 <button
                   type="button"
-                  className={`ttm-type-card ${selectedType === ALL_TYPES ? "is-active" : ""}`}
-                  onClick={() => setSelectedType(ALL_TYPES)}
-                  aria-pressed={selectedType === ALL_TYPES}
+                  key={item.value}
+                  className={`ttm-type-card ${selectedType === item.value ? "is-active" : ""}`}
+                  onClick={() => setSelectedType(item.value)}
+                  aria-pressed={selectedType === item.value}
                 >
-                  <span className="ttm-type-card__code">all</span>
-                  <strong>Tất cả bàn</strong>
-                  <span>{tables.length} bàn</span>
-                  <small>Toàn bộ không gian phục vụ</small>
+                  <span className="ttm-type-card__code">{item.value}</span>
+                  <strong>{item.label}</strong>
+                  <span>{item.count} bàn</span>
+                  <small>
+                    {item.tableCodes.length
+                      ? item.tableCodes.join(" · ")
+                      : "Chưa có bàn thuộc loại này"}
+                  </small>
                 </button>
-                {typeSummaries.map((item) => (
+              ))}
+            </div>
+
+            <div className="ttm-toolbar">
+              <label className="ttm-field ttm-field--search">
+                <span>Tìm bàn</span>
+                <input
+                  type="search"
+                  aria-label="Tìm bàn trong modal"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Mã bàn hoặc tên không gian"
+                />
+              </label>
+              <label className="ttm-field">
+                <span>Lọc loại</span>
+                <select
+                  aria-label="Lọc loại bàn trong modal"
+                  value={selectedType}
+                  onChange={(event) => setSelectedType(event.target.value)}
+                >
+                  <option value={ALL_TYPES}>Tất cả loại</option>
+                  {TABLE_AREA_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span className="ttm-result-count">{filteredTables.length} kết quả</span>
+            </div>
+
+            {showAddTable && (
+              <form className="ttm-inline-form" onSubmit={handleCreateTable}>
+                <div className="ttm-inline-form__heading">
+                  <div>
+                    <span>Thêm vào danh mục</span>
+                    <h4>Tạo bàn mới</h4>
+                  </div>
                   <button
                     type="button"
-                    key={item.value}
-                    className={`ttm-type-card ${selectedType === item.value ? "is-active" : ""}`}
-                    onClick={() => setSelectedType(item.value)}
-                    aria-pressed={selectedType === item.value}
+                    onClick={() => setShowAddTable(false)}
+                    aria-label="Đóng form thêm bàn"
                   >
-                    <span className="ttm-type-card__code">{item.value}</span>
-                    <strong>{item.label}</strong>
-                    <span>{item.count} bàn</span>
-                    <small>
-                      {item.tableCodes.length
-                        ? item.tableCodes.join(" · ")
-                        : "Chưa có bàn thuộc loại này"}
-                    </small>
+                    <X size={18} aria-hidden="true" />
                   </button>
+                </div>
+                <div className="ttm-edit-grid">
+                  <label className="ttm-field">
+                    <span>Mã bàn *</span>
+                    <input
+                      aria-label="Mã bàn mới"
+                      value={tableForm.code}
+                      onChange={(event) =>
+                        setTableForm((current) => ({ ...current, code: event.target.value }))
+                      }
+                      placeholder="VD: A1"
+                    />
+                  </label>
+                  <label className="ttm-field">
+                    <span>Sức chứa *</span>
+                    <input
+                      aria-label="Sức chứa bàn mới"
+                      type="number"
+                      min="1"
+                      value={tableForm.capacity}
+                      onChange={(event) =>
+                        setTableForm((current) => ({
+                          ...current,
+                          capacity: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className="ttm-field">
+                    <span>Không gian *</span>
+                    <select
+                      aria-label="Tầng của bàn mới"
+                      value={tableForm.floorId}
+                      onChange={(event) =>
+                        setTableForm((current) => ({
+                          ...current,
+                          floorId: event.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">Chọn không gian</option>
+                      {floors.map((floor) => (
+                        <option key={floor.id} value={floor.id}>
+                          {floor.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="ttm-field">
+                    <span>Loại bàn *</span>
+                    <select
+                      aria-label="Loại của bàn mới"
+                      value={tableForm.type}
+                      onChange={(event) =>
+                        setTableForm((current) => ({ ...current, type: event.target.value }))
+                      }
+                    >
+                      {TABLE_AREA_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="ttm-inline-form__actions">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowAddTable(false)}
+                  >
+                    Hủy
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    loading={busyKey === "create-table"}
+                    disabled={!floors.length}
+                  >
+                    Tạo bàn
+                  </Button>
+                </div>
+                {!floors.length && (
+                  <p className="ttm-inline-warning">
+                    Hãy tạo ít nhất một không gian trước khi thêm bàn.
+                  </p>
+                )}
+              </form>
+            )}
+
+            {tablesError ? (
+              <div className="ttm-state ttm-state--error" role="alert">
+                Không thể tải danh sách bàn. Vui lòng thử lại sau.
+              </div>
+            ) : tablesLoading ? (
+              <div className="ttm-skeleton" aria-label="Đang tải danh sách bàn">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <span key={index} />
                 ))}
               </div>
-
-              <div className="ttm-toolbar">
-                <label className="ttm-field ttm-field--search">
-                  <span>Tìm bàn</span>
-                  <input
-                    type="search"
-                    aria-label="Tìm bàn trong modal"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Mã bàn hoặc tên không gian"
-                  />
-                </label>
-                <label className="ttm-field">
-                  <span>Lọc loại</span>
-                  <select
-                    aria-label="Lọc loại bàn trong modal"
-                    value={selectedType}
-                    onChange={(event) => setSelectedType(event.target.value)}
-                  >
-                    <option value={ALL_TYPES}>Tất cả loại</option>
-                    {TABLE_AREA_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <span className="ttm-result-count">{filteredTables.length} kết quả</span>
+            ) : filteredTables.length ? (
+              <div className="ttm-list">{filteredTables.map(renderTableRow)}</div>
+            ) : (
+              <div className="ttm-state">
+                <strong>Không có bàn phù hợp</strong>
+                <span>Đổi bộ lọc hoặc thêm bàn mới vào loại đang chọn.</span>
               </div>
-
-              {showAddTable && (
-                <form className="ttm-inline-form" onSubmit={handleCreateTable}>
-                  <div className="ttm-inline-form__heading">
-                    <div>
-                      <span>Thêm vào danh mục</span>
-                      <h4>Tạo bàn mới</h4>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddTable(false)}
-                      aria-label="Đóng form thêm bàn"
-                    >
-                      ×
-                    </button>
-                  </div>
-                  <div className="ttm-edit-grid">
-                    <label className="ttm-field">
-                      <span>Mã bàn *</span>
-                      <input
-                        aria-label="Mã bàn mới"
-                        value={tableForm.code}
-                        onChange={(event) =>
-                          setTableForm((current) => ({ ...current, code: event.target.value }))
-                        }
-                        placeholder="VD: A1"
-                      />
-                    </label>
-                    <label className="ttm-field">
-                      <span>Sức chứa *</span>
-                      <input
-                        aria-label="Sức chứa bàn mới"
-                        type="number"
-                        min="1"
-                        value={tableForm.capacity}
-                        onChange={(event) =>
-                          setTableForm((current) => ({
-                            ...current,
-                            capacity: event.target.value,
-                          }))
-                        }
-                      />
-                    </label>
-                    <label className="ttm-field">
-                      <span>Không gian *</span>
-                      <select
-                        aria-label="Tầng của bàn mới"
-                        value={tableForm.floorId}
-                        onChange={(event) =>
-                          setTableForm((current) => ({
-                            ...current,
-                            floorId: event.target.value,
-                          }))
-                        }
-                      >
-                        <option value="">Chọn không gian</option>
-                        {floors.map((floor) => (
-                          <option key={floor.id} value={floor.id}>
-                            {floor.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="ttm-field">
-                      <span>Loại bàn *</span>
-                      <select
-                        aria-label="Loại của bàn mới"
-                        value={tableForm.type}
-                        onChange={(event) =>
-                          setTableForm((current) => ({ ...current, type: event.target.value }))
-                        }
-                      >
-                        {TABLE_AREA_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  <div className="ttm-inline-form__actions">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setShowAddTable(false)}
-                    >
-                      Hủy
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="sm"
-                      loading={busyKey === "create-table"}
-                      disabled={!floors.length}
-                    >
-                      Tạo bàn
-                    </Button>
-                  </div>
-                  {!floors.length && (
-                    <p className="ttm-inline-warning">
-                      Hãy tạo ít nhất một không gian trước khi thêm bàn.
-                    </p>
-                  )}
-                </form>
-              )}
-
-              {tablesError ? (
-                <div className="ttm-state ttm-state--error" role="alert">
-                  Không thể tải danh sách bàn. Vui lòng thử lại sau.
-                </div>
-              ) : tablesLoading ? (
-                <div className="ttm-skeleton" aria-label="Đang tải danh sách bàn">
-                  {Array.from({ length: 4 }).map((_, index) => (
-                    <span key={index} />
-                  ))}
-                </div>
-              ) : filteredTables.length ? (
-                <div className="ttm-list">{filteredTables.map(renderTableRow)}</div>
-              ) : (
-                <div className="ttm-state">
-                  <strong>Không có bàn phù hợp</strong>
-                  <span>Đổi bộ lọc hoặc thêm bàn mới vào loại đang chọn.</span>
-                </div>
-              )}
-            </section>
-          ) : (
-            <section className="ttm-panel" role="tabpanel" aria-label="Quản lý không gian">
-              <div className="ttm-panel__heading">
-                <div>
-                  <span>Tầng và khu vực phục vụ</span>
-                  <h3>Quản lý không gian đặt bàn</h3>
-                  <p>
-                    Tạo, đổi tên hoặc xóa tầng trống. Bàn đang thuộc tầng vẫn được bảo vệ.
-                  </p>
-                </div>
+            )}
+          </section>
+        ) : (
+          <section className="ttm-panel" role="tabpanel" aria-label="Quản lý không gian">
+            <div className="ttm-panel__heading">
+              <div>
+                <span>Tầng và khu vực phục vụ</span>
+                <h3>Quản lý không gian đặt bàn</h3>
+                <p>Tạo, đổi tên hoặc xóa tầng trống. Bàn đang thuộc tầng vẫn được bảo vệ.</p>
               </div>
+            </div>
 
-              <form className="ttm-space-form" onSubmit={handleCreateSpace}>
-                <label className="ttm-field ttm-field--search">
-                  <span>Tên không gian mới</span>
-                  <input
-                    aria-label="Tên không gian mới"
-                    value={newSpaceName}
-                    onChange={(event) => setNewSpaceName(event.target.value)}
-                    placeholder="VD: Tầng 2, Sân vườn, Rooftop"
-                  />
-                </label>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  loading={busyKey === "create-floor"}
-                >
-                  + Thêm không gian
-                </Button>
-              </form>
+            <form className="ttm-space-form" onSubmit={handleCreateSpace}>
+              <label className="ttm-field ttm-field--search">
+                <span>Tên không gian mới</span>
+                <input
+                  aria-label="Tên không gian mới"
+                  value={newSpaceName}
+                  onChange={(event) => setNewSpaceName(event.target.value)}
+                  placeholder="VD: Tầng 2, Sân vườn, Rooftop"
+                />
+              </label>
+              <Button
+                type="submit"
+                variant="primary"
+                loading={busyKey === "create-floor"}
+              >
+                + Thêm không gian
+              </Button>
+            </form>
 
-              {floorsError ? (
-                <div className="ttm-state ttm-state--error" role="alert">
-                  Không thể tải danh sách không gian.
-                </div>
-              ) : floorsLoading ? (
-                <div className="ttm-skeleton" aria-label="Đang tải không gian">
-                  {Array.from({ length: 3 }).map((_, index) => (
-                    <span key={index} />
-                  ))}
-                </div>
-              ) : floors.length ? (
-                <div className="ttm-space-grid">
-                  {floors.map((floor) => {
-                    const tableCount = tableCountByFloor.get(String(floor.id)) || 0;
-                    const isEditing = editingFloorId === String(floor.id);
-                    const isBusy = busyKey.includes(String(floor.id));
-                    return (
-                      <article className="ttm-space-card" key={floor.id}>
-                        <div className="ttm-space-card__icon" aria-hidden="true">
-                          {Number(floor.level || 0)}
-                        </div>
-                        <div className="ttm-space-card__content">
-                          {isEditing ? (
-                            <label className="ttm-field">
-                              <span>Tên không gian</span>
-                              <input
-                                aria-label={`Tên không gian ${floor.name}`}
-                                value={editingFloorName}
-                                onChange={(event) => setEditingFloorName(event.target.value)}
-                              />
-                            </label>
-                          ) : (
-                            <>
-                              <strong>{floor.name || `Tầng ${floor.level}`}</strong>
-                              <span>
-                                Tầng {floor.level} · {tableCount} bàn
-                              </span>
-                            </>
-                          )}
-                        </div>
-                        <div className="ttm-space-card__actions">
-                          {isEditing ? (
-                            <>
-                              <button
-                                type="button"
-                                className="ttm-action"
-                                onClick={() => setEditingFloorId("")}
-                                disabled={isBusy}
-                              >
-                                Hủy
-                              </button>
-                              <button
-                                type="button"
-                                className="ttm-action ttm-action--edit"
-                                onClick={() => handleUpdateSpace(floor)}
-                                disabled={isBusy}
-                              >
-                                Lưu
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                type="button"
-                                className="ttm-action ttm-action--edit"
-                                onClick={() => {
-                                  setEditingFloorId(String(floor.id));
-                                  setEditingFloorName(floor.name || "");
-                                }}
-                                aria-label={`Sửa không gian ${floor.name}`}
-                                disabled={Boolean(busyKey)}
-                              >
-                                Sửa
-                              </button>
-                              <button
-                                type="button"
-                                className="ttm-action ttm-action--danger"
-                                onClick={() => handleDeleteSpace(floor)}
-                                aria-label={`Xóa không gian ${floor.name}`}
-                                disabled={Boolean(busyKey) || tableCount > 0}
-                                title={
-                                  tableCount > 0
-                                    ? `Không thể xóa vì còn ${tableCount} bàn`
-                                    : "Xóa không gian trống"
-                                }
-                              >
-                                Xóa
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="ttm-state">
-                  <strong>Chưa có không gian phục vụ</strong>
-                  <span>Tạo tầng hoặc khu vực đầu tiên để bắt đầu thêm bàn.</span>
-                </div>
-              )}
-            </section>
-          )}
-        </Modal.Body>
+            {floorsError ? (
+              <div className="ttm-state ttm-state--error" role="alert">
+                Không thể tải danh sách không gian.
+              </div>
+            ) : floorsLoading ? (
+              <div className="ttm-skeleton" aria-label="Đang tải không gian">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <span key={index} />
+                ))}
+              </div>
+            ) : floors.length ? (
+              <div className="ttm-space-grid">
+                {floors.map((floor) => {
+                  const tableCount = tableCountByFloor.get(String(floor.id)) || 0;
+                  const isEditing = editingFloorId === String(floor.id);
+                  const isBusy = busyKey.includes(String(floor.id));
+                  return (
+                    <article className="ttm-space-card" key={floor.id}>
+                      <div className="ttm-space-card__icon" aria-hidden="true">
+                        {Number(floor.level || 0)}
+                      </div>
+                      <div className="ttm-space-card__content">
+                        {isEditing ? (
+                          <label className="ttm-field">
+                            <span>Tên không gian</span>
+                            <input
+                              aria-label={`Tên không gian ${floor.name}`}
+                              value={editingFloorName}
+                              onChange={(event) => setEditingFloorName(event.target.value)}
+                            />
+                          </label>
+                        ) : (
+                          <>
+                            <strong>{floor.name || `Tầng ${floor.level}`}</strong>
+                            <span>Tầng {floor.level} · {tableCount} bàn</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="ttm-space-card__actions">
+                        {isEditing ? (
+                          <>
+                            <button
+                              type="button"
+                              className="ttm-action"
+                              onClick={() => setEditingFloorId("")}
+                              disabled={isBusy}
+                            >
+                              Hủy
+                            </button>
+                            <button
+                              type="button"
+                              className="ttm-action ttm-action--edit"
+                              onClick={() => handleUpdateSpace(floor)}
+                              disabled={isBusy}
+                            >
+                              Lưu
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="ttm-action ttm-action--edit"
+                              onClick={() => {
+                                setEditingFloorId(String(floor.id));
+                                setEditingFloorName(floor.name || "");
+                              }}
+                              aria-label={`Sửa không gian ${floor.name}`}
+                              disabled={Boolean(busyKey)}
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              type="button"
+                              className="ttm-action ttm-action--danger"
+                              onClick={() => handleDeleteSpace(floor)}
+                              aria-label={`Xóa không gian ${floor.name}`}
+                              disabled={Boolean(busyKey) || tableCount > 0}
+                              title={
+                                tableCount > 0
+                                  ? `Không thể xóa vì còn ${tableCount} bàn`
+                                  : "Xóa không gian trống"
+                              }
+                            >
+                              Xóa
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="ttm-state">
+                <strong>Chưa có không gian phục vụ</strong>
+                <span>Tạo tầng hoặc khu vực đầu tiên để bắt đầu thêm bàn.</span>
+              </div>
+            )}
+          </section>
+        )}
+      </Modal.Body>
 
-        <Modal.Footer className="ttm-modal__footer">
-          <p>
-            Loại bàn dùng mã hệ thống; thao tác thêm và xóa áp dụng cho từng bàn.
-            Không gian tương ứng với tầng phục vụ của nhà hàng.
-          </p>
-          <Button variant="secondary" onClick={closeModal}>
-            Đóng
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    </div>
+      <Modal.Footer className="ttm-modal__footer">
+        <p>
+          Loại bàn dùng mã hệ thống; thao tác thêm và xóa áp dụng cho từng bàn. Không gian
+          tương ứng với tầng phục vụ của nhà hàng.
+        </p>
+        <Button variant="secondary" onClick={onClose}>
+          Đóng
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
 }
