@@ -227,6 +227,25 @@ describe("user DTO sanitizers", () => {
     expect(out.verificationLastStatus).toBeUndefined();
   });
 
+  it("maps the stored primary emergency contact to the singular UI field", () => {
+    const primary = {
+      name: "Nguyễn Thị B",
+      phone: "0912345678",
+      relation: "Mẹ",
+      isPrimary: true,
+    };
+    const out = sanitizeStaffPrivateProfile({
+      _id: "staff-contact",
+      emergencyContacts: [
+        { name: "Nguyễn Văn C", phone: "0988888888", isPrimary: false },
+        primary,
+      ],
+    });
+
+    expect(out.emergencyContact).toEqual(primary);
+    expect(out.emergencyContacts).toHaveLength(2);
+  });
+
   it("permission-gated staff private profile can include HR fields", async () => {
     const out = await sanitizeStaffPrivateProfile(
       { ...sensitiveUser, restaurantForStaff: "restaurant-1" },
