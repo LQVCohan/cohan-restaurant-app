@@ -1,0 +1,28 @@
+{
+  "id": "table-3d-model-picker-compact",
+  "name": "table-3d-model-picker-compact",
+  "title": "Compact the table 3D model picker",
+  "description": "Reduce catalog row height and improve scroll alignment without changing model selection behavior.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-table-3d-model-picker",
+  "package": null,
+  "priority": "P2",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "table-3d-responsive-ui-upgrade",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Table/Table3DCatalogPanel.jsx",
+    "src/styles/Table3DModalContentSafety.css"
+  ],
+  "notes": "Screenshot audit found oversized desktop catalog rows and partial rows at scroll boundaries. The selection/filter callbacks and model data contract are already correct; the smallest fix is a desktop-only compact layout in the existing final content-safety stylesheet."
+}
