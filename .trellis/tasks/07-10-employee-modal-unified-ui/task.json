@@ -1,0 +1,29 @@
+{
+  "id": "employee-modal-unified-ui",
+  "name": "employee-modal-unified-ui",
+  "title": "Unify the add employee modal UI",
+  "description": "Remove the duplicated modal shell and align the complete add-employee flow with COHAN's shared modal, responsive, interaction, and accessibility patterns.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-staff",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.jsx",
+    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.scss",
+    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.test.jsx"
+  ],
+  "notes": "Backend createStaff contract, restaurant access, BrandMembership synchronization, and Apollo mutation flow were traced and remain unchanged."
+}
