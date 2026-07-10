@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MockedProvider } from "@apollo/client/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
@@ -121,9 +121,9 @@ describe("TransferPaymentReviewPage", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /Tất cả\s*9/ }));
 
-    expect(await screen.findByText("TX-FAILED")).toBeInTheDocument();
-    expect(screen.getByText("Không hợp lệ")).toBeInTheDocument();
-    expect(screen.getByText("Bằng chứng không hợp lệ")).toBeInTheDocument();
-    expect(screen.getByText("3/3")).toBeInTheDocument();
+    const card = await screen.findByRole("article", { name: "Giao dịch TX-FAILED" });
+    expect(within(card).getByText("Không hợp lệ")).toBeInTheDocument();
+    expect(within(card).getByText("Bằng chứng không hợp lệ")).toBeInTheDocument();
+    expect(within(card).getByText("3/3")).toBeInTheDocument();
   });
 });
