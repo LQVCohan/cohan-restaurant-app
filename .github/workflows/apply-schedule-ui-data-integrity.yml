@@ -82,7 +82,18 @@ jobs:
         run: npm run check:conflicts
 
       - name: Validate GraphQL schema and operations
-        run: npm run check:graphql
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run check:graphql 2>&1 | tee /tmp/schedule-graphql-check.log
+
+      - name: Upload GraphQL validation diagnostic
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schedule-graphql-validation-diagnostic
+          path: /tmp/schedule-graphql-check.log
+          if-no-files-found: error
 
       - name: Build production frontend
         run: npm run build
