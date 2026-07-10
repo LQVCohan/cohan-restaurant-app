@@ -1,10 +1,18 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
 import StaffLayout from "@/layouts/StaffLayout";
 import StaffDashboardPage from "./StaffDashboardPage";
+
+vi.mock("@/components/Staff/NotificationBell", () => ({
+  default: () => (
+    <button type="button" aria-label="Thông báo nhân viên">
+      Thông báo
+    </button>
+  ),
+}));
 
 const user = {
   id: "staff-1",
