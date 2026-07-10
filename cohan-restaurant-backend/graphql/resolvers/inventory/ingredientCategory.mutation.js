@@ -49,19 +49,18 @@ async function runIngredientCategorySync(restaurantId, ctx) {
   try {
     session.startTransaction();
 
-    const [ingredients, existingCategories] = await Promise.all([
-      Ingredient.find({
-        restaurantId,
-        isActive: true,
-      })
-        .select({ _id: 1, name: 1, category: 1, ingredientCategoryId: 1 })
-        .lean()
-        .session(session),
-      IngredientCategory.find({ restaurantId })
-        .select({ _id: 1, name: 1, slug: 1, usageCount: 1 })
-        .lean()
-        .session(session),
-    ]);
+    const ingredients = await Ingredient.find({
+      restaurantId,
+      isActive: true,
+    })
+      .select({ _id: 1, name: 1, category: 1, ingredientCategoryId: 1 })
+      .lean()
+      .session(session);
+
+    const existingCategories = await IngredientCategory.find({ restaurantId })
+      .select({ _id: 1, name: 1, slug: 1, usageCount: 1 })
+      .lean()
+      .session(session);
 
     stats.totalIngredients = ingredients.length;
 
