@@ -61,6 +61,7 @@ export default {
         periodEnd: schedule.periodEnd,
         openAt: schedule.openAt,
         closeAt: schedule.closeAt,
+        status: schedule.mode === "manual" ? "open" : "draft",
         registrationModeSnapshot: schedule.mode,
         targetEmploymentTypes:
           input.targetEmploymentTypes ||
