@@ -2,10 +2,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   legacyCreateStaff: vi.fn(),
+  legacyUpdateStaff: vi.fn(),
   requireRestaurantAccess: vi.fn(async () => true),
+  requireRestaurantPermission: vi.fn(async () => true),
+  getStaffRestaurantIds: vi.fn(),
+  assertAssignableStaffRole: vi.fn(),
+  assignStaffRoleWithinRestaurant: vi.fn(),
+  sanitizeStaffPrivateProfile: vi.fn((value) => value),
   Restaurant: { findById: vi.fn() },
-  BrandMembership: { findOneAndUpdate: vi.fn() },
-  Staff: { deleteOne: vi.fn() },
+  Role: { findById: vi.fn() },
+  BrandMembership: {
+    findOneAndUpdate: vi.fn(),
+    deleteOne: vi.fn(),
+  },
+  Staff: {
+    deleteOne: vi.fn(),
+    findById: vi.fn(),
+  },
 }));
 
 vi.mock("mongoose", () => ({
@@ -16,6 +29,7 @@ vi.mock("mongoose", () => ({
 
 vi.mock("../../models/index.js", () => ({
   Restaurant: mocks.Restaurant,
+  Role: mocks.Role,
   BrandMembership: mocks.BrandMembership,
   Staff: mocks.Staff,
 }));
@@ -25,12 +39,32 @@ vi.mock("../../graphql/guards.js", () => ({
   requireRestaurantAccess: mocks.requireRestaurantAccess,
 }));
 
+vi.mock("../../src/services/auth/authorization.service.js", () => ({
+  requireRestaurantPermission: mocks.requireRestaurantPermission,
+}));
+
+vi.mock("../../src/services/auth/restaurantScope.service.js", () => ({
+  getStaffRestaurantIds: mocks.getStaffRestaurantIds,
+}));
+
+vi.mock("../../src/services/auth/staffRoleAssignment.service.js", () => ({
+  assertAssignableStaffRole: mocks.assertAssignableStaffRole,
+  assignStaffRoleWithinRestaurant: mocks.assignStaffRoleWithinRestaurant,
+}));
+
+vi.mock("../../src/security/userDtos.js", () => ({
+  sanitizeStaffPrivateProfile: mocks.sanitizeStaffPrivateProfile,
+}));
+
 vi.mock("../../graphql/resolvers/staff/query.js", () => ({ default: {} }));
 vi.mock("../../graphql/resolvers/staff/payrollReadiness.query.js", () => ({
   default: {},
 }));
 vi.mock("../../graphql/resolvers/staff/mutation.js", () => ({
-  default: { createStaff: mocks.legacyCreateStaff },
+  default: {
+    createStaff: mocks.legacyCreateStaff,
+    updateStaff: mocks.legacyUpdateStaff,
+  },
 }));
 vi.mock("../../graphql/resolvers/staff/staffAvatar.mutation.js", () => ({
   default: {},
@@ -52,9 +86,51 @@ const mockRestaurant = (restaurant) => {
   });
 };
 
+const mockRole = (role = {}) => {
+  const resolvedRole = {
+    _id: "role-server",
+    slug: "server",
+    department: "service",
+    parentRole: { slug: "staff", permissions: [] },
+    permissions: [],
+    ...role,
+  };
+  const query = {
+    populate: vi.fn(),
+    lean: vi.fn().mockResolvedValue(resolvedRole),
+  };
+  query.populate.mockReturnValue(query);
+  mocks.Role.findById.mockReturnValue(query);
+  return resolvedRole;
+};
+
+const mockStaffForUpdate = (staff = {}) => {
+  const resolvedStaff = {
+    _id: "staff-1",
+    userType: "STAFF",
+    deletedAt: null,
+    department: "service",
+    baseSalary: 5_000_000,
+    emergencyContact: {
+      name: "Nguyễn Thị B",
+      phone: "0912345678",
+      relation: "Mẹ",
+    },
+    ...staff,
+  };
+  mocks.Staff.findById.mockReturnValue({
+    select: vi.fn(() => ({
+      lean: vi.fn().mockResolvedValue(resolvedStaff),
+    })),
+  });
+  return resolvedStaff;
+};
+
 const createArgs = {
   input: {
     fullName: "Nhân viên mới",
+    department: "service",
+    roleId: "role-server",
     staffBusinessContext: {
       brandId: "brand-active",
       restaurantId: "restaurant-active",
@@ -62,20 +138,29 @@ const createArgs = {
   },
 };
 
-const context = { user: { id: "manager-1" } };
+const context = { user: { id: "manager-1", roleName: "manager" } };
 
-describe("createStaff active business context", () => {
+describe("staff active business context", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRestaurant({ _id: "restaurant-active", brandId: "brand-active" });
+    mockRole();
+    mockStaffForUpdate();
+    mocks.getStaffRestaurantIds.mockResolvedValue(["restaurant-active"]);
     mocks.legacyCreateStaff.mockResolvedValue({ id: "staff-1" });
+    mocks.legacyUpdateStaff.mockResolvedValue({ id: "staff-1" });
     mocks.BrandMembership.findOneAndUpdate.mockResolvedValue({
       id: "membership-1",
     });
+    mocks.BrandMembership.deleteOne.mockResolvedValue({ deletedCount: 1 });
     mocks.Staff.deleteOne.mockResolvedValue({ deletedCount: 1 });
+    mocks.assignStaffRoleWithinRestaurant.mockResolvedValue({
+      _id: "staff-1",
+      fullName: "Nhân viên mới",
+    });
   });
 
-  it("creates the membership from explicit business context without legacy restaurantForStaff", async () => {
+  it("creates membership and assigns a staff-derived role without passing roleId to the legacy creator", async () => {
     const resolvers = (
       await import("../../graphql/resolvers/staff/index.js")
     ).default;
@@ -86,16 +171,21 @@ describe("createStaff active business context", () => {
       context,
     );
 
-    expect(created).toEqual({ id: "staff-1" });
-    expect(mocks.requireRestaurantAccess).toHaveBeenCalledWith(
+    expect(created).toMatchObject({ _id: "staff-1" });
+    expect(mocks.requireRestaurantPermission).toHaveBeenCalledWith(
       context,
       "restaurant-active",
+      "staff.write",
+    );
+    expect(mocks.assertAssignableStaffRole).toHaveBeenCalledWith(
+      expect.objectContaining({ actor: context.user }),
     );
     expect(mocks.legacyCreateStaff).toHaveBeenCalledWith(
       null,
       {
         input: {
           fullName: "Nhân viên mới",
+          department: "service",
           businessRestaurantId: "restaurant-active",
         },
       },
@@ -118,6 +208,13 @@ describe("createStaff active business context", () => {
         setDefaultsOnInsert: true,
       },
     );
+    expect(mocks.assignStaffRoleWithinRestaurant).toHaveBeenCalledWith({
+      actor: context.user,
+      staffUserId: "staff-1",
+      roleId: "role-server",
+      restaurantId: "restaurant-active",
+      ctx: context,
+    });
   });
 
   it("rejects a restaurant outside the active business before creating the account", async () => {
@@ -134,9 +231,9 @@ describe("createStaff active business context", () => {
     expect(mocks.BrandMembership.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
-  it("removes the new account when membership synchronization fails", async () => {
-    mocks.BrandMembership.findOneAndUpdate.mockRejectedValue(
-      new Error("MEMBERSHIP_WRITE_FAILED"),
+  it("removes both membership and new account when role synchronization fails", async () => {
+    mocks.assignStaffRoleWithinRestaurant.mockRejectedValue(
+      new Error("ROLE_ASSIGNMENT_FAILED"),
     );
     const resolvers = (
       await import("../../graphql/resolvers/staff/index.js")
@@ -144,8 +241,89 @@ describe("createStaff active business context", () => {
 
     await expect(
       resolvers.Mutation.createStaff(null, createArgs, context),
-    ).rejects.toThrow("MEMBERSHIP_WRITE_FAILED");
+    ).rejects.toThrow("ROLE_ASSIGNMENT_FAILED");
 
+    expect(mocks.BrandMembership.deleteOne).toHaveBeenCalledWith({
+      brandId: "brand-active",
+      userId: "staff-1",
+    });
     expect(mocks.Staff.deleteOne).toHaveBeenCalledWith({ _id: "staff-1" });
+  });
+
+  it("updates within the membership restaurant, preserves emergency relation and removes unchanged salary", async () => {
+    const role = mockRole();
+    const resolvers = (
+      await import("../../graphql/resolvers/staff/index.js")
+    ).default;
+
+    await resolvers.Mutation.updateStaff(
+      null,
+      {
+        userId: "staff-1",
+        input: {
+          fullName: "Nhân viên cập nhật",
+          department: "service",
+          roleId: "role-server",
+          baseSalary: 5_000_000,
+          emergencyContact: {
+            name: "Nguyễn Thị B",
+            phone: "0999999999",
+          },
+        },
+      },
+      context,
+    );
+
+    expect(mocks.requireRestaurantPermission).toHaveBeenCalledWith(
+      context,
+      "restaurant-active",
+      "staff.write",
+    );
+    expect(mocks.legacyUpdateStaff).toHaveBeenCalledWith(
+      null,
+      {
+        userId: "staff-1",
+        input: {
+          fullName: "Nhân viên cập nhật",
+          department: "service",
+          role: role._id,
+          emergencyContact: {
+            name: "Nguyễn Thị B",
+            phone: "0999999999",
+            relation: "Mẹ",
+          },
+        },
+        restaurantId: "restaurant-active",
+      },
+      context,
+      undefined,
+    );
+  });
+
+  it("keeps a changed salary so the existing admin-only guard remains authoritative", async () => {
+    const resolvers = (
+      await import("../../graphql/resolvers/staff/index.js")
+    ).default;
+
+    await resolvers.Mutation.updateStaff(
+      null,
+      {
+        userId: "staff-1",
+        input: {
+          fullName: "Nhân viên cập nhật",
+          baseSalary: 6_000_000,
+        },
+      },
+      context,
+    );
+
+    expect(mocks.legacyUpdateStaff).toHaveBeenCalledWith(
+      null,
+      expect.objectContaining({
+        input: expect.objectContaining({ baseSalary: 6_000_000 }),
+      }),
+      context,
+      undefined,
+    );
   });
 });
