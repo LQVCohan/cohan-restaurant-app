@@ -12,6 +12,7 @@ import {
   assertRestaurantCanOrder,
   getPublicRestaurantOrThrow,
 } from "../shared/restaurantCapabilityGuards.js";
+import { resolveMenuTimeSlotAt } from "../../../src/services/restaurantAvailability.service.js";
 import { logObjectEvent } from "../../../src/services/eventLog.service.js";
 import {
   cancelReservationForOrderTx,
@@ -57,6 +58,19 @@ const assertCartOwner = (cart, ctx) => {
 
 const getServingKey = (value) => String(value || "portion").trim() || "portion";
 const normalizeNote = (value) => String(value || "").trim();
+const normalizeServiceAt = (value) => {
+  if (!value) return null;
+  const serviceAt = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(serviceAt.getTime())) {
+    throw graphQLError("serviceAt không hợp lệ.");
+  }
+  return serviceAt;
+};
+const sameServiceAt = (left, right) => {
+  const leftTime = left ? new Date(left).getTime() : null;
+  const rightTime = right ? new Date(right).getTime() : null;
+  return leftTime === rightTime;
+};
 const isComboItem = (item) => String(item?.itemType || "MENU_ITEM") === "COMBO";
 const stringifyId = (value) =>
   value?.toHexString?.() || value?.toString?.() || String(value || "");
@@ -181,6 +195,7 @@ const sameCartIdentity = (
     servingKey,
     note,
     modifierSelectionKey,
+    serviceAt,
   },
 ) =>
   !isComboItem(item) &&
@@ -189,7 +204,8 @@ const sameCartIdentity = (
   getServingKey(item?.servingKey || item?.servingVariantKey) === servingKey &&
   normalizeNote(item?.note) === normalizeNote(note) &&
   String(item?.modifierSelectionKey || "") ===
-    String(modifierSelectionKey || "");
+    String(modifierSelectionKey || "") &&
+  sameServiceAt(item?.serviceAt, serviceAt);
 
 const buildInventoryLine = (item, quantity = item?.quantity) => ({
   menuItemId: item.menuItemId,
@@ -250,7 +266,12 @@ const applyAbusePenalty = (cart, reason, now) => {
   }
 };
 
-async function loadSellableMenuItem({ restaurantId, menuItemId }) {
+async function loadSellableMenuItem({
+  restaurantId,
+  menuItemId,
+  serviceAt,
+  restaurant,
+}) {
   const menuItem = await MenuItem.findOne({
     _id: menuItemId,
     restaurantId,
@@ -270,6 +291,26 @@ async function loadSellableMenuItem({ restaurantId, menuItemId }) {
     });
     if (!activeMenu) {
       throw graphQLError("Món ăn không thuộc menu đang hoạt động.");
+    }
+
+    if (serviceAt) {
+      const menu = await Menu.findOne({
+        _id: menuItem.menuId,
+        restaurantId,
+        isActive: true,
+      })
+        .select({ timeSlot: 1 })
+        .lean();
+      const expectedTimeSlot = resolveMenuTimeSlotAt(
+        serviceAt,
+        restaurant?.timezone,
+      );
+      if (!menu || !expectedTimeSlot || menu.timeSlot !== expectedTimeSlot) {
+        throw graphQLError(
+          "Món này không phục vụ trong khung giờ đặt bàn.",
+          "MENU_TIME_SLOT_MISMATCH",
+        );
+      }
     }
   }
   return menuItem;
@@ -306,6 +347,7 @@ export const CustomerCartMutation = {
       note,
       servingVariantKey,
       selectedModifiers = [],
+      serviceAt,
     } = input;
 
     const uid = resolveSelfUserId(userId, ctx);
@@ -320,11 +362,21 @@ export const CustomerCartMutation = {
       throw graphQLError("quantity must be a positive integer");
     }
 
-    const { availability } = await getPublicRestaurantOrThrow(restaurantId);
+    const serviceDate = normalizeServiceAt(serviceAt);
+    const { restaurant, availability } = await getPublicRestaurantOrThrow(
+      restaurantId,
+      undefined,
+      serviceDate ? { now: serviceDate } : undefined,
+    );
     assertRestaurantCanOrder(availability);
     const servingKey = getServingKey(servingVariantKey);
     const [menuItem, variant, warehouseId] = await Promise.all([
-      loadSellableMenuItem({ restaurantId, menuItemId }),
+      loadSellableMenuItem({
+        restaurantId,
+        menuItemId,
+        serviceAt: serviceDate,
+        restaurant,
+      }),
       loadServingVariant({ restaurantId, menuItemId, servingKey }),
       resolveWarehouseId(restaurantId),
     ]);
@@ -365,6 +417,7 @@ export const CustomerCartMutation = {
             servingKey,
             note,
             modifierSelectionKey: modifierSelection.selectionKey,
+            serviceAt: serviceDate,
           }),
         );
         const reservedItemId = existing?._id || createCartItemId();
@@ -411,6 +464,7 @@ export const CustomerCartMutation = {
           existing.modifiers = modifierSelection.modifiers;
           existing.modifiersPrice = modifierSelection.modifiersPrice;
           existing.modifierSelectionKey = modifierSelection.selectionKey;
+          existing.serviceAt = serviceDate;
         } else {
           cart.items.push({
             _id: reservedItemId,
@@ -427,6 +481,7 @@ export const CustomerCartMutation = {
             note: normalizeNote(note) || null,
             servingKey,
             servingName: variant.name || servingKey,
+            serviceAt: serviceDate,
             holdExpiresAt,
             holdStatus: "active",
           });
@@ -523,8 +578,11 @@ export const CustomerCartMutation = {
           );
           const inventoryLine = buildInventoryLine(item, Math.abs(delta));
           if (delta > 0) {
+            const serviceDate = normalizeServiceAt(item.serviceAt);
             const { availability } = await getPublicRestaurantOrThrow(
               item.restaurantId,
+              undefined,
+              serviceDate ? { now: serviceDate } : undefined,
             );
             assertRestaurantCanOrder(availability);
             try {
