@@ -1,14 +1,21 @@
 {
   "id": "07-11-table-qr-session-verification",
   "title": "Require table-session verification before QR ordering",
-  "status": "planning",
+  "status": "implemented_unverified",
   "area": "fullstack-security",
   "createdAt": "2026-07-11",
   "updatedAt": "2026-07-11",
   "validation": {
     "completed": [
       "static schema-resolver-service-frontend-POS flow trace",
-      "reviewed printed QR token, active table-session lifecycle, public actions and POS queue callers"
+      "reviewed printed QR token, active table-session lifecycle, public actions and POS queue callers",
+      "implemented HMAC confirmation code, request JWT and table-session JWT bound to restaurant, table, active session, request and device hash",
+      "implemented table-scoped HttpOnly cookie transport without exposing the signed session token in GraphQL",
+      "restricted unverified static QR access from order details, order submission, identity OTP, staff call and payment request",
+      "added POS in-person verification cards with hidden confirmation codes and matching request labels",
+      "limited confirmation attempts to five per request token in five minutes",
+      "prevented available or reserved tables from bootstrapping a session before staff marks the table occupied",
+      "added backend and frontend regression test files for token scope, cookie scope, bootstrap rules, resolver guards, customer gate and POS code reveal"
     ],
     "notRun": [
       "targeted backend Vitest",
@@ -17,6 +24,13 @@
       "npm run check:conflicts",
       "npm run build",
       "browser QR smoke"
+    ],
+    "notes": [
+      "GitHub connector does not expose a runnable checkout or browser; a container network attempt could not resolve github.com.",
+      "One newly confirmed device becomes the active QR-order device for the current table session; confirming another device invalidates the previous device.",
+      "The five-attempt limiter is process-local and suitable for the thesis demo; a shared Redis limiter is required for horizontally scaled production.",
+      "The printed QR remains long-lived but can only identify the table and request an in-person verification code.",
+      "An occupied walk-in table may create an empty table_session for verification; reserved and available tables require staff to open service first."
     ]
   }
 }
