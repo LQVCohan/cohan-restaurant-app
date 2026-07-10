@@ -15,7 +15,7 @@ import { useCart } from "../../../context/CartProvider";
 import { AuthContext } from "../../../context/AuthContext";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { getReservationActionErrorMessage } from "@/utils/commerceActionErrorMessages";
-import { mapCartItemToDiscountOrderItemInput } from "@/utils/discountPreviewPayload";
+import { mapCartItemToReservationOrderItemInput } from "@/utils/discountPreviewPayload";
 import "./TableBooking.scss";
 
 const ACQUIRE_TABLE_VIEW_LOCK = gql`
@@ -43,6 +43,15 @@ const UPDATE_FLOOR_WATCHING = gql`
     updateFloor(input: { id: $id, isWatching: $isWatching }) {
       id
       isWatching
+    }
+  }
+`;
+
+const CANCEL_RESERVATION = gql`
+  mutation CancelReservationAfterAddonFailure($id: ID!) {
+    cancelReservation(id: $id) {
+      id
+      status
     }
   }
 `;
@@ -101,6 +110,7 @@ const TableBooking = () => {
   const lastWatchingFloorRef = useRef(null);
   const rebookAutoOpenRef = useRef(false);
   const rebookAutoPickRef = useRef(false);
+  const bookingDraftAutoPickRef = useRef(false);
 
   const [selectedTable, setSelectedTable] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -108,10 +118,11 @@ const TableBooking = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [bookingData, setBookingData] = useState(null);
   const [bookingNotice, setBookingNotice] = useState(null);
-  const { cart } = useCart();
+  const { cart, removeRestaurantItems, refetchServerCart } = useCart();
   const searchParams = new URLSearchParams(search);
   const fromMenu = searchParams.get("fromMenu") === "1";
   const rebookReservation = state?.rebookReservation || null;
+  const bookingDraft = state?.bookingDraft || null;
   const isRebook = !!searchParams.get("rebook") || !!rebookReservation;
   const rebookPartySize = Number(rebookReservation?.partySize || 0);
   const bookingAuthValue =
@@ -133,6 +144,7 @@ const TableBooking = () => {
   const [acquireTableViewLock] = useMutation(ACQUIRE_TABLE_VIEW_LOCK);
   const [releaseTableViewLock] = useMutation(RELEASE_TABLE_VIEW_LOCK);
   const [createOrderForTable] = useMutation(CREATE_ORDER_FOR_TABLE);
+  const [cancelReservation] = useMutation(CANCEL_RESERVATION);
   const { data: restaurantData, loading: restaurantLoading } = useQuery(
     PUBLIC_RESTAURANT_CAPABILITY,
     { variables: { id: restaurantId }, skip: !restaurantId },
@@ -160,7 +172,10 @@ const TableBooking = () => {
     (item) => String(item.restaurantId) === String(restaurantId),
   );
   const menuSubtotal = restaurantCartItems.reduce(
-    (sum, item) => sum + (item.price || 0) * (item.quantity || 1),
+    (sum, item) =>
+      sum +
+      (Number(item.price || 0) + Number(item.modifiersPrice || 0)) *
+        Number(item.quantity || 1),
     0,
   );
   const menuDeposit = Math.round(menuSubtotal * 0.5);
@@ -212,10 +227,10 @@ const TableBooking = () => {
 
   const handleSelectTable = async (table) => {
     setBookingNotice(null);
-    if (!publicRestaurant || !canReserve) return;
+    if (!publicRestaurant || !canReserve) return false;
     if (table.status !== "available") {
       setBookingNotice({ type: "error", message: "Bàn này chưa sẵn sàng để đặt. Vui lòng chọn bàn đang trống." });
-      return;
+      return false;
     }
 
     const lockedByOther =
@@ -228,12 +243,12 @@ const TableBooking = () => {
         type: "error",
         message: `Bàn đang được ${table.viewLockViewerName || "khách khác"} xem trong 5 phút.`,
       });
-      return;
+      return false;
     }
 
     if (!user?.id) {
       setSelectedTable(table);
-      return;
+      return true;
     }
 
     try {
@@ -247,11 +262,13 @@ const TableBooking = () => {
         },
       });
       setSelectedTable(table);
+      return true;
     } catch (err) {
       setBookingNotice({
         type: "error",
         message: getReservationActionErrorMessage(err, err?.message || "Bàn đang được khách khác xem."),
       });
+      return false;
     }
   };
 
@@ -275,6 +292,47 @@ const TableBooking = () => {
   }, [isRebook, rebookPartySize, rebookReservation?.tableId, selectedTable?.id, tables, tablesLoading]);
 
   useEffect(() => {
+    if (
+      !bookingDraft?.tableId ||
+      bookingDraftAutoPickRef.current ||
+      tablesLoading
+    ) {
+      return;
+    }
+    if (
+      bookingDraft.tableFloor !== null &&
+      bookingDraft.tableFloor !== undefined &&
+      String(activeLevel) !== String(bookingDraft.tableFloor)
+    ) {
+      setActiveLevel(bookingDraft.tableFloor);
+      return;
+    }
+
+    const targetTable = (tables || []).find(
+      (table) => String(table.id) === String(bookingDraft.tableId),
+    );
+    if (!targetTable) {
+      bookingDraftAutoPickRef.current = true;
+      setBookingNotice({
+        type: "error",
+        message: "Bàn đã chọn không còn khả dụng. Vui lòng chọn lại bàn.",
+      });
+      return;
+    }
+
+    bookingDraftAutoPickRef.current = true;
+    handleSelectTable(targetTable).then((selected) => {
+      if (selected) setShowBookingModal(true);
+    });
+  }, [
+    activeLevel,
+    bookingDraft,
+    setActiveLevel,
+    tables,
+    tablesLoading,
+  ]);
+
+  useEffect(() => {
     return () => {
       if (selectedTable?.id && user?.id) {
         releaseTableViewLock({
@@ -295,11 +353,12 @@ const TableBooking = () => {
       };
     }
 
-    const addonItems = restaurantCartItems.map(mapCartItemToDiscountOrderItemInput);
+    const addonItems = restaurantCartItems.map(mapCartItemToReservationOrderItemInput);
     const tableCode = selectedTable?.label || selectedTable?.code || selectedTable?.id;
     const { data } = await createOrderForTable({
       variables: {
         input: {
+          reservationId: reservation.id,
           restaurantId,
           tableId: selectedTable.id,
           tableCode,
@@ -322,6 +381,11 @@ const TableBooking = () => {
       },
     });
     const addonOrder = data?.createOrderForTable?.order || null;
+    if (!addonOrder) {
+      throw new Error("Không nhận được order món đi kèm từ máy chủ.");
+    }
+    removeRestaurantItems(restaurantId);
+    await refetchServerCart?.();
     return {
       ...reservation,
       linkedCartItems: restaurantCartItems,
@@ -333,24 +397,30 @@ const TableBooking = () => {
 
   const handleBookingConfirmed = async (reservation) => {
     setShowBookingModal(false);
-    if (selectedTable?.id && user?.id) {
-      releaseTableViewLock({ variables: { input: { tableId: selectedTable.id, userId: user.id } } }).catch(() => {});
-    }
 
     let enrichedReservation = reservation;
     try {
       enrichedReservation = await attachAddonOrderToReservation(reservation);
     } catch (err) {
-      enrichedReservation = {
-        ...reservation,
-        linkedCartItems: restaurantCartItems,
-        linkedMenuSubtotal: menuSubtotal,
-        linkedMenuDeposit: menuDeposit,
-        linkedOrders: [],
-        linkedOrderError: err?.message || "Không thể tạo order món đi kèm.",
-      };
+      let cancelMessage = "";
+      try {
+        await cancelReservation({ variables: { id: reservation.id } });
+      } catch (cancelError) {
+        cancelMessage = ` Không thể tự hủy giữ bàn: ${cancelError?.message || "lỗi không xác định"}.`;
+      }
+      setBookingNotice({
+        type: "error",
+        message: `Không thể tạo order món đi kèm nên chưa chuyển sang thanh toán. ${err?.message || ""}${cancelMessage}`,
+      });
+      setShowBookingModal(true);
+      return;
     }
 
+    if (selectedTable?.id && user?.id) {
+      releaseTableViewLock({
+        variables: { input: { tableId: selectedTable.id, userId: user.id } },
+      }).catch(() => {});
+    }
     setBookingData(enrichedReservation);
     const needDeposit = Number(enrichedReservation?.depositAmount || 0) > 0;
     needDeposit ? setShowPaymentModal(true) : setShowSuccessModal(true);
@@ -520,6 +590,7 @@ const TableBooking = () => {
           tableCode={selectedTable?.label || selectedTable?.code}
           tableCapacity={selectedTable?.capacity}
           tableFloor={activeLevel}
+          initialDraft={bookingDraft}
           onBookingConfirmed={handleBookingConfirmed}
         />
       </AuthContext.Provider>
