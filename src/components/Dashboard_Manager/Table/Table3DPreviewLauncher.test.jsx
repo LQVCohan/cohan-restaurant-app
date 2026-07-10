@@ -40,7 +40,7 @@ describe("Table3DPreviewLauncher", () => {
 
     fireEvent.click(previewButton);
 
-    expect(screen.getByRole("dialog")).toHaveTextContent(
+    expect(await screen.findByRole("dialog")).toHaveTextContent(
       "Preview Cơ sở trung tâm (restaurant-1)",
     );
   });
