@@ -190,6 +190,25 @@ describe("backup config resolver", () => {
     expect(activeRun.completedAt).toBeInstanceOf(Date);
   });
 
+  it("keeps completed import history editable when its legacy checklist is partial", async () => {
+    activeRun.status = "checklist_completed";
+    activeRun.checklist = {
+      reportsChecked: false,
+      transactionsReconciled: false,
+      settingsReviewed: true,
+      exportPrepared: true,
+      safeCopyStored: false,
+      operatorRecorded: true,
+    };
+    const r = await resolver();
+    const result = await r.Mutation.updateBackupRun(null, {
+      input: { id: runId, restaurantId, note: "Đã kiểm tra lịch sử khôi phục" },
+    }, { user: { id: actorId } });
+    expect(result.status).toBe("checklist_completed");
+    expect(result.note).toBe("Đã kiểm tra lịch sử khôi phục");
+    expect(activeRun.save).toHaveBeenCalledTimes(1);
+  });
+
   it("backupReadiness default scope does not claim runtime data backup", async () => {
     const r = await resolver();
     const result = await r.Query.backupReadiness(null, { restaurantId }, { user: { id: actorId, roleName: "manager" } });
