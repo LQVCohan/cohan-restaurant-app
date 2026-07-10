@@ -1085,7 +1085,7 @@ const assertShiftIsEditableBeforeStart = ({ startTime }) => {
 };
 export { buildVisibleScheduleInsights };
 
-const ScheduleManagement = ({ readOnly = false }) => {
+const ScheduleManagement = ({ readOnly = false, restaurantId: scopedRestaurantId = "" }) => {
   const { showNotification } = useNotification();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState("week");
@@ -1208,13 +1208,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
     [],
   );
 
-  const effectiveRestaurantId = selectedRestaurantId || "";
+  const effectiveRestaurantId = String(scopedRestaurantId || selectedRestaurantId || "");
   useEffect(() => {
-    if (selectedRestaurantId) return;
+    if (scopedRestaurantId || selectedRestaurantId) return;
     if (!restaurantOptions.length) return;
 
     setSelectedRestaurantId(restaurantOptions[0].id);
-  }, [restaurantOptions, selectedRestaurantId]);
+  }, [restaurantOptions, scopedRestaurantId, selectedRestaurantId]);
   const {
     policy: schedulingPolicy,
     loading: schedulingPolicyLoading,
@@ -4968,7 +4968,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
         <div className="toolbar-group toolbar-group--filters">
           <select
-            value={selectedRestaurantId}
+            value={effectiveRestaurantId}
             onChange={(event) => handleRestaurantChange(event.target.value)}
             disabled={readOnly || !restaurantOptions.length}
           >
