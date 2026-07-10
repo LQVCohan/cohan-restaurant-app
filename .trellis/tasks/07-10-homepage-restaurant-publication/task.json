@@ -1,16 +1,17 @@
 {
   "id": "07-10-homepage-restaurant-publication",
   "title": "Khôi phục nhà hàng trên trang chính qua trạng thái công khai",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-fix",
   "scope": [
-    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx",
-    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx"
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantPublicationControl.jsx",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantPublicationControl.test.jsx",
+    "src/layouts/ManagerLayout.jsx"
   ],
-  "rootCause": "Brand restaurant creation intentionally persists publicationStatus=draft, while the public homepage restaurantsTop query only returns active and published restaurants. RestaurantInfoManagement currently omits publicationStatus from its GraphQL query, local form and update payload, so managers have no product flow to publish existing database restaurants.",
+  "rootCause": "Brand restaurant creation intentionally persists publicationStatus=draft, while the public homepage restaurantsTop query only returns active and published restaurants. The manager restaurant information workflow had no explicit publication action, so valid database restaurants could remain hidden indefinitely.",
   "validation": {
     "planned": [
-      "npx vitest run src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx",
+      "npx vitest run src/components/Dashboard_Manager/RestaurantInfo/RestaurantPublicationControl.test.jsx",
       "npm run check:graphql",
       "npm run check:conflicts",
       "npm run build"
@@ -18,9 +19,15 @@
     "completed": [
       "read AGENTS.md, Trellis workflow and ponytail skill",
       "traced Restaurant model defaults -> public restaurant filter -> restaurantsTop -> RestaurantGrid empty state",
-      "inspected createRestaurant and brand branch creation payload",
-      "confirmed UpdateRestaurantInput already supports publicationStatus"
+      "inspected createRestaurant, brand branch creation and restaurant update permission flow",
+      "confirmed UpdateRestaurantInput already supports publicationStatus",
+      "added a restaurant-scoped public visibility control to the manager information page",
+      "kept draft restaurants excluded from public queries until a restaurant.write user explicitly publishes them",
+      "added focused component regression coverage for draft-to-published mutation variables"
     ],
-    "notRun": []
+    "notRun": [
+      "Focused Vitest, GraphQL validation, conflict check and production build were not run because the GitHub connector does not provide a repository checkout with installed dependencies.",
+      "The two existing database restaurants were not modified directly; an authorized manager must enable public visibility for each restaurant once."
+    ]
   }
 }
