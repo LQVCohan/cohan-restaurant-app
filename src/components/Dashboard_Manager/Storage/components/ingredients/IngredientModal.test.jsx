@@ -33,7 +33,7 @@ const initialIngredient = {
 };
 
 describe("IngredientModal edit layout", () => {
-  it("uses native pressed controls and expands the single stock field", async () => {
+  it("keeps actions outside the scroll body and uses inventory-friendly labels", async () => {
     render(
       <IngredientModal
         isOpen
@@ -41,13 +41,14 @@ describe("IngredientModal edit layout", () => {
         initial={initialIngredient}
         isEditing
         onSubmit={vi.fn()}
+        currency="VND"
         categoryOptions={[{ id: "category-1", name: "Starch" }]}
       />,
     );
 
     await screen.findByRole("dialog", { name: "Cập nhật nguyên vật liệu" });
 
-    const activeButton = screen.getByRole("button", { name: "Đang bán" });
+    const activeButton = screen.getByRole("button", { name: "Đang sử dụng" });
     const pausedButton = screen.getByRole("button", { name: "Tạm ngưng" });
 
     expect(activeButton).toHaveAttribute("aria-pressed", "true");
@@ -60,5 +61,11 @@ describe("IngredientModal edit layout", () => {
 
     const minStockInput = screen.getByLabelText(/Mức cảnh báo tồn thấp/i);
     expect(minStockInput.closest(".form-group")).toHaveClass("form-group--full");
+
+    expect(screen.getByText("₫", { selector: ".currency-symbol" })).toBeInTheDocument();
+
+    const saveButton = screen.getByRole("button", { name: "Lưu thay đổi" });
+    expect(saveButton).toHaveAttribute("form", "ingredient-form");
+    expect(saveButton.closest(".modal-footer")).toBeInTheDocument();
   });
 });
