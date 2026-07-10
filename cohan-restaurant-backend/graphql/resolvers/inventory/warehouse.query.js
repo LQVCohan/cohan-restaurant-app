@@ -10,12 +10,9 @@ export default {
 
     await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_READ);
 
-    // ponytail: the product uses one automatically-created default warehouse per restaurant.
-    const warehouse = await Warehouse.findOne({ restaurantId, isActive: true })
+    return Warehouse.find({ restaurantId, isActive: true })
       .select({ __v: 0 })
-      .sort({ createdAt: 1, _id: 1 })
+      .sort({ createdAt: 1, name: 1, _id: 1 })
       .lean({ virtuals: true });
-
-    return warehouse ? [warehouse] : [];
   },
 };
