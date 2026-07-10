@@ -148,6 +148,7 @@ describe("Table3DSimulatorModalV2", () => {
     expect(
       screen.getByRole("button", { name: /Mở camera AR/i }),
     ).toBeDisabled();
+    expect(screen.queryByText(/Chưa chọn bàn/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/lưu vị trí/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Áp dụng mẫu/i)).not.toBeInTheDocument();
   });
