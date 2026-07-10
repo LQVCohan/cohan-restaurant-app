@@ -1,0 +1,21 @@
+{
+  "id": "07-10-recipe-min-cost-unit-conversion",
+  "title": "Sửa giá vốn thấp nhất theo quy đổi đơn vị",
+  "status": "planning",
+  "type": "bugfix",
+  "scope": [
+    "src/components/Dashboard_Manager/Storage/components/recipes/RecipeList.jsx",
+    "src/components/Dashboard_Manager/Storage/components/recipes/RecipeList.test.jsx",
+    "src/components/Dashboard_Manager/Storage/components/recipes/RecipeCard.jsx",
+    "src/components/Dashboard_Manager/Storage/components/recipes/RecipeModal.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "vitest run src/components/Dashboard_Manager/Storage/components/recipes/RecipeList.test.jsx",
+      "npm run build"
+    ],
+    "completed": [],
+    "notRun": []
+  }
+}
