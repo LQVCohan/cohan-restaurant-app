@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Star, Users } from "lucide-react";
+import { ChevronDown, Star, Users } from "lucide-react";
 import "./TableMap.scss";
 
 const getTableCode = (table) =>
@@ -45,18 +45,31 @@ export default function TableMap({
         </div>
       </div>
 
-      <div className="floor-selector-scroll" aria-label="Chọn không gian phục vụ">
-        {floors.map((floorName) => (
-          <button
-            key={floorName}
-            type="button"
-            className={`floor-chip ${floorName === floor ? "active" : ""}`}
-            onClick={() => setFloor(floorName)}
-          >
-            {floorName}
-          </button>
-        ))}
-      </div>
+      <details className="floor-filter" data-testid="floor-filter">
+        <summary>
+          <span>
+            <small>Bộ lọc bàn</small>
+            <strong>{floor || "Chưa có khu vực"}</strong>
+          </span>
+          <span className="floor-filter__count">
+            {currentFloorTables.length} bàn
+            <ChevronDown size={17} aria-hidden="true" />
+          </span>
+        </summary>
+
+        <div className="floor-selector-scroll" aria-label="Chọn không gian phục vụ">
+          {floors.map((floorName) => (
+            <button
+              key={floorName}
+              type="button"
+              className={`floor-chip ${floorName === floor ? "active" : ""}`}
+              onClick={() => setFloor(floorName)}
+            >
+              {floorName}
+            </button>
+          ))}
+        </div>
+      </details>
 
       <div className="table-grid">
         {currentFloorTables.map((table) => {
@@ -81,7 +94,10 @@ export default function TableMap({
               >
                 <div className="table-header">
                   <span className="table-name">{code}</span>
-                  <span className="status-indicator" aria-hidden="true" />
+                  <span className="table-status-badge">
+                    <span className="status-indicator" aria-hidden="true" />
+                    {status.label}
+                  </span>
                 </div>
                 <div className="table-body">
                   <span className="guest-count">
@@ -95,7 +111,6 @@ export default function TableMap({
                     </span>
                   ) : null}
                 </div>
-                <div className="table-status-text">{status.label}</div>
               </button>
             </article>
           );
