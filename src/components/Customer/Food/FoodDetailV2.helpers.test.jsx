@@ -3,6 +3,7 @@ import {
   buildModifierSelectionKey,
   calculateModifierPricing,
   getModifierSelectionError,
+  findAddedCartLine,
   shareFoodDetail,
 } from "./FoodDetailV2";
 
@@ -69,6 +70,37 @@ describe("FoodDetailV2 helpers", () => {
         { groupId: "a", optionId: "1" },
       ]),
     ).toBe("a:1|b:2");
+  });
+
+  it("matches the server line by its resolved serving key", () => {
+    const items = [
+      {
+        id: "cart-item-1",
+        menuItemId: "dish-1",
+        servingVariantKey: "default",
+        note: "",
+        modifiers: [],
+      },
+    ];
+
+    expect(
+      findAddedCartLine({
+        items,
+        menuItemId: "dish-1",
+        servingVariantKey: "default",
+        note: "",
+        modifiers: [],
+      })?.id,
+    ).toBe("cart-item-1");
+    expect(
+      findAddedCartLine({
+        items,
+        menuItemId: "dish-1",
+        servingVariantKey: "portion",
+        note: "",
+        modifiers: [],
+      }),
+    ).toBeUndefined();
   });
 
   it("uses clipboard when native sharing is unavailable", async () => {
