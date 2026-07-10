@@ -157,6 +157,22 @@ describe("Brand membership actions", () => {
     expect(message.success).toHaveBeenCalledWith("Đã cập nhật quyền thành viên");
   });
 
+  it("does not offer staff as a target membership role", () => {
+    renderActions();
+    fireEvent.click(screen.getByText("Đổi vai trò và phạm vi"));
+
+    fireEvent.change(screen.getByLabelText("Thành viên cần đổi quyền"), {
+      target: { value: "membership-manager" },
+    });
+
+    const roleSelect = screen.getByLabelText("Vai trò mới của thành viên");
+    expect(
+      roleSelect.querySelector('option[value="staff"]'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Quản trị chuỗi" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Quản lý chi nhánh" })).toBeInTheDocument();
+  });
+
   it("transfers ownership without requiring a branch", async () => {
     const navigateHandler = vi.fn();
     window.addEventListener("manager:navigate", navigateHandler);
