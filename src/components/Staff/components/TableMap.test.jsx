@@ -1,14 +1,21 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TableMap from "./TableMap";
 
 beforeEach(() => {
+  window.sessionStorage.clear();
+  Object.defineProperty(window, "requestAnimationFrame", {
+    configurable: true,
+    writable: true,
+    value: vi.fn((callback) => callback()),
+  });
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
     writable: true,
     value: vi.fn().mockImplementation((query) => ({
-      matches: query === "(max-width: 560px)",
+      matches:
+        query === "(max-width: 560px)" || query === "(max-width: 899px)",
       media: query,
       onchange: null,
       addEventListener: vi.fn(),
@@ -53,6 +60,92 @@ describe("TableMap", () => {
       }),
     );
     expect(onSelect).toHaveBeenCalledWith(table);
+    expect(
+      JSON.parse(
+        window.sessionStorage.getItem("cohan:staff-order:selected-table"),
+      ),
+    ).toEqual({ id: "table-1", tableCode: "T101" });
+  });
+
+  it("continues to the menu tab after a mobile table selection", () => {
+    const table = {
+      id: "table-1",
+      code: "T101",
+      floor: "Tầng 1",
+      status: "empty",
+      capacity: 4,
+    };
+    const menuClick = vi.fn();
+
+    render(
+      <>
+        <nav className="staff-pos-bottom-nav">
+          <button type="button" className="nav-item" onClick={menuClick}>
+            Menu
+          </button>
+        </nav>
+        <TableMap
+          tables={[table]}
+          floors={["Tầng 1"]}
+          selectedTable={null}
+          onSelect={vi.fn()}
+        />
+      </>,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Chọn bàn T101, 4 khách, Sẵn sàng",
+      }),
+    );
+
+    expect(menuClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores a valid saved table and rejects stale selections", async () => {
+    const table = {
+      id: "table-1",
+      code: "T101",
+      floor: "Tầng 1",
+      status: "empty",
+      capacity: 4,
+    };
+    const onSelect = vi.fn();
+    window.sessionStorage.setItem(
+      "cohan:staff-order:selected-table",
+      JSON.stringify({ id: "table-1", tableCode: "T101" }),
+    );
+
+    const { unmount } = render(
+      <TableMap
+        tables={[table]}
+        floors={["Tầng 1"]}
+        selectedTable={null}
+        onSelect={onSelect}
+      />,
+    );
+
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith(table));
+    unmount();
+
+    window.sessionStorage.setItem(
+      "cohan:staff-order:selected-table",
+      JSON.stringify({ id: "missing-table", tableCode: "T999" }),
+    );
+    render(
+      <TableMap
+        tables={[table]}
+        floors={["Tầng 1"]}
+        selectedTable={null}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(
+        window.sessionStorage.getItem("cohan:staff-order:selected-table"),
+      ).toBeNull(),
+    );
   });
 
   it("keeps an available table visibly ready", () => {
