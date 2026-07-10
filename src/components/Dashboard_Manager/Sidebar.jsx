@@ -120,6 +120,8 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBr
 
   const handleItemClick = useCallback((item) => {
     onPageChange(item.id);
+    const content = document.querySelector(".manager-layout__content");
+    if (content) content.scrollTop = 0;
     if (window.innerWidth <= 768) onClose();
   }, [onClose, onPageChange]);
 
