@@ -92,6 +92,7 @@ const CartItemSchema = new Schema(
     modifiers: { type: [CartModifierSnapshotSchema], default: [] },
     modifierSelectionKey: { type: String, trim: true, default: "" },
 
+    serviceAt: { type: Date, default: null, index: true },
     holdExpiresAt: { type: Date, index: true },
     holdStatus: {
       type: String,
