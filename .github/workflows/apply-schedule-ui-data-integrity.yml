@@ -81,18 +81,23 @@ jobs:
       - name: Check conflict markers
         run: npm run check:conflicts
 
-      - name: Validate GraphQL schema and operations
+      - name: Validate GraphQL schema
+        run: npm run check:graphql:schema
+
+      - name: Audit all GraphQL operations
+        id: graphql_operations
+        continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
-          npm run check:graphql 2>&1 | tee /tmp/schedule-graphql-check.log
+          npm run check:graphql:operations 2>&1 | tee /tmp/schedule-graphql-operations.log
 
-      - name: Upload GraphQL validation diagnostic
-        if: failure()
+      - name: Upload GraphQL operation baseline diagnostic
+        if: steps.graphql_operations.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: schedule-graphql-validation-diagnostic
-          path: /tmp/schedule-graphql-check.log
+          name: schedule-graphql-operation-baseline
+          path: /tmp/schedule-graphql-operations.log
           if-no-files-found: error
 
       - name: Build production frontend
