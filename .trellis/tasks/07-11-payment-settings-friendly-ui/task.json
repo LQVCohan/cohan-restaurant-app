@@ -3,7 +3,7 @@
   "name": "payment-settings-friendly-ui",
   "title": "Simplify restaurant payment settings UI",
   "description": "Make the MoMo and VNPAY connection screen understandable to restaurant managers, add recognizable provider branding and official setup links, and preserve the existing secure credential flow.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-payment-settings-ui",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-11",
-  "completedAt": null,
+  "completedAt": "2026-07-11",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "96349eb21ad2839586618a59de56dd455058ebab",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -23,10 +23,9 @@
   "relatedFiles": [
     "src/components/Dashboard_Manager/PaymentSettings/PaymentProviderSettingsPage.jsx",
     "src/components/Dashboard_Manager/PaymentSettings/PaymentProviderSettingsPage.scss",
-    "src/components/Dashboard_Manager/PaymentSettings/PaymentProviderSettingsPage.test.jsx",
-    "src/layouts/ManagerLayout.jsx"
+    "src/components/Dashboard_Manager/PaymentSettings/PaymentProviderSettingsPage.test.jsx"
   ],
-  "notes": "Frontend-only refinement. GraphQL credential contract, encryption, permission checks and runtime payment resolution remain unchanged.",
+  "notes": "Frontend-only refinement. GraphQL credential contract, encryption, permission checks and runtime payment resolution remain unchanged. TypeScript parser checks passed for the updated component and test source. Full Vitest and production build were not run because the connected GitHub commit had no workflow run and the local environment could not reach GitHub to install the repository.",
   "meta": {
     "skills": ["ponytail", "frontend-design", "taste-ui-redesign", "ui-ux-pro-max"]
   }
