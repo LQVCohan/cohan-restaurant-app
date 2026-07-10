@@ -1,6 +1,16 @@
-/* Keep the availability review modal inside the manager dashboard's light sage system. */
+/* Full-viewport, scroll-safe presentation for the manager availability review modal. */
 html body .availability-snapshot-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1200;
+  width: 100vw;
+  height: 100dvh;
+  min-height: 100dvh;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: clamp(0.75rem, 2vh, 1.25rem);
   background: linear-gradient(
     180deg,
@@ -9,11 +19,17 @@ html body .availability-snapshot-modal-overlay {
   );
   -webkit-backdrop-filter: blur(2px) saturate(0.92);
   backdrop-filter: blur(2px) saturate(0.92);
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
-  height: min(82dvh, 760px);
+  width: min(1480px, calc(100vw - 2rem));
+  height: min(88dvh, 820px);
+  min-height: 0;
   max-height: calc(100dvh - 2rem);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   box-shadow:
     0 20px 54px rgba(35, 52, 44, 0.16),
@@ -114,10 +130,15 @@ html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
 
 .availability-snapshot-modal .availability-table-shell {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 180px;
   max-height: none;
   margin: 0.5rem 1rem 1rem;
+  overflow: auto !important;
   border-radius: 14px;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
 }
 
 .availability-snapshot-modal .availability-snapshot-table th,
@@ -127,6 +148,17 @@ html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
 
 .availability-snapshot-modal .availability-cell {
   min-width: 70px;
+}
+
+@media (max-height: 720px) and (min-width: 621px) {
+  html body .availability-snapshot-modal-overlay {
+    padding: 0.5rem;
+  }
+
+  html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
+    height: calc(100dvh - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
 }
 
 @media (max-width: 980px) {
@@ -147,9 +179,14 @@ html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
 
   html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
     width: calc(100vw - 1rem);
-    height: calc(100dvh - 1rem);
-    max-height: calc(100dvh - 1rem);
-    overflow-y: auto;
+    height: auto;
+    min-height: calc(100dvh - 1rem);
+    max-height: none;
+    overflow: visible;
+  }
+
+  .availability-snapshot-modal .availability-snapshot-header {
+    position: static;
   }
 
   .availability-snapshot-modal .availability-summary-cards,
@@ -157,9 +194,14 @@ html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
     grid-template-columns: 1fr;
   }
 
+  .availability-snapshot-modal .availability-snapshot-controls input,
+  .availability-snapshot-modal .availability-snapshot-controls select {
+    font-size: 1rem;
+  }
+
   .availability-snapshot-modal .availability-table-shell {
     flex: 0 0 auto;
     min-height: 300px;
-    max-height: 52dvh;
+    max-height: 56dvh;
   }
 }

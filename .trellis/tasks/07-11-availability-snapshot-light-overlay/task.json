@@ -1,29 +1,32 @@
 {
   "id": "07-11-availability-snapshot-light-overlay",
-  "title": "Tối ưu lớp phủ và bố cục modal lịch rảnh",
+  "title": "Sửa modal lịch rảnh bị giới hạn viewport và kẹt cuộn",
   "status": "implemented_unverified",
-  "type": "frontend-polish",
+  "type": "frontend-bugfix",
   "scope": [
-    "src/styles/AvailabilitySnapshotOverlayLight.css",
-    "src/main.jsx"
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModalInline.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.portal.test.jsx",
+    "src/styles/AvailabilitySnapshotOverlayLight.css"
   ],
   "validation": {
     "planned": [
+      "npm run test:component -- AvailabilitySnapshotModal.portal.test.jsx",
       "npm run check:conflicts",
       "npm run build",
-      "desktop and mobile-height visual review"
+      "desktop and mobile visual replay"
     ],
     "completed": [
-      "read ponytail, ui-ux-pro-max, frontend-design, taste-ui-redesign, and redesign-existing-projects skills",
-      "inspected the supplied screenshots and current AvailabilitySnapshotModal structure/styles",
-      "traced ScheduleManagement -> AvailabilitySnapshotModal -> component SCSS -> final overlay stylesheet",
-      "kept the light sage overlay and reduced modal shadow",
-      "gave the desktop modal a stable working height and made the matrix consume remaining space",
-      "compacted KPI cards, filters, result count, legend, and status messages",
-      "preserved full-modal scrolling on phone widths",
-      "re-fetched the latest stylesheet before updating it"
+      "read AGENTS.md, workflow, ponytail, ui-ux-pro-max, frontend-design, taste-ui-redesign, and redesign-existing-projects skills",
+      "traced ScheduleManagement -> AvailabilitySnapshotModal -> manager page shell -> component styles -> final overlay stylesheet",
+      "confirmed the modal was mounted inside the manager layout instead of document.body",
+      "moved the modal boundary to a React portal while preserving the existing content component",
+      "made the overlay full viewport and restored explicit overlay/table scrolling",
+      "added a focused regression test for the portal boundary",
+      "fetched the latest target files and checked related modal portal patterns"
     ],
     "notRun": [
+      "targeted component test was unavailable in the GitHub connector environment",
       "npm run check:conflicts was unavailable in the GitHub connector environment",
       "npm run build was unavailable in the GitHub connector environment",
       "desktop and mobile visual replay was unavailable in the GitHub connector environment"
