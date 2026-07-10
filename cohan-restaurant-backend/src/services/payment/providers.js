@@ -57,7 +57,9 @@ export function formatVnpDate(value) {
     hourCycle: "h23",
   }).formatToParts(date);
   const values = Object.fromEntries(
-    parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]),
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
   );
 
   return `${values.year}${values.month}${values.day}${values.hour}${values.minute}${values.second}`;
@@ -195,7 +197,9 @@ export function createVnpayPayment({
   }
 
   const createDate = now instanceof Date ? now : new Date(now);
-  if (Number.isNaN(createDate.getTime())) throw new Error("Invalid VNPAY create date");
+  if (Number.isNaN(createDate.getTime())) {
+    throw new Error("Invalid VNPAY create date");
+  }
 
   const configuredTtl =
     Number.isFinite(DEFAULT_VNPAY_TTL_MINUTES) && DEFAULT_VNPAY_TTL_MINUTES > 0
@@ -236,6 +240,13 @@ export function createVnpayPayment({
   };
 }
 
+export function isVnpaySuccessful(payload = {}) {
+  return (
+    String(payload.vnp_ResponseCode || "") === "00" &&
+    String(payload.vnp_TransactionStatus || "") === "00"
+  );
+}
+
 export function verifyVnpayCallback(payload = {}) {
   const hashSecret = process.env.VNPAY_HASH_SECRET;
   if (!hashSecret) return false;
@@ -253,5 +264,17 @@ export function verifyVnpayCallback(payload = {}) {
 
   const signData = buildVnpHashData(working);
   const expected = hmacSHA512(signData, hashSecret);
-  return safeCompareString(expected, secureHash);
+  const isValid = safeCompareString(expected, secureHash);
+
+  if (
+    isValid &&
+    String(payload.vnp_ResponseCode || "") === "00" &&
+    !isVnpaySuccessful(payload)
+  ) {
+    // The payment service historically maps VNPAY by responseCode. Normalize a
+    // signed non-success transaction so it cannot be settled as successful.
+    payload.vnp_ResponseCode = String(payload.vnp_TransactionStatus || "99");
+  }
+
+  return isValid;
 }
