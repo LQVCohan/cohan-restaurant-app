@@ -6,8 +6,13 @@ import { parseDurationMs } from "../src/utils/duration.js";
 
 export const TABLE_ACCESS_TOKEN_ERROR = "Invalid table access token";
 export const TABLE_ACCESS_TOKEN_PURPOSE = "customer_table";
+export const TABLE_IDENTITY_TOKEN_ERROR = "Invalid table identity token";
+export const TABLE_IDENTITY_CHALLENGE_PURPOSE = "customer_table_identity_challenge";
+export const TABLE_IDENTITY_CANDIDATE_PURPOSE = "customer_table_identity_candidate";
+export const TABLE_IDENTITY_PURPOSE = "customer_table_identity";
 
 const ACTIVE_CUSTOMER_REQUEST_STATUSES = new Set(["PENDING", "ACKNOWLEDGED"]);
+const ORDERABLE_TABLE_STATUSES = new Set(["reserved", "occupied"]);
 
 function toIdString(value) {
   if (!value) return null;
@@ -17,6 +22,29 @@ function toIdString(value) {
 export function normalizePublicTableCode(value) {
   const normalized = String(value || "").trim().toUpperCase();
   return normalized || null;
+}
+
+export function normalizePublicPhone(value) {
+  let phone = String(value || "").trim().replace(/[\s.-]+/g, "");
+  if (phone.startsWith("+84")) phone = `0${phone.slice(3)}`;
+  else if (phone.startsWith("84")) phone = `0${phone.slice(2)}`;
+  if (!/^0\d{9,10}$/.test(phone)) {
+    throw new Error("Số điện thoại không hợp lệ.");
+  }
+  return phone;
+}
+
+export function maskPublicPhone(value) {
+  const phone = String(value || "");
+  if (phone.length <= 4) return "****";
+  return `${"*".repeat(phone.length - 4)}${phone.slice(-4)}`;
+}
+
+export function maskPublicCustomerName(value) {
+  const parts = String(value || "Khách hàng").trim().split(/\s+/).filter(Boolean);
+  return parts
+    .map((part, index) => (index === 0 ? part : `${part.slice(0, 1)}***`))
+    .join(" ");
 }
 
 function getTableAccessTokenSecret() {
@@ -46,6 +74,111 @@ function getTableAccessTokenExpiresIn(expiresIn) {
     expiresIn || process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN,
     "8h",
   );
+}
+
+function signScopedTableToken(payload, expiresIn) {
+  return jwt.sign(payload, getTableAccessTokenSecret(), {
+    expiresIn,
+    issuer: getTableAccessTokenIssuer(),
+  });
+}
+
+function verifyScopedTableToken(token, expectedPurpose) {
+  const rawToken = String(token || "").trim();
+  if (!rawToken) throw new Error(TABLE_IDENTITY_TOKEN_ERROR);
+
+  try {
+    const payload = jwt.verify(rawToken, getTableAccessTokenSecret(), {
+      issuer: getTableAccessTokenIssuer(),
+    });
+    const purpose = String(payload?.p || "").trim();
+    const restaurantId = String(payload?.rid || "").trim();
+    const tableId = String(payload?.tid || "").trim();
+    if (purpose !== expectedPurpose || !restaurantId || !tableId) {
+      throw new Error(TABLE_IDENTITY_TOKEN_ERROR);
+    }
+    return {
+      purpose,
+      restaurantId,
+      tableId,
+      phone: payload?.ph ? String(payload.ph) : null,
+      customerId: payload?.cid ? String(payload.cid) : null,
+      isGuest: Boolean(payload?.g),
+      expiresAt: payload?.exp
+        ? new Date(Number(payload.exp) * 1000).toISOString()
+        : null,
+    };
+  } catch (_error) {
+    throw new Error(TABLE_IDENTITY_TOKEN_ERROR);
+  }
+}
+
+export function getPublicTableDemoOtp() {
+  if (String(process.env.NODE_ENV || "development").toLowerCase() === "production") {
+    throw new Error("OTP demo không khả dụng trong môi trường production.");
+  }
+  const otp = String(process.env.TABLE_QR_DEMO_OTP || "123456").trim();
+  if (!/^\d{6}$/.test(otp)) {
+    throw new Error("TABLE_QR_DEMO_OTP phải gồm 6 chữ số.");
+  }
+  return otp;
+}
+
+export function signTableIdentityChallenge({ restaurantId, tableId, phone } = {}) {
+  const rid = toIdString(restaurantId);
+  const tid = toIdString(tableId);
+  const normalizedPhone = normalizePublicPhone(phone);
+  if (!rid || !tid) throw new Error(TABLE_IDENTITY_TOKEN_ERROR);
+  return signScopedTableToken(
+    { p: TABLE_IDENTITY_CHALLENGE_PURPOSE, rid, tid, ph: normalizedPhone },
+    normalizeTokenExpiresIn(process.env.TABLE_QR_OTP_TTL || "5m", "5m"),
+  );
+}
+
+export function verifyTableIdentityChallenge(token) {
+  const payload = verifyScopedTableToken(token, TABLE_IDENTITY_CHALLENGE_PURPOSE);
+  if (!payload.phone) throw new Error(TABLE_IDENTITY_TOKEN_ERROR);
+  return payload;
+}
+
+export function signTableIdentityCandidate({ restaurantId, tableId, phone, customerId } = {}) {
+  const rid = toIdString(restaurantId);
+  const tid = toIdString(tableId);
+  const cid = toIdString(customerId);
+  if (!rid || !tid || !cid) throw new Error(TABLE_IDENTITY_TOKEN_ERROR);
+  return signScopedTableToken(
+    {
+      p: TABLE_IDENTITY_CANDIDATE_PURPOSE,
+      rid,
+      tid,
+      ph: normalizePublicPhone(phone),
+      cid,
+    },
+    normalizeTokenExpiresIn(process.env.TABLE_QR_IDENTITY_CONFIRM_TTL || "5m", "5m"),
+  );
+}
+
+export function verifyTableIdentityCandidate(token) {
+  const payload = verifyScopedTableToken(token, TABLE_IDENTITY_CANDIDATE_PURPOSE);
+  if (!payload.phone || !payload.customerId) throw new Error(TABLE_IDENTITY_TOKEN_ERROR);
+  return payload;
+}
+
+export function signTableIdentityToken({ restaurantId, tableId, customerId, isGuest } = {}) {
+  const rid = toIdString(restaurantId);
+  const tid = toIdString(tableId);
+  const cid = toIdString(customerId);
+  if (!rid || !tid || !cid) throw new Error(TABLE_IDENTITY_TOKEN_ERROR);
+  return signScopedTableToken(
+    { p: TABLE_IDENTITY_PURPOSE, rid, tid, cid, g: Boolean(isGuest) },
+    normalizeTokenExpiresIn(process.env.TABLE_QR_IDENTITY_TTL || "8h", "8h"),
+  );
+}
+
+export function verifyTableIdentityToken(token) {
+  const payload = verifyScopedTableToken(token, TABLE_IDENTITY_PURPOSE);
+  if (!payload.customerId) throw new Error(TABLE_IDENTITY_TOKEN_ERROR);
+  return payload;
 }
 
 export function signTableAccessToken({ restaurantId, tableId, tableCode, expiresIn } = {}) {
@@ -110,6 +243,33 @@ export function verifyTableAccessToken(token) {
   }
 }
 
+export function getPublicTableOrderCapability({ tableStatus, session } = {}) {
+  const normalizedTableStatus = String(tableStatus || "").toLowerCase();
+  const sessionStatus = String(session?.sessionStatus || "").toLowerCase();
+  const paymentStatus = String(
+    session?.orderPaymentStatus || session?.payment?.status || "",
+  ).toLowerCase();
+
+  if (!ORDERABLE_TABLE_STATUSES.has(normalizedTableStatus)) {
+    return {
+      canOrder: false,
+      reason: normalizedTableStatus === "available"
+        ? "Bàn chưa được mở phục vụ. Vui lòng gọi nhân viên."
+        : "Bàn hiện chưa sẵn sàng nhận thêm món.",
+    };
+  }
+
+  if (["ready_to_pay", "closed", "cancelled"].includes(sessionStatus)) {
+    return { canOrder: false, reason: "Bàn đang hoàn tất thanh toán nên chưa thể gọi thêm món." };
+  }
+
+  if (["payment_requested", "paid"].includes(paymentStatus)) {
+    return { canOrder: false, reason: "Bàn đã yêu cầu thanh toán nên chưa thể gọi thêm món." };
+  }
+
+  return { canOrder: true, reason: null };
+}
+
 function mapPublicPayment(payment) {
   if (!payment) {
     return null;
@@ -127,19 +287,34 @@ function mapPublicTotals(totals) {
   };
 }
 
+function requiresPublicProof(item = {}) {
+  const mode = String(item?.servingVariant?.mode || "").toUpperCase();
+  const unit = String(item?.unit || item?.servingVariant?.sellUnit || "").toLowerCase();
+  return mode === "BY_WEIGHT" || unit === "kg" || Number(item?.weightGrams || 0) > 0;
+}
+
 function mapPublicItems(items = []) {
-  return items.map((item) => ({
-    id: toIdString(item?._id || item?.id),
-    name: item?.name || "",
-    quantity: Number(item?.quantity || 0),
-    unit: item?.unit || null,
-    servingKey: item?.servingKey || null,
-    unitPrice: item?.unitPrice ?? null,
-    modifiersPrice: item?.modifiersPrice ?? null,
-    lineSubtotal: item?.lineSubtotal ?? null,
-    note: item?.note || null,
-    status: item?.status || null,
-  }));
+  return items.map((item) => {
+    const proofImages = Array.isArray(item?.proofImages)
+      ? item.proofImages.map((src) => String(src || "").trim()).filter(Boolean)
+      : [];
+    const requiresProofImage = requiresPublicProof(item);
+    return {
+      id: toIdString(item?._id || item?.id),
+      name: item?.name || "",
+      quantity: Number(item?.quantity || 0),
+      unit: item?.unit || null,
+      servingKey: item?.servingKey || null,
+      unitPrice: item?.unitPrice ?? null,
+      modifiersPrice: item?.modifiersPrice ?? null,
+      lineSubtotal: item?.lineSubtotal ?? null,
+      note: item?.note || null,
+      status: item?.status || null,
+      proofImages,
+      requiresProofImage,
+      proofUploaded: requiresProofImage && proofImages.length > 0,
+    };
+  });
 }
 
 function mapPublicCustomerRequest(request) {
@@ -177,6 +352,8 @@ export function mapPublicTableSession(session) {
     orderCode: session.orderCode || null,
     orderKind: session.orderKind || null,
     currentStatus: session.currentStatus || null,
+    sessionStatus: session.sessionStatus || null,
+    orderPaymentStatus: session.orderPaymentStatus || null,
     payment: mapPublicPayment(session.payment),
   };
 }
@@ -198,16 +375,21 @@ export function mapPublicTableOrder(order) {
 export function buildPublicActiveTableSessionOrdersResult({
   tableId,
   tableCode,
+  tableStatus,
   session,
   orders = [],
 }) {
   const publicOrders = orders
     .filter((order) => order?.orderKind !== ORDER_KIND.TABLE_SESSION)
     .map(mapPublicTableOrder);
+  const capability = getPublicTableOrderCapability({ tableStatus, session });
 
   return {
     tableId: toIdString(tableId),
     tableCode: tableCode || null,
+    tableStatus: tableStatus || null,
+    canOrder: capability.canOrder,
+    orderBlockedReason: capability.reason,
     session: mapPublicTableSession(session),
     orders: publicOrders,
     customerRequests: mapActivePublicCustomerRequests(session?.customerRequests || []),
