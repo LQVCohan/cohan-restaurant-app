@@ -11,10 +11,11 @@
 
 1. Customer scans printed QR.
 2. Public query returns table code/status and whether an active table session exists, but hides order details without an order session token.
-3. Customer presses “Yêu cầu mã xác nhận”. Backend appends a pending request to the active table session `clientMeta.qrOrderAccessRequests`.
-4. POS polls the staff-only request list. Staff goes to the table, matches the request label, presses “Đã tới bàn – hiện mã”, and reads the 6-digit code to the customer.
-5. Customer enters the code. Backend validates HMAC code and atomically marks the request confirmed.
-6. Backend stores the order-session token and browser device id in table-scoped HttpOnly cookies. Frontend JavaScript never persists or attaches the session token itself.
+3. Customer presses “Yêu cầu mã xác nhận”. An occupied table without a session receives only an empty `table_session`; available and reserved tables are rejected until staff opens service.
+4. Backend appends a pending request to the active table session `clientMeta.qrOrderAccessRequests`.
+5. POS polls the staff-only request list. Staff goes to the table, matches the request label, presses “Đã tới bàn – hiện mã”, and reads the 6-digit code to the customer.
+6. Customer enters the code. Backend validates the HMAC code, applies a five-attempt/five-minute process-local limit, and atomically marks the request confirmed.
+7. Backend stores the order-session token and browser device id in table-scoped HttpOnly cookies. Frontend JavaScript never persists or attaches the session token itself.
 
 ## Persistence
 
@@ -32,7 +33,7 @@
 }
 ```
 
-The confirmation code is derived with HMAC from session/request/device data and is never persisted.
+The confirmation code is derived with HMAC from session/request/device data and is never persisted. The session also stores the currently active request/device pair; confirming a new device invalidates the previous device.
 
 ## Cookie scope
 
@@ -61,3 +62,7 @@ The helper is used by public order submit, order viewing, staff call, payment re
 ## UI direction
 
 Compact sage verification gate with one primary action. Staff UI uses an amber security card and keeps the confirmation code hidden until an explicit 44px action is pressed. Copy tells staff to reveal the code only while standing at the matching table and seeing the request label on the customer device.
+
+## Production note
+
+The in-memory confirmation-attempt limiter is appropriate for the single-instance thesis demo. A horizontally scaled deployment should replace it with Redis or another shared limiter while preserving the same request-token key and five-attempt window.
