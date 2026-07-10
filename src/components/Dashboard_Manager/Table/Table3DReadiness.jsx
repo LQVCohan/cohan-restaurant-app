@@ -6,7 +6,7 @@ export default function Table3DReadiness({ arStatus, readinessItems }) {
   const hasTechnicalLimitation = readinessItems.some(
     (item) => item.id !== "placement" && !item.ready,
   );
-  const displayStatus = !placementItem?.ready
+  const displayStatus = placementItem && !placementItem.ready
     ? {
         tone: "limited",
         label: "Chưa chọn bàn",
