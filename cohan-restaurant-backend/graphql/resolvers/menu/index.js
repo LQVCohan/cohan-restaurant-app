@@ -6,11 +6,13 @@ import { MenuMutation } from "./mutation.js";
 import { CopyMenuMutation } from "./copyMutation.js";
 import { DeleteMenuMutation } from "./deleteMutation.js";
 import { InventorySyncMenuMutation } from "./inventorySyncMutation.js";
+import { createMenuPriceHistoryMutations } from "./priceHistoryMutation.js";
 import { CategoryMenu, Recipe, MenuItem, Order } from "../../../models/index.js";
 import { getMenuItemInventoryAvailability } from "../../../src/services/menuItemInventoryAvailability.service.js";
 
 const BILLABLE_ORDER_STATUSES = ["served", "completed"];
 const BILLABLE_ITEM_STATUSES = ["served", "ready", "preparing", "pending"];
+const MenuPriceHistoryMutations = createMenuPriceHistoryMutations(MenuMutation);
 
 const getMenuId = (parent) => parent?._id || parent?.id;
 const getMenuItemId = (parent) => parent?._id || parent?.id;
@@ -105,6 +107,7 @@ export default {
 
   Mutation: {
     ...MenuMutation,
+    ...MenuPriceHistoryMutations,
     ...CopyMenuMutation,
     ...DeleteMenuMutation,
     ...InventorySyncMenuMutation,
