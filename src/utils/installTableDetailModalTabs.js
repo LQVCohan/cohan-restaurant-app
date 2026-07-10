@@ -299,6 +299,8 @@ export const installTableDetailModalTabs = () => {
       const targetModal = mutation.target?.closest?.(".talite-modal");
       if (targetModal) pendingModals.add(targetModal);
 
+      if (mutation.type === "characterData") return;
+
       mutation.addedNodes.forEach((node) => {
         if (node.nodeType !== Node.ELEMENT_NODE) return;
         enhance(node);
@@ -310,5 +312,9 @@ export const installTableDetailModalTabs = () => {
     pendingModals.forEach(enhanceTableDetailModal);
   });
 
-  observer.observe(document.body, { childList: true, subtree: true });
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
 };
