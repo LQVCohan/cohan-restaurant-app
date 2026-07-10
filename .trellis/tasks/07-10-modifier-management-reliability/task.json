@@ -3,7 +3,7 @@
   "name": "modifier-management-reliability",
   "title": "Polish and harden modifier management",
   "description": "Improve the manager modifier screen and fix cross-layer create, update, option and restaurant-scope edge cases without changing the public GraphQL shape.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack",
   "scope": "manager-modifiers",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "1dc0ed70b24dce0f158cc1cb12a7cb1efb79f86d",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -28,7 +28,8 @@
     "src/components/Dashboard_Manager/Modifier/ModifierManagement.jsx",
     "src/components/Dashboard_Manager/Modifier/ModifierManagement.scss",
     "src/components/Dashboard_Manager/Modifier/ModifierManagement.test.js",
-    "cohan-restaurant-backend/tests/resolvers/modifier-mutation.test.js"
+    "cohan-restaurant-backend/tests/resolvers/modifier-mutation.test.js",
+    "src/layouts/ManagerLayout.jsx"
   ],
-  "notes": "Keep the existing React, Apollo, SCSS, role checks and restaurant access guards. No dependency or GraphQL schema change."
+  "notes": "Kept the existing React, Apollo, SCSS, role checks and restaurant access guards. No dependency or GraphQL schema change. Added focused frontend and resolver regression tests; they were not executed in this connector-only session."
 }
