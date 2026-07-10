@@ -1,0 +1,43 @@
+/* Final content-safety rules for the main table 3D modal. */
+body:has(.table-3d-modal__title-row) .model-item,
+body:has(.table-3d-modal__title-row) .model-item__content {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+body:has(.table-3d-modal__title-row) .model-badge {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body:has(.table-3d-modal__title-row) .table-3d-model-loading {
+  inset: auto !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: min(360px, calc(100% - 32px)) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 24px !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+body:has(.table-3d-modal__title-row) .table-3d-position-action {
+  min-width: 0 !important;
+  align-content: start !important;
+}
+
+body:has(.table-3d-modal__title-row) .table-3d-position-action__hint {
+  max-width: 100% !important;
+  padding-inline: 4px !important;
+  white-space: normal !important;
+}
+
+@media (max-width: 560px) {
+  body:has(.table-3d-modal__title-row) .table-3d-model-loading {
+    width: calc(100% - 24px) !important;
+    padding: 18px 16px !important;
+    border-radius: 16px !important;
+  }
+}
