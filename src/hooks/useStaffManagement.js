@@ -70,16 +70,11 @@ const STAFF_FIELDS = gql`
 `;
 
 const QUERY_ROLE_LIST = gql`
-  query StaffRoleListForManagement {
-    roleList {
+  query StaffRoleListForManagement($restaurantId: ID!) {
+    roleList(restaurantId: $restaurantId) {
       id
       name
       slug
-      department
-      parentRole {
-        id
-        slug
-      }
     }
   }
 `;
@@ -254,7 +249,10 @@ const useStaffManagement = (initialFilters = {}) => {
     loading: roleListLoading,
     error: roleListError,
   } = useQuery(QUERY_ROLE_LIST, {
-    fetchPolicy: "cache-first",
+    variables: { restaurantId: filters.restaurantId },
+    skip: !filters.restaurantId,
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
   });
 
   const staffList = useMemo(
