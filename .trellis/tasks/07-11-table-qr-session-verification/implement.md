@@ -2,31 +2,36 @@
 
 ## Backend
 
-- Extend `utils/publicTableSession.js` with device normalization/hash, request/session JWTs, HMAC confirmation code and shared session validation.
-- Extend `publicTableSession.graphql` with access request/confirm operations, staff request query, optional session credentials on public session query and required session credentials on protected actions.
-- Update `publicTableSessionQuery.js` to hide orders and customer requests without a confirmed token and expose staff request codes only behind `order.read`.
-- Update `publicTableOrderMutation.js` to create/confirm access requests and require confirmed session access for OTP and order submission.
-- Update `publicTablePaymentMutation.js` to require confirmed session access for staff calls and payment requests.
+- Add `publicTableOrderAccess.service.js` for device hashing, request/session JWTs, HMAC confirmation codes, active-session validation and staff request listing.
+- Extend `publicTableSession.graphql` with access request/confirm operations and the staff-only request query.
+- Register query/mutation wrappers after the existing public table resolvers so static QR access can only return a restricted table summary until verification succeeds.
+- Guard order submission and identity OTP with an orderable verified table session.
+- Guard staff call and payment request with a verified active table session.
+- Store verified session token and device id in table-scoped HttpOnly cookies using the existing Fastify cookie plugin and Apollo credentialed requests.
 
 ## Frontend
 
-- Add a small shared session-storage utility for device ID, token scope and change event.
-- Add the verification gate/modal before identity and menu in `TableOrderExperience`.
-- Pass session credentials into table page query/actions and react to access-token changes.
-- Add staff request cards to the existing POS QR queue; hide code until explicit in-person confirmation action.
+- Keep only the opaque browser device id in `sessionStorage`; never persist the signed session token in JavaScript storage.
+- Mount `TableOrderAccessGate` before the optional customer-identity modal and menu launcher.
+- Auto-open the gate when the active table session requires verification, while retaining a visible launcher if the customer closes it.
+- Add staff verification cards to the existing POS QR queue and keep the six-digit code hidden until “Đã tới đúng bàn – hiện mã”.
 
 ## Tests
 
-- Security utility: request/session token scope, device mismatch, deterministic code.
-- Resolver: request creation/reuse, confirmation, missing token rejection, active-session mismatch.
-- Customer UI: cannot open menu before verification; stores token after correct code.
-- POS UI: request label visible, code hidden until staff action.
+- Security service: deterministic six-digit code, device binding and JWT purpose/scope.
+- Cookie transport: table-specific cookie names, HttpOnly settings and per-table credential injection.
+- Resolver boundary: unverified static QR strips orders; verified access restores data; submit validates before calling the original resolver.
+- Customer UI: request label and six-digit code are required before the access-confirm mutation succeeds.
+- POS UI: request label visible, code hidden until explicit staff action.
 
 ## Validation commands
 
 ```bash
-npx vitest run cohan-restaurant-backend/tests/services/publicTableSession.security.test.js
+npx vitest run cohan-restaurant-backend/tests/services/publicTableOrderAccess.service.test.js
+npx vitest run cohan-restaurant-backend/tests/resolvers/table-order-session-cookies.test.js
+npx vitest run cohan-restaurant-backend/tests/resolvers/public-table-order-access.test.js
 npx vitest run cohan-restaurant-backend/tests/resolvers/public-table-order-transaction.test.js
+npx vitest run src/components/Customer/TableCurrentSession/TableOrderAccessGate.test.jsx
 npx vitest run src/components/Customer/TableCurrentSession/TableOrderExperience.test.jsx
 npx vitest run src/components/Dashboard_Manager/POS/components/pos/PosIncomingTableOrderQueue.test.jsx
 npm run check:graphql:operations
