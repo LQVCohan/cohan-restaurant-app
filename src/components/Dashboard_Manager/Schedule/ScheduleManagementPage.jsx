@@ -6,7 +6,6 @@ import "@/styles/schedule-polish.css";
 import "@/styles/schedule-sidebar-safe-performance.css";
 import "@/styles/schedule-availability-feedback.css";
 import { installScheduleApolloPerformancePatch } from "@/utils/scheduleApolloPerformancePatch.js";
-import { initScheduleHydrationPolish } from "@/utils/scheduleHydrationPolish.js";
 import { initScheduleManagerDomPolish } from "@/utils/scheduleManagerDomPolish.js";
 import { initScheduleManagerAdminPolish } from "@/utils/scheduleManagerAdminPolish.js";
 import ScheduleManagement from "./ScheduleManagement";
@@ -83,7 +82,6 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
 
   useLayoutEffect(() => {
     const apolloCleanup = installScheduleApolloPerformancePatch(apolloClient);
-    const hydrationCleanup = initScheduleHydrationPolish?.();
     const domPolishTimer = window.setTimeout(() => {
       const scheduleRoot =
         document.querySelector(".manager-page-shell--schedules") ||
@@ -99,7 +97,6 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
 
     return () => {
       window.clearTimeout(domPolishTimer);
-      hydrationCleanup?.();
       apolloCleanup?.();
       if (typeof window.__scheduleDomPolishCleanup === "function") {
         window.__scheduleDomPolishCleanup();
