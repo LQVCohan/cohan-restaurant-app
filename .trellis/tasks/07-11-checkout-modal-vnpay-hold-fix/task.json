@@ -1,0 +1,28 @@
+{
+  "id": "07-11-checkout-modal-vnpay-hold-fix",
+  "title": "Sửa checkout cart hold và nối VNPAY vào modal xác nhận đơn",
+  "status": "in_progress",
+  "type": "cross-layer-bugfix-ui",
+  "scope": [
+    "cohan-restaurant-backend/graphql/resolvers/order/orderConflictHardening.js",
+    "cohan-restaurant-backend/graphql/resolvers/order/mutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/payment/mutation.js",
+    "src/components/Customer/BookingDishesModal/OrderSummaryModal.jsx",
+    "src/pages/CheckoutPage.polish.css"
+  ],
+  "validation": {
+    "planned": [
+      "focused backend tests for checkout hold and customer payment access",
+      "focused frontend checkout modal tests",
+      "frontend lint and build",
+      "backend lint and tests"
+    ],
+    "completed": [
+      "read AGENTS.md and .trellis/workflow.md",
+      "read ponytail and relevant UI redesign skills",
+      "traced cart schema and hold mutations through checkout hardening, canonical checkout resolver, Apollo mutation and modal action",
+      "traced createOrderPayment through payment resolver, payment session service and VNPAY provider"
+    ],
+    "notRun": []
+  }
+}
