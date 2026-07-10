@@ -425,73 +425,53 @@ export const MenuQuery = {
     _parent,
     { limit = 8, restaurantId, categoryId, categoryName, timeSlot },
   ) => {
-    const safeLimit = Math.min(Math.max(limit || 8, 1), 50);
-    const query = applyPublicOrderableMenuItemFilter({});
+    const safeLimit = Math.min(Math.max(limit, 1), 200);
+    const query = {};
 
     if (restaurantId) {
       if (!mongoose.isValidObjectId(restaurantId)) return [];
       const restaurant = await Restaurant.findById(restaurantId)
         .select(RESTAURANT_ORDERABILITY_SELECT)
         .lean();
-      if (!restaurant || !canRestaurantAcceptHomeOrders(restaurant)) return [];
+      if (!canRestaurantAcceptHomeOrders(restaurant)) return [];
       query.restaurantId = restaurantId;
     } else {
       const restaurants = await Restaurant.find({})
         .select(RESTAURANT_ORDERABILITY_SELECT)
         .lean();
-      const orderableIds = restaurants
+      const publicRestaurantIds = restaurants
         .filter(canRestaurantAcceptHomeOrders)
         .map((restaurant) => restaurant._id);
-      if (!orderableIds.length) return [];
-      query.restaurantId = { $in: orderableIds };
+      if (!publicRestaurantIds.length) return [];
+      query.restaurantId = { $in: publicRestaurantIds };
+    }
+
+    if (timeSlot) {
+      const menuFilter = { timeSlot, isActive: true };
+      if (query.restaurantId) {
+        menuFilter.restaurantId = query.restaurantId;
+      }
+      const menus = await Menu.find(menuFilter).select({ _id: 1 }).lean();
+      if (!menus.length) return [];
+      query.menuId = { $in: menus.map((menu) => menu._id) };
     }
 
     if (categoryId && mongoose.isValidObjectId(categoryId)) {
       query.categoryId = categoryId;
     } else if (categoryName?.trim()) {
-      const category = await Category.findOne({
+      const matchedCategories = await Category.find({
         name: new RegExp(`^${categoryName.trim()}$`, "i"),
-        ...(restaurantId ? { restaurantId } : {}),
       })
         .select({ _id: 1 })
         .lean();
-      if (!category) return [];
-      query.categoryId = category._id;
+      const matchedIds = matchedCategories.map((category) => category._id);
+      if (!matchedIds.length) return [];
+      query.categoryId = { $in: matchedIds };
     }
 
-    if (timeSlot) {
-      const menuFilter = {
-        timeSlot,
-        isActive: true,
-      };
-      if (restaurantId) {
-        menuFilter.restaurantId = restaurantId;
-      } else if (query.restaurantId) {
-        menuFilter.restaurantId = query.restaurantId;
-      }
-      const menus = await Menu.find(menuFilter)
-        .select({ _id: 1 })
-        .lean();
-      const menuIds = menus.map((menu) => menu._id);
-      if (!menuIds.length) return [];
-      query.menuId = { $in: menuIds };
-    } else {
-      const menuFilter = { isActive: true };
-      if (restaurantId) {
-        menuFilter.restaurantId = restaurantId;
-      } else if (query.restaurantId) {
-        menuFilter.restaurantId = query.restaurantId;
-      }
-      const menus = await Menu.find(menuFilter)
-        .select({ _id: 1 })
-        .lean();
-      const menuIds = menus.map((menu) => menu._id);
-      if (!menuIds.length) return [];
-      query.menuId = { $in: menuIds };
-    }
-
+    applyPublicOrderableMenuItemFilter(query);
     return MenuItem.find(query)
-      .sort({ orderCounter: -1, rate: -1, createdAt: -1 })
+      .sort({ rate: -1, orderCounter: -1, createdAt: -1, _id: 1 })
       .limit(safeLimit)
       .lean({ virtuals: true });
   },
