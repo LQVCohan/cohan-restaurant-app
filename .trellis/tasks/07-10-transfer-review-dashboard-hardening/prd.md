@@ -26,7 +26,7 @@
 - Redesign the page into a compact operational workspace using existing sage/warm-neutral direction, Lucide icons, responsive controls, visible focus, and useful loading/error/empty states.
 - Add focused resolver and component tests.
 - Align the existing dashboard scope regression test with the secure hook contract: a restaurant restored from an old account remains hidden until the current account scope is confirmed.
-- Repair the malformed `updateCombo` mock exposed by changed-code CI, and keep the Lucide compatibility fallback isolated inside the transfer-review test rather than changing the shared shim.
+- Repair the malformed `updateCombo` mock exposed by changed-code CI, keep the Lucide compatibility fallback isolated inside the transfer-review test, and scope the guest smoke locator to the banner because the page legitimately contains two “Nhà hàng” links.
 
 ## Files to change
 
@@ -38,6 +38,7 @@
 - `src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.test.jsx`: scope, filter/count rendering, and isolated Lucide test fallback coverage.
 - `src/hooks/useDashboard.test.jsx`: update the stale restored-scope assertion to match `useManagerRestaurantSelection`.
 - `src/components/Dashboard_Manager/Combo/ComboManagement.test.jsx`: repair the existing malformed `updateCombo` mock so changed component tests can parse.
+- `tests/e2e/smoke/guest-home-detail.spec.js`: target the header restaurant link unambiguously.
 
 ## Acceptance criteria
 
@@ -56,6 +57,7 @@
 - `vitest run src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.test.jsx`
 - `npm --prefix cohan-restaurant-backend test -- tests/resolvers/payment-transfer-queue.test.js tests/resolvers/payment-transfer-resubmit.test.js`
 - `npm run build`
+- `npm run test:smoke`
 
 ## Out of scope
 
