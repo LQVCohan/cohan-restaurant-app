@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 
 const modelMocks = vi.hoisted(() => ({
   Warehouse: {
-    find: vi.fn(),
+    findOne: vi.fn(),
     create: vi.fn(),
     findById: vi.fn(),
     findByIdAndUpdate: vi.fn(),
@@ -37,8 +37,18 @@ vi.mock("mongoose", () => ({ default: mongooseMocks }));
 describe("inventory restaurant access guards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    modelMocks.Warehouse.find.mockReturnValue({
-      select: () => ({ sort: () => ({ lean: vi.fn().mockResolvedValue([]) }) }),
+    modelMocks.Warehouse.findOne.mockReturnValue({
+      select: () => ({
+        sort: () => ({
+          lean: vi.fn().mockResolvedValue({
+            _id: "valid-w1",
+            restaurantId: "valid-r1",
+            name: "Kho chính",
+            code: "MAIN",
+            isActive: true,
+          }),
+        }),
+      }),
     });
     modelMocks.StockItem.find.mockReturnValue({
       select: () => ({ sort: () => ({ limit: () => ({ lean: vi.fn().mockResolvedValue([]) }) }) }),
@@ -49,23 +59,32 @@ describe("inventory restaurant access guards", () => {
     modelMocks.Warehouse.findById.mockReturnValue({ lean: vi.fn().mockResolvedValue({ restaurantId: "valid-r1" }) });
     modelMocks.Warehouse.findByIdAndUpdate.mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "valid-w1" }) });
     modelMocks.StockItem.findOneAndUpdate.mockReturnValue({ lean: vi.fn().mockResolvedValue({}) });
-    modelMocks.StockItem.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue({}) , session: vi.fn()});
+    modelMocks.StockItem.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue({}), session: vi.fn() });
     modelMocks.StockMovement.aggregate.mockResolvedValue([]);
     guardMocks.requireRestaurantAccess.mockResolvedValue();
   });
 
-  it("warehouses calls guard before find", async () => {
+  it("warehouses calls guard and returns only the default warehouse", async () => {
     const query = (await import("../../graphql/resolvers/inventory/warehouse.query.js")).default;
-    await query.warehouses(null, { restaurantId: "valid-r1" }, { user: { id: "u1", roleName: "manager" } });
+    const result = await query.warehouses(
+      null,
+      { restaurantId: "valid-r1" },
+      { user: { id: "u1", roleName: "manager" } },
+    );
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalled();
-    expect(modelMocks.Warehouse.find).toHaveBeenCalled();
+    expect(modelMocks.Warehouse.findOne).toHaveBeenCalledWith({
+      restaurantId: "valid-r1",
+      isActive: true,
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ name: "Kho chính", code: "MAIN" });
   });
 
-  it("warehouses denied does not call find", async () => {
+  it("warehouses denied does not call findOne", async () => {
     const query = (await import("../../graphql/resolvers/inventory/warehouse.query.js")).default;
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
     await expect(query.warehouses(null, { restaurantId: "valid-r1" }, {})).rejects.toThrow("FORBIDDEN_SCOPE");
-    expect(modelMocks.Warehouse.find).not.toHaveBeenCalled();
+    expect(modelMocks.Warehouse.findOne).not.toHaveBeenCalled();
   });
 
   it("createWarehouse denied does not call create", async () => {
@@ -83,7 +102,7 @@ describe("inventory restaurant access guards", () => {
     expect(modelMocks.Warehouse.findByIdAndUpdate).toHaveBeenCalledWith(
       "valid-w1",
       { $set: { name: "N" } },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
   });
 
