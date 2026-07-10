@@ -17,6 +17,7 @@ input CreateCategoryInput {
   name: String!
   icon: String
   order: Int
+  isActive: Boolean
 }
 
 type CategoryMenu {
