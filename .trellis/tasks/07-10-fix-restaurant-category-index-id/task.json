@@ -3,7 +3,7 @@
   "name": "fix-restaurant-category-index-id",
   "title": "Fix category index sync GraphQL id error",
   "description": "Map RestaurantCategoryIndex MongoDB _id to the non-null GraphQL id field so category synchronization and index queries return a valid contract.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "bugfix",
   "scope": "restaurant-category-index",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "6f8079a3e9e71b6536afd50a3fbfa21548ab9ba3",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -30,5 +30,18 @@
     "cohan-restaurant-backend/tests/resolvers/restaurant-category-index-types.test.js"
   ],
   "notes": "Root-cause fix at the shared GraphQL type boundary; no schema, authorization, UI, dependency, or persistence changes required.",
+  "validation": {
+    "status": "partial",
+    "passed": [
+      "node --check on the changed resolver and focused test",
+      "direct resolver assertions for lean _id and existing id values"
+    ],
+    "not_run": [
+      "Vitest focused test",
+      "existing restaurant mutation access test",
+      "repository GraphQL check"
+    ],
+    "reason": "The execution environment could not resolve github.com to clone the repository and no workflow run was available for the commit."
+  },
   "meta": {}
 }
