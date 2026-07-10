@@ -11,7 +11,7 @@ test.describe("guest smoke: home and food detail", () => {
     await page.goto("/");
     await expectNoPageCrash(page);
     await expect(
-      page.getByRole("link", { name: "Nhà hàng", exact: true }),
+      page.getByRole("banner").getByRole("link", { name: "Nhà hàng", exact: true }),
     ).toBeVisible();
     await expect(page.getByText(TEST_MENU_ITEMS[0].name)).toBeVisible({
       timeout: 12_000,
