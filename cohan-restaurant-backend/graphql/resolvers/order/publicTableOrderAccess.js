@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+
+import { GraphQLError } from "graphql";
 import jwt from "jsonwebtoken";
 
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
@@ -17,6 +20,44 @@ import {
 import { emitRestaurantEvent } from "./helper/emitOrderEvent.js";
 import publicTableOrderMutation from "./publicTableOrderMutation.js";
 import publicTableSessionQuery from "./publicTableSessionQuery.js";
+
+const CONFIRM_ATTEMPT_LIMIT = 5;
+const CONFIRM_ATTEMPT_WINDOW_MS = 5 * 60 * 1000;
+const confirmationAttempts = new Map();
+
+function getConfirmationAttemptKey(requestToken) {
+  return createHash("sha256")
+    .update(String(requestToken || ""))
+    .digest("hex");
+}
+
+function consumeConfirmationAttempt(requestToken, now = Date.now()) {
+  const key = getConfirmationAttemptKey(requestToken);
+  for (const [entryKey, entry] of confirmationAttempts.entries()) {
+    if (now - entry.startedAt >= CONFIRM_ATTEMPT_WINDOW_MS) {
+      confirmationAttempts.delete(entryKey);
+    }
+  }
+
+  const current = confirmationAttempts.get(key);
+  const entry =
+    !current || now - current.startedAt >= CONFIRM_ATTEMPT_WINDOW_MS
+      ? { count: 0, startedAt: now }
+      : current;
+  if (entry.count >= CONFIRM_ATTEMPT_LIMIT) {
+    throw new GraphQLError(
+      "Bạn đã nhập sai mã quá nhiều lần. Vui lòng tạo yêu cầu xác nhận mới.",
+      { extensions: { code: "TABLE_CONFIRMATION_RATE_LIMITED" } },
+    );
+  }
+  entry.count += 1;
+  confirmationAttempts.set(key, entry);
+  return key;
+}
+
+function clearConfirmationAttempts(key) {
+  if (key) confirmationAttempts.delete(key);
+}
 
 function buildRestrictedSession(session) {
   if (!session?.id) return null;
@@ -114,7 +155,10 @@ export const PublicTableOrderAccessMutation = {
   },
 
   async publicConfirmTableOrderAccess(_parent, { input }, ctx) {
+    const attemptKey = consumeConfirmationAttempt(input?.requestToken);
     const result = await confirmPublicTableOrderAccess(input || {});
+    clearConfirmationAttempts(attemptKey);
+
     const requestScope = jwt.decode(String(input?.requestToken || "")) || {};
     const restaurantId = String(requestScope.rid || "");
     const tableId = String(requestScope.tid || "");
@@ -180,6 +224,12 @@ export const PublicTableOrderAccessMutation = {
       info,
     );
   },
+};
+
+export const __testables = {
+  consumeConfirmationAttempt,
+  clearConfirmationAttempts,
+  confirmationAttempts,
 };
 
 export default {
