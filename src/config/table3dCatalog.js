@@ -248,7 +248,7 @@ export const canOpenModelViewerAr = (model) =>
 export const getArUnavailableReason = (model) => {
   if (!model) return "Chọn mẫu để kiểm tra hỗ trợ AR.";
   if (!canOpenModelViewerAr(model)) {
-    return "Mẫu này chưa có model 3D công khai nên chưa thể mở AR. Vui lòng chọn mẫu có badge 3D/AR hoặc dùng Xem thử bằng camera.";
+    return "Mẫu này chưa có model 3D công khai nên chưa thể mở AR. Vui lòng chọn mẫu có badge 3D/AR hoặc nhập model .glb/.gltf hợp lệ.";
   }
   return "";
 };
