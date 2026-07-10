@@ -15,7 +15,7 @@ const apolloState = vi.hoisted(() => ({
 const apolloMocks = vi.hoisted(() => ({
   refetch: vi.fn(async () => ({ data: {} })),
   createCombo: vi.fn(async () => ({ data: { createCombo: { id: "c-new" } } })),
-  updateCombo: vi.fn(async () => ({ data: { updateCombo: { id: "c1" } })),
+  updateCombo: vi.fn(async () => ({ data: { updateCombo: { id: "c1" } } })),
   deleteCombo: vi.fn(async () => ({ data: { deleteCombo: true } })),
   toggleCombo: vi.fn(async () => ({ data: { toggleComboStatus: { id: "c1", isActive: false } } })),
 }));
@@ -204,6 +204,6 @@ describe("ComboManagement", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Xóa Combo sáng" }));
     await waitFor(() => expect(apolloMocks.deleteCombo).toHaveBeenCalledWith({ variables: { id: "c1" } }));
-    expect(window.confirm).toHaveBeenCalledWith("Xóa combo “Combo sáng”?");
+    expect(window.confirm).toHaveBeenCalledWith("Xóa combo “Combo sáng”? ".trim());
   });
 });
