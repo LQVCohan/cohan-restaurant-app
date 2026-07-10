@@ -452,6 +452,7 @@ async function validateAndReleaseCartHoldTx({
   restaurantId,
   warehouseId,
   authUserId,
+  serviceAt = null,
   session,
 }) {
   if (!entry.cartRef) return null;
@@ -481,6 +482,18 @@ async function validateAndReleaseCartHoldTx({
 
   if (holdStatus !== "active") {
     throw new Error(CART_HOLD_CHECKOUT_ERROR);
+  }
+
+  if (serviceAt) {
+    const heldServiceAt = new Date(cartItem.serviceAt).getTime();
+    const expectedServiceAt = new Date(serviceAt).getTime();
+    if (
+      !Number.isFinite(heldServiceAt) ||
+      !Number.isFinite(expectedServiceAt) ||
+      Math.abs(heldServiceAt - expectedServiceAt) > 60_000
+    ) {
+      throw new Error(CART_HOLD_CHECKOUT_ERROR);
+    }
   }
 
   if (
@@ -995,6 +1008,7 @@ export const OrderMutation = {
       restaurantId,
       tableId,
       tableCode,
+      reservationId,
 
       items,
       note,
@@ -1006,20 +1020,44 @@ export const OrderMutation = {
 
     const rid = toId(restaurantId);
     if (!rid) throw new Error("restaurantId is required");
-    await requireRestaurantPermission(ctx, rid, PERMISSIONS.ORDER_CREATE);
+    const isReservationAddon =
+      String(clientMeta?.source || "") === "reservation_cart_addon";
+    const authUserId = isReservationAddon
+      ? assertCustomerRemoteCheckoutAuth(ctx, userId)
+      : null;
+    if (!isReservationAddon) {
+      await requireRestaurantPermission(ctx, rid, PERMISSIONS.ORDER_CREATE);
+    }
     if (!Array.isArray(items) || items.length === 0)
       throw new Error("items is required");
 
     const tableInfo = await resolveTable(restaurantId, { tableId, tableCode });
     if (!tableInfo) throw new Error("Table not found");
 
-    const activeReservation = await Reservation.findOne({
+    const reservationFilter = {
       restaurantId: rid,
       tableId: toId(tableInfo.tableId),
       status: { $in: ["pending_payment", "confirmed", "seated"] },
-    })
+    };
+    if (isReservationAddon) {
+      if (!reservationId || !mongoose.isValidObjectId(reservationId)) {
+        throw new GraphQLError("reservationId không hợp lệ.", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      reservationFilter._id = toId(reservationId);
+      reservationFilter.userId = toId(authUserId);
+    }
+
+    const activeReservation = await Reservation.findOne(reservationFilter)
       .sort({ createdAt: -1 })
       .lean();
+    if (isReservationAddon && !activeReservation) {
+      throw new GraphQLError(
+        "Không tìm thấy đặt bàn hợp lệ thuộc tài khoản hiện tại.",
+        { extensions: { code: "FORBIDDEN" } },
+      );
+    }
 
     const reservationCustomer =
       activeReservation &&
@@ -1035,11 +1073,28 @@ export const OrderMutation = {
 
     const effectiveCustomer = reservationCustomer || customer || null;
 
+    const addonEntries = isReservationAddon
+      ? items.map((rawItem) => ({
+          rawItem,
+          cartRef: assertCartHoldCheckoutAllowed({
+            item: rawItem,
+            authUserId,
+          }),
+          orderItem: normalizeItem({
+            ...rawItem,
+            servingKey: normalizeCartHoldServingKey(rawItem.servingKey),
+          }),
+        }))
+      : [];
+
     // normalizeItem: enforce servingKey + grams integer for BY_WEIGHT
-    const normalizedItems = items.map(normalizeItem);
+    const normalizedItems = isReservationAddon
+      ? addonEntries.map((entry) => entry.orderItem)
+      : items.map(normalizeItem);
 
     const session = await mongoose.startSession();
     let createdOrderDoc = null;
+    const releasedCartItems = [];
 
     try {
       await session.withTransaction(async () => {
@@ -1048,6 +1103,25 @@ export const OrderMutation = {
           tableCode: tableInfo.tableCode,
           session,
         });
+
+        if (isReservationAddon) {
+          const holdWarehouseId = await resolveWarehouseIdOrDefault(
+            restaurantId,
+            warehouseId,
+            session,
+          );
+          for (const entry of addonEntries) {
+            const released = await validateAndReleaseCartHoldTx({
+              entry,
+              restaurantId,
+              warehouseId: holdWarehouseId,
+              authUserId,
+              serviceAt: activeReservation.timeTo,
+              session,
+            });
+            if (released) releasedCartItems.push(released);
+          }
+        }
 
         // ✅ hydrate: modifiers + ingredientsSnapshot + pricing
         await hydrateOrderItems({
@@ -1085,7 +1159,7 @@ export const OrderMutation = {
         }
 
         const resolvedCustomerUserId = await ensureUserForOrder(
-          userId,
+          isReservationAddon ? authUserId : userId,
           effectiveCustomer,
           { session, restaurantId: rid },
         );
@@ -1149,7 +1223,9 @@ export const OrderMutation = {
                   status: "pending",
                   at: new Date(),
                   byUserId: sessionUserId ? toId(sessionUserId) : undefined,
-                  note: "Created via POS",
+                  note: isReservationAddon
+                ? "Created via reservation add-on"
+                : "Created via POS",
                 },
               ],
               clientMeta,
@@ -1204,6 +1280,10 @@ export const OrderMutation = {
             session,
           });
         }
+
+        if (isReservationAddon) {
+          await removeCheckedOutCartItemsTx({ releasedCartItems, session });
+        }
       });
     } catch (error) {
       if (error?.code === 11000) {
@@ -1216,7 +1296,9 @@ export const OrderMutation = {
       await session.endSession();
     }
 
-    await markTableStatus(restaurantId, tableInfo.tableCode, "occupied");
+    if (!isReservationAddon) {
+      await markTableStatus(restaurantId, tableInfo.tableCode, "occupied");
+    }
     await ensureOrderTracking(createdOrderDoc);
     updatePublicStatusHistory(createdOrderDoc, "SYSTEM");
     await createdOrderDoc.save();
