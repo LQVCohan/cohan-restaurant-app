@@ -92,6 +92,25 @@ describe("capability gating regressions", () => {
     await expect(CartMutation.addCartItem(null, { input: { restaurantId: "r1", menuItemId: "m1", quantity: 1, name: "A", price: 1 } }, { user: { id: "u1" } })).rejects.toBeTruthy();
   });
 
+  it("tính cọc bằng cọc bàn cộng đúng 50% tiền món", async () => {
+    const { computeDeposit } = await import(
+      "../../graphql/resolvers/reservation/mutation.js"
+    );
+    expect(
+      computeDeposit({
+        baseDeposit: 100000,
+        linkedMenuSubtotal: 250000,
+        menuDepositPercent: 50,
+      }),
+    ).toBe(225000);
+    expect(
+      computeDeposit({
+        baseDeposit: 100000,
+        linkedMenuSubtotal: 250000,
+      }),
+    ).toBe(225000);
+  });
+
   it("addCartItem fails when menuId is not active", async () => {
     const { CartMutation } = await import("../../graphql/resolvers/cart/mutation.js");
     model.Menu.findOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue(null) });
