@@ -8,30 +8,31 @@
     "src/layouts/ManagerLayout.jsx",
     "src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.jsx",
     "src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.scss",
+    "src/components/Dashboard_Manager/Table/TableTypeManagementMobileFix.scss",
     "src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.test.jsx"
   ],
-  "rootCause": "The table settings modal is contextual to TableManagement but its trigger was still exposed as a standalone global navigation/search choice. The fix removes that choice and passes the existing controlled-modal opener directly into an in-page table management wrapper.",
+  "rootCause": "The modal trigger previously lived in global navigation. The mobile follow-up was caused by the portal header lacking an isolated width contract: a global modal/button cascade could expand the close control, squeeze header copy into a one-character column, and collapse the scrollable body. The local fix uses a fixed 44px close column and a single body scroll region without changing the shared Modal or CRUD flow.",
   "validation": {
     "planned": [
-      "npx vitest run src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.test.jsx",
+      "npx vitest run src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.test.jsx src/components/Dashboard_Manager/Table/TableTypeManagementPage.test.jsx",
       "npm run check:conflicts",
-      "npm run build"
+      "npm run build",
+      "visual check at 390x844 and 430x932"
     ],
     "completed": [
       "read AGENTS.md and Trellis workflow",
-      "read ponytail and ui-ux-pro-max skills",
-      "traced Sidebar and manager search through ManagerLayout showTableSettings state to TableTypeManagementPage",
-      "confirmed no other runtime caller references table-types",
-      "removed the standalone sidebar item and manager search result",
-      "added a permission-gated in-page button using the existing controlled modal opener",
-      "kept stale table-types hash normalization, table.write permission checks, restaurant scope and modal CRUD unchanged",
-      "added focused component coverage for opening the modal and hiding the trigger without an opener"
+      "read ponytail, ui-ux-pro-max, frontend-design, redesign-existing-projects, taste-ui-redesign and web-design-guidelines skills",
+      "traced TableManagementSettingsEntry through ManagerLayout showTableSettings to TableTypeManagementPage and the shared Modal portal",
+      "confirmed schema, resolver, Apollo hooks, restaurant scope, permissions and CRUD operations do not require changes",
+      "confirmed the broken phone layout originates from the modal header/body/footer CSS contract rather than component state",
+      "added a scoped mobile portal override with a 44px close target, 100dvh shell, independent body scrolling, safe-area footer and no horizontal overflow",
+      "kept stale table-types hash normalization, table.write permission checks, restaurant scope and modal CRUD unchanged"
     ],
     "notRun": [
       "targeted Vitest was not executable in the GitHub connector environment",
       "npm run check:conflicts was not executable in the GitHub connector environment",
       "npm run build was not executable in the GitHub connector environment",
-      "desktop and mobile browser screenshots were not executable in the GitHub connector environment"
+      "390x844 and 430x932 browser screenshots were not executable in the GitHub connector environment"
     ]
   }
 }
