@@ -37,13 +37,22 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
     };
 
     window.addEventListener("manager:navigation-query", handleNavigationQuery);
-    return () => window.removeEventListener("manager:navigation-query", handleNavigationQuery);
+    return () =>
+      window.removeEventListener("manager:navigation-query", handleNavigationQuery);
   }, []);
 
   useLayoutEffect(() => {
     const apolloCleanup = installScheduleApolloPerformancePatch(apolloClient);
     const hydrationCleanup = initScheduleHydrationPolish?.();
     const domPolishTimer = window.setTimeout(() => {
+      const scheduleRoot =
+        document.querySelector(".manager-page-shell--schedules") ||
+        document.querySelector(".schedule-container");
+      if (scheduleRoot) {
+        // React owns the registration panel collapse state. Prevent legacy DOM
+        // polish from clicking the control and racing the component state.
+        scheduleRoot.dataset.optionalPanelsInitialCollapsed = "true";
+      }
       window.__scheduleDomPolishCleanup = initScheduleManagerDomPolish?.();
       window.__scheduleAdminPolishCleanup = initScheduleManagerAdminPolish?.();
     }, 520);
