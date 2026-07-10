@@ -53,6 +53,7 @@ import "./styles/RestaurantProfileHoursResponsiveFix.css";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoUnifiedPage.css";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoPremiumLayout.css";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantPreviewPolish.css";
+import "./components/Dashboard_Manager/RestaurantInfo/RestaurantPaymentMethodsSimple.css";
 import "./components/Customer/RestaurantDetail/RestaurantPreviewFrameFix.scss";
 import "./components/Dashboard_Manager/Staff/components/Attendance/OvertimePanelPolicyPolish.scss";
 import "./components/Dashboard_Manager/Table/TableManagementCanvasSync.css";
