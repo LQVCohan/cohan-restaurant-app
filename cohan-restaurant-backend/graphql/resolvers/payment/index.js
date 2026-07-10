@@ -11,6 +11,7 @@ import { PaymentResolvers } from "./types.js";
 import publicTablePaymentMutation from "./publicTablePaymentMutation.js";
 import wallet from "../wallet/index.js";
 import {
+  includeResolvedReconciliationCount,
   normalizeFinanceDashboardResult,
   prepareFinanceDashboardRequest,
 } from "../../../src/services/finance/financeDashboardRange.service.js";
@@ -27,16 +28,10 @@ const financeDashboard = async (parent, { input }, ctx, info) => {
     restaurantId: request.input.restaurantId,
     status: "resolved",
   });
-  const normalized = normalizeFinanceDashboardResult(result, request);
-  return {
-    ...normalized,
-    reconciliationSummary: {
-      ...normalized.reconciliationSummary,
-      matched:
-        Number(normalized.reconciliationSummary?.matched || 0) +
-        Number(resolvedCount || 0),
-    },
-  };
+  return includeResolvedReconciliationCount(
+    normalizeFinanceDashboardResult(result, request),
+    resolvedCount,
+  );
 };
 
 export default {
