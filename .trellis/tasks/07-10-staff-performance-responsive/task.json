@@ -3,7 +3,7 @@
   "name": "staff-performance-responsive",
   "title": "Fix responsive staff performance layout",
   "description": "Remove the unused detail-column gap and make the staff performance dashboard respond to its actual content width.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-staff-performance",
   "package": null,
@@ -11,18 +11,18 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "566b474bd09d4cd407961151a374bb5a8c16627e",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": null,
   "relatedFiles": [
-    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.jsx",
-    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.scss"
+    "src/components/Dashboard_Manager/Staff/components/Performance/index.js",
+    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformanceResponsive.scss"
   ],
-  "notes": "UI-only change. No GraphQL, resolver, service, schema, permission, restaurant-scope, or data behavior changes."
+  "notes": "UI-only root-cause fix. No GraphQL, resolver, service, schema, permission, restaurant-scope, or data behavior changes. Automated tests, build, and browser checks were not run in the connected GitHub environment."
 }
