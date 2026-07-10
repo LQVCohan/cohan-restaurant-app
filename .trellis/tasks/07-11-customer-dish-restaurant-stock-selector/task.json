@@ -6,8 +6,8 @@
   "priority": "P1",
   "base_branch": "main",
   "createdAt": "2026-07-11",
-  "rootCause": "The customer detail route owned only one restaurant-scoped MenuItem and had no public contract for equivalent items at other restaurants. Manager inventory fields and the runtime customer live-state resolver also calculated the default serving through separate paths, so maxAvailable could drift.",
-  "flow": "MenuItem/Recipe/Ingredient/StockItem/Warehouse -> shared serving-variant availability -> MenuItem inventory fields and menuItemLiveState -> customerMenuItemLocations -> food-detail restaurant selector -> route reload with the selected restaurant MenuItem -> addCartItem",
+  "rootCause": "The customer detail route originally owned only one restaurant-scoped MenuItem and had no public contract for equivalent items at other restaurants. After the contract was added, the selector was still mounted through a global portal beside the sticky order card and was completely suppressed whenever serviceAt was present, so valid restaurant results could remain invisible on the page.",
+  "flow": "MenuItem/Recipe/Ingredient/StockItem/Warehouse -> shared serving-variant availability -> MenuItem inventory fields and menuItemLiveState -> customerMenuItemLocations -> food-detail restaurant selector mounted after the dish description -> route reload with the selected restaurant MenuItem -> addCartItem",
   "files": [
     "cohan-restaurant-backend/src/services/menuItemAvailability.service.js",
     "cohan-restaurant-backend/src/services/menuItemInventoryAvailability.service.js",
@@ -33,18 +33,20 @@
       "manual desktop and mobile food-detail review with one closed/out-of-stock and one open/in-stock restaurant"
     ],
     "completed": [
-      "read AGENTS.md, Trellis workflow, ponytail, frontend-design and cross-layer guide",
+      "read AGENTS.md, Trellis workflow, ponytail, frontend-design, ui-ux-pro-max and the food-detail design guide",
       "traced persistence, resolver/service, GraphQL operations, food detail navigation and add-cart restaurant scope",
       "replaced the manager-only inventory calculation with a compatibility re-export to one shared variant availability service",
       "made the runtime customer live-state resolver use the same warehouse, recipe variant and inventory calculation",
       "added a public query that finds active public restaurants carrying the same exact dish name or shared code, computes each location stock and removes duplicate restaurant entries",
       "added a food-detail selector that lists every matching restaurant and automatically redirects to an accepting restaurant with verified stock",
       "kept manual restaurant selection, deep links, default serving key and restaurant-scoped cart input aligned",
+      "moved the selector portal below the dish description, made it visible even when serviceAt is present, and preserved serviceAt when the customer manually changes restaurant",
+      "changed the restaurant collection to a responsive multi-column list with bounded scrolling for long result sets",
       "added focused backend and frontend regression tests and reviewed latest file contents after each write"
     ],
     "notRun": [
       "Targeted Vitest suites, GraphQL check, conflict check and production build were not run because the GitHub connector does not provide a repository checkout with installed dependencies.",
-      "Desktop/mobile visual verification and a real database scenario with stock 0 versus stock 20 remain for the local environment."
+      "Desktop/mobile visual verification and a real database scenario with multiple restaurant results remain for the local environment."
     ]
   }
 }
