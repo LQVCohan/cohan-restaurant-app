@@ -22,6 +22,7 @@ import supply from "./supply/index.js";
 import eventLogResolvers from "./event_log/index.js";
 import payment from "./payment/index.js";
 import staff from "./staff/index.js";
+import { withStaffInvitationFlow } from "./staff/invitationFlow.js";
 import attendanceOvertime from "./attendance_overtime/index.js";
 import review from "./review/index.js";
 import reviewComment from "./review_comment/index.js";
@@ -54,6 +55,7 @@ const guardedBrandMemberMutations = guardBrandMemberRoleMutations({
   ...(brand.Mutation || {}),
   ...(brandInvitationFlow.Mutation || {}),
 });
+const staffMutations = withStaffInvitationFlow(staff.Mutation || {});
 
 export default {
   ...baseResolvers,
@@ -127,7 +129,7 @@ export default {
     ...(reservation.Mutation || {}),
     ...(eventLogResolvers.Mutation || {}),
     ...(payment.Mutation || {}),
-    ...(staff.Mutation || {}),
+    ...staffMutations,
     ...(attendanceOvertime.Mutation || {}),
     ...(review.Mutation || {}),
     ...(reviewComment.Mutation || {}),
