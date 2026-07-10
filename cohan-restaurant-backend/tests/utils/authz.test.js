@@ -8,6 +8,16 @@ describe("legacy authz role resolution", () => {
     ).toBe(true);
   });
 
+  it("recognizes an inherited management role", () => {
+    const user = {
+      userType: "STAFF",
+      roleName: "restaurant_owner",
+      role: { parentRole: { slug: "manager" } },
+    };
+
+    expect(hasRole(user, ["admin", "manager", "hr"])).toBe(true);
+  });
+
   it("keeps specialized staff role matching", () => {
     const user = { userType: "STAFF", roleName: "server" };
 
