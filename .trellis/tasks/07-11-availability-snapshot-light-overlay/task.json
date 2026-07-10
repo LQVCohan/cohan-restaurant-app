@@ -1,6 +1,6 @@
 {
   "id": "07-11-availability-snapshot-light-overlay",
-  "title": "Làm sáng lớp phủ modal lịch rảnh",
+  "title": "Tối ưu lớp phủ và bố cục modal lịch rảnh",
   "status": "implemented_unverified",
   "type": "frontend-polish",
   "scope": [
@@ -15,18 +15,18 @@
     ],
     "completed": [
       "read ponytail, ui-ux-pro-max, frontend-design, taste-ui-redesign, and redesign-existing-projects skills",
-      "inspected the supplied screenshot and current AvailabilitySnapshotModal styles",
-      "traced ScheduleManagement -> AvailabilitySnapshotModal -> component SCSS",
-      "identified the dark overlay and heavy shadow as the visual root cause",
-      "added a light sage translucent overlay with reduced blur",
-      "reduced modal shadow weight without changing layout or interaction",
-      "loaded the targeted stylesheet after existing manager UI layers",
-      "re-fetched the changed files from main and reviewed selector scope"
+      "inspected the supplied screenshots and current AvailabilitySnapshotModal structure/styles",
+      "traced ScheduleManagement -> AvailabilitySnapshotModal -> component SCSS -> final overlay stylesheet",
+      "kept the light sage overlay and reduced modal shadow",
+      "gave the desktop modal a stable working height and made the matrix consume remaining space",
+      "compacted KPI cards, filters, result count, legend, and status messages",
+      "preserved full-modal scrolling on phone widths",
+      "re-fetched the latest stylesheet before updating it"
     ],
     "notRun": [
       "npm run check:conflicts was unavailable in the GitHub connector environment",
       "npm run build was unavailable in the GitHub connector environment",
-      "desktop and mobile-height visual review was unavailable in the GitHub connector environment"
+      "desktop and mobile visual replay was unavailable in the GitHub connector environment"
     ]
   }
 }
