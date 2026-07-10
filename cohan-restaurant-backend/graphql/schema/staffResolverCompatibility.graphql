@@ -558,6 +558,7 @@ input ReviewAttendanceCorrectionRequestInput {
 
 input RejectAttendanceCorrectionRequestInput {
   requestId: ID!
+  reason: String
   rejectionReason: String
   reviewNote: String
   note: String
@@ -808,6 +809,10 @@ input ReverseScoreForAcceptedAppealInput {
 
 input StaffReportsInput {
   restaurantId: ID
+  startDate: DateTime
+  endDate: DateTime
+  compareStartDate: DateTime
+  compareEndDate: DateTime
   periodStart: DateTime
   periodEnd: DateTime
 }
