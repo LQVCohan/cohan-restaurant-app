@@ -1,3 +1,5 @@
+import jwt from "jsonwebtoken";
+
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import {
@@ -7,6 +9,10 @@ import {
   requestPublicTableOrderAccess,
   validatePublicTableOrderSessionAccess,
 } from "../../../src/services/publicTableOrderAccess.service.js";
+import {
+  setTableOrderSessionCookies,
+  withTableOrderSessionCookieCredentials,
+} from "../shared/tableOrderSessionCookies.js";
 import { emitRestaurantEvent } from "./helper/emitOrderEvent.js";
 import publicTableOrderMutation from "./publicTableOrderMutation.js";
 import publicTableSessionQuery from "./publicTableSessionQuery.js";
@@ -34,9 +40,13 @@ export const PublicTableOrderAccessQuery = {
     );
     const operationalCanOrder = Boolean(result?.canOrder);
     const hasActiveSession = Boolean(result?.session?.id);
+    const credentialContext = withTableOrderSessionCookieCredentials(
+      ctx,
+      args.tableId,
+    );
     const orderAccessConfirmed = hasActiveSession
       ? await hasValidPublicTableOrderSessionAccess({
-          ctx,
+          ctx: credentialContext,
           restaurantId: args.restaurantId,
           tableId: args.tableId,
         })
@@ -105,22 +115,41 @@ export const PublicTableOrderAccessMutation = {
 
   async publicConfirmTableOrderAccess(_parent, { input }, ctx) {
     const result = await confirmPublicTableOrderAccess(input || {});
+    const requestScope = jwt.decode(String(input?.requestToken || "")) || {};
+    const restaurantId = String(requestScope.rid || "");
+    const tableId = String(requestScope.tid || "");
+
+    setTableOrderSessionCookies(ctx, {
+      tableId,
+      orderSessionToken: result.orderSessionToken,
+      deviceId: input?.deviceId,
+      expiresAt: result.expiresAt,
+    });
+
     try {
       await emitRestaurantEvent(
         ctx,
-        result.sessionId,
+        restaurantId,
         "TABLE_QR_ORDER_ACCESS_CONFIRMED",
-        { sessionId: result.sessionId },
+        {
+          restaurantId,
+          tableId,
+          sessionId: result.sessionId,
+        },
       );
     } catch {
-      // The access token is already issued; realtime refresh is secondary.
+      // The access cookie is already issued; realtime refresh is secondary.
     }
     return result;
   },
 
   async publicRequestTableIdentityOtp(parent, args, ctx, info) {
-    await validatePublicTableOrderSessionAccess({
+    const credentialContext = withTableOrderSessionCookieCredentials(
       ctx,
+      args?.input?.tableId,
+    );
+    await validatePublicTableOrderSessionAccess({
+      ctx: credentialContext,
       restaurantId: args?.input?.restaurantId,
       tableId: args?.input?.tableId,
       requireOrderable: true,
@@ -134,8 +163,12 @@ export const PublicTableOrderAccessMutation = {
   },
 
   async publicSubmitTableOrder(parent, args, ctx, info) {
-    await validatePublicTableOrderSessionAccess({
+    const credentialContext = withTableOrderSessionCookieCredentials(
       ctx,
+      args?.input?.tableId,
+    );
+    await validatePublicTableOrderSessionAccess({
+      ctx: credentialContext,
       restaurantId: args?.input?.restaurantId,
       tableId: args?.input?.tableId,
       requireOrderable: true,
