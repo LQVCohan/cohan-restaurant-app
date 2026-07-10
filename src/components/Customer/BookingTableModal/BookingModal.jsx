@@ -464,6 +464,22 @@ const BookingModal = ({
     if (validate()) setShowSummary(true);
   };
 
+  const handleChooseDishes = () => {
+    if (!validate()) return;
+    const serviceAt = localDateTimeToISO(formData.date, formData.time);
+    if (!serviceAt) {
+      showNotification("Vui lòng chọn ngày và giờ đến trước khi chọn món.", "warning");
+      return;
+    }
+
+    const params = new URLSearchParams({
+      restaurantId: String(restaurantId || ""),
+      returnTo: "booking",
+      serviceAt,
+    });
+    navigate(`/cus-menu?${params.toString()}`);
+  };
+
   const handleConfirm = async () => {
     if (!validate()) {
       setShowSummary(false);
@@ -816,13 +832,7 @@ const BookingModal = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() =>
-                    navigate(
-                      `/cus-menu?restaurantId=${encodeURIComponent(
-                        restaurantId || "",
-                      )}&returnTo=booking`,
-                    )
-                  }
+                  onClick={handleChooseDishes}
                 >
                   <Sparkles size={15} aria-hidden="true" /> Chọn món
                 </button>
