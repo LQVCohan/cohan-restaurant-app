@@ -13,7 +13,7 @@ $dcm-warning: #9a5b20;
 $dcm-danger: #b54747;
 
 .dish-category-modal {
-  .modal-content {
+  &.modal-container {
     width: min(94vw, 820px) !important;
     max-height: min(90vh, 760px) !important;
     overflow: hidden !important;
