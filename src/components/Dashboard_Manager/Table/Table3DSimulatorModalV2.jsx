@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Box, ClipboardCheck, Loader2 } from "lucide-react";
+import { AlertTriangle, Box, Loader2 } from "lucide-react";
 import Modal from "@/components/common/Modal";
 import Button from "@/components/common/Button";
 import useTable3DModels from "@/hooks/useTable3DModels";
@@ -17,11 +17,9 @@ import {
   doesCustomModelMatchTableType,
   getCustomModelCatalogTableType,
 } from "@/config/table3dCustomModelStorage";
-import { buildArMobileTestReport, copyTextToClipboard } from "@/utils/arMobileTestReport";
 import "./Table3DSimulatorModal.scss";
 import CustomTableModelBuilderModal from "./CustomTableModelBuilderModal";
 import TableCameraPlacementPreviewModal from "./TableCameraPlacementPreviewModal";
-import ArTablePlacementModal from "./ArTablePlacementModal";
 import Table3DCatalogPanel from "./Table3DCatalogPanel";
 import {
   Table3DActionBar,
@@ -29,7 +27,6 @@ import {
   Table3DReadiness,
   Table3DToolbar,
 } from "./Table3DExperienceControls";
-import { buildVisualConfigFromModel } from "./tableVisualConfigHelpers";
 
 const MODEL_VIEWER_SRC =
   "https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js";
@@ -49,15 +46,8 @@ const getCapabilities = () => ({
 export default function Table3DSimulatorModalV2({
   open,
   onClose,
-  onApply,
-  currentFloorName,
   restaurantName,
   restaurantId,
-  table,
-  restaurant,
-  floor,
-  currentFloorLayout,
-  onSaveArPosition,
 }) {
   const {
     models: catalogModels,
@@ -76,35 +66,45 @@ export default function Table3DSimulatorModalV2({
   const [modelLoadProgress, setModelLoadProgress] = useState(0);
   const [showCustomBuilder, setShowCustomBuilder] = useState(false);
   const [cameraModel, setCameraModel] = useState(null);
-  const [showArPlacement, setShowArPlacement] = useState(false);
-  const [showArOptions, setShowArOptions] = useState(false);
   const [customModels, setCustomModels] = useState([]);
   const [isOpeningAr, setIsOpeningAr] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
   const [assetFilter, setAssetFilter] = useState("all");
   const [pendingDeleteModelKey, setPendingDeleteModelKey] = useState("");
   const [capabilities, setCapabilities] = useState(getCapabilities);
-  const [testReportStatus, setTestReportStatus] = useState("");
   const viewerRef = useRef(null);
   const customModelScope = restaurantName || restaurantId || "default";
 
   useEffect(() => {
-    if (customElements.get("model-viewer")) return undefined;
+    if (typeof customElements !== "undefined" && customElements.get("model-viewer")) {
+      return undefined;
+    }
+
+    const existingScript = document.querySelector(
+      `script[src="${MODEL_VIEWER_SRC}"]`,
+    );
+    if (existingScript) return undefined;
+
     const script = document.createElement("script");
     script.type = "module";
     script.src = MODEL_VIEWER_SRC;
+    script.dataset.cohanModelViewer = "true";
+    script.addEventListener("error", () => {
+      setModelError(
+        "Không tải được trình xem 3D. Hãy kiểm tra kết nối mạng rồi thử lại.",
+      );
+    });
     document.head.appendChild(script);
-    return () => script.remove();
+    return undefined;
   }, []);
 
   useEffect(() => {
     if (!open) return undefined;
     let cancelled = false;
+
     setCapabilities(getCapabilities());
     setCustomModels(loadCustomTableModels(customModelScope));
-    setShowArOptions(false);
     setPendingDeleteModelKey("");
-    setTestReportStatus("");
 
     const detectWebXr = async () => {
       if (!navigator?.xr?.isSessionSupported) {
@@ -113,6 +113,7 @@ export default function Table3DSimulatorModalV2({
         }
         return;
       }
+
       try {
         const supported = await navigator.xr.isSessionSupported("immersive-ar");
         if (!cancelled) {
@@ -129,7 +130,7 @@ export default function Table3DSimulatorModalV2({
     return () => {
       cancelled = true;
     };
-  }, [open, customModelScope]);
+  }, [customModelScope, open]);
 
   const catalogForType = useMemo(() => {
     if (tableType === ALL_TABLE_TYPES) return catalogModels || [];
@@ -183,8 +184,12 @@ export default function Table3DSimulatorModalV2({
   );
 
   useEffect(() => {
-    setSelectedModelKey(allModels[0]?.key || "");
-  }, [tableType, allModels]);
+    setSelectedModelKey((currentKey) =>
+      allModels.some((model) => model.key === currentKey)
+        ? currentKey
+        : allModels[0]?.key || "",
+    );
+  }, [allModels]);
 
   useEffect(() => {
     if (!selectedModel) return;
@@ -195,7 +200,6 @@ export default function Table3DSimulatorModalV2({
     setModelLoading(Boolean(selectedModel.modelUrl));
     setModelLoadProgress(0);
     setPendingDeleteModelKey("");
-    setTestReportStatus("");
   }, [selectedModel]);
 
   const cameraOrbit = `${orbit.theta}deg ${orbit.phi}deg ${
@@ -208,15 +212,9 @@ export default function Table3DSimulatorModalV2({
   const canLaunchNativeAr = Boolean(
     canOpenAr && capabilities.secureContext,
   );
-  const canOpenArPlacement = Boolean(table?.id);
   const arUnavailableReason = !capabilities.secureContext
     ? "AR chỉ hoạt động khi trang được mở bằng HTTPS hoặc localhost."
     : getArUnavailableReason(selectedModel);
-  const arPlacementTitle = !table?.id
-    ? "Hãy mở chi tiết một bàn trước khi đặt vị trí bằng AR"
-    : capabilities.webxr
-      ? "Đặt và lưu vị trí bàn bằng AR"
-      : "Thiết bị chưa hỗ trợ đặt bàn trực tiếp bằng AR; bạn vẫn có thể nhập vị trí thủ công";
   const selectedModelAssetSummary = getModelAssetSummary(selectedModel);
   const isSelectedModelHiddenByFilters = Boolean(
     selectedModel &&
@@ -228,16 +226,15 @@ export default function Table3DSimulatorModalV2({
       return {
         tone: "neutral",
         label: "Chưa chọn mẫu",
-        description:
-          "Chọn một mẫu bàn để xem trước và kiểm tra khả năng sử dụng AR.",
+        description: "Chọn một mẫu bàn để bắt đầu xem thử.",
       };
     }
     if (!selectedModel.modelUrl) {
       return {
         tone: "warning",
-        label: "Chỉ xem mô phỏng",
+        label: "Chưa có model 3D",
         description:
-          "Mẫu này chưa có mô hình 3D nên chưa thể mở bằng AR trên thiết bị.",
+          "Mẫu này chỉ có ảnh minh họa nên chưa thể mở bằng camera AR.",
       };
     }
     if (!capabilities.secureContext) {
@@ -245,21 +242,22 @@ export default function Table3DSimulatorModalV2({
         tone: "warning",
         label: "Cần HTTPS",
         description:
-          "Hãy mở trang bằng kết nối bảo mật HTTPS để sử dụng AR.",
+          "Hãy mở trang bằng HTTPS hoặc localhost để sử dụng camera AR.",
       };
     }
     if (capabilities.webxr) {
       return {
         tone: "ready",
-        label: "Sẵn sàng đặt bàn",
-        description: "Thiết bị đã sẵn sàng để đặt bàn bằng AR.",
+        label: "Sẵn sàng AR",
+        description:
+          "Thiết bị hỗ trợ WebXR và có thể đặt thử bàn trong không gian thật.",
       };
     }
     return {
       tone: "limited",
-      label: "Chỉ xem bằng AR",
+      label: "AR theo thiết bị",
       description:
-        "Thiết bị có thể xem AR nhưng có thể cần nhập vị trí bàn thủ công.",
+        "Trình duyệt sẽ thử mở Scene Viewer hoặc Quick Look của thiết bị.",
     };
   }, [capabilities.secureContext, capabilities.webxr, selectedModel]);
 
@@ -283,19 +281,8 @@ export default function Table3DSimulatorModalV2({
         ready: capabilities.secureContext,
         detail: capabilities.secureContext ? "Đã bảo mật" : "Cần HTTPS",
       },
-      {
-        id: "placement",
-        label: "Bàn đang chọn",
-        ready: canOpenArPlacement,
-        detail: canOpenArPlacement ? "Đã chọn bàn" : "Chưa chọn bàn",
-      },
     ],
-    [
-      capabilities.camera,
-      capabilities.secureContext,
-      canOpenArPlacement,
-      selectedModel,
-    ],
+    [capabilities.camera, capabilities.secureContext, selectedModel],
   );
 
   const fitModelToView = () => {
@@ -351,48 +338,28 @@ export default function Table3DSimulatorModalV2({
     }
     if (!viewerRef.current?.activateAR) {
       setModelError(
-        "Thiết bị hoặc trình duyệt chưa thể mở chế độ AR. Hãy thử xem bằng camera.",
+        "Thiết bị hoặc trình duyệt chưa thể mở camera AR. Hãy thử trên Chrome Android hoặc Safari iPhone.",
       );
       return;
     }
+
     try {
       setIsOpeningAr(true);
       setModelError("");
       await viewerRef.current.activateAR();
     } catch {
       setModelError(
-        "Không thể mở AR trên thiết bị này. Hãy xem bằng camera hoặc nhập vị trí thủ công.",
+        "Không thể mở camera AR trên thiết bị này. Bạn vẫn có thể dùng chế độ xem camera 2D.",
       );
     } finally {
       setIsOpeningAr(false);
     }
   };
 
-  const handleCopyMobileTestReport = async () => {
-    const report = buildArMobileTestReport({
-      selectedModel,
-      table,
-      restaurant,
-      floor: floor || currentFloorLayout,
-      capabilities,
-      arStatus,
-      extra: {
-        canOpenAr,
-        canLaunchNativeAr,
-        canOpenArPlacement,
-        modelError,
-        currentFloorName,
-      },
-    });
-
-    const copied = await copyTextToClipboard(report);
-    setTestReportStatus(copied ? "Đã copy báo cáo" : "Không copy được");
-    window.setTimeout(() => setTestReportStatus(""), 2200);
-  };
-
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer || !selectedModel?.modelUrl) return undefined;
+
     const onError = () => {
       setModelLoading(false);
       setModelError(
@@ -411,6 +378,7 @@ export default function Table3DSimulatorModalV2({
           Math.min(1, Number(event?.detail?.totalProgress || 0)),
         ),
       );
+
     viewer.addEventListener("error", onError);
     viewer.addEventListener("load", onLoad);
     viewer.addEventListener("progress", onProgress);
@@ -438,7 +406,7 @@ export default function Table3DSimulatorModalV2({
         <div className="table-3d-modal__heading">
           <div className="table-3d-modal__title-row">
             <Box size={18} aria-hidden="true" />
-            <h3>Xem thử và bố trí bàn 3D</h3>
+            <h3>Xem thử bàn 3D trong không gian</h3>
             <span
               className={`table-3d-ar-status table-3d-ar-status--${arStatus.tone}`}
               title={arStatus.description}
@@ -449,16 +417,9 @@ export default function Table3DSimulatorModalV2({
           <p>
             {selectedModel?.label || "Chưa chọn mẫu"} ·{" "}
             {restaurantName || "Nhà hàng hiện tại"}
-            {currentFloorName ? ` · ${currentFloorName}` : ""}
           </p>
         </div>
         <div className="table-3d-modal__header-actions">
-          {testReportStatus ? (
-            <span className="table-3d-test-report-status">{testReportStatus}</span>
-          ) : null}
-          <Button variant="secondary" size="sm" onClick={handleCopyMobileTestReport}>
-            <ClipboardCheck size={14} /> Báo cáo test
-          </Button>
           <Button variant="secondary" size="sm" onClick={onClose}>
             Đóng
           </Button>
@@ -502,7 +463,10 @@ export default function Table3DSimulatorModalV2({
               <span>{selectedModel?.label || "Mẫu bàn 3D"}</span>
               <small>{selectedModel?.capacity || 0} ghế</small>
             </div>
-            <span>Chế độ xem thử không lưu vị trí vào sơ đồ bàn.</span>
+            <span>
+              Chọn mẫu có sẵn, nhập URL hoặc upload .glb rồi mở camera AR để
+              kiểm tra trong không gian thật.
+            </span>
           </div>
 
           <div className="table-3d-stage">
@@ -520,7 +484,6 @@ export default function Table3DSimulatorModalV2({
                 model-scale={`${scale} ${scale} ${scale}`}
                 shadow-intensity="1"
                 environment-image="neutral"
-                ar-status="not-presenting"
                 className="table-3d-viewer"
               />
             ) : (
@@ -533,14 +496,15 @@ export default function Table3DSimulatorModalV2({
                 </strong>
                 <span>
                   {selectedModel
-                    ? "Bạn vẫn có thể xem thử bằng camera hoặc chọn mẫu có nhãn 3D."
+                    ? "Chọn mẫu có nhãn 3D hoặc dùng Tạo mẫu mới để nhập URL/upload file."
                     : "Hãy chọn một mẫu trong thư viện để bắt đầu."}
                 </span>
               </div>
             )}
+
             {modelLoading && selectedModel?.modelUrl && (
               <div className="table-3d-model-loading" role="status">
-                <Loader2 size={24} className="spin" />
+                <Loader2 size={24} className="spin" aria-hidden="true" />
                 <strong>Đang tải mô hình 3D</strong>
                 <div className="table-3d-loading-bar">
                   <span
@@ -559,7 +523,7 @@ export default function Table3DSimulatorModalV2({
               className="table-3d-modal__warning table-3d-modal__warning--viewer"
               role="alert"
             >
-              <AlertTriangle size={16} />
+              <AlertTriangle size={16} aria-hidden="true" />
               <span>{modelError}</span>
               <Button
                 variant="secondary"
@@ -592,28 +556,11 @@ export default function Table3DSimulatorModalV2({
           <Table3DActionBar
             selectedModel={selectedModel}
             canPreviewCamera={capabilities.camera}
-            onOpenCamera={() =>
-              selectedModel && setCameraModel(selectedModel)
-            }
-            canOpenArPlacement={canOpenArPlacement}
-            arPlacementTitle={arPlacementTitle}
-            placementActionLabel="Đặt bàn vào sơ đồ bằng AR"
-            onOpenArPlacement={() =>
-              canOpenArPlacement && setShowArPlacement(true)
-            }
-            showArOptions={showArOptions}
-            onToggleArOptions={() => setShowArOptions((value) => !value)}
+            onOpenCamera={() => selectedModel && setCameraModel(selectedModel)}
             canLaunchNativeAr={canLaunchNativeAr}
             isOpeningAr={isOpeningAr}
             arUnavailableReason={arUnavailableReason}
             onOpenNativeAr={handleOpenNativeAr}
-            applyActionLabel="Áp dụng mẫu 3D"
-            onApply={() =>
-              selectedModel &&
-              onApply(selectedModel, {
-                visualConfig: buildVisualConfigFromModel(selectedModel, null),
-              })
-            }
           />
         </section>
       </div>
@@ -633,16 +580,6 @@ export default function Table3DSimulatorModalV2({
         open={Boolean(cameraModel)}
         modelItem={cameraModel}
         onClose={() => setCameraModel(null)}
-      />
-      <ArTablePlacementModal
-        open={showArPlacement}
-        onClose={() => setShowArPlacement(false)}
-        table={table}
-        restaurant={restaurant}
-        floor={floor}
-        selectedModel={selectedModel}
-        currentFloorLayout={currentFloorLayout}
-        onSavePosition={onSaveArPosition}
       />
     </Modal>
   );
