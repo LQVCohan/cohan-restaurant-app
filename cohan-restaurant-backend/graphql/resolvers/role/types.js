@@ -40,4 +40,7 @@ export default {
       return mergeEffectivePermissions({ parentRole: { permissions: inheritedPermissions }, permissions: directPermissions });
     },
   },
+  ParentRole: {
+    id: (parent) => parent.id ?? String(parent._id),
+  },
 };
