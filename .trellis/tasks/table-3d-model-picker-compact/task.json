@@ -3,7 +3,7 @@
   "name": "table-3d-model-picker-compact",
   "title": "Compact the table 3D model picker",
   "description": "Reduce catalog row height and improve scroll alignment without changing model selection behavior.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-table-3d-model-picker",
   "package": null,
@@ -11,18 +11,17 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "01d4a0dce9b8d6cf1c4e9434d22460ef15869df4",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": "table-3d-responsive-ui-upgrade",
   "relatedFiles": [
-    "src/components/Dashboard_Manager/Table/Table3DCatalogPanel.jsx",
     "src/styles/Table3DModalContentSafety.css"
   ],
-  "notes": "Screenshot audit found oversized desktop catalog rows and partial rows at scroll boundaries. The selection/filter callbacks and model data contract are already correct; the smallest fix is a desktop-only compact layout in the existing final content-safety stylesheet."
+  "notes": "Implemented a desktop-only compact catalog contract in the existing final stylesheet: controls are slightly shorter, rows are 62px with 48px thumbnails, names use one-line ellipsis, capacity and badges share one metadata row, and proximity scroll snap reduces partially clipped rows. Mobile carousel dimensions and all selection/filter/viewer/AR/apply callbacks remain unchanged. No CI, component test, production build, browser viewport check, or physical-phone validation was run through the GitHub connector."
 }
