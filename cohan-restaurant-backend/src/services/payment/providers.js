@@ -187,6 +187,7 @@ export function createVnpayPayment({
 }) {
   const tmnCode = process.env.VNPAY_TMN_CODE;
   const hashSecret = process.env.VNPAY_HASH_SECRET;
+  const bankCode = String(process.env.VNPAY_BANK_CODE || "").trim().toUpperCase();
   const baseUrl =
     mode === "production"
       ? (process.env.VNPAY_URL_PRODUCTION || "https://pay.vnpay.vn/vpcpay.html")
@@ -228,6 +229,8 @@ export function createVnpayPayment({
     vnp_CreateDate: formatVnpDate(createDate),
     vnp_ExpireDate: formatVnpDate(expireDate),
   };
+
+  if (bankCode) vnpParams.vnp_BankCode = bankCode;
 
   const signData = buildVnpHashData(vnpParams);
   const secureHash = hmacSHA512(signData, hashSecret);
