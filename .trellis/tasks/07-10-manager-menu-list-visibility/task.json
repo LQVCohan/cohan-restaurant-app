@@ -1,0 +1,19 @@
+{
+  "id": "07-10-manager-menu-list-visibility",
+  "title": "Hiển thị rõ danh sách thực đơn trên trang quản lý",
+  "status": "planning",
+  "type": "frontend-usability",
+  "scope": [
+    "src/components/Dashboard_Manager/Menu/MenuManagement.jsx",
+    "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "vitest run src/components/Dashboard_Manager/Menu",
+      "npm run build"
+    ],
+    "completed": [],
+    "notRun": []
+  }
+}
