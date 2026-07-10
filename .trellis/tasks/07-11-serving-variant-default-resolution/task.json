@@ -1,0 +1,17 @@
+{
+  "id": "07-11-serving-variant-default-resolution",
+  "title": "Resolve real default serving variant for customer stock checks",
+  "status": "in_progress",
+  "priority": "high",
+  "scope": [
+    "cohan-restaurant-backend/graphql/resolvers/cart/customerQuery.js",
+    "cohan-restaurant-backend/graphql/resolvers/cart/customerMutation.js",
+    "cohan-restaurant-backend/tests/resolvers/customer-serving-variant-resolution.test.js"
+  ],
+  "acceptanceCriteria": [
+    "menuItemLiveState uses an exact recipe variant key when supplied",
+    "legacy or missing portion fallback resolves to the recipe default variant key",
+    "addCartItem stores and reserves with the same resolved recipe variant key",
+    "a genuinely invalid non-legacy variant key remains rejected"
+  ]
+}
