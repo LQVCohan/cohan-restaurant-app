@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { LayoutGrid, List } from "lucide-react";
 import StorageGridPaginationBridge from "../../components/common/StorageGridPaginationBridge";
 import "../../StorageExperiencePolish.css";
@@ -31,8 +31,51 @@ import "../../StorageRecipeModalCompactLayout.css";
 import "./Tabs.scss";
 import "../../StorageInventoryAuditStepperFix.css";
 
+export const getRequestedStorageTab = (tabs = [], search = "") => {
+  const requested = new URLSearchParams(search).get("tab") || "";
+  return tabs.some((tab) => tab.id === requested) ? requested : "";
+};
+
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
   const supportsViewToggle = ["ingredients", "supplies", "recipes"].includes(activeTab);
+  const tabsRef = useRef(tabs);
+  const activeTabRef = useRef(activeTab);
+  const onTabChangeRef = useRef(onTabChange);
+
+  useEffect(() => {
+    tabsRef.current = tabs;
+    activeTabRef.current = activeTab;
+    onTabChangeRef.current = onTabChange;
+  }, [activeTab, onTabChange, tabs]);
+
+  useEffect(() => {
+    const applyRequestedTab = (requestedTab) => {
+      if (!requestedTab || requestedTab === activeTabRef.current) return;
+      if (!tabsRef.current.some((tab) => tab.id === requestedTab)) return;
+      onTabChangeRef.current?.(requestedTab);
+    };
+
+    applyRequestedTab(
+      getRequestedStorageTab(tabsRef.current, window.location.search),
+    );
+
+    const handleNavigationQuery = (event) => {
+      if (event?.detail?.page !== "inventory") return;
+      applyRequestedTab(event.detail.query?.tab);
+    };
+    const handlePopState = () => {
+      applyRequestedTab(
+        getRequestedStorageTab(tabsRef.current, window.location.search),
+      );
+    };
+
+    window.addEventListener("manager:navigation-query", handleNavigationQuery);
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("manager:navigation-query", handleNavigationQuery);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   return (
     <>
