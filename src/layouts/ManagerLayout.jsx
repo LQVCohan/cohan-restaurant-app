@@ -404,7 +404,7 @@ const ManagerLayout = () => {
       case "table-qr": return <TableQrManagementPage />;
       case "orders": return <OrderManagement />;
       case "menu": return <MenuManagement />;
-      case "modifiers": return <ModifierManagement />;
+      case "modifiers": return <ModifierManagement key={brandSelection.selectedRestaurantId || "no-restaurant"} />;
       case "combos": return <ComboManagement />;
       case "inventory": return <StorageManagement />;
       case "staff": return <StaffManagement />;
