@@ -25,22 +25,35 @@ const renderDashboard = () =>
   );
 
 describe("StaffDashboardPage", () => {
-  it("renders the redesigned staff dashboard copy and action links", () => {
+  it("prioritizes shift actions without repeating the shell identity", () => {
     renderDashboard();
 
-    expect(screen.getByRole("heading", { level: 1, name: /Xin chào,\s*Nhân viên Test/i })).toBeInTheDocument();
-    expect(screen.queryByText("Bạn chưa có ca hôm nay")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Kiểm tra ca trước khi bắt đầu" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Việc cần xử lý" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Xem lịch tuần" })).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: /Đăng ký lịch rảnh\/bận/i }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("link", { name: /Hồ sơ cá nhân/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Thông báo \/ nhắc việc/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Hiệu suất/i })).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: /Chấm công vào\/ra/i }).length).toBeGreaterThan(0);
-    expect(screen.getByText("Sẵn sàng / Theo lịch")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Hồ sơ nhân viên" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Nhắc việc quan trọng" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Trung tâm ca làm" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Xin chào,/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Kiểm tra lịch trước khi bắt đầu" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Mở lịch cá nhân/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Lịch cá nhân/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Chấm công & chỉnh công/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Nghỉ phép/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Thông báo/i })).toBeInTheDocument();
+  });
+
+  it("keeps role tools visible and secondary utilities collapsed", () => {
+    const { container } = renderDashboard();
+
+    expect(screen.getByRole("link", { name: /Đơn nội bộ/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Bếp \/ Quầy bar/i })).not.toBeInTheDocument();
+    expect(screen.getByText("Tiện ích khác")).toBeInTheDocument();
+    expect(container.querySelector("details.staff-dashboard-more")).not.toHaveAttribute("open");
+    expect(
+      screen.getByRole("link", { name: /Hồ sơ cá nhân/i, hidden: true }),
+    ).toBeInTheDocument();
   });
 
   it("does not add another main landmark inside StaffLayout", () => {
