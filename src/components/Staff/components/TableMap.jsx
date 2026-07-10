@@ -1,6 +1,14 @@
-import React, { useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { ChevronDown, Star, Users } from "lucide-react";
+import {
+  clearStaffOrderTableSelection,
+  isStaffOrderMobile,
+  openStaffOrderMenuTab,
+  readStaffOrderTableSelection,
+  saveStaffOrderTableSelection,
+} from "../staffOrderMobileSelection";
 import "./TableMap.scss";
+import "../StaffOrderingMobileFlow.scss";
 
 const MOBILE_FILTER_QUERY = "(max-width: 560px)";
 
@@ -29,6 +37,7 @@ export default function TableMap({
 }) {
   const [floor, setFloor] = useState(floors[0] || "");
   const [filterOpen, setFilterOpen] = useState(getDefaultFilterOpen);
+  const restoredSelectionRef = useRef(false);
 
   React.useEffect(() => {
     if (!floor && floors.length) setFloor(floors[0]);
@@ -44,6 +53,46 @@ export default function TableMap({
     media.addEventListener?.("change", syncFilter);
     return () => media.removeEventListener?.("change", syncFilter);
   }, []);
+
+  React.useEffect(() => {
+    if (
+      restoredSelectionRef.current ||
+      selectedTable?.id ||
+      tables.length === 0
+    ) {
+      return;
+    }
+
+    restoredSelectionRef.current = true;
+    const stored = readStaffOrderTableSelection();
+    if (!stored) return;
+
+    const restoredTable = tables.find(
+      (table) => String(table.id) === stored.id,
+    );
+    if (!restoredTable) {
+      clearStaffOrderTableSelection();
+      return;
+    }
+
+    if (restoredTable.floor) setFloor(restoredTable.floor);
+    onSelect?.(restoredTable);
+    if (isStaffOrderMobile()) {
+      window.requestAnimationFrame(openStaffOrderMenuTab);
+    }
+  }, [onSelect, selectedTable?.id, tables]);
+
+  const handleSelectTable = useCallback(
+    (table) => {
+      onSelect?.(table);
+      saveStaffOrderTableSelection(table);
+
+      if (isStaffOrderMobile()) {
+        window.requestAnimationFrame(openStaffOrderMenuTab);
+      }
+    },
+    [onSelect],
+  );
 
   const currentFloorTables = tables.filter((table) => table.floor === floor);
   const servingCount = currentFloorTables.filter(
@@ -110,7 +159,7 @@ export default function TableMap({
               <button
                 type="button"
                 className="table-card-main"
-                onClick={() => onSelect?.(table)}
+                onClick={() => handleSelectTable(table)}
                 aria-pressed={isSelected}
                 aria-label={`Chọn bàn ${code}, ${capacity} khách, ${status.label}`}
               >
