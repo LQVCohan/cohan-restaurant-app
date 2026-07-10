@@ -373,7 +373,6 @@
   }
 }
 
-
 /* Schedule action emphasis: important controls remain distinct after legacy overrides. */
 .manager-page-shell--schedules .schedule-container.schedule-container .header-actions .primary-action {
   border-color: var(--schedule-primary) !important;
@@ -416,4 +415,212 @@
   border-color: #315f50 !important;
   background: #315f50 !important;
   color: #ffffff !important;
+}
+
+/* Compact operational hierarchy: surface the weekly board earlier in the viewport. */
+.manager-page-shell--schedules .schedule-header {
+  padding: 0.78rem 1rem 0.68rem !important;
+}
+
+.manager-page-shell--schedules .schedule-header .header-top {
+  align-items: center !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.manager-page-shell--schedules .schedule-header h1 {
+  font-size: 1.25rem !important;
+}
+
+.manager-page-shell--schedules .schedule-header .subtitle {
+  margin-top: 0.12rem !important;
+  font-size: 0.82rem !important;
+}
+
+.manager-page-shell--schedules .kpi-grid.compact {
+  gap: 0.5rem !important;
+}
+
+.manager-page-shell--schedules .kpi-card {
+  min-height: 4rem !important;
+  gap: 0.48rem !important;
+  padding: 0.48rem 0.58rem !important;
+}
+
+.manager-page-shell--schedules .kpi-card .kpi-icon {
+  width: 1.9rem !important;
+  height: 1.9rem !important;
+}
+
+.manager-page-shell--schedules .kpi-card .kpi-content .hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.67rem !important;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel {
+  grid-template-columns: minmax(220px, 0.65fr) minmax(0, 1.35fr) !important;
+  align-items: center !important;
+  gap: 0.45rem 0.7rem !important;
+  margin-top: 0.55rem !important;
+  padding: 0.55rem 0.7rem !important;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__header {
+  align-items: center !important;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__metrics {
+  flex-wrap: nowrap !important;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__metric {
+  min-width: 104px !important;
+  padding: 0.3rem 0.45rem !important;
+}
+
+.manager-page-shell--schedules .schedule-legend {
+  margin-block: 0.5rem !important;
+  padding: 0.45rem 0.65rem !important;
+}
+
+.manager-page-shell--schedules .schedule-board:not(.month-board) {
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  overflow-x: visible !important;
+}
+
+.manager-page-shell--schedules .schedule-board:not(.month-board) .schedule-day-column {
+  min-width: 0 !important;
+  min-height: 330px !important;
+}
+
+.manager-page-shell--schedules .schedule-board:not(.month-board) .day-header {
+  min-height: 3.55rem !important;
+  padding: 0.65rem 0.72rem !important;
+}
+
+.manager-page-shell--schedules .schedule-board:not(.month-board) .day-body {
+  padding: 0.62rem !important;
+  gap: 0.5rem !important;
+}
+
+.manager-page-shell--schedules .shift-card .card-header {
+  align-items: flex-start !important;
+  gap: 0.4rem;
+}
+
+.manager-page-shell--schedules .shift-card .shift-time-group {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.manager-page-shell--schedules .shift-card .shift-duration-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.42rem;
+  padding: 0.14rem 0.42rem;
+  border: 1px solid var(--schedule-border);
+  border-radius: 999px;
+  color: var(--schedule-muted);
+  background: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 820;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.manager-page-shell--schedules .shift-card .shift-duration-badge.part-time {
+  color: #2f6f5e;
+  border-color: rgba(47, 125, 104, 0.28);
+  background: #e5f2ec;
+}
+
+.manager-page-shell--schedules .shift-card .shift-duration-badge.full-time {
+  color: #4c6072;
+  border-color: rgba(76, 96, 114, 0.24);
+  background: #edf2f5;
+}
+
+.manager-page-shell--schedules .shift-card .shift-duration-badge.flexible {
+  color: #8a5a20;
+  border-color: rgba(166, 106, 24, 0.24);
+  background: #fff4df;
+}
+
+.manager-page-shell--schedules .shift-card .alert-icon {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 1280px) {
+  .manager-page-shell--schedules .kpi-grid.compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .manager-page-shell--schedules .schedule-board:not(.month-board) {
+    grid-template-columns: repeat(4, minmax(220px, 1fr)) !important;
+    overflow-x: visible !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .manager-page-shell--schedules .schedule-header .header-top {
+    align-items: flex-start !important;
+    flex-direction: column;
+  }
+
+  .manager-page-shell--schedules .schedule-header .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .manager-page-shell--schedules .kpi-grid.compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .manager-page-shell--schedules .schedule-quality-panel {
+    grid-template-columns: 1fr !important;
+  }
+
+  .manager-page-shell--schedules .schedule-board:not(.month-board) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .manager-page-shell--schedules .schedule-header {
+    padding: 0.72rem !important;
+  }
+
+  .manager-page-shell--schedules .kpi-grid.compact {
+    grid-template-columns: 1fr !important;
+  }
+
+  .manager-page-shell--schedules .schedule-quality-panel__metrics {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .manager-page-shell--schedules .schedule-quality-panel__metric {
+    min-width: 0 !important;
+  }
+
+  .manager-page-shell--schedules .schedule-board:not(.month-board) {
+    grid-template-columns: 1fr !important;
+    gap: 0.58rem !important;
+    padding: 0.45rem !important;
+  }
+
+  .manager-page-shell--schedules .schedule-board:not(.month-board) .schedule-day-column {
+    min-height: 0 !important;
+  }
+
+  .manager-page-shell--schedules .shift-card .shift-duration-badge {
+    font-size: 0.68rem;
+  }
 }
