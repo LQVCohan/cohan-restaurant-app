@@ -132,7 +132,8 @@ describe("payment provider signature checks", () => {
     signedFailure.vnp_SecureHash = signVnpay(signedFailure);
 
     expect(verifyVnpayCallback(signedFailure)).toBe(true);
-    expect(signedFailure.vnp_ResponseCode).toBe("02");
+    expect(isVnpaySuccessful(signedFailure)).toBe(false);
+    expect(signedFailure.vnp_ResponseCode).toBe("00");
   });
 
   it("creates a VNPAY URL with GMT+7 dates, expiry and SHA512 checksum", () => {

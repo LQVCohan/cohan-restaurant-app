@@ -1,31 +1,23 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPaymentReturnPage,
-  getVnpayIpnRejection,
+  getVnpayIpnValidationError,
 } from "../../src/server/createServer.js";
 
 describe("payment provider callback contracts", () => {
-  it("maps rejected VNPAY IPN callbacks to provider response codes", () => {
-    expect(
-      getVnpayIpnRejection(
-        { callbackStatus: "rejected", amount: 150000 },
-        { vnp_Amount: "10000000" },
-      ),
-    ).toEqual({ RspCode: "04", Message: "Invalid Amount" });
+  it("validates VNPAY IPN in checksum, order and amount order", () => {
+    const payment = { amount: 150000 };
+    const mismatched = { vnp_Amount: "10000000" };
+    const matching = { vnp_Amount: "15000000" };
 
-    expect(
-      getVnpayIpnRejection(
-        { callbackStatus: "rejected", amount: 150000 },
-        { vnp_Amount: "15000000" },
-      ),
-    ).toEqual({ RspCode: "97", Message: "Invalid Checksum" });
-
-    expect(
-      getVnpayIpnRejection(
-        { callbackStatus: "accepted", amount: 150000 },
-        { vnp_Amount: "15000000" },
-      ),
-    ).toBeNull();
+    expect(getVnpayIpnValidationError({ signatureValid: false, payment, payload: mismatched }))
+      .toEqual({ RspCode: "97", Message: "Invalid Checksum" });
+    expect(getVnpayIpnValidationError({ signatureValid: true, payment: null, payload: matching }))
+      .toEqual({ RspCode: "01", Message: "Order not found" });
+    expect(getVnpayIpnValidationError({ signatureValid: true, payment, payload: mismatched }))
+      .toEqual({ RspCode: "04", Message: "Invalid Amount" });
+    expect(getVnpayIpnValidationError({ signatureValid: true, payment, payload: matching }))
+      .toBeNull();
   });
 
   it("renders a user-facing return page without raw callback data", () => {

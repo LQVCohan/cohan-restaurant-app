@@ -264,17 +264,5 @@ export function verifyVnpayCallback(payload = {}) {
 
   const signData = buildVnpHashData(working);
   const expected = hmacSHA512(signData, hashSecret);
-  const isValid = safeCompareString(expected, secureHash);
-
-  if (
-    isValid &&
-    String(payload.vnp_ResponseCode || "") === "00" &&
-    !isVnpaySuccessful(payload)
-  ) {
-    // The payment service historically maps VNPAY by responseCode. Normalize a
-    // signed non-success transaction so it cannot be settled as successful.
-    payload.vnp_ResponseCode = String(payload.vnp_TransactionStatus || "99");
-  }
-
-  return isValid;
+  return safeCompareString(expected, secureHash);
 }
