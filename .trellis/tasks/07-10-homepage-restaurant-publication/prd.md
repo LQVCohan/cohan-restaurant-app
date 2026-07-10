@@ -4,7 +4,7 @@
 
 The customer homepage renders `RestaurantGrid`, which executes `restaurantsTop`. The query succeeds but returns no restaurants when every database document is still a draft.
 
-Brand branch creation intentionally initializes new restaurants with `publicationStatus: draft` and `initialSetup.status: pending`. The public resolver correctly filters to active, published restaurants. The manager restaurant information page now exposes a publication action, but it is rendered as a standalone `Alert` by `ManagerLayout`, visually detached from the profile that it controls.
+Brand branch creation intentionally initializes new restaurants with `publicationStatus: draft` and `initialSetup.status: pending`. The public resolver correctly filters to active, published restaurants. The manager restaurant information page now exposes a publication action, but the first version used a full-width Ant `Alert` above the page and made this secondary action visually heavier than the profile editor itself.
 
 ## End-to-end trace
 
@@ -14,31 +14,32 @@ Brand branch creation intentionally initializes new restaurants with `publicatio
 4. `restaurantsTop` applies that filter and supplies the homepage GraphQL operation.
 5. `RestaurantGrid` maps `restaurantsTop`; an empty result renders “Chưa có nhà hàng nổi bật”.
 6. `RestaurantPublicationControl` queries and updates `publicationStatus` through the existing scoped `updateRestaurant` mutation.
-7. `RestaurantInfoManagement` owns the restaurant currently displayed in the profile editor and its customer-visible summary panel.
+7. `ManagerLayout` mounts the control immediately before the restaurant information page.
 
 ## Root cause
 
-The publication contract is correct. The remaining UX issue is placement and hierarchy: the action is outside `RestaurantInfoManagement`, consumes a full-width warning banner, and can be driven by a different selected-restaurant source than the profile editor.
+The publication contract is correct. The UI issue was hierarchy and density: a full-width warning banner consumed excessive vertical space even though the action is only a compact binary visibility setting.
 
 ## UI direction
 
-Compact contextual visibility control using the existing sage surfaces: place it in the top row of “Hồ sơ hiển thị với khách hàng”, keep the publication state readable without relying on color, and stack it full-width on mobile.
+Compact right-aligned visibility toolbar using the existing sage manager palette. Keep the status explicit in text, place the switch beside its label, align the toolbar with the restaurant page width, and stack it cleanly on mobile.
 
 ## Implementation
 
-- Move `RestaurantPublicationControl` from `ManagerLayout` into `RestaurantInfoManagement` so it uses the editor's `selectedRestaurantId`.
-- Replace the large `Alert` presentation with a compact status-and-switch control.
-- Place it beside the profile visibility eyebrow on desktop and above the profile title on narrow screens.
-- Preserve the existing query, mutation, permission, loading, success and error behavior.
-- Keep focused component coverage for the draft-to-published mutation contract.
+- Replace the large Ant `Alert` with a compact status, supporting text and switch layout.
+- Keep the control in the existing manager-page position, but constrain it to the same 1440 px page width and align it to the right edge above the profile header.
+- Use existing manager semantic tokens for published, draft and error states.
+- Preserve the existing GraphQL query, mutation, permission, loading, success and error behavior.
+- Add visible focus treatment, a 44 px interaction row and mobile stacking.
+- Keep focused component coverage for the draft-to-published mutation contract and the visible draft state.
 
 ## Acceptance criteria
 
-- The publication action appears inside the customer-visible profile summary, not as a detached page banner.
-- Desktop keeps the label and action on one balanced top row.
-- Mobile stacks the action without overflow and provides a practical touch target.
-- A selected draft restaurant clearly displays “Bản nháp”; a published restaurant clearly displays “Đang công khai”.
-- Turning on “Hiển thị công khai” immediately sends `publicationStatus: published` for the same restaurant displayed by the profile editor.
+- The publication action no longer renders as a full-width alert.
+- Desktop shows a compact right-aligned toolbar above the restaurant profile page.
+- Mobile expands the toolbar to full width without overflow.
+- A draft restaurant clearly displays “Bản nháp”; a published restaurant clearly displays “Đang công khai”.
+- Turning on “Hiển thị công khai” immediately sends `publicationStatus: published`.
 - Turning it off sends `publicationStatus: draft`.
 - Loading, disabled and error states remain understandable and keyboard accessible.
 - The customer homepage public filter remains unchanged.
