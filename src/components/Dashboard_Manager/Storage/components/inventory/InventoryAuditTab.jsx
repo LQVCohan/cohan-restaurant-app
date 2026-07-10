@@ -280,13 +280,23 @@ function InventoryAuditTab({
 
   const movementRows = useMemo(() => movements.map((movement) => {
     const ingredient = ingredientMap.get(String(movement.ingredientId || ""));
+    const unit = ingredient?.baseUnit || "";
+    const cost = Number(movement?.meta?.costPerBaseUnit);
+    const totalValue =
+      Number(movement?.meta?.totalValue) ||
+      ((Number(movement.qty) || 0) * (Number.isFinite(cost) ? cost : 0));
+
     return {
       ...movement,
-      ingredientName: ingredient?.name || "Nguyên liệu chưa xác định",
-      unit: ingredient?.baseUnit || "",
+      ingredientName:
+        ingredient?.name || (movement.ingredientId ? "Nguyên liệu chưa xác định" : "Vật tư kho"),
+      unit,
       warehouseName: warehouseMap.get(String(movement.warehouseId)) || movement.warehouseId,
-      toWarehouseName: warehouseMap.get(String(movement?.meta?.toWarehouseId)) || movement?.meta?.toWarehouseId,
-      fromWarehouseName: warehouseMap.get(String(movement?.meta?.fromWarehouseId)) || movement?.meta?.fromWarehouseId,
+      toWarehouseName:
+        warehouseMap.get(String(movement?.meta?.toWarehouseId)) || movement?.meta?.toWarehouseId,
+      fromWarehouseName:
+        warehouseMap.get(String(movement?.meta?.fromWarehouseId)) || movement?.meta?.fromWarehouseId,
+      totalValue: Number.isFinite(totalValue) ? totalValue : null,
     };
   }).slice(0, 30), [ingredientMap, movements, warehouseMap]);
 
@@ -505,10 +515,10 @@ function InventoryAuditTab({
       </header>
 
       <section className="inv-overview-grid" aria-label="Tình trạng tồn kho">
-        <article className="inv-overview-card"><span className="inv-overview-card__icon"><Boxes size={17} /></span><div><span>Đang theo dõi</span><strong>{summary.total}</strong><small>mặt hàng</small></div></article>
-        <article className="inv-overview-card inv-overview-card--ok"><span className="inv-overview-card__icon"><CheckCircle2 size={17} /></span><div><span>Ổn định</span><strong>{summary.ok}</strong><small>trên định mức</small></div></article>
-        <article className="inv-overview-card inv-overview-card--warn"><span className="inv-overview-card__icon"><AlertCircle size={17} /></span><div><span>Sắp hết</span><strong>{summary.low}</strong><small>cần nhập thêm</small></div></article>
-        <article className="inv-overview-card inv-overview-card--danger"><span className="inv-overview-card__icon"><AlertCircle size={17} /></span><div><span>Hết hàng</span><strong>{summary.out}</strong><small>cần xử lý</small></div></article>
+        <article className="inv-overview-card"><span className="inv-overview-card__icon" aria-hidden="true"><Boxes size={17} /></span><div><span>Đang theo dõi</span><strong>{summary.total}</strong><small>mặt hàng</small></div></article>
+        <article className="inv-overview-card inv-overview-card--ok"><span className="inv-overview-card__icon" aria-hidden="true"><CheckCircle2 size={17} /></span><div><span>Ổn định</span><strong>{summary.ok}</strong><small>trên định mức</small></div></article>
+        <article className="inv-overview-card inv-overview-card--warn"><span className="inv-overview-card__icon" aria-hidden="true"><AlertCircle size={17} /></span><div><span>Sắp hết</span><strong>{summary.low}</strong><small>cần nhập thêm</small></div></article>
+        <article className="inv-overview-card inv-overview-card--danger"><span className="inv-overview-card__icon" aria-hidden="true"><AlertCircle size={17} /></span><div><span>Hết hàng</span><strong>{summary.out}</strong><small>cần xử lý</small></div></article>
       </section>
 
       {feedback && (
@@ -631,8 +641,30 @@ function InventoryAuditTab({
             </div>
 
             <div className="inv-movement-block">
-              <div className="inv-subsection-heading"><div><span>Lịch sử gần nhất</span><h4><History size={18} /> Biến động kho</h4></div></div>
-              <div className="inv-movement-list">{movementRows.map((movement) => <article className="inv-movement-item" key={movement.id}><div><strong>{movement.ingredientName}</strong><span>{movementLabel[movement.type] || movement.type} · {formatQty(movement.qty)} {movement.unit}</span></div><small>{formatDateTime(movement.createdAt)} · {movement.warehouseName || "Kho"}</small></article>)}{!movementRows.length && <div className="inv-empty-state inv-empty-state--compact"><History size={24} /><strong>Chưa có biến động kho</strong><span>Lịch sử nhập, xuất và điều chỉnh sẽ xuất hiện tại đây.</span></div>}</div>
+              <div className="inv-subsection-heading"><div><span>Dòng thời gian kho</span><h4><History size={17} /> Biến động gần nhất</h4></div></div>
+              <div className="inv-table-shell inv-movement-table-shell">
+                <table className="inv-table inv-movement-table">
+                  <thead><tr><th>Mặt hàng</th><th>Loại</th><th>Số lượng</th><th>Kho / tuyến</th><th>Giá trị</th><th>Thời gian</th></tr></thead>
+                  <tbody>
+                    {movementRows.map((movement) => {
+                      const route = movement.fromWarehouseName || movement.toWarehouseName
+                        ? `${movement.fromWarehouseName || movement.warehouseName || "—"} → ${movement.toWarehouseName || movement.warehouseName || "—"}`
+                        : movement.warehouseName || "—";
+                      return (
+                        <tr key={movement.id}>
+                          <td data-label="Mặt hàng"><strong>{movement.ingredientName}</strong><small>{movement.reason || "Không có ghi chú"}</small></td>
+                          <td data-label="Loại">{movementLabel[movement.type] || movement.type}</td>
+                          <td data-label="Số lượng" className={Number(movement.qty) >= 0 ? "inv-positive" : "inv-negative"}>{Number(movement.qty) > 0 ? "+" : ""}{formatQty(movement.qty)} {movement.unit}</td>
+                          <td data-label="Kho / tuyến">{route}</td>
+                          <td data-label="Giá trị">{movement.totalValue !== null ? `${Math.abs(Number(movement.totalValue)).toLocaleString("vi-VN")} đ` : "—"}</td>
+                          <td data-label="Thời gian">{formatDateTime(movement.createdAt)}</td>
+                        </tr>
+                      );
+                    })}
+                    {!movementRows.length && <tr><td colSpan={6} className="inv-empty-row"><div className="inv-empty-state inv-empty-state--compact"><History size={24} /><strong>Chưa có biến động kho</strong><span>Lịch sử nhập, xuất và điều chỉnh sẽ xuất hiện tại đây.</span></div></td></tr>}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
           <div className="inv-step-actions"><button type="button" className="inv-secondary-btn" onClick={() => openStep("count")}>Quay lại kiểm đếm</button><button type="button" className="inv-primary-btn" onClick={handleRefresh}>Làm mới đối chiếu</button></div>
