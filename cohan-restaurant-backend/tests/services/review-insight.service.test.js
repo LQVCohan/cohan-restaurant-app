@@ -24,7 +24,8 @@ describe("reviewInsight.service", () => {
     const provider = { summarizeReviews: vi.fn() };
     const insight = await generateReviewInsight(reviews, analytics, provider);
     expect(insight.source).toBe("heuristic");
-    expect(insight.summary).toContain("Heuristic summary");
+    expect(insight.summary).toContain("2 đánh giá công khai");
+    expect(insight.summary).toContain("3.0/5");
     expect(provider.summarizeReviews).not.toHaveBeenCalled();
   });
 
