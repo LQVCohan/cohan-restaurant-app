@@ -25,6 +25,7 @@
 - Keep queue rows server-filtered while rendering exact global counts in KPI and tab badges.
 - Redesign the page into a compact operational workspace using existing sage/warm-neutral direction, Lucide icons, responsive controls, visible focus, and useful loading/error/empty states.
 - Add focused resolver and component tests.
+- Align the existing dashboard scope regression test with the secure hook contract: a restaurant restored from an old account remains hidden until the current account scope is confirmed.
 
 ## Files to change
 
@@ -34,6 +35,7 @@
 - `src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPagePolish.scss`: compact responsive visual system.
 - `cohan-restaurant-backend/tests/resolvers/payment-transfer-queue.test.js`: resolver filtering/summary regression coverage.
 - `src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.test.jsx`: scope and filter/count rendering coverage.
+- `src/hooks/useDashboard.test.jsx`: update the stale restored-scope assertion to match `useManagerRestaurantSelection`.
 
 ## Acceptance criteria
 
