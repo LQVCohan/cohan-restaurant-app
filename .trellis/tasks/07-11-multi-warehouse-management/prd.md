@@ -2,11 +2,11 @@
 
 ## Current behavior
 
-`createRestaurant` correctly creates the first `Kho chính / MAIN` warehouse transactionally. However, the latest inventory resolver returns only the first active warehouse, while the storage page and `transferStock` domain support selecting and moving stock between multiple warehouses in the same restaurant. The UI has no complete create/edit/delete warehouse management surface.
+`createRestaurant` correctly creates the first `Kho chính / MAIN` warehouse transactionally. However, the inventory resolver had been narrowed to return only the first active warehouse, while the storage page and `transferStock` domain support selecting and moving stock between multiple warehouses in the same restaurant. The UI also had no complete create/edit/delete warehouse management surface.
 
 ## Root cause
 
-The product was incorrectly narrowed to a single visible warehouse at the query boundary. This hides legitimate warehouses and breaks the operational contract required by intra-restaurant stock transfer.
+The product was incorrectly narrowed to a single visible warehouse at the query boundary. This hid legitimate warehouses and broke the operational contract required by intra-restaurant stock transfer.
 
 ## End-to-end flow
 
@@ -18,7 +18,8 @@ The product was incorrectly narrowed to a single visible warehouse at the query 
 - Return every active warehouse in the selected restaurant.
 - Restore the warehouse selector in the storage header.
 - Show the current warehouse count and provide create/edit/delete management UI.
-- Prevent deleting the final active warehouse or any warehouse that still has stock rows.
+- Retire a deleted warehouse with `isActive: false` so historical stock movements keep their warehouse reference.
+- Prevent retiring the final active warehouse or a warehouse with non-zero on-hand/reserved stock.
 - Validate that transfer source and destination are different active warehouses in the same restaurant.
 - Transfer only available stock (`onHand - reserved`).
 - Reuse existing permissions and GraphQL mutations; add no dependency.
@@ -30,7 +31,8 @@ The product was incorrectly narrowed to a single visible warehouse at the query 
 - The header can switch the active warehouse used by stock, supply and audit operations.
 - The UI shows the current active warehouse count.
 - Edit updates warehouse name, code and address.
-- Delete is blocked for the final warehouse and for warehouses with stock.
+- Delete removes the warehouse from active operations without destroying historical references.
+- Delete is blocked for the final warehouse and for warehouses with non-zero stock.
 - Transfers cannot target the same warehouse, a warehouse outside the restaurant, or reserved stock.
 - Read-only users can view warehouses but cannot create, edit or delete them.
 
@@ -40,7 +42,8 @@ The product was incorrectly narrowed to a single visible warehouse at the query 
 - `cohan-restaurant-backend/graphql/resolvers/inventory/warehouse.mutation.js`
 - `cohan-restaurant-backend/graphql/resolvers/inventory/stock.mutation.js`
 - `cohan-restaurant-backend/tests/resolvers/inventory-restaurant-access.test.js`
-- `src/components/Dashboard_Manager/Storage/graphql/inventory.gql.js`
+- `cohan-restaurant-backend/tests/resolvers/warehouse-management-flow.test.js`
+- `src/components/Dashboard_Manager/Storage/graphql/warehouse.gql.js`
 - `src/components/Dashboard_Manager/Storage/layout/Header/Header.jsx`
 - `src/components/Dashboard_Manager/Storage/components/warehouses/WarehouseManagementDialog.jsx`
 - `src/components/Dashboard_Manager/Storage/components/warehouses/WarehouseManagementDialog.scss`
@@ -50,8 +53,8 @@ The product was incorrectly narrowed to a single visible warehouse at the query 
 ## Out of scope
 
 - Cross-restaurant stock transfer.
-- Warehouse soft-delete/history redesign.
 - Selecting a formal “primary warehouse” beyond the existing first-created default.
+- Restoring retired warehouses from the UI.
 - Batch transfer UI for multiple ingredients at once.
 
 ## Validation plan
