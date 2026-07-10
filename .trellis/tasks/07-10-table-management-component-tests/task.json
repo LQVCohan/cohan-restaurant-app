@@ -1,0 +1,22 @@
+{
+  "id": "07-10-table-management-component-tests",
+  "name": "table-management-component-tests",
+  "title": "Fix table management component test regressions",
+  "description": "Align stale table-management assertions with the current compact UI and remove the jsdom modal focus timer leak.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-table-management-tests",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "fix/table-management-component-tests",
+  "base_branch": "main",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Table/TableManagement.test.jsx",
+    "src/components/common/Modal.jsx"
+  ],
+  "notes": "Do not change table GraphQL contracts or compact production labels. Keep the fix limited to the stale test setup/assertions and jsdom-only timer behavior.",
+  "meta": {}
+}
