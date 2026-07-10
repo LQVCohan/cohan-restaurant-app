@@ -1,9 +1,14 @@
 import { validatePublicTableOrderSessionAccess } from "../../../src/services/publicTableOrderAccess.service.js";
+import { withTableOrderSessionCookieCredentials } from "../shared/tableOrderSessionCookies.js";
 import publicTablePaymentMutation from "./publicTablePaymentMutation.js";
 
 async function requireVerifiedTableSession(input, ctx) {
-  await validatePublicTableOrderSessionAccess({
+  const credentialContext = withTableOrderSessionCookieCredentials(
     ctx,
+    input?.tableId,
+  );
+  await validatePublicTableOrderSessionAccess({
+    ctx: credentialContext,
     restaurantId: input?.restaurantId,
     tableId: input?.tableId,
     requireOrderable: false,
