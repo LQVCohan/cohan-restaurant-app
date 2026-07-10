@@ -1,0 +1,28 @@
+{
+  "id": "07-10-compact-menu-serving-fields",
+  "name": "compact-menu-serving-fields",
+  "title": "Compact menu serving fields",
+  "description": "Remove helper copy and compact the serving mode, method name, price, and preparation time fields in the manager menu item modal.",
+  "status": "in_progress",
+  "dev_type": "ui-polish",
+  "scope": "manager-menu-item-modal",
+  "package": null,
+  "priority": "P2",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "07-10-menu-serving-mode",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModal.jsx",
+    "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModalPolish.scss"
+  ],
+  "notes": "UI-only follow-up. Recipe schema, resolver, Apollo hook, and serving mode persistence remain unchanged."
+}
