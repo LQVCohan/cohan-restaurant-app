@@ -1,6 +1,15 @@
 name: verify-cuisine-template-reopen
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - src/components/Dashboard_Manager/Header.jsx
+      - src/components/Dashboard_Manager/Header.test.jsx
+      - src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.jsx
+      - src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.test.jsx
+      - .github/workflows/verify-cuisine-template-reopen.yml
   push:
     branches:
       - fix/cuisine-template-reopen-20260710
