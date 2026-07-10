@@ -1,0 +1,29 @@
+{
+  "id": "backup-plain-vietnamese",
+  "name": "backup-plain-vietnamese",
+  "title": "Use plain Vietnamese across backup management",
+  "description": "Replace technical and internal wording on the manager backup page with clear Vietnamese while preserving the existing backup contracts and behavior.",
+  "status": "in_progress",
+  "dev_type": "ui-copy",
+  "scope": "manager-backup",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "codex/backup-plain-vietnamese",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Backup/BackupManagement.jsx",
+    "src/components/Dashboard_Manager/Backup/BackupManagement.test.jsx",
+    "src/layouts/ManagerLayout.jsx"
+  ],
+  "notes": "Keep the BackupRun model, GraphQL schema, resolver/service behavior, permission enforcement, audit logging, restaurant scoping, export/import payloads, and file format unchanged. Only user-facing copy and client-side technical-message mapping are in scope."
+}
