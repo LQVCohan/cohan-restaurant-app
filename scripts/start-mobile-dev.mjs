@@ -3,6 +3,11 @@ import os from "node:os";
 
 const PORT = process.env.VITE_DEV_PORT || "5173";
 const BACKEND_PORT = process.env.VITE_BACKEND_PORT || "4000";
+const NGROK_ALLOWED_HOSTS = [
+  ".ngrok-free.dev",
+  ".ngrok-free.app",
+  ".ngrok.app",
+];
 
 const getLocalIPv4List = () => {
   const nets = os.networkInterfaces();
@@ -19,8 +24,22 @@ const getLocalIPv4List = () => {
 
 const localIps = getLocalIPv4List();
 const primaryIp = process.env.VITE_DEV_HOST || localIps[0] || "localhost";
-const allowedHosts = Array.from(new Set(["localhost", "127.0.0.1", primaryIp, ...localIps])).join(",");
-const frontendOrigin = `http://${primaryIp}:${PORT}`;
+const configuredAllowedHosts = String(
+  process.env.VITE_DEV_ALLOWED_HOSTS || "",
+)
+  .split(",")
+  .map((host) => host.trim())
+  .filter(Boolean);
+const allowedHosts = Array.from(
+  new Set([
+    "localhost",
+    "127.0.0.1",
+    primaryIp,
+    ...localIps,
+    ...NGROK_ALLOWED_HOSTS,
+    ...configuredAllowedHosts,
+  ]),
+).join(",");
 const viteArgs = ["vite", "--host", "0.0.0.0", "--port", PORT];
 const isWindows = process.platform === "win32";
 const windowsShell = process.env.ComSpec || "C:\\Windows\\System32\\cmd.exe";
@@ -30,10 +49,9 @@ console.log("──────────────────────�
 console.log(`Local:   http://localhost:${PORT}`);
 localIps.forEach((ip) => console.log(`Phone:   http://${ip}:${PORT}`));
 console.log(`API:     /graphql (same origin) → http://127.0.0.1:${BACKEND_PORT}/graphql`);
-console.log("\nĐiện thoại và máy tính phải chung Wi-Fi.");
+console.log("\nĐiện thoại và máy tính phải chung Wi-Fi khi dùng địa chỉ Phone.");
 console.log("Backend phải đang chạy trên máy tính trước khi mở trang trên điện thoại.");
-console.log("Lưu ý: xem 3D có thể test qua LAN HTTP, nhưng camera/AR WebXR thường cần HTTPS/secure context.");
-console.log("Khi cần test AR thật, dùng HTTPS/tunnel và mở cùng URL trên điện thoại.\n");
+console.log("AR HTTPS: chạy `ngrok http 5173`; hostname ngrok được chấp nhận tự động.\n");
 
 const child = spawn(
   isWindows ? windowsShell : "npx",
@@ -48,9 +66,7 @@ const child = spawn(
       VITE_DEV_BIND_HOST: "0.0.0.0",
       VITE_DEV_HOST: primaryIp,
       VITE_DEV_ALLOWED_HOSTS: allowedHosts,
-      VITE_DEV_ORIGIN: frontendOrigin,
-      VITE_DEV_HMR_PROTOCOL: process.env.VITE_DEV_HMR_PROTOCOL || "ws",
-      VITE_DEV_HMR_CLIENT_PORT: PORT,
+      VITE_DEV_INFER_REQUEST_HOST: "true",
     },
   },
 );
