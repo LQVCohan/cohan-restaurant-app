@@ -39,6 +39,7 @@ const classifyGroup = (group) => {
     title.includes("trạng thái") ||
     title.includes("chuyển bàn") ||
     title.includes("đổi vị trí") ||
+    title.includes("đổi chỗ") ||
     title.includes("ghép hoặc tách")
   ) {
     return "operations";
@@ -54,6 +55,11 @@ const getDirectSections = (body) =>
     (element) =>
       element.classList?.contains("talite-group") ||
       element.classList?.contains("actions-end"),
+  );
+
+const getDirectSummary = (body) =>
+  Array.from(body?.children || []).find((element) =>
+    element.classList?.contains("talite-info"),
   );
 
 const getSaveButton = (modal) =>
@@ -81,7 +87,7 @@ const syncSections = (modal, activeKey) => {
   const body = modal.querySelector(".talite-body");
   if (!body) return;
 
-  const summary = body.querySelector(":scope > .talite-info");
+  const summary = getDirectSummary(body);
   if (summary) summary.hidden = false;
 
   getDirectSections(body).forEach((section) => {
@@ -100,12 +106,15 @@ const syncSections = (modal, activeKey) => {
 
 const syncFooter = (modal, activeKey) => {
   const state = ensureFooterState(modal);
-  if (state) state.textContent = TAB_STATE_COPY[activeKey] || TAB_STATE_COPY.overview;
+  const copy = TAB_STATE_COPY[activeKey] || TAB_STATE_COPY.overview;
+  if (state && state.textContent !== copy) state.textContent = copy;
 
   const saveButton = getSaveButton(modal);
   if (!saveButton) return;
 
-  saveButton.textContent = "Lưu cấu hình";
+  if (saveButton.textContent !== "Lưu cấu hình") {
+    saveButton.textContent = "Lưu cấu hình";
+  }
   saveButton.hidden = !SAVE_TABS.has(activeKey);
 };
 
@@ -223,14 +232,18 @@ export const installTableDetailModalTabs = () => {
   enhance();
 
   const observer = new MutationObserver((mutations) => {
+    const pendingModals = new Set();
+
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
-        if (node.nodeType === Node.ELEMENT_NODE) enhance(node);
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+        enhance(node);
+        const parentModal = node.closest?.(".talite-modal");
+        if (parentModal) pendingModals.add(parentModal);
       });
-
-      mutation.target?.closest?.(".talite-modal") &&
-        enhanceTableDetailModal(mutation.target.closest(".talite-modal"));
     });
+
+    pendingModals.forEach(enhanceTableDetailModal);
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
