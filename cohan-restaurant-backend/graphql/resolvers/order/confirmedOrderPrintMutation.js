@@ -11,6 +11,7 @@ import { toId } from "./helper/orderUtils.js";
 
 const VALID_STATIONS = new Set(["kitchen", "bar"]);
 const SKIPPED_STATUSES = new Set(["cancelled", "returned"]);
+const CLAIMED_STATUS = "customer_attached";
 
 function buildTicketLine(item) {
   const itemType = String(item?.itemType || "MENU_ITEM").toUpperCase();
@@ -172,6 +173,7 @@ export const ConfirmedOrderPrintMutation = {
       },
       {
         $set: {
+          currentStatus: CLAIMED_STATUS,
           "clientMeta.acceptedAt": acceptedAt,
           "clientMeta.acceptedBy": acceptedBy || null,
         },
@@ -202,11 +204,12 @@ export const ConfirmedOrderPrintMutation = {
       await Order.updateOne(
         {
           _id: order._id,
-          currentStatus: "pending",
+          currentStatus: CLAIMED_STATUS,
           "clientMeta.acceptedAt": acceptedAt,
           "clientMeta.acceptedBy": acceptedBy || null,
         },
         {
+          $set: { currentStatus: "pending" },
           $unset: {
             "clientMeta.acceptedAt": "",
             "clientMeta.acceptedBy": "",
