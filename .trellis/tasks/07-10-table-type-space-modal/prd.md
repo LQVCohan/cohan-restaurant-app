@@ -15,7 +15,7 @@ UI đang tách một trang phân loại bàn khỏi màn hình vận hành chín
 
 ## Phạm vi
 
-- Khi mở mục `Loại bàn`, hiển thị trang Quản lý bàn ở nền và mở modal `Loại bàn & không gian`.
+- Mục điều hướng được đổi thành `Loại bàn & không gian`; khi mở, hệ thống hiển thị trang Quản lý bàn ở nền và mở modal thiết lập thay cho giao diện trang riêng.
 - Tab Loại bàn: thống kê sáu loại, tìm / lọc bàn, thêm bàn, sửa mã / sức chứa / tầng / loại và xóa bàn qua contract hiện có.
 - Tab Không gian: thêm tầng, đổi tên tầng và xóa tầng khi không còn bàn.
 - Đóng modal quay lại trang `Bàn ăn` thay vì giữ một trang quản lý loại bàn riêng.
@@ -35,6 +35,7 @@ UI đang tách một trang phân loại bàn khỏi màn hình vận hành chín
 - `src/components/Dashboard_Manager/Table/TableTypeManagementPage.jsx`: chuyển trang thành host Quản lý bàn + modal CRUD.
 - `src/components/Dashboard_Manager/Table/TableTypeManagementPage.scss`: bố cục modal, tab, form và responsive.
 - `src/components/Dashboard_Manager/Table/TableTypeManagementPage.test.jsx`: kiểm tra modal, đổi loại và CRUD tầng / bàn.
+- `src/components/Dashboard_Manager/Sidebar.jsx`: đổi nhãn điều hướng từ trang loại bàn sang điểm mở thiết lập loại bàn và không gian.
 
 ## Ngoài phạm vi
 
