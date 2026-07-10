@@ -1,20 +1,20 @@
 {
   "id": "auth-account-switch-cache-fix",
   "name": "auth-account-switch-cache-fix",
-  "title": "Clear previous account cache on logout",
-  "description": "Reset Apollo data when the active session ends.",
+  "title": "Prevent stale profile after account switch",
+  "description": "Invalidate late refresh and current-user responses from the previous session after logout and rapid login.",
   "status": "in_progress",
   "dev_type": "frontend",
   "scope": "authentication-session-state",
   "priority": "P1",
   "createdAt": "2026-07-08",
   "completedAt": null,
-  "branch": "main",
+  "branch": "fix/auth-stale-profile-account-switch-20260710",
   "base_branch": "main",
-  "commit": null,
-  "pr_url": null,
+  "commit": "c56561a01d57f05823608002424fa2889ec641bb",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1335",
   "relatedFiles": [
     "src/context/AuthProvider.jsx",
-    "src/context/__tests__/AuthProvider.logout-cache.test.jsx"
+    "src/context/__tests__/AuthProvider.login-race.test.jsx"
   ]
 }

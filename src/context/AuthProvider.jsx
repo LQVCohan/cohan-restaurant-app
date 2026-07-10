@@ -11,7 +11,7 @@ import {
 import { clearPersistedCart } from "@/hooks/useCart";
 import { clearAuth, clearLegacyAuthStorage, getToken, setAuth } from "@/lib/authStorage";
 import { getLogoutUrl } from "@/lib/apiBaseUrl";
-import { refreshAccessTokenOnce } from "@/lib/authRefresh";
+import { clearRefreshPromise, refreshAccessTokenOnce } from "@/lib/authRefresh";
 
 const TOKEN_KEYS = {
   token: "auth_token",
@@ -217,11 +217,27 @@ export const AuthProvider = ({ children }) => {
   const refreshRecoveryAttemptedRef = React.useRef(false);
   const refreshTimerRef = React.useRef(null);
   const accountCacheResetRef = React.useRef(Promise.resolve());
+  const sessionEpochRef = React.useRef(0);
+  const activeUserIdRef = React.useRef(null);
+  const refreshCurrentSession = useCallback(async () => {
+    const requestEpoch = sessionEpochRef.current;
+    try {
+      const payload = await refreshAccessTokenOnce();
+      return requestEpoch === sessionEpochRef.current ? payload : undefined;
+    } catch (error) {
+      if (requestEpoch !== sessionEpochRef.current) return undefined;
+      throw error;
+    }
+  }, []);
   const applyRefreshedSession = useCallback((payload) => {
     if (!payload?.token) return false;
     setAuth({ token: payload.token });
     setToken(payload.token);
-    if (payload.user) setUser((prev) => normalizeUserModel(payload.user, prev));
+    if (payload.user) {
+      const refreshedUserId = String(payload.user?.id || payload.user?._id || "");
+      if (refreshedUserId) activeUserIdRef.current = refreshedUserId;
+      setUser((prev) => normalizeUserModel(payload.user, prev));
+    }
     setSessionState("authenticated");
     setSessionWarning("");
     return true;
@@ -241,9 +257,9 @@ export const AuthProvider = ({ children }) => {
       setSessionState("restoring");
     }
 
-    refreshAccessTokenOnce()
+    refreshCurrentSession()
       .then((payload) => {
-        if (!alive) return;
+        if (!alive || typeof payload === "undefined") return;
         if (applyRefreshedSession(payload)) {
           setRestoreNeedsMeValidation(false);
           setLoading(false);
@@ -272,7 +288,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       alive = false;
     };
-  }, [applyRefreshedSession]);
+  }, [applyRefreshedSession, refreshCurrentSession]);
 
   const isAuthenticated = !!token;
   const roleName = String(user?.roleName || user?.role?.slug || "").toLowerCase();
@@ -294,15 +310,25 @@ export const AuthProvider = ({ children }) => {
     notifyOnNetworkStatusChange: true,
     onCompleted: (data) => {
       const me = data?.me;
+      if (!getToken()) return;
+
+      const nextUserId = String(me?.id || me?._id || "");
+      if (
+        activeUserIdRef.current &&
+        nextUserId &&
+        activeUserIdRef.current !== nextUserId
+      ) {
+        return;
+      }
+
       setRestoreNeedsMeValidation(false);
       setLoading(false);
       if (!me) {
-        if (token) {
-          setSessionState("network_unstable");
-          setSessionWarning("Đang chờ khôi phục thông tin người dùng từ phiên hiện tại...");
-        }
+        setSessionState("network_unstable");
+        setSessionWarning("Đang chờ khôi phục thông tin người dùng từ phiên hiện tại...");
         return;
       }
+      if (nextUserId) activeUserIdRef.current = nextUserId;
       setSessionState("authenticated");
       setSessionWarning("");
       setUser((prev) => normalizeUserModel(me, prev));
@@ -325,8 +351,12 @@ export const AuthProvider = ({ children }) => {
         }
 
         refreshRecoveryAttemptedRef.current = true;
-        refreshAccessTokenOnce()
+        refreshCurrentSession()
           .then((payload) => {
+            if (typeof payload === "undefined") {
+              refreshRecoveryAttemptedRef.current = false;
+              return;
+            }
             if (!applyRefreshedSession(payload)) {
               clearAuth();
               clearPersistedCart();
@@ -487,7 +517,7 @@ export const AuthProvider = ({ children }) => {
     })();
 
     refreshTimerRef.current = window.setTimeout(async () => {
-      const payload = await refreshAccessTokenOnce();
+      const payload = await refreshCurrentSession();
       if (payload?.token) applyRefreshedSession(payload);
     }, scheduleMs);
 
@@ -497,7 +527,7 @@ export const AuthProvider = ({ children }) => {
         refreshTimerRef.current = null;
       }
     };
-  }, [token, applyRefreshedSession]);
+  }, [token, applyRefreshedSession, refreshCurrentSession]);
 
   const login = useCallback(
     async (newToken, roleOrUser, avatar = null, options = {}) => {
@@ -506,6 +536,10 @@ export const AuthProvider = ({ children }) => {
         typeof roleOrUser === "string" ? { roleName: roleOrUser } : roleOrUser;
       const newUser = normalizeUserModel(rawUser, null, avatar);
       const identifier = String(options?.identifier || "").trim();
+
+      sessionEpochRef.current += 1;
+      clearRefreshPromise();
+      activeUserIdRef.current = String(newUser?.id || newUser?._id || "") || null;
 
       if (options?.rememberIdentifier && identifier) {
         writeStorageValue(TOKEN_KEYS.rememberedIdentifier, identifier, { persistent: true });
@@ -519,6 +553,9 @@ export const AuthProvider = ({ children }) => {
       setBrandMemberships([]);
       setRestaurants([]);
       setRefRestaurant([]);
+      refreshRecoveryAttemptedRef.current = false;
+      setRestoreNeedsMeValidation(false);
+      setLoading(false);
       setSessionState("authenticated");
       setSessionWarning("");
     },
@@ -526,6 +563,10 @@ export const AuthProvider = ({ children }) => {
   );
 
   const logout = useCallback(() => {
+    sessionEpochRef.current += 1;
+    activeUserIdRef.current = null;
+    clearRefreshPromise();
+
     fetch(getLogoutUrl(), { method: "POST", credentials: "include" }).catch(() => {});
     navigate("/login", { replace: true });
     setToken(null);
