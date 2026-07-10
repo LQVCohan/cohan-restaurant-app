@@ -311,3 +311,232 @@
     min-height: auto !important;
   }
 }
+
+/* List mode is an operational row, not a stretched card. */
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card {
+  display: grid !important;
+  grid-template-columns: 132px minmax(0, 1fr) 154px !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  border-radius: 18px !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-image-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 154px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-right: 1px solid rgba(128, 109, 83, 0.14) !important;
+  border-bottom: 0 !important;
+  border-radius: 18px 0 0 18px !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-image-wrapper > img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  border-radius: 18px 0 0 18px !important;
+  background: transparent !important;
+  filter: none !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-body {
+  display: grid !important;
+  grid-template-columns: minmax(210px, 0.8fr) minmax(260px, 1.2fr) !important;
+  grid-auto-rows: min-content !important;
+  align-content: start !important;
+  align-items: start !important;
+  gap: 7px 14px !important;
+  min-width: 0 !important;
+  padding: 12px 14px !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .info-top {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  min-width: 0 !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-body > :nth-child(2) {
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+  min-width: 0 !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card__for-you-badge,
+.manager-layout--menu .mm-page-container .mm-grid--list .availability-warning,
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card__warning-cta {
+  grid-column: 1 !important;
+  max-width: 100% !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card__for-you-badge--ready {
+  display: none !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .availability-warning {
+  align-items: center !important;
+  gap: 6px !important;
+  margin: 0 !important;
+  padding: 6px 8px !important;
+  font-size: 10.5px !important;
+  box-shadow: none !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .availability-warning span {
+  -webkit-line-clamp: 1 !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card__warning-cta {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 7px 8px !important;
+  border-radius: 10px !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card__warning-cta-title {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  font-size: 10.5px !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card__warning-cta-description {
+  display: none !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card__warning-cta-button {
+  flex: 0 0 auto !important;
+  margin-left: auto !important;
+  padding: 4px 7px !important;
+  font-size: 10px !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .variants-list {
+  grid-column: 2 !important;
+  grid-row: 1 / span 6 !important;
+  align-self: stretch !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 9px 10px !important;
+  border-radius: 12px !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .variants-list .list-header {
+  margin-bottom: 7px !important;
+  padding-bottom: 5px !important;
+  font-size: 9px !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .variants-list .list-content {
+  max-height: 78px !important;
+  overflow: hidden !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .variants-list .variant-row {
+  gap: 5px !important;
+  margin-bottom: 5px !important;
+  font-size: 0.75rem !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-actions {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  align-content: start !important;
+  gap: 5px !important;
+  padding: 10px !important;
+  border-left: 1px solid rgba(128, 109, 83, 0.14) !important;
+  border-top: 0 !important;
+  background: rgba(248, 246, 241, 0.76) !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-actions .divider {
+  display: none !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-actions .action-btn,
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-actions .status-dropdown,
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-actions .status-trigger {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-actions .action-btn {
+  min-height: 31px !important;
+  padding: 5px 8px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-actions .action-btn.delete {
+  display: inline-flex !important;
+  gap: 6px !important;
+  color: #b54747 !important;
+}
+
+.manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-actions .action-btn.delete::after {
+  content: "Xóa";
+  font-size: 11px;
+  font-weight: 780;
+}
+
+@media (max-width: 1080px) {
+  .manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-body {
+    grid-template-columns: minmax(190px, 0.86fr) minmax(220px, 1.14fr) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card {
+    grid-template-columns: 112px minmax(0, 1fr) !important;
+  }
+
+  .manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-actions {
+    grid-column: 1 / -1 !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    border-left: 0 !important;
+    border-top: 1px solid rgba(128, 109, 83, 0.14) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-image-wrapper {
+    height: auto !important;
+    min-height: 0 !important;
+    aspect-ratio: 16 / 10 !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(128, 109, 83, 0.14) !important;
+    border-radius: 18px 18px 0 0 !important;
+  }
+
+  .manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-image-wrapper > img {
+    border-radius: 18px 18px 0 0 !important;
+  }
+
+  .manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-body {
+    grid-template-columns: 1fr !important;
+  }
+
+  .manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .info-top,
+  .manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-body > :nth-child(2),
+  .manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card__for-you-badge,
+  .manager-layout--menu .mm-page-container .mm-grid--list .availability-warning,
+  .manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card__warning-cta,
+  .manager-layout--menu .mm-page-container .mm-grid--list .variants-list {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+  }
+
+  .manager-layout--menu .mm-page-container .mm-grid--list .menu-item-card .card-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
