@@ -56,6 +56,16 @@ function zonedLocalToUtcDate(localDateTime, timezone = DEFAULT_TIMEZONE) {
   return new Date(result);
 }
 
+export function resolveMenuTimeSlotAt(value, timezone = DEFAULT_TIMEZONE) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const { hour } = getZonedParts(date, timezone);
+  if (hour >= 5 && hour < 10) return "breakfast";
+  if (hour >= 10 && hour < 15) return "lunch";
+  if (hour >= 15 && hour < 22) return "dinner";
+  return "late_night";
+}
+
 function parseTimeToMinutes(timeText) {
   const [h, m] = String(timeText || "").split(":").map(Number);
   if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
