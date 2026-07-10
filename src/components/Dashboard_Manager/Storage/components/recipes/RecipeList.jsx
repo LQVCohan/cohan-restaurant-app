@@ -17,6 +17,7 @@ import {
   parseRecipeImportFile,
 } from "./recipeImportExport";
 import { useNotification } from "@/hooks/useNotification";
+import { toBaseQty } from "../../../../../utils/unitConversion";
 import "./RecipeList.scss";
 import "./RecipeTrashFlow.css";
 
@@ -39,21 +40,36 @@ const normalizeUnitCost = (line) => {
   return Number.isFinite(c) ? c : 0;
 };
 
-const calcVariantCost = (variant) => {
+const calcVariantCost = (variant, ingredientById) => {
   const lines = getVariantLines(variant);
   let hasCostLine = false;
+  let estimatedCostValid = true;
   const total = lines.reduce((sum, line) => {
     const qty = normalizeLineQty(line);
     const wastePct = Number(line?.wastePct) || 0;
     const unitCost = normalizeUnitCost(line);
     if (qty <= 0 || unitCost <= 0) return sum;
+
+    const ingredient = ingredientById.get(String(line?.ingredientId || ""));
+    const baseUnit = line?.baseUnit || ingredient?.baseUnit || line?.unit;
+    const qtyBase = toBaseQty(
+      qty,
+      line?.unit || baseUnit,
+      baseUnit,
+      ingredient?.conversions || [],
+    );
+    if (!Number.isFinite(qtyBase) || qtyBase <= 0) {
+      estimatedCostValid = false;
+      return sum;
+    }
+
     hasCostLine = true;
-    return sum + qty * (1 + wastePct / 100) * unitCost;
+    return sum + qtyBase * (1 + wastePct / 100) * unitCost;
   }, 0);
-  return { total, hasCostLine };
+  return { total, hasCostLine, estimatedCostValid };
 };
 
-const calcMinCost = (recipe, ingredientIdSet, canDetectMissingIngredients) => {
+const calcMinCost = (recipe, ingredientById, canDetectMissingIngredients) => {
   const variants = Array.isArray(recipe?.servingVariants) ? recipe.servingVariants : [];
   if (!variants.length) return { minCost: 0, hasAnyCost: false, estimatedCostValid: true, hasNoReplacementIngredient: false };
   let estimatedCostValid = true;
@@ -64,7 +80,7 @@ const calcMinCost = (recipe, ingredientIdSet, canDetectMissingIngredients) => {
       const hasMissingReplacement = canDetectMissingIngredients
         ? lines.some((line) => {
             const id = String(line?.ingredientId || "").trim();
-            return id && !ingredientIdSet.has(id);
+            return id && !ingredientById.has(id);
           })
         : false;
       if (hasMissingReplacement) {
@@ -72,7 +88,8 @@ const calcMinCost = (recipe, ingredientIdSet, canDetectMissingIngredients) => {
         hasNoReplacementIngredient = true;
         return 0;
       }
-      const result = calcVariantCost(variant);
+      const result = calcVariantCost(variant, ingredientById);
+      if (!result.estimatedCostValid) estimatedCostValid = false;
       return result.hasCostLine ? result.total : 0;
     })
     .filter((n) => n > 0);
@@ -202,7 +219,7 @@ const RecipeList = ({
           if (canDetectMissingIngredients && !ingredientIdSet.has(normalizedId)) missingIds.add(normalizedId);
         });
       });
-      const { minCost, hasAnyCost, estimatedCostValid, hasNoReplacementIngredient } = calcMinCost(normalizedRecipe, ingredientIdSet, canDetectMissingIngredients);
+      const { minCost, hasAnyCost, estimatedCostValid, hasNoReplacementIngredient } = calcMinCost(normalizedRecipe, ingredientById, canDetectMissingIngredients);
       const hasRecipe = variants.length > 0 || Boolean(r?.hasRecipe || r?.recipeId);
       return {
         ...normalizedRecipe,
@@ -300,16 +317,16 @@ const RecipeList = ({
     try {
       setBusyAction("import");
       const rows = await parseRecipeImportFile(file);
-      if (!rows.length) throw new Error("File import không có dòng dữ liệu hợp lệ.");
+      if (!rows.length) throw new Error("File nhập không có dòng dữ liệu hợp lệ.");
       const { payloads, errors } = buildRecipeImportPayloads(rows, recipesWithMeta);
       let successCount = 0; const fileErrors = [...errors];
       for (const item of payloads) {
         try { await onUpdateRecipe?.(item.menuItemId, item.formData); successCount += 1; }
-        catch (err) { fileErrors.push({ rowNo: "", menuItemId: item.menuItemId, ingredientId: "", type: "PROCESS", reason: err?.message || "Không thể import công thức này" }); }
+        catch (err) { fileErrors.push({ rowNo: "", menuItemId: item.menuItemId, ingredientId: "", type: "PROCESS", reason: err?.message || "Không thể nhập công thức này" }); }
       }
       if (fileErrors.length) downloadRecipeImportErrors(fileErrors);
-      showNotification(`Import công thức hoàn tất: ${successCount} món thành công, ${fileErrors.length} dòng cần kiểm tra.`, fileErrors.length ? "warning" : "success");
-    } catch (err) { showNotification(err?.message || "Import công thức thất bại.", "error"); }
+      showNotification(`Nhập công thức hoàn tất: ${successCount} món thành công, ${fileErrors.length} dòng cần kiểm tra.`, fileErrors.length ? "warning" : "success");
+    } catch (err) { showNotification(err?.message || "Nhập công thức thất bại.", "error"); }
     finally { setBusyAction(""); }
   };
 
@@ -328,9 +345,9 @@ const RecipeList = ({
   return (
     <div className="rl-container">
       <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="rl-file-input" onChange={handleImportFile} />
-      <header className="rl-header"><div className="rl-header-left"><div className="rl-title-group"><h2 className="rl-title">Công Thức Món Ăn</h2><span className="rl-badge">{viewMode === "trash" ? `${recipeTrashRows.length} đã xóa` : `${typeof total === "number" ? total : recipes.length} món`}</span></div><p className="rl-subtitle">Quản lý định lượng (Recipe), Variants và Giá vốn (Cost).</p></div></header>
-      <div className="rl-toolbar"><div className="rl-toolbar-filters"><div className="rl-input-group"><Search className="rl-icon-left" size={18} /><input aria-label="Tìm kiếm công thức" type="text" className="rl-input-search" placeholder={viewMode === "trash" ? "Tìm trong thùng rác..." : "Tìm món ăn..."} value={search} onChange={handleSearch} />{search && <button type="button" className="rl-btn-clear" onClick={() => { setSearch(""); onSearchChange?.(null); }}><X size={14} /></button>}</div>{viewMode === "active" && <><div className="rl-select-group"><Filter className="rl-icon-left" size={16} /><select className="rl-select" value={category} onChange={handleCategoryFilter}><option value="">Tất cả danh mục</option>{categoryOptions.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</select></div><div className="rl-select-group"><Clock className="rl-icon-left" size={16} /><select className="rl-select" value={timeSlot} onChange={handleTimeSlotFilter}><option value="">Tất cả buổi</option><option value="breakfast">Sáng</option><option value="lunch">Trưa</option><option value="dinner">Tối</option><option value="late_night">Đêm</option></select></div>{hasActiveFilters && <button type="button" className="rl-btn-reset" onClick={clearFilters} title="Xóa bộ lọc"><X size={18} /></button>}</>}</div><div className="rl-toolbar-actions"><button type="button" className={`rl-btn-secondary rl-trash-toggle ${viewMode === "trash" ? "active" : ""}`} onClick={() => { setViewMode((prev) => (prev === "active" ? "trash" : "active")); onSearchChange?.(null); }}><Trash2 size={16} />{viewMode === "active" ? "Thùng rác" : "Danh sách"}</button>{viewMode === "active" && <button type="button" className="rl-btn-primary" onClick={handleAdd} disabled={!restaurantId}><Plus size={18} /><span>Thêm Công Thức</span></button>}</div></div>
-      <div className="rl-content">{viewMode === "trash" ? renderTrash() : loading && !recipesWithMeta.length ? <div className="rl-loading-state"><Loader2 className="spinner" size={32} /><p>Đang tải danh sách công thức...</p></div> : error ? <div className="rl-error-box"><AlertCircle size={20} /><span>Lỗi: {error.message}</span></div> : recipesWithMeta.length > 0 ? <><div className="rl-grid">{recipesWithMeta.map((r) => <RecipeCard key={r.id} recipe={r} currency={activeCurrency} usdToVndRate={usdToVndRate} onEdit={handleEdit} onViewDetails={handleViewDetails} onDelete={handleDelete} />)}</div>{pageInfo?.hasNextPage && <div className="rl-load-more"><button type="button" className="rl-btn-secondary" onClick={loadMore} disabled={loading}>{loading ? <Loader2 className="spinner-sm" size={16} /> : null}{loading ? "Đang tải thêm..." : "Xem thêm công thức"}</button></div>}</> : <div className="rl-empty-state"><div className="rl-empty-icon"><ChefHat strokeWidth={1} /></div><h3>Không tìm thấy công thức</h3><p>{hasActiveFilters ? "Thử thay đổi bộ lọc tìm kiếm của bạn." : "Danh sách trống. Hãy thêm công thức đầu tiên!"}</p>{hasActiveFilters && <button type="button" className="rl-link-btn" onClick={clearFilters}>Xóa bộ lọc</button>}</div>}</div>
+      <header className="rl-header"><div className="rl-header-left"><div className="rl-title-group"><h2 className="rl-title">Công thức món ăn</h2><span className="rl-badge">{viewMode === "trash" ? `${recipeTrashRows.length} đã xóa` : `${typeof total === "number" ? total : recipes.length} món`}</span></div><p className="rl-subtitle">Quản lý định lượng, biến thể và giá vốn của từng món.</p></div></header>
+      <div className="rl-toolbar"><div className="rl-toolbar-filters"><div className="rl-input-group"><Search className="rl-icon-left" size={18} /><input aria-label="Tìm kiếm công thức" type="text" className="rl-input-search" placeholder={viewMode === "trash" ? "Tìm trong thùng rác..." : "Tìm món ăn..."} value={search} onChange={handleSearch} />{search && <button type="button" className="rl-btn-clear" onClick={() => { setSearch(""); onSearchChange?.(null); }}><X size={14} /></button>}</div>{viewMode === "active" && <><div className="rl-select-group"><Filter className="rl-icon-left" size={16} /><select className="rl-select" value={category} onChange={handleCategoryFilter}><option value="">Tất cả danh mục</option>{categoryOptions.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</select></div><div className="rl-select-group"><Clock className="rl-icon-left" size={16} /><select className="rl-select" value={timeSlot} onChange={handleTimeSlotFilter}><option value="">Tất cả khung giờ</option><option value="breakfast">Bữa sáng</option><option value="lunch">Bữa trưa</option><option value="dinner">Bữa tối</option><option value="late_night">Bữa khuya</option></select></div>{hasActiveFilters && <button type="button" className="rl-btn-reset" onClick={clearFilters} title="Xóa bộ lọc"><X size={18} /></button>}</>}</div><div className="rl-toolbar-actions"><button type="button" className={`rl-btn-secondary rl-trash-toggle ${viewMode === "trash" ? "active" : ""}`} onClick={() => { setViewMode((prev) => (prev === "active" ? "trash" : "active")); onSearchChange?.(null); }}><Trash2 size={16} />{viewMode === "active" ? "Thùng rác" : "Danh sách"}</button>{viewMode === "active" && <button type="button" className="rl-btn-primary" onClick={handleAdd} disabled={!restaurantId}><Plus size={18} /><span>Thêm công thức</span></button>}</div></div>
+      <div className="rl-content">{viewMode === "trash" ? renderTrash() : loading && !recipesWithMeta.length ? <div className="rl-loading-state"><Loader2 className="spinner" size={32} /><p>Đang tải danh sách công thức...</p></div> : error ? <div className="rl-error-box"><AlertCircle size={20} /><span>Lỗi: {error.message}</span></div> : recipesWithMeta.length > 0 ? <><div className="rl-grid">{recipesWithMeta.map((r) => <RecipeCard key={r.id} recipe={r} currency={activeCurrency} usdToVndRate={usdToVndRate} onEdit={handleEdit} onViewDetails={handleViewDetails} onDelete={handleDelete} />)}</div>{pageInfo?.hasNextPage && <div className="rl-load-more"><button type="button" className="rl-btn-secondary" onClick={loadMore} disabled={loading}>{loading ? <Loader2 className="spinner-sm" size={16} /> : null}{loading ? "Đang tải thêm..." : "Xem thêm công thức"}</button></div>}</> : <div className="rl-empty-state"><div className="rl-empty-icon"><ChefHat strokeWidth={1} /></div><h3>Không tìm thấy công thức</h3><p>{hasActiveFilters ? "Hãy thử thay đổi hoặc xóa bộ lọc." : "Chưa có công thức. Hãy thêm công thức đầu tiên."}</p>{hasActiveFilters && <button type="button" className="rl-link-btn" onClick={clearFilters}>Xóa bộ lọc</button>}</div>}</div>
       <RecipeDishPickerModal isOpenPicker={showDishPicker} onRequestClose={() => setShowDishPicker(false)} dishRows={recipesWithMeta} onPickDishRow={handlePickDishForCreate} />
       <RecipeModal isOpen={showModal} onClose={handleModalClose} onSave={handleSave} onDelete={handleDelete} recipe={editingRecipe} menuItem={selectedMenuItem || (editingRecipe ? normalizeMenuItemFromDishRow(editingRecipe) : null)} menuItems={recipesWithMeta} ingredients={ingredients} currency={activeCurrency} usdToVndRate={usdToVndRate} />
       <RecipeDetailModal isOpen={showDetailModal} onClose={() => { setShowDetailModal(false); setViewingRecipe(null); }} recipe={viewingRecipe} ingredients={ingredients} currency={activeCurrency} usdToVndRate={usdToVndRate} />
