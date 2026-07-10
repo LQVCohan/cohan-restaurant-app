@@ -7,7 +7,6 @@ const textReplacements = [
   [/In lịch tuần/g, "In lịch"],
   [/Tự động xếp ca/g, "Chia ca tự động"],
   [/Đăng ký lịch nhân viên/g, "Đăng ký lịch rảnh"],
-  [/Tuần áp dụng:/g, "Tuần kế tiếp:"],
   [/Đã gửi:/g, "Đăng ký:"],
   [/Chờ duyệt:/g, "chờ duyệt:"],
   [/Mở rộng/g, "Chi tiết"],
@@ -44,7 +43,9 @@ const normalizeTextLabels = (root) => {
 };
 
 const hideDuplicateHeaderAutoAction = (root) => {
-  const headerButtons = Array.from(root.querySelectorAll(".schedule-header .header-actions button"));
+  const headerButtons = Array.from(
+    root.querySelectorAll(".schedule-header .header-actions button"),
+  );
   headerButtons.forEach((button) => {
     const label = getText(button);
     if (label.includes("Chia ca tự động") || label.includes("Tự động xếp ca")) {
@@ -62,34 +63,54 @@ const normalizeToolbarCopy = (root) => {
 
   navButtons.forEach((button) => {
     const buttonText = getText(button);
-    if (buttonText.includes("Tuần trước")) button.setAttribute("aria-label", "Xem tuần trước");
-    if (buttonText.includes("Tuần sau")) button.setAttribute("aria-label", "Xem tuần sau");
+    if (buttonText.includes("Tuần trước")) {
+      button.setAttribute("aria-label", "Xem tuần trước");
+    }
+    if (buttonText.includes("Tuần sau")) {
+      button.setAttribute("aria-label", "Xem tuần sau");
+    }
 
     Array.from(button.childNodes).forEach((node) => {
       if (node.nodeType !== Node.TEXT_NODE) return;
       const text = String(node.nodeValue || "");
-      if (text.includes("Tuần trước")) node.nodeValue = text.replace("Tuần trước", "Trước");
-      if (text.includes("Tuần sau")) node.nodeValue = text.replace("Tuần sau", "Sau");
+      if (text.includes("Tuần trước")) {
+        node.nodeValue = text.replace("Tuần trước", "Trước");
+      }
+      if (text.includes("Tuần sau")) {
+        node.nodeValue = text.replace("Tuần sau", "Sau");
+      }
     });
   });
 
-  const settingsRole = root.querySelector(".schedule-settings-trigger .user-info .role");
+  const settingsRole = root.querySelector(
+    ".schedule-settings-trigger .user-info .role",
+  );
   if (settingsRole && getText(settingsRole) !== "Cài đặt ca") {
     settingsRole.textContent = "Cài đặt ca";
   }
 };
 
 const markToolbarActions = (root) => {
-  const actionButtons = Array.from(root.querySelectorAll(".schedule-toolbar .toolbar-group--actions button"));
+  const actionButtons = Array.from(
+    root.querySelectorAll(".schedule-toolbar .toolbar-group--actions button"),
+  );
   actionButtons.forEach((button) => {
     const label = getText(button);
     if (label.includes("Lịch rảnh") || label.includes("In lịch")) {
       const shortLabel = label.includes("Lịch rảnh") ? "Lịch rảnh" : "In lịch";
       button.classList.add("schedule-toolbar-utility-action");
       button.dataset.shortLabel = shortLabel;
-      button.setAttribute("title", shortLabel === "Lịch rảnh" ? "Lịch rảnh nhân viên" : "In lịch tuần");
+      button.setAttribute(
+        "title",
+        shortLabel === "Lịch rảnh" ? "Lịch rảnh nhân viên" : "In lịch tuần",
+      );
       if (!button.getAttribute("aria-label")) {
-        button.setAttribute("aria-label", shortLabel === "Lịch rảnh" ? "Xem lịch rảnh nhân viên" : "In lịch tuần");
+        button.setAttribute(
+          "aria-label",
+          shortLabel === "Lịch rảnh"
+            ? "Xem lịch rảnh nhân viên"
+            : "In lịch tuần",
+        );
       }
       return;
     }
@@ -98,23 +119,6 @@ const markToolbarActions = (root) => {
       button.classList.add("schedule-toolbar-assist-action");
     }
   });
-};
-
-const collapseAvailabilityPanelOnce = (root) => {
-  if (root.dataset.adminAvailabilityInitialCollapsed === "true") return;
-
-  const panel = root.querySelector(".schedule-availability-panel");
-  if (!panel) return;
-
-  const collapseButton = panel.querySelector(".btn-collapse-panel.icon-only");
-  const isExpanded = String(collapseButton?.getAttribute("aria-label") || "").includes("Thu gọn");
-  const hasBlockingError = getText(panel).includes("Không thể tải kỳ đăng ký");
-
-  if (collapseButton && isExpanded && !hasBlockingError) {
-    collapseButton.click();
-  }
-
-  root.dataset.adminAvailabilityInitialCollapsed = "true";
 };
 
 const markBoardEmptyState = (root) => {
@@ -138,13 +142,10 @@ const markBoardEmptyState = (root) => {
 
     const nextGuidance = guidance || document.createElement("div");
     const message = `Tuần này đã có ${shiftCards.length} ca, trong đó ${understaffedCount} ca còn thiếu nhân sự. Mở từng ca để bổ sung.`;
-
     nextGuidance.className =
       "schedule-empty-guidance schedule-understaffed-guidance";
     nextGuidance.setAttribute("role", "status");
-    if (nextGuidance.textContent !== message) {
-      nextGuidance.textContent = message;
-    }
+    if (nextGuidance.textContent !== message) nextGuidance.textContent = message;
     if (!guidance) board.prepend(nextGuidance);
     return;
   }
@@ -152,12 +153,9 @@ const markBoardEmptyState = (root) => {
   const nextGuidance = guidance || document.createElement("div");
   const message =
     "Tuần này chưa có ca. Hãy tạo ca thủ công hoặc dùng chia ca tự động.";
-
   nextGuidance.className = "schedule-empty-guidance";
   nextGuidance.setAttribute("role", "status");
-  if (nextGuidance.textContent !== message) {
-    nextGuidance.textContent = message;
-  }
+  if (nextGuidance.textContent !== message) nextGuidance.textContent = message;
   if (!guidance) board.prepend(nextGuidance);
 };
 
@@ -186,7 +184,6 @@ export const initScheduleManagerAdminPolish = () => {
       hideDuplicateHeaderAutoAction(root);
       normalizeToolbarCopy(root);
       markToolbarActions(root);
-      collapseAvailabilityPanelOnce(root);
       markBoardEmptyState(root);
     });
   };
@@ -195,7 +192,11 @@ export const initScheduleManagerAdminPolish = () => {
     const root = findScheduleRoot();
     if (!root || observer) return false;
     observer = new MutationObserver(run);
-    observer.observe(root, { childList: true, subtree: true, characterData: true });
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
     return true;
   };
 
