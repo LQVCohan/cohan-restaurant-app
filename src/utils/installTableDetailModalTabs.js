@@ -63,6 +63,7 @@ const getDirectSummary = (body) =>
   );
 
 const getSaveButton = (modal) =>
+  modal.querySelector(".talite-footer .btn.primary") ||
   Array.from(modal.querySelectorAll(".talite-footer button")).find((button) =>
     normalizeText(button.textContent).includes("lưu"),
   );
@@ -112,7 +113,8 @@ const syncFooter = (modal, activeKey) => {
   const saveButton = getSaveButton(modal);
   if (!saveButton) return;
 
-  if (saveButton.textContent !== "Lưu cấu hình") {
+  const saveLabel = normalizeText(saveButton.textContent);
+  if (saveLabel === "lưu thay đổi" || saveLabel === "lưu cấu hình") {
     saveButton.textContent = "Lưu cấu hình";
   }
   saveButton.hidden = !SAVE_TABS.has(activeKey);
