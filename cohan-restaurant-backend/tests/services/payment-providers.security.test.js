@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   createVnpayPayment,
   formatVnpDate,
+  isVnpaySuccessful,
   verifyMomoCallback,
   verifyVnpayCallback,
 } from "../../src/services/payment/providers.js";
@@ -99,6 +100,39 @@ describe("payment provider signature checks", () => {
         vnp_SecureHash: signature + "aa",
       }),
     ).toBe(false);
+  });
+
+  it("requires both VNPAY response and transaction status to be successful", () => {
+    expect(
+      isVnpaySuccessful({
+        vnp_ResponseCode: "00",
+        vnp_TransactionStatus: "00",
+      }),
+    ).toBe(true);
+    expect(
+      isVnpaySuccessful({
+        vnp_ResponseCode: "00",
+        vnp_TransactionStatus: "02",
+      }),
+    ).toBe(false);
+    expect(
+      isVnpaySuccessful({
+        vnp_ResponseCode: "24",
+        vnp_TransactionStatus: "00",
+      }),
+    ).toBe(false);
+
+    const signedFailure = {
+      vnp_Amount: "100000",
+      vnp_ResponseCode: "00",
+      vnp_TransactionStatus: "02",
+      vnp_TmnCode: "TESTCODE",
+      vnp_TxnRef: "ref-failed",
+    };
+    signedFailure.vnp_SecureHash = signVnpay(signedFailure);
+
+    expect(verifyVnpayCallback(signedFailure)).toBe(true);
+    expect(signedFailure.vnp_ResponseCode).toBe("02");
   });
 
   it("creates a VNPAY URL with GMT+7 dates, expiry and SHA512 checksum", () => {
