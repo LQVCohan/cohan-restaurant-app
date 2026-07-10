@@ -1,6 +1,5 @@
 // Final override for the add/edit menu item modal.
-// Loaded after the earlier modal polish files so the structured header,
-// two-column editor, and actions use one consistent ivory/sage system.
+// Keep this file last: it owns the visible shell, spacing, and noisy copy cleanup.
 
 $mmf-paper: #fffdf9;
 $mmf-bg: #f5f4ef;
@@ -16,59 +15,51 @@ $mmf-danger: #b54747;
 $mmf-danger-soft: #fbefed;
 
 .modal-overlay .modal-container.menu-item-modal-modern {
-  // There is now exactly one structured header.
+  width: min(94vw, 1120px) !important;
+  height: min(86dvh, 760px) !important;
+  min-height: 560px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(128, 109, 83, 0.18) !important;
+  border-radius: 26px !important;
+  color: $mmf-ink !important;
+  background:
+    radial-gradient(circle at 8% -10%, rgba(168, 133, 95, 0.12), transparent 24rem),
+    radial-gradient(circle at 96% 0%, rgba($mmf-sage, 0.1), transparent 26rem),
+    linear-gradient(180deg, #f8f6f1, $mmf-bg) !important;
+  box-shadow:
+    0 32px 80px rgba(48, 40, 30, 0.24),
+    0 8px 20px rgba(48, 40, 30, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84) !important;
+
   > .modal-header:only-of-type {
     position: relative !important;
-    inset: auto !important;
     z-index: 6 !important;
-    width: auto !important;
-    height: auto !important;
-    min-height: 82px !important;
-    display: block !important;
-    padding: 15px 80px 15px 24px !important;
+    min-height: 64px !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 14px 76px 14px 24px !important;
     border: 0 !important;
-    border-bottom: 1px solid rgba(128, 109, 83, 0.16) !important;
-    background:
-      linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(248, 246, 241, 0.93)) !important;
+    border-bottom: 1px solid rgba(128, 109, 83, 0.14) !important;
+    background: rgba(255, 253, 249, 0.96) !important;
     color: $mmf-ink !important;
-    font-size: 1.2rem !important;
+    font-size: 1.18rem !important;
     font-weight: 880 !important;
-    line-height: 1.22 !important;
+    line-height: 1.18 !important;
     letter-spacing: -0.035em !important;
-    box-shadow: 0 10px 24px rgba(48, 40, 30, 0.045) !important;
-    pointer-events: auto !important;
+    box-shadow: 0 8px 22px rgba(48, 40, 30, 0.04) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(122%);
+    backdrop-filter: blur(12px) saturate(122%);
 
-    &::before {
-      content: "VẬN HÀNH THỰC ĐƠN";
-      display: block !important;
-      width: fit-content !important;
-      margin-bottom: 5px !important;
-      padding: 3px 8px !important;
-      border: 1px solid rgba($mmf-sage, 0.16) !important;
-      border-radius: 999px !important;
-      background: $mmf-sage-soft !important;
-      color: $mmf-sage-dark !important;
-      font-size: 0.62rem !important;
-      font-weight: 900 !important;
-      line-height: 1.2 !important;
-      letter-spacing: 0.07em !important;
-    }
-
+    &::before,
     &::after {
-      content: "Cập nhật thông tin món, cách chế biến, giá bán và định lượng nguyên liệu.";
-      display: block !important;
-      margin-top: 4px !important;
-      color: $mmf-muted !important;
-      font-size: 0.78rem !important;
-      font-weight: 620 !important;
-      line-height: 1.45 !important;
-      letter-spacing: 0 !important;
+      display: none !important;
+      content: none !important;
     }
 
     > .modal-close,
     > .btn-close {
       position: absolute !important;
-      top: 20px !important;
+      top: 13px !important;
       right: 22px !important;
       width: 38px !important;
       height: 38px !important;
@@ -80,8 +71,7 @@ $mmf-danger-soft: #fbefed;
       border-radius: 13px !important;
       background: $mmf-paper !important;
       color: $mmf-muted !important;
-      box-shadow: 0 8px 18px rgba(48, 40, 30, 0.08) !important;
-      pointer-events: auto !important;
+      box-shadow: 0 8px 18px rgba(48, 40, 30, 0.07) !important;
 
       &:hover {
         border-color: rgba($mmf-danger, 0.24) !important;
@@ -97,21 +87,123 @@ $mmf-danger-soft: #fbefed;
     overflow: hidden !important;
   }
 
+  > .modal-footer {
+    flex: 0 0 auto !important;
+    min-height: 64px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+    padding: 12px 22px !important;
+    border-top: 1px solid rgba(128, 109, 83, 0.14) !important;
+    background: rgba(255, 253, 249, 0.96) !important;
+    box-shadow: 0 -12px 26px rgba(48, 40, 30, 0.045) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(122%);
+    backdrop-filter: blur(12px) saturate(122%);
+
+    &::before {
+      display: none !important;
+      content: none !important;
+    }
+
+    .btn-secondary,
+    .btn-primary {
+      min-height: 42px !important;
+      padding: 9px 16px !important;
+      border-radius: 13px !important;
+      font-weight: 850 !important;
+      transition:
+        transform 0.18s ease,
+        box-shadow 0.18s ease,
+        border-color 0.18s ease,
+        background 0.18s ease !important;
+    }
+
+    .btn-secondary {
+      border: 1px solid $mmf-border !important;
+      background: $mmf-paper !important;
+      color: $mmf-ink !important;
+
+      &:hover:not(:disabled) {
+        border-color: rgba($mmf-sage, 0.32) !important;
+        background: $mmf-sage-soft !important;
+        color: $mmf-sage-dark !important;
+      }
+    }
+
+    .btn-primary {
+      border: 1px solid $mmf-sage !important;
+      background: linear-gradient(180deg, #23776c, $mmf-sage-dark) !important;
+      color: #fff !important;
+      box-shadow: 0 12px 24px rgba($mmf-sage, 0.2) !important;
+
+      &:hover:not(:disabled) {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 16px 30px rgba($mmf-sage, 0.25) !important;
+      }
+    }
+  }
+
   .modern-form-layout {
-    grid-template-columns: minmax(420px, 0.96fr) minmax(450px, 1.04fr) !important;
+    display: grid !important;
+    grid-template-columns: minmax(380px, 0.88fr) minmax(430px, 1.12fr) !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    background: transparent !important;
   }
 
   .modern-form-layout > .left-col,
   .modern-form-layout > .right-col {
+    min-width: 0 !important;
     min-height: 0 !important;
+    height: 100% !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba($mmf-sage, 0.34) transparent;
+
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      border: 2px solid transparent;
+      border-radius: 999px;
+      background: rgba($mmf-sage, 0.32);
+      background-clip: padding-box;
+    }
   }
 
   .modern-form-layout > .left-col {
-    padding: 22px 22px 28px !important;
+    overflow-y: auto !important;
+    padding: 20px 20px 28px !important;
+    border-right: 1px solid rgba(128, 109, 83, 0.14) !important;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(255, 253, 249, 0.94)) !important;
   }
 
   .modern-form-layout > .right-col {
-    padding: 22px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    padding: 20px !important;
+    background:
+      radial-gradient(circle at top right, rgba($mmf-sage, 0.12), transparent 22rem),
+      linear-gradient(180deg, rgba(248, 246, 241, 0.88), rgba(245, 244, 239, 0.98)) !important;
+  }
+
+  .col-title {
+    height: auto !important;
+    min-height: 30px !important;
+    margin: 0 0 12px !important;
+    color: $mmf-sage-dark !important;
+    font-size: 0.74rem !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.06em !important;
+    text-transform: uppercase !important;
+
+    svg {
+      color: $mmf-sage !important;
+    }
   }
 
   .modern-form-layout > .left-col > .form-group,
@@ -119,48 +211,241 @@ $mmf-danger-soft: #fbefed;
   .for-you-meta-section,
   .recipe-tracking-card,
   .method-card {
-    border-color: rgba(128, 109, 83, 0.16) !important;
-    background: rgba(255, 255, 255, 0.88) !important;
+    border: 1px solid rgba(128, 109, 83, 0.14) !important;
+    border-radius: 18px !important;
+    background: rgba(255, 255, 255, 0.9) !important;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.82),
-      0 12px 28px rgba(48, 40, 30, 0.065) !important;
+      0 10px 24px rgba(48, 40, 30, 0.06) !important;
+  }
+
+  .modern-form-layout > .left-col > .form-group,
+  .modern-form-layout > .left-col > .row-2-col {
+    margin-bottom: 12px !important;
+    padding: 14px !important;
+  }
+
+  .modern-form-layout > .left-col > .row-2-col {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+
+    .form-group {
+      margin-bottom: 0 !important;
+    }
+  }
+
+  .form-group {
+    gap: 7px !important;
+    margin-bottom: 14px !important;
+
+    label {
+      color: $mmf-ink !important;
+      font-size: 0.81rem !important;
+      font-weight: 760 !important;
+    }
   }
 
   .modern-input,
   .modern-select,
   .modern-textarea,
   .lip-url-input {
-    border-color: $mmf-border !important;
+    border: 1px solid $mmf-border !important;
+    border-radius: 13px !important;
     background: $mmf-paper !important;
     color: $mmf-ink !important;
+    font-weight: 680 !important;
+    box-shadow: 0 1px 2px rgba(48, 40, 30, 0.03) !important;
+
+    &:hover:not(:disabled) {
+      border-color: rgba($mmf-sage, 0.34) !important;
+    }
 
     &:focus {
+      outline: 0 !important;
       border-color: rgba($mmf-sage, 0.48) !important;
+      background: #fff !important;
       box-shadow: 0 0 0 4px rgba($mmf-sage, 0.13) !important;
     }
   }
 
+  .local-image-picker {
+    grid-template-columns: 126px minmax(0, 1fr) !important;
+    gap: 12px !important;
+
+    .lip-preview {
+      border-color: rgba($mmf-sage, 0.18) !important;
+      background: $mmf-sage-soft !important;
+    }
+
+    .lip-btn-primary {
+      border-color: $mmf-sage !important;
+      background: linear-gradient(180deg, #23776c, $mmf-sage-dark) !important;
+    }
+  }
+
   .header-action {
-    border-bottom-color: rgba(128, 109, 83, 0.13) !important;
-    background:
-      linear-gradient(180deg, rgba(248, 246, 241, 0.99), rgba(248, 246, 241, 0.9)) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 4 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    margin: -20px -20px 12px !important;
+    padding: 14px 20px 10px !important;
+    border-bottom: 1px solid rgba(128, 109, 83, 0.12) !important;
+    background: rgba(248, 246, 241, 0.96) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(122%);
+    backdrop-filter: blur(10px) saturate(122%);
+
+    .col-title {
+      margin: 0 !important;
+    }
   }
 
   .btn-add-variant {
-    border-color: rgba($mmf-sage, 0.24) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 7px !important;
+    min-height: 38px !important;
+    padding: 8px 13px !important;
+    border: 1px solid rgba($mmf-sage, 0.24) !important;
+    border-radius: 13px !important;
     background: $mmf-sage-soft !important;
     color: $mmf-sage-dark !important;
+    font-size: 0.82rem !important;
+    font-weight: 850 !important;
+    box-shadow: 0 8px 18px rgba($mmf-sage, 0.08) !important;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: rgba($mmf-sage, 0.38) !important;
+      background: #f2faf7 !important;
+      box-shadow: 0 12px 24px rgba($mmf-sage, 0.13) !important;
+    }
+  }
+
+  .recipe-tracking-card {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex: 0 0 auto !important;
+    margin-bottom: 12px !important;
+    padding: 12px 14px !important;
+
+    &__title {
+      margin: 0 !important;
+      color: $mmf-warning !important;
+      font-size: 0.86rem !important;
+      font-weight: 850 !important;
+      line-height: 1.35 !important;
+    }
+
+    &__description {
+      display: none !important;
+    }
+
+    &__cta {
+      margin: 0 !important;
+      white-space: nowrap !important;
+      padding: 7px 11px !important;
+      border: 1px solid rgba($mmf-warning, 0.24) !important;
+      border-radius: 13px !important;
+      background: #ffffff !important;
+      color: $mmf-warning !important;
+      font-size: 0.8rem !important;
+      font-weight: 820 !important;
+      cursor: pointer !important;
+
+      &:hover {
+        background: $mmf-warning-soft !important;
+      }
+    }
   }
 
   .recipe-tracking-card.tracked {
     border-color: rgba($mmf-sage, 0.22) !important;
     background: $mmf-sage-soft !important;
+
+    .recipe-tracking-card__title {
+      color: $mmf-sage-dark !important;
+    }
   }
 
   .recipe-tracking-card.missing_ingredients,
   .recipe-tracking-card.not_tracked {
     border-color: rgba($mmf-warning, 0.24) !important;
     background: $mmf-warning-soft !important;
+  }
+
+  .methods-scroll-container {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    padding: 2px 4px 12px 0 !important;
+  }
+
+  .method-card {
+    padding: 14px !important;
+    margin: 0 0 12px !important;
+    transition:
+      transform 0.18s ease,
+      border-color 0.18s ease,
+      box-shadow 0.18s ease !important;
+
+    &:hover {
+      transform: translateY(-1px) !important;
+      border-color: rgba($mmf-sage, 0.25) !important;
+      box-shadow: 0 16px 34px rgba(48, 40, 30, 0.1) !important;
+    }
+
+    .method-card-header {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      margin-bottom: 12px !important;
+      padding-bottom: 9px !important;
+      border-bottom: 1px dashed rgba(128, 109, 83, 0.18) !important;
+
+      .badge-index {
+        border: 1px solid rgba($mmf-sage, 0.18) !important;
+        border-radius: 999px !important;
+        background: $mmf-sage-soft !important;
+        color: $mmf-sage-dark !important;
+        font-size: 0.72rem !important;
+        font-weight: 850 !important;
+        padding: 3px 9px !important;
+      }
+
+      .btn-remove {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 32px !important;
+        height: 32px !important;
+        border: 1px solid transparent !important;
+        border-radius: 12px !important;
+        background: transparent !important;
+        color: $mmf-muted !important;
+
+        &:hover:not(:disabled) {
+          border-color: rgba($mmf-danger, 0.24) !important;
+          background: $mmf-danger-soft !important;
+          color: $mmf-danger !important;
+        }
+      }
+    }
+
+    .method-grid {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1.35fr) minmax(110px, 0.8fr) minmax(128px, 0.8fr) !important;
+      gap: 10px !important;
+
+      .full-width {
+        grid-column: 1 / -1 !important;
+      }
+    }
   }
 
   .for-you-option-card,
@@ -184,39 +469,12 @@ $mmf-danger-soft: #fbefed;
     border-color: rgba($mmf-sage, 0.24) !important;
     background: $mmf-sage-soft !important;
   }
-
-  .local-image-picker .lip-preview {
-    border-color: rgba($mmf-sage, 0.18) !important;
-    background: $mmf-sage-soft !important;
-  }
-
-  .local-image-picker .lip-btn-primary {
-    border-color: $mmf-sage !important;
-    background: linear-gradient(180deg, #23776c, $mmf-sage-dark) !important;
-  }
-
-  > .modal-footer {
-    &::before {
-      content: "Nhập tên món, chọn danh mục và thêm ít nhất một cách chế biến trước khi lưu." !important;
-      color: $mmf-muted !important;
-    }
-
-    .btn-primary {
-      border-color: $mmf-sage !important;
-      background: linear-gradient(180deg, #23776c, $mmf-sage-dark) !important;
-      color: #fff !important;
-    }
-
-    .btn-secondary {
-      border-color: $mmf-border !important;
-      background: $mmf-paper !important;
-      color: $mmf-ink !important;
-    }
-  }
 }
 
 @media (max-width: 1040px) {
   .modal-overlay .modal-container.menu-item-modal-modern {
+    height: min(92dvh, 820px) !important;
+
     .modern-form-layout {
       display: flex !important;
       flex-direction: column !important;
@@ -228,30 +486,54 @@ $mmf-danger-soft: #fbefed;
       height: auto !important;
       overflow: visible !important;
     }
+
+    .recipe-tracking-card {
+      grid-template-columns: 1fr !important;
+      align-items: stretch !important;
+    }
   }
 }
 
 @media (max-width: 720px) {
   .modal-overlay .modal-container.menu-item-modal-modern {
+    width: 100% !important;
+    height: 94dvh !important;
+    max-height: 94dvh !important;
+    border-radius: 24px 24px 0 0 !important;
+
     > .modal-header:only-of-type {
-      min-height: 76px !important;
+      min-height: 60px !important;
       padding: 13px 64px 13px 16px !important;
       font-size: 1.05rem !important;
 
-      &::after {
-        display: none !important;
-      }
-
       > .modal-close,
       > .btn-close {
-        top: 18px !important;
+        top: 12px !important;
         right: 16px !important;
       }
     }
 
-    > .modal-footer::before {
-      flex-basis: 100% !important;
-      order: -1 !important;
+    > .modal-footer {
+      flex-wrap: wrap !important;
+      padding-inline: 16px !important;
+    }
+
+    .modern-form-layout > .left-col,
+    .modern-form-layout > .right-col {
+      padding: 16px !important;
+    }
+
+    .header-action {
+      margin: -16px -16px 12px !important;
+      padding: 14px 16px 10px !important;
+    }
+
+    .modern-form-layout > .left-col > .row-2-col,
+    .for-you-option-grid,
+    .for-you-option-grid--compact,
+    .for-you-meta-grid,
+    .method-card .method-grid {
+      grid-template-columns: 1fr !important;
     }
   }
 }
