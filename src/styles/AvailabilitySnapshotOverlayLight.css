@@ -1,0 +1,16 @@
+/* Keep the availability review modal inside the manager dashboard's light sage system. */
+html body .availability-snapshot-modal-overlay {
+  background: linear-gradient(
+    180deg,
+    rgba(240, 244, 242, 0.66),
+    rgba(226, 234, 229, 0.72)
+  );
+  -webkit-backdrop-filter: blur(2px) saturate(0.92);
+  backdrop-filter: blur(2px) saturate(0.92);
+}
+
+.availability-snapshot-modal-overlay > .availability-snapshot-modal {
+  box-shadow:
+    0 20px 54px rgba(35, 52, 44, 0.16),
+    0 2px 10px rgba(35, 52, 44, 0.06);
+}
