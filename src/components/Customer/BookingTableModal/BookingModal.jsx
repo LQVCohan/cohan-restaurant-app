@@ -456,6 +456,19 @@ const BookingModal = ({
       nextErrors.timeOut = "Thời gian dùng bàn tối thiểu 30 phút.";
     }
 
+    const serviceAt = localDateTimeToISO(formData.date, formData.time);
+    const serviceTime = serviceAt ? new Date(serviceAt).getTime() : null;
+    const hasAddonTimeMismatch =
+      serviceTime != null &&
+      restaurantCartItems.some((item) => {
+        if (!item?.serviceAt) return false;
+        return new Date(item.serviceAt).getTime() !== serviceTime;
+      });
+    if (hasAddonTimeMismatch) {
+      nextErrors.form =
+        "Các món đã chọn thuộc giờ đặt bàn khác. Vui lòng chọn lại món cho lịch hiện tại.";
+    }
+
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
