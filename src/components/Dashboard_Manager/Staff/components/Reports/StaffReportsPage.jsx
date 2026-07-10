@@ -213,7 +213,7 @@ const buildStaffReportSheets = ({ report, summary, comparisonMap }) => {
   ];
 };
 
-const StaffReportsPage = () => {
+const StaffReportsPage = ({ restaurantId = "" }) => {
   const defaultRange = buildPresetRange("last30");
   const [preset, setPreset] = useState("last30");
   const [startDate, setStartDate] = useState(defaultRange.startDate);
@@ -223,6 +223,7 @@ const StaffReportsPage = () => {
   const [compareEndDate, setCompareEndDate] = useState("");
 
   const { report, loading, error } = useStaffReports({
+    restaurantId,
     startDate,
     endDate,
     compareStartDate: compareMode === "custom" ? compareStartDate : undefined,
