@@ -1,0 +1,29 @@
+{
+  "id": "backup-management-ux-hardening",
+  "name": "backup-management-ux-hardening",
+  "title": "Harden backup management UX and scope",
+  "description": "Synchronize the backup page with the canonical manager restaurant scope, invalidate stale previews when restore inputs change, expose permission-aware controls, and compact the interface without changing snapshot semantics.",
+  "status": "in_progress",
+  "dev_type": "feature-fix",
+  "scope": "manager-backup",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "codex/backup-management-ux-hardening",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Backup/BackupManagement.jsx",
+    "src/components/Dashboard_Manager/Backup/BackupManagement.scss",
+    "src/components/Dashboard_Manager/Backup/BackupManagement.test.jsx"
+  ],
+  "notes": "Keep BackupRun, snapshot schema, import/export service behavior, permission guards, audit logging, checksums, and conflict resolution semantics unchanged. Reuse useManagerRestaurantSelection and existing frontend permission helpers."
+}
