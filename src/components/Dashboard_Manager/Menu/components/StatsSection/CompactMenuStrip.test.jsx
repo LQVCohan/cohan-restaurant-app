@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import CompactMenuStrip from "./CompactMenuStrip";
 
@@ -17,34 +17,41 @@ const breakfastMenu = {
   itemCount: 4,
 };
 
+const openMenuList = () => {
+  fireEvent.click(
+    screen.getByRole("button", { name: "Xem danh sách thực đơn" }),
+  );
+  return screen.getByRole("dialog", { name: "Danh sách thực đơn" });
+};
+
 describe("CompactMenuStrip", () => {
-  it("always shows all four management time slots", () => {
-    render(<CompactMenuStrip isCollapsed menus={[breakfastMenu]} />);
+  it("shows a clear launcher and opens all four management time slots in a modal", () => {
+    render(<CompactMenuStrip menus={[breakfastMenu]} />);
 
     expect(
-      screen.getByRole("heading", {
-        name: "Quản lý thực đơn theo khung giờ",
-      }),
+      screen.getByRole("heading", { name: "Danh sách thực đơn" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Thực đơn buổi sáng")).toBeInTheDocument();
+
+    const dialog = openMenuList();
+    expect(within(dialog).getByText("Thực đơn buổi sáng")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", {
+      within(dialog).getByRole("button", {
         name: "Chọn Bữa trưa, chưa có thực đơn",
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", {
+      within(dialog).getByRole("button", {
         name: "Chọn Bữa tối, chưa có thực đơn",
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", {
+      within(dialog).getByRole("button", {
         name: "Chọn Bữa khuya, chưa có thực đơn",
       }),
     ).toBeInTheDocument();
   });
 
-  it("selects an empty time slot without hiding the other slots", () => {
+  it("selects an empty time slot from the modal", () => {
     const onTimeSlotChange = vi.fn();
     render(
       <CompactMenuStrip
@@ -53,17 +60,17 @@ describe("CompactMenuStrip", () => {
       />,
     );
 
+    const dialog = openMenuList();
     fireEvent.click(
-      screen.getByRole("button", {
+      within(dialog).getByRole("button", {
         name: "Chọn Bữa trưa, chưa có thực đơn",
       }),
     );
 
     expect(onTimeSlotChange).toHaveBeenCalledWith("lunch");
-    expect(screen.getByText("Thực đơn buổi sáng")).toBeInTheDocument();
   });
 
-  it("keeps an inactive menu visible and exposes the restore action", () => {
+  it("keeps an inactive menu visible and exposes the restore action in the modal", () => {
     const onToggleMenuActive = vi.fn();
     const inactiveMenu = {
       ...breakfastMenu,
@@ -80,11 +87,12 @@ describe("CompactMenuStrip", () => {
       />,
     );
 
-    expect(screen.getByText("Thực đơn buổi tối")).toBeInTheDocument();
-    expect(screen.getByText("Đang ẩn với khách")).toBeInTheDocument();
+    const dialog = openMenuList();
+    expect(within(dialog).getByText("Thực đơn buổi tối")).toBeInTheDocument();
+    expect(within(dialog).getByText("Đang ẩn với khách")).toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", {
+      within(dialog).getByRole("button", {
         name: "Hiển thị lại thực đơn Thực đơn buổi tối",
       }),
     );
