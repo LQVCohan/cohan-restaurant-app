@@ -3,6 +3,8 @@ import {
   blankForm,
   buildModifierInput,
   getModifierFormValidationError,
+  getModifierStepError,
+  getModifierStepState,
   getModifierSubmitErrorMessage,
   normalizeModifierOptions,
   toForm,
@@ -95,6 +97,57 @@ describe("ModifierManagement helpers", () => {
       true,
       false,
     ]);
+  });
+
+  it("unlocks steps only after the preceding step is valid", () => {
+    const empty = blankForm("restaurant-1");
+    expect(getModifierStepState(empty, "restaurant-1")).toMatchObject({
+      completedSteps: [],
+      firstIncompleteStep: 1,
+    });
+
+    const named = { ...empty, name: "Topping" };
+    expect(getModifierStepState(named, "restaurant-1")).toMatchObject({
+      completedSteps: [1, 2],
+      firstIncompleteStep: 3,
+    });
+
+    const complete = {
+      ...named,
+      options: [namedOption("Thêm bò")],
+    };
+    expect(getModifierStepState(complete, "restaurant-1")).toMatchObject({
+      completedSteps: [1, 2, 3],
+      firstIncompleteStep: 4,
+    });
+  });
+
+  it("keeps the item scope step locked until at least one dish is selected", () => {
+    const form = {
+      ...blankForm("restaurant-1"),
+      name: "Topping theo món",
+      coverage: "ITEMS",
+      menuItemIds: [],
+      options: [namedOption("Thêm bò")],
+    };
+
+    expect(getModifierStepError(2, form, "restaurant-1")).toBe(
+      "Chọn ít nhất một món khi áp dụng theo món.",
+    );
+    expect(getModifierStepState(form, "restaurant-1")).toMatchObject({
+      completedSteps: [1],
+      firstIncompleteStep: 2,
+    });
+
+    expect(
+      getModifierStepState(
+        { ...form, menuItemIds: ["item-1"] },
+        "restaurant-1",
+      ),
+    ).toMatchObject({
+      completedSteps: [1, 2, 3],
+      firstIncompleteStep: 4,
+    });
   });
 
   it("validates scope, duplicate names, active options and selection limits", () => {
