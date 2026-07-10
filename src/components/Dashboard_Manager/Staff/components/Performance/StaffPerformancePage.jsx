@@ -1089,73 +1089,8 @@ const StaffPerformancePage = ({
 
   return (
     <div className="staff-performance-page">
-      <section className="performance-hero">
-        <div>
-          <span className="eyebrow">Staff Performance</span>
-          <h2>Hiệu suất nhân viên</h2>
-          <p>
-            Tổng hợp năng suất, đúng giờ, chất lượng, đánh giá quản lý và tuân
-            thủ để phục vụ xếp lịch, đánh giá nội bộ và quản trị nhân sự.
-          </p>
-        </div>
-
-        <div className="hero-actions">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              setPeriodStart(defaultRange.periodStart);
-              setPeriodEnd(defaultRange.periodEnd);
-            }}
-          >
-            Kỳ hiện tại
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={handleExportCsv}
-            disabled={!hasSpecificRestaurantSelected}
-          >
-            Xuất CSV
-          </button>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={handleRecalculateAll}
-            disabled={recalculateState.loading || !effectiveRestaurantId}
-          >
-            <RefreshCw size={16} />
-            {recalculateState.loading
-              ? "Đang tính..."
-              : "Tính lại hiệu suất kỳ này"}
-          </button>
-        </div>
-      </section>
-
-      <details className="performance-formula-panel">
-        <summary>Cách tính điểm hiệu suất</summary>
-        <p>Điểm hiệu suất = tổng điểm thành phần theo trọng số:</p>
-        <ul>
-          {PERFORMANCE_FORMULA_ITEMS.map((item) => (
-            <li key={item.key}>
-              {item.label}: {formatPercent(item.weight)}
-            </li>
-          ))}
-        </ul>
-        <pre>{`finalScore =
-productivity * 25%
-+ punctuality * 25%
-+ quality * 20%
-+ managerReview * 20%
-+ compliance * 10%`}</pre>
-        <p className="formula-note">
-          Đánh giá khách hàng không tự động thay đổi điểm hiệu suất. Quản lý có
-          thể dùng thông tin này để cân nhắc khi nhập đánh giá.
-        </p>
-      </details>
-
-      <section className="performance-controls">
-        <div className="control-group">
+      <section className="performance-controls" aria-label="Bộ lọc hiệu suất nhân viên">
+        <div className="control-group period-controls">
           <label>
             Từ ngày
             <input
@@ -1183,11 +1118,23 @@ productivity * 25%
               readOnly
             />
           </label>
+          <button
+            type="button"
+            className="period-reset-button"
+            onClick={() => {
+              setPeriodStart(defaultRange.periodStart);
+              setPeriodEnd(defaultRange.periodEnd);
+            }}
+            title="Đặt lại về kỳ hiện tại"
+          >
+            <CalendarDays size={16} aria-hidden="true" />
+            <span>Kỳ hiện tại</span>
+          </button>
         </div>
 
         <div className="control-group right">
           <label className="search-control">
-            <Search size={16} />
+            <Search size={16} aria-hidden="true" />
             <input
               value={localSearch}
               onChange={(event) => setLocalSearch(event.target.value)}
@@ -1196,6 +1143,7 @@ productivity * 25%
           </label>
 
           <select
+            aria-label="Lọc theo mức hiệu suất"
             value={selectedLevel}
             onChange={(event) => setSelectedLevel(event.target.value)}
           >
@@ -1209,6 +1157,28 @@ productivity * 25%
           </select>
         </div>
       </section>
+
+      <details className="performance-formula-panel">
+        <summary>Cách tính điểm hiệu suất</summary>
+        <p>Điểm hiệu suất = tổng điểm thành phần theo trọng số:</p>
+        <ul>
+          {PERFORMANCE_FORMULA_ITEMS.map((item) => (
+            <li key={item.key}>
+              {item.label}: {formatPercent(item.weight)}
+            </li>
+          ))}
+        </ul>
+        <pre>{`finalScore =
+productivity * 25%
++ punctuality * 25%
++ quality * 20%
++ managerReview * 20%
++ compliance * 10%`}</pre>
+        <p className="formula-note">
+          Đánh giá khách hàng không tự động thay đổi điểm hiệu suất. Quản lý có
+          thể dùng thông tin này để cân nhắc khi nhập đánh giá.
+        </p>
+      </details>
 
       <section className="performance-kpis">
         <div className="kpi-card">
@@ -1309,7 +1279,28 @@ productivity * 25%
                 xếp lịch.
               </p>
             </div>
-            {loading ? <span className="loading-pill">Đang tải dữ liệu...</span> : null}
+            <div className="table-header-actions" aria-label="Thao tác dữ liệu hiệu suất">
+              {loading ? <span className="loading-pill" aria-live="polite">Đang tải dữ liệu…</span> : null}
+              <button
+                type="button"
+                className="btn-secondary table-export-button"
+                onClick={handleExportCsv}
+                disabled={!hasSpecificRestaurantSelected}
+              >
+                Xuất CSV
+              </button>
+              <button
+                type="button"
+                className="btn-primary table-recalculate-button"
+                onClick={handleRecalculateAll}
+                disabled={recalculateState.loading || !effectiveRestaurantId}
+              >
+                <RefreshCw size={16} aria-hidden="true" />
+                {recalculateState.loading
+                  ? "Đang tính…"
+                  : "Tính lại hiệu suất kỳ này"}
+              </button>
+            </div>
           </div>
 
           <div className="performance-table-wrap">
