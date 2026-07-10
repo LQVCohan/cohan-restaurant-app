@@ -3,7 +3,7 @@
   "name": "backup-plain-vietnamese",
   "title": "Use plain Vietnamese across backup management",
   "description": "Replace technical and internal wording on the manager backup page with clear Vietnamese while preserving the existing backup contracts and behavior.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "ui-copy",
   "scope": "manager-backup",
   "package": null,
@@ -11,19 +11,18 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "codex/backup-plain-vietnamese",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": null,
+  "commit": "d331e8f98797e0c00047fb3c46a9be439f99601d",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1336",
   "subtasks": [],
   "children": [],
   "parent": null,
   "relatedFiles": [
     "src/components/Dashboard_Manager/Backup/BackupManagement.jsx",
-    "src/components/Dashboard_Manager/Backup/BackupManagement.test.jsx",
-    "src/layouts/ManagerLayout.jsx"
+    "src/components/Dashboard_Manager/Backup/BackupManagement.test.jsx"
   ],
-  "notes": "Keep the BackupRun model, GraphQL schema, resolver/service behavior, permission enforcement, audit logging, restaurant scoping, export/import payloads, and file format unchanged. Only user-facing copy and client-side technical-message mapping are in scope."
+  "notes": "BackupRun model, GraphQL schema, resolver/service behavior, permission enforcement, audit logging, restaurant scoping, export/import payloads, and file format remain unchanged. The existing manager navigation wording was already understandable, so no layout file change was needed. GitHub Actions run 29101447615 passed frontend conflict check, lint, unit tests, Menu RBAC, changed component tests, build, Playwright smoke tests, and all backend checks."
 }
