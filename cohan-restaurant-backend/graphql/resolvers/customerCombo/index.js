@@ -16,6 +16,7 @@ const toNumber = (value, fallback = null) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const isRestaurantActive = (restaurant) => !restaurant || !restaurant.status || restaurant.status === "active";
 const isItemAvailable = (item) => !item || !item.status || item.status === "available";
 
@@ -168,19 +169,32 @@ const serializeManagerCombo = (combo) => {
 };
 
 async function validateComboInput(input, ctx) {
-  if (!input?.restaurantId || !mongoose.isValidObjectId(input.restaurantId)) throw new GraphQLError("Invalid restaurantId");
+  if (!input?.restaurantId || !mongoose.isValidObjectId(input.restaurantId)) throw new GraphQLError("Nhà hàng không hợp lệ.");
   await requireRestaurantPermission(ctx, input.restaurantId, PERMISSIONS.MENU_WRITE);
+
   const name = String(input.name || "").trim();
   if (!name) throw new GraphQLError("Tên combo là bắt buộc.");
-  const price = Number(input.price || 0);
-  if (!(price > 0)) throw new GraphQLError("Giá combo phải lớn hơn 0.");
+
+  const price = Number(input.price);
+  if (!Number.isFinite(price) || price <= 0) throw new GraphQLError("Giá combo phải lớn hơn 0.");
+
   const items = Array.isArray(input.items) ? input.items : [];
   if (!items.length) throw new GraphQLError("Combo cần ít nhất 1 món.");
-  const normalizedItems = items.map((item) => ({ menuItemId: item.menuItemId, qty: Math.max(1, Math.floor(Number(item.qty || 1))) }));
-  const ids = [...new Set(normalizedItems.map((item) => String(item.menuItemId || "")))];
+
+  const normalizedItems = items.map((item, index) => {
+    const qty = Number(item?.qty);
+    if (!Number.isInteger(qty) || qty < 1) {
+      throw new GraphQLError(`Số lượng món ở dòng ${index + 1} phải là số nguyên lớn hơn 0.`);
+    }
+    return { menuItemId: item?.menuItemId, qty };
+  });
+  const ids = normalizedItems.map((item) => String(item.menuItemId || ""));
   if (ids.some((id) => !mongoose.isValidObjectId(id))) throw new GraphQLError("Món trong combo không hợp lệ.");
+  if (new Set(ids).size !== ids.length) throw new GraphQLError("Mỗi món chỉ được thêm một lần; hãy tăng số lượng trên cùng một dòng.");
+
   const menuItems = await MenuItem.find({ _id: { $in: ids }, restaurantId: input.restaurantId }).select("_id").lean();
   if (menuItems.length !== ids.length) throw new GraphQLError("Tất cả món trong combo phải thuộc cùng nhà hàng.");
+
   return {
     restaurantId: input.restaurantId,
     name,
@@ -230,12 +244,13 @@ export default {
       return promo ? normalizePromotion(promo) : null;
     },
     managerCombos: async (_, { restaurantId, search, status }, ctx) => {
-      if (!mongoose.isValidObjectId(restaurantId)) throw new GraphQLError("Invalid restaurantId");
+      if (!mongoose.isValidObjectId(restaurantId)) throw new GraphQLError("Nhà hàng không hợp lệ.");
       await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.MENU_READ);
       const query = { restaurantId };
       if (status === "active") query.isActive = { $ne: false };
       if (status === "inactive") query.isActive = false;
-      if (search) query.name = { $regex: String(search).trim(), $options: "i" };
+      const normalizedSearch = String(search || "").trim();
+      if (normalizedSearch) query.name = { $regex: escapeRegex(normalizedSearch), $options: "i" };
       const docs = await Combo.find(query).sort({ updatedAt: -1 }).populate("restaurantId").populate("items.menuItemId").lean();
       return docs.map(serializeManagerCombo).filter(Boolean);
     },
@@ -254,14 +269,18 @@ export default {
       return serializeManagerCombo(await Combo.findById(combo._id).populate("restaurantId").populate("items.menuItemId").lean());
     },
     updateCombo: async (_, { id, input }, ctx) => {
-      if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid combo id");
+      if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Mã combo không hợp lệ.");
       const payload = await validateComboInput(input, ctx);
-      const combo = await Combo.findOneAndUpdate({ _id: id }, payload, { new: true }).populate("restaurantId").populate("items.menuItemId").lean();
-      if (!combo) throw new GraphQLError("Combo not found");
+      const combo = await Combo.findOneAndUpdate(
+        { _id: id, restaurantId: payload.restaurantId },
+        payload,
+        { new: true },
+      ).populate("restaurantId").populate("items.menuItemId").lean();
+      if (!combo) throw new GraphQLError("Không tìm thấy combo trong nhà hàng đã chọn.");
       return serializeManagerCombo(combo);
     },
     deleteCombo: async (_, { id }, ctx) => {
-      if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid combo id");
+      if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Mã combo không hợp lệ.");
       const combo = await Combo.findById(id).lean();
       if (!combo) return true;
       await requireRestaurantPermission(ctx, combo.restaurantId, PERMISSIONS.MENU_WRITE);
@@ -269,9 +288,9 @@ export default {
       return true;
     },
     toggleComboStatus: async (_, { id, isActive }, ctx) => {
-      if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid combo id");
+      if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Mã combo không hợp lệ.");
       const combo = await Combo.findById(id).lean();
-      if (!combo) throw new GraphQLError("Combo not found");
+      if (!combo) throw new GraphQLError("Không tìm thấy combo.");
       await requireRestaurantPermission(ctx, combo.restaurantId, PERMISSIONS.MENU_WRITE);
       const updated = await Combo.findByIdAndUpdate(id, { isActive: Boolean(isActive) }, { new: true }).populate("restaurantId").populate("items.menuItemId").lean();
       return serializeManagerCombo(updated);
