@@ -1,0 +1,20 @@
+{
+  "id": "07-11-schedule-next-week-registration-audit",
+  "title": "Fix next-week availability registration and audit schedule page",
+  "status": "in_progress",
+  "area": "fullstack",
+  "createdAt": "2026-07-11",
+  "updatedAt": "2026-07-11",
+  "validation": {
+    "completed": [],
+    "notRun": [
+      "targeted availability service/resolver Vitest",
+      "targeted ScheduleManagement Vitest",
+      "targeted StaffSchedulePage Vitest",
+      "npm run check:graphql",
+      "npm run check:conflicts",
+      "npm run build",
+      "browser smoke"
+    ]
+  }
+}
