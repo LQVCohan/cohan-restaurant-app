@@ -1178,15 +1178,10 @@ const ModifierManagement = () => {
 
               <div className="modifier-form__step-panel" aria-live="polite">
                 {activeStep === 1 && (
-                  <section className="modifier-form__section">
-                    <div className="modifier-form__section-title">
-                      <span>01</span>
-                      <div>
-                        <h3>Thông tin nhóm</h3>
-                        <p>Đặt tên, kiểu chọn và giới hạn khách được chọn.</p>
-                      </div>
-                    </div>
-
+                  <section
+                    className="modifier-form__section"
+                    aria-label="Thông tin nhóm"
+                  >
                     <label className="modifier-form__field">
                       <span>Tên nhóm</span>
                       <input
@@ -1308,15 +1303,10 @@ const ModifierManagement = () => {
                 )}
 
                 {activeStep === 2 && (
-                  <section className="modifier-form__section">
-                    <div className="modifier-form__section-title">
-                      <span>02</span>
-                      <div>
-                        <h3>Phạm vi áp dụng</h3>
-                        <p>Áp dụng toàn menu hoặc chỉ cho các món cụ thể.</p>
-                      </div>
-                    </div>
-
+                  <section
+                    className="modifier-form__section"
+                    aria-label="Phạm vi áp dụng"
+                  >
                     <fieldset className="modifier-form__coverage">
                       <legend>Chọn phạm vi</legend>
                       <label>
@@ -1407,15 +1397,11 @@ const ModifierManagement = () => {
                 )}
 
                 {activeStep === 3 && (
-                  <section className="modifier-form__section modifier-form__section--options">
+                  <section
+                    className="modifier-form__section modifier-form__section--options"
+                    aria-label="Lựa chọn"
+                  >
                     <div className="modifier-form__options-heading">
-                      <div className="modifier-form__section-title">
-                        <span>03</span>
-                        <div>
-                          <h3>Lựa chọn</h3>
-                          <p>Thêm các lựa chọn và giá thay đổi tương ứng.</p>
-                        </div>
-                      </div>
                       <button type="button" onClick={addOption}>
                         <Plus size={14} aria-hidden="true" />
                         Thêm lựa chọn
@@ -1551,15 +1537,10 @@ const ModifierManagement = () => {
                 )}
 
                 {activeStep === 4 && (
-                  <section className="modifier-form__section modifier-form__section--note">
-                    <div className="modifier-form__section-title">
-                      <span>04</span>
-                      <div>
-                        <h3>Hoàn tất</h3>
-                        <p>Kiểm tra nhanh rồi lưu cấu hình.</p>
-                      </div>
-                    </div>
-
+                  <section
+                    className="modifier-form__section modifier-form__section--note"
+                    aria-label="Hoàn tất"
+                  >
                     <div className="modifier-form__review">
                       <div>
                         <span>Tên nhóm</span>
