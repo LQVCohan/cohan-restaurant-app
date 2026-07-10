@@ -2,55 +2,55 @@
 
 ## Current behavior
 
-The manager-level table preview lazy-loads a global 3D catalog and renders the selected asset with `model-viewer`. The footer currently exposes both an image-overlay camera fallback and native AR. The fallback does not place a real 3D object on a detected surface and is not needed for the requested workflow.
+The manager-level table preview lazy-loads a global 3D catalog and renders the selected asset with `model-viewer`. The preview is read-only and opens native AR through one shared action boundary.
 
-The AR path configures WebXR, Scene Viewer, and Quick Look, but the external action is enabled from model URL and secure-context checks only. It does not use `model-viewer.canActivateAR` after the model loads. The viewer also writes the unsupported `model-scale` attribute, so the visible scale control is not connected to the supported scene-graph `scale` contract.
+The previous stability follow-up forced WebXR-only and `ar-scale="fixed"` immediately before launch. That reduced visible resizing drift, but it also removed the requested two-finger scaling and made floor acquisition harder on the tested Android device.
 
 ## End-to-end trace
 
-1. **Persistence/schema**: the global preview is intentionally read-only and does not update `Table.position` or `visualConfig`.
-2. **Server upload**: `POST /table-3d-assets/upload` authenticates, rate-limits, validates one `.glb` model plus an optional thumbnail, stores the files, and returns public URLs.
-3. **Frontend import**: `CustomTableModelBuilderModal` accepts `.glb/.gltf` URLs or uploads a `.glb` file through the existing route.
-4. **Catalog**: `useTable3DModels` merges the local catalog with an optional public catalog; restaurant-scoped custom models are merged in the modal.
-5. **Viewer**: `Table3DSimulatorModalV2` loads `model-viewer`, renders the model, tracks progress/errors, and calls `activateAR()`.
-6. **UI action**: `Table3DActionBarV2` is the only reachable footer action boundary.
-7. **Tests**: focused component tests and the mobile Playwright smoke test cover the reachable preview.
+1. **Persistence/schema**: the global preview intentionally does not update `Table.position` or `visualConfig`.
+2. **Server upload**: `POST /table-3d-assets/upload` validates and returns the public model URL.
+3. **Frontend import**: `CustomTableModelBuilderModal` accepts `.glb/.gltf` URLs or uploads a `.glb` file.
+4. **Catalog**: `useTable3DModels` merges catalog and restaurant-scoped custom models.
+5. **Viewer**: `Table3DSimulatorModalV2` renders `model-viewer`, checks `canActivateAR`, and calls `activateAR()`.
+6. **UI action**: `Table3DActionBarV2` prepares the active viewer immediately before the native AR handoff.
+7. **Tests**: focused component tests cover the modal and shared launch boundary.
 
 ## Root cause
 
-The preview retained a legacy 2D camera fallback after its scope became native 3D/AR-only. At the same boundary, the integration assumed AR availability and used a non-existent scale attribute. The root-cause fix belongs in the shared modal/action-bar boundary rather than adding another UI workaround.
+Plane tracking is ultimately handled by the device AR runtime, but the shared launch boundary was making the tested path less usable by forcing WebXR-only and fixed physical scale. The smallest correction is to reuse the native AR modes already supported by `model-viewer`, prioritize Scene Viewer for the Android scan path, keep floor placement explicit, and restore automatic scaling.
 
 ## Scope
 
-- Remove the 2D camera action, modal state, capability detection, import, and fallback copy.
 - Keep one primary native AR action.
-- Use the supported `scale` attribute for the selected model.
-- Explicitly configure `ar-placement="floor"`, fixed physical scale, and WebXR environment lighting.
-- Read `model-viewer.canActivateAR` after model load and block unsupported devices before calling `activateAR()`.
-- Handle failed AR sessions through the existing inline error state.
-- Update guidance to tell users to move the device slowly until the floor is detected.
-- Update direct tests and the mobile smoke expectation.
+- Keep `ar-placement="floor"` explicit.
+- Use `ar-modes="scene-viewer webxr quick-look"` at launch.
+- Restore `ar-scale="auto"` so users can resize with two fingers.
+- Remove the temporary `setAttribute` interception that rewrote `auto` back to `fixed`.
+- Improve floor-scan guidance for lighting, slower movement and textured reference points.
+- Update direct action-bar tests.
 
 ## Acceptance criteria
 
 - The modal contains no **Xem camera 2D** control or camera-overlay fallback.
-- The selected model still supports rotate, zoom, framing, offset, and scale in the 3D viewer.
-- The viewer uses `scale`, `ar-placement="floor"`, `ar-scale="fixed"`, `ar-modes="webxr scene-viewer quick-look"`, and `xr-environment`.
+- The selected model still supports rotate, zoom, framing, offset and scale in the 3D viewer.
+- Launching AR configures `ar-placement="floor"` and `ar-scale="auto"`.
+- Android native Scene Viewer is attempted before WebXR, with Quick Look retained for supported Apple devices.
+- Two-finger scaling is available after the model is placed.
 - Native AR remains disabled while the model is loading or when `canActivateAR` is false.
-- Clicking native AR rechecks `canActivateAR` before invoking `activateAR()`.
-- Unsupported devices receive a concrete reason instead of a silent no-op.
-- No table mutation, coordinate save, dependency, or backend contract is added.
+- Clicking native AR still rechecks viewer capability before invoking `activateAR()`.
+- Guidance tells the user how to scan a better-lit, textured floor area before placement.
+- No table mutation, coordinate save, dependency or backend contract is added.
 
 ## Out of scope
 
-- Persisting the preview model or AR coordinates to a table.
+- Persisting AR coordinates to a table or floor plan.
 - Replacing `model-viewer` or building a custom WebXR renderer.
-- Guaranteeing physical-device plane detection through unit or desktop browser tests.
-- Changing the upload/storage provider.
+- Guaranteeing physical-device plane detection from unit or desktop browser tests.
+- Correcting malformed model units, origins or pivots inside uploaded GLB/GLTF files.
 
 ## Validation plan
 
 - Targeted Vitest for the action bar and global modal.
-- Existing mobile Playwright smoke path.
 - Conflict-marker check and frontend build.
-- Manual test on a supported Android/iOS device over HTTPS for camera permission, floor scan, placement stability, and physical scale.
+- Manual test on a supported Android/iOS device over HTTPS for camera permission, floor scan, pinch scaling, placement drift and physical scale.
