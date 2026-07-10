@@ -1,0 +1,23 @@
+{
+  "id": "07-11-availability-window-resolver-registration-fix",
+  "title": "Sửa lỗi AvailabilityWindow effectiveStatus trả null",
+  "status": "in_progress",
+  "type": "backend-bugfix",
+  "scope": [
+    "cohan-restaurant-backend/graphql/resolvers/index.js",
+    "cohan-restaurant-backend/tests/resolvers/availability-resolver-index.test.js"
+  ],
+  "validation": {
+    "planned": [
+      "npm --prefix cohan-restaurant-backend test -- tests/resolvers/availability-resolver-index.test.js",
+      "npm run check:graphql",
+      "browser replay on manager schedule availability flow"
+    ],
+    "completed": [
+      "traced AvailabilityRegistrationWindow model -> GraphQL schema -> availability resolvers -> root resolver map -> manager/staff Apollo queries -> availability UI",
+      "confirmed availability/index.js already defines effectiveStatus and registrationMode resolvers",
+      "identified missing AvailabilityWindow registration in the executable root resolver map"
+    ],
+    "notRun": []
+  }
+}
