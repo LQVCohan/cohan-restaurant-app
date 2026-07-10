@@ -37,3 +37,48 @@ describe('apollo authorization token source', () => {
     expect(request.headers.authorization).toBe('Bearer restored-apollo-token');
   });
 });
+
+describe('apollo mutation variable sanitization', () => {
+  it('removes nested __typename metadata before sending GraphQL input', async () => {
+    vi.resetModules();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => JSON.stringify({
+        data: { updateMenuItem: { id: 'menu-item-1' } },
+      }),
+      headers: { get: () => 'application/json' },
+    }));
+
+    const { apolloClient } = await import('./client.js');
+    await apolloClient.mutate({
+      mutation: gql`
+        mutation ApolloTypenameInputTest($input: UpdateMenuItemInput!) {
+          updateMenuItem(input: $input) {
+            id
+          }
+        }
+      `,
+      variables: {
+        input: {
+          id: 'menu-item-1',
+          tasteProfile: {
+            __typename: 'MenuItemTasteProfile',
+            containsOnion: false,
+            containsCilantro: false,
+            sugar: 100,
+            spice: 'Vừa',
+          },
+        },
+      },
+    });
+
+    const [, request] = global.fetch.mock.calls[0];
+    const body = JSON.parse(request.body);
+    expect(body.variables.input.tasteProfile).toEqual({
+      containsOnion: false,
+      containsCilantro: false,
+      sugar: 100,
+      spice: 'Vừa',
+    });
+  });
+});
