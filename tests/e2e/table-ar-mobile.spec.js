@@ -71,7 +71,6 @@ const tables = [
     joinGroupId: null,
     tags: [],
     vrUrl: "",
-    visualConfig: null,
     restaurantId: "restaurant-1",
     position: {
       __typename: "TablePosition",
@@ -98,7 +97,6 @@ const tables = [
     joinGroupId: null,
     tags: ["vip"],
     vrUrl: "",
-    visualConfig: null,
     restaurantId: "restaurant-1",
     position: {
       __typename: "TablePosition",
@@ -186,15 +184,6 @@ test.describe("manager table AR mobile smoke", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       window.sessionStorage.setItem("cohan_access_token", "e2e-token");
-      window.__lastClipboardText = "";
-      Object.defineProperty(navigator, "clipboard", {
-        configurable: true,
-        value: {
-          writeText: async (text) => {
-            window.__lastClipboardText = String(text || "");
-          },
-        },
-      });
       Object.defineProperty(navigator, "mediaDevices", {
         configurable: true,
         value: { getUserMedia: async () => ({ getTracks: () => [] }) },
@@ -207,9 +196,7 @@ test.describe("manager table AR mobile smoke", () => {
     await mockBackend(page);
   });
 
-  test("opens the table manager and copies an AR diagnostic report from the 3D modal", async ({
-    page,
-  }) => {
+  test("opens the global table model and camera AR preview", async ({ page }) => {
     await page.goto("/manager#tables");
 
     await expect(
@@ -218,28 +205,24 @@ test.describe("manager table AR mobile smoke", () => {
     await expect(page.getByText("A1")).toBeVisible();
     await expect(page.getByText("VIP-02")).toBeVisible();
 
-    await page.getByRole("button", { name: /Mô phỏng 3D/i }).click();
+    await page
+      .getByRole("button", { name: "Xem thử bàn 3D và AR" })
+      .click();
 
     await expect(
-      page.getByRole("heading", { name: /Xem thử và bố trí bàn 3D/i }),
+      page.getByRole("heading", { name: /Xem thử bàn 3D trong không gian/i }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: /Báo cáo test/i }),
+      page.getByRole("button", { name: /Tạo mẫu mới/i }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: /Chưa chọn bàn/i }),
-    ).toBeDisabled();
-
-    await page.getByRole("button", { name: /Báo cáo test/i }).click();
-    await expect(page.getByText("Đã copy báo cáo")).toBeVisible();
-
-    const report = await page.evaluate(() =>
-      JSON.parse(window.__lastClipboardText),
-    );
-    expect(report.title).toBe("COHAN AR/3D mobile test report");
-    expect(report.appState.restaurant).toContain("COHAN");
-    expect(report.browser.mediaDevices).toBe(true);
-    expect(report.browser.webxr).toBe(false);
+      page.getByRole("button", { name: /Xem camera 2D/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Mở camera AR/i }),
+    ).toBeVisible();
+    await expect(page.getByText(/Áp dụng mẫu/i)).toHaveCount(0);
+    await expect(page.getByText(/lưu vị trí/i)).toHaveCount(0);
   });
 
   test("opens the concrete table detail flow", async ({ page }) => {
