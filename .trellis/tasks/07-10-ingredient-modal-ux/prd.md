@@ -21,13 +21,14 @@ Hợp đồng dữ liệu và quyền truy cập hiện đúng. Vấn đề nằ
 4. UI action: `IngredientCard.jsx` → `IngredientList.jsx` → `IngredientModal.jsx`.
 5. Test gần nhất: `IngredientModal.test.jsx`.
 
-## File thay đổi
+## File đã thay đổi
 
 - `IngredientModal.jsx`: gom nhóm trường, sửa copy/ký hiệu tiền tệ và dùng footer chuẩn.
 - `IngredientModalEnhancements.css`: bố cục compact, responsive, focus và footer.
 - `IngredientList.jsx`: modal xác nhận xóa mềm/xóa vĩnh viễn và modal bị chặn.
-- `IngredientList.scss`: style cho luồng xác nhận xóa.
 - `IngredientModal.test.jsx`: kiểm tra trạng thái, ký hiệu tiền và footer.
+
+`IngredientList.scss` không cần sửa vì luồng xóa mới tái sử dụng Modal, Button và các kiểu danh sách chặn đã có sẵn.
 
 ## Tiêu chí nghiệm thu
 
@@ -46,7 +47,13 @@ Hợp đồng dữ liệu và quyền truy cập hiện đúng. Vấn đề nằ
 - Không thêm thư viện hay abstraction modal mới.
 - Không thiết kế lại toàn bộ trang kho.
 
-## Kiểm tra dự kiến
+## Kiểm tra
+
+- Đã đọc lại file sau cập nhật và kiểm tra tĩnh luồng mở modal, xác nhận, loading, undo và lỗi bị chặn.
+- Đã xác nhận `Modal.Body` và `Modal.Footer` hỗ trợ class riêng, focus trap và khóa cuộn trang.
+- Chưa chạy Vitest hoặc build vì môi trường GitHub connector không cung cấp checkout/runtime cục bộ.
+
+Lệnh kiểm tra tập trung khi chạy ở máy phát triển:
 
 ```bash
 npx vitest run src/components/Dashboard_Manager/Storage/components/ingredients/IngredientModal.test.jsx
