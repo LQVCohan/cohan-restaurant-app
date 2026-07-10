@@ -1,0 +1,33 @@
+{
+  "id": "table-management-layout-cleanup",
+  "name": "table-management-layout-cleanup",
+  "title": "Clean up manager table layout",
+  "description": "Simplify the manager table page into a full-width operational layout, remove wasted desktop space, improve table-card hierarchy, and preserve all existing table workflows.",
+  "status": "in_progress",
+  "dev_type": "ui-fix",
+  "scope": "manager-tables",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
+    "src/components/Dashboard_Manager/Table/TableManagementFinalQC.scss",
+    "src/hooks/useTableManagement.js",
+    "cohan-restaurant-backend/graphql/schema/floor_table.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/table/query.js",
+    "cohan-restaurant-backend/graphql/resolvers/table/mutation.js",
+    "cohan-restaurant-backend/models/table.model.js"
+  ],
+  "notes": "The data contract and table actions are already correct. The visual root cause is the late TableManagementFinalQC layout forcing a narrow sticky sidebar and fixed-width cards, leaving large unused space. The implementation changes only the authoritative page layout stylesheet."
+}
