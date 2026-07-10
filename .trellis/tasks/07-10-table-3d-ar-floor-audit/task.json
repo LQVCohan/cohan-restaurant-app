@@ -26,8 +26,15 @@
       "read relevant ponytail, frontend-design, react performance, UI/UX, redesign, WCAG, and web guideline skills",
       "traced upload route and custom model builder through catalog hook, preview launcher, model-viewer modal, action bar, and tests",
       "confirmed the global preview has no GraphQL persistence mutation",
-      "confirmed model-viewer supports floor AR placement, canActivateAR, ar-status, fixed AR scale, and WebXR environment lighting"
+      "confirmed model-viewer supports floor AR placement, canActivateAR, ar-status, fixed AR scale, and WebXR environment lighting",
+      "removed the 2D camera action and camera-overlay caller from the global modal",
+      "replaced unsupported model-scale with scale and configured floor placement plus xr-environment",
+      "gated the AR action with model-viewer canActivateAR after model load",
+      "updated direct component and mobile smoke expectations"
     ],
-    "notRun": []
+    "notRun": [
+      "Targeted Vitest, Playwright, conflict check, and build could not run because the available runtime cannot resolve github.com to obtain a checkout and no workflow run was created for the direct main-branch commits.",
+      "Physical Android/iOS floor detection remains pending because it requires an AR-capable device, HTTPS, camera permission, and a real surface."
+    ]
   }
 }
