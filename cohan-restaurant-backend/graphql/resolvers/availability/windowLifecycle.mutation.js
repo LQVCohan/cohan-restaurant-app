@@ -36,6 +36,29 @@ async function assertPeriodCanReceiveRegistration({
   }
 }
 
+function resolveManualOpenRange(windowDoc, now = new Date()) {
+  const periodStart = new Date(windowDoc?.periodStart);
+  const periodEnd = new Date(windowDoc?.periodEnd);
+  if (
+    Number.isNaN(periodStart.getTime()) ||
+    Number.isNaN(periodEnd.getTime()) ||
+    periodEnd <= now
+  ) {
+    throw new Error("AVAILABILITY_WINDOW_PERIOD_ENDED");
+  }
+
+  const configuredCloseAt = new Date(windowDoc?.closeAt);
+  let closeAt = configuredCloseAt;
+  if (Number.isNaN(closeAt.getTime()) || closeAt <= now) {
+    closeAt =
+      periodStart > now
+        ? new Date(periodStart.getTime() - 60 * 1000)
+        : periodEnd;
+  }
+
+  return { openAt: now, closeAt };
+}
+
 async function atomicallyOpenWindow(windowDoc) {
   const status = String(windowDoc?.status || "draft").toLowerCase();
   if (status === "open") return windowDoc;
@@ -43,11 +66,21 @@ async function atomicallyOpenWindow(windowDoc) {
     throw new Error("AVAILABILITY_WINDOW_INVALID_OPEN_TRANSITION");
   }
 
+  const mode = String(
+    windowDoc?.registrationModeSnapshot || windowDoc?.registrationMode || "manual",
+  ).toLowerCase();
+  const timing =
+    mode === "manual"
+      ? resolveManualOpenRange(windowDoc)
+      : {
+          openAt: windowDoc.openAt,
+          closeAt: windowDoc.closeAt,
+        };
   const id = windowDoc?._id || windowDoc?.id;
   const updated = await AvailabilityRegistrationWindow.findOneAndUpdate(
     { _id: id, status: { $in: ["draft", "closed"] } },
     {
-      $set: { status: "open" },
+      $set: { status: "open", ...timing },
       $unset: { closedAt: "", closedBy: "" },
     },
     { new: true },
@@ -74,13 +107,20 @@ export default {
     });
 
     const availabilityPolicy = policy?.availabilityRegistrationPolicy || {};
+    const manualTiming =
+      schedule.mode === "manual"
+        ? resolveManualOpenRange({
+            periodStart: schedule.periodStart,
+            periodEnd: schedule.periodEnd,
+            closeAt: schedule.closeAt,
+          })
+        : { openAt: schedule.openAt, closeAt: schedule.closeAt };
     const windowDoc = await createOrGetAvailabilityRegistrationWindow(
       {
         ...input,
         periodStart: schedule.periodStart,
         periodEnd: schedule.periodEnd,
-        openAt: schedule.openAt,
-        closeAt: schedule.closeAt,
+        ...manualTiming,
         status: schedule.mode === "manual" ? "open" : "draft",
         registrationModeSnapshot: schedule.mode,
         targetEmploymentTypes:
