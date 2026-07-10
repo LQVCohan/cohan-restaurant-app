@@ -26,9 +26,13 @@ const CONFIRM_ATTEMPT_WINDOW_MS = 5 * 60 * 1000;
 const confirmationAttempts = new Map();
 
 function getConfirmationAttemptKey(requestToken) {
-  return createHash("sha256")
-    .update(String(requestToken || ""))
-    .digest("hex");
+  const rawToken = String(requestToken || "");
+  const payload = jwt.decode(rawToken) || {};
+  const stableScope =
+    payload?.sid && payload?.req && payload?.dh
+      ? `${String(payload.sid)}:${String(payload.req)}:${String(payload.dh)}`
+      : rawToken;
+  return createHash("sha256").update(stableScope).digest("hex");
 }
 
 function consumeConfirmationAttempt(requestToken, now = Date.now()) {
@@ -231,6 +235,7 @@ export const PublicTableOrderAccessMutation = {
 };
 
 export const __testables = {
+  getConfirmationAttemptKey,
   consumeConfirmationAttempt,
   clearConfirmationAttempts,
   confirmationAttempts,
