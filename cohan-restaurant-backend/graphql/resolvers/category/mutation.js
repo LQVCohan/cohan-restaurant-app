@@ -9,7 +9,13 @@ import {
 
 export const CategoryMutation = {
   createCategory: async (_, { input }, ctx) => {
-    const { restaurantId, name, icon = "🍽️", order = 0 } = input;
+    const {
+      restaurantId,
+      name,
+      icon = "🍽️",
+      order = 0,
+      isActive = true,
+    } = input;
     if (restaurantId == null) throw new GraphQLError("restaurantId is required");
     if (!mongoose.isValidObjectId(restaurantId)) throw new GraphQLError("Invalid restaurantId");
     await requireMenuPermission(ctx, restaurantId, MENU_PERMISSION.MANAGE_CATEGORY);
@@ -28,7 +34,7 @@ export const CategoryMutation = {
           name: normalizedName,
           icon: normalizedIcon,
           order,
-          isActive: true,
+          isActive: !!isActive,
         },
       },
       { new: true, upsert: true }

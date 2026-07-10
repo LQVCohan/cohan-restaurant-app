@@ -1,0 +1,31 @@
+{
+  "id": "category-create-ui",
+  "name": "category-create-ui",
+  "title": "Fix category creation contract and improve category manager UX",
+  "description": "Align category creation isActive state across GraphQL and resolver, then polish the existing manager category modal without changing its data flow or dependencies.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "manager-menu-category",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "agent/fix-category-create-ui",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/schema/category.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/category/mutation.js",
+    "cohan-restaurant-backend/tests/resolvers/category-modifier-restaurant-access.test.js",
+    "src/components/Dashboard_Manager/Menu/components/DishCategoryModal/DishCategoryModal.jsx",
+    "src/components/Dashboard_Manager/Menu/components/DishCategoryModal/DishCategoryModalPolish.scss"
+  ],
+  "notes": "No new dependency. Preserve restaurant permission checks, existing Apollo operations, draft recovery, delete protection, and refetch behavior."
+}
