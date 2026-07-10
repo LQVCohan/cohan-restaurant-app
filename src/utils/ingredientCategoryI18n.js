@@ -4,6 +4,8 @@ const VI_BY_EN = {
   vegetable: "Rau củ",
   spice: "Gia vị",
   starch: "Tinh bột",
+  grain: "Tinh bột",
+  dairy: "Sữa & trứng",
   "dairy & egg": "Sữa & trứng",
   beverage: "Đồ uống",
   other: "Khác",
