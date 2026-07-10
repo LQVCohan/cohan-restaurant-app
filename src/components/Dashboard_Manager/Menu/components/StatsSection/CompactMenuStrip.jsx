@@ -1,8 +1,6 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   FiActivity,
-  FiChevronLeft,
-  FiChevronRight,
   FiClock,
   FiCopy,
   FiEdit3,
@@ -26,19 +24,37 @@ import AuditLogModal from "../AuditLogModal/AuditLogModal";
 import "./CompactMenuStrip.scss";
 import "./CompactMenuStripPolish.scss";
 
+const SLOT_ORDER = ["breakfast", "lunch", "dinner", "late_night"];
+
 const SLOT_CONFIG = {
-  breakfast: { label: "Bữa sáng" },
-  lunch: { label: "Bữa trưa" },
-  dinner: { label: "Bữa tối" },
-  late_night: { label: "Bữa khuya" },
+  breakfast: {
+    label: "Bữa sáng",
+    description: "Thực đơn phục vụ đầu ngày",
+  },
+  lunch: {
+    label: "Bữa trưa",
+    description: "Thực đơn phục vụ buổi trưa",
+  },
+  dinner: {
+    label: "Bữa tối",
+    description: "Thực đơn phục vụ buổi tối",
+  },
+  late_night: {
+    label: "Bữa khuya",
+    description: "Thực đơn phục vụ khung giờ khuya",
+  },
 };
+
+const compactNumberFormatter = new Intl.NumberFormat("vi-VN", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
 
 const formatCompactRevenue = (value) => {
   const number = Number(value || 0);
-  if (!Number.isFinite(number) || number <= 0) return "--";
-  if (number >= 1000000) return `${(number / 1000000).toFixed(1)} triệu`;
-  if (number >= 1000) return `${Math.round(number / 1000)} nghìn`;
-  return String(Math.round(number));
+  return Number.isFinite(number) && number > 0
+    ? compactNumberFormatter.format(number)
+    : "--";
 };
 
 const CompactMenuStrip = ({
@@ -57,7 +73,6 @@ const CompactMenuStrip = ({
   onSyncInventory,
 }) => {
   const auth = useContext(AuthContext);
-  const scrollRef = useRef(null);
   const [internalActiveId, setInternalActiveId] = useState(null);
   const [historyMenu, setHistoryMenu] = useState(null);
   const [busyMenuId, setBusyMenuId] = useState(null);
@@ -79,21 +94,42 @@ const CompactMenuStrip = ({
     auth?.user,
     MENU_MANAGEMENT_ACTIONS.VIEW_AUDIT,
   );
+
   const currentActiveId =
     activeMenuId !== undefined ? activeMenuId : internalActiveId;
   const restaurantId =
     menus.find((menu) => menu?.restaurantId)?.restaurantId || null;
+  const menusBySlot = new Map(
+    menus
+      .filter((menu) => menu?.timeSlot)
+      .map((menu) => [menu.timeSlot, menu]),
+  );
+  const missingSlotCount = SLOT_ORDER.filter(
+    (timeSlot) => !menusBySlot.has(timeSlot),
+  ).length;
 
   useEffect(() => {
     if (!menus.length || currentActiveId || activeMenuId) return;
-    setInternalActiveId(menus[0].id);
-    onSelectMenu?.(menus[0]);
-  }, [menus, currentActiveId, activeMenuId, onSelectMenu]);
+    const selectedMenu =
+      menus.find((menu) => menu.timeSlot === selectedTimeSlot) || menus[0];
+    setInternalActiveId(selectedMenu.id);
+    onSelectMenu?.(selectedMenu);
+  }, [
+    activeMenuId,
+    currentActiveId,
+    menus,
+    onSelectMenu,
+    selectedTimeSlot,
+  ]);
 
   const selectMenu = (menu) => {
     setInternalActiveId(menu.id);
     onSelectMenu?.(menu);
-    onTimeSlotChange?.(menu?.timeSlot || null);
+    onTimeSlotChange?.(menu.timeSlot || null);
+  };
+
+  const selectEmptySlot = (timeSlot) => {
+    onTimeSlotChange?.(timeSlot);
   };
 
   const handleSyncInventory = async () => {
@@ -138,110 +174,130 @@ const CompactMenuStrip = ({
     }
   };
 
-  const scroll = (direction) => {
-    scrollRef.current?.scrollBy({
-      left: direction === "left" ? -300 : 300,
-      behavior: "smooth",
-    });
-  };
-
   return (
     <>
-      <div className="cms-container">
+      <section className="cms-container" aria-labelledby="cms-title">
         <div className="cms-header">
           <div className="cms-info">
-            <div className="cms-icon-box">
+            <div className="cms-icon-box" aria-hidden="true">
               <FiLayers size={22} />
             </div>
             <div className="cms-title-box">
-              <h3>Các thực đơn của nhà hàng</h3>
+              <h3 id="cms-title">Quản lý thực đơn theo khung giờ</h3>
               <p>
-                Chọn một thực đơn để quản lý món. Hiện có{" "}
-                <strong>{menus.length}</strong> thực đơn theo các khung giờ.
+                Luôn hiển thị đủ 4 khung giờ. Hiện có <strong>{menus.length}</strong>
+                {" "}thực đơn và <strong>{missingSlotCount}</strong> khung giờ chưa tạo.
               </p>
             </div>
           </div>
 
           <div className="cms-actions">
-            <div className="cms-nav-group">
-              <button
-                type="button"
-                className="cms-nav-btn"
-                aria-label="Cuộn danh sách thực đơn sang trái"
-                onClick={() => scroll("left")}
-                disabled={!menus.length}
-              >
-                <FiChevronLeft />
-              </button>
-              <button
-                type="button"
-                className="cms-nav-btn"
-                aria-label="Cuộn danh sách thực đơn sang phải"
-                onClick={() => scroll("right")}
-                disabled={!menus.length}
-              >
-                <FiChevronRight />
-              </button>
-            </div>
-
             {canSyncInventory && (
               <button
                 type="button"
-                className="cms-btn-add"
-                aria-label="Kiểm tra tồn kho của thực đơn"
+                className="cms-btn-add cms-btn-add--secondary"
+                aria-label="Kiểm tra tồn kho của thực đơn đang chọn"
                 onClick={handleSyncInventory}
                 disabled={!restaurantId || isSyncingInventory}
                 title="Cập nhật trạng thái món theo tồn kho nguyên liệu"
               >
-                <FiRefreshCw />
+                <FiRefreshCw aria-hidden="true" />
                 <span className="text">
-                  {isSyncingInventory
-                    ? "Đang kiểm tra..."
-                    : "Kiểm tra tồn kho"}
+                  {isSyncingInventory ? "Đang kiểm tra…" : "Kiểm tra tồn kho"}
                 </span>
               </button>
             )}
 
-            {canAddMenu && (
+            {canAddMenu && missingSlotCount > 0 && (
               <button
                 className="cms-btn-add"
                 type="button"
-                aria-label="Tạo thực đơn theo khung giờ"
+                aria-label="Tạo thực đơn cho một khung giờ chưa có"
                 onClick={() => onAddMenu()}
               >
-                <FiPlus /> <span className="text">Tạo thực đơn</span>
+                <FiPlus aria-hidden="true" />
+                <span className="text">Tạo thực đơn</span>
               </button>
             )}
           </div>
         </div>
 
         {menusError && (
-          <div className="cms-action-msg cms-action-msg--error">
+          <div className="cms-action-msg cms-action-msg--error" role="alert">
             Không thể tải thực đơn: {menusError.message}
           </div>
         )}
         {actionError && (
-          <div className="cms-action-msg cms-action-msg--error">
+          <div className="cms-action-msg cms-action-msg--error" role="alert">
             {actionError}
           </div>
         )}
         {actionMessage && (
-          <div className="cms-action-msg cms-action-msg--success">
+          <div
+            className="cms-action-msg cms-action-msg--success"
+            role="status"
+            aria-live="polite"
+          >
             {actionMessage}
           </div>
         )}
 
-        <div className="cms-viewport">
-          <div className="cms-track" ref={scrollRef}>
-            {!menusLoading &&
-              menus.map((menu) => {
-                const slot =
-                  SLOT_CONFIG[menu.timeSlot] || SLOT_CONFIG.breakfast;
-                const active = currentActiveId === menu.id;
+        <div className="cms-slot-grid" aria-label="4 khung giờ thực đơn">
+          {menusLoading && menus.length === 0
+            ? SLOT_ORDER.map((timeSlot) => (
+                <article
+                  key={timeSlot}
+                  className="cms-card cms-card--loading"
+                  aria-label={`Đang tải ${SLOT_CONFIG[timeSlot].label}`}
+                >
+                  <span className="cms-skeleton cms-skeleton--badge" />
+                  <span className="cms-skeleton cms-skeleton--title" />
+                  <span className="cms-skeleton cms-skeleton--line" />
+                  <span className="cms-skeleton cms-skeleton--stats" />
+                </article>
+              ))
+            : SLOT_ORDER.map((timeSlot) => {
+                const slot = SLOT_CONFIG[timeSlot];
+                const menu = menusBySlot.get(timeSlot);
+
+                if (!menu) {
+                  const selected = selectedTimeSlot === timeSlot;
+                  return (
+                    <article
+                      key={timeSlot}
+                      className={`cms-card cms-card--empty ${selected ? "cms-active" : ""}`}
+                    >
+                      {selected && <div className="cms-indicator" />}
+                      <button
+                        type="button"
+                        className="cms-empty-select"
+                        onClick={() => selectEmptySlot(timeSlot)}
+                        aria-pressed={selected}
+                        aria-label={`Chọn ${slot.label}, chưa có thực đơn`}
+                      >
+                        <span
+                          className={`cms-slot-tag cms-slot-tag--${timeSlot.replace(/_/g, "-")}`}
+                        >
+                          <FiClock aria-hidden="true" />
+                          {slot.label}
+                        </span>
+                        <span className="cms-empty-icon" aria-hidden="true">
+                          <FiPlus />
+                        </span>
+                        <strong>Chưa có thực đơn</strong>
+                        <span>{slot.description}</span>
+                        <small>Chọn khung giờ này rồi dùng nút “Tạo thực đơn”.</small>
+                      </button>
+                    </article>
+                  );
+                }
+
+                const active =
+                  currentActiveId === menu.id || selectedTimeSlot === timeSlot;
                 const busy = busyMenuId === menu.id;
 
                 return (
-                  <div
+                  <article
                     key={menu.id}
                     className={`cms-card ${active ? "cms-active" : ""} ${menu.isActive === false ? "cms-disabled" : ""}`}
                   >
@@ -251,6 +307,7 @@ const CompactMenuStrip = ({
                       type="button"
                       className="cms-card-select"
                       onClick={() => selectMenu(menu)}
+                      aria-pressed={active}
                     >
                       <div className="cms-card-top">
                         <div className="cms-img-box">
@@ -269,25 +326,25 @@ const CompactMenuStrip = ({
 
                           {menu.categoryMenu?.name && (
                             <span className="cms-cate-badge">
-                              Nhóm: {menu.categoryMenu.name}
+                              Bộ: {menu.categoryMenu.name}
                             </span>
                           )}
                         </div>
 
                         <div className="cms-badges">
                           <span
-                            className={`cms-slot-tag cms-slot-tag--${String(
-                              menu.timeSlot || "breakfast",
-                            ).replace(/_/g, "-")}`}
+                            className={`cms-slot-tag cms-slot-tag--${timeSlot.replace(/_/g, "-")}`}
                           >
-                            <FiClock size={10} className="cms-slot-tag__icon" />{" "}
+                            <FiClock aria-hidden="true" />
                             {slot.label}
                           </span>
-                          {menu.isActive === false && (
-                            <span className="cms-status-off">
-                              Đang ẩn với khách
-                            </span>
-                          )}
+                          <span
+                            className={`cms-visibility-status ${menu.isActive === false ? "is-hidden" : "is-visible"}`}
+                          >
+                            {menu.isActive === false
+                              ? "Đang ẩn với khách"
+                              : "Đang hiển thị"}
+                          </span>
                         </div>
                       </div>
 
@@ -297,44 +354,43 @@ const CompactMenuStrip = ({
                           {menu.description || "Chưa có mô tả"}
                         </p>
                         <div className="cms-stats">
-                          <div className="cms-stat-item" title="Số món trong thực đơn">
-                            <FiLayers className="ic" />{" "}
+                          <div
+                            className="cms-stat-item"
+                            title="Số món trong thực đơn"
+                          >
+                            <FiLayers className="ic" aria-hidden="true" />
                             <strong>{menu.itemCount || 0}</strong>
+                            <span>món</span>
                           </div>
                           <div className="cms-stat-item" title="Điểm đánh giá">
-                            <FiStar className="ic star" />{" "}
+                            <FiStar className="ic star" aria-hidden="true" />
                             <strong>{menu.rating ?? "--"}</strong>
                           </div>
                           <div
                             className="cms-stat-item"
                             title={`Đơn hàng: ${menu.orderCount || 0} · Số phần đã bán: ${menu.soldItemCount || 0}`}
                           >
-                            <FiTrendingUp className="ic grow" />{" "}
-                            <strong>
-                              {formatCompactRevenue(menu.revenue)}
-                            </strong>
+                            <FiTrendingUp
+                              className="ic grow"
+                              aria-hidden="true"
+                            />
+                            <strong>{formatCompactRevenue(menu.revenue)}</strong>
                           </div>
                         </div>
                       </div>
                     </button>
 
-                    <div className="cms-toolbar">
+                    <div className="cms-toolbar" aria-label={`Thao tác ${menu.name}`}>
                       {canEditMenu && (
-                        <>
-                          <button
-                            type="button"
-                            className="cms-tool-btn is-edit"
-                            aria-label={`Chỉnh sửa thực đơn ${menu.name}`}
-                            title="Chỉnh sửa thực đơn"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              onEditMenu(menu);
-                            }}
-                          >
-                            <FiEdit3 /> <span>Chỉnh sửa</span>
-                          </button>
-                          <div className="cms-div" />
-                        </>
+                        <button
+                          type="button"
+                          className="cms-tool-btn is-edit"
+                          aria-label={`Chỉnh sửa thực đơn ${menu.name}`}
+                          onClick={() => onEditMenu(menu)}
+                        >
+                          <FiEdit3 aria-hidden="true" />
+                          <span>Sửa</span>
+                        </button>
                       )}
 
                       {canToggleMenuActive && (
@@ -346,17 +402,13 @@ const CompactMenuStrip = ({
                               ? `Hiển thị lại thực đơn ${menu.name}`
                               : `Ẩn thực đơn ${menu.name}`
                           }
-                          title={
-                            menu.isActive === false
-                              ? "Hiển thị lại với khách"
-                              : "Ẩn khỏi trang khách hàng"
-                          }
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onToggleMenuActive(menu);
-                          }}
+                          onClick={() => onToggleMenuActive(menu)}
                         >
-                          {menu.isActive === false ? <FiEye /> : <FiEyeOff />}
+                          {menu.isActive === false ? (
+                            <FiEye aria-hidden="true" />
+                          ) : (
+                            <FiEyeOff aria-hidden="true" />
+                          )}
                           <span>
                             {menu.isActive === false ? "Hiển thị" : "Ẩn"}
                           </span>
@@ -370,13 +422,10 @@ const CompactMenuStrip = ({
                           aria-label={`Sao chép thực đơn ${menu.name}`}
                           title="Sao chép thực đơn, món ăn và công thức"
                           disabled={!!busyMenuId}
-                          onClick={async (event) => {
-                            event.stopPropagation();
-                            await onCopyMenu(menu);
-                          }}
+                          onClick={() => onCopyMenu(menu)}
                         >
-                          <FiCopy />
-                          {busy && <span>Đang xử lý</span>}
+                          <FiCopy aria-hidden="true" />
+                          <span>{busy ? "Đang xử lý…" : "Sao chép"}</span>
                         </button>
                       )}
 
@@ -385,13 +434,10 @@ const CompactMenuStrip = ({
                           type="button"
                           className="cms-tool-btn is-history"
                           aria-label={`Xem lịch sử thực đơn ${menu.name}`}
-                          title="Xem lịch sử thay đổi"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setHistoryMenu(menu);
-                          }}
+                          onClick={() => setHistoryMenu(menu)}
                         >
-                          <FiActivity />
+                          <FiActivity aria-hidden="true" />
+                          <span>Lịch sử</span>
                         </button>
                       )}
 
@@ -400,41 +446,19 @@ const CompactMenuStrip = ({
                           type="button"
                           className="cms-tool-btn is-delete"
                           aria-label={`Xóa thực đơn ${menu.name}`}
-                          title="Xóa thực đơn"
                           disabled={!!busyMenuId}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleDeleteMenu(menu);
-                          }}
+                          onClick={() => handleDeleteMenu(menu)}
                         >
-                          <FiTrash2 />
-                          {busy && <span>Đang xử lý</span>}
+                          <FiTrash2 aria-hidden="true" />
+                          <span>Xóa</span>
                         </button>
                       )}
                     </div>
-                  </div>
+                  </article>
                 );
               })}
-
-            {!menusLoading && canAddMenu && (
-              <button
-                type="button"
-                className="cms-card cms-ghost"
-                onClick={() => onAddMenu()}
-              >
-                <div className="cms-ghost-inner">
-                  <div className="cms-ghost-circle">
-                    <FiPlus size={24} />
-                  </div>
-                  <h4>Tạo thực đơn theo khung giờ</h4>
-                </div>
-              </button>
-            )}
-
-            <div className="cms-spacer" />
-          </div>
         </div>
-      </div>
+      </section>
 
       <AuditLogModal
         isOpen={!!historyMenu}
