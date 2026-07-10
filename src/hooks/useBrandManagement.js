@@ -246,6 +246,16 @@ export default function useBrandManagement(
     [allManageableRestaurants, legacyRestaurants, restaurantsInSelectedBrand, selectedBrandId],
   );
 
+  const resolvedRestaurantId = useMemo(() => {
+    if (brandScopeLoading || !activeRestaurantOptions.length) return "";
+    if (selectedRestaurantId && activeRestaurantOptions.some((restaurant) => restaurant.id === selectedRestaurantId)) {
+      return selectedRestaurantId;
+    }
+    return activeRestaurantOptions.length === 1 || !selectedRestaurantId
+      ? activeRestaurantOptions[0].id
+      : "";
+  }, [activeRestaurantOptions, brandScopeLoading, selectedRestaurantId]);
+
   useEffect(() => {
     if (skip || !userId || brandScopeLoading) return;
     const availableBrandIds = brands.map((brand) => String(brand.id));
@@ -271,17 +281,13 @@ export default function useBrandManagement(
   }, []);
 
   useEffect(() => {
-    if (brandScopeLoading) return;
-    setSelectedRestaurantIdState((currentId) => {
-      if (!activeRestaurantOptions.length) return "";
-      if (currentId && activeRestaurantOptions.some((restaurant) => restaurant.id === currentId)) return currentId;
-      return activeRestaurantOptions.length === 1 || !currentId ? activeRestaurantOptions[0].id : "";
-    });
-  }, [activeRestaurantOptions, brandScopeLoading]);
+    if (brandScopeLoading || resolvedRestaurantId === selectedRestaurantId) return;
+    setSelectedRestaurantIdState(resolvedRestaurantId);
+  }, [brandScopeLoading, resolvedRestaurantId, selectedRestaurantId]);
 
   const selectedRestaurant = useMemo(
-    () => activeRestaurantOptions.find((restaurant) => restaurant.id === selectedRestaurantId) || null,
-    [activeRestaurantOptions, selectedRestaurantId],
+    () => activeRestaurantOptions.find((restaurant) => restaurant.id === resolvedRestaurantId) || null,
+    [activeRestaurantOptions, resolvedRestaurantId],
   );
 
   return {
@@ -295,7 +301,7 @@ export default function useBrandManagement(
     restaurantsInSelectedBrand,
     legacyRestaurants,
     allManageableRestaurants,
-    selectedRestaurantId,
+    selectedRestaurantId: resolvedRestaurantId,
     setSelectedRestaurantId,
     selectedRestaurant,
     hasBrands: brands.length > 0,
