@@ -55,10 +55,36 @@ const EN_CATEGORY_BY_ALIAS = {
   khac: "Other",
 };
 
+const VI_INGREDIENT_CATEGORY_BY_ALIAS = {
+  meat: "Thịt",
+  thit: "Thịt",
+  seafood: "Hải sản",
+  hai_san: "Hải sản",
+  vegetable: "Rau củ",
+  rau_cu: "Rau củ",
+  spice: "Gia vị",
+  gia_vi: "Gia vị",
+  starch: "Tinh bột",
+  tinh_bot: "Tinh bột",
+  dairy_egg: "Sữa & trứng",
+  sua_trung: "Sữa & trứng",
+  beverage: "Đồ uống",
+  do_uong: "Đồ uống",
+  drink: "Đồ uống",
+  other: "Khác",
+  khac: "Khác",
+};
+
 export const toEnglishCategoryName = (s) => {
   const alias = normalizeCategoryAlias(s);
   if (EN_CATEGORY_BY_ALIAS[alias]) return EN_CATEGORY_BY_ALIAS[alias];
   return titleCase(normalizeText(s));
+};
+
+export const toVietnameseIngredientCategoryName = (s) => {
+  const value = String(s || "").trim().replace(/\s+/g, " ");
+  const alias = normalizeCategoryAlias(value);
+  return VI_INGREDIENT_CATEGORY_BY_ALIAS[alias] || value;
 };
 
 export const INGREDIENT_CATEGORY_RULES = [
