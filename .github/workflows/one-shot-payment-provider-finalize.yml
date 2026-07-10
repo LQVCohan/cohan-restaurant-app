@@ -1,0 +1,66 @@
+name: One-shot payment provider finalize
+
+on:
+  push:
+    branches: [fix/payment-provider-flow-20260710]
+    paths:
+      - .github/scripts/finalize_payment_provider_flow.py
+      - .github/workflows/one-shot-payment-provider-finalize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply patch and run focused validation
+        id: validate
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          {
+            git fetch origin main
+            python .github/scripts/finalize_payment_provider_flow.py
+            git diff --check
+            node --check cohan-restaurant-backend/src/services/payment/providers.js
+            node --check cohan-restaurant-backend/src/services/payment/paymentSession.service.js
+            node --check cohan-restaurant-backend/src/server/createServer.js
+            npm ci
+            npm --prefix cohan-restaurant-backend ci
+            npm --prefix cohan-restaurant-backend test -- tests/services/payment-providers.security.test.js tests/server/payment-provider-callback-contract.test.js
+            npx vitest run src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx
+            npm run check:graphql
+            npm run build
+          } 2>&1 | tee /tmp/payment-provider-finalize.log
+
+      - name: Commit verified patch
+        if: steps.validate.outcome == 'success'
+        run: |
+          rm .github/scripts/finalize_payment_provider_flow.py
+          rm .github/workflows/one-shot-payment-provider-finalize.yml
+          git config user.name "COHAN Agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(payment): finalize provider callback flow"
+          git push origin HEAD:fix/payment-provider-flow-20260710
+
+      - name: Commit diagnostic on failure
+        if: steps.validate.outcome != 'success'
+        run: |
+          git reset --hard "$GITHUB_SHA"
+          rm .github/workflows/one-shot-payment-provider-finalize.yml
+          mkdir -p .trellis/tasks/payment-provider-flow-audit-20260710
+          cp /tmp/payment-provider-finalize.log .trellis/tasks/payment-provider-flow-audit-20260710/one-shot-diagnostic.txt
+          git config user.name "COHAN Agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git add -f .trellis/tasks/payment-provider-flow-audit-20260710/one-shot-diagnostic.txt
+          git commit -m "chore(payment): record finalizer diagnostic"
+          git push origin HEAD:fix/payment-provider-flow-20260710
