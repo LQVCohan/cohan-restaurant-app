@@ -11,8 +11,8 @@
   "completedAt": null,
   "branch": "fix/auth-stale-profile-account-switch-20260710",
   "base_branch": "main",
-  "commit": null,
-  "pr_url": null,
+  "commit": "c56561a01d57f05823608002424fa2889ec641bb",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1335",
   "relatedFiles": [
     "src/context/AuthProvider.jsx",
     "src/context/__tests__/AuthProvider.login-race.test.jsx"
