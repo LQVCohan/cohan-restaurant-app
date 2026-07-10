@@ -8,17 +8,26 @@ import {
   classifyCategoryFromName,
   INGREDIENT_CATEGORY_RULES,
   slugify,
-  titleCase,
-  toEnglishCategoryName,
+  toVietnameseIngredientCategoryName,
 } from "./categoryAi.shared.js";
 
-const classifyCategoryFromIngredient = (ingredient, existingCategoryName) =>
-  classifyCategoryFromName({
+const classifyCategoryFromIngredient = (ingredient, existingCategoryName) => {
+  const currentName = String(existingCategoryName || ingredient?.category || "").trim();
+  if (currentName) {
+    return {
+      categoryName: currentName,
+      reason: "existing_category",
+      confidence: 0.96,
+      matchedKeyword: null,
+    };
+  }
+
+  return classifyCategoryFromName({
     itemName: ingredient?.name,
-    existingCategoryName: existingCategoryName || ingredient?.category,
     rules: INGREDIENT_CATEGORY_RULES,
     fallbackCategory: "Other",
   });
+};
 
 async function runIngredientCategorySync(restaurantId, ctx) {
   const session = await mongoose.startSession();
@@ -63,13 +72,14 @@ async function runIngredientCategorySync(restaurantId, ctx) {
     );
 
     const usageBySlug = new Map();
+    const nameBySlug = new Map();
     const targetCategoryByIngredientId = new Map();
 
     for (const ingredient of ingredients) {
       try {
         const linked = existingById.get(String(ingredient.ingredientCategoryId || ""));
         const result = classifyCategoryFromIngredient(ingredient, linked?.name);
-        const normalizedName = toEnglishCategoryName(result.categoryName);
+        const normalizedName = toVietnameseIngredientCategoryName(result.categoryName);
         const slug = slugify(normalizedName);
         if (!slug) {
           stats.skipped += 1;
@@ -77,6 +87,7 @@ async function runIngredientCategorySync(restaurantId, ctx) {
         }
 
         usageBySlug.set(slug, (usageBySlug.get(slug) || 0) + 1);
+        nameBySlug.set(slug, normalizedName);
         targetCategoryByIngredientId.set(String(ingredient._id), normalizedName);
 
         classificationDetails.push({
@@ -95,7 +106,9 @@ async function runIngredientCategorySync(restaurantId, ctx) {
     const categoryOps = [];
     for (const [slug, usageCount] of usageBySlug.entries()) {
       const existing = existingBySlug.get(slug);
-      const name = titleCase(existing?.name || slug.replace(/-/g, " "));
+      const name = toVietnameseIngredientCategoryName(
+        existing?.name || nameBySlug.get(slug) || slug.replace(/-/g, " "),
+      );
 
       if (existing) {
         stats.categoriesUpdated += 1;
@@ -139,7 +152,7 @@ async function runIngredientCategorySync(restaurantId, ctx) {
     const ingredientOps = [];
     for (const ingredient of ingredients) {
       const target = targetCategoryByIngredientId.get(String(ingredient._id));
-      const current = titleCase(ingredient.category);
+      const current = toVietnameseIngredientCategoryName(ingredient.category);
       const targetSlug = slugify(target);
       const targetCategory = syncedCategoryBySlug.get(targetSlug);
       if (!target) {
@@ -174,7 +187,7 @@ async function runIngredientCategorySync(restaurantId, ctx) {
       stats.ingredientsReassigned = Number(writeResult.modifiedCount || 0);
     }
 
-    const summaryText = `processed=${stats.totalIngredients}, created=${stats.categoriesCreated}, updated=${stats.categoriesUpdated}, reassigned=${stats.ingredientsReassigned}, skipped=${stats.skipped}, errors=${stats.errors}`;
+    const summaryText = `${stats.totalIngredients} nguyên liệu · ${stats.categoriesCreated} danh mục mới · ${stats.categoriesUpdated} danh mục cập nhật · ${stats.ingredientsReassigned} nguyên liệu gán lại · ${stats.errors} lỗi`;
 
     await EventLog.log(
       {
@@ -222,7 +235,7 @@ export default {
       throw new GraphQLError("Invalid restaurantId");
     }
     await requireRestaurantPermission(ctx, input.restaurantId, PERMISSIONS.INVENTORY_WRITE);
-    const name = toEnglishCategoryName(input?.name);
+    const name = toVietnameseIngredientCategoryName(input?.name);
     if (!name) throw new GraphQLError("Category name is required");
     const slug = slugify(name);
     if (!slug) throw new GraphQLError("Category name is invalid");
@@ -254,7 +267,7 @@ export default {
       delete input?.restaurantId;
       let renamedName = null;
       if (typeof name === "string") {
-        const nextName = toEnglishCategoryName(name);
+        const nextName = toVietnameseIngredientCategoryName(name);
         const nextSlug = slugify(nextName);
         if (!nextName || !nextSlug) {
           throw new GraphQLError("Category name is invalid");
