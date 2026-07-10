@@ -7,6 +7,8 @@ import {
   FileText,
   FileSpreadsheet,
   Store,
+  Warehouse,
+  Settings2,
   ChevronDown,
   Loader2,
   Coins,
@@ -20,6 +22,7 @@ import {
   hasAnyPermission,
   NO_PERMISSION_MESSAGE,
 } from "@/utils/frontendPermissionAccess";
+import WarehouseManagementDialog from "../../components/warehouses/WarehouseManagementDialog";
 import "./Header.scss";
 
 const Header = ({
@@ -27,6 +30,10 @@ const Header = ({
   currentRestaurantId = "",
   onRestaurantChange,
   restaurantsLoading = false,
+  warehouses = [],
+  selectedWarehouseId = null,
+  onWarehouseChange,
+  warehousesLoading = false,
   activeCurrency = "VND",
   onCurrencyChange,
   manualRate = 26000,
@@ -39,10 +46,15 @@ const Header = ({
   const canWriteInventory = hasAnyPermission(user, ["inventory.write", "stock.write"]);
   const disabledWriteTitle = canWriteInventory ? undefined : NO_PERMISSION_MESSAGE;
   const [rateInput, setRateInput] = React.useState(String(manualRate || 26000));
+  const [warehouseManagerOpen, setWarehouseManagerOpen] = React.useState(false);
 
   React.useEffect(() => {
     setRateInput(String(manualRate || 26000));
   }, [manualRate, currentRestaurantId]);
+
+  React.useEffect(() => {
+    setWarehouseManagerOpen(false);
+  }, [currentRestaurantId]);
 
   const activeTabCopy = getActiveTabCopy(activeTab);
   const ActiveTabIcon = activeTabCopy.Icon;
@@ -61,11 +73,17 @@ const Header = ({
   const handleGenerateReport = () => activeActions?.report?.();
   const handleExportSample = () => activeActions?.template?.();
 
-  const changeRestaurant = (e) => {
-    onRestaurantChange?.(e.target.value || "");
+  const changeRestaurant = (event) => {
+    onRestaurantChange?.(event.target.value || "");
+  };
+
+  const changeWarehouse = (event) => {
+    onWarehouseChange?.(event.target.value || null);
   };
 
   const isRestaurantDisabled = restaurantsLoading || !restaurantList.length;
+  const isWarehouseDisabled =
+    warehousesLoading || !currentRestaurantId || !warehouses.length;
 
   return (
     <div className="sm-header-card">
@@ -78,7 +96,7 @@ const Header = ({
             <p className="page-eyebrow">Vận hành kho</p>
             <h1 className="page-title">Quản lý kho</h1>
             <p className="page-subtitle">
-              Theo dõi nguyên liệu, nhập xuất và kiểm kê trong kho mặc định của nhà hàng.
+              Theo dõi tồn, nhập xuất, kiểm kê và chuyển hàng giữa các kho trong cùng nhà hàng.
             </p>
           </div>
         </div>
@@ -176,11 +194,54 @@ const Header = ({
               <option value="">
                 {restaurantsLoading ? "Đang tải..." : "— Chọn nhà hàng —"}
               </option>
-              {restaurantList.map((res) => (
-                <option key={res.id} value={res.id}>{res.name}</option>
+              {restaurantList.map((restaurant) => (
+                <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>
               ))}
             </select>
             <ChevronDown className="arrow-icon" size={16} />
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <label htmlFor="warehouse-select">
+            <Warehouse size={15} /> Kho hàng
+            {warehousesLoading && <Loader2 size={14} className="spin" />}
+          </label>
+          <div className="warehouse-filter-row">
+            <div className="custom-select-wrapper">
+              <select
+                id="warehouse-select"
+                value={selectedWarehouseId || ""}
+                onChange={changeWarehouse}
+                disabled={isWarehouseDisabled}
+                title="Chọn kho áp dụng cho tồn, nhập xuất và kiểm kê"
+              >
+                <option value="">
+                  {!currentRestaurantId
+                    ? "Chọn nhà hàng trước"
+                    : warehousesLoading
+                      ? "Đang tải..."
+                      : warehouses.length
+                        ? "— Chọn kho —"
+                        : "Chưa có kho"}
+                </option>
+                {warehouses.map((warehouse) => (
+                  <option key={warehouse.id} value={warehouse.id}>
+                    {warehouse.name}{warehouse.code ? ` · ${warehouse.code}` : ""}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="arrow-icon" size={16} />
+            </div>
+            <button
+              type="button"
+              className="sm-btn secondary warehouse-filter-row__manage"
+              onClick={() => setWarehouseManagerOpen(true)}
+              disabled={!currentRestaurantId || warehousesLoading}
+              aria-label={`Quản lý ${warehouses.length} kho hiện tại`}
+            >
+              <Settings2 size={17} /> Quản lý ({warehouses.length})
+            </button>
           </div>
         </div>
 
@@ -193,7 +254,7 @@ const Header = ({
             <select
               id="currency-select"
               value={activeCurrency}
-              onChange={(e) => onCurrencyChange?.(e.target.value)}
+              onChange={(event) => onCurrencyChange?.(event.target.value)}
               disabled={!currentRestaurantId || currencyLoading}
               title="Áp dụng cho giá vốn và báo cáo"
             >
@@ -214,7 +275,7 @@ const Header = ({
               step="1"
               inputMode="numeric"
               value={rateInput}
-              onChange={(e) => setRateInput(e.target.value)}
+              onChange={(event) => setRateInput(event.target.value)}
               disabled={!currentRestaurantId || currencyLoading}
               title="Chỉ lưu khi cần ghi đè tỷ giá mặc định"
             />
@@ -229,6 +290,15 @@ const Header = ({
           </div>
         </div>
       </div>
+
+      <WarehouseManagementDialog
+        open={warehouseManagerOpen}
+        onClose={() => setWarehouseManagerOpen(false)}
+        restaurantId={currentRestaurantId}
+        warehouses={warehouses}
+        selectedWarehouseId={selectedWarehouseId}
+        onSelectWarehouse={onWarehouseChange}
+      />
     </div>
   );
 };
@@ -244,7 +314,7 @@ function getActiveTabCopy(activeTab) {
     case "inventory":
       return { label: "Kiểm kê", helper: "Ưu tiên tồn kho, định mức và biến động.", Icon: ClipboardList };
     default:
-      return { label: "Kho hàng", helper: "Dữ liệu dùng kho mặc định của nhà hàng đang chọn.", Icon: Info };
+      return { label: "Kho hàng", helper: "Chọn kho để giới hạn dữ liệu vận hành.", Icon: Info };
   }
 }
 
