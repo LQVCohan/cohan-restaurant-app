@@ -36,6 +36,13 @@
       "localPath": ".agents/skills/redesign-existing-projects/SKILL.md",
       "computedHash": "47eced3e960a2c961d3cbee11fa1216264f589344b586a5cbd03967cd6b9c54b"
     },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "localPath": ".agents/skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "9525073dce4a2214878ef7f47ff14f0d4b4fde7a"
+    },
     "web-design-guidelines": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
