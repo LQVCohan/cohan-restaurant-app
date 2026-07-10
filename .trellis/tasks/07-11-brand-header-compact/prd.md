@@ -5,7 +5,6 @@
 - Header dùng `ManagementPageHeader` ở chế độ `compact`, nhưng ba KPI vẫn là ba card tách rời khá lớn.
 - `mph-right` dùng `display: contents`, khiến metadata vai trò/trạng thái tự rơi vào một hàng riêng và tạo khoảng trống không cân đối.
 - Select chuỗi và nút làm mới nằm trong một cột hành động rộng, chưa tạo được hierarchy rõ giữa thông tin, số liệu và thao tác.
-- Icon hiện tại dùng emoji/ký tự hỗn hợp thay vì icon Lucide đã có trong dự án.
 
 ## Luồng thật đã kiểm tra
 
@@ -19,8 +18,8 @@ Compact chain operations header: title rõ bên trái, KPI trong một dải th�
 
 ## File thay đổi
 
-- `src/components/Dashboard_Manager/Brand/BrandManagement.jsx`: dùng icon Lucide và class header riêng.
-- `src/components/Dashboard_Manager/Brand/BrandManagement.css`: layout desktop/tablet/mobile, KPI strip, metadata chips và focus/touch states.
+- `src/components/Dashboard_Manager/Brand/BrandManagementHeader.css`: contract header riêng, KPI strip, metadata chips và responsive.
+- `src/layouts/ManagerUnifiedBackground.css`: nạp stylesheet header Brand trong manager shell.
 
 ## Tiêu chí nghiệm thu
 
@@ -29,6 +28,7 @@ Compact chain operations header: title rõ bên trái, KPI trong một dải th�
 - Vai trò và trạng thái hiển thị gọn, không tạo hàng trống lớn.
 - Select và nút giữ touch target tối thiểu 44px, focus rõ.
 - 1440/1024/768/430/390 px không tràn ngang; mobile không biến header thành chuỗi card dài.
+- CSS được scope vào `.brand-management`, không ảnh hưởng header của trang quản lý khác.
 - Không thay đổi GraphQL, permission, restaurant scoping hoặc hành vi refresh.
 
 ## Kiểm tra
