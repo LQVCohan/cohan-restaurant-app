@@ -1,0 +1,30 @@
+{
+  "id": "staff-role-list-permission-fix",
+  "name": "staff-role-list-permission-fix",
+  "title": "Fix employee modal role list authorization",
+  "description": "Allow staff-management users to load authoritative role options through the effective staff.read permission instead of fixed role slugs.",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "manager-staff",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/resolvers/user/query.js",
+    "cohan-restaurant-backend/tests/resolvers/user-auth-me.test.js",
+    "src/hooks/useStaffManagement.js",
+    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.jsx"
+  ],
+  "notes": "The selected restaurant reaches StaffManagement and the employee modal. Step-one validation blocks because roleList errors before createStaff is called. The root authorization boundary is the roleList resolver, which still checks fixed role names instead of the effective staff.read permission used by current RBAC flows."
+}
