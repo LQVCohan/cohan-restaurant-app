@@ -74,4 +74,4 @@ Luồng `BookingModal -> RestaurantMenu -> FoodDetailV2 -> addCartItem` chỉ tr
 - Reservation nhận cart item IDs, tự xác thực hold và tính cọc bàn + 50% subtotal gồm modifier.
 - Order add-on xác thực chủ reservation, release cart hold rồi reserve order trong cùng transaction; không đổi bàn tương lai sang occupied.
 - Nếu order add-on thất bại, reservation được hủy và UI không mở thanh toán.
-- Đã parse thành công toàn bộ JS/JSX thay đổi bằng esbuild và hai schema GraphQL bằng Prettier parser; thêm ba kiểm thử hồi quy mục tiêu.
+- Đã parse thành công toàn bộ JS/JSX thay đổi bằng esbuild và hai schema GraphQL bằng Prettier parser; thêm các kiểm thử hồi quy mục tiêu cho serving key, service time, cart refs và công thức cọc.
