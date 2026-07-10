@@ -9,24 +9,21 @@ vi.mock("@/components/common/Button", () => ({
 
 describe("Table3DActionBarV2", () => {
   const baseProps = {
-    selectedModel: { key: "round-4", label: "Bàn tròn 4 ghế" },
-    canPreviewCamera: true,
-    onOpenCamera: vi.fn(),
     canLaunchNativeAr: true,
     isOpeningAr: false,
     arUnavailableReason: "Cần HTTPS",
     onOpenNativeAr: vi.fn(),
   };
 
-  it("shows only camera preview and native camera AR actions", () => {
+  it("shows only the native camera AR action", () => {
     render(<Table3DActionBarV2 {...baseProps} />);
 
     expect(
-      screen.getByRole("button", { name: /Xem camera 2D/i }),
-    ).toBeEnabled();
-    expect(
       screen.getByRole("button", { name: /Mở camera AR/i }),
     ).toBeEnabled();
+    expect(
+      screen.queryByRole("button", { name: /Xem camera 2D/i }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/vị trí bàn/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Áp dụng mẫu/i)).not.toBeInTheDocument();
   });
@@ -50,30 +47,18 @@ describe("Table3DActionBarV2", () => {
     );
   });
 
-  it("disables camera preview when the browser has no camera support", () => {
-    render(<Table3DActionBarV2 {...baseProps} canPreviewCamera={false} />);
-
-    expect(
-      screen.getByRole("button", { name: /Xem camera 2D/i }),
-    ).toBeDisabled();
-  });
-
-  it("calls the camera and AR handlers", () => {
-    const onOpenCamera = vi.fn();
+  it("calls the native AR handler", () => {
     const onOpenNativeAr = vi.fn();
 
     render(
       <Table3DActionBarV2
         {...baseProps}
-        onOpenCamera={onOpenCamera}
         onOpenNativeAr={onOpenNativeAr}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Xem camera 2D/i }));
     fireEvent.click(screen.getByRole("button", { name: /Mở camera AR/i }));
 
-    expect(onOpenCamera).toHaveBeenCalledTimes(1);
     expect(onOpenNativeAr).toHaveBeenCalledTimes(1);
   });
 });
