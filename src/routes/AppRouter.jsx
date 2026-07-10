@@ -77,6 +77,9 @@ const POSLayout = lazy(() =>
 const FoodDetail = lazy(() =>
   import("@/components/Customer/Food/FoodDetailV2"),
 );
+const TableQrScannerPage = lazy(() =>
+  import("@/components/Customer/TableQrScanner/TableQrScannerPage"),
+);
 
 const useAuth = () => {
   const {
@@ -479,6 +482,10 @@ const AppRouter = () => (
       <Route path="/combos" element={<CombosPage />} />
       <Route path="/restaurant/:id" element={<RestaurantDetail />} />
       <Route path="/restaurant/:id/layout" element={<TableBooking />} />
+      <Route
+        path="/scan-table"
+        element={withLazyRoute(<TableQrScannerPage />)}
+      />
       <Route
         path="/table/:restaurantId/:tableId"
         element={<TableCurrentSessionPage />}

@@ -1,0 +1,21 @@
+{
+  "id": "07-10-customer-qr-experience",
+  "title": "Customer QR table experience",
+  "status": "implemented_verified",
+  "area": "frontend",
+  "createdAt": "2026-07-10",
+  "updatedAt": "2026-07-10",
+  "validation": {
+    "completed": [
+      "npx vitest run src/utils/tableQrAccess.test.js src/components/Customer/TableQrScanner/TableQrScannerPage.test.jsx",
+      "npx vitest run src/components/Customer/Homepage_Client/components/Header.test.jsx src/components/Customer/Homepage_Client/MobileHome.test.jsx src/components/Customer/TableQrScanner/TableQrScannerPage.test.jsx src/utils/tableQrAccess.test.js",
+      "npm run check:conflicts",
+      "npm run check:graphql:operations",
+      "npm run build"
+    ],
+    "notRun": [
+      "camera smoke on a physical Android device",
+      "desktop and 390x844/430x932 screenshot comparison because no browser binary is available in this runtime"
+    ]
+  }
+}

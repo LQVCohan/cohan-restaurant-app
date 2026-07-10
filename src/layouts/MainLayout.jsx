@@ -27,6 +27,9 @@ export default function MainLayout({ children }) {
   });
   const searchParams = new URLSearchParams(location.search);
   const isRestaurantDetailPreview = searchParams.get("preview") === "1";
+  const isFocusedTableFlow =
+    location.pathname === "/scan-table" ||
+    location.pathname.startsWith("/table/");
 
   React.useEffect(() => {
     const handler = () => setIsCartOpen(true);
@@ -80,7 +83,7 @@ export default function MainLayout({ children }) {
         </MobileCustomerShell>
         {cartPanel}
         {location.pathname === "/" && <TodayMealWizard />}
-        <PostOrderReviewPrompt />
+        {!isFocusedTableFlow && <PostOrderReviewPrompt />}
       </>
     );
   }
@@ -88,10 +91,10 @@ export default function MainLayout({ children }) {
   return (
     <>
       <Header onCartToggle={() => setIsCartOpen(true)} cartItemCount={getTotalItems()} />
-      <main style={{ minHeight: "80vh", width: "100%" }}>{children}</main>
+      <main className="customer-experience-main">{children}</main>
       {cartPanel}
-      <TodayMealWizard />
-      <PostOrderReviewPrompt />
+      {!isFocusedTableFlow && <TodayMealWizard />}
+      {!isFocusedTableFlow && <PostOrderReviewPrompt />}
       <Footer />
     </>
   );

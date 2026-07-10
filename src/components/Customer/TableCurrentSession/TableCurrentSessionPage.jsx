@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { formatPrice } from "@/utils/formatters";
 
@@ -239,6 +239,11 @@ const TableSessionState = ({ title, message, role = "status" }) => (
     >
       <h1 id="table-session-state-title">{title}</h1>
       <p>{message}</p>
+      {role === "alert" && (
+        <Link className="customer-table-session-page__state-link" to="/scan-table">
+          Quét mã QR khác
+        </Link>
+      )}
     </div>
   </main>
 );
@@ -471,7 +476,7 @@ const TableCurrentSessionPage = () => {
   if (loading && !tableSessionData) {
     return (
       <TableSessionState
-        title="Đang tải thông tin bàn..."
+        title="Đang tải thông tin bàn…"
         message="Vui lòng chờ trong giây lát."
       />
     );
@@ -517,7 +522,7 @@ const TableCurrentSessionPage = () => {
               onClick={handleManualRefresh}
               disabled={manualRefreshing || requestingPayment || callingStaff}
             >
-              {manualRefreshing ? "Đang làm mới..." : "Làm mới"}
+              {manualRefreshing ? "Đang làm mới…" : "Làm mới"}
             </button>
           </div>
         </header>
@@ -585,7 +590,7 @@ const TableCurrentSessionPage = () => {
                 disabled={Boolean(activeStaffCallRequest) || requestingPayment || callingStaff}
                 onClick={handleCallStaff}
               >
-                {callingStaff ? "Đang gọi nhân viên..." : activeStaffCallRequest ? "Đã gọi nhân viên" : "Gọi nhân viên"}
+                {callingStaff ? "Đang gọi nhân viên…" : activeStaffCallRequest ? "Đã gọi nhân viên" : "Gọi nhân viên"}
               </button>
             )}
           </section>
@@ -657,7 +662,7 @@ const TableCurrentSessionPage = () => {
                   onClick={handleRequestPayment}
                 >
                   {requestingPayment
-                    ? "Đang gửi yêu cầu..."
+                    ? "Đang gửi yêu cầu…"
                     : paymentRequested
                       ? "Đã gọi thanh toán"
                       : "Gọi thanh toán"}
@@ -668,7 +673,7 @@ const TableCurrentSessionPage = () => {
                   disabled={Boolean(activeStaffCallRequest) || requestingPayment || callingStaff}
                   onClick={handleCallStaff}
                 >
-                  {callingStaff ? "Đang gọi nhân viên..." : activeStaffCallRequest ? "Đã gọi nhân viên" : "Gọi nhân viên"}
+                  {callingStaff ? "Đang gọi nhân viên…" : activeStaffCallRequest ? "Đã gọi nhân viên" : "Gọi nhân viên"}
                 </button>
               </div>
               <p className="customer-table-session-page__hint">
