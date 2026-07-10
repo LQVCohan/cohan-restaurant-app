@@ -36,12 +36,12 @@ describe("StaffDashboardPage", () => {
       screen.getByRole("heading", { name: "Kiểm tra lịch trước khi bắt đầu" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Mở lịch cá nhân/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Lịch cá nhân/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Xem ca và phản hồi lịch/i })).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Chấm công & chỉnh công/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Nghỉ phép/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Thông báo/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Tạo và theo dõi đơn/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Xem nhắc việc mới/i })).toBeInTheDocument();
   });
 
   it("keeps role tools visible and secondary utilities collapsed", () => {
