@@ -211,9 +211,25 @@ function canRestaurantAcceptHomeOrders(restaurant) {
 }
 
 export const MenuQuery = {
-  menus: async (_parent, { restaurantId }) => {
+  menus: async (_parent, { restaurantId }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
-    return Menu.find({ restaurantId, isActive: true })
+
+    const canManageMenus = ctx?.user
+      ? await hasPermission(ctx.user, PERMISSIONS.MENU_READ)
+      : false;
+
+    if (canManageMenus) {
+      await requireRestaurantPermission(
+        ctx,
+        restaurantId,
+        PERMISSIONS.MENU_READ,
+      );
+    }
+
+    return Menu.find({
+      restaurantId,
+      ...(!canManageMenus ? { isActive: true } : {}),
+    })
       .sort({ timeSlot: 1 })
       .lean({ virtuals: true });
   },
