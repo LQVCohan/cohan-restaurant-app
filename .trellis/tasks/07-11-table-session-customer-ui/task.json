@@ -1,12 +1,19 @@
 {
   "id": "07-11-table-session-customer-ui",
   "title": "Customer-friendly table session UI",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "area": "frontend",
   "createdAt": "2026-07-11",
   "updatedAt": "2026-07-11",
   "validation": {
-    "completed": [],
-    "notRun": []
+    "completed": [
+      "Reviewed the final GraphQL selection, JSX states and responsive SCSS directly on main"
+    ],
+    "notRun": [
+      "npm run check:graphql:operations — repository checkout/runtime unavailable",
+      "npm run build — repository checkout/runtime unavailable",
+      "Desktop, 390x844 and 430x932 browser smoke — no browser runtime available",
+      "GitHub Actions — no workflow run or commit status was created for the final commit"
+    ]
   }
 }
