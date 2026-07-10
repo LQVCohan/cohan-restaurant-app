@@ -3,20 +3,22 @@
   "name": "table-page-layout-entry-fix",
   "title": "Fix table page layout and settings entry",
   "description": "Move the table type/space action into the page header and replace the conflicting table layout override with a stable responsive contract.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "feature-fix",
   "scope": "manager-tables",
   "priority": "P1",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-11",
+  "completedAt": "2026-07-11",
   "branch": "main",
   "base_branch": "main",
+  "commit": "29f4c6e02ee7e478ee6bd63b236df683b9710c10",
   "relatedFiles": [
-    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
     "src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.jsx",
     "src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.scss",
     "src/components/Dashboard_Manager/Table/TableManagementFinalQC.scss",
     "src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.test.jsx"
-  ]
+  ],
+  "notes": "The type/space action now renders inside the existing management header instead of a negative-margin toolbar. Desktop uses a compact floor/filter rail and fluid table cards; responsive collapse now starts below 980px. No schema, resolver, hook, permission, modal CRUD, POS, merge/split, VR, QR, or floor-map behavior changed. GitHub reported no status checks for the final implementation commit; local Vitest/build/browser validation was unavailable in this connector session."
 }
