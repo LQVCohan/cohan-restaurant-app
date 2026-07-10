@@ -714,6 +714,7 @@ const AttendancePage = ({ restaurantId: scopedRestaurantId = "" } = {}) => {
   };
 
   const effectiveRestaurantId =
+    queryRestaurantId ||
     userRestaurantId ||
     records[0]?.restaurantId ||
     null;
