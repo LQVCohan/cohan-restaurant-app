@@ -146,11 +146,26 @@
 }
 
 .user-name-small,
-.user-status-small,
 .sidebar-version {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.user-status-small {
+  align-items: flex-start;
+  overflow: visible;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.user-status-small .status-dot-small {
+  margin-top: 0.3em;
+}
+
+.user-status-small > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 @media (min-width: 769px) {
