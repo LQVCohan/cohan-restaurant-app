@@ -1,0 +1,45 @@
+name: verify-cuisine-template-reopen
+
+on:
+  push:
+    branches:
+      - fix/cuisine-template-reopen-20260710
+    paths:
+      - src/components/Dashboard_Manager/Header.jsx
+      - src/components/Dashboard_Manager/Header.test.jsx
+      - src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.jsx
+      - src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.test.jsx
+      - .github/workflows/verify-cuisine-template-reopen.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-cuisine-template-reopen-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Focused onboarding tests
+        run: npx vitest run src/components/Dashboard_Manager/Header.test.jsx src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.test.jsx
+
+      - name: Check conflict markers
+        run: npm run check:conflicts
+
+      - name: Build frontend
+        run: npm run build
