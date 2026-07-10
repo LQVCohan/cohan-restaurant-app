@@ -3,7 +3,7 @@
   "name": "compact-menu-serving-fields",
   "title": "Compact menu serving fields",
   "description": "Remove helper copy and compact the serving mode, method name, price, and preparation time fields in the manager menu item modal.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "ui-polish",
   "scope": "manager-menu-item-modal",
   "package": null,
@@ -11,18 +11,18 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "1e0cfc0ea42ca5b1019805e0b86101a8ed8246f7",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": "07-10-menu-serving-mode",
   "relatedFiles": [
-    "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModal.jsx",
-    "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModalPolish.scss"
+    "src/components/Dashboard_Manager/Menu/MenuManagementPolish.scss",
+    "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModalServingCompact.scss"
   ],
-  "notes": "UI-only follow-up. Recipe schema, resolver, Apollo hook, and serving mode persistence remain unchanged."
+  "notes": "UI-only follow-up. The helper paragraph is hidden, the four serving fields use a balanced two-column grid, and phone widths retain the existing single-column layout. Recipe schema, resolver, Apollo hook, and persistence remain unchanged. No executable checkout was available for browser, Vitest, or build validation."
 }
