@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadEnv, validateEnv } from "../config/env.js";
 import process from "process";
+import { installHostedAiFetchTimeout } from "../services/ai/aiRuntimeTimeout.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +20,9 @@ const applyAiProviderPolicy = () => {
   process.env.AI_FALLBACK_PROVIDER = "local";
   process.env.GEMINI_MODEL = DEFAULT_GEMINI_MODEL;
   process.env.AI_CHATBOT_MODEL = DEFAULT_GEMINI_MODEL;
+  process.env.AI_CHATBOT_GEMINI_TIMEOUT_MS ||= "8000";
+  process.env.AI_CHATBOT_LOCAL_TIMEOUT_MS ||= "4000";
+  process.env.AI_CHATBOT_EMBEDDING_TIMEOUT_MS ||= "2500";
 };
 
 const startServer = async () => {
@@ -36,6 +40,7 @@ const startServer = async () => {
     }
 
     applyAiProviderPolicy();
+    installHostedAiFetchTimeout();
 
     // Keep local uploads in one stable directory regardless of whether the
     // backend is started from the repository root or from its own package.
