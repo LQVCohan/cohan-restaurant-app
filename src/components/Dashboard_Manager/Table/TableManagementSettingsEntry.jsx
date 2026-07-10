@@ -2,6 +2,7 @@ import React from "react";
 import { Tags } from "lucide-react";
 import TableManagement from "./TableManagement";
 import "./TableManagementSettingsEntry.scss";
+import "./TableTypeManagementMobileFix.scss";
 
 const TableManagementSettingsEntry = ({ onOpenTableSettings }) => (
   <div className="tm-settings-page">
