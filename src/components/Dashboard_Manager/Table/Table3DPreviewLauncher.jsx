@@ -1,10 +1,19 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  Suspense,
+  lazy,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { ScanLine } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
-import Table3DSimulatorModalV2 from "./Table3DSimulatorModalV2";
 
+const Table3DSimulatorModalV2 = lazy(() =>
+  import("./Table3DSimulatorModalV2"),
+);
 const MANAGER_RESTAURANT_STORAGE_KEY = "manager.selectedRestaurantId";
 const MANAGER_SCOPE_EVENT = "manager:scope-selection";
 
@@ -92,12 +101,16 @@ export default function Table3DPreviewLauncher() {
           portalTarget,
         )}
 
-      <Table3DSimulatorModalV2
-        open={open}
-        onClose={() => setOpen(false)}
-        restaurantId={restaurantId}
-        restaurantName={selectedRestaurant?.name || "Nhà hàng hiện tại"}
-      />
+      {open && (
+        <Suspense fallback={null}>
+          <Table3DSimulatorModalV2
+            open
+            onClose={() => setOpen(false)}
+            restaurantId={restaurantId}
+            restaurantName={selectedRestaurant?.name || "Nhà hàng hiện tại"}
+          />
+        </Suspense>
+      )}
     </>
   );
 }
