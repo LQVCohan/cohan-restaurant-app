@@ -7,21 +7,35 @@
 - Tên danh mục tự nhập cũng bị chuyển sang tiếng Anh hoặc bị bỏ dấu ở một số trường hợp.
 - Bố cục desktop dùng đồng thời cuộn ở modal, cột trái và danh sách phải nên dòng cuối bị cắt, tạo cảm giác nội dung bị đè.
 - Thông báo quét dùng chuỗi thống kê khô, chưa nêu rõ thao tác đã thành công.
+- Dữ liệu cũ còn dùng hai mã `grain` và `dairy`; bộ chuẩn hóa mới chưa nhận hai alias này nên một số danh mục vẫn hiện tiếng Anh.
+- Khi alias cũ có slug khác slug chuẩn, lần quét tiếp theo có thể tạo thêm danh mục mới thay vì nâng cấp bản ghi cũ.
 
 ## Luồng thực tế
 
 `Ingredient/IngredientCategory model -> ingredientCategory mutation + category classifier -> useIngredients/Apollo mutation -> IngredientList -> IngredientCategoryManagerModal`.
 
+## Nguyên nhân gốc của phần còn tiếng Anh
+
+- `src/utils/constants.js` và script seed cũ dùng `grain`, `dairy`.
+- `categoryAi.shared.js` chỉ nhận `starch` và `dairy & egg` nên giữ nguyên hai giá trị cũ.
+- `ingredientCategory.mutation.js` dò danh mục theo slug đã lưu, vì vậy `grain` không được coi là cùng nhóm với slug chuẩn `starch`.
+- Helper hiển thị frontend cũng thiếu hai alias này nên dữ liệu cũ lộ trực tiếp ra giao diện.
+
 ## Phạm vi thay đổi
 
-- `cohan-restaurant-backend/graphql/resolvers/inventory/categoryAi.shared.js`: thêm chuẩn hóa tên danh mục nguyên liệu sang tiếng Việt có dấu, không thay đổi logic danh mục vật tư.
-- `cohan-restaurant-backend/graphql/resolvers/inventory/ingredientCategory.mutation.js`: dùng tên tiếng Việt khi tạo, đổi tên và đồng bộ; giữ nguyên tên danh mục tùy chỉnh đã tồn tại; trả thông báo quét thành công bằng câu tiếng Việt dễ đọc.
+- `cohan-restaurant-backend/graphql/resolvers/inventory/categoryAi.shared.js`: thêm chuẩn hóa tên danh mục nguyên liệu sang tiếng Việt có dấu, gồm alias cũ `grain` và `dairy`; không thay đổi logic danh mục vật tư.
+- `cohan-restaurant-backend/graphql/resolvers/inventory/ingredientCategory.mutation.js`: dùng tên tiếng Việt khi tạo, đổi tên và đồng bộ; nâng cấp slug cũ ngay trên bản ghi hiện có và vô hiệu hóa bản ghi alias trùng.
+- `cohan-restaurant-backend/graphql/resolvers/inventory/ingredient.mutation.js`: dùng chung helper chuẩn hóa để luồng import/API cũ không tạo thêm tên tiếng Anh.
+- `src/utils/ingredientCategoryI18n.js`: hiển thị tiếng Việt cho dữ liệu legacy trước khi quét lại.
 - `src/components/Dashboard_Manager/Storage/components/ingredients/IngredientCategoryManagerModal.jsx`: giảm thông tin kỹ thuật, Việt hóa nhãn, hiển thị tóm tắt đồng bộ dễ đọc, làm rõ hỗ trợ tên có dấu và xóa bản vá đặt lại vị trí cuộn cũ.
 - `src/components/Dashboard_Manager/Storage/components/ingredients/IngredientCategoryManagerModal.scss`: dùng một vùng cuộn duy nhất ở thân modal, để danh sách tự mở rộng theo nội dung và không cắt nửa dòng.
 
 ## Tiêu chí chấp nhận
 
 - Danh mục đồng bộ chuẩn được lưu và trả về dạng `Thịt`, `Hải sản`, `Rau củ`, `Gia vị`, `Tinh bột`, `Sữa & trứng`, `Đồ uống`, `Khác`.
+- `grain` được nâng cấp thành `Tinh bột` với slug chuẩn `starch`.
+- `dairy` được nâng cấp thành `Sữa & trứng` với slug chuẩn `dairy-egg`.
+- Bản ghi alias cũ không còn xuất hiện như một danh mục hoạt động trùng sau khi quét.
 - Danh mục tùy chỉnh như `Đồ khô`, `Nước sốt nhà làm` giữ nguyên dấu tiếng Việt.
 - Slug vẫn không dấu để chống trùng và truy vấn ổn định.
 - Modal hiển thị nhãn tiếng Việt, tóm tắt đồng bộ dễ đọc, danh sách và hành động chính rõ ràng hơn.
@@ -31,6 +45,14 @@
 
 ## Ngoài phạm vi
 
-- Không thay đổi thuật toán phân loại nguyên liệu.
+- Không thay đổi thuật toán phân loại nguyên liệu ngoài việc nhận alias legacy đã tồn tại trong repo.
 - Không thêm thư viện UI hoặc dependency.
 - Không chạy CI toàn bộ.
+
+## Kiểm tra dự kiến
+
+```bash
+npx vitest run src/utils/ingredientCategoryI18n.test.js
+npm --prefix cohan-restaurant-backend test -- tests/resolvers/ingredient-category-normalization.test.js
+npm run check:conflicts
+```
