@@ -73,7 +73,6 @@ import { installTableMergePickerTrigger } from "./utils/installTableMergePickerT
 import { installMergedTableCustomerProfiles } from "./utils/installMergedTableCustomerProfiles";
 import { installMergedTableLifecycleUi } from "./utils/installMergedTableLifecycleUi";
 import { installTableEmptyStateEnhancement } from "./utils/installTableEmptyStateEnhancement";
-import { installTable360OnlyExperience } from "./utils/installTable360OnlyExperience";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 
 const normalizeLegacyManagerHash = () => {
@@ -101,7 +100,6 @@ installTableMergePickerTrigger();
 installMergedTableCustomerProfiles();
 installMergedTableLifecycleUi();
 installTableEmptyStateEnhancement();
-installTable360OnlyExperience();
 installAttendanceWordingTuning();
 
 createRoot(document.getElementById("root")).render(
