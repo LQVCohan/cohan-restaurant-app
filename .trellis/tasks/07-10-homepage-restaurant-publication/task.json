@@ -1,0 +1,26 @@
+{
+  "id": "07-10-homepage-restaurant-publication",
+  "title": "Khôi phục nhà hàng trên trang chính qua trạng thái công khai",
+  "status": "in_progress",
+  "type": "frontend-fix",
+  "scope": [
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx"
+  ],
+  "rootCause": "Brand restaurant creation intentionally persists publicationStatus=draft, while the public homepage restaurantsTop query only returns active and published restaurants. RestaurantInfoManagement currently omits publicationStatus from its GraphQL query, local form and update payload, so managers have no product flow to publish existing database restaurants.",
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx",
+      "npm run check:graphql",
+      "npm run check:conflicts",
+      "npm run build"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow and ponytail skill",
+      "traced Restaurant model defaults -> public restaurant filter -> restaurantsTop -> RestaurantGrid empty state",
+      "inspected createRestaurant and brand branch creation payload",
+      "confirmed UpdateRestaurantInput already supports publicationStatus"
+    ],
+    "notRun": []
+  }
+}
