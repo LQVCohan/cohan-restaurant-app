@@ -89,8 +89,12 @@ function buildBaseResult() {
 }
 
 describe("PublicTableOrderAccess resolver boundary", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    const { __testables } = await import(
+      "../../graphql/resolvers/order/publicTableOrderAccess.js"
+    );
+    __testables.confirmationAttempts.clear();
     bootstrapMocks.ensurePublicTableSessionForAccess.mockResolvedValue({
       _id: "64b000000000000000000003",
     });
@@ -135,6 +139,33 @@ describe("PublicTableOrderAccess resolver boundary", () => {
     expect(result.orders).toEqual([]);
     expect(result.customerRequests).toEqual([]);
     expect(result.session.orderCode).toBeNull();
+  });
+
+  it("does not let a reserved table request verification before staff opens service", async () => {
+    serviceMocks.hasValidPublicTableOrderSessionAccess.mockResolvedValue(false);
+    baseMocks.publicActiveTableSessionOrders.mockResolvedValue({
+      ...buildBaseResult(),
+      tableStatus: "reserved",
+      session: null,
+      orders: [],
+      customerRequests: [],
+    });
+    const { PublicTableOrderAccessQuery } = await import(
+      "../../graphql/resolvers/order/publicTableOrderAccess.js"
+    );
+
+    const result = await PublicTableOrderAccessQuery.publicActiveTableSessionOrders(
+      null,
+      { restaurantId, tableId, token: "printed-token" },
+      { request: { cookies: {} } },
+    );
+
+    expect(result.canRequestOrderAccess).toBe(false);
+    expect(result.canOrder).toBe(false);
+    expect(result.orderAccessBlockedReason).toMatch(/đang phục vụ/i);
+    expect(
+      serviceMocks.hasValidPublicTableOrderSessionAccess,
+    ).not.toHaveBeenCalled();
   });
 
   it("returns the active table-session data after the cookie-bound device is confirmed", async () => {
@@ -186,6 +217,22 @@ describe("PublicTableOrderAccess resolver boundary", () => {
     ).toBeLessThan(
       serviceMocks.requestPublicTableOrderAccess.mock.invocationCallOrder[0],
     );
+  });
+
+  it("limits one confirmation request token to five attempts per window", async () => {
+    const { __testables } = await import(
+      "../../graphql/resolvers/order/publicTableOrderAccess.js"
+    );
+    const now = 1000;
+
+    for (let index = 0; index < 5; index += 1) {
+      expect(() =>
+        __testables.consumeConfirmationAttempt("request-token", now),
+      ).not.toThrow();
+    }
+    expect(() =>
+      __testables.consumeConfirmationAttempt("request-token", now),
+    ).toThrow(/quá nhiều lần/i);
   });
 
   it("validates the verified table session before the original submit-order resolver runs", async () => {
