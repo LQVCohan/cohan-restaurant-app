@@ -1,16 +1,14 @@
 {
   "id": "07-10-homepage-restaurant-publication",
   "title": "Khôi phục nhà hàng trên trang chính qua trạng thái công khai",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-fix",
   "scope": [
     "src/components/Dashboard_Manager/RestaurantInfo/RestaurantPublicationControl.jsx",
-    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantPublicationControl.test.jsx",
-    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx",
-    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoUnifiedPage.css",
-    "src/layouts/ManagerLayout.jsx"
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantPublicationControl.scss",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantPublicationControl.test.jsx"
   ],
-  "rootCause": "Brand restaurant creation intentionally persists publicationStatus=draft, while the public homepage restaurantsTop query only returns active and published restaurants. The publication action now works, but rendering it as a standalone Alert in ManagerLayout separates it from the restaurant profile context and can use a different selected-restaurant source than the profile page itself.",
+  "rootCause": "The publication action worked but used a full-width Ant Alert above the restaurant page, so a secondary visibility action dominated the page hierarchy and consumed unnecessary vertical space.",
   "validation": {
     "planned": [
       "npx vitest run src/components/Dashboard_Manager/RestaurantInfo/RestaurantPublicationControl.test.jsx",
@@ -23,9 +21,14 @@
       "traced Restaurant model defaults -> public restaurant filter -> restaurantsTop -> RestaurantGrid empty state",
       "inspected createRestaurant, brand branch creation and restaurant update permission flow",
       "confirmed UpdateRestaurantInput already supports publicationStatus",
-      "inspected ManagerLayout, RestaurantInfoManagement, ManagementPageHeader and profile-focus-panel responsive styles",
-      "selected a compact contextual placement inside the customer-visible profile summary"
+      "inspected ManagerLayout, RestaurantInfoManagement, ManagementPageHeader and responsive page styles",
+      "replaced the full-width Alert with a compact right-aligned publication toolbar",
+      "added explicit draft, published, loading and error copy without relying on color alone",
+      "added mobile stacking, focus treatment and a 44px interaction row",
+      "updated focused component regression coverage"
     ],
-    "notRun": []
+    "notRun": [
+      "Focused Vitest, GraphQL validation, conflict check and production build were not run because the GitHub connector does not provide a repository checkout with installed dependencies."
+    ]
   }
 }
