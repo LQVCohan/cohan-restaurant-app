@@ -175,7 +175,7 @@ const normalizeRestaurant = (restaurant) => ({
 
 const RestaurantMenu = () => {
   const navigate = useNavigate();
-  const { search } = useLocation();
+  const { search, state: locationState } = useLocation();
   const [selectedRes, setSelectedRes] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [syncingReorder, setSyncingReorder] = useState(false);
@@ -503,13 +503,19 @@ const RestaurantMenu = () => {
   ]);
 
   const handleOpenFoodDetail = (foodId, state = {}) => {
-    navigate(buildFoodDetailPath(foodId, state || {}), { state });
+    const nextState = {
+      ...state,
+      bookingDraft: locationState?.bookingDraft || null,
+    };
+    navigate(buildFoodDetailPath(foodId, nextState), { state: nextState });
   };
 
   const handleBookingAddonComplete = () => {
     if (!restaurantParam) return;
     setIsCartOpen(false);
-    navigate(`/restaurant/${restaurantParam}/layout?fromMenu=1`);
+    navigate(`/restaurant/${restaurantParam}/layout?fromMenu=1`, {
+      state: { bookingDraft: locationState?.bookingDraft || null },
+    });
   };
 
   const handleCheckoutSuccess = () => {
@@ -522,7 +528,9 @@ const RestaurantMenu = () => {
 
   const handleMenuBack = () => {
     if (bookingAddonMode && restaurantParam) {
-      navigate(`/restaurant/${restaurantParam}/layout?fromMenu=1`);
+      navigate(`/restaurant/${restaurantParam}/layout?fromMenu=1`, {
+      state: { bookingDraft: locationState?.bookingDraft || null },
+    });
       return;
     }
     setSelectedRes(null);
