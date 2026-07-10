@@ -1,0 +1,28 @@
+{
+  "id": "backup-clone-date-serialization",
+  "name": "backup-clone-date-serialization",
+  "title": "Fix restaurant config clone date serialization",
+  "description": "Preserve Date values in restaurant configuration snapshots and prevent source-table runtime QR/lock state from being copied into another restaurant.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "manager-backup",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/restaurantConfigBackup.service.js",
+    "cohan-restaurant-backend/tests/services/restaurant-config-backup.service.test.js"
+  ],
+  "notes": "Planning complete. The frontend GraphQL operation and backup resolver pass the snapshot without altering table fields; the failure occurs at the shared snapshot serialization/import boundary."
+}
