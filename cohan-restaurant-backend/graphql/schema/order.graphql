@@ -326,6 +326,8 @@ input OrderItemInput {
   note: String
   priority: OrderPriority
   status: ItemStatus
+  cartId: ID
+  cartItemId: ID
 }
 
 # =========================================================
@@ -507,6 +509,7 @@ type Order {
 # =========================================================
 
 input CreateOrderForTableInput {
+  reservationId: ID
   restaurantId: ID!
   tableId: ID
   tableCode: String!
