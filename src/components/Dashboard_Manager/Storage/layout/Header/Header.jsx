@@ -7,7 +7,6 @@ import {
   FileText,
   FileSpreadsheet,
   Store,
-  Warehouse,
   ChevronDown,
   Loader2,
   Coins,
@@ -28,10 +27,6 @@ const Header = ({
   currentRestaurantId = "",
   onRestaurantChange,
   restaurantsLoading = false,
-  warehouses = [],
-  selectedWarehouseId = null,
-  onWarehouseChange,
-  warehousesLoading = false,
   activeCurrency = "VND",
   onCurrencyChange,
   manualRate = 26000,
@@ -67,19 +62,10 @@ const Header = ({
   const handleExportSample = () => activeActions?.template?.();
 
   const changeRestaurant = (e) => {
-    const id = e.target.value || "";
-    onRestaurantChange?.(id);
-    onWarehouseChange?.(null);
-  };
-
-  const changeWarehouse = (e) => {
-    const id = e.target.value || null;
-    onWarehouseChange?.(id);
+    onRestaurantChange?.(e.target.value || "");
   };
 
   const isRestaurantDisabled = restaurantsLoading || !restaurantList.length;
-  const isWarehouseDisabled =
-    warehousesLoading || !currentRestaurantId || !warehouses.length;
 
   return (
     <div className="sm-header-card">
@@ -92,7 +78,7 @@ const Header = ({
             <p className="page-eyebrow">Vận hành kho</p>
             <h1 className="page-title">Quản lý kho</h1>
             <p className="page-subtitle">
-              Chọn phạm vi dữ liệu, xử lý nhập/xuất và theo dõi tồn kho trong một màn hình.
+              Theo dõi nguyên liệu, nhập xuất và kiểm kê trong kho mặc định của nhà hàng.
             </p>
           </div>
         </div>
@@ -198,34 +184,6 @@ const Header = ({
           </div>
         </div>
 
-        <div className="filter-group">
-          <label htmlFor="warehouse-select">
-            <Warehouse size={15} /> Kho hàng
-            {warehousesLoading && <Loader2 size={14} className="spin" />}
-          </label>
-          <div className="custom-select-wrapper">
-            <select
-              id="warehouse-select"
-              value={selectedWarehouseId || ""}
-              onChange={changeWarehouse}
-              disabled={isWarehouseDisabled}
-              title="Chọn kho cụ thể trước khi nhập tồn kho"
-            >
-              <option value="">
-                {!currentRestaurantId
-                  ? "Chọn nhà hàng trước"
-                  : warehousesLoading
-                  ? "Đang tải..."
-                  : "— Tất cả kho —"}
-              </option>
-              {warehouses.map((w) => (
-                <option key={w.id} value={w.id}>{w.name}</option>
-              ))}
-            </select>
-            <ChevronDown className="arrow-icon" size={16} />
-          </div>
-        </div>
-
         <div className="filter-group filter-group--compact">
           <label htmlFor="currency-select">
             <Coins size={15} /> Tiền tệ
@@ -286,7 +244,7 @@ function getActiveTabCopy(activeTab) {
     case "inventory":
       return { label: "Kiểm kê", helper: "Ưu tiên tồn kho, định mức và biến động.", Icon: ClipboardList };
     default:
-      return { label: "Kho hàng", helper: "Chọn nhà hàng và kho để giới hạn dữ liệu.", Icon: Info };
+      return { label: "Kho hàng", helper: "Dữ liệu dùng kho mặc định của nhà hàng đang chọn.", Icon: Info };
   }
 }
 
