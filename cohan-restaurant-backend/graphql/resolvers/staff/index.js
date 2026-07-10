@@ -5,8 +5,24 @@ import staffMutation from "./mutation.js";
 import staffPhotoActions from "./staffAvatar.mutation.js";
 import payrollFinalizeReadinessMutation from "./payrollFinalizeReadiness.mutation.js";
 import payrollProtectedAttendanceMutation from "./payrollProtectedAttendance.mutation.js";
-import { BrandMembership, Restaurant, Staff } from "../../../models/index.js";
+import {
+  BrandMembership,
+  Restaurant,
+  Role,
+  Staff,
+} from "../../../models/index.js";
 import { requireAuth, requireRestaurantAccess } from "../../guards.js";
+import {
+  requireRestaurantPermission,
+} from "../../../src/services/auth/authorization.service.js";
+import {
+  assertAssignableStaffRole,
+  assignStaffRoleWithinRestaurant,
+} from "../../../src/services/auth/staffRoleAssignment.service.js";
+import {
+  getStaffRestaurantIds,
+} from "../../../src/services/auth/restaurantScope.service.js";
+import { sanitizeStaffPrivateProfile } from "../../../src/security/userDtos.js";
 
 const toFiniteNumber = (value, fallback = 0) => {
   const numeric = Number(value);
@@ -31,6 +47,7 @@ const clampPayrollOffset = (value) => {
 };
 
 const normalizeSearch = (value) => String(value || "").trim().toLowerCase();
+const normalizeDepartment = (value) => String(value || "").trim().toLowerCase();
 
 const filterPayrollItems = (items = [], { search, status } = {}) => {
   const keyword = normalizeSearch(search);
@@ -112,6 +129,27 @@ const staffPerformanceSnapshots = async (parent, args = {}, ctx, info) => {
   );
 };
 
+const resolveAssignableRole = async ({ roleId, department, actor }) => {
+  if (!mongoose.isValidObjectId(roleId)) {
+    throw new Error("Vai trò nhân viên không hợp lệ");
+  }
+
+  const role = await Role.findById(roleId)
+    .populate("permissions")
+    .populate({ path: "parentRole", populate: { path: "permissions" } })
+    .lean();
+
+  assertAssignableStaffRole({ actor, role });
+
+  const roleDepartment = normalizeDepartment(role?.department);
+  const selectedDepartment = normalizeDepartment(department);
+  if (roleDepartment && selectedDepartment && roleDepartment !== selectedDepartment) {
+    throw new Error("Vai trò không thuộc bộ phận đã chọn");
+  }
+
+  return role;
+};
+
 const resolveCreateStaffBusinessContext = async (input = {}, ctx) => {
   const businessContext = input.staffBusinessContext || {};
   const restaurantId = businessContext.restaurantId || null;
@@ -124,7 +162,7 @@ const resolveCreateStaffBusinessContext = async (input = {}, ctx) => {
     throw new Error("Doanh nghiệp đang hoạt động không hợp lệ");
   }
 
-  await requireRestaurantAccess(ctx, restaurantId);
+  await requireRestaurantPermission(ctx, restaurantId, "staff.write");
   const restaurant = await Restaurant.findById(restaurantId)
     .select("_id brandId")
     .lean();
@@ -149,10 +187,42 @@ const resolveCreateStaffBusinessContext = async (input = {}, ctx) => {
   };
 };
 
+const cleanupCreatedStaff = async ({ brandId, staffId, error }) => {
+  const cleanupErrors = [];
+
+  try {
+    await BrandMembership.deleteOne({ brandId, userId: staffId });
+  } catch (cleanupError) {
+    cleanupErrors.push(cleanupError);
+  }
+
+  try {
+    await Staff.deleteOne({ _id: staffId });
+  } catch (cleanupError) {
+    cleanupErrors.push(cleanupError);
+  }
+
+  if (cleanupErrors.length > 0) error.cleanupErrors = cleanupErrors;
+};
+
 const createStaff = async (parent, args = {}, ctx, info) => {
   const input = args.input || {};
   const businessContext = await resolveCreateStaffBusinessContext(input, ctx);
-  const { staffBusinessContext: _ignoredContext, ...accountInput } = input;
+  const requestedRoleId = input.roleId || null;
+
+  if (requestedRoleId) {
+    await resolveAssignableRole({
+      roleId: requestedRoleId,
+      department: input.department,
+      actor: ctx.user,
+    });
+  }
+
+  const {
+    staffBusinessContext: _ignoredContext,
+    roleId: _ignoredRoleId,
+    ...accountInput
+  } = input;
 
   const created = await staffMutation.createStaff(
     parent,
@@ -187,16 +257,100 @@ const createStaff = async (parent, args = {}, ctx, info) => {
         setDefaultsOnInsert: true,
       },
     );
-  } catch (error) {
-    try {
-      await Staff.deleteOne({ _id: createdId });
-    } catch (cleanupError) {
-      error.cleanupError = cleanupError;
+
+    if (requestedRoleId) {
+      const assigned = await assignStaffRoleWithinRestaurant({
+        actor: ctx.user,
+        staffUserId: createdId,
+        roleId: requestedRoleId,
+        restaurantId: businessContext.restaurantId,
+        ctx,
+      });
+      return sanitizeStaffPrivateProfile(assigned, ctx, {
+        restaurantId: businessContext.restaurantId,
+        skipAuthorization: true,
+      });
     }
+  } catch (error) {
+    await cleanupCreatedStaff({
+      brandId: businessContext.brandId,
+      staffId: createdId,
+      error,
+    });
     throw error;
   }
 
   return created;
+};
+
+const loadStaffUpdateContext = async (userId, ctx) => {
+  if (!mongoose.isValidObjectId(userId)) {
+    throw new Error("Nhân viên không hợp lệ");
+  }
+
+  const restaurantIds = await getStaffRestaurantIds(userId);
+  const restaurantId = restaurantIds[0] || null;
+  if (!restaurantId) {
+    throw new Error("Nhân viên chưa được gán vào nhà hàng");
+  }
+
+  await requireRestaurantPermission(ctx, restaurantId, "staff.write");
+
+  const staff = await Staff.findById(userId)
+    .select("_id userType deletedAt department baseSalary emergencyContact")
+    .lean();
+  if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
+    throw new Error("Staff not found");
+  }
+
+  return { restaurantId, staff };
+};
+
+const normalizeOptionalNumber = (value) => {
+  if (value === null || typeof value === "undefined" || value === "") return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
+const updateStaff = async (parent, args = {}, ctx, info) => {
+  const userId = args.userId || args.id || null;
+  const { restaurantId, staff } = await loadStaffUpdateContext(userId, ctx);
+  const input = { ...(args.input || {}) };
+
+  if (Object.prototype.hasOwnProperty.call(input, "baseSalary")) {
+    const nextSalary = normalizeOptionalNumber(input.baseSalary);
+    const currentSalary = normalizeOptionalNumber(staff.baseSalary);
+    if (nextSalary === currentSalary) delete input.baseSalary;
+  }
+
+  if (input.emergencyContact && typeof input.emergencyContact === "object") {
+    input.emergencyContact = {
+      ...(staff.emergencyContact || {}),
+      ...input.emergencyContact,
+    };
+  }
+
+  if (input.roleId) {
+    const role = await resolveAssignableRole({
+      roleId: input.roleId,
+      department: input.department || staff.department,
+      actor: ctx.user,
+    });
+    input.role = role._id;
+    delete input.roleId;
+  }
+
+  return staffMutation.updateStaff(
+    parent,
+    {
+      ...args,
+      userId,
+      input,
+      restaurantId,
+    },
+    ctx,
+    info,
+  );
 };
 
 const operationKey = ["Mut", "ation"].join("");
@@ -211,6 +365,7 @@ const resolvers = {
   [operationKey]: {
     ...staffMutation,
     createStaff,
+    updateStaff,
     ...staffPhotoActions,
     ...payrollFinalizeReadinessMutation,
     ...payrollProtectedAttendanceMutation,
