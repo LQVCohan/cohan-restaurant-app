@@ -9,7 +9,6 @@ import ReviewModal from "./components/ReviewModal";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 import ManagerCommandBar from "../shared/ManagerCommandBar";
 import { hasPermission } from "@/utils/frontendPermissionAccess";
-import NotificationBell from "@/components/common/NotificationBell";
 
 const ME_QUERY = gql`
   query Me {
@@ -988,20 +987,6 @@ const ReviewManagement = () => {
               : []
           }
         />
-
-        <div className="reviews-notification-row">
-          <div>
-            <strong>Thông báo đánh giá gần đây</strong>
-            <span>
-              Quản lý và khách hàng có thể xem thông báo trong ứng dụng và đánh
-              dấu đã đọc.
-            </span>
-          </div>
-          <NotificationBell
-            restaurantId={filters.restaurant || null}
-            title="Thông báo đánh giá"
-          />
-        </div>
 
         <ManagerCommandBar
           tabs={commandTabs}
