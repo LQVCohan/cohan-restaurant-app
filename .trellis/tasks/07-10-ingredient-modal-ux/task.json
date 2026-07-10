@@ -1,0 +1,15 @@
+{
+  "id": "07-10-ingredient-modal-ux",
+  "title": "Tối ưu trải nghiệm thêm sửa xóa nguyên liệu",
+  "status": "in_progress",
+  "scope": [
+    "compact ingredient create and edit modal layout",
+    "accessible soft-delete and permanent-delete confirmation modals",
+    "clear blocked-delete feedback for active menu item usage"
+  ],
+  "validation": [
+    "trace ingredient model, GraphQL resolver, Apollo hook, and UI actions",
+    "run the focused IngredientModal component test",
+    "review responsive modal structure and keyboard states"
+  ]
+}
