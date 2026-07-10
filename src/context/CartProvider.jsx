@@ -223,11 +223,13 @@ function buildCartContextValue(cartState, serverCart, loading, refetch) {
   };
 }
 
-function ServerCartBridge({ cartState, children }) {
+export function ServerCartBridge({ cartState, children }) {
   const client = useApolloClient();
   const { data, refetch, loading } = useQuery(MY_CART, {
     fetchPolicy: "cache-and-network",
   });
+  const syncServerCart = cartState.syncServerCart;
+  const addLocalToCart = cartState.addToCart;
 
   useEffect(() => {
     const serverCart = data?.myCart;
@@ -235,8 +237,8 @@ function ServerCartBridge({ cartState, children }) {
     const serverItems = (serverCart.items || []).map((item) =>
       mapServerCartItem(serverCart.id, item),
     );
-    cartState.syncServerCart?.(serverItems, { replace: false });
-  }, [cartState, data?.myCart]);
+    syncServerCart?.(serverItems, { replace: false });
+  }, [syncServerCart, data?.myCart]);
 
   const addToCart = useMemo(
     () => async (item) => {
@@ -254,7 +256,7 @@ function ServerCartBridge({ cartState, children }) {
           if (shouldValidate) emitCartAddValidation("skipped");
           return false;
         }
-        cartState.addToCart(liveItem);
+        addLocalToCart(liveItem);
         if (shouldValidate) emitCartAddValidation("success");
         return true;
       } catch {
@@ -262,7 +264,7 @@ function ServerCartBridge({ cartState, children }) {
         return false;
       }
     },
-    [cartState, client],
+    [addLocalToCart, client],
   );
 
   const value = useMemo(
