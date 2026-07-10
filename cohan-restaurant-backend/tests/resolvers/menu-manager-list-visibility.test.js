@@ -18,7 +18,11 @@ vi.mock("../../src/services/restaurantAvailability.service.js", () => ({
   computeRestaurantAvailability: vi.fn(() => ({ canOrder: true })),
 }));
 vi.mock("../../src/constants/permissions.js", () => ({
-  PERMISSIONS: { MENU_READ: "menu.read" },
+  PERMISSIONS: {
+    MENU_READ: "menu.read",
+    MENU_WRITE: "menu.write",
+    MENU_UPDATE: "menu.update",
+  },
 }));
 vi.mock("mongoose", () => ({
   default: {
@@ -55,8 +59,10 @@ describe("manager menu list visibility", () => {
     authorizationMocks.requireRestaurantPermission.mockResolvedValue(true);
   });
 
-  it("returns active and inactive menus to an authorized manager", async () => {
-    authorizationMocks.hasPermission.mockResolvedValue(true);
+  it("returns active and inactive menus to a user who can manage menus", async () => {
+    authorizationMocks.hasPermission.mockImplementation(
+      async (_user, permission) => permission === "menu.update",
+    );
     const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
     const ctx = { user: { id: "valid-user-1" } };
 
@@ -64,15 +70,42 @@ describe("manager menu list visibility", () => {
 
     expect(authorizationMocks.hasPermission).toHaveBeenCalledWith(
       ctx.user,
-      "menu.read",
+      "menu.update",
     );
     expect(authorizationMocks.requireRestaurantPermission).toHaveBeenCalledWith(
       ctx,
       "valid-r1",
-      "menu.read",
+      "menu.update",
     );
     expect(modelMocks.Menu.find).toHaveBeenCalledWith({
       restaurantId: "valid-r1",
+    });
+  });
+
+  it("keeps inactive menus hidden from staff who only have menu read access", async () => {
+    authorizationMocks.hasPermission.mockImplementation(
+      async (_user, permission) => permission === "menu.read",
+    );
+    const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
+
+    await MenuQuery.menus(
+      null,
+      { restaurantId: "valid-r1" },
+      { user: { id: "valid-server-1" } },
+    );
+
+    expect(authorizationMocks.hasPermission).toHaveBeenCalledWith(
+      { id: "valid-server-1" },
+      "menu.update",
+    );
+    expect(authorizationMocks.hasPermission).toHaveBeenCalledWith(
+      { id: "valid-server-1" },
+      "menu.write",
+    );
+    expect(authorizationMocks.requireRestaurantPermission).not.toHaveBeenCalled();
+    expect(modelMocks.Menu.find).toHaveBeenCalledWith({
+      restaurantId: "valid-r1",
+      isActive: true,
     });
   });
 
