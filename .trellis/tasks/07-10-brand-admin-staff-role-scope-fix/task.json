@@ -1,0 +1,31 @@
+{
+  "id": "brand-admin-staff-role-scope-fix",
+  "name": "brand-admin-staff-role-scope-fix",
+  "title": "Scope staff role list for Brand Admin",
+  "description": "Authorize the staff role lookup through the active restaurant and BrandMembership scope, and request only the role fields the employee modal uses.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "manager-staff",
+  "package": null,
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/schema/user.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/user/query.js",
+    "src/hooks/useStaffManagement.js",
+    "cohan-restaurant-backend/tests/resolvers/user-admin-management-access.test.js",
+    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.jsx"
+  ],
+  "notes": "Planning complete. The role shown in the modal comes from frontend metadata; the authoritative role record comes from roleList. Staff role lookup has no restaurant context and only checks global admin/manager/hr, which is not the correct BrandMembership scope boundary."
+}
