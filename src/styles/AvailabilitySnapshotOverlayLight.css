@@ -1,5 +1,7 @@
 /* Keep the availability review modal inside the manager dashboard's light sage system. */
 html body .availability-snapshot-modal-overlay {
+  align-items: center;
+  padding: clamp(0.75rem, 2vh, 1.25rem);
   background: linear-gradient(
     180deg,
     rgba(240, 244, 242, 0.66),
@@ -9,8 +11,155 @@ html body .availability-snapshot-modal-overlay {
   backdrop-filter: blur(2px) saturate(0.92);
 }
 
-.availability-snapshot-modal-overlay > .availability-snapshot-modal {
+html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
+  height: min(82dvh, 760px);
+  max-height: calc(100dvh - 2rem);
+  overflow: hidden;
   box-shadow:
     0 20px 54px rgba(35, 52, 44, 0.16),
     0 2px 10px rgba(35, 52, 44, 0.06);
+}
+
+.availability-snapshot-modal .availability-snapshot-header {
+  flex: 0 0 auto;
+  padding: 0.85rem 1rem 0.75rem;
+}
+
+.availability-snapshot-modal .availability-snapshot-header p {
+  margin-top: 0.2rem;
+}
+
+.availability-snapshot-modal .availability-summary-cards {
+  flex: 0 0 auto;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem 0;
+}
+
+.availability-snapshot-modal .availability-summary-cards > div {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.72rem;
+  border-radius: 12px;
+}
+
+.availability-snapshot-modal .availability-summary-cards span {
+  font-size: 0.66rem;
+  line-height: 1.25;
+}
+
+.availability-snapshot-modal .availability-summary-cards strong {
+  flex: 0 0 auto;
+  margin-top: 0;
+  font-size: 1.12rem;
+}
+
+.availability-snapshot-modal .availability-snapshot-controls {
+  flex: 0 0 auto;
+  grid-template-columns: minmax(210px, 1.35fr) repeat(3, minmax(135px, 0.78fr)) auto;
+  align-items: end;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem 0;
+}
+
+.availability-snapshot-modal .availability-filter-field {
+  gap: 0.22rem;
+}
+
+.availability-snapshot-modal .availability-filter-field > span {
+  font-size: 0.65rem;
+}
+
+.availability-snapshot-modal .availability-snapshot-controls input,
+.availability-snapshot-modal .availability-snapshot-controls select,
+.availability-snapshot-modal .toggle-missing {
+  height: 40px;
+  min-height: 40px;
+}
+
+.availability-snapshot-modal .availability-results-bar {
+  flex: 0 0 auto;
+  min-height: 1.5rem;
+  margin: 0.35rem 1rem 0;
+}
+
+.availability-snapshot-modal .availability-results-bar button {
+  min-height: 34px;
+}
+
+.availability-snapshot-modal .availability-legend-row {
+  flex: 0 0 auto;
+  gap: 0.35rem 0.85rem;
+  margin: 0.3rem 1rem 0;
+  padding: 0.38rem 0.55rem;
+  border-radius: 10px;
+}
+
+.availability-snapshot-modal .availability-legend-row span {
+  font-size: 0.71rem;
+}
+
+.availability-snapshot-modal :is(
+  .availability-window-note,
+  .availability-error-state,
+  .availability-loading-state
+) {
+  flex: 0 0 auto;
+  margin: 0.38rem 1rem 0;
+  padding: 0.52rem 0.7rem;
+  border-radius: 10px;
+}
+
+.availability-snapshot-modal .availability-table-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  margin: 0.5rem 1rem 1rem;
+  border-radius: 14px;
+}
+
+.availability-snapshot-modal .availability-snapshot-table th,
+.availability-snapshot-modal .availability-snapshot-table td {
+  padding: 0.46rem 0.48rem;
+}
+
+.availability-snapshot-modal .availability-cell {
+  min-width: 70px;
+}
+
+@media (max-width: 980px) {
+  html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
+    height: calc(100dvh - 2rem);
+  }
+
+  .availability-snapshot-modal .availability-snapshot-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  html body .availability-snapshot-modal-overlay {
+    align-items: flex-start;
+    padding: 0.5rem;
+  }
+
+  html body .availability-snapshot-modal-overlay > .availability-snapshot-modal {
+    width: calc(100vw - 1rem);
+    height: calc(100dvh - 1rem);
+    max-height: calc(100dvh - 1rem);
+    overflow-y: auto;
+  }
+
+  .availability-snapshot-modal .availability-summary-cards,
+  .availability-snapshot-modal .availability-snapshot-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .availability-snapshot-modal .availability-table-shell {
+    flex: 0 0 auto;
+    min-height: 300px;
+    max-height: 52dvh;
+  }
 }
