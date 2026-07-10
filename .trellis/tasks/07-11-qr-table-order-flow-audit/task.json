@@ -1,0 +1,22 @@
+{
+  "id": "07-11-qr-table-order-flow-audit",
+  "title": "Audit and fix table QR ordering flow",
+  "status": "in_progress",
+  "area": "fullstack",
+  "createdAt": "2026-07-11",
+  "updatedAt": "2026-07-11",
+  "validation": {
+    "completed": [
+      "static schema-resolver-service-frontend-POS flow trace"
+    ],
+    "notRun": [
+      "targeted public table order backend Vitest",
+      "targeted confirmed incoming order Vitest",
+      "targeted TableOrderExperience Vitest",
+      "npm run check:graphql:operations",
+      "npm run check:conflicts",
+      "npm run build",
+      "browser QR smoke"
+    ]
+  }
+}
