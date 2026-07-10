@@ -20,9 +20,9 @@ const applyAiProviderPolicy = () => {
   process.env.AI_FALLBACK_PROVIDER = "local";
   process.env.GEMINI_MODEL = DEFAULT_GEMINI_MODEL;
   process.env.AI_CHATBOT_MODEL = DEFAULT_GEMINI_MODEL;
-  process.env.AI_CHATBOT_GEMINI_TIMEOUT_MS ||= "8000";
-  process.env.AI_CHATBOT_LOCAL_TIMEOUT_MS ||= "4000";
-  process.env.AI_CHATBOT_EMBEDDING_TIMEOUT_MS ||= "2500";
+  process.env.AI_CHATBOT_GEMINI_TIMEOUT_MS ||= "30000";
+  process.env.AI_CHATBOT_LOCAL_TIMEOUT_MS ||= "15000";
+  process.env.AI_CHATBOT_EMBEDDING_TIMEOUT_MS ||= "8000";
 };
 
 const startServer = async () => {
