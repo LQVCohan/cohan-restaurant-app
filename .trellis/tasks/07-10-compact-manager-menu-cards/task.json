@@ -1,0 +1,18 @@
+{
+  "id": "07-10-compact-manager-menu-cards",
+  "title": "Compact manager menu item cards",
+  "status": "in_progress",
+  "branch": "main",
+  "createdAt": "2026-07-10",
+  "scope": [
+    "src/components/Dashboard_Manager/Menu/components/MenuItemCard/MenuItemCard.jsx",
+    "src/components/Dashboard_Manager/Menu/components/MenuItemCard/PrepStationControl.module.scss",
+    "src/components/Dashboard_Manager/Menu/MenuManagementCardCompactFix.scss",
+    "src/components/Dashboard_Manager/Menu/MenuManagementPolish.scss"
+  ],
+  "validation": [
+    "review final JSX and SCSS diff",
+    "frontend build if runtime is available",
+    "visual check desktop grid, 940px, 760px, 430x932 and 390x844"
+  ]
+}
