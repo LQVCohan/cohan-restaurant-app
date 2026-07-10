@@ -3,7 +3,7 @@
   "name": "table-3d-responsive-ui-upgrade",
   "title": "Upgrade table 3D modal on desktop and mobile",
   "description": "Refine the existing manager table 3D simulator into a clearer desktop workspace and a reliable single-column mobile workflow without changing business behavior.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-table-3d-responsive-ui",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "9f7926d0f8f04ce29973f139a404fbe4e7b2b8c7",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -31,6 +31,6 @@
     "src/styles/Table3DModalWorkflow.css",
     "src/styles/Table3DMainModalRepair.css"
   ],
-  "notes": "The backend schema, GraphQL input, updateTable mutation, permission checks, audit logging, AR save callback and model catalog behavior remain unchanged. The smallest root-cause change is a final responsive layout pass in the existing repair stylesheet.",
+  "notes": "Implemented the final responsive layout contract in the existing repair stylesheet. Desktop now uses an available-height viewer workspace and structured action area; mobile uses a full-screen single-scroll flow with catalog-first ordering, horizontal model cards, safe-area spacing, 44px touch targets, and non-overlapping static actions. Backend, GraphQL, permissions, audit logging, AR persistence and component callbacks were not changed. No CI workflow was triggered for the commit; local build/component tests and physical phone validation were not available through the GitHub connector.",
   "meta": {}
 }
