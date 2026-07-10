@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Modal from "../../../../common/Modal";
 import Button from "../../../../common/Button";
 import { toIngredientCategoryVi } from "../../../../../utils/ingredientCategoryI18n";
@@ -79,7 +79,6 @@ const IngredientCategoryManagerModal = ({
   const [lastSyncReport, setLastSyncReport] = useState(null);
   const [error, setError] = useState("");
   const [pendingCreatedCategory, setPendingCreatedCategory] = useState(null);
-  const listRef = useRef(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -115,11 +114,6 @@ const IngredientCategoryManagerModal = ({
     const start = (currentPage - 1) * PAGE_SIZE;
     return filtered.slice(start, start + PAGE_SIZE);
   }, [filtered, currentPage]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    listRef.current?.scrollTo({ top: 0 });
-  }, [isOpen, currentPage, search, sourceFilter]);
 
   useEffect(() => {
     if (!pendingCreatedCategory) return;
@@ -369,7 +363,7 @@ const IngredientCategoryManagerModal = ({
                 </div>
               </div>
 
-              <div ref={listRef} className="list-container main-scroll-list">
+              <div className="list-container main-scroll-list">
                 {pageRows.map((cat) => (
                   <div key={getCategoryId(cat)} className="list-item">
                     <div className="item-info">
