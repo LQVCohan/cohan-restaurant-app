@@ -55,6 +55,39 @@ const normalizeComparableText = (value) => String(value || "").trim();
 const normalizeComparableEnum = (value) =>
   normalizeComparableText(value).toLowerCase();
 
+const hasEmergencyContactValue = (contact) =>
+  ["name", "phone", "relation", "address"].some((field) =>
+    String(contact?.[field] || "").trim(),
+  );
+
+const mergePrimaryEmergencyContact = (contact, existingContacts = []) => {
+  const contacts = Array.isArray(existingContacts)
+    ? existingContacts.map((item) => ({ ...item }))
+    : [];
+  if (!contact || typeof contact !== "object") return contacts;
+
+  const patch = Object.fromEntries(
+    Object.entries(contact).filter(([, value]) => typeof value !== "undefined"),
+  );
+  const primaryIndex = contacts.findIndex((item) => item?.isPrimary);
+  const targetIndex =
+    primaryIndex >= 0 ? primaryIndex : contacts.length > 0 ? 0 : -1;
+  const nextContact = {
+    ...(targetIndex >= 0 ? contacts[targetIndex] : {}),
+    ...patch,
+    isPrimary: true,
+  };
+
+  if (!hasEmergencyContactValue(nextContact)) {
+    if (targetIndex >= 0) contacts.splice(targetIndex, 1);
+    return contacts;
+  }
+
+  if (targetIndex >= 0) contacts[targetIndex] = nextContact;
+  else contacts.unshift(nextContact);
+  return contacts;
+};
+
 const filterPayrollItems = (items = [], { search, status } = {}) => {
   const keyword = normalizeSearch(search);
   const normalizedStatus = String(status || "").trim();
@@ -227,14 +260,17 @@ const createStaff = async (parent, args = {}, ctx, info) => {
   const {
     staffBusinessContext: _ignoredContext,
     roleId: _ignoredRoleId,
+    emergencyContact,
     ...accountInput
   } = input;
+  const emergencyContacts = mergePrimaryEmergencyContact(emergencyContact);
 
   const created = await staffMutation.createStaff(
     parent,
     {
       input: {
         ...accountInput,
+        ...(emergencyContacts.length > 0 ? { emergencyContacts } : {}),
         businessRestaurantId: businessContext.restaurantId,
       },
     },
@@ -304,7 +340,7 @@ const loadStaffUpdateContext = async (userId, ctx) => {
 
   const staff = await Staff.findById(userId)
     .select(
-      "_id userType deletedAt role department positionTitle employmentType employmentStatus dateJoined dateLeft baseSalary emergencyContact",
+      "_id userType deletedAt role department positionTitle employmentType employmentStatus dateJoined dateLeft baseSalary emergencyContacts",
     )
     .lean();
   if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
@@ -368,11 +404,12 @@ const updateStaff = async (parent, args = {}, ctx, info) => {
 
   removeUnchangedPayrollFields(input, staff);
 
-  if (input.emergencyContact && typeof input.emergencyContact === "object") {
-    input.emergencyContact = {
-      ...(staff.emergencyContact || {}),
-      ...input.emergencyContact,
-    };
+  if (Object.prototype.hasOwnProperty.call(input, "emergencyContact")) {
+    input.emergencyContacts = mergePrimaryEmergencyContact(
+      input.emergencyContact,
+      staff.emergencyContacts,
+    );
+    delete input.emergencyContact;
   }
 
   if (input.roleId) {
