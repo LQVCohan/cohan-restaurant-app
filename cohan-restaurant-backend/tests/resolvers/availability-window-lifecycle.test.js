@@ -39,8 +39,8 @@ vi.mock(
 const ctx = {
   user: { id: "manager-1", roleName: "manager" },
 };
-const periodStart = new Date("2026-07-12T17:00:00.000Z");
-const periodEnd = new Date("2026-07-19T16:59:59.999Z");
+const periodStart = new Date("2099-07-12T17:00:00.000Z");
+const periodEnd = new Date("2099-07-19T16:59:59.999Z");
 
 const loadMutation = async () =>
   (await import("../../graphql/resolvers/availability/windowLifecycle.mutation.js"))
@@ -59,8 +59,8 @@ describe("availability window lifecycle", () => {
     scheduleMocks.buildAvailabilityRegistrationSchedule.mockReturnValue({
       periodStart,
       periodEnd,
-      openAt: new Date("2026-07-05T17:00:00.000Z"),
-      closeAt: new Date("2026-07-08T16:59:00.000Z"),
+      openAt: new Date("2099-07-05T17:00:00.000Z"),
+      closeAt: new Date("2099-07-08T16:59:00.000Z"),
       mode: "manual",
     });
     modelMocks.SchedulePublication.exists.mockResolvedValue(false);
@@ -125,6 +125,8 @@ describe("availability window lifecycle", () => {
       restaurantId: "restaurant-1",
       periodStart,
       periodEnd,
+      closeAt: new Date("2099-07-08T16:59:00.000Z"),
+      registrationModeSnapshot: "manual",
       status: "closed",
     });
     modelMocks.AvailabilityRegistrationWindow.findOneAndUpdate.mockResolvedValue({
@@ -139,7 +141,11 @@ describe("availability window lifecycle", () => {
     ).toHaveBeenCalledWith(
       { _id: "window-1", status: { $in: ["draft", "closed"] } },
       {
-        $set: { status: "open" },
+        $set: expect.objectContaining({
+          status: "open",
+          openAt: expect.any(Date),
+          closeAt: expect.any(Date),
+        }),
         $unset: { closedAt: "", closedBy: "" },
       },
       { new: true },
