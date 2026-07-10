@@ -1,0 +1,33 @@
+{
+  "id": "ui-ux-pro-max-skill",
+  "name": "ui-ux-pro-max-skill",
+  "title": "Integrate UI UX Pro Max skill",
+  "description": "Add a repository-local UI/UX Pro Max agent skill sourced from the official project and register it without changing application runtime code.",
+  "status": "in_progress",
+  "dev_type": "tooling",
+  "scope": "agent-ui-guidance",
+  "package": null,
+  "priority": "P2",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    ".agents/skills/ui-ux-pro-max/SKILL.md",
+    "skills-lock.json"
+  ],
+  "notes": "Repository guidance only. No schema, resolver, GraphQL operation, React component, stylesheet, dependency, or runtime behavior changes.",
+  "meta": {
+    "source": "nextlevelbuilder/ui-ux-pro-max-skill:.claude/skills/ui-ux-pro-max/SKILL.md",
+    "upstreamRevision": "12b486b22e67f5d887962ef8351c1ac863bfaeb9",
+    "license": "MIT"
+  }
+}
