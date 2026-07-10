@@ -1,0 +1,33 @@
+{
+  "id": "07-10-staff-mobile-workspace-audit",
+  "title": "Audit và sửa responsive toàn bộ khu vực nhân viên",
+  "status": "in_progress",
+  "type": "frontend-responsive",
+  "scope": [
+    "src/layouts/StaffLayout.jsx",
+    "src/layouts/StaffLayout.scss",
+    "src/layouts/StaffWorkspaceOverrides.scss",
+    "src/components/Dashboard_Manager/Reservations/ReservationChangeReviewPage.jsx",
+    "src/components/Dashboard_Manager/Reservations/ReservationChangeReviewPage.scss",
+    "src/components/Staff/components/ContactsView.jsx",
+    "src/components/Staff/components/ContactsView.scss",
+    "src/components/common/ChatThreadPanel.jsx",
+    "src/components/common/ChatThreadPanel.scss"
+  ],
+  "rootCause": "The staff shell renders a mobile nav with an is-open class, while the stylesheet hides the real nav and styles a non-existent drawer. Staff subpages also lack one shared mobile containment layer for tables, matrices, sticky controls, safe areas and portal-like panels. Reservation change review remains desktop-only inline styling.",
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "npm run build",
+      "targeted component tests for staff layout and communication where available",
+      "manual viewport review at 390x844 and 430x932"
+    ],
+    "completed": [
+      "read AGENTS.md and Trellis workflow",
+      "read ponytail, ui-ux-pro-max, frontend-design, taste-ui-redesign and redesign-existing-projects skills",
+      "traced AppRouter staff routes through StaffLayout into all staff pages and shared modal/panel callers",
+      "audited existing responsive rules for dashboard, schedule, attendance, leave, profile, notifications, contacts, performance, payslips, settings, orders, kitchen, AI handoff and reservation change review"
+    ],
+    "notRun": []
+  }
+}
