@@ -1,15 +1,14 @@
 {
   "id": "07-10-staff-dashboard-compact",
   "title": "Tối ưu dashboard nhân viên gọn và rõ trên điện thoại",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-redesign",
   "scope": [
     "src/components/Staff/StaffDashboardPage.jsx",
     "src/components/Staff/StaffDashboardPage.scss",
-    "src/components/Staff/StaffDashboardPage.test.jsx",
-    "src/layouts/StaffLayout.scss"
+    "src/components/Staff/StaffDashboardPage.test.jsx"
   ],
-  "rootCause": "StaffLayout already provides the page title, description and signed-in identity, but StaffDashboardPage repeats all three and then renders several overlapping task lists, nine action cards, role tools, profile preview and static reminder copy. On phone widths every section stacks into one long, noisy page.",
+  "rootCause": "StaffLayout already provides the page title, description and signed-in identity, but StaffDashboardPage repeated all three and then rendered several overlapping task lists, nine action cards, role tools, profile preview and static reminder copy. At phone widths every section stacked into one long, noisy page.",
   "flow": "AppRouter /staff/dashboard -> StaffLayout -> StaffDashboardPage -> frontendRoleAccess role gates -> route Links",
   "validation": {
     "planned": [
@@ -22,8 +21,15 @@
       "read AGENTS.md and .trellis/workflow.md",
       "read ponytail, ui-ux-pro-max, frontend-design, taste-ui-redesign and redesign-existing-projects skills",
       "traced AppRouter through StaffLayout, StaffDashboardPage and frontendRoleAccess",
-      "reviewed the supplied real-phone screenshots"
+      "reviewed the supplied real-phone screenshots",
+      "verified every imported Lucide icon against src/lib/lucideReactShim.jsx",
+      "reviewed the final diff for route and role-gate preservation"
     ],
-    "notRun": []
+    "notRun": [
+      "targeted StaffDashboardPage Vitest: GitHub connector has no terminal",
+      "npm run check:conflicts: GitHub connector has no terminal",
+      "npm run build: GitHub connector has no terminal",
+      "manual viewport review: no browser runtime is available"
+    ]
   }
 }
