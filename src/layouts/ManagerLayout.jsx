@@ -42,6 +42,7 @@ const SettingsManagement = lazy(() => import("@/components/Dashboard_Manager/Set
 const BackupManagement = lazy(() => import("@/components/Dashboard_Manager/Backup/BackupManagement"));
 const SystemUserManagement = lazy(() => import("@/components/Dashboard_Manager/SystemUsers/SystemUserManagement"));
 const ManagerRestaurantInfoManagement = lazy(() => import("@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx").then((module) => ({ default: module.ManagerRestaurantInfoManagement })));
+const RestaurantPublicationControl = lazy(() => import("@/components/Dashboard_Manager/RestaurantInfo/RestaurantPublicationControl.jsx"));
 const AiHandoffInbox = lazy(() => import("@/components/communication/AiHandoffInbox"));
 const BrandManagement = lazy(() => import("@/components/Dashboard_Manager/Brand/BrandManagement.jsx"));
 const SystemLogsPage = lazy(() => import("@/components/Dashboard_Manager/SystemLogs/SystemLogsPage"));
@@ -453,7 +454,15 @@ const ManagerLayout = () => {
       case "payroll": return <PayrollManagement />;
       case "reviews": return <ReviewManagement />;
       case "print-management": return <PrintManagement />;
-      case "restaurant-info-management": return <ManagerRestaurantInfoManagement />;
+      case "restaurant-info-management":
+        return (
+          <>
+            <RestaurantPublicationControl
+              restaurantId={requestedRestaurantId || brandSelection.selectedRestaurantId || null}
+            />
+            <ManagerRestaurantInfoManagement />
+          </>
+        );
       case "rbac": return <RbacManagement />;
       case "system-users": return <SystemUserManagement />;
       case "ai-handoff": return <AiHandoffInbox restaurantId={requestedRestaurantId || brandSelection.selectedRestaurantId || null} />;
