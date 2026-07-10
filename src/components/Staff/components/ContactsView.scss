@@ -1,268 +1,345 @@
-// Variables
-$primary: #1F6F4A;
-$success: #10b981;
-$warning: #1F6F4A;
-$danger: #ef4444;
-$bg-main: #f3f4f6;
-$bg-card: #ffffff;
-$text-main: #1f2937;
-$text-sub: #6b7280;
-$border-color: #e5e7eb;
-$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$primary: #1f6f4a;
+$primary-strong: #165c3c;
+$primary-soft: #eaf5ee;
+$success: #2f7d57;
+$danger: #b42318;
+$text: #1f2a24;
+$muted: #64746a;
+$border: #dce8df;
 
 .staff-pos-contacts {
   display: flex;
+  min-width: 0;
   flex-direction: column;
+  gap: 12px;
   height: 100%;
+  color: $text;
 
-  // Search Bar Styling
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .search-section {
-    padding-bottom: 12px;
+    padding: 0;
+  }
 
-    .search-bar {
-      position: relative;
-      display: flex;
-      align-items: center;
+  .search-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
 
-      .search-icon {
-        position: absolute;
-        left: 14px;
-        color: #9ca3af;
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      color: $muted;
+      pointer-events: none;
+    }
+
+    input {
+      width: 100%;
+      min-width: 0;
+      min-height: 46px;
+      padding: 0 14px 0 44px;
+      border: 1px solid $border;
+      border-radius: 14px;
+      outline: none;
+      background: #f8faf6;
+      color: $text;
+      font: inherit;
+      font-size: 0.94rem;
+      transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+
+      &:focus {
+        border-color: rgba($primary, 0.5);
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba($primary, 0.12);
       }
 
-      input {
-        width: 100%;
-        padding: 12px 16px 12px 42px;
-        border-radius: 16px; // Bo góc mềm mại
-        border: 1px solid transparent;
-        background-color: #e5e7eb; // Màu xám nhạt native
-        font-size: 15px;
-        outline: none;
-        transition: 0.2s;
-
-        &:focus {
-          background-color: $bg-card;
-          border-color: $primary;
-          box-shadow: 0 0 0 3px rgba($primary, 0.1);
-        }
-
-        &::placeholder {
-          color: #9ca3af;
-        }
+      &::placeholder {
+        color: #839087;
       }
     }
   }
 
-  // Horizontal Filter Chips
   .filter-scroll {
     display: flex;
-    gap: 10px;
+    gap: 8px;
+    min-width: 0;
     overflow-x: auto;
-    padding-bottom: 16px;
-    margin-bottom: 4px;
+    padding: 1px 1px 4px;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
 
-    // Ẩn scrollbar
     &::-webkit-scrollbar {
       display: none;
     }
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  }
 
-    .filter-chip {
-      white-space: nowrap;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 600;
-      border: 1px solid $border-color;
-      background: $bg-card;
-      color: $text-sub;
-      cursor: pointer;
-      transition: all 0.2s;
+  .filter-chip {
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 0 13px;
+    border: 1px solid $border;
+    border-radius: 999px;
+    background: #fff;
+    color: $muted;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 800;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease;
 
-      &.active {
-        background: $primary;
-        color: white;
-        border-color: $primary;
-        box-shadow: 0 4px 10px rgba($primary, 0.25);
-      }
+    &:hover {
+      border-color: rgba($primary, 0.3);
+      color: $primary-strong;
+      background: $primary-soft;
+    }
 
-      &:active {
-        transform: scale(0.95);
-      }
+    &.active {
+      border-color: $primary;
+      background: $primary;
+      color: #fff;
+      box-shadow: 0 8px 18px rgba($primary, 0.18);
+    }
+
+    &:active {
+      transform: scale(0.98);
     }
   }
 
-  // Contact List
-  .contact-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding-bottom: 24px; // Chừa chỗ cho cuộn ở cuối
+  :is(button, input):focus-visible {
+    outline: 3px solid rgba($primary, 0.24);
+    outline-offset: 3px;
+  }
 
-    .empty-state {
-      text-align: center;
-      padding: 32px 16px;
-      color: $text-sub;
-      font-size: 14px;
-      background: $bg-card;
-      border-radius: 16px;
+  .contact-list {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+    padding-bottom: 12px;
+  }
+
+  .empty-state {
+    padding: 28px 16px;
+    border: 1px dashed $border;
+    border-radius: 16px;
+    background: #f8faf6;
+    color: $muted;
+    font-size: 0.88rem;
+    text-align: center;
+  }
+
+  .contact-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid $border;
+    border-radius: 17px;
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(31, 111, 74, 0.05);
+    transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+
+    &:hover {
+      border-color: rgba($primary, 0.26);
+      box-shadow: 0 12px 26px rgba(31, 111, 74, 0.08);
+      transform: translateY(-1px);
+    }
+
+    &--management {
+      background: linear-gradient(135deg, #fff, #f5fbf7);
+    }
+  }
+
+  .contact-card__open {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .contact-info-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .avatar-wrapper {
+    position: relative;
+    flex: 0 0 auto;
+  }
+
+  .avatar {
+    display: grid;
+    width: 46px;
+    height: 46px;
+    place-items: center;
+    border-radius: 14px;
+    background: $primary-soft;
+    color: $primary;
+    font-size: 1rem;
+    font-weight: 900;
+  }
+
+  .status-indicator {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 13px;
+    height: 13px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+
+    &.online { background: $success; }
+    &.busy { background: $danger; }
+    &.offline { background: #9aa7a0; }
+  }
+
+  .info-text {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+
+    h4 {
+      overflow: hidden;
+      margin: 0;
+      color: $text;
+      font-size: 0.96rem;
+      font-weight: 850;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .role {
+      color: $primary;
+      font-size: 0.75rem;
+      font-weight: 760;
+      text-transform: capitalize;
+    }
+
+    .last-msg {
+      max-width: 100%;
+      overflow: hidden;
+      margin: 1px 0 0;
+      color: $muted;
+      font-size: 0.8rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .contact-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .unread-pill {
+    display: inline-flex;
+    min-width: 24px;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: $danger;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 850;
+  }
+
+  .action-btn {
+    display: grid;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+    place-items: center;
+    border: 1px solid transparent;
+    border-radius: 13px;
+    cursor: pointer;
+    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+
+    &.btn-chat {
+      border-color: rgba($primary, 0.16);
+      background: $primary-soft;
+      color: $primary;
+    }
+
+    &.btn-call {
+      border-color: rgba($success, 0.16);
+      background: rgba($success, 0.1);
+      color: $success;
+    }
+
+    &:active {
+      transform: scale(0.96);
+    }
+  }
+}
+
+@media (max-width: 520px) {
+  .staff-pos-contacts {
+    gap: 10px;
+
+    .search-bar input {
+      font-size: 16px;
     }
 
     .contact-card {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: $bg-card;
-      padding: 14px;
-      border-radius: 16px;
-      box-shadow: $shadow-sm;
-      transition: background 0.2s;
-
-      &:active {
-        background: #f9fafb;
-      }
-
-      .contact-info-wrap {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        flex: 1;
-        overflow: hidden; // Để text truncate hoạt động nếu dài quá
-
-        .avatar-wrapper {
-          position: relative;
-
-          .avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 14px; // Hơi vuông bo góc giống iOS
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            font-weight: 700;
-
-            // Các lớp màu thay thế Tailwind (nếu project không có sẵn Tailwind)
-            &.bg-green-100 {
-              background: #dbeafe;
-            }
-            &.text-green-600 {
-              color: #165C3C;
-            }
-            &.bg-green-100 {
-              background: #ffedd5;
-            }
-            &.text-green-600 {
-              color: #ea580c;
-            }
-            &.bg-emerald-100 {
-              background: #d1fae5;
-            }
-            &.text-emerald-600 {
-              color: #059669;
-            }
-            &.bg-gray-200 {
-              background: #e5e7eb;
-            }
-            &.text-gray-600 {
-              color: #4b5563;
-            }
-          }
-
-          .status-indicator {
-            position: absolute;
-            bottom: -2px;
-            right: -2px;
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            border: 2px solid $bg-card; // Viền trắng tạo độ cắt với avatar
-
-            &.online {
-              background: $success;
-            }
-            &.busy {
-              background: $danger;
-            }
-            &.offline {
-              background: #9ca3af;
-            }
-          }
-        }
-
-        .info-text {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          flex: 1;
-
-          h4 {
-            margin: 0;
-            font-size: 16px;
-            font-weight: 600;
-            color: $text-main;
-          }
-          .role {
-            font-size: 12px;
-            color: $primary;
-            font-weight: 500;
-          }
-          .last-msg {
-            margin: 2px 0 0;
-            font-size: 13px;
-            color: $text-sub;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 160px; // Tránh đẩy UI trên máy màn nhỏ
-          }
-        }
-      }
-
-      .contact-actions {
-        display: flex;
-        gap: 8px;
-
-
-        .unread-pill {
-          min-width: 22px;
-          height: 22px;
-          padding: 0 6px;
-          border-radius: 999px;
-          background: #ef4444;
-          color: #fff;
-          font-size: 12px;
-          font-weight: 700;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .action-btn {
-          width: 40px;
-          height: 40px;
-          border-radius: 12px;
-          border: none;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: all 0.2s;
-
-          &.btn-chat {
-            background: rgba($primary, 0.1);
-            color: $primary;
-          }
-          &.btn-call {
-            background: rgba($success, 0.1);
-            color: $success;
-          }
-
-          &:active {
-            transform: scale(0.92);
-          }
-        }
-      }
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      padding: 10px;
+      border-radius: 15px;
     }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+    }
+
+    .contact-info-wrap {
+      gap: 9px;
+    }
+
+    .contact-card--management {
+      grid-template-columns: 1fr;
+    }
+
+    .contact-card--management .contact-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      width: 100%;
+    }
+
+    .contact-card--management .action-btn {
+      width: 100%;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .staff-pos-contacts *,
+  .staff-pos-contacts *::before,
+  .staff-pos-contacts *::after {
+    transition-duration: 0.01ms !important;
   }
 }
