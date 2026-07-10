@@ -44,6 +44,8 @@ const ORDER_ITEM_INPUT_KEYS = new Set([
   "note",
   "priority",
   "status",
+  "cartId",
+  "cartItemId",
 ]);
 
 const sanitizeOrderItemInput = (payload = {}) => {
@@ -129,6 +131,11 @@ export const mapCartItemToOrderItemInput = (
 
   return payload;
 };
+
+export const mapCartItemToReservationOrderItemInput = (item = {}) =>
+  sanitizeOrderItemInput(
+    mapCartItemToOrderItemInput(item, { includeCartHoldRef: true }),
+  );
 
 export const mapCartItemToDiscountOrderItemInput = (item = {}) => {
   const payload = mapCartItemToOrderItemInput(item, { includeCartHoldRef: false });
