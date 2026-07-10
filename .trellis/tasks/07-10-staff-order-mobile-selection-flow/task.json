@@ -1,22 +1,18 @@
 {
   "id": "07-10-staff-order-mobile-selection-flow",
   "title": "Tối ưu luồng chọn bàn sang menu trên mobile",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-responsive-flow",
   "scope": [
-    "src/components/Staff/StaffOrdering.jsx",
-    "src/components/Staff/StaffOrdering.scss",
-    "src/components/Staff/components/MenuOrdering.jsx",
-    "src/components/Staff/components/MenuOrdering.scss",
-    "src/components/Staff/components/CartBottomSheet.scss",
-    "src/components/Staff/components/StaffProofCaptureModal.scss",
-    "src/components/Staff/StaffOrdering.selection.test.jsx",
-    "src/components/Staff/components/MenuOrdering.test.jsx"
+    "src/components/Staff/components/TableMap.jsx",
+    "src/components/Staff/components/TableMap.test.jsx",
+    "src/components/Staff/staffOrderMobileSelection.js",
+    "src/components/Staff/StaffOrderingMobileFlow.scss"
   ],
-  "rootCause": "Selecting a table only updates selectedTableId, so the mobile screen remains on the table tab and renders the desktop-oriented selected-table side panel. The selected table is not restored after reload, while the menu item, cart and proof branches still use fixed vh sizing and desktop spacing that can overflow mobile browser chrome and safe areas.",
+  "rootCause": "Selecting a table only called the parent onSelect callback. On mobile the existing navigation therefore remained on the table tab, kept the desktop selected-table panel in the document and did not preserve the chosen table across reloads. The downstream menu, item option, cart and proof surfaces also retained fixed viewport sizing and desktop spacing.",
   "validation": {
     "planned": [
-      "npx vitest run src/components/Staff/StaffOrdering.selection.test.jsx src/components/Staff/components/MenuOrdering.test.jsx",
+      "npx vitest run src/components/Staff/components/TableMap.test.jsx",
       "npm run check:conflicts",
       "npm run build",
       "manual 390x844 and 430x932 flow review"
@@ -24,8 +20,15 @@
     "completed": [
       "read AGENTS.md, Trellis workflow, taste-ui-redesign, redesign-existing-projects and ponytail skills",
       "traced TABLES_QUERY through StaffOrdering mapping, selectedTableId, TableMap selection, MenuOrdering, CartBottomSheet and StaffProofCaptureModal",
-      "inspected the current mobile screenshots and latest target files"
+      "inspected the current mobile screenshots and latest target files",
+      "persisted table id and code in session storage and restore only when the id still exists in the current table list",
+      "reused the existing mobile Menu navigation after table selection instead of adding a second route or state abstraction",
+      "hid the desktop selected-table side panel on mobile and added safe-area/dvh scaling for menu, item options, cart and proof branches",
+      "added regression coverage for selection persistence, restoration, stale cleanup and automatic menu continuation"
     ],
-    "notRun": []
+    "notRun": [
+      "Targeted Vitest, conflict check and build were not run because the GitHub connector does not provide a repository checkout with installed dependencies.",
+      "390x844 and 430x932 visual verification remains for the local browser/device."
+    ]
   }
 }
