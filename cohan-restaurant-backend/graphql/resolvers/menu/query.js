@@ -210,25 +210,29 @@ function canRestaurantAcceptHomeOrders(restaurant) {
   return computeRestaurantAvailability(restaurant).canOrder === true;
 }
 
+async function getMenuManagementPermission(user) {
+  if (!user) return null;
+  if (await hasPermission(user, PERMISSIONS.MENU_UPDATE)) {
+    return PERMISSIONS.MENU_UPDATE;
+  }
+  if (await hasPermission(user, PERMISSIONS.MENU_WRITE)) {
+    return PERMISSIONS.MENU_WRITE;
+  }
+  return null;
+}
+
 export const MenuQuery = {
   menus: async (_parent, { restaurantId }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
 
-    const canManageMenus = ctx?.user
-      ? await hasPermission(ctx.user, PERMISSIONS.MENU_READ)
-      : false;
-
-    if (canManageMenus) {
-      await requireRestaurantPermission(
-        ctx,
-        restaurantId,
-        PERMISSIONS.MENU_READ,
-      );
+    const managementPermission = await getMenuManagementPermission(ctx?.user);
+    if (managementPermission) {
+      await requireRestaurantPermission(ctx, restaurantId, managementPermission);
     }
 
     return Menu.find({
       restaurantId,
-      ...(!canManageMenus ? { isActive: true } : {}),
+      ...(!managementPermission ? { isActive: true } : {}),
     })
       .sort({ timeSlot: 1 })
       .lean({ virtuals: true });
