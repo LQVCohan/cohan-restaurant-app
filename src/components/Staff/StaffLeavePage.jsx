@@ -161,6 +161,7 @@ export default function StaffLeavePage() {
           </p>
           <LeaveRequestForm
             staffList={formStaffList}
+            restaurantId={restaurantId}
             onSubmit={submitLeaveRequest}
             disabled={isMutating}
             loading={loading}
