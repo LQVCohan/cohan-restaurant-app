@@ -1,5 +1,13 @@
 import { gql, useMutation, useQuery } from "@apollo/client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { AuthContext } from "@/context/AuthContext";
+import { hasAnyPermission } from "@/utils/frontendPermissionAccess";
 import {
   FALLBACK_USD_TO_VND,
   getUsdToVndRate,
@@ -27,9 +35,20 @@ export const UPDATE_RESTAURANT_CURRENCY_MUTATION = gql`
 `;
 
 export function useRestaurantCurrency(restaurantId) {
+  const { user } = useContext(AuthContext) || {};
+  const canReadSettings = hasAnyPermission(user, [
+    "restaurant.read",
+    "restaurant.write",
+    "system.manage",
+  ]);
+  const canPersistSettings = hasAnyPermission(user, [
+    "restaurant.write",
+    "system.manage",
+  ]);
+
   const { data, loading, error, refetch } = useQuery(RESTAURANT_CURRENCY_QUERY, {
     variables: { id: restaurantId },
-    skip: !restaurantId,
+    skip: !restaurantId || !canReadSettings,
     fetchPolicy: "cache-and-network",
   });
   const [updateRestaurant] = useMutation(UPDATE_RESTAURANT_CURRENCY_MUTATION);
@@ -71,6 +90,9 @@ export function useRestaurantCurrency(restaurantId) {
   const persistSettings = useCallback(
     async (next = {}) => {
       if (!restaurantId) return null;
+      if (!canPersistSettings) {
+        throw new Error("Bạn không có quyền thay đổi thiết lập tiền tệ.");
+      }
 
       const input = {};
       if (Object.prototype.hasOwnProperty.call(next, "defaultCurrency")) {
@@ -91,13 +113,15 @@ export function useRestaurantCurrency(restaurantId) {
       await refetch?.();
       return result.data?.updateRestaurant || null;
     },
-    [refetch, restaurantId, updateRestaurant],
+    [canPersistSettings, refetch, restaurantId, updateRestaurant],
   );
 
   return useMemo(
     () => ({
       loading,
       error,
+      canReadSettings,
+      canPersistSettings,
       defaultCurrency,
       activeCurrency,
       setActiveCurrency,
@@ -110,6 +134,8 @@ export function useRestaurantCurrency(restaurantId) {
     }),
     [
       activeCurrency,
+      canPersistSettings,
+      canReadSettings,
       defaultCurrency,
       displayedManualRate,
       error,
