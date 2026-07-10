@@ -14,7 +14,7 @@ import {
   verifyTableAccessToken,
 } from "../../utils/publicTableSession.js";
 
-const SESSION_BOOTSTRAP_TABLE_STATUSES = new Set(["reserved", "occupied"]);
+const SESSION_BOOTSTRAP_TABLE_STATUSES = new Set(["occupied"]);
 
 const toId = (value) =>
   value && mongoose.isValidObjectId(String(value))
@@ -90,8 +90,8 @@ export async function ensurePublicTableSessionForAccess(input = {}) {
   const tableStatus = String(initial.table?.status || "").toLowerCase();
   if (!SESSION_BOOTSTRAP_TABLE_STATUSES.has(tableStatus)) {
     throw new GraphQLError(
-      tableStatus === "available"
-        ? "Nhân viên cần mở bàn phục vụ trước khi khách xác nhận gọi món."
+      ["available", "reserved"].includes(tableStatus)
+        ? "Nhân viên cần mở bàn sang trạng thái đang phục vụ trước khi khách xác nhận gọi món."
         : "Bàn hiện chưa sẵn sàng để bắt đầu phiên gọi món.",
       { extensions: { code: "TABLE_SESSION_NOT_OPEN" } },
     );
