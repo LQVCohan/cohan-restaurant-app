@@ -20,13 +20,15 @@ Model runtime được ép về `gemini-3.5-flash`; vấn đề chính là thờ
 
 GraphQL schema/resolver vẫn là contract tương thích khi stream endpoint không khả dụng; thay đổi này không sửa payload GraphQL.
 
-## Phạm vi sửa
+## Phạm vi đã triển khai
 
-- Thêm timeout riêng cho Gemini chatbot, mặc định 8 giây.
-- Cho local provider nhận timeout theo từng caller mà không đổi timeout mặc định của module khác.
-- Giới hạn fallback Qwen3 của chatbot, mặc định 3 giây.
-- Giới hạn embedding knowledge trên request chatbot, mặc định 1,5 giây; khi hết thời gian tự dùng text search hiện có.
-- Bổ sung env example và test khóa các timeout mới.
+- Thêm policy timeout dùng chung cho các request Gemini cũ chưa tự truyền `AbortSignal`.
+- Backend cài policy sau khi nạp `.env` và trước khi import các module phụ thuộc cấu hình.
+- Gemini chatbot có giới hạn mặc định 8 giây.
+- Qwen3 local chat có giới hạn tương tác mặc định 4 giây.
+- BGE-M3 local embedding có giới hạn tương tác mặc định 2,5 giây; khi provider không trả kịp, semantic retrieval tiếp tục dùng nhánh text search/fallback hiện có.
+- Local provider vẫn cho caller truyền timeout riêng khi một tác vụ nền cần thời gian dài hơn.
+- Bổ sung cấu hình mẫu và test khóa hành vi abort của Gemini.
 
 ## Ngoài phạm vi
 
@@ -36,15 +38,22 @@ GraphQL schema/resolver vẫn là contract tương thích khi stream endpoint kh
 
 ## Tiêu chí nghiệm thu
 
-- Gemini request không thể chờ vô hạn.
-- Ollama embedding chậm không giữ request chatbot quá timeout riêng.
-- Qwen3 fallback chậm không cộng thêm 30 giây vào request.
-- Các caller local AI khác vẫn dùng timeout mặc định hiện tại nếu không truyền override.
-- Provider failure vẫn trả deterministic fallback an toàn.
-- Test hiện có cho chatbot/embedding vẫn tương thích.
+- Gemini request trực tiếp không thể chờ vô hạn.
+- Ollama embedding chậm không giữ request theo timeout chung 30 giây.
+- Qwen3 fallback chậm không cộng thêm 30 giây vào request tương tác.
+- Caller có thể ghi đè timeout local khi cần.
+- Provider failure vẫn đi qua fallback an toàn hiện có.
+- Cấu hình model vẫn là `gemini-3.5-flash`.
 
-## Kiểm tra dự kiến
+## Kiểm tra
 
+Đã thêm:
+
+- `cohan-restaurant-backend/tests/services/aiRuntimeTimeout.service.test.js`
+
+Chưa chạy trong phiên GitHub connector:
+
+- `vitest run cohan-restaurant-backend/tests/services/aiRuntimeTimeout.service.test.js`
 - `vitest run cohan-restaurant-backend/tests/services/restaurantChatbot.service.test.js`
 - `vitest run cohan-restaurant-backend/tests/services/restaurantChatbotEmbedding.service.test.js`
 - `npm run check:graphql`
