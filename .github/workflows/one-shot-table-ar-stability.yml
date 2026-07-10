@@ -22,82 +22,53 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          def replace_once(path, old, new):
-              file_path = Path(path)
-              text = file_path.read_text(encoding="utf-8")
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f"Expected exactly one match in {path}, found {count}: {old!r}")
-              file_path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          modal_path = Path("src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.jsx")
+          modal = modal_path.read_text(encoding="utf-8")
 
-          modal = "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.jsx"
-          replace_once(
-              modal,
-              "  const canOpenAr = canOpenModelViewerAr(selectedModel);",
-              '''  const arModes =
+          replacements = [
+              (
+                  "  const canOpenAr = canOpenModelViewerAr(selectedModel);",
+                  '''  const arModes =
             capabilities.webxr == null
               ? "none"
               : capabilities.webxr
                 ? "webxr"
                 : "scene-viewer quick-look";
           const canOpenAr = canOpenModelViewerAr(selectedModel);''',
-          )
-          replace_once(
-              modal,
-              '"WebXR sẽ nhận diện mặt phẳng sàn trước khi đặt mô hình bàn."',
-              '"WebXR sẽ giữ mô hình ở anchor mặt sàn với tỷ lệ cố định."',
-          )
-          replace_once(
-              modal,
-              '"Mô hình sẽ mở bằng Scene Viewer hoặc Quick Look để nhận diện mặt phẳng."',
-              '"Mô hình sẽ mở bằng Scene Viewer hoặc Quick Look; độ ổn định tracking phụ thuộc thiết bị."',
-          )
-          replace_once(
-              modal,
-              'viewer.setAttribute("ar-scale", "auto");',
-              'viewer.setAttribute("ar-scale", "fixed");',
-          )
-          replace_once(
-              modal,
-              'ar-modes="webxr scene-viewer quick-look"',
-              'ar-modes={arModes}',
-          )
-          replace_once(modal, 'ar-scale="auto"', 'ar-scale="fixed"')
+              ),
+              (
+                  '"WebXR sẽ nhận diện mặt phẳng sàn trước khi đặt mô hình bàn."',
+                  '"WebXR sẽ giữ mô hình ở anchor mặt sàn với tỷ lệ cố định."',
+              ),
+              (
+                  '"Mô hình sẽ mở bằng Scene Viewer hoặc Quick Look để nhận diện mặt phẳng."',
+                  '"Mô hình sẽ mở bằng Scene Viewer hoặc Quick Look; độ ổn định tracking phụ thuộc thiết bị."',
+              ),
+              ('viewer.setAttribute("ar-scale", "auto");', 'viewer.setAttribute("ar-scale", "fixed");'),
+              ('ar-modes="webxr scene-viewer quick-look"', 'ar-modes={arModes}'),
+              ('ar-scale="auto"', 'ar-scale="fixed"'),
+          ]
 
-          guide = "src/components/Dashboard_Manager/Table/Table3DQuickGuide.jsx"
-          replace_once(
-              guide,
-              '''          Lùi khỏi vị trí đặt khoảng 1,5–2 m, hướng camera xuống vùng sàn trống,
-          đủ sáng và di chuyển chậm sang hai bên. Tránh quét giường, ghế hoặc đồ
-          vật vì thiết bị có thể nhận nhầm chúng là mặt phẳng đặt bàn. Sau khi đặt,
+          for old, new in replacements:
+              if modal.count(old) != 1:
+                  raise SystemExit(f"Unexpected modal match count for {old!r}: {modal.count(old)}")
+              modal = modal.replace(old, new, 1)
+
+          modal_path.write_text(modal, encoding="utf-8")
+
+          guide_path = Path("src/components/Dashboard_Manager/Table/Table3DQuickGuide.jsx")
+          guide = guide_path.read_text(encoding="utf-8")
+          old_guide = '''          vật vì thiết bị có thể nhận nhầm chúng là mặt phẳng đặt bàn. Sau khi đặt,
           dùng hai ngón tay để thu nhỏ hoặc phóng to mô hình cho đúng tỉ lệ thực tế.
-          Chế độ xem thử này không thay đổi dữ liệu bàn hoặc sơ đồ tầng.''',
-              '''          Lùi khỏi vị trí đặt khoảng 1,5–2 m, hướng camera xuống vùng sàn trống,
-          đủ sáng và di chuyển chậm sang hai bên. Chỉ đặt khi mặt sàn đã được nhận
-          diện ổn định; sau khi đặt không kéo hoặc chụm hai ngón vì tỷ lệ AR đã được
-          khóa để hạn chế mô hình phóng, thu hoặc trôi khi camera đổi khoảng cách.
-          Nếu model vẫn sai tỷ lệ, hãy dùng file có đơn vị mét chuẩn. Chế độ xem thử
-          này không thay đổi dữ liệu bàn hoặc sơ đồ tầng.''',
-          )
-
-          test = "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.test.jsx"
-          replace_once(test, '"ar-scale", "auto"', '"ar-scale", "fixed"')
-          replace_once(
-              test,
-              '''    expect(viewer).toHaveAttribute(
-            "ar-modes",
-            "webxr scene-viewer quick-look",
-          );''',
-              '''    await waitFor(() =>
-            expect(viewer).toHaveAttribute("ar-modes", "webxr"),
-          );''',
-          )
-          replace_once(
-              test,
-              "    await waitFor(() => expect(viewer.activateAR).toHaveBeenCalledTimes(1));",
-              '''    await waitFor(() => expect(viewer.activateAR).toHaveBeenCalledTimes(1));
-          expect(viewer).toHaveAttribute("ar-scale", "fixed");''',
-          )
+          Chế độ xem thử này không thay đổi dữ liệu bàn hoặc sơ đồ tầng.'''
+          new_guide = '''          vật vì thiết bị có thể nhận nhầm chúng là mặt phẳng đặt bàn. Chỉ đặt khi
+          mặt sàn đã ổn định; sau khi đặt không kéo hoặc chụm hai ngón vì tỷ lệ AR
+          đã được khóa để hạn chế mô hình phóng, thu hoặc trôi khi camera đổi khoảng
+          cách. Nếu model vẫn sai tỷ lệ, hãy dùng file có đơn vị mét chuẩn. Chế độ
+          xem thử này không thay đổi dữ liệu bàn hoặc sơ đồ tầng.'''
+          if guide.count(old_guide) != 1:
+              raise SystemExit(f"Unexpected guide match count: {guide.count(old_guide)}")
+          guide_path.write_text(guide.replace(old_guide, new_guide, 1), encoding="utf-8")
           PY
 
       - name: Review patch integrity
