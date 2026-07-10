@@ -14,7 +14,7 @@
 3. Customer presses “Yêu cầu mã xác nhận”. Backend appends a pending request to the active table session `clientMeta.qrOrderAccessRequests`.
 4. POS polls the staff-only request list. Staff goes to the table, matches the request label, presses “Đã tới bàn – hiện mã”, and reads the 6-digit code to the customer.
 5. Customer enters the code. Backend validates HMAC code and atomically marks the request confirmed.
-6. Backend returns an order session token. Frontend stores it under `restaurantId:tableId:tableSessionId` in `sessionStorage`.
+6. Backend stores the order-session token and browser device id in table-scoped HttpOnly cookies. Frontend JavaScript never persists or attaches the session token itself.
 
 ## Persistence
 
@@ -34,6 +34,17 @@
 
 The confirmation code is derived with HMAC from session/request/device data and is never persisted.
 
+## Cookie scope
+
+The backend creates a separate cookie pair for each table id:
+
+```text
+cohan_table_order_session_<tableId>
+cohan_table_order_device_<tableId>
+```
+
+Both are HttpOnly, sent only through credentialed API requests, and expire with the signed session token. A cookie for table A is never read while validating table B.
+
 ## Validation boundary
 
 A shared helper validates:
@@ -43,9 +54,9 @@ A shared helper validates:
 - device hash;
 - the request remains confirmed in the active table session;
 - the session is still active and unpaid;
-- the table/session capability still accepts orders.
+- the table/session capability still accepts orders when the action creates new items.
 
-The helper is used by public order submit, order viewing, staff call, payment request and identity OTP.
+The helper is used by public order submit, order viewing, staff call, payment request and identity OTP. At `ready_to_pay/payment_requested`, the confirmed device can still view the table state but cannot submit more items. Closing, paying or replacing the table session invalidates the token completely.
 
 ## UI direction
 
