@@ -1,0 +1,12 @@
+{
+  "id": "07-11-table-session-customer-ui",
+  "title": "Customer-friendly table session UI",
+  "status": "in_progress",
+  "area": "frontend",
+  "createdAt": "2026-07-11",
+  "updatedAt": "2026-07-11",
+  "validation": {
+    "completed": [],
+    "notRun": []
+  }
+}
