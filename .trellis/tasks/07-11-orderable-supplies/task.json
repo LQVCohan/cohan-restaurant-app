@@ -1,0 +1,22 @@
+{
+  "id": "07-11-orderable-supplies",
+  "title": "Orderable supplies across ordering surfaces",
+  "status": "in_progress",
+  "area": "fullstack",
+  "createdAt": "2026-07-11",
+  "updatedAt": "2026-07-11",
+  "validation": {
+    "completed": [],
+    "notRun": [
+      "targeted backend Vitest",
+      "targeted frontend Vitest",
+      "npm run check:graphql:operations",
+      "npm run build",
+      "browser smoke for POS, staff, customer menu and table QR ordering"
+    ],
+    "notes": [
+      "Supply is a warehouse-backed sellable item and must not be duplicated into each meal menu.",
+      "The GitHub connector does not expose a runnable repository checkout, so validation will be recorded explicitly."
+    ]
+  }
+}
