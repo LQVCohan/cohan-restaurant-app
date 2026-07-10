@@ -10,6 +10,10 @@ import {
   handleRestaurantChatbotMessage as handleBaseRestaurantChatbotMessage,
 } from "./restaurantChatbot.service.js";
 import { getPublicAiChatbotSettings } from "./restaurantChatbotSettings.service.js";
+import {
+  getMenuItemInventoryAvailability,
+  MENU_ITEM_INVENTORY_STATUS,
+} from "../menuItemInventoryAvailability.service.js";
 
 const ELIGIBLE_RESTAURANT_FILTER = {
   businessStatus: "active",
@@ -72,7 +76,7 @@ async function validateSelectedMenuItemScope(options = {}) {
   const pageContext = { ...(options.pageContext || {}) };
   const selected = pageContext.selectedMenuItem || null;
   const selectedId = selected?.id || selected?.menuItemId;
-  if (!selectedId) return { ok: true, options };
+  if (!selectedId) return { ok: true, options, selectedItem: null };
 
   const itemId = toObjectId(selectedId);
   if (!itemId) return { ok: false };
@@ -102,6 +106,7 @@ async function validateSelectedMenuItemScope(options = {}) {
 
   return {
     ok: true,
+    selectedItem: item,
     options: {
       ...options,
       restaurantId: verifiedRestaurantId,
@@ -110,10 +115,118 @@ async function validateSelectedMenuItemScope(options = {}) {
         restaurantId: verifiedRestaurantId,
         selectedMenuItem: {
           ...selected,
+          id: toId(item),
+          name: item.name || selected?.name || "",
           restaurantId: verifiedRestaurantId,
         },
       },
     },
+  };
+}
+
+const normalizeForMatch = (value = "") =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d")
+    .toLowerCase();
+
+const isSelectedMenuItemAvailabilityQuestion = (message = "") =>
+  /(?:het mon|het nguyen lieu|con bao nhieu|so luong con|con lai|ton kho|con hang|co san|dat duoc bao nhieu|out of stock|available)/i.test(
+    normalizeForMatch(message),
+  );
+
+const buildSelectedMenuItemAvailabilityAnswer = ({ item = {}, availability = {} } = {}) => {
+  const name = String(item?.name || "món này").trim() || "món này";
+  const status = String(
+    availability?.inventoryStatus || item?.inventoryStatus || "",
+  ).toUpperCase();
+  const maxAvailable = Number(availability?.maxAvailable);
+  const hasQuantity = Number.isFinite(maxAvailable) && maxAvailable >= 0;
+
+  if (status === MENU_ITEM_INVENTORY_STATUS.OUT_OF_STOCK) {
+    return `Món “${name}” hiện đã hết nguyên liệu, nên số lượng có thể đặt lúc này là 0. Bạn có thể quay lại sau hoặc chọn món khác đang còn hàng.`;
+  }
+
+  if (
+    [
+      MENU_ITEM_INVENTORY_STATUS.IN_STOCK,
+      MENU_ITEM_INVENTORY_STATUS.LOW_STOCK,
+    ].includes(status) &&
+    hasQuantity
+  ) {
+    const warning =
+      status === MENU_ITEM_INVENTORY_STATUS.LOW_STOCK
+        ? " Món đang gần hết nên số lượng có thể thay đổi nhanh."
+        : " Số lượng thực tế có thể giảm khi khách khác đặt cùng lúc.";
+    return `Món “${name}” hiện còn tối đa khoảng ${maxAvailable} phần theo tồn kho nguyên liệu.${warning}`;
+  }
+
+  if (status === MENU_ITEM_INVENTORY_STATUS.NOT_TRACKED) {
+    return `Nhà hàng chưa theo dõi tồn kho theo công thức cho món “${name}”, nên hệ thống chưa có số lượng còn lại chính xác để hiển thị. Bạn có thể dựa vào trạng thái đặt món trên trang hoặc hỏi nhân viên.`;
+  }
+
+  return `Mình chưa lấy được số lượng tồn kho chính xác của món “${name}” lúc này. Bạn có thể thử lại sau hoặc hỏi nhân viên nhà hàng.`;
+};
+
+async function enrichSelectedMenuItemAvailabilityResponse(validated, response) {
+  const item = validated?.selectedItem;
+  const options = validated?.options || {};
+  if (!item || !isSelectedMenuItemAvailabilityQuestion(options.message)) {
+    return response;
+  }
+
+  let availability;
+  try {
+    availability = await getMenuItemInventoryAvailability({
+      restaurantId: toId(item.restaurantId),
+      menuItemId: toId(item),
+    });
+  } catch {
+    availability = {
+      inventoryStatus: MENU_ITEM_INVENTORY_STATUS.ERROR,
+      maxAvailable: 0,
+    };
+  }
+
+  const inventoryStatus = String(
+    availability?.inventoryStatus || item?.inventoryStatus || "",
+  ).toUpperCase();
+  const itemId = toId(item);
+  const selectedSource = {
+    type: "menuItem",
+    id: itemId,
+    label: item.name || "Món đang xem",
+    status: item.status || null,
+    isAvailable:
+      item.status === "available" &&
+      item.isAvailable !== false &&
+      inventoryStatus !== MENU_ITEM_INVENTORY_STATUS.OUT_OF_STOCK,
+    restaurantId: item.restaurantId ? String(item.restaurantId) : null,
+    basePrice: Number(item.basePrice || 0),
+    currentPrice: Number(item.currentPrice || item.basePrice || 0),
+  };
+
+  return {
+    ...response,
+    answer: buildSelectedMenuItemAvailabilityAnswer({ item, availability }),
+    intent: "menuItemStatus",
+    confidence: 1,
+    quickReplies:
+      inventoryStatus === MENU_ITEM_INVENTORY_STATUS.OUT_OF_STOCK
+        ? ["Gợi ý món còn hàng", "Xem món khác"]
+        : ["Xem món khác"],
+    sources: [
+      selectedSource,
+      ...(Array.isArray(response?.sources) ? response.sources : []).filter(
+        (source) => String(source?.id || "") !== itemId,
+      ),
+    ],
+    isFallback: false,
+    handoffSuggested: false,
+    handoffReason: null,
+    handoffMessage: null,
   };
 }
 
@@ -350,6 +463,7 @@ export async function handleRestaurantChatbotMessage(options = {}) {
   if (!validated.ok) return unavailableResponse();
 
   let response = await handleBaseRestaurantChatbotMessage(validated.options);
+  response = await enrichSelectedMenuItemAvailabilityResponse(validated, response);
   response = await enrichPromotionResponse(validated.options, response);
   response = mergeScopeCandidates(response);
   response = await enforceHandoffRules(response);
@@ -377,4 +491,7 @@ export const __testables = {
   mergeScopeCandidates,
   enrichPromotionResponse,
   enforceHandoffRules,
+  isSelectedMenuItemAvailabilityQuestion,
+  buildSelectedMenuItemAvailabilityAnswer,
+  enrichSelectedMenuItemAvailabilityResponse,
 };
