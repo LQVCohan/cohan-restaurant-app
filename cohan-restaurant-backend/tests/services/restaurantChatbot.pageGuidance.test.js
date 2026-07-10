@@ -3,7 +3,9 @@ import { __testables } from "../../src/services/ai/restaurantChatbot.service.js"
 
 const {
   applyPageAwareGuidance,
+  buildRoleNavigationActions,
   enrichPageAwareOptions,
+  filterRoleAwareActions,
   removeCurrentPageAction,
   resolveCustomerPage,
 } = __testables;
@@ -60,8 +62,30 @@ const customerPages = [
   ["/profile", "Hồ sơ của tôi"],
 ];
 
-describe("restaurant chatbot customer page context", () => {
-  it.each(customerPages)("recognizes %s as %s", (pathname, label) => {
+const staffPages = [
+  ["/staff", "Tổng quan nhân viên"],
+  ["/staff/dashboard", "Tổng quan nhân viên"],
+  ["/staff/orders", "Xử lý đơn hàng"],
+  ["/staff/reservation-changes", "Yêu cầu đổi đặt bàn"],
+  ["/staff/kitchen", "Màn hình bếp"],
+  ["/staff/performance", "Hiệu suất làm việc"],
+  ["/staff/schedule", "Lịch làm việc"],
+  ["/staff/attendance", "Chấm công"],
+  ["/staff/leave", "Đơn nghỉ phép"],
+  ["/staff/profile", "Hồ sơ nhân viên"],
+  ["/staff/notifications", "Thông báo nhân viên"],
+  ["/staff/contacts", "Liên lạc nội bộ"],
+  ["/staff/ai-handoff", "Hỗ trợ khách từ chatbot"],
+  ["/staff/payslips", "Phiếu lương"],
+  ["/staff/settings", "Cài đặt nhân viên"],
+];
+
+describe("restaurant chatbot app page context", () => {
+  it.each(customerPages)("recognizes customer route %s as %s", (pathname, label) => {
+    expect(resolveCustomerPage(pathname)).toMatchObject({ pathname, label });
+  });
+
+  it.each(staffPages)("recognizes staff route %s as %s", (pathname, label) => {
     expect(resolveCustomerPage(pathname)).toMatchObject({ pathname, label });
   });
 
@@ -88,6 +112,26 @@ describe("restaurant chatbot customer page context", () => {
     );
     expect(enriched.options.pageContext.featureMatches[1]).toMatchObject({
       key: "checkout",
+    });
+  });
+
+  it("adds staff current-page context without trusting a client role", () => {
+    const enriched = enrichPageAwareOptions({
+      message: "tôi cần làm gì tiếp theo",
+      user: { roleName: "server" },
+      pageContext: {
+        pathname: "/staff/orders",
+        userRole: "customer",
+      },
+    });
+
+    expect(enriched.page).toMatchObject({
+      key: "staff-orders",
+      label: "Xử lý đơn hàng",
+    });
+    expect(enriched.options.pageContext.featureMatches[0]).toMatchObject({
+      key: "current-page-staff-orders",
+      path: "/staff/orders",
     });
   });
 
@@ -148,6 +192,116 @@ describe("restaurant chatbot customer page context", () => {
   });
 });
 
+describe("restaurant chatbot role-aware navigation actions", () => {
+  it("returns order shortcuts for order staff but not kitchen shortcuts", () => {
+    const actions = buildRoleNavigationActions({
+      message: "bạn có thể giúp gì",
+      user: { roleName: "server" },
+      page: resolveCustomerPage("/staff/dashboard"),
+    });
+    const hrefs = actions.map((action) => action.href);
+
+    expect(hrefs).toContain("/staff/orders");
+    expect(hrefs).toContain("/staff/reservation-changes");
+    expect(hrefs).not.toContain("/staff/kitchen");
+  });
+
+  it("returns the kitchen button only to a kitchen role", () => {
+    expect(
+      buildRoleNavigationActions({
+        message: "mở màn hình bếp",
+        user: { roleName: "chef" },
+        page: resolveCustomerPage("/staff/dashboard"),
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        type: "link",
+        label: "Mở màn hình bếp",
+        href: "/staff/kitchen",
+      }),
+    ]);
+
+    expect(
+      buildRoleNavigationActions({
+        message: "mở màn hình bếp",
+        user: { roleName: "customer" },
+        page: resolveCustomerPage("/"),
+      }),
+    ).toEqual([]);
+  });
+
+  it("returns direct leave and customer checkout buttons", () => {
+    expect(
+      buildRoleNavigationActions({
+        message: "tôi muốn xin nghỉ phép",
+        user: { roleName: "server" },
+        page: resolveCustomerPage("/staff/schedule"),
+      }),
+    ).toEqual([
+      expect.objectContaining({ href: "/staff/leave", label: "Mở đơn nghỉ phép" }),
+    ]);
+
+    expect(
+      buildRoleNavigationActions({
+        message: "cách thanh toán",
+        user: { roleName: "customer" },
+        page: resolveCustomerPage("/cart"),
+      }),
+    ).toEqual([
+      expect.objectContaining({ href: "/checkout", label: "Đi tới thanh toán" }),
+    ]);
+  });
+
+  it("returns generic customer shortcuts without staff routes", () => {
+    const actions = buildRoleNavigationActions({
+      message: "bạn có thể giúp gì",
+      user: { roleName: "customer" },
+      page: resolveCustomerPage("/"),
+    });
+
+    expect(actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ href: "/restaurants" }),
+        expect.objectContaining({ type: "openCart" }),
+        expect.objectContaining({ href: "/orders" }),
+      ]),
+    );
+    expect(actions.some((action) => String(action.href).startsWith("/staff"))).toBe(false);
+  });
+
+  it("filters forged staff, manager and admin actions using the authenticated role", () => {
+    const forged = {
+      ...response,
+      actions: [
+        { type: "link", label: "Orders", href: "/staff/orders" },
+        { type: "link", label: "Kitchen", href: "/staff/kitchen" },
+        { type: "link", label: "Manager", href: "/manager" },
+        { type: "link", label: "Admin", href: "/admin/dashboard" },
+        { type: "link", label: "Restaurants", href: "/restaurants" },
+      ],
+    };
+
+    expect(
+      filterRoleAwareActions(forged, { roleName: "customer" }).actions,
+    ).toEqual([
+      { type: "link", label: "Restaurants", href: "/restaurants" },
+    ]);
+
+    const serverHrefs = filterRoleAwareActions(forged, {
+      roleName: "server",
+    }).actions.map((action) => action.href);
+    expect(serverHrefs).toContain("/staff/orders");
+    expect(serverHrefs).not.toContain("/staff/kitchen");
+    expect(serverHrefs).not.toContain("/manager");
+
+    const chefHrefs = filterRoleAwareActions(forged, {
+      roleName: "chef",
+    }).actions.map((action) => action.href);
+    expect(chefHrefs).toContain("/staff/kitchen");
+    expect(chefHrefs).not.toContain("/staff/orders");
+  });
+});
+
 describe("restaurant chatbot page-aware guidance", () => {
   it("continues from the restaurant list instead of restarting navigation", () => {
     const result = guide("/restaurants");
@@ -189,6 +343,22 @@ describe("restaurant chatbot page-aware guidance", () => {
       "Bạn đang ở trang Giỏ hàng. Tiếp tục từ đây:\nKiểm tra món rồi chuyển sang bước xác nhận đơn.",
     );
     expect(result.intent).toBe("checkout");
+  });
+
+  it("anchors staff how-to answers to the current staff page", () => {
+    const result = guide(
+      "/staff/leave",
+      "tôi cần làm gì tiếp theo",
+      {
+        ...response,
+        answer: "Điền thời gian nghỉ và lý do rồi gửi đơn.",
+        intent: "navigation",
+      },
+    );
+
+    expect(result.answer).toBe(
+      "Bạn đang ở trang Đơn nghỉ phép. Tiếp tục từ đây:\nĐiền thời gian nghỉ và lý do rồi gửi đơn.",
+    );
   });
 
   it("does not duplicate a page acknowledgement already returned by AI", () => {
