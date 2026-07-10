@@ -29,7 +29,7 @@ Loading giả đi theo:
 
 - `src/components/Dashboard_Manager/Schedule/ScheduleManagementPage.jsx`
 - `src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModalInline.jsx`
-- `src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.scss`
+- `src/styles/AvailabilitySnapshotOverlayLight.css`
 - `src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.test.jsx`
 - Task Trellis hiện tại.
 
