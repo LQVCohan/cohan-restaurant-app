@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getStaffRestaurantIds: vi.fn(),
   assertAssignableStaffRole: vi.fn(),
   assignStaffRoleWithinRestaurant: vi.fn(),
+  assertNoLockedPayrollPeriodOverlap: vi.fn(async () => true),
   sanitizeStaffPrivateProfile: vi.fn((value) => value),
   Restaurant: { findById: vi.fn() },
   Role: { findById: vi.fn() },
@@ -52,6 +53,11 @@ vi.mock("../../src/services/auth/restaurantScope.service.js", () => ({
 vi.mock("../../src/services/auth/staffRoleAssignment.service.js", () => ({
   assertAssignableStaffRole: mocks.assertAssignableStaffRole,
   assignStaffRoleWithinRestaurant: mocks.assignStaffRoleWithinRestaurant,
+}));
+
+vi.mock("../../src/services/payroll/payrollLockGuard.service.js", () => ({
+  assertNoLockedPayrollPeriodOverlap:
+    mocks.assertNoLockedPayrollPeriodOverlap,
 }));
 
 vi.mock("../../src/security/userDtos.js", () => ({
@@ -113,7 +119,13 @@ const mockStaffForUpdate = (staff = {}) => {
     _id: "staff-1",
     userType: "STAFF",
     deletedAt: null,
+    role: "role-server",
     department: "service",
+    positionTitle: "Nhân viên phục vụ",
+    employmentType: "full_time",
+    employmentStatus: "working",
+    dateJoined: new Date("2026-01-01T00:00:00.000Z"),
+    dateLeft: null,
     baseSalary: 5_000_000,
     emergencyContact: {
       name: "Nguyễn Thị B",
@@ -256,8 +268,7 @@ describe("staff active business context", () => {
     expect(mocks.Staff.deleteOne).toHaveBeenCalledWith({ _id: "staff-1" });
   });
 
-  it("updates within the membership restaurant, preserves emergency relation and removes unchanged salary", async () => {
-    const role = mockRole();
+  it("removes unchanged payroll fields and preserves emergency relation", async () => {
     const resolvers = (
       await import("../../graphql/resolvers/staff/index.js")
     ).default;
@@ -270,6 +281,10 @@ describe("staff active business context", () => {
           fullName: "Nhân viên cập nhật",
           department: "service",
           roleId: "role-server",
+          positionTitle: "Nhân viên phục vụ",
+          employmentType: "FULL_TIME",
+          employmentStatus: "WORKING",
+          dateJoined: "2026-01-01T00:00:00.000Z",
           baseSalary: 5_000_000,
           emergencyContact: {
             name: "Nguyễn Thị B",
@@ -285,14 +300,13 @@ describe("staff active business context", () => {
       "restaurant-active",
       "staff.write",
     );
+    expect(mocks.assertNoLockedPayrollPeriodOverlap).not.toHaveBeenCalled();
     expect(mocks.legacyUpdateStaff).toHaveBeenCalledWith(
       null,
       {
         userId: "staff-1",
         input: {
           fullName: "Nhân viên cập nhật",
-          department: "service",
-          role: role._id,
           emergencyContact: {
             name: "Nguyễn Thị B",
             phone: "0999999999",
@@ -328,6 +342,43 @@ describe("staff active business context", () => {
       expect.objectContaining({
         input: expect.objectContaining({ baseSalary: 6_000_000 }),
       }),
+      context,
+      undefined,
+    );
+  });
+
+  it("keeps the payroll lock guard when the role really changes", async () => {
+    const role = mockRole({ _id: "role-cashier", slug: "cashier" });
+    const resolvers = (
+      await import("../../graphql/resolvers/staff/index.js")
+    ).default;
+
+    await resolvers.Mutation.updateStaff(
+      null,
+      {
+        userId: "staff-1",
+        input: {
+          roleId: "role-cashier",
+          department: "service",
+        },
+      },
+      context,
+    );
+
+    expect(mocks.assertNoLockedPayrollPeriodOverlap).toHaveBeenCalledWith({
+      restaurantId: "restaurant-active",
+      employeeId: "staff-1",
+      startDate: new Date("2026-01-01T00:00:00.000Z"),
+      endDate: expect.any(Date),
+      action: "update_staff",
+    });
+    expect(mocks.legacyUpdateStaff).toHaveBeenCalledWith(
+      null,
+      {
+        userId: "staff-1",
+        input: { role: role._id },
+        restaurantId: "restaurant-active",
+      },
       context,
       undefined,
     );
