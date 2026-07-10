@@ -9,7 +9,7 @@ const useLazyQueryMock = vi.fn();
 
 const m = {
   bulkKnowledgeEnabled: vi.fn(async () => ({})), bulkKnowledgeDelete: vi.fn(async () => ({})), importKnowledge: vi.fn(async () => ({ data: { importRestaurantAiChatbotKnowledge: { imported: 1, skipped: 0, errors: [] } } })),
-  bulkDismissSuggestion: vi.fn(async () => ({})), bulkDeleteSuggestion: vi.fn(async () => ({})),
+  approveSuggestion: vi.fn(async () => ({})), bulkDismissSuggestion: vi.fn(async () => ({})), bulkDeleteSuggestion: vi.fn(async () => ({})),
   bulkFeedbackReviewed: vi.fn(async () => ({})), bulkFeedbackIgnore: vi.fn(async () => ({})), bulkFeedbackConvert: vi.fn(async () => ({})),
   bulkSafetyEnabled: vi.fn(async () => ({})), bulkSafetyDelete: vi.fn(async () => ({})),
   createEvalCase: vi.fn(async () => ({})),
@@ -57,6 +57,7 @@ beforeEach(() => {
     if (t.includes("bulkUpdateRestaurantAiChatbotKnowledgeEnabled")) return [m.bulkKnowledgeEnabled, {}];
     if (t.includes("bulkDeleteRestaurantAiChatbotKnowledge(")) return [m.bulkKnowledgeDelete, {}];
     if (t.includes("importRestaurantAiChatbotKnowledge")) return [m.importKnowledge, {}];
+    if (t.includes("approveRestaurantAiChatbotKnowledgeSuggestion")) return [m.approveSuggestion, {}];
     if (t.includes("bulkDismissRestaurantAiChatbotKnowledgeSuggestions")) return [m.bulkDismissSuggestion, {}];
     if (t.includes("bulkDeleteRestaurantAiChatbotKnowledgeSuggestions")) return [m.bulkDeleteSuggestion, {}];
     if (t.includes("bulkMarkAiChatbotAnswerFeedbackReviewed")) return [m.bulkFeedbackReviewed, {}];
@@ -92,10 +93,34 @@ describe("AiChatbotKnowledgePage phase 18 UI", () => {
     expect(m.bulkKnowledgeDelete).toHaveBeenCalledTimes(1);
   });
 
-  it("suggestions bulk actions call mutations", async () => {
+  it("suggestions bulk actions select all, approve, dismiss and delete", async () => {
     render(<AiChatbotKnowledgePage />);
     fireEvent.click(screen.getByRole("button", { name: "Gợi ý" }));
-    fireEvent.click(screen.getByRole("checkbox"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Chọn tất cả" }));
+    expect(screen.getByRole("button", { name: "Bỏ chọn tất cả" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Duyệt mục đã chọn" }));
+    await waitFor(() =>
+      expect(m.approveSuggestion).toHaveBeenCalledWith({
+        variables: {
+          id: "s1",
+          input: {
+            title: "sq",
+            content: "sq",
+            category: "suggestion",
+            tags: [],
+            enabled: true,
+            priority: 20,
+            sourceType: "suggestion",
+          },
+        },
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Chọn tất cả" })).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Chọn tất cả" }));
     fireEvent.click(screen.getAllByRole("button", { name: "Bỏ qua" })[0]);
     fireEvent.click(screen.getAllByRole("button", { name: "Xóa" })[0]);
     fireEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Xóa" }));
