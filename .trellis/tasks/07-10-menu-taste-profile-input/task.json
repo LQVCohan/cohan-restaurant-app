@@ -1,7 +1,7 @@
 {
   "id": "07-10-menu-taste-profile-input",
   "title": "Sửa lỗi Apollo __typename trong mutation input",
-  "status": "planning",
+  "status": "implemented_unverified",
   "type": "bugfix",
   "scope": [
     "src/apollo/client.js",
@@ -13,7 +13,16 @@
       "npm run check:graphql",
       "vitest run src/apollo/client.test.js"
     ],
-    "completed": [],
-    "notRun": []
+    "completed": [
+      "reviewed the final Apollo link order and confirmed typename removal runs after variable enrichment and before auth/http transport",
+      "added a focused regression test for nested tasteProfile.__typename removal",
+      "confirmed the implementation uses the existing @apollo/client dependency without adding packages"
+    ],
+    "notRun": [
+      "npm run check:conflicts was unavailable in the GitHub connector environment",
+      "npm run check:graphql was unavailable in the GitHub connector environment",
+      "vitest run src/apollo/client.test.js was unavailable in the GitHub connector environment",
+      "no GitHub Actions workflow run or commit status was associated with commit 44a823ec3a3f26315d6431fc1f2528af1cf49754"
+    ]
   }
 }
