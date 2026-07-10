@@ -18,6 +18,7 @@ import { withTablePaymentRequestLifecycle } from "./tablePaymentRequestLifecycle
 import { withOrderConflictHardening } from "./orderConflictHardening.js";
 import { withCheckoutIdempotency } from "./checkoutIdempotency.js";
 import publicTableSessionQuery from "./publicTableSessionQuery.js";
+import publicTableOrderMutation from "./publicTableOrderMutation.js";
 
 const PaymentGuardedOrderMutation = {
   ...OrderMutation,
@@ -50,6 +51,7 @@ export default {
     ...GuardedOrderMutation,
     ...OrderProofMutation,
     ...CustomerOrderHistoryMutation,
+    ...publicTableOrderMutation,
   },
   Subscription: {
     ...OrderSubscription,
