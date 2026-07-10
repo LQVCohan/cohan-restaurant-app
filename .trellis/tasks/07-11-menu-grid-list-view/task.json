@@ -1,12 +1,12 @@
 {
   "id": "07-11-menu-grid-list-view",
-  "title": "Khôi phục chế độ lưới và danh sách cho quản lý món",
-  "status": "completed",
+  "title": "Tối ưu chế độ lưới và danh sách cho quản lý món",
+  "status": "in_progress",
   "type": "frontend-ui-fix",
   "scope": [
     "src/components/Dashboard_Manager/Menu/MenuManagementPolish.scss"
   ],
-  "rootCause": "MenuManagement already owns currentView state, Toolbar already renders the grid/list controls, and MenuManagementCardCompactFix.scss already defines distinct card layouts. A later manager polish rule hid the view toggle, so users could not reach the existing list mode.",
+  "rootCause": "The grid/list switch is now visible, but list mode still reuses a tall card content flow: image height stretches with the row, information and warnings stack vertically, and the wide action rail leaves unused space. The result is a sparse list that is harder to scan than the grid view.",
   "validation": {
     "planned": [
       "npm run check:conflicts",
@@ -17,14 +17,9 @@
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail, ui-ux-pro-max, taste-ui-redesign and redesign-existing-projects skills",
       "traced MenuManagement currentView through Toolbar actions, result classes and MenuItemCard markup",
-      "inspected the complete polish import order and confirmed existing distinct grid/list card rules",
-      "restored the segmented grid/list control at the final menu polish boundary",
-      "added clear active, hover and narrow-screen sizing states without changing data or business logic",
-      "reviewed the resulting commit diff for unrelated changes"
+      "inspected the complete polish import order and the final list-specific style precedence",
+      "reviewed MenuItemCard child order, warning states, prep-station control and action menu behavior"
     ],
-    "notRun": [
-      "npm run check:conflicts and npm run build were not run because the GitHub connector does not provide a repository checkout with installed dependencies.",
-      "Desktop and 390x844 / 430x932 visual verification remains for the local browser."
-    ]
+    "notRun": []
   }
 }
