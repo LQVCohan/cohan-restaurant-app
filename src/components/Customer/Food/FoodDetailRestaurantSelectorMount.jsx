@@ -62,7 +62,13 @@ export const getPreferredRestaurantLocation = (
       String(currentMenuItemId || ""),
   );
 
-  if (current?.restaurant?.canOrder && current?.isAvailable) return current;
+  if (
+    current?.restaurant?.canOrder &&
+    current?.isAvailable &&
+    hasTrackedStock(current)
+  ) {
+    return current;
+  }
 
   return (
     list.find(
@@ -71,6 +77,7 @@ export const getPreferredRestaurantLocation = (
         location?.isAvailable &&
         hasTrackedStock(location),
     ) ||
+    (current?.restaurant?.canOrder && current?.isAvailable ? current : null) ||
     list.find(
       (location) => location?.restaurant?.canOrder && location?.isAvailable,
     ) ||
@@ -227,8 +234,14 @@ export default function FoodDetailRestaurantSelectorMount() {
         </div>
       ) : null}
 
+      {!loading && !error && !locations.length ? (
+        <div className="food-location-selector__state">
+          Chưa tìm thấy nhà hàng khác đang phục vụ món này.
+        </div>
+      ) : null}
+
       {!loading && !error && locations.length ? (
-        <div className="food-location-selector__list" role="list">
+        <div className="food-location-selector__list">
           {locations.map((option) => {
             const optionMenuItemId =
               option?.menuItemId || option?.menuItem?.id;
@@ -242,7 +255,6 @@ export default function FoodDetailRestaurantSelectorMount() {
               <button
                 key={`${option.restaurantId}:${optionMenuItemId}`}
                 type="button"
-                role="listitem"
                 className={`food-location-selector__option ${
                   selected ? "is-selected" : ""
                 } ${canOrder ? "is-orderable" : ""}`.trim()}
