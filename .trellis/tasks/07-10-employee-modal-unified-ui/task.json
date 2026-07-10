@@ -2,8 +2,8 @@
   "id": "employee-modal-unified-ui",
   "name": "employee-modal-unified-ui",
   "title": "Unify the add employee modal UI",
-  "description": "Remove the duplicated modal shell and align the complete add-employee flow with COHAN's shared modal, responsive, interaction, and accessibility patterns.",
-  "status": "in_progress",
+  "description": "Remove the duplicated shared modal header and align the add-employee flow with COHAN's manager palette and responsive modal layout.",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-staff",
   "package": null,
@@ -11,19 +11,19 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "3ca3ca130db114262355815519706f4cd5754e62",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": null,
   "relatedFiles": [
-    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.jsx",
-    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.scss",
-    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.test.jsx"
+    "src/components/common/Modal.jsx",
+    "src/components/common/Modal.test.jsx",
+    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.scss"
   ],
-  "notes": "Backend createStaff contract, restaurant access, BrandMembership synchronization, and Apollo mutation flow were traced and remain unchanged."
+  "notes": "Backend createStaff contract, restaurant access, BrandMembership synchronization, Apollo mutation, and employee form behavior were traced and remain unchanged. Added the shared showCloseButton behavior, employee modal responsive sage styling, and a regression test. Tests, build, CI, and browser viewport checks were not run in the connector-only environment."
 }
