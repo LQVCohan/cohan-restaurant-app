@@ -190,7 +190,7 @@ async function runIngredientCategorySync(restaurantId, ctx) {
       stats.ingredientsReassigned = Number(writeResult.modifiedCount || 0);
     }
 
-    const summaryText = `${stats.totalIngredients} nguyên liệu · ${stats.categoriesCreated} danh mục mới · ${stats.categoriesUpdated} danh mục cập nhật · ${stats.ingredientsReassigned} nguyên liệu gán lại · ${stats.errors} lỗi`;
+    const summaryText = `Quét thành công ${stats.totalIngredients} nguyên liệu: ${stats.categoriesCreated} danh mục mới, ${stats.categoriesUpdated} danh mục được cập nhật, ${stats.ingredientsReassigned} nguyên liệu được gán lại${stats.errors ? `, ${stats.errors} lỗi cần kiểm tra` : ", không có lỗi"}.`;
 
     await EventLog.log(
       {
