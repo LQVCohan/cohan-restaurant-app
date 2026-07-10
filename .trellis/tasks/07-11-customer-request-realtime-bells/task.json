@@ -1,0 +1,41 @@
+{
+  "id": "07-11-customer-request-realtime-bells",
+  "title": "Đồng bộ yêu cầu khách tới POS và chuông quản lý, nhân viên",
+  "status": "ready_for_review",
+  "type": "cross-layer-bugfix-ui",
+  "scope": [
+    "cohan-restaurant-backend/src/services/notification/notificationWorkflow.service.js",
+    "cohan-restaurant-backend/graphql/resolvers/order/helper/emitOrderEvent.js",
+    "cohan-restaurant-backend/tests/orderCustomerRequestNotifications.test.js",
+    "src/components/Dashboard_Manager/POS/components/pos/CustomerRequestQueuePanel.jsx",
+    "src/components/Dashboard_Manager/POS/components/pos/CustomerRequestQueuePanel.module.scss",
+    "src/components/Dashboard_Manager/POS/components/pos/CustomerRequestQueuePanel.test.jsx",
+    "src/components/Staff/NotificationBell.jsx",
+    "src/components/Staff/NotificationBell.scss",
+    "src/components/Staff/StaffDashboardPage.test.jsx",
+    "src/components/Staff/StaffPerformance/StaffPerformancePage.test.jsx",
+    "src/layouts/StaffLayout.jsx",
+    "src/layouts/StaffLayout.scss"
+  ],
+  "validation": {
+    "planned": [
+      "backend lint, tests, menu RBAC and build",
+      "frontend lint, menu RBAC, changed component tests and build",
+      "Playwright smoke tests",
+      "browser review at 390x844 and desktop POS"
+    ],
+    "completed": [
+      "read AGENTS.md and .trellis/workflow.md",
+      "read ponytail, ui-ux-pro-max, frontend-design, taste-ui-redesign and redesign-existing-projects skills",
+      "traced order customerRequests schema through GraphQL query/mutations, restaurant socket, POS queue, notification workflow, manager bell and staff notification pages",
+      "confirmed ACKNOWLEDGED is only persisted by acknowledgeCustomerServiceRequest after an authenticated actor accepts",
+      "backend lint, tests, menu RBAC and build passed in CI run 8210",
+      "frontend lint, menu RBAC, changed component tests, production build and Playwright smoke tests passed in CI run 8210",
+      "temporary CI continuation was reverted and the workflow matches main"
+    ],
+    "notRun": [
+      "manual browser review at 390x844 and desktop POS",
+      "standard full frontend unit gate remains blocked by an unrelated existing installTableDetailModalTabs.test.js failure"
+    ]
+  }
+}

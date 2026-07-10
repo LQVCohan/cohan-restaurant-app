@@ -1,9 +1,11 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
 import useCommunication from "@/hooks/useCommunication";
 import StaffQrOrderRealtimeNotice from "@/components/Staff/StaffQrOrderRealtimeNotice";
+import NotificationBell from "@/components/Staff/NotificationBell";
 import PosIncomingTableOrderQueue from "@/components/Dashboard_Manager/POS/components/pos/PosIncomingTableOrderQueue";
+import CustomerRequestQueuePanel from "@/components/Dashboard_Manager/POS/components/pos/CustomerRequestQueuePanel";
 import "./StaffLayout.scss";
 import "./StaffWorkspaceOverrides.scss";
 import {
@@ -36,14 +38,17 @@ const getRoleLabel = (user, normalizedRole) => {
   }
   return (
     roleLabelFallbacks[normalizedRole] ||
-    getStaffRoleDisplayLabel(user.role || user.roleName || user.roleSlug || normalizedRole) ||
+    getStaffRoleDisplayLabel(
+      user.role || user.roleName || user.roleSlug || normalizedRole,
+    ) ||
     normalizedRole
   );
 };
 
 const isActivePath = (location, target) =>
   location.pathname === target ||
-  (target !== "/staff/dashboard" && location.pathname.startsWith(`${target}/`));
+  (target !== "/staff/dashboard" &&
+    location.pathname.startsWith(`${target}/`));
 
 const StaffHandoffUnreadCount = ({ restaurantId }) => {
   const { notifications = [] } = useCommunication({
@@ -52,8 +57,8 @@ const StaffHandoffUnreadCount = ({ restaurantId }) => {
   });
   const unreadCount = notifications.filter(
     (notification) =>
-      String(notification?.type || "").toLowerCase() === "ai_chatbot_handoff" &&
-      !notification?.readAt,
+      String(notification?.type || "").toLowerCase() ===
+        "ai_chatbot_handoff" && !notification?.readAt,
   ).length;
 
   if (!unreadCount) return null;
@@ -99,7 +104,8 @@ const staffPageMeta = [
     path: "/staff/dashboard",
     eyebrow: "Khu vực nhân viên",
     title: "Trung tâm ca làm",
-    description: "Mở nhanh lịch, chấm công, nghỉ phép và các việc cần xử lý trong ca.",
+    description:
+      "Mở nhanh lịch, chấm công, nghỉ phép và các việc cần xử lý trong ca.",
   },
   {
     path: "/staff/schedule",
@@ -126,7 +132,8 @@ const staffPageMeta = [
     path: "/staff/performance",
     eyebrow: "Hiệu suất",
     title: "Hiệu suất cá nhân",
-    description: "Xem điểm làm việc, sự cố liên quan và phản hồi hiệu suất của bạn.",
+    description:
+      "Xem điểm làm việc, sự cố liên quan và phản hồi hiệu suất của bạn.",
   },
   {
     path: "/staff/orders",
@@ -139,7 +146,8 @@ const staffPageMeta = [
     path: "/staff/reservation-changes",
     eyebrow: "Đặt bàn",
     title: "Duyệt yêu cầu đổi đặt bàn",
-    description: "Kiểm tra yêu cầu đổi giờ hoặc đổi bàn trước khi cập nhật chính thức.",
+    description:
+      "Kiểm tra yêu cầu đổi giờ hoặc đổi bàn trước khi cập nhật chính thức.",
   },
   {
     path: "/staff/kitchen",
@@ -152,7 +160,8 @@ const staffPageMeta = [
     path: "/staff/profile",
     eyebrow: "Tài khoản",
     title: "Hồ sơ nhân viên",
-    description: "Kiểm tra thông tin cá nhân, vai trò, liên hệ và dữ liệu làm việc.",
+    description:
+      "Kiểm tra thông tin cá nhân, vai trò, liên hệ và dữ liệu làm việc.",
   },
   {
     path: "/staff/notifications",
@@ -165,49 +174,60 @@ const staffPageMeta = [
     path: "/staff/contacts",
     eyebrow: "Liên lạc",
     title: "Trao đổi nội bộ",
-    description: "Mở kênh liên lạc với quản lý, hỗ trợ và các bộ phận liên quan.",
+    description:
+      "Mở kênh liên lạc với quản lý, hỗ trợ và các bộ phận liên quan.",
   },
   {
     path: "/staff/ai-handoff",
     eyebrow: "Hỗ trợ",
     title: "Bàn giao hỗ trợ",
-    description: "Theo dõi các hội thoại cần nhân viên tiếp nhận sau khi AI chuyển giao.",
+    description:
+      "Theo dõi các hội thoại cần nhân viên tiếp nhận sau khi AI chuyển giao.",
   },
   {
     path: "/staff/payslips",
     eyebrow: "Phiếu lương",
     title: "Lương cá nhân",
-    description: "Xem kỳ lương, khoản thanh toán và ghi chú liên quan đến lương.",
+    description:
+      "Xem kỳ lương, khoản thanh toán và ghi chú liên quan đến lương.",
   },
   {
     path: "/staff/settings",
     eyebrow: "Thiết lập",
     title: "Cài đặt nhân viên",
-    description: "Điều chỉnh các tuỳ chọn tài khoản và trải nghiệm trong khu vực nhân viên.",
+    description:
+      "Điều chỉnh các tuỳ chọn tài khoản và trải nghiệm trong khu vực nhân viên.",
   },
 ];
 
 const getStaffPageMeta = (pathname) =>
   staffPageMeta.find(
-    (item) => pathname === item.path || pathname.startsWith(`${item.path}/`),
+    (item) =>
+      pathname === item.path || pathname.startsWith(`${item.path}/`),
   ) || staffPageMeta[0];
 
 export default function StaffLayout({ children }) {
   const { user, activeRestaurant, activeRestaurantId } = useContext(AuthContext);
   const location = useLocation();
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const normalizedRole = useMemo(() => resolveUserRoleName(user), [user]);
   const displayName = getDisplayName(user);
   const roleLabel = getRoleLabel(user, normalizedRole);
-  const restaurantLabel = activeRestaurant?.name || "Chưa xác định cơ sở làm việc";
-  const pageMeta = useMemo(() => getStaffPageMeta(location.pathname), [location.pathname]);
+  const restaurantLabel =
+    activeRestaurant?.name || "Chưa xác định cơ sở làm việc";
+  const pageMeta = useMemo(
+    () => getStaffPageMeta(location.pathname),
+    [location.pathname],
+  );
   const orderNoticeRestaurantId =
     activeRestaurantId || user?.restaurantForStaff || activeRestaurant?.id || null;
   const canReceiveOrderNotice =
     STAFF_ORDER_ROLES.includes(normalizedRole) ||
     hasAnyPermission(user, ORDER_NOTICE_PERMISSIONS);
+  const isOrderWorkspace = location.pathname.startsWith("/staff/orders");
   const showIncomingOrderQueue =
-    location.pathname.startsWith("/staff/orders") &&
+    isOrderWorkspace &&
     canReceiveOrderNotice &&
     Boolean(orderNoticeRestaurantId);
 
@@ -231,13 +251,21 @@ export default function StaffLayout({ children }) {
         permissions: HANDOFF_PERMISSIONS,
       },
       { label: "Phiếu lương", to: "/staff/payslips" },
-      { label: "Order nội bộ", to: "/staff/orders", roles: STAFF_ORDER_ROLES },
+      {
+        label: "Order nội bộ",
+        to: "/staff/orders",
+        roles: STAFF_ORDER_ROLES,
+      },
       {
         label: "Đổi đặt bàn",
         to: "/staff/reservation-changes",
         roles: STAFF_ORDER_ROLES,
       },
-      { label: "Bếp / Quầy bar", to: "/staff/kitchen", roles: STAFF_KITCHEN_ROLES },
+      {
+        label: "Bếp / Quầy bar",
+        to: "/staff/kitchen",
+        roles: STAFF_KITCHEN_ROLES,
+      },
       { label: "Cài đặt", to: "/staff/settings" },
     ],
     [],
@@ -272,20 +300,40 @@ export default function StaffLayout({ children }) {
               <h1 className="staff-shell__title">{pageMeta.title}</h1>
               <p className="staff-shell__subtitle">{pageMeta.description}</p>
             </div>
-            <div className="staff-shell__identity">
-              <div className="staff-shell__identity-avatar" aria-hidden="true">
-                {(displayName || "NV").slice(0, 2).toUpperCase()}
-              </div>
-              <div className="staff-shell__identity-copy">
-                <div>{displayName || "Nhân viên"}</div>
-                <span>{roleLabel || "Chưa xác định vai trò"}</span>
-                <small>{restaurantLabel} • Sẵn sàng</small>
+
+            <div className="staff-shell__account-actions">
+              {!isOrderWorkspace ? (
+                <NotificationBell
+                  restaurantId={orderNoticeRestaurantId}
+                  onViewAll={() => navigate("/staff/notifications")}
+                  onOpenThread={(threadId) =>
+                    navigate(
+                      `/staff/contacts?threadId=${encodeURIComponent(threadId)}`,
+                    )
+                  }
+                />
+              ) : null}
+              <div className="staff-shell__identity">
+                <div
+                  className="staff-shell__identity-avatar"
+                  aria-hidden="true"
+                >
+                  {(displayName || "NV").slice(0, 2).toUpperCase()}
+                </div>
+                <div className="staff-shell__identity-copy">
+                  <div>{displayName || "Nhân viên"}</div>
+                  <span>{roleLabel || "Chưa xác định vai trò"}</span>
+                  <small>{restaurantLabel} • Sẵn sàng</small>
+                </div>
               </div>
             </div>
+
             <button
               type="button"
               className="staff-shell__menu-button"
-              aria-label={menuOpen ? "Đóng menu nhân viên" : "Mở menu nhân viên"}
+              aria-label={
+                menuOpen ? "Đóng menu nhân viên" : "Mở menu nhân viên"
+              }
               aria-expanded={menuOpen}
               aria-controls="staff-shell-navigation"
               onClick={() => setMenuOpen((value) => !value)}
@@ -314,14 +362,18 @@ export default function StaffLayout({ children }) {
                     return (
                       <Link
                         key={item.to}
-                        className={`staff-shell__nav-link ${active ? "is-active" : ""}`}
+                        className={`staff-shell__nav-link ${
+                          active ? "is-active" : ""
+                        }`}
                         to={item.to}
                         onClick={() => setMenuOpen(false)}
                         aria-current={active ? "page" : undefined}
                       >
                         {item.label}
                         {item.to === "/staff/ai-handoff" ? (
-                          <StaffHandoffUnreadCount restaurantId={activeRestaurantId} />
+                          <StaffHandoffUnreadCount
+                            restaurantId={activeRestaurantId}
+                          />
                         ) : null}
                       </Link>
                     );
@@ -336,7 +388,14 @@ export default function StaffLayout({ children }) {
       <main id="staff-main-content" className="staff-shell__main">
         <div className="staff-shell__content">
           {showIncomingOrderQueue ? (
-            <PosIncomingTableOrderQueue restaurantId={orderNoticeRestaurantId} />
+            <>
+              <CustomerRequestQueuePanel
+                restaurantId={orderNoticeRestaurantId}
+              />
+              <PosIncomingTableOrderQueue
+                restaurantId={orderNoticeRestaurantId}
+              />
+            </>
           ) : null}
           {children}
         </div>

@@ -21,6 +21,14 @@ const mocks = vi.hoisted(() => ({
   refetchAppeals: vi.fn(),
 }));
 
+vi.mock("@/components/Staff/NotificationBell", () => ({
+  default: () => (
+    <button type="button" aria-label="Thông báo nhân viên">
+      Thông báo
+    </button>
+  ),
+}));
+
 vi.mock("@/hooks/useStaffPerformanceView", () => ({
   useStaffPerformanceView: vi.fn(() => mocks.viewState),
 }));
