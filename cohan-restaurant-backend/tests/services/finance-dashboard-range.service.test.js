@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  includeResolvedReconciliationCount,
   normalizeFinanceDashboardResult,
   prepareFinanceDashboardRequest,
 } from "../../src/services/finance/financeDashboardRange.service.js";
@@ -20,10 +21,18 @@ describe("finance dashboard range service", () => {
     );
   });
 
-  it("rejects incomplete and reversed custom ranges", () => {
+  it("rejects incomplete, malformed and reversed custom ranges", () => {
     expect(() =>
       prepareFinanceDashboardRequest({ range: "CUSTOM", dateFrom: "2026-07-10" }),
     ).toThrow("Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc.");
+
+    expect(() =>
+      prepareFinanceDashboardRequest({
+        range: "CUSTOM",
+        dateFrom: "2026-02-30",
+        dateTo: "2026-03-02",
+      }),
+    ).toThrow("Khoảng ngày tài chính không hợp lệ.");
 
     expect(() =>
       prepareFinanceDashboardRequest({
@@ -63,5 +72,20 @@ describe("finance dashboard range service", () => {
       { key: "08/2026", revenue: 120, expense: 30, profit: 90 },
       { key: "09/2026", revenue: 80, expense: 30, profit: 50 },
     ]);
+  });
+
+  it("includes resolved reconciliations in the handled total", () => {
+    expect(
+      includeResolvedReconciliationCount(
+        {
+          reconciliationSummary: {
+            matched: 4,
+            amountMismatch: 2,
+            unmatched: 3,
+          },
+        },
+        5,
+      ).reconciliationSummary,
+    ).toEqual({ matched: 9, amountMismatch: 2, unmatched: 3 });
   });
 });
