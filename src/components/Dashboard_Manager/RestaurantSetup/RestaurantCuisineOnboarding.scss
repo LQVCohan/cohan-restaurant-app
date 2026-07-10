@@ -26,6 +26,7 @@
   width: min(1040px, 100%);
   max-height: min(880px, calc(100dvh - 48px));
   overflow: auto;
+  overscroll-behavior: contain;
   padding: 34px;
   border: 1px solid rgba(144, 91, 43, 0.2);
   border-radius: 26px;
@@ -42,13 +43,14 @@
   right: 18px;
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 12px;
   background: rgba(99, 68, 38, 0.08);
   color: #5d4633;
   cursor: pointer;
+  touch-action: manipulation;
   transition: background 180ms ease, transform 180ms ease;
 
   &:hover:not(:disabled) {
@@ -108,7 +110,8 @@
 .cuisine-onboarding__templates {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  align-items: start;
+  gap: 14px;
   margin: 28px 0 0;
   padding: 0;
   border: 0;
@@ -116,23 +119,12 @@
 
 .cuisine-template-card {
   position: relative;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 14px;
-  min-height: 154px;
-  padding: 18px;
+  overflow: hidden;
+  min-width: 0;
   border: 1px solid rgba(109, 80, 52, 0.16);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.72);
-  cursor: pointer;
+  background: rgba(255, 255, 255, 0.76);
   transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, background 180ms ease;
-
-  input {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    pointer-events: none;
-  }
 
   &:hover {
     transform: translateY(-1px);
@@ -152,6 +144,24 @@
   box-shadow: inset 0 0 0 1px rgba(183, 101, 36, 0.18), 0 14px 30px rgba(126, 69, 25, 0.1);
 }
 
+.cuisine-template-card__select {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  min-height: 176px;
+  padding: 18px;
+  cursor: pointer;
+  touch-action: manipulation;
+
+  input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
 .cuisine-template-card__icon {
   display: grid;
   place-items: center;
@@ -166,54 +176,154 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 7px;
+  gap: 9px;
 }
 
 .cuisine-template-card__heading {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
 
-  strong {
+  > strong {
+    min-width: 0;
     font-size: 1rem;
+    line-height: 1.35;
   }
+}
 
-  svg {
-    flex: 0 0 auto;
-    color: #9f4e14;
-  }
+.cuisine-template-card__selected-label {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  color: #8f410f;
+  font-size: 0.72rem;
+  font-weight: 750;
 }
 
 .cuisine-template-card__description {
   color: #6f5e4f;
   font-size: 0.88rem;
   line-height: 1.45;
+  text-wrap: pretty;
 }
 
 .cuisine-template-card__metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 12px;
-  color: #584737;
-  font-size: 0.78rem;
-  font-weight: 650;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: auto;
 
-  span {
-    display: inline-flex;
+  > span {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "icon value"
+      "icon label";
+    column-gap: 6px;
     align-items: center;
-    gap: 5px;
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid rgba(109, 80, 52, 0.11);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.64);
+  }
+
+  svg {
+    grid-area: icon;
+    color: #9f4e14;
+  }
+
+  strong {
+    grid-area: value;
+    color: #3f3024;
+    font-size: 0.88rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  small {
+    grid-area: label;
+    overflow: hidden;
+    color: #776251;
+    font-size: 0.67rem;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
-.cuisine-template-card__featured {
-  margin-top: auto;
-  overflow: hidden;
-  color: #8a6f58;
-  font-size: 0.76rem;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.cuisine-template-card__details {
+  border-top: 1px solid rgba(109, 80, 52, 0.13);
+  background: rgba(244, 229, 209, 0.34);
+
+  summary {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 18px;
+    color: #74431e;
+    font-size: 0.82rem;
+    font-weight: 750;
+    list-style: none;
+    cursor: pointer;
+    touch-action: manipulation;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &:hover {
+      background: rgba(168, 79, 22, 0.07);
+    }
+
+    &:focus-visible {
+      outline: 3px solid rgba(184, 102, 35, 0.42);
+      outline-offset: -3px;
+    }
+
+    svg {
+      flex: 0 0 auto;
+      transition: transform 180ms ease;
+    }
+  }
+
+  &[open] summary svg {
+    transform: rotate(180deg);
+  }
+
+  ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+    margin: 0;
+    padding: 4px 18px 18px;
+    list-style: none;
+  }
+
+  li {
+    position: relative;
+    min-width: 0;
+    padding-left: 13px;
+    color: #5e4a39;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+
+    &::before {
+      position: absolute;
+      top: 0.52em;
+      left: 0;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #b76524;
+      content: "";
+    }
+  }
 }
 
 .cuisine-onboarding__status,
@@ -258,6 +368,7 @@
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+  touch-action: manipulation;
 
   &:focus-visible {
     outline: 3px solid rgba(184, 102, 35, 0.42);
@@ -310,7 +421,7 @@
   .cuisine-onboarding__dialog {
     width: 100%;
     max-height: 92dvh;
-    padding: 26px 18px 20px;
+    padding: 26px 18px calc(20px + env(safe-area-inset-bottom));
     border-radius: 24px 24px 0 0;
   }
 
@@ -320,6 +431,10 @@
 
   .cuisine-onboarding__templates {
     grid-template-columns: 1fr;
+  }
+
+  .cuisine-template-card__select {
+    min-height: 0;
   }
 
   .cuisine-onboarding__footer {
@@ -336,8 +451,42 @@
   }
 }
 
+@media (max-width: 420px) {
+  .cuisine-template-card__select {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 11px;
+    padding: 15px;
+  }
+
+  .cuisine-template-card__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    font-size: 1.25rem;
+  }
+
+  .cuisine-template-card__metrics {
+    gap: 5px;
+
+    > span {
+      padding: 7px 6px;
+    }
+
+    small {
+      font-size: 0.62rem;
+    }
+  }
+
+  .cuisine-template-card__details {
+    ul {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .cuisine-template-card,
+  .cuisine-template-card__details summary svg,
   .cuisine-onboarding__close,
   .cuisine-onboarding__primary {
     transition: none;
