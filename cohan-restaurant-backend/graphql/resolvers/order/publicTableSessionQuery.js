@@ -66,7 +66,7 @@ export async function publicActiveTableSessionOrders(
   });
 
   const table = await Table.findOne({ _id: tid, restaurantId: rid })
-    .select({ _id: 1, code: 1, tableAccessToken: 1 })
+    .select({ _id: 1, code: 1, status: 1, tableAccessToken: 1 })
     .lean();
 
   if (!table) {
@@ -96,6 +96,7 @@ export async function publicActiveTableSessionOrders(
     return buildPublicActiveTableSessionOrdersResult({
       tableId: table._id,
       tableCode: safeCode,
+      tableStatus: table.status,
       session: null,
       orders: [],
     });
@@ -116,6 +117,7 @@ export async function publicActiveTableSessionOrders(
   return buildPublicActiveTableSessionOrdersResult({
     tableId: table._id,
     tableCode: safeCode,
+    tableStatus: table.status,
     session,
     orders,
   });
