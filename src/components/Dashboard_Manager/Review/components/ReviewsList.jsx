@@ -22,7 +22,7 @@ function getInitials(name = "") {
   return name
     .split(" ")
     .filter(Boolean)
-    .map((n) => n[0])
+    .map((part) => part[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);
@@ -85,7 +85,6 @@ const ReviewsList = ({
   reviews,
   currentTab,
   onView,
-  onDelete,
   onEdit,
   permissions = {},
   emptyType,
@@ -168,7 +167,11 @@ const ReviewsList = ({
                   {review.customer_avatar ? (
                     <img
                       src={review.customer_avatar}
-                      alt={review.customer_name}
+                      alt={review.customer_name || "Khách hàng"}
+                      width="44"
+                      height="44"
+                      loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     getInitials(review.customer_name)
@@ -180,7 +183,7 @@ const ReviewsList = ({
                   </div>
                   <div className="reviews-review-card__meta">
                     <span>{review.location}</span>
-                    <span>•</span>
+                    <span aria-hidden="true">•</span>
                     <span>{formatDate(review.created_at)}</span>
                     {review.verified_purchase && (
                       <span className="reviews-review-card__verified">
@@ -219,21 +222,14 @@ const ReviewsList = ({
                     Ẩn đánh giá
                   </button>
                 )}
-                {permissions.canDelete && (
-                  <button
-                    type="button"
-                    className="reviews-review-card__action-btn reviews-review-card__action-btn--danger"
-                    onClick={() => onDelete(review)}
-                  >
-                    Xóa
-                  </button>
-                )}
               </div>
             </div>
 
             <div className="reviews-review-card__rating-row">
-              <div className="reviews-review-card__stars">
-                <span className="star">{getStarRating(review.rating)}</span>
+              <div className="reviews-review-card__stars" aria-label={`${review.rating} trên 5 sao`}>
+                <span className="star" aria-hidden="true">
+                  {getStarRating(review.rating)}
+                </span>
               </div>
               <span className="reviews-review-card__rating-number">
                 {review.rating}/5
@@ -271,17 +267,22 @@ const ReviewsList = ({
                 {review.staff_name || "Chưa gắn nhân viên"}
               </p>
               <p className="reviews-review-card__text reviews-review-card__text--note">
-                Đánh giá này giúp nhà hàng cải thiện trải nghiệm phục vụ trong những lần tiếp theo.
+                Đánh giá này giúp nhà hàng cải thiện trải nghiệm phục vụ trong
+                những lần tiếp theo.
               </p>
 
               {images.length > 0 && (
                 <div className="reviews-review-card__images">
-                  {images.map((img) => (
+                  {images.map((image, index) => (
                     <img
-                      key={img}
-                      src={img}
-                      alt="Ảnh đánh giá"
+                      key={image}
+                      src={image}
+                      alt={`Ảnh đánh giá ${index + 1}`}
                       className="reviews-review-card__image"
+                      width="160"
+                      height="120"
+                      loading="lazy"
+                      decoding="async"
                     />
                   ))}
                 </div>
@@ -314,7 +315,7 @@ const ReviewsList = ({
                 </div>
               </div>
 
-              <div className={"reviews-review-card__status " + statusClass}>
+              <div className={`reviews-review-card__status ${statusClass}`}>
                 {getStatusLabel(review.status)}
               </div>
             </footer>
