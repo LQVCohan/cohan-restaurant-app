@@ -24,6 +24,7 @@ import { CartProvider } from "./context/CartProvider";
 import { CustomerNotificationProvider } from "./context/CustomerNotificationContext";
 import AiChatbotWidget from "./components/common/AiChatbotWidget";
 import AppErrorBoundary from "./components/common/AppErrorBoundary";
+import Table3DPreviewLauncher from "./components/Dashboard_Manager/Table/Table3DPreviewLauncher";
 
 function ScopedAiChatbotWidget() {
   const location = useLocation();
@@ -51,6 +52,7 @@ function App() {
               <CustomerNotificationProvider>
                 <CartProvider>
                   <AppRouter />
+                  <Table3DPreviewLauncher />
                   <GlobalMenuAvailabilityPrompt />
                   <ScopedAiChatbotWidget />
                 </CartProvider>
