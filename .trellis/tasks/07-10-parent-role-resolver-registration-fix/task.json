@@ -1,0 +1,31 @@
+{
+  "id": "parent-role-resolver-registration-fix",
+  "name": "parent-role-resolver-registration-fix",
+  "title": "Register ParentRole resolver for staff role list",
+  "description": "Wire the existing ParentRole id resolver into the executable GraphQL resolver map so roleList can serialize lean MongoDB parent-role documents.",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "manager-staff",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/resolvers/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/role/types.js",
+    "cohan-restaurant-backend/tests/resolvers/role-resolver-index.test.js",
+    "src/hooks/useStaffManagement.js",
+    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.jsx"
+  ],
+  "notes": "Planning complete: the existing ParentRole.id resolver is exported by the role module but omitted from the root resolver map. The modal performs local validation, so clicking Next sends no request; it surfaces the earlier roleList query error."
+}
