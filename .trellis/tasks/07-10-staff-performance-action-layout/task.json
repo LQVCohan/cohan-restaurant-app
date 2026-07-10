@@ -1,0 +1,28 @@
+{
+  "id": "07-10-staff-performance-action-layout",
+  "title": "Move staff performance actions into contextual sections",
+  "status": "in_progress",
+  "type": "frontend-refactor",
+  "scope": [
+    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.jsx",
+    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.scss",
+    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformanceResponsive.scss",
+    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.layout.test.jsx"
+  ],
+  "rootCause": "StaffManagement already supplies the page header and sub-navigation, so the performance hero duplicates page identity and groups unrelated actions. Period reset belongs with date filters, while CSV export and recalculation belong with the performance table data they affect.",
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.layout.test.jsx",
+      "npm run check:conflicts",
+      "npm run build"
+    ],
+    "completed": [
+      "read AGENTS.md and Trellis workflow",
+      "read ponytail, ui-ux-pro-max, frontend-design, redesign-existing-projects, taste-ui-redesign and web-design-guidelines skills",
+      "traced StaffManagement -> StaffPerformancePage -> useStaffPerformance/local actions -> page sections",
+      "confirmed the hero title duplicates the shared staff header and page navigation",
+      "confirmed no backend, GraphQL contract, permission or restaurant-scope change is required"
+    ],
+    "notRun": []
+  }
+}
