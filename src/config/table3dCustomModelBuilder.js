@@ -1,3 +1,4 @@
+import { toApiAssetUrl } from "@/lib/apiBaseUrl";
 import { TABLE_AREA_OPTIONS } from "@/utils/tableManagementOptions";
 
 const CUSTOM_URL_TABLE_TYPES = {
@@ -104,27 +105,63 @@ const normalizeDimensionsCm = (input = {}) => {
 };
 
 const normalizeTags = (value) => {
-  if (Array.isArray(value)) return value.map(String).map((tag) => tag.trim()).filter(Boolean);
+  if (Array.isArray(value))
+    return value.map(String).map((tag) => tag.trim()).filter(Boolean);
   return String(value || "")
     .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);
 };
 
+const normalizeCatalogAliases = (defaults, input = {}) => ({
+  ...defaults,
+  ...input,
+  name: String(input.label || input.name || defaults.name || "").trim(),
+  tableType: input.type || input.tableType || defaults.tableType,
+});
+
 export const normalizeCustomTableSpec = (input = {}) => {
-  const merged = { ...DEFAULT_CUSTOM_TABLE_SPEC, ...input };
+  const merged = {
+    ...DEFAULT_CUSTOM_TABLE_SPEC,
+    ...input,
+    name: String(
+      input.label || input.name || DEFAULT_CUSTOM_TABLE_SPEC.name,
+    ).trim(),
+  };
   return {
     ...merged,
-    name: String(merged.name || "").trim(),
-    shape: SHAPE_VALUES.has(merged.shape) ? merged.shape : DEFAULT_CUSTOM_TABLE_SPEC.shape,
-    area: AREA_VALUES.has(merged.area) ? merged.area : DEFAULT_CUSTOM_TABLE_SPEC.area,
-    capacity: asPositiveNumber(merged.capacity, DEFAULT_CUSTOM_TABLE_SPEC.capacity),
-    widthCm: asPositiveNumber(merged.widthCm, DEFAULT_CUSTOM_TABLE_SPEC.widthCm),
-    depthCm: asPositiveNumber(merged.depthCm, DEFAULT_CUSTOM_TABLE_SPEC.depthCm),
-    heightCm: asPositiveNumber(merged.heightCm, DEFAULT_CUSTOM_TABLE_SPEC.heightCm),
-    diameterCm: asPositiveNumber(merged.diameterCm, DEFAULT_CUSTOM_TABLE_SPEC.diameterCm),
-    material: String(merged.material || "").trim() || DEFAULT_CUSTOM_TABLE_SPEC.material,
-    color: String(merged.color || "").trim() || DEFAULT_CUSTOM_TABLE_SPEC.color,
+    name: merged.name,
+    shape: SHAPE_VALUES.has(merged.shape)
+      ? merged.shape
+      : DEFAULT_CUSTOM_TABLE_SPEC.shape,
+    area: AREA_VALUES.has(merged.area)
+      ? merged.area
+      : DEFAULT_CUSTOM_TABLE_SPEC.area,
+    capacity: asPositiveNumber(
+      merged.capacity,
+      DEFAULT_CUSTOM_TABLE_SPEC.capacity,
+    ),
+    widthCm: asPositiveNumber(
+      merged.widthCm,
+      DEFAULT_CUSTOM_TABLE_SPEC.widthCm,
+    ),
+    depthCm: asPositiveNumber(
+      merged.depthCm,
+      DEFAULT_CUSTOM_TABLE_SPEC.depthCm,
+    ),
+    heightCm: asPositiveNumber(
+      merged.heightCm,
+      DEFAULT_CUSTOM_TABLE_SPEC.heightCm,
+    ),
+    diameterCm: asPositiveNumber(
+      merged.diameterCm,
+      DEFAULT_CUSTOM_TABLE_SPEC.diameterCm,
+    ),
+    material:
+      String(merged.material || "").trim() ||
+      DEFAULT_CUSTOM_TABLE_SPEC.material,
+    color:
+      String(merged.color || "").trim() || DEFAULT_CUSTOM_TABLE_SPEC.color,
     notes: String(merged.notes || "").trim(),
     referenceImageName: String(merged.referenceImageName || "").trim(),
   };
@@ -150,7 +187,7 @@ export const buildCustomTableCatalogItem = (spec, options = {}) => {
 };
 
 export const buildCustomUrlTableCatalogItem = (spec = {}, options = {}) => {
-  const merged = { ...DEFAULT_CUSTOM_URL_TABLE_SPEC, ...spec };
+  const merged = normalizeCatalogAliases(DEFAULT_CUSTOM_URL_TABLE_SPEC, spec);
   const slug = slugify(merged.name) || "url-table";
   const timestamp = options.timestamp ?? Date.now();
   const sourceInput = String(merged.source || "").trim();
@@ -158,19 +195,26 @@ export const buildCustomUrlTableCatalogItem = (spec = {}, options = {}) => {
 
   return {
     key: `custom-url-${slug}-${timestamp}`,
-    label: String(merged.name || "").trim() || "Mẫu bàn 3D URL tùy chỉnh",
+    label: merged.name || "Mẫu bàn 3D URL tùy chỉnh",
     tableType: Object.values(CUSTOM_URL_TABLE_TYPES).includes(merged.tableType)
       ? merged.tableType
       : DEFAULT_CUSTOM_URL_TABLE_SPEC.tableType,
-    capacity: asPositiveNumber(merged.capacity, DEFAULT_CUSTOM_URL_TABLE_SPEC.capacity),
-    defaultScale: Number(merged.defaultScale || DEFAULT_CUSTOM_URL_TABLE_SPEC.defaultScale),
-    modelUrl: String(merged.modelUrl || "").trim(),
-    thumbnailUrl: String(merged.thumbnailUrl || "").trim(),
+    capacity: asPositiveNumber(
+      merged.capacity,
+      DEFAULT_CUSTOM_URL_TABLE_SPEC.capacity,
+    ),
+    defaultScale: Number(
+      merged.defaultScale || DEFAULT_CUSTOM_URL_TABLE_SPEC.defaultScale,
+    ),
+    modelUrl: toApiAssetUrl(merged.modelUrl),
+    thumbnailUrl: toApiAssetUrl(merged.thumbnailUrl),
     source: sourceIsUrl ? sourceInput : "user-generated-url",
     sourceLabel: sourceIsUrl
       ? sourceInput
       : sourceInput || "Custom online model URL",
-    licenseLabel: String(merged.licenseLabel || "").trim() || "Người dùng tự xác nhận quyền sử dụng",
+    licenseLabel:
+      String(merged.licenseLabel || "").trim() ||
+      "Người dùng tự xác nhận quyền sử dụng",
     dimensionsCm: normalizeDimensionsCm(merged),
     tags: normalizeTags(merged.tags),
     fallbackKind: "model",
@@ -179,65 +223,91 @@ export const buildCustomUrlTableCatalogItem = (spec = {}, options = {}) => {
 };
 
 export const buildUploadedTableCatalogItem = (spec = {}, options = {}) => {
-  const merged = { ...DEFAULT_CUSTOM_UPLOAD_TABLE_SPEC, ...spec };
+  const merged = normalizeCatalogAliases(
+    DEFAULT_CUSTOM_UPLOAD_TABLE_SPEC,
+    spec,
+  );
   const slug = slugify(merged.name) || "uploaded-table";
   const timestamp = options.timestamp ?? Date.now();
   const sourceInput = String(merged.source || "").trim();
 
   return {
     key: `custom-upload-${slug}-${timestamp}`,
-    label: String(merged.name || "").trim() || "Mẫu bàn 3D upload tùy chỉnh",
+    label: merged.name || "Mẫu bàn 3D upload tùy chỉnh",
     tableType: Object.values(CUSTOM_URL_TABLE_TYPES).includes(merged.tableType)
       ? merged.tableType
       : DEFAULT_CUSTOM_UPLOAD_TABLE_SPEC.tableType,
-    capacity: asPositiveNumber(merged.capacity, DEFAULT_CUSTOM_UPLOAD_TABLE_SPEC.capacity),
-    defaultScale: Number(merged.defaultScale || DEFAULT_CUSTOM_UPLOAD_TABLE_SPEC.defaultScale),
-    modelUrl: String(merged.modelUrl || "").trim(),
-    thumbnailUrl: String(merged.thumbnailUrl || "").trim(),
+    capacity: asPositiveNumber(
+      merged.capacity,
+      DEFAULT_CUSTOM_UPLOAD_TABLE_SPEC.capacity,
+    ),
+    defaultScale: Number(
+      merged.defaultScale || DEFAULT_CUSTOM_UPLOAD_TABLE_SPEC.defaultScale,
+    ),
+    modelUrl: toApiAssetUrl(merged.modelUrl),
+    thumbnailUrl: toApiAssetUrl(merged.thumbnailUrl),
     source: "user-upload",
     sourceLabel: sourceInput || "User uploaded GLB model",
-    licenseLabel: String(merged.licenseLabel || "").trim() || "Người dùng tự xác nhận quyền sử dụng",
+    licenseLabel:
+      String(merged.licenseLabel || "").trim() ||
+      "Người dùng tự xác nhận quyền sử dụng",
     dimensionsCm: normalizeDimensionsCm(merged),
     tags: normalizeTags(merged.tags),
     fallbackKind: "model",
     customModelKind: "upload",
-    uploadedFileName: String(merged.uploadedFileName || merged.fileName || "").trim(),
-    uploadedSizeBytes: Number(merged.uploadedSizeBytes || merged.sizeBytes || 0) || 0,
+    uploadedFileName: String(
+      merged.uploadedFileName || merged.fileName || "",
+    ).trim(),
+    uploadedSizeBytes:
+      Number(merged.uploadedSizeBytes || merged.sizeBytes || 0) || 0,
   };
 };
 
-
 export const buildAiGeneratedTableCatalogItem = (spec = {}, options = {}) => {
-  const merged = { ...DEFAULT_AI_TABLE_SPEC, ...spec };
-  const generatedModelUrl = String(merged.generatedModelUrl || merged.modelUrl || "").trim();
+  const merged = normalizeCatalogAliases(DEFAULT_AI_TABLE_SPEC, spec);
+  const generatedModelUrl = toApiAssetUrl(
+    merged.generatedModelUrl || merged.modelUrl,
+  );
   if (!generatedModelUrl) return null;
 
   const slug = slugify(merged.name) || "ai-table";
   const timestamp = options.timestamp ?? Date.now();
-  const aiProvider = String(merged.aiProvider || merged.provider || "ai-provider").trim();
+  const aiProvider = String(
+    merged.aiProvider || merged.provider || "ai-provider",
+  ).trim();
   const aiJobId = String(merged.aiJobId || merged.jobId || "").trim();
 
   return {
     key: `custom-ai-${slug}-${timestamp}`,
-    label: String(merged.name || "").trim() || "Mẫu bàn 3D AI",
+    label: merged.name || "Mẫu bàn 3D AI",
     tableType: Object.values(CUSTOM_URL_TABLE_TYPES).includes(merged.tableType)
       ? merged.tableType
       : DEFAULT_AI_TABLE_SPEC.tableType,
     capacity: asPositiveNumber(merged.capacity, DEFAULT_AI_TABLE_SPEC.capacity),
-    defaultScale: Number(merged.defaultScale || DEFAULT_AI_TABLE_SPEC.defaultScale),
+    defaultScale: Number(
+      merged.defaultScale || DEFAULT_AI_TABLE_SPEC.defaultScale,
+    ),
     modelUrl: generatedModelUrl,
-    thumbnailUrl: String(merged.generatedThumbnailUrl || merged.thumbnailUrl || "").trim(),
+    thumbnailUrl: toApiAssetUrl(
+      merged.generatedThumbnailUrl || merged.thumbnailUrl,
+    ),
     source: "ai-generated",
     sourceType: "ai-generated",
-    sourceLabel: aiJobId ? `${aiProvider || "AI provider"} job ${aiJobId}` : aiProvider || "AI generated model",
-    licenseLabel: String(merged.licenseLabel || "").trim() || "Người dùng tự xác nhận quyền sử dụng ảnh tham khảo",
+    sourceLabel: aiJobId
+      ? `${aiProvider || "AI provider"} job ${aiJobId}`
+      : aiProvider || "AI generated model",
+    licenseLabel:
+      String(merged.licenseLabel || "").trim() ||
+      "Người dùng tự xác nhận quyền sử dụng ảnh tham khảo",
     dimensionsCm: normalizeDimensionsCm(merged),
     tags: normalizeTags(merged.tags),
     fallbackKind: "model",
     customModelKind: "ai-generated",
     aiJobId,
     aiProvider,
-    generationStatus: String(merged.generationStatus || "completed").trim(),
+    generationStatus: String(
+      merged.generationStatus || "completed",
+    ).trim(),
   };
 };
 
@@ -250,6 +320,6 @@ export const mapCustomTableSpecToTableForm = (spec) => {
   };
 };
 
-
 export const getCustomTableShapeLabel = (shape) =>
-  CUSTOM_TABLE_SHAPES.find((item) => item.value === shape)?.label || "Bàn chữ nhật";
+  CUSTOM_TABLE_SHAPES.find((item) => item.value === shape)?.label ||
+  "Bàn chữ nhật";
