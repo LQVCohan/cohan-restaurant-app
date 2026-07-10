@@ -1,0 +1,32 @@
+{
+  "id": "07-10-contextual-ai-page-guidance",
+  "title": "Hướng dẫn AI theo trang hiện tại cho khách hàng và nhân viên",
+  "status": "implemented_unverified",
+  "type": "backend-chatbot-navigation",
+  "scope": [
+    "cohan-restaurant-backend/src/services/ai/restaurantChatbot.service.js",
+    "cohan-restaurant-backend/tests/services/restaurantChatbot.pageGuidance.test.js"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run cohan-restaurant-backend/tests/services/restaurantChatbot.pageGuidance.test.js"
+    ],
+    "completed": [
+      "read AGENTS.md, .trellis/workflow.md and ponytail skill",
+      "traced AppRouter staff routes through chatbot pageContext, backend response actions and the existing React Router action handler",
+      "confirmed the floating chatbot is already visible on staff routes",
+      "confirmed the existing widget already renders safe link actions as navigation buttons",
+      "added current-page context for every registered staff route",
+      "added role-aware direct actions for shared staff, order staff, kitchen staff and customers",
+      "filtered staff, manager and admin paths using the authenticated backend role before returning actions",
+      "preserved customer page guidance and deterministic reservation guidance",
+      "added regression cases for staff routes, server/chef/customer shortcuts, forged actions and staff how-to answers",
+      "ran Node syntax checks on the updated service and test source prepared for the branch",
+      "reviewed the committed branch files and route-role mappings"
+    ],
+    "notRun": [
+      "targeted Vitest was unavailable in the GitHub connector environment",
+      "backend runtime/build smoke test was unavailable in the GitHub connector environment"
+    ]
+  }
+}
