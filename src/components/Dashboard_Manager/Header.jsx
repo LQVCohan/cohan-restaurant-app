@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiAlertTriangle, FiBell, FiCheckCircle, FiChevronDown, FiHelpCircle, FiInfo, FiLogOut, FiMoon, FiSettings, FiUser } from "react-icons/fi";
+import { FiAlertTriangle, FiBell, FiCheckCircle, FiChevronDown, FiHelpCircle, FiInfo, FiLogOut, FiMoon, FiPackage, FiSettings, FiUser } from "react-icons/fi";
 import SearchBox from "../SearchBox/SearchBox";
 import ManagerAccountCenter from "./Account/ManagerAccountCenter";
 import RestaurantCuisineOnboarding from "./RestaurantSetup/RestaurantCuisineOnboarding";
@@ -53,6 +53,7 @@ const Header = ({
   const [avatarImageFailed, setAvatarImageFailed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem("manager.darkMode") === "1");
   const [selectedRestaurantId, setSelectedRestaurantId] = useState(readSelectedRestaurantId);
+  const [cuisineOnboardingRequest, setCuisineOnboardingRequest] = useState(0);
   const notificationRef = useRef(null);
   const userMenuRef = useRef(null);
   const { user, logout } = useContext(AuthContext);
@@ -119,6 +120,10 @@ const Header = ({
 
   const closeMenus = () => { setShowNotifications(false); setShowUserMenu(false); };
   const openAccount = (tab) => { closeMenus(); setAccountTab(tab); };
+  const openCuisineOnboarding = () => {
+    closeMenus();
+    setCuisineOnboardingRequest((value) => value + 1);
+  };
   const formatTime = () => currentTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
   const formatDate = () => currentTime.toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
@@ -194,6 +199,7 @@ const Header = ({
                     <div className="user-role-breakdown"><span>Cấp tài khoản: <strong>{systemRoleLabel}</strong></span><span>Quyền trong chuỗi: <strong>{brandRoleLabel || "Chưa tham gia chuỗi"}</strong></span><span>Phạm vi quản lý: <strong>{scopeLabel}</strong></span></div>
                   </div>
                   <div className="user-menu-items">
+                    {showCuisineOnboarding && <button className="user-menu-item" type="button" onClick={openCuisineOnboarding}><span className="menu-icon"><FiPackage /></span><span>Chọn mẫu thiết lập nhà hàng</span></button>}
                     <button className="user-menu-item" type="button" onClick={() => openAccount("profile")}><span className="menu-icon"><FiUser /></span><span>Thông tin cá nhân</span></button>
                     <button className="user-menu-item" type="button" onClick={() => openAccount("security")}><span className="menu-icon"><FiSettings /></span><span>Cài đặt tài khoản</span></button>
                     <button className="user-menu-item" type="button" onClick={toggleDarkMode}><span className="menu-icon"><FiMoon /></span><span>{isDarkMode ? "Chế độ sáng" : "Chế độ tối"}</span></button>
@@ -213,6 +219,7 @@ const Header = ({
         <RestaurantCuisineOnboarding
           key={selectedRestaurant.id || selectedRestaurant._id}
           restaurant={selectedRestaurant}
+          openRequest={cuisineOnboardingRequest}
         />
       )}
     </>
