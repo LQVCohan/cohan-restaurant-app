@@ -27,8 +27,11 @@ function normalizeWarehouseFields(input = {}) {
   return next;
 }
 
-async function assertWarehouseCanBeRemoved(existing) {
-  const stockRows = await StockItem.countDocuments({ warehouseId: existing._id });
+async function assertWarehouseCanBeRetired(existing) {
+  const stockRows = await StockItem.countDocuments({
+    warehouseId: existing._id,
+    $or: [{ onHand: { $ne: 0 } }, { reserved: { $ne: 0 } }],
+  });
   if (stockRows > 0) {
     throw new GraphQLError(
       "Không thể xóa hoặc ngừng kho đang có tồn. Hãy chuyển hoặc xử lý hết hàng trước.",
@@ -73,7 +76,7 @@ export default {
     const patch = normalizeWarehouseFields(rawPatch);
 
     if (patch.isActive === false && existing.isActive !== false) {
-      await assertWarehouseCanBeRemoved(existing);
+      await assertWarehouseCanBeRetired(existing);
     }
 
     try {
@@ -99,9 +102,13 @@ export default {
     if (!existing) return false;
 
     await requireRestaurantPermission(ctx, existing.restaurantId, PERMISSIONS.INVENTORY_WRITE);
-    await assertWarehouseCanBeRemoved(existing);
+    await assertWarehouseCanBeRetired(existing);
 
-    const res = await Warehouse.deleteOne({ _id: id });
-    return res.deletedCount > 0;
+    const retired = await Warehouse.findByIdAndUpdate(
+      id,
+      { $set: { isActive: false } },
+      { new: true },
+    ).lean();
+    return Boolean(retired);
   },
 };
