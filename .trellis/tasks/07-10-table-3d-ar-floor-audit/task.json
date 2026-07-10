@@ -1,0 +1,33 @@
+{
+  "id": "07-10-table-3d-ar-floor-audit",
+  "title": "Tinh gọn modal xem bàn 3D và xác thực AR mặt sàn",
+  "status": "in_progress",
+  "type": "frontend-fix",
+  "scope": [
+    "src/components/Dashboard_Manager/Table/Table3DActionBarV2.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DQuickGuide.jsx",
+    "src/config/table3dCatalog.js",
+    "src/components/Dashboard_Manager/Table/Table3DActionBarV2.test.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.test.jsx",
+    "tests/e2e/table-ar-mobile.spec.js"
+  ],
+  "rootCause": "The reachable global preview still exposes an unrelated 2D camera fallback. Its model-viewer integration also uses the unsupported model-scale attribute and enables the external AR action from URL/HTTPS checks without consulting model-viewer's canActivateAR capability. The smallest correct fix removes the fallback, uses the supported scale attribute, explicitly targets floor placement, and gates AR after the model viewer reports device support.",
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Dashboard_Manager/Table/Table3DActionBarV2.test.jsx src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.test.jsx",
+      "npx playwright test tests/e2e/table-ar-mobile.spec.js",
+      "npm run check:conflicts",
+      "npm run build",
+      "manual Android/iOS AR surface scan"
+    ],
+    "completed": [
+      "read AGENTS.md and Trellis workflow",
+      "read relevant ponytail, frontend-design, react performance, UI/UX, redesign, WCAG, and web guideline skills",
+      "traced upload route and custom model builder through catalog hook, preview launcher, model-viewer modal, action bar, and tests",
+      "confirmed the global preview has no GraphQL persistence mutation",
+      "confirmed model-viewer supports floor AR placement, canActivateAR, ar-status, fixed AR scale, and WebXR environment lighting"
+    ],
+    "notRun": []
+  }
+}
