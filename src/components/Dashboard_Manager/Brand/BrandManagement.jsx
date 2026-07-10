@@ -301,7 +301,10 @@ export default function BrandManagement() {
     return () => window.clearTimeout(timer);
   }, [candidateSearch]);
 
-  const members = memberData?.brandMembers || [];
+  const members = useMemo(
+    () => memberData?.brandMembers || [],
+    [memberData?.brandMembers],
+  );
   const restaurants = selectedBrand?.restaurants || [];
   const rawCandidates = candidateSearchReady
     ? candidateData?.brandMemberCandidates || []
@@ -656,6 +659,8 @@ export default function BrandManagement() {
                 <label className="brand-field">
                   <span>Tên chuỗi <b>*</b></span>
                   <input
+                    name="brandName"
+                    autoComplete="organization"
                     value={brandForm.name}
                     onChange={(event) => updateBrandField("name", event.target.value)}
                     aria-invalid={Boolean(brandErrors.name)}
@@ -672,6 +677,9 @@ export default function BrandManagement() {
                 <label className="brand-field">
                   <span>Đường dẫn định danh <b>*</b></span>
                   <input
+                    name="brandSlug"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={brandForm.slug}
                     onChange={(event) => updateBrandField("slug", event.target.value)}
                     aria-invalid={Boolean(brandErrors.slug)}
@@ -690,6 +698,8 @@ export default function BrandManagement() {
                 <label className="brand-field">
                   <span>Tên pháp lý</span>
                   <input
+                    name="businessName"
+                    autoComplete="organization"
                     value={brandForm.businessName}
                     onChange={(event) => updateBrandField("businessName", event.target.value)}
                     placeholder="Tên doanh nghiệp trên giấy phép"
@@ -700,6 +710,9 @@ export default function BrandManagement() {
                   <span>Email doanh nghiệp</span>
                   <input
                     type="email"
+                    name="businessEmail"
+                    autoComplete="email"
+                    spellCheck={false}
                     value={brandForm.businessEmail}
                     onChange={(event) => updateBrandField("businessEmail", event.target.value)}
                     aria-invalid={Boolean(brandErrors.businessEmail)}
@@ -718,6 +731,9 @@ export default function BrandManagement() {
                 <label className="brand-field">
                   <span>Số điện thoại doanh nghiệp</span>
                   <input
+                    type="tel"
+                    name="businessPhone"
+                    autoComplete="tel"
                     inputMode="tel"
                     value={brandForm.businessPhone}
                     onChange={(event) => updateBrandField("businessPhone", event.target.value)}
@@ -733,7 +749,7 @@ export default function BrandManagement() {
                   className="brand-button brand-button--primary"
                   disabled={savingBrand}
                 >
-                  {savingBrand ? "Đang lưu..." : "Lưu thông tin chuỗi"}
+                  {savingBrand ? "Đang lưu…" : "Lưu thông tin chuỗi"}
                 </button>
               </div>
             </form>
@@ -793,6 +809,8 @@ export default function BrandManagement() {
                 <label className="brand-field">
                   <span>Tên chi nhánh mới</span>
                   <input
+                    name="newBranchName"
+                    autoComplete="off"
                     value={branchName}
                     onChange={(event) => {
                       setBranchName(event.target.value);
@@ -820,7 +838,7 @@ export default function BrandManagement() {
                   onClick={addBranch}
                   disabled={creatingBranch}
                 >
-                  {creatingBranch ? "Đang thêm..." : "Thêm chi nhánh"}
+                  {creatingBranch ? "Đang thêm…" : "Thêm chi nhánh"}
                 </button>
               </div>
             </section>
@@ -831,7 +849,11 @@ export default function BrandManagement() {
               <div>
                 <span className="brand-panel__eyebrow">PHÂN QUYỀN THEO PHẠM VI</span>
                 <h3 id="members-title">Thành viên trong chuỗi</h3>
-                <p>Tìm thành viên hiện có hoặc thêm tài khoản mới bên dưới.</p>
+                <p>Quan sát trạng thái trước, mở công cụ khi cần thay đổi.</p>
+              </div>
+              <div className="brand-members-summary" aria-label="Tóm tắt thành viên">
+                <span><strong>{activeMemberCount}</strong> đang hoạt động</span>
+                <span><strong>{members.length}</strong> tổng thành viên</span>
               </div>
             </div>
 
@@ -852,10 +874,12 @@ export default function BrandManagement() {
                       <span aria-hidden="true">⌕</span>
                       <input
                         type="search"
+                        name="memberSearch"
+                        autoComplete="off"
                         aria-label="Tìm tài khoản theo tên nhân viên hoặc mã tài khoản"
                         value={memberSearch}
                         onChange={(event) => setMemberSearch(event.target.value)}
-                        placeholder="Tên nhân viên hoặc mã tài khoản"
+                        placeholder="Tên nhân viên hoặc mã tài khoản…"
                       />
                     </div>
                   </label>
@@ -893,13 +917,31 @@ export default function BrandManagement() {
               </div>
             </details>
 
-            <div className="brand-member-create">
-              <div className="brand-member-create__grid">
+            <details className="brand-member-operations">
+              <summary className="brand-member-operations__summary">
+                <span>
+                  <strong>Công cụ quản trị thành viên</strong>
+                  <small>Mời tài khoản, đổi quyền hoặc chuyển chủ chuỗi</small>
+                </span>
+                <span className="brand-member-operations__action">Mở công cụ</span>
+              </summary>
+              <div className="brand-member-operations__body">
+                <section className="brand-member-create" aria-labelledby="add-member-title">
+                  <div className="brand-subsection-heading">
+                    <span className="brand-subsection-heading__index" aria-hidden="true">+</span>
+                    <div>
+                      <h4 id="add-member-title">Thêm thành viên</h4>
+                      <p>Tìm tài khoản, chọn vai trò và phạm vi phụ trách.</p>
+                    </div>
+                  </div>
+                  <div className="brand-member-create__grid">
                 <div className="brand-account-picker">
                   <label className="brand-field">
                     <span>Tìm người cần thêm</span>
                     <input
                       type="search"
+                      name="candidateSearch"
+                      autoComplete="off"
                       aria-label="Tìm người cần thêm theo tên, email hoặc mã tài khoản"
                       value={candidateSearch}
                       onChange={(event) => {
@@ -907,7 +949,7 @@ export default function BrandManagement() {
                         setMember((current) => ({ ...current, userId: "" }));
                         setMemberFormError("");
                       }}
-                      placeholder="Nhập tên hoặc email"
+                      placeholder="Nhập tên hoặc email…"
                     />
                   </label>
 
@@ -934,7 +976,7 @@ export default function BrandManagement() {
                         {candidateSearch.trim().length < 2
                           ? "Nhập ít nhất 2 ký tự"
                           : candidatesLoading
-                            ? "Đang tìm tài khoản..."
+                            ? "Đang tìm tài khoản…"
                             : candidates.length
                               ? "Chọn một tài khoản"
                               : "Không có kết quả"}
@@ -955,7 +997,7 @@ export default function BrandManagement() {
                           : candidateSearch.trim().length < 2
                             ? "Nhập ít nhất 2 ký tự để tìm."
                             : candidatesLoading
-                              ? "Đang tìm tài khoản phù hợp..."
+                              ? "Đang tìm tài khoản phù hợp…"
                               : candidates.length
                                 ? `${candidates.length} tài khoản có thể thêm.`
                                 : "Không tìm thấy tài khoản chưa thuộc chuỗi."}
@@ -1005,8 +1047,8 @@ export default function BrandManagement() {
                 >
                   {addingMember
                     ? member.role === "staff"
-                      ? "Đang thêm..."
-                      : "Đang gửi..."
+                      ? "Đang thêm…"
+                      : "Đang gửi…"
                     : member.role === "staff"
                       ? "Thêm thành viên"
                       : "Gửi lời mời"}
@@ -1076,20 +1118,21 @@ export default function BrandManagement() {
                 </fieldset>
               )}
 
-              {memberFormError && (
-                <div className="brand-alert brand-alert--warning" role="alert">
-                  {memberFormError}
-                </div>
-              )}
-            </div>
+                  {memberFormError && (
+                    <div className="brand-alert brand-alert--warning" role="alert">
+                      {memberFormError}
+                    </div>
+                  )}
+                </section>
 
-            <BrandOwnershipTransfer
-              selectedBrand={selectedBrand}
-              members={members}
-              restaurants={restaurants}
-              assignedManagerByRestaurant={assignedManagerByRestaurant}
-              setSelectedRestaurantId={setSelectedRestaurantId}
-            />
+                <BrandOwnershipTransfer
+                  selectedBrand={selectedBrand}
+                  members={members}
+                  restaurants={restaurants}
+                  assignedManagerByRestaurant={assignedManagerByRestaurant}
+                />
+              </div>
+            </details>
 
             {memberQueryError && (
               <div className="brand-alert brand-alert--danger" role="alert">
@@ -1100,7 +1143,18 @@ export default function BrandManagement() {
               </div>
             )}
 
-            <div className="brand-member-list" aria-busy={membersLoading}>
+            <div className="brand-member-list-heading" aria-hidden="true">
+              <span>Tài khoản</span>
+              <span>Vai trò &amp; phạm vi</span>
+              <span>Trạng thái</span>
+            </div>
+
+            <div
+              className="brand-member-list"
+              role="list"
+              aria-label="Danh sách thành viên trong chuỗi"
+              aria-busy={membersLoading}
+            >
               {membersLoading && !members.length ? (
                 [1, 2, 3].map((item) => (
                   <div key={item} className="brand-member-skeleton" />
@@ -1127,7 +1181,11 @@ export default function BrandManagement() {
                     : MEMBER_STATUS_LABELS[currentMember.status] || "Không xác định";
 
                   return (
-                    <article className="brand-member-card" key={currentMember.id}>
+                    <article
+                      className="brand-member-card"
+                      key={currentMember.id}
+                      role="listitem"
+                    >
                       <div className="brand-member-card__avatar" aria-hidden="true">
                         {getInitials(displayName)}
                       </div>
@@ -1155,7 +1213,7 @@ export default function BrandManagement() {
                             disabled={changingMemberId === currentMember.id}
                           >
                             {changingMemberId === currentMember.id
-                              ? "Đang xử lý..."
+                              ? "Đang xử lý…"
                               : currentMember.status === "active"
                                 ? "Tạm ngưng"
                                 : currentMember.status === "invited"
