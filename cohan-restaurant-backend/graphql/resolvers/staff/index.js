@@ -353,6 +353,33 @@ const updateStaff = async (parent, args = {}, ctx, info) => {
   );
 };
 
+const deleteStaff = async (parent, args = {}, ctx, info) => {
+  await loadStaffUpdateContext(args.userId, ctx);
+  return staffMutation.deleteStaff(parent, args, ctx, info);
+};
+
+const setStaffEmploymentStatus = async (parent, args = {}, ctx, info) => {
+  await loadStaffUpdateContext(args.userId, ctx);
+  return staffMutation.setStaffEmploymentStatus(parent, args, ctx, info);
+};
+
+const setStaffAccountStatus = async (parent, args = {}, ctx, info) => {
+  const normalizedStatus = String(args.status || "").trim().toLowerCase();
+  if (!["active", "inactive", "blocked", "pending"].includes(normalizedStatus)) {
+    throw new Error("Trạng thái tài khoản nhân viên không hợp lệ");
+  }
+
+  return updateStaff(
+    parent,
+    {
+      userId: args.userId,
+      input: { status: normalizedStatus },
+    },
+    ctx,
+    info,
+  );
+};
+
 const operationKey = ["Mut", "ation"].join("");
 
 const resolvers = {
@@ -366,6 +393,9 @@ const resolvers = {
     ...staffMutation,
     createStaff,
     updateStaff,
+    deleteStaff,
+    setStaffEmploymentStatus,
+    setStaffAccountStatus,
     ...staffPhotoActions,
     ...payrollFinalizeReadinessMutation,
     ...payrollProtectedAttendanceMutation,
