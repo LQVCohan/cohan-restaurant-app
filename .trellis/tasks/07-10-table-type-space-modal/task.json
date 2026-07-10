@@ -1,38 +1,28 @@
 {
   "id": "07-10-table-type-space-modal",
   "title": "Gộp loại bàn và không gian vào modal quản lý bàn",
-  "status": "implemented_unverified",
+  "status": "in_progress",
   "type": "frontend-feature",
   "scope": [
-    "src/components/Dashboard_Manager/Table/TableTypeManagementPage.jsx",
+    "src/layouts/ManagerLayout.jsx",
     "src/components/Dashboard_Manager/Table/TableTypeManagementPage.scss",
     "src/components/Dashboard_Manager/Table/TableTypeManagementPage.test.jsx",
     "src/components/Dashboard_Manager/Sidebar.jsx"
   ],
+  "rootCause": "table-types is persisted as the last manager page in the URL hash and localStorage while its modal is permanently open, so a later manager visit restores the modal automatically. The modal stylesheet also defines a separate warm beige palette instead of reusing the shared sage manager tokens.",
   "validation": {
     "planned": [
       "npx vitest run src/components/Dashboard_Manager/Table/TableTypeManagementPage.test.jsx",
       "npm run check:conflicts",
-      "npm run check:graphql",
       "npm run build"
     ],
     "completed": [
-      "read AGENTS.md, Trellis workflow, ponytail, frontend-design and responsive redesign skills",
-      "traced Table.type and Floor CRUD from Mongoose/schema through resolvers, Apollo hooks and manager UI",
-      "confirmed table types remain the six shared enum values while table records and floor spaces already have server CRUD",
-      "replaced the standalone table-type content with the normal table-management screen plus a combined modal",
-      "added table create, direct type change, full table edit/move, guarded delete, and floor create/rename/delete flows",
-      "kept backend models, GraphQL schema, resolvers, permissions, table-state guards and POS flows unchanged",
-      "renamed the navigation entry to Loại bàn & không gian so it represents a modal settings entry rather than a standalone management page",
-      "added responsive modal styles and focused component tests for table and floor actions"
+      "read AGENTS.md and Trellis workflow",
+      "read ponytail, frontend-design, ui-ux-pro-max, taste-ui-redesign and redesign-existing-projects skills",
+      "traced Table.type and Floor CRUD from schema/resolvers through Apollo hooks and modal actions",
+      "inspected ManagerLayout hash/localStorage restoration, sidebar navigation and the modal caller",
+      "confirmed the shared manager palette is defined by --manager-* sage tokens"
     ],
-    "notRun": [
-      "targeted Vitest was unavailable in the GitHub connector environment",
-      "npm run check:conflicts was not executable in the GitHub connector environment",
-      "npm run check:graphql was not executable in the GitHub connector environment",
-      "npm run build was not executable in the GitHub connector environment",
-      "desktop and mobile browser smoke screenshots were unavailable",
-      "no GitHub status checks were attached to the latest implementation commit"
-    ]
+    "notRun": []
   }
 }
