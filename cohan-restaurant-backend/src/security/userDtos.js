@@ -227,6 +227,14 @@ export async function assertCanReadStaffPrivateProfile({ ctx, staffUser, restaur
 }
 
 function buildStaffPrivateProfile(source) {
+  const emergencyContacts = Array.isArray(source.emergencyContacts)
+    ? source.emergencyContacts
+    : [];
+  const emergencyContact =
+    emergencyContacts.find((contact) => contact?.isPrimary) ||
+    emergencyContacts[0] ||
+    source.emergencyContact;
+
   return pickDefined({
     ...sanitizeAdminUserListItem(source),
     baseSalary: source.baseSalary,
@@ -266,7 +274,8 @@ function buildStaffPrivateProfile(source) {
     trainingStatus: source.trainingStatus,
     lastTrainingAt: source.lastTrainingAt,
     nextTrainingDueAt: source.nextTrainingDueAt,
-    emergencyContacts: source.emergencyContacts,
+    emergencyContact,
+    emergencyContacts,
     noteInternal: source.noteInternal,
     forcePasswordChange: source.forcePasswordChange,
   });
