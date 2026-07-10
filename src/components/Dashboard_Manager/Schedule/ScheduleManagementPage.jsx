@@ -4,6 +4,7 @@ import "@/styles/schedule-manager-experience.css";
 import "@/styles/schedule-action-center.css";
 import "@/styles/schedule-polish.css";
 import "@/styles/schedule-sidebar-safe-performance.css";
+import "@/styles/schedule-availability-feedback.css";
 import { installScheduleApolloPerformancePatch } from "@/utils/scheduleApolloPerformancePatch.js";
 import { initScheduleHydrationPolish } from "@/utils/scheduleHydrationPolish.js";
 import { initScheduleManagerDomPolish } from "@/utils/scheduleManagerDomPolish.js";
@@ -20,8 +21,34 @@ import "@/styles/schedule-manager-final-alignment.css";
 import "@/styles/schedule-availability-action-buttons.css";
 import "@/styles/schedule-manager-sage-upgrade.css";
 
+function getAvailabilityActionErrorMessage(reason) {
+  const raw = String(reason?.message || reason || "");
+  if (!raw.includes("AVAILABILITY_WINDOW")) return "";
+  if (raw.includes("SCHEDULE_ALREADY_PUBLISHED")) {
+    return "Không thể mở đăng ký vì lịch của tuần này đã được công bố, khóa hoặc chốt.";
+  }
+  if (raw.includes("PERIOD_ENDED")) {
+    return "Tuần đăng ký đã kết thúc. Hãy chuyển sang tuần kế tiếp.";
+  }
+  if (raw.includes("INVALID_OPEN_TRANSITION")) {
+    return "Kỳ đăng ký này không còn ở trạng thái cho phép mở lại.";
+  }
+  if (raw.includes("INVALID_CLOSE_TRANSITION")) {
+    return "Chỉ có thể đóng một kỳ đăng ký đang mở.";
+  }
+  if (raw.includes("STATE_CHANGED")) {
+    return "Trạng thái kỳ đăng ký vừa được người khác thay đổi. Hãy tải lại dữ liệu.";
+  }
+  if (raw.includes("NOT_FOUND")) {
+    return "Không tìm thấy kỳ đăng ký. Hãy tải lại trang và thử lại.";
+  }
+  return "Không thể cập nhật kỳ đăng ký lịch. Hãy kiểm tra lại trạng thái tuần và thử lại.";
+}
+
 const ScheduleManagementPage = memo(function ScheduleManagementPage() {
   const [readinessFocus, setReadinessFocus] = useState("");
+  const [availabilityActionError, setAvailabilityActionError] = useState("");
+
   useEffect(() => {
     const applyFocus = () => {
       const params = new URLSearchParams(window.location.search || "");
@@ -39,6 +66,19 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
     window.addEventListener("manager:navigation-query", handleNavigationQuery);
     return () =>
       window.removeEventListener("manager:navigation-query", handleNavigationQuery);
+  }, []);
+
+  useEffect(() => {
+    const handleUnhandledRejection = (event) => {
+      const message = getAvailabilityActionErrorMessage(event.reason);
+      if (!message) return;
+      event.preventDefault();
+      setAvailabilityActionError(message);
+    };
+
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+    return () =>
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
   }, []);
 
   useLayoutEffect(() => {
@@ -79,6 +119,21 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
           Đang mở lịch làm việc để xử lý lỗi từ kiểm tra bảng lương: {readinessFocus}
         </div>
       )}
+      {availabilityActionError ? (
+        <div className="schedule-availability-action-error" role="alert">
+          <div>
+            <strong>Không thể cập nhật đăng ký lịch</strong>
+            <span>{availabilityActionError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAvailabilityActionError("")}
+            aria-label="Đóng thông báo lỗi đăng ký lịch"
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
       <ScheduleManagement />
     </>
   );
