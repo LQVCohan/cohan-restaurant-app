@@ -260,12 +260,13 @@ const files = [
 
 files.push(userMutationCompatibilitySchema);
 
-const staffAvatarSchema = `
+const staffManagementSchema = `
 extend type Mutation {
   updateStaffAvatar(userId: ID!, input: UpdateAvatarInput!): StaffPrivateProfile!
+  setStaffAccountStatus(userId: ID!, status: String!): StaffPrivateProfile!
 }
 `;
-files.push(staffAvatarSchema);
+files.push(staffManagementSchema);
 
 const typeDefs = mergeTypeDefs(files, { useSchemaDefinition: true });
 
