@@ -1,0 +1,21 @@
+{
+  "id": "07-10-fix-manager-menu-status-and-header",
+  "title": "Fix manager menu status visibility and scroll reset",
+  "status": "in_progress",
+  "branch": "main",
+  "createdAt": "2026-07-10",
+  "scope": [
+    "cohan-restaurant-backend/graphql/schema/menu.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/menu/query.js",
+    "cohan-restaurant-backend/tests/resolvers/menu-restaurant-access.test.js",
+    "src/hooks/useMenuManagement.js",
+    "src/layouts/ManagerLayout.jsx",
+    "src/components/Dashboard_Manager/Sidebar.jsx"
+  ],
+  "validation": [
+    "targeted menu resolver test",
+    "GraphQL schema check",
+    "frontend build if available",
+    "manual manager menu status and scroll verification"
+  ]
+}
