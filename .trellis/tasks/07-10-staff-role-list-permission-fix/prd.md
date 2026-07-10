@@ -9,36 +9,36 @@ The add-employee modal receives the selected restaurant correctly, but clicking 
 Flow traced:
 
 1. `Role` documents provide authoritative role ids and slugs.
-2. `UserQuery.roleList` loads those documents but authorizes only fixed role names (`admin`, `manager`, `hr`).
-3. `useStaffManagement` queries `roleList` and maps slug to id.
-4. `EmployeeFormModal` validates `selectedRoleRecord` before advancing.
-5. Current RBAC and restaurant-management flows grant effective permissions independently of a fixed global role slug, so an account allowed to manage staff can still be rejected by `roleList`.
+2. Authentication populates both the direct role and its `parentRole` inheritance.
+3. `UserQuery.roleList` authorizes through the shared legacy `requireRole` helper.
+4. `useStaffManagement` queries `roleList` and maps slug to id.
+5. `EmployeeFormModal` validates `selectedRoleRecord` before advancing.
 
-The prior `userType` normalization widened the legacy helper but did not fix this mismatched authorization boundary.
+The shared `hasRole` helper recognized `userType`, `roleName`, and the direct role, but ignored `role.parentRole`. An account using a custom restaurant-management role could therefore inherit `manager` access everywhere else while `roleList` still rejected it. The modal then stopped locally before any create-staff mutation was sent.
 
 ## Scope
 
-- Authorize `roleList` with the existing effective `staff.read` permission.
-- Preserve the existing role query result and frontend mapping contract.
-- Add one resolver regression test for a nonstandard role carrying `staff.read`.
+- Include inherited parent-role slug and name in the shared role resolution helper.
+- Preserve existing direct-role and specialized staff-role behavior.
+- Add one focused regression test for an inherited management role.
 
-## Files changing
+## Files changed
 
-- `cohan-restaurant-backend/graphql/resolvers/user/query.js`: replace the fixed-role guard on `roleList` with the existing permission service.
-- `cohan-restaurant-backend/tests/resolvers/user-auth-me.test.js`: cover permission-based role-list access.
+- `cohan-restaurant-backend/utils/authz.js`: include `role.parentRole` in normalized role candidates.
+- `cohan-restaurant-backend/tests/utils/authz.test.js`: cover a custom role inheriting from `manager`.
 
 ## Acceptance criteria
 
-- A signed-in user with effective `staff.read` can load `roleList` even when its role slug is not `admin`, `manager`, or `hr`.
-- Users without `staff.read` remain forbidden.
-- The role list response shape is unchanged.
-- The employee modal can resolve `server` and advance when that role exists in the database.
+- A user whose direct role inherits from `manager` passes checks accepting `admin`, `manager`, or `hr`.
+- Existing `userType: ADMIN` matching remains valid.
+- Specialized staff roles such as `server` still match both their direct slug and the `staff` group.
+- The `roleList` GraphQL response and frontend contracts remain unchanged.
 
 ## Validation
 
-- Run targeted Vitest for `tests/resolvers/user-auth-me.test.js` when a runnable checkout is available.
-- Review GraphQL schema compatibility; no schema change is expected.
-- Review the final diff for permission or contract drift.
+- Review the role-list flow from resolver to Apollo hook and modal validation.
+- Run `vitest run tests/utils/authz.test.js` when a runnable checkout is available.
+- No GraphQL schema or frontend build change is required.
 
 ## Out of scope
 
