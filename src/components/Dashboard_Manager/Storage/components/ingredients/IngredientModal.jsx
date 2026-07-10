@@ -42,6 +42,33 @@ const ALL_UNITS = [
   "can",
 ];
 
+const UNIT_LABELS = {
+  g: "Gam (g)",
+  kg: "Kilôgam (kg)",
+  ml: "Mililít (ml)",
+  l: "Lít (l)",
+  unit: "Đơn vị",
+  piece: "Cái",
+  tbsp: "Muỗng canh",
+  tsp: "Muỗng cà phê",
+  pack: "Gói",
+  bottle: "Chai",
+  can: "Lon",
+};
+
+const UNIT_SUFFIXES = {
+  unit: "đơn vị",
+  piece: "cái",
+  tbsp: "muỗng canh",
+  tsp: "muỗng cà phê",
+  pack: "gói",
+  bottle: "chai",
+  can: "lon",
+};
+
+const getUnitLabel = (unit) => UNIT_LABELS[unit] || unit || "Đơn vị";
+const getUnitSuffix = (unit) => UNIT_SUFFIXES[unit] || unit || "đơn vị";
+
 const defaultForm = {
   name: "",
   sku: "",
@@ -504,7 +531,7 @@ const IngredientModal = ({
                 >
                   {unitOptions.map((unit) => (
                     <option key={unit} value={unit}>
-                      {unit}
+                      {getUnitLabel(unit)}
                     </option>
                   ))}
                 </select>
@@ -547,7 +574,7 @@ const IngredientModal = ({
                     aria-invalid={Boolean(errors.costPerBaseUnit)}
                   />
                   <span className="addon-suffix">
-                    {activeCurrency} / {form.baseUnit}
+                    {activeCurrency} / {getUnitSuffix(form.baseUnit)}
                   </span>
                 </div>
                 {errors.costPerBaseUnit && (
@@ -580,7 +607,7 @@ const IngredientModal = ({
                     disabled={saving}
                     aria-invalid={Boolean(errors.minStock)}
                   />
-                  <span className="addon-suffix">{form.baseUnit}</span>
+                  <span className="addon-suffix">{getUnitSuffix(form.baseUnit)}</span>
                 </div>
                 <span className="help-text">Cảnh báo khi tồn khả dụng chạm mức này.</span>
                 {errors.minStock && <span className="error-text">{errors.minStock}</span>}
@@ -610,7 +637,7 @@ const IngredientModal = ({
                       disabled={!canInitStock || saving}
                       aria-invalid={Boolean(errors.initialStockQty)}
                     />
-                    <span className="addon-suffix">{form.baseUnit}</span>
+                    <span className="addon-suffix">{getUnitSuffix(form.baseUnit)}</span>
                   </div>
                   {errors.initialStockQty && (
                     <span className="error-text">{errors.initialStockQty}</span>
