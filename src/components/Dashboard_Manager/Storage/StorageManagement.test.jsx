@@ -27,7 +27,7 @@ vi.mock("@apollo/client", async () => {
       if (operationName(mutation) === "CreateWarehouse") {
         return [apolloMocks.createWarehouse, { loading: false }];
       }
-      return [vi.fn(async () => ({ data: {} })), {}];
+      return [vi.fn(async () => ({ data: {} })), { loading: false }];
     }),
     useQuery: vi.fn((query) => {
       const opName = operationName(query);
@@ -158,6 +158,7 @@ const renderPage = (user = writableUser) =>
   );
 
 const lowStockKpi = () => screen.getByText("Sắp hết").closest(".sm-kpi-card");
+const warehouseKpi = () => screen.getByText("Kho đang có").closest(".sm-kpi-card");
 
 beforeEach(() => {
   apolloMocks.warehouses = [
@@ -175,18 +176,20 @@ beforeEach(() => {
 });
 
 describe("StorageManagement operations UI", () => {
-  it("renders storage title, tabs, KPI cards, and empty ingredient state", async () => {
+  it("renders multi-warehouse selector, count and storage operations", async () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Quản lý kho" })).toBeInTheDocument();
     expect(
-      screen.getByText("Theo dõi nguyên liệu, nhập xuất và kiểm kê trong kho mặc định của nhà hàng."),
+      screen.getByText("Theo dõi tồn, nhập xuất, kiểm kê và chuyển hàng giữa các kho trong cùng nhà hàng."),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Nhà hàng")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Kho hàng")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Kho hàng")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Quản lý 1 kho hiện tại" })).toBeInTheDocument();
     expect(screen.getByText("Tổng nguyên liệu")).toBeInTheDocument();
     expect(screen.getByText("Sắp hết")).toBeInTheDocument();
     expect(within(lowStockKpi()).getByText("1")).toBeInTheDocument();
+    expect(within(warehouseKpi()).getByText("1")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Nguyên liệu/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Vật tư & Khác/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Công thức/i })).toBeInTheDocument();
