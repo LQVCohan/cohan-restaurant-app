@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { CartQuery } from "./query.js";
 import { CustomerCartQuery } from "./customerQuery.js";
 import { CartMutation } from "./mutation.js";
@@ -18,6 +19,8 @@ const withResolvedServingVariantKey =
     if (
       !input?.restaurantId ||
       !input?.menuItemId ||
+      !mongoose.isValidObjectId(input.restaurantId) ||
+      !mongoose.isValidObjectId(input.menuItemId) ||
       (respectItemType && itemType !== "MENU_ITEM")
     ) {
       return resolver(parent, args, ctx, info);
