@@ -29,6 +29,7 @@ import "../../StorageSageTone.scss";
 import "../../IngredientModalEnhancements.css";
 import "../../StorageRecipeModalCompactLayout.css";
 import "./Tabs.scss";
+import "../../StorageInventoryAuditStepperFix.css";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
   const supportsViewToggle = ["ingredients", "supplies", "recipes"].includes(activeTab);
