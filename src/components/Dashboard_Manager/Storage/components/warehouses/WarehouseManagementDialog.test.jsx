@@ -87,7 +87,9 @@ describe("WarehouseManagementDialog", () => {
     renderDialog({ onSelectWarehouse });
 
     expect(screen.getByRole("dialog", { name: "Quản lý danh sách kho" })).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(
+      screen.getByText("2", { selector: ".warehouse-manager-summary strong" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Kho chính")).toBeInTheDocument();
     expect(screen.getByText("Kho lạnh")).toBeInTheDocument();
 
