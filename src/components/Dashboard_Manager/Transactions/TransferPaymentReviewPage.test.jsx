@@ -10,6 +10,14 @@ import TransferPaymentReviewPage, {
 
 const scopeMocks = vi.hoisted(() => ({ useScope: vi.fn() }));
 
+vi.mock("lucide-react", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    ImageIcon: actual.ImageIcon || actual.Image,
+    SearchCheck: actual.SearchCheck || actual.Search,
+  };
+});
 vi.mock("@/hooks/useManagerRestaurantSelection", () => ({
   default: scopeMocks.useScope,
 }));
