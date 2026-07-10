@@ -25,4 +25,7 @@ export default {
     },
     ...Object.fromEntries(["businessStatus","publicationStatus","operationalStatus","openingStatus","openingStatusReason","nextOpeningTime","canView","canReserve","canOrder","canTableOrder","canDelivery","canPickup"].map((k)=>[k,(p)=>computeRestaurantAvailability(p)[k]])),
   },
+  RestaurantCategoryIndex: {
+    id: (parent) => parent.id ?? String(parent._id),
+  },
 };
