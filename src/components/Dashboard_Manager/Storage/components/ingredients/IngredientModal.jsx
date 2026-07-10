@@ -5,9 +5,7 @@ import {
   Barcode,
   Tag,
   Scale,
-  DollarSign,
   AlertTriangle,
-  Archive,
   CheckCircle2,
   XCircle,
   FileText,
@@ -90,6 +88,7 @@ const IngredientModal = ({
   categoryOptions = [],
 }) => {
   const activeCurrency = normalizeCurrency(currency, "VND");
+  const currencySymbol = activeCurrency === "VND" ? "₫" : "$";
   const { showNotification } = useNotification();
   const [form, setForm] = useState(defaultForm);
   const [errors, setErrors] = useState({});
@@ -360,18 +359,26 @@ const IngredientModal = ({
       title={isEditing ? "Cập nhật nguyên vật liệu" : "Thêm nguyên vật liệu mới"}
       size="lg"
       closeOnOverlayClick={false}
+      closeOnEscape={!saving}
       className="ingredient-modal-shell"
     >
-      <Modal.Body>
-        <form onSubmit={save} className="ingredient-form-premium" autoComplete="off">
-          <div className="form-section">
+      <Modal.Body className="ingredient-modal-body">
+        <form
+          id="ingredient-form"
+          onSubmit={save}
+          className="ingredient-form-premium"
+          autoComplete="off"
+        >
+          <section className="form-section" aria-labelledby="ingredient-identity-title">
             <div className="im-section-header">
               <div className="icon-box" aria-hidden="true">
                 <Info size={18} />
               </div>
               <div className="header-text">
-                <h4 className="im-section-title">Thông tin định danh</h4>
-                <p className="im-section-desc">Tên gọi, danh mục và trạng thái hoạt động</p>
+                <h4 id="ingredient-identity-title" className="im-section-title">
+                  Thông tin nguyên liệu
+                </h4>
+                <p className="im-section-desc">Định danh, phân loại và trạng thái sử dụng</p>
               </div>
             </div>
 
@@ -390,9 +397,15 @@ const IngredientModal = ({
                     placeholder="VD: Thịt bò thăn ngoại…"
                     autoFocus
                     disabled={saving}
+                    aria-invalid={Boolean(errors.name)}
+                    aria-describedby={errors.name ? "ingredient-name-error" : undefined}
                   />
                 </div>
-                {errors.name && <span className="error-text">{errors.name}</span>}
+                {errors.name && (
+                  <span id="ingredient-name-error" className="error-text">
+                    {errors.name}
+                  </span>
+                )}
               </div>
 
               <div className="form-group">
@@ -406,7 +419,7 @@ const IngredientModal = ({
                     onChange={(event) => set({ ingredientCategoryId: event.target.value })}
                     disabled={saving}
                   >
-                    <option value="">-- Chưa phân loại --</option>
+                    <option value="">Chưa phân loại</option>
                     {categoryNames.map((category) => (
                       <option key={category.id} value={category.id}>
                         {toIngredientCategoryVi(category.name)}
@@ -418,7 +431,7 @@ const IngredientModal = ({
 
               <div className="form-group">
                 <label htmlFor="ingredient-sku">
-                  Mã SKU <span className="hint">(Tùy chọn)</span>
+                  Mã SKU <span className="hint">Tùy chọn</span>
                 </label>
                 <div className="input-with-icon">
                   <Barcode size={16} className="icon" aria-hidden="true" />
@@ -444,7 +457,7 @@ const IngredientModal = ({
                     onClick={() => set({ isActive: true })}
                     disabled={saving}
                   >
-                    <CheckCircle2 size={16} aria-hidden="true" /> Đang bán
+                    <CheckCircle2 size={16} aria-hidden="true" /> Đang sử dụng
                   </button>
                   <button
                     type="button"
@@ -458,16 +471,20 @@ const IngredientModal = ({
                 </div>
               </fieldset>
             </div>
-          </div>
+          </section>
 
-          <div className="form-section">
+          <section className="form-section" aria-labelledby="ingredient-stock-title">
             <div className="im-section-header">
               <div className="icon-box warning" aria-hidden="true">
                 <Scale size={18} />
               </div>
               <div className="header-text">
-                <h4 className="im-section-title">Định lượng & Giá vốn</h4>
-                <p className="im-section-desc">Đơn vị tính gốc và chi phí tiêu chuẩn</p>
+                <h4 id="ingredient-stock-title" className="im-section-title">
+                  Định lượng và kiểm soát kho
+                </h4>
+                <p className="im-section-desc">
+                  Đơn vị gốc, giá vốn và ngưỡng cảnh báo tồn
+                </p>
               </div>
             </div>
 
@@ -483,6 +500,7 @@ const IngredientModal = ({
                   value={form.baseUnit}
                   onChange={(event) => set({ baseUnit: event.target.value })}
                   disabled={saving}
+                  aria-invalid={Boolean(errors.baseUnit)}
                 >
                   {unitOptions.map((unit) => (
                     <option key={unit} value={unit}>
@@ -491,7 +509,9 @@ const IngredientModal = ({
                   ))}
                 </select>
                 {unitSuggested && (
-                  <span className="help-text text-success">Gợi ý tự động từ AI.</span>
+                  <span className="help-text text-success">
+                    Đơn vị được gợi ý theo tên nguyên liệu.
+                  </span>
                 )}
                 {errors.baseUnit && <span className="error-text">{errors.baseUnit}</span>}
               </div>
@@ -501,8 +521,8 @@ const IngredientModal = ({
                   Giá vốn tiêu chuẩn <span className="required">*</span>
                 </label>
                 <div className="input-addon-group">
-                  <span className="addon-prefix" aria-hidden="true">
-                    <DollarSign size={16} />
+                  <span className="addon-prefix currency-symbol" aria-hidden="true">
+                    {currencySymbol}
                   </span>
                   <input
                     id="ingredient-cost"
@@ -522,8 +542,9 @@ const IngredientModal = ({
                         ),
                       })
                     }
-                    placeholder="0.00"
+                    placeholder="0"
                     disabled={saving}
+                    aria-invalid={Boolean(errors.costPerBaseUnit)}
                   />
                   <span className="addon-suffix">
                     {activeCurrency} / {form.baseUnit}
@@ -533,21 +554,7 @@ const IngredientModal = ({
                   <span className="error-text">{errors.costPerBaseUnit}</span>
                 )}
               </div>
-            </div>
-          </div>
 
-          <div className="form-section elevated-section">
-            <div className="im-section-header">
-              <div className="icon-box danger" aria-hidden="true">
-                <Archive size={18} />
-              </div>
-              <div className="header-text">
-                <h4 className="im-section-title">Kiểm soát kho</h4>
-                <p className="im-section-desc">Cảnh báo và khởi tạo số lượng ban đầu</p>
-              </div>
-            </div>
-
-            <div className="form-grid-2">
               <div
                 className={`form-group ${isEditing ? "form-group--full" : ""} ${
                   errors.minStock ? "has-error" : ""
@@ -571,9 +578,11 @@ const IngredientModal = ({
                     onChange={(event) => set({ minStock: event.target.value })}
                     placeholder="VD: 5"
                     disabled={saving}
+                    aria-invalid={Boolean(errors.minStock)}
                   />
                   <span className="addon-suffix">{form.baseUnit}</span>
                 </div>
+                <span className="help-text">Cảnh báo khi tồn khả dụng chạm mức này.</span>
                 {errors.minStock && <span className="error-text">{errors.minStock}</span>}
               </div>
 
@@ -599,6 +608,7 @@ const IngredientModal = ({
                       onChange={(event) => set({ initialStockQty: event.target.value })}
                       placeholder="Nhập số lượng hiện có…"
                       disabled={!canInitStock || saving}
+                      aria-invalid={Boolean(errors.initialStockQty)}
                     />
                     <span className="addon-suffix">{form.baseUnit}</span>
                   </div>
@@ -607,56 +617,61 @@ const IngredientModal = ({
                   )}
                 </div>
               )}
-            </div>
-          </div>
 
-          <div className="form-section borderless">
-            <div className="form-group">
-              <label htmlFor="ingredient-notes">
-                <FileText size={16} aria-hidden="true" /> Ghi chú nghiệp vụ
-              </label>
-              <textarea
-                id="ingredient-notes"
-                name="ingredientNotes"
-                className="standard-textarea"
-                value={form.notes}
-                onChange={(event) => set({ notes: event.target.value })}
-                placeholder="Ghi chú quy cách bảo quản, thông tin nhà cung cấp…"
-                rows={3}
-                disabled={saving}
-              />
+              <div className="form-group form-group--full ingredient-notes-field">
+                <label htmlFor="ingredient-notes">
+                  <FileText size={16} aria-hidden="true" /> Ghi chú nghiệp vụ
+                  <span className="hint">Tùy chọn</span>
+                </label>
+                <textarea
+                  id="ingredient-notes"
+                  name="ingredientNotes"
+                  className="standard-textarea"
+                  value={form.notes}
+                  onChange={(event) => set({ notes: event.target.value })}
+                  placeholder="Quy cách bảo quản, nhà cung cấp hoặc lưu ý khi sử dụng…"
+                  rows={2}
+                  disabled={saving}
+                />
+              </div>
             </div>
-          </div>
-
-          <div className="form-actions-premium">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => requestCloseWithDraft(onClose)}
-              disabled={saving}
-              className="btn-cancel"
-            >
-              Hủy thao tác
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={saving}
-              className="btn-save"
-            >
-              {saving ? (
-                <span className="loading-state">
-                  <span className="spinner" aria-hidden="true" /> Đang xử lý…
-                </span>
-              ) : isEditing ? (
-                "Lưu thay đổi"
-              ) : (
-                "Hoàn tất thêm mới"
-              )}
-            </Button>
-          </div>
+          </section>
         </form>
       </Modal.Body>
+
+      <Modal.Footer className="ingredient-modal-actions">
+        <span className="ingredient-modal-actions__meta">
+          <span aria-hidden="true">*</span> Trường bắt buộc
+        </span>
+        <div className="ingredient-modal-actions__buttons">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => requestCloseWithDraft(onClose)}
+            disabled={saving}
+            className="btn-cancel"
+          >
+            Hủy
+          </Button>
+          <Button
+            type="submit"
+            form="ingredient-form"
+            variant="primary"
+            disabled={saving}
+            className="btn-save"
+          >
+            {saving ? (
+              <span className="loading-state">
+                <span className="spinner" aria-hidden="true" /> Đang xử lý…
+              </span>
+            ) : isEditing ? (
+              "Lưu thay đổi"
+            ) : (
+              "Thêm nguyên liệu"
+            )}
+          </Button>
+        </div>
+      </Modal.Footer>
     </Modal>
   );
 };
