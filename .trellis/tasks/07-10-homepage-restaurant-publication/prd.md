@@ -4,7 +4,7 @@
 
 The customer homepage renders `RestaurantGrid`, which executes `restaurantsTop`. The query succeeds but returns no restaurants when every database document is still a draft.
 
-Brand branch creation intentionally initializes new restaurants with `publicationStatus: draft` and `initialSetup.status: pending`. The public resolver correctly filters to active, published restaurants. The manager restaurant information page previously had no explicit action for publishing a branch after its information was ready.
+Brand branch creation intentionally initializes new restaurants with `publicationStatus: draft` and `initialSetup.status: pending`. The public resolver correctly filters to active, published restaurants. The manager restaurant information page now exposes a publication action, but it is rendered as a standalone `Alert` by `ManagerLayout`, visually detached from the profile that it controls.
 
 ## End-to-end trace
 
@@ -13,29 +13,35 @@ Brand branch creation intentionally initializes new restaurants with `publicatio
 3. `buildPublicRestaurantFilter` allows only active, published restaurants, with a legacy fallback for old documents.
 4. `restaurantsTop` applies that filter and supplies the homepage GraphQL operation.
 5. `RestaurantGrid` maps `restaurantsTop`; an empty result renders “Chưa có nhà hàng nổi bật”.
-6. The existing `updateRestaurant` mutation already accepts `publicationStatus`, enforces `restaurant.write`, and validates restaurant scope.
-7. `ManagerLayout` already owns the active restaurant scope used by the manager workspace.
+6. `RestaurantPublicationControl` queries and updates `publicationStatus` through the existing scoped `updateRestaurant` mutation.
+7. `RestaurantInfoManagement` owns the restaurant currently displayed in the profile editor and its customer-visible summary panel.
 
 ## Root cause
 
-The public filtering contract is correct. The missing boundary was the manager publication workflow: database restaurants could remain drafts indefinitely because no explicit UI action changed `publicationStatus`.
+The publication contract is correct. The remaining UX issue is placement and hierarchy: the action is outside `RestaurantInfoManagement`, consumes a full-width warning banner, and can be driven by a different selected-restaurant source than the profile editor.
+
+## UI direction
+
+Compact contextual visibility control using the existing sage surfaces: place it in the top row of “Hồ sơ hiển thị với khách hàng”, keep the publication state readable without relying on color, and stack it full-width on mobile.
 
 ## Implementation
 
-- Add `RestaurantPublicationControl` to query the selected restaurant's business and publication states.
-- Reuse the existing `updateRestaurant` mutation to persist `published` or `draft`.
-- Mount the control only on the manager restaurant information page and pass the active restaurant scope from `ManagerLayout`.
-- Refetch after mutation and report success or failure beside the affected action.
-- Add focused component coverage for the draft-to-published mutation contract.
+- Move `RestaurantPublicationControl` from `ManagerLayout` into `RestaurantInfoManagement` so it uses the editor's `selectedRestaurantId`.
+- Replace the large `Alert` presentation with a compact status-and-switch control.
+- Place it beside the profile visibility eyebrow on desktop and above the profile title on narrow screens.
+- Preserve the existing query, mutation, permission, loading, success and error behavior.
+- Keep focused component coverage for the draft-to-published mutation contract.
 
 ## Acceptance criteria
 
-- A selected draft restaurant displays as not publicly visible in the manager information page.
-- Turning on “Hiển thị công khai” immediately sends `publicationStatus: published` for that restaurant.
+- The publication action appears inside the customer-visible profile summary, not as a detached page banner.
+- Desktop keeps the label and action on one balanced top row.
+- Mobile stacks the action without overflow and provides a practical touch target.
+- A selected draft restaurant clearly displays “Bản nháp”; a published restaurant clearly displays “Đang công khai”.
+- Turning on “Hiển thị công khai” immediately sends `publicationStatus: published` for the same restaurant displayed by the profile editor.
 - Turning it off sends `publicationStatus: draft`.
-- The action uses the same selected restaurant as the manager scope selector.
-- The customer homepage public filter remains unchanged and continues to exclude drafts, hidden, inactive and suspended restaurants.
-- An inactive restaurant clearly states that publishing alone does not make it public.
+- Loading, disabled and error states remain understandable and keyboard accessible.
+- The customer homepage public filter remains unchanged.
 - No schema, resolver, permission, dependency or database migration is added.
 
 ## Out of scope
@@ -44,6 +50,7 @@ The public filtering contract is correct. The missing boundary was the manager p
 - Exposing draft restaurants to public queries.
 - Changing onboarding, business status or operational status rules.
 - Directly modifying production MongoDB records.
+- Redesigning unrelated restaurant profile sections.
 
 ## Validation plan
 
