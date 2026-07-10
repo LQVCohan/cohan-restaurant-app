@@ -1,0 +1,28 @@
+{
+  "id": "07-10-table-management-ui-stabilization",
+  "title": "Ổn định giao diện quản lý bàn",
+  "status": "in_progress",
+  "type": "frontend-refactor",
+  "scope": [
+    "src/main.jsx",
+    "src/components/Dashboard_Manager/Table/TableManagementFinalQC.scss",
+    "src/components/Dashboard_Manager/Table/TableManagementScorePolish.scss",
+    "src/components/Dashboard_Manager/Table/TableManagementHeaderStatsPolish.scss"
+  ],
+  "rootCause": "The table page loads several late CSS override layers that independently redefine the compact header, KPI row, table grid, card density and hidden metadata. Their cascade compresses controls, truncates action labels, shrinks cards below a useful operational width, hides floor/deposit rows and leaves an oversized empty content surface.",
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Dashboard_Manager/Table/TableManagement.test.jsx",
+      "npm run build",
+      "visual check at 375, 768, 1024 and 1440 px"
+    ],
+    "completed": [
+      "read AGENTS.md and .trellis/workflow.md",
+      "read ponytail, ui-ux-pro-max, frontend-design, react-ui-performance, redesign-existing-projects, web-design-guidelines and wcag-ui-audit skills",
+      "traced schema/resolver contracts through Apollo hooks to TableManagement UI actions",
+      "confirmed no schema, resolver, permission, restaurant scope or mutation change is required",
+      "identified the conflicting late stylesheet cascade as the presentation root cause"
+    ],
+    "notRun": []
+  }
+}
