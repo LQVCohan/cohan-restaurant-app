@@ -47,26 +47,30 @@ const BrandManagement = lazy(() => import("@/components/Dashboard_Manager/Brand/
 const SystemLogsPage = lazy(() => import("@/components/Dashboard_Manager/SystemLogs/SystemLogsPage"));
 
 const MANAGER_CANONICAL_PATH = "/manager";
+const TABLE_SETTINGS_ACTION = "table-types";
 const BACKUP_PAGE_PERMISSIONS = ["backup.read", "backup.write", "backup.export", "backup.import", "system.manage"];
 const LOG_PAGE_PERMISSIONS = ["log.read", "admin.audit.read", "system.manage", "menu.audit.read"];
 const IS_TEST_ENV = import.meta.env.MODE === "test";
 
 const VALID_MANAGER_PAGES = new Set([
-  "dashboard", "brands", "tables", "table-types", "table-qr", "orders", "menu", "modifiers", "combos", "inventory", "staff", "customers",
+  "dashboard", "brands", "tables", "table-qr", "orders", "menu", "modifiers", "combos", "inventory", "staff", "customers",
   "customer-analytics", "analytics", "transactions", "transfer-review", "wallet", "reports", "schedules",
   "promotions", "finance", "payroll", "reviews", "settings", "rates", "setting",
   "backup", "logs", "print-management", "restaurant-info-management", "rbac", "system-users", "ai-handoff",
   "ai-chatbot-analytics", "ai-chatbot-settings", "ai-chatbot-knowledge",
 ]);
 
-const getPersistentManagerPage = (pageId) =>
-  pageId === "table-types" ? "tables" : pageId;
+const normalizeManagerDestination = (pageId) =>
+  pageId === TABLE_SETTINGS_ACTION ? "tables" : pageId;
+
+const isKnownManagerDestination = (pageId) =>
+  pageId === TABLE_SETTINGS_ACTION || VALID_MANAGER_PAGES.has(pageId);
 
 const resolveInitialManagerPage = () => {
   const hash = window.location.hash?.replace("#", "");
-  if (hash && VALID_MANAGER_PAGES.has(hash)) return getPersistentManagerPage(hash);
+  if (hash && isKnownManagerDestination(hash)) return normalizeManagerDestination(hash);
   const saved = localStorage.getItem("manager.currentPage");
-  if (saved && VALID_MANAGER_PAGES.has(saved)) return getPersistentManagerPage(saved);
+  if (saved && isKnownManagerDestination(saved)) return normalizeManagerDestination(saved);
   return "dashboard";
 };
 
@@ -90,7 +94,7 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   combos: ["menu.read"],
   inventory: ["inventory.read", "stock.read"],
   tables: ["table.read"],
-  "table-types": ["table.write"],
+  [TABLE_SETTINGS_ACTION]: ["table.write"],
   "table-qr": ["table.read"],
   "restaurant-info-management": ["restaurant.read"],
   staff: ["staff.read"],
@@ -125,7 +129,7 @@ const PAGE_CONFIG = {
   dashboard: page("Tổng quan", "Tổng quan hiệu suất và số liệu vận hành nhà hàng", "📊", ["overview", "thống kê", "kpi", "doanh thu", "dashboard"]),
   brands: page("Quản lý chuỗi", "Quản lý Brand, chi nhánh và chủ sở hữu", "🏢", ["brand", "chuỗi", "chi nhánh", "owner"]),
   tables: page("Quản lý bàn", "Theo dõi trạng thái bàn, sơ đồ tầng và đặt chỗ", "🪑", ["bàn", "table", "đặt bàn", "sơ đồ"]),
-  "table-types": page("Quản lý bàn", "Thiết lập loại bàn và không gian phục vụ", "🏷️", ["loại bàn", "table type", "không gian", "vip", "booth", "bar"]),
+  [TABLE_SETTINGS_ACTION]: page("Loại bàn & không gian", "Mở thiết lập loại bàn và không gian phục vụ", "🏷️", ["loại bàn", "table type", "không gian", "vip", "booth", "bar"]),
   "table-qr": page("QR truy cập bàn", "Sinh QR để khách quét tại bàn và xem order hiện tại", "📱", ["qr", "bàn", "quét", "order", "khách"]),
   orders: page("Quản lý đơn hàng", "Xử lý đơn tại chỗ, mang đi, giao hàng và thanh toán", "🧾", ["order", "đơn", "timeline", "thanh toán"]),
   menu: page("Quản lý menu", "Quản lý món ăn, giá bán, danh mục và trạng thái phục vụ", "🍜", ["món", "menu", "giá", "danh mục"]),
@@ -265,6 +269,7 @@ const ManagerLayout = () => {
   const isAdminUser = isAdminRole(user) || isAdminRole(roleName);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(resolveInitialManagerPage);
+  const [showTableSettings, setShowTableSettings] = useState(false);
   const validPages = useMemo(() => VALID_MANAGER_PAGES, []);
   const requestedRestaurantId = useMemo(
     () => new URLSearchParams(location.search).get("restaurantId") || "",
@@ -315,21 +320,22 @@ const ManagerLayout = () => {
   useEffect(() => {
     const syncFromHash = () => {
       const hash = window.location.hash?.replace("#", "");
-      if (!hash || !validPages.has(hash)) return;
-      const nextPage = getPersistentManagerPage(hash);
+      if (!hash || !isKnownManagerDestination(hash)) return;
+      const nextPage = normalizeManagerDestination(hash);
       if (nextPage !== hash) {
         history.replaceState(null, "", buildManagerNavigationUrl({ page: nextPage }));
       }
+      setShowTableSettings(false);
       setCurrentPage(nextPage);
     };
     syncFromHash();
     window.addEventListener("hashchange", syncFromHash);
     return () => window.removeEventListener("hashchange", syncFromHash);
-  }, [validPages]);
+  }, []);
 
   useEffect(() => {
     if (!validPages.has(currentPage)) return;
-    localStorage.setItem("manager.currentPage", getPersistentManagerPage(currentPage));
+    localStorage.setItem("manager.currentPage", currentPage);
     const expectedHash = `#${currentPage}`;
     if (window.location.pathname !== MANAGER_CANONICAL_PATH || window.location.hash !== expectedHash) {
       history.replaceState(null, "", `${MANAGER_CANONICAL_PATH}${expectedHash}`);
@@ -353,22 +359,37 @@ const ManagerLayout = () => {
 
   useEffect(() => {
     if (!brandAccessResolved || allowedPages.has(currentPage)) return;
-    const nextPage = allowedPages.has(preferredFallbackPage) ? preferredFallbackPage : [...allowedPages][0] || "dashboard";
+    const nextPage = allowedPages.has(preferredFallbackPage) ? preferredFallbackPage : [...allowedPages].find((pageId) => validPages.has(pageId)) || "dashboard";
+    setShowTableSettings(false);
     setCurrentPage(nextPage);
     setSidebarOpen(false);
     localStorage.setItem("manager.currentPage", nextPage);
     history.replaceState(null, "", buildManagerNavigationUrl({ page: nextPage }));
     window.dispatchEvent(new PopStateEvent("popstate"));
-  }, [allowedPages, brandAccessResolved, currentPage, preferredFallbackPage]);
+  }, [allowedPages, brandAccessResolved, currentPage, preferredFallbackPage, validPages]);
+
+  const openTableSettings = () => {
+    if (!allowedPages.has(TABLE_SETTINGS_ACTION)) return;
+    setCurrentPage("tables");
+    setShowTableSettings(true);
+    setSidebarOpen(false);
+    localStorage.setItem("manager.currentPage", "tables");
+    history.replaceState(null, "", buildManagerNavigationUrl({ page: "tables" }));
+  };
 
   useEffect(() => {
     const handleManagerNavigate = (event) => {
       const pageId = event?.detail?.page;
       const query = event?.detail?.query || {};
+      if (pageId === TABLE_SETTINGS_ACTION) {
+        openTableSettings();
+        return;
+      }
       if (!pageId || !validPages.has(pageId) || !allowedPages.has(pageId)) return;
+      setShowTableSettings(false);
       setCurrentPage(pageId);
       setSidebarOpen(false);
-      localStorage.setItem("manager.currentPage", getPersistentManagerPage(pageId));
+      localStorage.setItem("manager.currentPage", pageId);
       history.replaceState(null, "", buildManagerNavigationUrl({ page: pageId, query }));
       window.dispatchEvent(new PopStateEvent("popstate"));
       window.dispatchEvent(new CustomEvent("manager:navigation-query", { detail: { page: pageId, query, source: event?.detail?.source || "manager:navigate" } }));
@@ -379,13 +400,22 @@ const ManagerLayout = () => {
 
   const toggleSidebar = () => setSidebarOpen((prev) => !prev);
   const closeSidebar = () => setSidebarOpen(false);
+  const handlePageChange = (pageId) => {
+    if (pageId === TABLE_SETTINGS_ACTION) {
+      openTableSettings();
+      return;
+    }
+    setShowTableSettings(false);
+    setCurrentPage(pageId);
+  };
 
-  const managerSearchItems = useMemo(
-    () => [...VALID_MANAGER_PAGES]
+  const managerSearchItems = useMemo(() => {
+    const ids = [...VALID_MANAGER_PAGES];
+    if (allowedPages.has(TABLE_SETTINGS_ACTION)) ids.push(TABLE_SETTINGS_ACTION);
+    return ids
       .filter((id) => PAGE_CONFIG[id] && allowedPages.has(id))
-      .map((id) => ({ id, title: PAGE_CONFIG[id].title, description: PAGE_CONFIG[id].description, category: "Điều hướng", icon: PAGE_CONFIG[id].icon || "📍", type: "navigation", keywords: PAGE_CONFIG[id].keywords || [], route: `#${id}` })),
-    [allowedPages],
-  );
+      .map((id) => ({ id, title: PAGE_CONFIG[id].title, description: PAGE_CONFIG[id].description, category: "Điều hướng", icon: PAGE_CONFIG[id].icon || "📍", type: "navigation", keywords: PAGE_CONFIG[id].keywords || [], route: id === TABLE_SETTINGS_ACTION ? "#tables" : `#${id}` }));
+  }, [allowedPages]);
 
   const headerProps = {
     pageTitle: PAGE_CONFIG[currentPage]?.title || "Trang quản trị",
@@ -396,7 +426,7 @@ const ManagerLayout = () => {
     activeBrand: brandSelection.selectedBrand,
     onSelectSearchResult: (item) => {
       if (!item?.id) return;
-      setCurrentPage(item.id);
+      handlePageChange(item.id);
       setSidebarOpen(false);
     },
   };
@@ -408,7 +438,6 @@ const ManagerLayout = () => {
       case "dashboard": return <Dashboard />;
       case "brands": return <BrandManagement />;
       case "tables": return <TableManagement />;
-      case "table-types": return <TableTypeManagementPage />;
       case "table-qr": return <TableQrManagementPage />;
       case "orders": return <OrderManagement />;
       case "menu": return <MenuManagement />;
@@ -448,7 +477,7 @@ const ManagerLayout = () => {
   return (
     <div className={`manager-layout manager-layout--${currentPage} ${sidebarOpen ? "sidebar-open" : ""}`}>
       {sidebarOpen && <div className={`sidebar-overlay ${sidebarOpen ? "active" : ""}`} onClick={closeSidebar} aria-hidden="true" />}
-      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} onToggle={toggleSidebar} onPageChange={setCurrentPage} activeItem={currentPage} activeBrand={brandSelection.selectedBrand} />
+      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} onToggle={toggleSidebar} onPageChange={handlePageChange} activeItem={currentPage} activeBrand={brandSelection.selectedBrand} />
       <div className="manager-layout__main">
         <div className="manager-layout__header">
           {IS_TEST_ENV ? (
@@ -465,6 +494,14 @@ const ManagerLayout = () => {
           </section>
         </main>
       </div>
+      <Suspense fallback={null}>
+        <TableTypeManagementPage
+          isOpen={showTableSettings}
+          onClose={() => setShowTableSettings(false)}
+          restaurantId={requestedRestaurantId || brandSelection.selectedRestaurantId || null}
+          restaurantName={brandSelection.selectedRestaurant?.name || ""}
+        />
+      </Suspense>
     </div>
   );
 };
