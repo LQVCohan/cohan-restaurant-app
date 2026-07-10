@@ -196,6 +196,7 @@ const files = [
   "role.graphql",
   "permission.graphql",
   "menu.graphql",
+  "menuPriceEvent.graphql",
   "category.graphql",
   "modifier.graphql",
   "floor_table.graphql",
