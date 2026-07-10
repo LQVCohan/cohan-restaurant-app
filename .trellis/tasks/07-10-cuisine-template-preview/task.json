@@ -3,14 +3,14 @@
   "name": "cuisine-template-preview",
   "title": "Show and reopen starter template contents before restaurant setup",
   "description": "Expose each cuisine template's full dish list and recipe count, present them through an accessible expandable card, and keep a persistent reopen action while the selected restaurant is still pending setup.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "restaurant-initial-setup",
   "priority": "P1",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "fix/cuisine-template-reopen-20260710",
   "base_branch": "main",
   "relatedFiles": [
@@ -21,13 +21,14 @@
   ],
   "validation": {
     "passed": [
-      "previous cuisine template preview backend and frontend validation"
-    ],
-    "pending": [
-      "focused Header and RestaurantCuisineOnboarding tests",
+      "focused Header reopen test",
+      "focused RestaurantCuisineOnboarding reopen test",
       "npm run check:conflicts",
       "npm run build",
-      "standard frontend and backend CI"
+      "standard frontend conflict check, lint, unit tests and Menu RBAC on the initial follow-up run"
+    ],
+    "knownBaseline": [
+      "standard backend suite fails in tests/services/review-insight.service.test.js because the expected heuristic summary no longer matches the deterministic Vietnamese summary; this PR changes no backend files"
     ],
     "notRun": [
       "authenticated browser visual verification on the user's localhost data",
