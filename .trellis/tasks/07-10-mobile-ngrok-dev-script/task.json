@@ -1,0 +1,25 @@
+{
+  "id": "07-10-mobile-ngrok-dev-script",
+  "title": "Cho phép dev:mobile chạy trực tiếp qua ngrok",
+  "status": "in_progress",
+  "type": "developer-experience-fix",
+  "scope": [
+    "scripts/start-mobile-dev.mjs",
+    "vite.config.js"
+  ],
+  "rootCause": "The mobile launcher only allows localhost and LAN IP hosts, while vite.config always pins origin and HMR to the selected LAN host. An ngrok HTTPS request is therefore blocked by allowedHosts and cannot reliably use the same dev server without manual environment overrides.",
+  "validation": {
+    "planned": [
+      "node --check scripts/start-mobile-dev.mjs",
+      "npm run check:conflicts",
+      "npm run build",
+      "manual npm run dev:mobile + ngrok http 5173"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, guide index, and ponytail skill",
+      "traced package.json dev:mobile through start-mobile-dev.mjs into vite.config server settings",
+      "confirmed the API remains same-origin through the existing Vite proxy"
+    ],
+    "notRun": []
+  }
+}
