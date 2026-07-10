@@ -32,6 +32,8 @@ const MODEL_VIEWER_SRC =
 const ALL_TABLE_TYPES = "all";
 const DEFAULT_ORBIT = { theta: 0, phi: 75, radius: "auto" };
 const DEFAULT_OFFSET = { x: 0, z: 0, auto: true };
+const AR_CAPABILITY_RETRY_MS = 120;
+const AR_CAPABILITY_MAX_ATTEMPTS = 30;
 
 const getCapabilities = () => ({
   secureContext:
@@ -373,11 +375,12 @@ export default function Table3DSimulatorModalV2({
 
   const handleOpenNativeAr = async () => {
     const viewer = viewerRef.current;
-    if (!canLaunchNativeAr) {
+    const viewerCanOpen = Boolean(viewer?.activateAR && viewer?.canActivateAR);
+    if (!canLaunchNativeAr && !viewerCanOpen) {
       setModelError(arUnavailableReason);
       return;
     }
-    if (!viewer?.activateAR || !viewer.canActivateAR) {
+    if (!viewerCanOpen) {
       setModelViewerCanActivateAr(false);
       setModelError(
         "Thiết bị hoặc trình duyệt chưa thể mở AR. Hãy thử Chrome trên Android có ARCore hoặc Safari trên iPhone/iPad.",
@@ -388,6 +391,7 @@ export default function Table3DSimulatorModalV2({
     try {
       setIsOpeningAr(true);
       setModelError("");
+      viewer.setAttribute("ar-scale", "auto");
       await viewer.activateAR();
     } catch {
       setModelError(
@@ -402,7 +406,32 @@ export default function Table3DSimulatorModalV2({
     const viewer = viewerRef.current;
     if (!viewer || !selectedModel?.modelUrl) return undefined;
 
+    let capabilityTimer = null;
+    let capabilityAttempts = 0;
+    let disposed = false;
+
+    const syncArCapability = () => {
+      if (disposed) return;
+      const canActivate = Boolean(viewer.canActivateAR);
+      if (canActivate) {
+        setModelViewerCanActivateAr(true);
+        return;
+      }
+
+      capabilityAttempts += 1;
+      if (viewer.loaded && capabilityAttempts < AR_CAPABILITY_MAX_ATTEMPTS) {
+        capabilityTimer = window.setTimeout(
+          syncArCapability,
+          AR_CAPABILITY_RETRY_MS,
+        );
+        return;
+      }
+
+      if (viewer.loaded) setModelViewerCanActivateAr(false);
+    };
+
     const onError = () => {
+      if (disposed) return;
       setModelLoading(false);
       setModelViewerCanActivateAr(false);
       setModelError(
@@ -410,9 +439,11 @@ export default function Table3DSimulatorModalV2({
       );
     };
     const onLoad = () => {
+      if (disposed) return;
       setModelLoading(false);
       setModelLoadProgress(1);
-      setModelViewerCanActivateAr(Boolean(viewer.canActivateAR));
+      capabilityAttempts = 0;
+      syncArCapability();
       fitModelToView();
     };
     const onProgress = (event) =>
@@ -423,6 +454,7 @@ export default function Table3DSimulatorModalV2({
         ),
       );
     const onArStatus = (event) => {
+      if (disposed) return;
       const status = event?.detail?.status;
       if (status === "failed") {
         setModelViewerCanActivateAr(false);
@@ -431,14 +463,23 @@ export default function Table3DSimulatorModalV2({
         );
         return;
       }
-      setModelViewerCanActivateAr(Boolean(viewer.canActivateAR));
+      syncArCapability();
     };
 
     viewer.addEventListener("error", onError);
     viewer.addEventListener("load", onLoad);
     viewer.addEventListener("progress", onProgress);
     viewer.addEventListener("ar-status", onArStatus);
+
+    if (viewer.loaded) {
+      onLoad();
+    } else {
+      syncArCapability();
+    }
+
     return () => {
+      disposed = true;
+      if (capabilityTimer) window.clearTimeout(capabilityTimer);
       viewer.removeEventListener("error", onError);
       viewer.removeEventListener("load", onLoad);
       viewer.removeEventListener("progress", onProgress);
@@ -535,7 +576,7 @@ export default function Table3DSimulatorModalV2({
                 ar
                 ar-modes="webxr scene-viewer quick-look"
                 ar-placement="floor"
-                ar-scale="fixed"
+                ar-scale="auto"
                 xr-environment
                 touch-action="pan-y"
                 camera-orbit={cameraOrbit}
@@ -544,7 +585,15 @@ export default function Table3DSimulatorModalV2({
                 shadow-intensity="1"
                 environment-image="neutral"
                 className="table-3d-viewer"
-              />
+              >
+                <button
+                  slot="ar-button"
+                  type="button"
+                  hidden
+                  tabIndex={-1}
+                  aria-hidden="true"
+                />
+              </model-viewer>
             ) : (
               <div className="viewer-placeholder">
                 <Box size={28} aria-hidden="true" />
