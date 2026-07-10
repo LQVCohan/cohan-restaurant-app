@@ -1,14 +1,14 @@
 {
   "id": "07-11-wallet-page-premium-ui",
   "title": "Tối ưu giao diện ví Cohan Balance",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-redesign",
   "scope": [
     "src/pages/WalletPage.jsx",
     "src/pages/WalletPage.scss",
     "src/pages/WalletPage.test.jsx"
   ],
-  "rootCause": "WalletPage already has a correct wallet/payment contract, but its presentation spreads the main task across an oversized hero, a tall one-column statistics rail and a technical-looking top-up form. This creates excessive whitespace, weak hierarchy and unnecessary scrolling on desktop while leaving provider selection and empty-state guidance visually unclear.",
+  "rootCause": "WalletPage already has a correct wallet/payment contract, but its presentation spread the main task across an oversized hero, a tall one-column statistics rail and a technical-looking top-up form. This created excessive whitespace, weak hierarchy and unnecessary scrolling on desktop while leaving provider selection and empty-state guidance visually unclear.",
   "validation": {
     "planned": [
       "npx vitest run src/pages/WalletPage.test.jsx",
@@ -23,8 +23,18 @@
       "reviewed the supplied desktop screenshots",
       "traced wallet schema -> resolver -> wallet service -> Apollo operations -> WalletPage actions",
       "confirmed no backend or GraphQL contract change is required",
-      "inspected MainLayout caller and customer header/footer ownership"
+      "inspected MainLayout caller, mobile customer shell and customer header/footer ownership",
+      "restructured WalletPage into a compact balance hero, native provider radio cards, responsive 2x2 summary and transaction ledger",
+      "preserved the existing top-up mutation, payment polling and wallet refetch flow",
+      "added explicit form names, visible focus, 44px touch targets, mobile 16px inputs, live status feedback and fixed QR dimensions",
+      "added focused component coverage for VNPAY selection and the existing createWalletTopup payload",
+      "fetched the written files from main and compared the three implementation commits to confirm only the planned WalletPage files changed"
     ],
-    "notRun": []
+    "notRun": [
+      "Targeted Vitest, GraphQL validation, conflict check and production build were not run because the GitHub connector has no checkout with installed dependencies.",
+      "A shallow repository clone was attempted for local checks but the execution environment could not resolve github.com.",
+      "Desktop and 390x844/430x932 browser reviews were not run after the change.",
+      "No GitHub Actions workflow run was associated with the final implementation commit."
+    ]
   }
 }
