@@ -1,7 +1,7 @@
 {
   "id": "07-10-table-management-ui-stabilization",
   "title": "Ổn định giao diện quản lý bàn",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-refactor",
   "scope": [
     "src/main.jsx",
@@ -9,7 +9,7 @@
     "src/components/Dashboard_Manager/Table/TableManagementScorePolish.scss",
     "src/components/Dashboard_Manager/Table/TableManagementHeaderStatsPolish.scss"
   ],
-  "rootCause": "The table page loads several late CSS override layers that independently redefine the compact header, KPI row, table grid, card density and hidden metadata. Their cascade compresses controls, truncates action labels, shrinks cards below a useful operational width, hides floor/deposit rows and leaves an oversized empty content surface.",
+  "rootCause": "The table page loaded several late CSS override layers that independently redefined the compact header, KPI row, table grid, card density and hidden metadata. Their cascade compressed controls, truncated action labels, shrank cards below a useful operational width, hid floor/deposit rows and left an oversized empty content surface.",
   "validation": {
     "planned": [
       "npx vitest run src/components/Dashboard_Manager/Table/TableManagement.test.jsx",
@@ -21,8 +21,16 @@
       "read ponytail, ui-ux-pro-max, frontend-design, react-ui-performance, redesign-existing-projects, web-design-guidelines and wcag-ui-audit skills",
       "traced schema/resolver contracts through Apollo hooks to TableManagement UI actions",
       "confirmed no schema, resolver, permission, restaurant scope or mutation change is required",
-      "identified the conflicting late stylesheet cascade as the presentation root cause"
+      "identified the conflicting late stylesheet cascade as the presentation root cause",
+      "consolidated header, KPI, sidebar, filters, table grid and card hierarchy in TableManagementFinalQC.scss",
+      "restored all four table metadata rows and raised primary controls to 44px touch targets",
+      "removed the two duplicate late override imports and deleted their obsolete stylesheets",
+      "added tablet, mobile, focus-visible and prefers-reduced-motion states without changing component behavior"
     ],
-    "notRun": []
+    "notRun": [
+      "targeted Vitest was not executable in the GitHub connector environment",
+      "npm run build was not executable in the GitHub connector environment",
+      "visual checks at 375, 768, 1024 and 1440 px were not executable in the GitHub connector environment"
+    ]
   }
 }
