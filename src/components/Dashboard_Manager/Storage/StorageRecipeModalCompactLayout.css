@@ -1,0 +1,212 @@
+/* Compact recipe modal layout: remove forced empty space and show more recipe rows. */
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell.recipe-modal-shell {
+  height: auto !important;
+  max-height: min(92dvh, 860px) !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipe-modal-form {
+  height: auto !important;
+  max-height: calc(min(92dvh, 860px) - 62px) !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .modal-body {
+  flex: 1 1 auto !important;
+  padding: 12px 16px 14px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipe-section {
+  margin-bottom: 10px !important;
+  padding: 13px !important;
+  border-radius: 17px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipe-section:last-child {
+  margin-bottom: 0 !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .section-header {
+  margin-bottom: 9px !important;
+  padding-bottom: 8px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .method-tabs {
+  min-height: 44px !important;
+  margin-bottom: 9px !important;
+  padding: 4px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .method-tab {
+  min-height: 34px !important;
+  padding: 7px 12px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipe-variant-grid {
+  gap: 9px 12px !important;
+  padding: 12px 12px 9px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipe-variant-grid input,
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipe-variant-grid select {
+  min-height: 39px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipe-default-check {
+  min-height: 40px !important;
+  margin-top: 0 !important;
+  padding: 7px 10px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipe-default-check label {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 4px 8px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipe-default-check label::after {
+  grid-column: auto !important;
+  margin: 0 0 0 4px !important;
+  align-self: center;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipe-variant-actions {
+  padding: 0 12px 9px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipe-variant-actions .btn {
+  min-height: 34px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .ingredient-table {
+  margin: 0 12px 10px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipeIngredientLine {
+  gap: 8px !important;
+  padding: 8px 11px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipeIngredientLine.header {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipeIngredientLine input,
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipeIngredientLine select,
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipe-ingredient-picked {
+  min-height: 38px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipe-add-line-btn {
+  min-height: 38px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .ingredient-table > div:last-child {
+  padding: 8px 10px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .variant-footer {
+  min-height: 50px;
+  margin: 10px 12px 12px !important;
+  padding: 10px 13px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .modal-footer {
+  min-height: 58px !important;
+  padding: 9px 16px !important;
+}
+
+body:has(.manager-layout)
+  .modal-container.recipe-modal-shell.recipe-modal-shell
+  .recipe-modal-footer-actions .btn {
+  min-height: 39px !important;
+}
+
+@media (max-width: 1100px) {
+  body:has(.manager-layout) .modal-container.recipe-modal-shell.recipe-modal-shell {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  body:has(.manager-layout) .modal-container.recipe-modal-shell.recipe-modal-shell {
+    height: calc(100dvh - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+  }
+
+  body:has(.manager-layout)
+    .modal-container.recipe-modal-shell.recipe-modal-shell
+    .recipe-modal-form {
+    max-height: calc(100dvh - 78px) !important;
+  }
+
+  body:has(.manager-layout)
+    .modal-container.recipe-modal-shell.recipe-modal-shell
+    .modal-body {
+    padding: 10px 10px 12px !important;
+  }
+
+  body:has(.manager-layout)
+    .modal-container.recipe-modal-shell.recipe-modal-shell
+    .recipe-section {
+    padding: 12px !important;
+  }
+
+  body:has(.manager-layout)
+    .modal-container.recipe-modal-shell.recipe-modal-shell
+    .recipe-default-check label::after {
+    flex-basis: 100%;
+    margin-left: 24px !important;
+  }
+}
