@@ -63,6 +63,7 @@ import "./components/Dashboard_Manager/Table/TableCustomerProfilesEnhancement.cs
 import "./styles/TableEmptyStatePremium.css";
 import "./styles/MergedTableLifecycleUi.css";
 import "./styles/Table3DMainModalRepair.css";
+import "./styles/Table3DModalContentSafety.css";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
 import { installRestaurantHoursEnhancement } from "./utils/installRestaurantHoursEnhancement";
