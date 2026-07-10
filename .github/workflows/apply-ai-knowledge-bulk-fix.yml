@@ -1,4 +1,5 @@
 name: apply AI knowledge bulk approval fix
+# Trigger after the workflow exists on the branch.
 
 on:
   push:
