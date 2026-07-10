@@ -1,17 +1,117 @@
+import mongoose from "mongoose";
 import {
   KitchenOrderWorkItem,
   Order,
   PrintSetting,
+  Warehouse,
 } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import { cancelReservationForOrderTx } from "../../../src/services/inventory.service.js";
 import { syncKitchenOrderWorkItemsForKitchenEntry } from "../../../src/services/kitchen/kitchenOrderWorkItem.service.js";
+import {
+  emitCustomerTrackingUpdateIfChanged,
+  updatePublicStatusHistory,
+} from "../../../src/services/orderTracking.service.js";
+import {
+  KITCHEN_STATUS,
+  SESSION_STATUS,
+} from "../../../utils/orderLifecycle.js";
 import { emitOrderEvent } from "./helper/emitOrderEvent.js";
 import { toId } from "./helper/orderUtils.js";
 
 const VALID_STATIONS = new Set(["kitchen", "bar"]);
 const SKIPPED_STATUSES = new Set(["cancelled", "returned"]);
 const CLAIMED_STATUS = "customer_attached";
+
+async function requireIncomingReviewPermission(ctx, restaurantId, primaryPermission) {
+  try {
+    await requireRestaurantPermission(ctx, restaurantId, primaryPermission);
+  } catch (primaryError) {
+    try {
+      await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.PAYMENT_WRITE);
+    } catch {
+      throw primaryError;
+    }
+  }
+}
+
+function assertPositiveInteger(value, field) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number <= 0) {
+    throw new Error(`${field} must be a positive integer`);
+  }
+  return number;
+}
+
+function assertPositiveNumber(value, field) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) {
+    throw new Error(`${field} must be greater than zero`);
+  }
+  return number;
+}
+
+function buildInventoryLines(items = []) {
+  return (items || [])
+    .filter(
+      (item) =>
+        item?.dishId &&
+        !SKIPPED_STATUSES.has(String(item?.status || "").toLowerCase()),
+    )
+    .map((item) => {
+      const servingKey = String(item?.servingKey || "").trim();
+      if (!servingKey) throw new Error("servingKey is required for inventory");
+      const mode = String(item?.servingVariant?.mode || "").toUpperCase();
+      if (mode === "BY_WEIGHT") {
+        return {
+          menuItemId: item.dishId,
+          quantity: 1,
+          weightGrams: assertPositiveInteger(item.weightGrams, "weightGrams"),
+          servingKey,
+          servingMode: "BY_WEIGHT",
+          preparationMethodName: item?.servingVariant?.name || null,
+        };
+      }
+      return {
+        menuItemId: item.dishId,
+        quantity: assertPositiveNumber(item.quantity || 1, "quantity"),
+        weightGrams:
+          item.weightGrams == null
+            ? null
+            : assertPositiveInteger(item.weightGrams, "weightGrams"),
+        servingKey,
+        servingMode: item?.servingVariant?.mode || null,
+        preparationMethodName: item?.servingVariant?.name || null,
+      };
+    });
+}
+
+async function resolveWarehouseId(restaurantId, warehouseIdInput, session) {
+  if (warehouseIdInput) {
+    const warehouseId = toId(warehouseIdInput);
+    if (!warehouseId) throw new Error("Invalid warehouseId");
+    const selected = await Warehouse.findOne({
+      _id: warehouseId,
+      restaurantId,
+      isActive: { $ne: false },
+    })
+      .session(session)
+      .lean();
+    if (!selected) throw new Error("Warehouse not found");
+    return selected._id;
+  }
+
+  const warehouse = await Warehouse.findOne({
+    restaurantId,
+    isActive: { $ne: false },
+  })
+    .sort({ createdAt: 1, _id: 1 })
+    .session(session)
+    .lean();
+  if (!warehouse?._id) throw new Error("No warehouse found for this restaurant");
+  return warehouse._id;
+}
 
 function buildTicketLine(item) {
   const itemType = String(item?.itemType || "MENU_ITEM").toUpperCase();
@@ -135,115 +235,216 @@ async function enqueueStationTickets(order) {
   return jobs;
 }
 
-export const ConfirmedOrderPrintMutation = {
-  async confirmIncomingOrder(parent, { input }, ctx) {
-    const { id, restaurantId, note, warehouseId } = input || {};
-    const order = await Order.findById(id);
-    if (!order) throw new Error("Order not found");
+async function loadScopedPendingOrder({ id, restaurantId }) {
+  const orderId = toId(id);
+  if (!orderId) throw new Error("Invalid order id");
+  const order = await Order.findById(orderId);
+  if (!order) throw new Error("Order not found");
+  if (
+    restaurantId &&
+    String(order.restaurantId) !== String(toId(restaurantId))
+  ) {
+    throw new Error("Order not found");
+  }
+  if (order.currentStatus !== "pending") {
+    throw new Error("Only pending orders can be reviewed");
+  }
+  return order;
+}
 
-    await requireRestaurantPermission(
+export const ConfirmedOrderPrintMutation = {
+  async confirmIncomingOrder(_parent, { input }, ctx) {
+    const { id, restaurantId, note } = input || {};
+    const initialOrder = await loadScopedPendingOrder({ id, restaurantId });
+    await requireIncomingReviewPermission(
       ctx,
-      order.restaurantId,
+      initialOrder.restaurantId,
       PERMISSIONS.ORDER_UPDATE,
     );
 
-    if (
-      restaurantId &&
-      String(order.restaurantId) !== String(toId(restaurantId))
-    ) {
-      throw new Error("Order not found");
-    }
-    if (order.currentStatus !== "pending") {
-      throw new Error("Only pending orders can be confirmed");
-    }
-    if (typeof this?.updateOrderStatus !== "function") {
-      throw new Error("updateOrderStatus resolver is unavailable");
-    }
-
     const acceptedAt = new Date();
     const acceptedBy = toId(ctx?.user?.id || ctx?.user?._id);
-    const claimed = await Order.findOneAndUpdate(
-      {
-        _id: order._id,
-        currentStatus: "pending",
-        $or: [
-          { "clientMeta.acceptedAt": { $exists: false } },
-          { "clientMeta.acceptedAt": null },
-        ],
-      },
-      {
-        $set: {
-          currentStatus: CLAIMED_STATUS,
-          "clientMeta.acceptedAt": acceptedAt,
-          "clientMeta.acceptedBy": acceptedBy || null,
-        },
-      },
-      { new: true },
-    );
+    const session = await mongoose.startSession();
+    let confirmedOrder = null;
 
-    if (!claimed) {
-      throw new Error("Đơn đã được nhân viên/POS khác tiếp nhận.");
-    }
-
-    let updated;
     try {
-      updated = await this.updateOrderStatus(
-        parent,
-        {
-          input: {
-            id: String(order._id),
-            restaurantId: restaurantId || String(order.restaurantId),
-            status: "confirmed",
-            note: note || "Incoming order confirmed by POS",
-            warehouseId,
+      await session.withTransaction(async () => {
+        const claimed = await Order.findOneAndUpdate(
+          {
+            _id: initialOrder._id,
+            currentStatus: "pending",
+            $or: [
+              { "clientMeta.acceptedAt": { $exists: false } },
+              { "clientMeta.acceptedAt": null },
+            ],
           },
-        },
-        ctx,
-      );
-    } catch (error) {
-      await Order.updateOne(
-        {
-          _id: order._id,
-          currentStatus: CLAIMED_STATUS,
-          "clientMeta.acceptedAt": acceptedAt,
-          "clientMeta.acceptedBy": acceptedBy || null,
-        },
-        {
-          $set: { currentStatus: "pending" },
-          $unset: {
-            "clientMeta.acceptedAt": "",
-            "clientMeta.acceptedBy": "",
+          {
+            $set: {
+              currentStatus: CLAIMED_STATUS,
+              "clientMeta.acceptedAt": acceptedAt,
+              "clientMeta.acceptedBy": acceptedBy || null,
+            },
           },
-        },
-      ).catch(() => {});
-      throw error;
+          { new: true, session },
+        );
+        if (!claimed) {
+          throw new Error("Đơn đã được nhân viên/POS khác tiếp nhận.");
+        }
+
+        const previousPublicStatus = claimed.publicStatus;
+        claimed.currentStatus = "confirmed";
+        claimed.kitchenStatus = KITCHEN_STATUS.CONFIRMED;
+        claimed.statusTimeline = claimed.statusTimeline || [];
+        claimed.statusTimeline.push({
+          status: "confirmed",
+          at: acceptedAt,
+          note: note || "Incoming order confirmed by staff/POS",
+          byUserId: acceptedBy || undefined,
+        });
+        updatePublicStatusHistory(claimed, "STAFF");
+        await claimed.save({ session });
+        claimed.$locals = claimed.$locals || {};
+        claimed.$locals.prevPublicStatus = previousPublicStatus;
+
+        await syncKitchenOrderWorkItemsForKitchenEntry({
+          order: claimed,
+          actorUserId: acceptedBy,
+          now: acceptedAt,
+          session,
+        });
+        confirmedOrder = claimed;
+      });
+    } finally {
+      await session.endSession();
     }
 
-    const confirmedOrder = await Order.findById(order._id);
-    if (!confirmedOrder) throw new Error("Order not found after confirmation");
-
-    await syncKitchenOrderWorkItemsForKitchenEntry({
+    emitCustomerTrackingUpdateIfChanged({
+      ctx,
+      orderDoc: confirmedOrder,
+      previousPublicStatus: confirmedOrder?.$locals?.prevPublicStatus || null,
+      force: true,
+    });
+    await emitOrderEvent(ctx, confirmedOrder.restaurantId, "ORDER_STATUS_CHANGED", {
       order: confirmedOrder,
-      actorUserId: acceptedBy,
-      now: acceptedAt,
-      session: null,
+      meta: {
+        statusFrom: "pending",
+        statusTo: "confirmed",
+        note: note || "Incoming order confirmed by staff/POS",
+      },
     });
 
-    const printJobs = await enqueueStationTickets(confirmedOrder);
-    if (printJobs.length) {
-      await emitOrderEvent(
-        ctx,
-        String(confirmedOrder.restaurantId),
-        "ORDER_PRINT_JOBS_CREATED",
-        {
-          orderId: String(confirmedOrder._id),
-          orderCode: confirmedOrder.orderCode,
-          printJobs,
-        },
+    try {
+      const printJobs = await enqueueStationTickets(confirmedOrder);
+      if (printJobs.length) {
+        await emitOrderEvent(
+          ctx,
+          String(confirmedOrder.restaurantId),
+          "ORDER_PRINT_JOBS_CREATED",
+          {
+            orderId: String(confirmedOrder._id),
+            orderCode: confirmedOrder.orderCode,
+            printJobs,
+          },
+        );
+      }
+    } catch (error) {
+      console.warn(
+        "[ORDER_PRINT] Confirmed order accepted but station print job creation failed",
+        error?.message || error,
       );
     }
 
-    return { order: updated };
+    return { order: confirmedOrder.toJSON() };
+  },
+
+  async rejectIncomingOrder(_parent, { input }, ctx) {
+    const { id, restaurantId, reason, warehouseId } = input || {};
+    const rejectionReason = String(reason || "").trim();
+    if (rejectionReason.length < 3) {
+      throw new Error("Vui lòng nhập lý do từ chối rõ ràng.");
+    }
+
+    const initialOrder = await loadScopedPendingOrder({ id, restaurantId });
+    await requireIncomingReviewPermission(
+      ctx,
+      initialOrder.restaurantId,
+      PERMISSIONS.ORDER_CANCEL,
+    );
+
+    const rejectedAt = new Date();
+    const rejectedBy = toId(ctx?.user?.id || ctx?.user?._id);
+    const session = await mongoose.startSession();
+    let rejectedOrder = null;
+
+    try {
+      await session.withTransaction(async () => {
+        const claimed = await Order.findOneAndUpdate(
+          { _id: initialOrder._id, currentStatus: "pending" },
+          {
+            $set: {
+              currentStatus: CLAIMED_STATUS,
+              "clientMeta.rejectedAt": rejectedAt,
+              "clientMeta.rejectedBy": rejectedBy || null,
+              "clientMeta.rejectionReason": rejectionReason,
+            },
+          },
+          { new: true, session },
+        );
+        if (!claimed) {
+          throw new Error("Đơn đã được nhân viên/POS khác xử lý.");
+        }
+
+        const inventoryLines = buildInventoryLines(claimed.items || []);
+        if (inventoryLines.length) {
+          const warehouseIdResolved = await resolveWarehouseId(
+            claimed.restaurantId,
+            warehouseId,
+            session,
+          );
+          await cancelReservationForOrderTx({
+            restaurantId: claimed.restaurantId,
+            warehouseId: warehouseIdResolved,
+            orderCode: claimed.orderCode,
+            lines: inventoryLines,
+            session,
+          });
+        }
+
+        const previousPublicStatus = claimed.publicStatus;
+        claimed.currentStatus = "cancelled";
+        claimed.kitchenStatus = KITCHEN_STATUS.CANCELLED;
+        claimed.sessionStatus = SESSION_STATUS.CANCELLED;
+        claimed.statusTimeline = claimed.statusTimeline || [];
+        claimed.statusTimeline.push({
+          status: "cancelled",
+          at: rejectedAt,
+          note: rejectionReason,
+          byUserId: rejectedBy || undefined,
+        });
+        updatePublicStatusHistory(claimed, "STAFF");
+        await claimed.save({ session });
+        claimed.$locals = claimed.$locals || {};
+        claimed.$locals.prevPublicStatus = previousPublicStatus;
+        rejectedOrder = claimed;
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    emitCustomerTrackingUpdateIfChanged({
+      ctx,
+      orderDoc: rejectedOrder,
+      previousPublicStatus: rejectedOrder?.$locals?.prevPublicStatus || null,
+      force: true,
+    });
+    await emitOrderEvent(
+      ctx,
+      rejectedOrder.restaurantId,
+      "ORDER_CANCELLED",
+      rejectedOrder,
+    );
+
+    return { order: rejectedOrder.toJSON() };
   },
 };
 
