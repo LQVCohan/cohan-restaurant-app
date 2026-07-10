@@ -72,7 +72,10 @@ const getErrorMessage = (error, fallback) =>
   error?.message ||
   fallback;
 
-export default function PosIncomingTableOrderQueue({ restaurantId }) {
+export default function PosIncomingTableOrderQueue({
+  restaurantId,
+  allowReject = true,
+}) {
   const { showNotification } = useNotification();
   const [busyOrderId, setBusyOrderId] = useState("");
   const [rejectOrderId, setRejectOrderId] = useState("");
@@ -142,7 +145,7 @@ export default function PosIncomingTableOrderQueue({ restaurantId }) {
 
   const handleReject = async (order) => {
     const reason = rejectReason.trim();
-    if (!order?.id || busyOrderId) return;
+    if (!allowReject || !order?.id || busyOrderId) return;
     if (reason.length < 3) {
       setActionError("Vui lòng nhập lý do từ chối rõ ràng.");
       return;
@@ -187,7 +190,7 @@ export default function PosIncomingTableOrderQueue({ restaurantId }) {
             {loading && !pendingOrders.length
               ? "Đang kiểm tra…"
               : pendingOrders.length
-                ? `${pendingOrders.length} order cần POS kiểm tra`
+                ? `${pendingOrders.length} order cần kiểm tra`
                 : "Không có order QR đang chờ"}
           </small>
         </span>
@@ -206,7 +209,7 @@ export default function PosIncomingTableOrderQueue({ restaurantId }) {
         ) : (
           pendingOrders.map((order) => {
             const isBusy = busyOrderId === order.id;
-            const isRejecting = rejectOrderId === order.id;
+            const isRejecting = allowReject && rejectOrderId === order.id;
             return (
               <article className={styles.card} key={order.id}>
                 <header className={styles.cardHeader}>
@@ -284,18 +287,20 @@ export default function PosIncomingTableOrderQueue({ restaurantId }) {
                       <Check size={16} aria-hidden="true" />
                       {isBusy ? "Đang nhận…" : "Nhận & chuyển bếp"}
                     </button>
-                    <button
-                      type="button"
-                      className={styles.secondary}
-                      onClick={() => {
-                        setRejectOrderId(order.id);
-                        setRejectReason("");
-                        setActionError("");
-                      }}
-                      disabled={Boolean(busyOrderId)}
-                    >
-                      Từ chối
-                    </button>
+                    {allowReject ? (
+                      <button
+                        type="button"
+                        className={styles.secondary}
+                        onClick={() => {
+                          setRejectOrderId(order.id);
+                          setRejectReason("");
+                          setActionError("");
+                        }}
+                        disabled={Boolean(busyOrderId)}
+                      >
+                        Từ chối
+                      </button>
+                    ) : null}
                   </div>
                 )}
               </article>
