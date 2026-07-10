@@ -30,7 +30,6 @@ const STAFF_FIELDS = gql`
       slug
     }
 
-
     address {
       line1
       line2
@@ -137,12 +136,6 @@ const MUTATION_DELETE_STAFF = gql`
   }
 `;
 
-const MUTATION_SOFT_DELETE_USER = gql`
-  mutation SoftDeleteUser($userId: ID!) {
-    softDeleteUser(userId: $userId)
-  }
-`;
-
 const MUTATION_SET_STAFF_EMPLOYMENT_STATUS = gql`
   mutation SetStaffEmploymentStatus(
     $userId: ID!
@@ -159,27 +152,50 @@ const MUTATION_SET_STAFF_EMPLOYMENT_STATUS = gql`
 `;
 
 const MUTATION_RESEND_USER_VERIFICATION = gql`
-  mutation ResendStaffVerification($userId: ID!, $channel: VerificationChannel = AUTO) {
+  mutation ResendStaffVerification(
+    $userId: ID!
+    $channel: VerificationChannel = AUTO
+  ) {
     resendUserVerification(userId: $userId, channel: $channel) {
       ok
       status
       message
       errors
-      email { channel attempted sent skipped status provider messageId error lastSentAt cooldownUntil }
-      sms { channel attempted sent skipped status provider messageId error lastSentAt cooldownUntil }
+      email {
+        channel
+        attempted
+        sent
+        skipped
+        status
+        provider
+        messageId
+        error
+        lastSentAt
+        cooldownUntil
+      }
+      sms {
+        channel
+        attempted
+        sent
+        skipped
+        status
+        provider
+        messageId
+        error
+        lastSentAt
+        cooldownUntil
+      }
     }
   }
 `;
 
-const MUTATION_SET_USER_STATUS = gql`
-  mutation SetUserStatus($userId: ID!, $status: String!) {
-    setUserStatus(userId: $userId, status: $status) {
-      id
-      status
-      roleName
-      updatedAt
+const MUTATION_SET_STAFF_ACCOUNT_STATUS = gql`
+  mutation SetStaffAccountStatus($userId: ID!, $status: String!) {
+    setStaffAccountStatus(userId: $userId, status: $status) {
+      ...StaffFields
     }
   }
+  ${STAFF_FIELDS}
 `;
 
 /* ============================================================================
@@ -320,7 +336,10 @@ const useStaffManagement = (initialFilters = {}) => {
         userType: input.userType || "STAFF",
       };
 
-      if (roleSlug && (roleListLoading || roleListError || roleList.length === 0)) {
+      if (
+        roleSlug &&
+        (roleListLoading || roleListError || roleList.length === 0)
+      ) {
         throw new Error(
           "Vai trò đã chọn chưa được cấu hình hoặc bạn không có quyền tải danh sách vai trò. Vui lòng thử lại.",
         );
@@ -358,7 +377,10 @@ const useStaffManagement = (initialFilters = {}) => {
     async (userId, input) => {
       const { roleSlug, ...restInput } = input;
       const finalInput = { ...restInput };
-      if (roleSlug && (roleListLoading || roleListError || roleList.length === 0)) {
+      if (
+        roleSlug &&
+        (roleListLoading || roleListError || roleList.length === 0)
+      ) {
         throw new Error(
           "Vai trò đã chọn chưa được cấu hình hoặc bạn không có quyền tải danh sách vai trò. Vui lòng thử lại.",
         );
@@ -390,15 +412,6 @@ const useStaffManagement = (initialFilters = {}) => {
     },
   });
 
-  const [
-    softDeleteUserMutation,
-    { loading: softDeletingStaff, error: softDeleteStaffError },
-  ] = useMutation(MUTATION_SOFT_DELETE_USER, {
-    onCompleted: () => {
-      if (filters.restaurantId) refetchStaffList();
-    },
-  });
-
   const deleteStaff = useCallback(
     async (userId) => {
       const res = await deleteStaffMutation({ variables: { userId } });
@@ -407,13 +420,7 @@ const useStaffManagement = (initialFilters = {}) => {
     [deleteStaffMutation],
   );
 
-  const softDeleteStaff = useCallback(
-    async (userId) => {
-      const res = await softDeleteUserMutation({ variables: { userId } });
-      return res.data?.softDeleteUser ?? false;
-    },
-    [softDeleteUserMutation],
-  );
+  const softDeleteStaff = deleteStaff;
 
   /** SET EMPLOYMENT STATUS (ON_LEAVE, WORKING, ...) */
   const [
@@ -435,7 +442,7 @@ const useStaffManagement = (initialFilters = {}) => {
     [setEmploymentStatusMutation],
   );
 
-  /** SET ACCOUNT STATUS (active, inactive, blocked, pending) */
+  /** RESEND ACCOUNT VERIFICATION */
   const [
     resendVerificationMutation,
     { loading: resendingVerification, error: resendVerificationError },
@@ -447,16 +454,19 @@ const useStaffManagement = (initialFilters = {}) => {
 
   const resendStaffVerification = useCallback(
     async (userId, channel = "AUTO") => {
-      const res = await resendVerificationMutation({ variables: { userId, channel } });
+      const res = await resendVerificationMutation({
+        variables: { userId, channel },
+      });
       return res.data?.resendUserVerification ?? null;
     },
     [resendVerificationMutation],
   );
 
+  /** SET ACCOUNT STATUS (active, inactive, blocked, pending) */
   const [
-    setUserStatusMutation,
+    setStaffAccountStatusMutation,
     { loading: changingUserStatus, error: setUserStatusError },
-  ] = useMutation(MUTATION_SET_USER_STATUS, {
+  ] = useMutation(MUTATION_SET_STAFF_ACCOUNT_STATUS, {
     onCompleted: () => {
       if (filters.restaurantId) refetchStaffList();
     },
@@ -464,15 +474,13 @@ const useStaffManagement = (initialFilters = {}) => {
 
   const setStaffAccountStatus = useCallback(
     async (userId, status) => {
-      const res = await setUserStatusMutation({
+      const res = await setStaffAccountStatusMutation({
         variables: { userId, status },
       });
-      return res.data?.setUserStatus ?? null;
+      return res.data?.setStaffAccountStatus ?? null;
     },
-    [setUserStatusMutation],
+    [setStaffAccountStatusMutation],
   );
-
-  /** RATE STAFF 1–5 STAR */
 
   /* -----------------------------------------
    * Loading + Error
@@ -483,7 +491,6 @@ const useStaffManagement = (initialFilters = {}) => {
     creatingStaff ||
     updatingStaff ||
     deletingStaff ||
-    softDeletingStaff ||
     changingEmploymentStatus ||
     changingUserStatus ||
     resendingVerification;
@@ -494,7 +501,7 @@ const useStaffManagement = (initialFilters = {}) => {
     create: createStaffError,
     update: updateStaffError,
     delete: deleteStaffError,
-    softDelete: softDeleteStaffError,
+    softDelete: deleteStaffError,
     setEmploymentStatus: setEmploymentStatusError,
     setUserStatus: setUserStatusError,
     resendVerification: resendVerificationError,
@@ -542,7 +549,7 @@ const useStaffManagement = (initialFilters = {}) => {
     creatingStaff,
     updatingStaff,
     deletingStaff,
-    softDeletingStaff,
+    softDeletingStaff: deletingStaff,
     changingEmploymentStatus,
     changingUserStatus,
     resendingVerification,
