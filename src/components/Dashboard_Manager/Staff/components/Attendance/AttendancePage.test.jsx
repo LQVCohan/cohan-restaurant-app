@@ -1,7 +1,10 @@
 import React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import AttendancePage, { getAttendanceActionErrorMessage } from "./AttendancePage";
+import AttendancePage, {
+  getAttendanceActionErrorMessage,
+  resolveAttendanceRestaurantId,
+} from "./AttendancePage";
 const useAttendanceManagementMock = vi.fn();
 const originalScrollIntoView = Element.prototype.scrollIntoView;
 const originalRequestAnimationFrame = window.requestAnimationFrame;
@@ -63,6 +66,18 @@ afterEach(() => {
   } else {
     delete window.requestAnimationFrame;
   }
+});
+
+describe("resolveAttendanceRestaurantId", () => {
+  it("prioritizes a focused schedule restaurant over the page default", () => {
+    expect(
+      resolveAttendanceRestaurantId({
+        queryRestaurantId: "restaurant-focused",
+        userRestaurantId: "restaurant-default",
+        records: [{ restaurantId: "restaurant-record" }],
+      }),
+    ).toBe("restaurant-focused");
+  });
 });
 
 describe("getAttendanceActionErrorMessage", () => {
