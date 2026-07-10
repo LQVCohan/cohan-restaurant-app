@@ -12,36 +12,44 @@ On a phone, the title wraps one word per line, the close control stretches, the 
 2. **Caller**: `Table3DSimulatorModalV2` owns `showCustomBuilder`, opens the modal, persists the returned catalog item, selects it, and closes the builder.
 3. **Builder state**: `CustomTableModelBuilderModal` owns parametric, URL, upload and AI forms and preserves the existing upload and five ordered rear-camera capture paths.
 4. **Shared modal**: `Modal` provides portal rendering, focus trapping, page scroll locking and the mobile bottom-sheet container.
-5. **Presentation**: `Table3DSimulatorModal.scss` already defines a structured builder header, tab list, scroll body, fields and footer, but the current JSX no longer emits that contract.
-6. **Tests**: the focused builder test covers the five-photo AI flow and can also protect the tab/scroll-body markup contract.
+5. **Presentation**: `Table3DSimulatorModal.scss` mainly targets a newer structured builder contract while the current JSX uses direct tab buttons, `custom-table-builder__content` and unclassified native controls.
+6. **Import order**: global responsive styles load after the component SCSS and can override portal-rendered controls unless the builder repair is loaded last.
 
 ## Root cause
 
-The functional flow is intact. The visual failure is contract drift between the current JSX and the existing SCSS: the builder uses the shared modal's default header and automatic body wrapper, tab buttons lack `custom-table-builder__tab`, content uses `custom-table-builder__content` instead of the styled scroll body, and inputs/selects lack the local form classes. The mobile SCSS then worsens the problem by stacking all four mode buttons into a single column.
+The functional flow is intact. The visual failure is presentation contract drift plus stylesheet order: the current JSX does not receive the newer tab, scroll-body and form-control rules, the existing phone breakpoint stacks all four modes into one column, and later global responsive styles can stretch the shared modal close control again.
+
+The smallest safe fix is a final stylesheet scoped to `.custom-table-builder-modal` that styles the actual current DOM. This avoids touching the working upload, catalog and five-photo AI logic.
 
 ## Visual direction
 
-Compact mobile bottom sheet using the existing warm neutral builder palette, a short two-column mode selector, one scroll owner, single-column fields and a reserved action footer.
+Compact mobile bottom sheet using the existing warm neutral builder palette, a short two-column mode selector, one scroll owner, single-column fields and full-width phone actions.
 
-## Scope
+## Files changed
 
-- Restore the existing structured builder DOM and class contract without changing data or submission logic.
-- Use the shared modal without its duplicate default header/body wrapper.
-- Keep the four modes accessible as tabs with visible selected state.
-- Apply the existing local form-control classes to inputs, selects and textarea.
-- Keep one internal scrolling body and a footer that does not cover form content.
-- On phone widths, show the four modes as a compact two-column grid and hide secondary descriptions from the tab buttons.
-- Keep controls at least 44px tall and inputs at least 16px font size on mobile.
-- Add a narrow regression assertion for the tab and scroll-body contract.
+- `src/styles/CustomTableBuilderResponsiveFix.css`: final scoped layout and control repair for the actual modal DOM.
+- `src/main.jsx`: loads the repair after `ResponsiveFoundation.css` so it remains the final responsive layer for this modal.
+
+## Implemented scope
+
+- Constrain the shared header title and force the close control to a stable 44x44px target.
+- Remove extra body padding and keep the builder content as the single internal scroll owner.
+- Style the current direct mode buttons with clear active, focus, pressed and disabled-safe states.
+- Use four columns on wider screens and a compact two-column/two-row selector on phones.
+- Hide secondary mode descriptions on phones while keeping the primary labels visible.
+- Style the current native inputs, selects, textarea and file controls without changing JSX or form state.
+- Use one form column, 16px control text and full-width primary actions on phones.
+- Add missing current-DOM styles for table-shape choices and danger feedback.
+- Preserve reduced-motion behavior.
 
 ## Acceptance criteria
 
 - At 390x844 and 430x932, the title and close control remain on a stable header and do not stretch or overlap.
 - Four creation modes fit in a compact two-row selector rather than one long vertical list.
-- Tab labels remain readable and do not merge with descriptions.
-- The active mode is exposed with `role="tab"` and `aria-selected`.
+- Mode labels remain readable and do not merge with their descriptions.
 - Form fields use one column on mobile, fill the available width and do not trigger horizontal overflow or browser text auto-zoom.
-- The builder has one predictable vertical scroll area; header/tabs/footer do not cover content.
+- The builder has one predictable vertical scroll area and controls do not cover content.
+- Touch targets for close, modes, shape choices and primary actions are at least 44px.
 - Existing parametric, URL, upload and guided five-photo AI actions remain unchanged.
 - No backend, GraphQL, persistence, permission, dependency or shared modal behavior changes.
 
@@ -50,9 +58,12 @@ Compact mobile bottom sheet using the existing warm neutral builder palette, a s
 - Redesigning the parent table 3D workspace.
 - Changing model upload, AI provider, validation or storage contracts.
 - Replacing the shared modal component or adding a UI library.
+- Refactoring the legacy builder JSX in this visual-only repair.
 
-## Validation plan
+## Validation record
 
-- Focused Vitest for `CustomTableModelBuilderModal`.
-- Conflict-marker check and frontend build.
-- Manual responsive review at 390x844 and 430x932, plus the reported Android browser when available.
+- Re-read the caller, builder component, shared modal, component SCSS and final global responsive import order.
+- Re-fetched the committed stylesheet and `main.jsx` import to confirm the final code.
+- GitHub reported no workflow runs or combined statuses for the latest code commit.
+- Focused Vitest, conflict-marker check and production build were not run because the GitHub connector does not provide a checkout with installed dependencies.
+- 390x844, 430x932 and physical Android browser validation remain pending because no browser/device session is available through the connector.
