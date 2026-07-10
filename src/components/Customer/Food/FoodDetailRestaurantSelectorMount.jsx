@@ -127,16 +127,14 @@ export default function FoodDetailRestaurantSelectorMount() {
   );
 
   useEffect(() => {
-    if (!foodId || bookingServiceAt || typeof document === "undefined") {
+    if (!foodId || typeof document === "undefined") {
       setPortalHost(null);
       return undefined;
     }
 
     let host = null;
     const attachHost = () => {
-      const anchor = document.querySelector(
-        ".food-detail-v2__order-card .food-detail-v2__restaurant-meta",
-      );
+      const anchor = document.querySelector(".food-detail-v2__about");
       if (!anchor) return false;
 
       host = document.createElement("div");
@@ -159,7 +157,7 @@ export default function FoodDetailRestaurantSelectorMount() {
       observer.disconnect();
       host?.remove();
     };
-  }, [bookingServiceAt, foodId]);
+  }, [foodId]);
 
   useEffect(() => {
     if (!foodId || bookingServiceAt || !locations.length) return;
@@ -199,18 +197,20 @@ export default function FoodDetailRestaurantSelectorMount() {
     navigate(
       buildFoodDetailPath(nextMenuItemId, {
         restaurantId: option.restaurantId,
+        serviceAt: bookingServiceAt,
       }),
       {
         state: {
           restaurantId: option.restaurantId,
           selectedVariantKey: option.menuItem?.defaultServingKey || undefined,
           restaurantSelectionMode: "manual",
+          ...(bookingServiceAt ? { serviceAt: bookingServiceAt } : {}),
         },
       },
     );
   };
 
-  if (!foodId || bookingServiceAt || !portalHost) return null;
+  if (!foodId || !portalHost) return null;
 
   return createPortal(
     <section
