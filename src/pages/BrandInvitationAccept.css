@@ -20,13 +20,17 @@
   font-weight: 900;
 }
 
+.brand-password-field {
+  position: relative;
+}
+
 .brand-invitation-password input {
   width: 100%;
   min-height: 46px;
   box-sizing: border-box;
   border: 1px solid rgba(92, 64, 51, 0.18);
   border-radius: 14px;
-  padding: 11px 13px;
+  padding: 11px 48px 11px 13px;
   background: #ffffff;
   color: #1e1915;
   font: inherit;
@@ -37,4 +41,98 @@
 .brand-invitation-password input:focus {
   border-color: rgba(255, 102, 0, 0.72);
   box-shadow: 0 0 0 4px rgba(255, 102, 0, 0.12);
+}
+
+.brand-password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  width: 34px;
+  height: 34px;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(117, 109, 98, 0.82);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.brand-password-toggle:hover {
+  background: #fff1e5;
+  color: #ff6600;
+}
+
+.brand-password-toggle:active {
+  transform: translateY(-50%) scale(0.96);
+}
+
+.brand-password-toggle:focus-visible {
+  outline: 3px solid rgba(255, 102, 0, 0.2);
+  outline-offset: 2px;
+}
+
+.brand-password-toggle__icon {
+  width: 18px;
+  height: 18px;
+}
+
+.brand-invitation-password .password-strength {
+  display: grid;
+  gap: 6px;
+  min-height: 22px;
+  padding: 0 4px 2px;
+  color: rgba(117, 109, 98, 0.9);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.brand-invitation-password .password-strength__label {
+  text-wrap: pretty;
+}
+
+.brand-invitation-password .password-strength__bars {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.brand-invitation-password .password-strength__bars > span {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(117, 109, 98, 0.18);
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease;
+}
+
+.brand-invitation-password .password-strength--weak {
+  color: #b42318;
+}
+
+.brand-invitation-password .password-strength--weak .password-strength__bars > .is-active {
+  background: #dc2626;
+}
+
+.brand-invitation-password .password-strength--medium {
+  color: #9a5b07;
+}
+
+.brand-invitation-password .password-strength--medium .password-strength__bars > .is-active {
+  background: #d97706;
+}
+
+.brand-invitation-password .password-strength--strong {
+  color: #137a3d;
+}
+
+.brand-invitation-password .password-strength--strong .password-strength__bars > .is-active {
+  background: #16a34a;
 }
