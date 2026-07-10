@@ -1,0 +1,34 @@
+{
+  "id": "07-11-backup-checklist-clarity",
+  "title": "Clarify backup checklist readiness",
+  "status": "implemented_unverified",
+  "type": "frontend-bugfix",
+  "priority": "P1",
+  "branch": "fix/backup-checklist-clarity-20260711",
+  "base_branch": "main",
+  "createdAt": "2026-07-11",
+  "completedAt": null,
+  "rootCause": "The saved readiness summary and the editor could refer to different preparation runs because an explicit newly created run ID silently fell back to an older run while Apollo refetched.",
+  "flow": "BackupRun model/readiness contract -> Apollo queries and mutations -> selected run and draft -> download action -> focused state and component tests",
+  "files": [
+    "src/components/Dashboard_Manager/Backup/BackupManagement.jsx",
+    "src/components/Dashboard_Manager/Backup/backupChecklistState.js",
+    "src/components/Dashboard_Manager/Backup/backupChecklistState.test.js"
+  ],
+  "validation": {
+    "passed": [
+      "frontend conflict-marker check",
+      "frontend lint",
+      "focused BackupManagement component suite: 21 tests",
+      "focused backupChecklistState suite: 4 tests",
+      "backend lint, full tests, Menu RBAC and build"
+    ],
+    "blocked": [
+      "full frontend unit suite is currently blocked by the unrelated baseline failure in src/utils/installTableDetailModalTabs.test.js line 58",
+      "later frontend component/build/smoke steps are skipped after that unrelated unit failure"
+    ],
+    "notRun": [
+      "manual browser verification"
+    ]
+  }
+}

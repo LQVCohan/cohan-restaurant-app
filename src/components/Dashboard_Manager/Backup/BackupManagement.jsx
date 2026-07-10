@@ -21,6 +21,11 @@ import { hasPermission } from "../../../utils/frontendPermissionAccess";
 import "./BackupManagement.scss";
 import "./BackupManagementFeedback.scss";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
+import {
+  getExportReadinessState,
+  REQUIRED_EXPORT_CHECKLIST_KEYS,
+  selectBackupRuns,
+} from "./backupChecklistState";
 
 const Q_BACKUP_READINESS = gql`
   query BackupReadiness($restaurantId: ID!) {
@@ -30,7 +35,11 @@ const Q_BACKUP_READINESS = gql`
       risks { key label severity resolved description }
       checklist { reportsChecked transactionsReconciled settingsReviewed exportPrepared safeCopyStored operatorRecorded }
       scope { ordersAndPayments tablesAndFloorPlan menuAndPricing inventory staffAndPermissions schedules customersAndPromotions reportsAndReconciliation }
-      lastRun { id restaurantId status note completedAt createdAt updatedAt }
+      lastRun {
+        id restaurantId status note completedAt createdAt updatedAt
+        checklist { reportsChecked transactionsReconciled settingsReviewed exportPrepared safeCopyStored operatorRecorded }
+        scope { ordersAndPayments tablesAndFloorPlan menuAndPricing inventory staffAndPermissions schedules customersAndPromotions reportsAndReconciliation }
+      }
     }
   }
 `;
@@ -359,6 +368,13 @@ const BackupManagement = () => {
   const [createBackupRun, createRunState] = useMutation(M_CREATE_BACKUP_RUN, {
     onCompleted: ({ createBackupRun: created }) => {
       setSelectedRunId(created?.id || "");
+      if (created) {
+        setRunDraft({
+          checklist: { ...FALLBACK_CHECKLIST, ...(created.checklist || {}) },
+          scope: normalizeDraftScope(created.scope),
+          note: created.note || "",
+        });
+      }
       setStatusNotice({
         scope: "run",
         type: "success",
@@ -398,7 +414,7 @@ const BackupManagement = () => {
   const currentLastRun = readiness.lastRun && String(readiness.lastRun.restaurantId || "") === restaurantId
     ? readiness.lastRun
     : null;
-  const selectedRun = runs.find((run) => run.id === selectedRunId) || runs[0] || currentLastRun || null;
+  const { latestRun, selectedRun } = selectBackupRuns({ runs, selectedRunId, currentLastRun });
 
   useEffect(() => {
     setTargetRestaurantId(restaurantId);
@@ -414,8 +430,8 @@ const BackupManagement = () => {
   }, [restaurantId]);
 
   useEffect(() => {
-    if (selectedRun?.id && selectedRun.id !== selectedRunId) setSelectedRunId(selectedRun.id);
-  }, [selectedRun?.id, selectedRunId]);
+    if (!selectedRunId && latestRun?.id) setSelectedRunId(latestRun.id);
+  }, [latestRun?.id, selectedRunId]);
 
   useEffect(() => {
     if (selectedRun) {
@@ -426,8 +442,10 @@ const BackupManagement = () => {
       });
       return;
     }
-    setRunDraft({ checklist: FALLBACK_CHECKLIST, scope: FALLBACK_SCOPE, note: "" });
-  }, [restaurantId, selectedRun?.id]);
+    if (!selectedRunId) {
+      setRunDraft({ checklist: FALLBACK_CHECKLIST, scope: FALLBACK_SCOPE, note: "" });
+    }
+  }, [restaurantId, selectedRun?.id, selectedRunId]);
 
   const checklistItems = useMemo(() => toChecklistItems(readiness.checklist), [readiness.checklist]);
   const scopeItems = useMemo(() => toScopeItems(readiness.scope), [readiness.scope]);
@@ -445,6 +463,8 @@ const BackupManagement = () => {
   const importCount = selectedSectionCount(importSections);
   const hasExportSections = exportCount > 0;
   const hasImportSections = importCount > 0;
+  const exportReadiness = getExportReadinessState({ latestRun, selectedRun, runDraft });
+  const savedMissingLabels = exportReadiness.savedMissingKeys.map((key) => CHECKLIST_LABELS[key]);
 
   const conflictStats = useMemo(() => ({
     total: importConflicts.length,
@@ -559,7 +579,7 @@ const BackupManagement = () => {
   };
 
   const handleDownloadExport = async () => {
-    if (!restaurantId || !hasExportSections || !canExport) return;
+    if (!restaurantId || !hasExportSections || !canExport || !exportReadiness.canDownload) return;
     setStatusNotice(null);
     try {
       const { data } = await exportBackup({ variables: { input: { restaurantId, sections: selectedSectionsPayload(exportSections) } } });
@@ -651,9 +671,19 @@ const BackupManagement = () => {
           ? "Dữ liệu trả về không thuộc chi nhánh đang chọn nên đã được bỏ qua. Hãy làm mới để tải lại."
           : "";
 
+  const exportReadinessMessage = !latestRun || latestRun.status !== "planned"
+    ? "Chưa có lần chuẩn bị đang hoạt động. Bấm “Bắt đầu checklist mới”, chọn 3 việc bắt buộc rồi lưu."
+    : exportReadiness.viewingHistory
+      ? "Bạn đang xem một lần cũ. Nút tải file luôn kiểm tra lần mới nhất; hãy chọn mục có nhãn “Mới nhất” trong lịch sử."
+      : exportReadiness.draftCompleteButUnsaved
+        ? "Bạn đã chọn đủ 3 việc bắt buộc nhưng chưa lưu. Bấm “Lưu checklist hiện tại” trước khi tải file."
+        : savedMissingLabels.length
+          ? `Checklist mới nhất đã lưu còn thiếu: ${savedMissingLabels.join(", ")}.`
+          : "Checklist mới nhất đã lưu đủ 3 việc bắt buộc. Bạn có thể tải file.";
+
   const headerStats = [
     { label: "An toàn", value: readiness.ready ? "Sẵn sàng" : "Cần rà soát", icon: <ShieldCheck size={17} />, tone: readiness.ready ? "success" : "warning" },
-    { label: "Checklist", value: `${completedChecklistCount}/${checklistItems.length}`, icon: <CheckCircle2 size={17} /> },
+    { label: "Checklist đã lưu", value: `${completedChecklistCount}/${checklistItems.length}`, icon: <CheckCircle2 size={17} /> },
     { label: "Phạm vi", value: `${enabledScopeCount}/${scopeItems.length}`, icon: <FileText size={17} /> },
     { label: "Lịch sử", value: runs.length, icon: <History size={17} /> },
   ];
@@ -717,7 +747,7 @@ const BackupManagement = () => {
               {Object.entries(CHECKLIST_LABELS).map(([key, label]) => (
                 <label key={key}>
                   <input type="checkbox" checked={Boolean(runDraft.checklist[key])} disabled={!canWrite} onChange={(event) => updateDraftChecklist(key, event.target.checked)} />
-                  <span>{label}</span>
+                  <span>{label}{REQUIRED_EXPORT_CHECKLIST_KEYS.includes(key) ? <small>Bắt buộc trước khi tải file</small> : null}</span>
                 </label>
               ))}
             </fieldset>
@@ -741,7 +771,7 @@ const BackupManagement = () => {
         </div>
         <aside className="backup-management__run-detail">
           <div className="backup-management__section-head">
-            <div><span>Lần đang chọn</span><h3>{selectedRun ? statusLabel(selectedRun.status) : "Chưa có dữ liệu"}</h3></div>
+            <div><span>{exportReadiness.viewingHistory ? "Lịch sử đang xem" : "Lần mới nhất"}</span><h3>{selectedRun ? statusLabel(selectedRun.status) : selectedRunId ? "Đang đồng bộ" : "Chưa có dữ liệu"}</h3></div>
           </div>
           {selectedRun ? (
             <dl>
@@ -750,8 +780,9 @@ const BackupManagement = () => {
               <div><dt>Cập nhật</dt><dd>{formatDate(selectedRun.updatedAt)}</dd></div>
               <div><dt>Ghi chú</dt><dd>{selectedRun.note || "Chưa có"}</dd></div>
             </dl>
-          ) : <div className="backup-management__empty">Chưa có lần chuẩn bị. Hãy bắt đầu checklist mới để ghi nhận lần kiểm tra.</div>}
-          {runs.length ? <label>Lịch sử gần đây<select value={selectedRun?.id || ""} onChange={(event) => setSelectedRunId(event.target.value)}>{runs.map((run) => <option key={run.id} value={run.id}>{statusLabel(run.status)} · {formatDate(run.createdAt)}</option>)}</select></label> : null}
+          ) : <div className="backup-management__empty">{selectedRunId ? "Đang tải lần chuẩn bị vừa chọn..." : "Chưa có lần chuẩn bị. Hãy bắt đầu checklist mới để ghi nhận lần kiểm tra."}</div>}
+          {runs.length ? <label>Lịch sử gần đây<select value={selectedRun?.id || selectedRunId || ""} onChange={(event) => setSelectedRunId(event.target.value)}>{runs.map((run, index) => <option key={run.id} value={run.id}>{index === 0 ? "Mới nhất · " : ""}{statusLabel(run.status)} · {formatDate(run.createdAt)}</option>)}</select></label> : null}
+          {exportReadiness.viewingHistory ? <p className="backup-management__permission-note">Bạn đang xem một lần cũ. Trạng thái tải file được tính theo lần có nhãn <strong>Mới nhất</strong>.</p> : null}
           <p className="backup-management__run-hint">File này chỉ lưu cấu hình. Đơn hàng, giao dịch và dữ liệu vận hành không nằm trong snapshot.</p>
         </aside>
       </section>
@@ -763,6 +794,7 @@ const BackupManagement = () => {
             <Download size={22} aria-hidden="true" />
           </div>
           {!canExport ? <p className="backup-management__permission-note">Cần quyền <strong>backup.export</strong> để tải file. Quyền <strong>backup.read</strong> dùng cho bước xem trước.</p> : null}
+          <p className={exportReadiness.canDownload ? "backup-management__run-hint" : "backup-management__permission-note"} role="status">{exportReadinessMessage}</p>
           <div className="backup-management__section-toolbar"><strong>{exportCount}/{CONFIG_SECTIONS.length} hạng mục</strong><button type="button" onClick={() => setAllExportSections(exportCount !== CONFIG_SECTIONS.length)}>{exportCount === CONFIG_SECTIONS.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}</button></div>
           <div className="backup-management__section-list">
             {CONFIG_SECTIONS.map(([key, label]) => <label key={key}><input type="checkbox" checked={Boolean(exportSections[key])} onChange={() => toggleExportSection(key)} /><span>{label}</span></label>)}
@@ -772,7 +804,7 @@ const BackupManagement = () => {
             <button type="button" onClick={handlePreviewExport} disabled={!hasConfirmedRestaurantScope || !hasExportSections || !canRead || previewExportState.loading} title={!canRead ? "Cần quyền backup.read" : "Kiểm tra số lượng dữ liệu"}>
               <FileText size={16} />{previewExportState.loading ? "Đang kiểm tra..." : "Xem nội dung"}
             </button>
-            <button type="button" className="is-primary" onClick={handleDownloadExport} disabled={!hasConfirmedRestaurantScope || !hasExportSections || !canExport || exportBackupState.loading} title={!canExport ? "Cần quyền backup.export" : "Tải file JSON"}>
+            <button type="button" className="is-primary" onClick={handleDownloadExport} disabled={!hasConfirmedRestaurantScope || !hasExportSections || !canExport || !exportReadiness.canDownload || exportBackupState.loading} title={!canExport ? "Cần quyền backup.export" : !exportReadiness.canDownload ? exportReadinessMessage : "Tải file JSON"}>
               <Download size={16} />{exportBackupState.loading ? "Đang tạo file..." : "Tải file sao lưu"}
             </button>
           </div>
