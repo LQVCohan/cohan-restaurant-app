@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import {
   AlertTriangle,
@@ -19,6 +19,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import useManagerRestaurantSelection from "../../../hooks/useManagerRestaurantSelection";
 import { hasPermission } from "../../../utils/frontendPermissionAccess";
 import "./BackupManagement.scss";
+import "./BackupManagementFeedback.scss";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 
 const Q_BACKUP_READINESS = gql`
@@ -330,6 +331,7 @@ const BackupManagement = () => {
   const [selectedRunId, setSelectedRunId] = useState("");
   const [runDraft, setRunDraft] = useState({ checklist: FALLBACK_CHECKLIST, scope: FALLBACK_SCOPE, note: "" });
   const [statusNotice, setStatusNotice] = useState(null);
+  const runActionRef = useRef("save");
   const [conflictResolutions, setConflictResolutions] = useState({});
   const [conflictFilter, setConflictFilter] = useState({ section: "all", severity: "all", resolution: "all", search: "" });
 
@@ -357,18 +359,32 @@ const BackupManagement = () => {
   const [createBackupRun, createRunState] = useMutation(M_CREATE_BACKUP_RUN, {
     onCompleted: ({ createBackupRun: created }) => {
       setSelectedRunId(created?.id || "");
-      setStatusNotice({ type: "success", text: "Đã tạo lần chuẩn bị sao lưu." });
+      setStatusNotice({
+        scope: "run",
+        type: "success",
+        text: "Đã bắt đầu checklist mới. Hãy đánh dấu các bước đã kiểm tra rồi lưu lần chuẩn bị này.",
+      });
       afterRunMutation();
     },
-    onError: (error) => setStatusNotice({ type: "error", text: `Không tạo được lần chuẩn bị sao lưu: ${error.message}` }),
+    onError: (error) => setStatusNotice({ scope: "run", type: "error", text: `Không thể bắt đầu checklist mới: ${error.message}` }),
   });
   const [updateBackupRun, updateRunState] = useMutation(M_UPDATE_BACKUP_RUN, {
     onCompleted: ({ updateBackupRun: updated }) => {
+      const cancelled = runActionRef.current === "cancel";
       setSelectedRunId(updated?.id || "");
-      setStatusNotice({ type: "success", text: "Đã lưu checklist an toàn." });
+      setStatusNotice({
+        scope: "run",
+        type: "success",
+        text: cancelled
+          ? "Đã hủy lần chuẩn bị. Cấu hình nhà hàng và các file sao lưu đã tải không bị xóa."
+          : "Đã lưu checklist, phạm vi và ghi chú của lần chuẩn bị đang chọn.",
+      });
       afterRunMutation();
     },
-    onError: (error) => setStatusNotice({ type: "error", text: `Không lưu được checklist an toàn: ${error.message}` }),
+    onError: (error) => {
+      const action = runActionRef.current === "cancel" ? "hủy lần chuẩn bị" : "lưu checklist";
+      setStatusNotice({ scope: "run", type: "error", text: `Không thể ${action}: ${error.message}` });
+    },
   });
   const [importBackup, importBackupState] = useMutation(M_IMPORT_CONFIG_BACKUP, {
     onCompleted: () => afterRunMutation(),
@@ -497,10 +513,20 @@ const BackupManagement = () => {
 
   const createRun = () => {
     if (!hasConfirmedRestaurantScope || !canWrite) return;
+    setStatusNotice(null);
     void createBackupRun({ variables: { input: { restaurantId, checklist: runDraft.checklist, scope: normalizeDraftScope(runDraft.scope), note: runDraft.note } } });
   };
   const saveRun = (status) => {
     if (!selectedRun?.id || !hasConfirmedRestaurantScope || !canWrite) return;
+    const isCancel = status === "cancelled";
+    if (isCancel) {
+      const confirmed = window.confirm(
+        "Hủy lần chuẩn bị đang chọn?\n\nThao tác này chỉ đánh dấu lần chuẩn bị là đã hủy; không xóa cấu hình nhà hàng hoặc file sao lưu đã tải.",
+      );
+      if (!confirmed) return;
+    }
+    runActionRef.current = isCancel ? "cancel" : "save";
+    setStatusNotice(null);
     void updateBackupRun({ variables: { input: { id: selectedRun.id, restaurantId, checklist: runDraft.checklist, scope: normalizeDraftScope(runDraft.scope), note: runDraft.note, ...(status ? { status } : {}) } } });
   };
 
@@ -652,7 +678,7 @@ const BackupManagement = () => {
       />
 
       {pageWarning ? <section className="backup-management__alert is-warning" role="status"><AlertTriangle size={18} />{pageWarning}</section> : null}
-      {statusNotice ? <section className={`backup-management__alert is-${statusNotice.type}`} role={statusNotice.type === "error" ? "alert" : "status"}>{statusNotice.type === "success" ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}{statusNotice.text}</section> : null}
+      {statusNotice && statusNotice.scope !== "run" ? <section className={`backup-management__alert is-${statusNotice.type}`} role={statusNotice.type === "error" ? "alert" : "status"}>{statusNotice.type === "success" ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}{statusNotice.text}</section> : null}
       {loading ? <section className="backup-management__state" role="status"><RefreshCw className="is-spinning" size={20} /><div><strong>Đang đồng bộ dữ liệu sao lưu</strong><p>Hệ thống đang lấy checklist và lịch sử đúng theo chi nhánh đã chọn.</p></div></section> : null}
 
       <section className="backup-management__run-workflow" aria-label="Checklist an toàn">
@@ -663,16 +689,25 @@ const BackupManagement = () => {
               <h2>Checklist an toàn</h2>
               <p>Xác nhận điều kiện trước khi tải file để lần sao lưu có người thực hiện, phạm vi và ghi chú rõ ràng.</p>
             </div>
-            <div className="backup-management__run-actions">
-              <button type="button" className="is-primary" onClick={createRun} disabled={!hasConfirmedRestaurantScope || !canWrite || createRunState.loading} title={!canWrite ? "Cần quyền backup.write" : "Tạo lần chuẩn bị mới"}>
-                <ShieldCheck size={16} />{createRunState.loading ? "Đang tạo..." : "Tạo lần chuẩn bị"}
-              </button>
-              <button type="button" onClick={() => saveRun()} disabled={!selectedRun?.id || !canWrite || updateRunState.loading} title={!canWrite ? "Cần quyền backup.write" : "Lưu checklist"}>
-                <Save size={16} />{updateRunState.loading ? "Đang lưu..." : "Lưu"}
-              </button>
-              <button type="button" className="is-danger" onClick={() => saveRun("cancelled")} disabled={!selectedRun?.id || !canWrite || updateRunState.loading}>
-                <XCircle size={16} />Hủy lần này
-              </button>
+            <div className="backup-management__run-action-block">
+              <div className="backup-management__run-actions">
+                <button type="button" className="is-primary" onClick={createRun} disabled={!hasConfirmedRestaurantScope || !canWrite || createRunState.loading} title={!canWrite ? "Cần quyền backup.write" : "Tạo một lần ghi nhận checklist mới"}>
+                  <ShieldCheck size={16} />{createRunState.loading ? "Đang bắt đầu..." : "Bắt đầu checklist mới"}
+                </button>
+                <button type="button" onClick={() => saveRun()} disabled={!selectedRun?.id || !canWrite || updateRunState.loading} title={!canWrite ? "Cần quyền backup.write" : "Lưu checklist, phạm vi và ghi chú của lần đang chọn"}>
+                  <Save size={16} />{updateRunState.loading && runActionRef.current === "save" ? "Đang lưu..." : "Lưu checklist hiện tại"}
+                </button>
+                <button type="button" className="is-danger" onClick={() => saveRun("cancelled")} disabled={!selectedRun?.id || !canWrite || updateRunState.loading} title="Đánh dấu lần chuẩn bị đang chọn là đã hủy">
+                  <XCircle size={16} />{updateRunState.loading && runActionRef.current === "cancel" ? "Đang hủy..." : "Hủy lần chuẩn bị"}
+                </button>
+              </div>
+              <p className="backup-management__run-action-help">Bắt đầu tạo một lần ghi nhận mới; Lưu cập nhật lần đang chọn; Hủy chỉ đóng lần chuẩn bị, không xóa cấu hình hoặc file sao lưu.</p>
+              {statusNotice?.scope === "run" ? (
+                <div className={`backup-management__run-feedback is-${statusNotice.type}`} role={statusNotice.type === "error" ? "alert" : "status"} aria-live="polite">
+                  {statusNotice.type === "success" ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />}
+                  <span>{statusNotice.text}</span>
+                </div>
+              ) : null}
             </div>
           </div>
           {!canWrite ? <p className="backup-management__permission-note">Bạn có thể xem nhưng cần quyền <strong>backup.write</strong> để tạo hoặc cập nhật checklist.</p> : null}
@@ -715,7 +750,7 @@ const BackupManagement = () => {
               <div><dt>Cập nhật</dt><dd>{formatDate(selectedRun.updatedAt)}</dd></div>
               <div><dt>Ghi chú</dt><dd>{selectedRun.note || "Chưa có"}</dd></div>
             </dl>
-          ) : <div className="backup-management__empty">Chưa có lần chuẩn bị. Tạo lần mới để ghi nhận checklist.</div>}
+          ) : <div className="backup-management__empty">Chưa có lần chuẩn bị. Hãy bắt đầu checklist mới để ghi nhận lần kiểm tra.</div>}
           {runs.length ? <label>Lịch sử gần đây<select value={selectedRun?.id || ""} onChange={(event) => setSelectedRunId(event.target.value)}>{runs.map((run) => <option key={run.id} value={run.id}>{statusLabel(run.status)} · {formatDate(run.createdAt)}</option>)}</select></label> : null}
           <p className="backup-management__run-hint">File này chỉ lưu cấu hình. Đơn hàng, giao dịch và dữ liệu vận hành không nằm trong snapshot.</p>
         </aside>
