@@ -7,6 +7,7 @@ import {
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
+import { removeTypenameFromVariables } from "@apollo/client/link/remove-typename";
 import { clearAuth, getToken, setAuth } from "@/lib/authStorage";
 import { getGraphqlUrl, toApiAssetUrl } from "@/lib/apiBaseUrl";
 import { refreshAccessTokenOnce } from "@/lib/authRefresh";
@@ -170,6 +171,8 @@ const idempotencyLink = new ApolloLink((operation, forward) => {
   return forward(operation);
 });
 
+const removeTypenameLink = removeTypenameFromVariables();
+
 function dispatchOutOfStockPrompt({ operation, graphQLError }) {
   if (typeof window === "undefined") return;
 
@@ -238,6 +241,7 @@ const link = ApolloLink.from([
   errorLink,
   scheduleEnumLink,
   idempotencyLink,
+  removeTypenameLink,
   authLink,
   httpLink,
 ]);
