@@ -1,7 +1,7 @@
 {
   "id": "07-10-combo-management-upgrade",
   "title": "Nâng cấp giao diện và luồng quản lý combo",
-  "status": "planning",
+  "status": "in_progress",
   "type": "frontend-backend-bugfix",
   "scope": [
     "src/components/Dashboard_Manager/Combo/ComboManagement.jsx",
@@ -18,7 +18,10 @@
       "vitest run cohan-restaurant-backend/tests/resolvers/customerCombo/customerCombo.resolver.test.js",
       "npm run build"
     ],
-    "completed": [],
+    "completed": [
+      "traced Combo model through GraphQL schema/resolver, Apollo operations and manager UI actions",
+      "reviewed menu item query behavior, manager route permission and shared Modal sizing"
+    ],
     "notRun": []
   }
 }
