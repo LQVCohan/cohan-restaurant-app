@@ -337,6 +337,7 @@ const RestaurantMenu = () => {
       setSelectedRes(normalizeRestaurant(detailRestaurant));
       return;
     }
+    if (serviceAt) return;
 
     if (found) {
       setSelectedRes(found);
