@@ -1,0 +1,27 @@
+{
+  "id": "manager-global-search",
+  "name": "manager-global-search",
+  "title": "Upgrade manager global search and deep navigation",
+  "description": "Index permission-scoped manager pages and nested functions, show breadcrumbs, and deep-link search results to the correct page/tab.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-search",
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "src/layouts/ManagerLayout.jsx",
+    "src/components/SearchBox/SearchBox.jsx",
+    "src/components/SearchBox/SearchBox.scss",
+    "src/components/SearchBox/SearchBox.test.jsx",
+    "src/components/Dashboard_Manager/Storage/StorageManagement.jsx",
+    "src/components/Dashboard_Manager/Storage/StorageManagement.test.jsx"
+  ],
+  "notes": "Root cause: the header search indexes only top-level pages and directly changes currentPage, so nested destinations and query/tab context cannot be represented or opened. Preserve allowedPages permission filtering and use the existing manager:navigate contract."
+}
