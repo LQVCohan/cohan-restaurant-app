@@ -3,7 +3,7 @@
   "name": "table-global-3d-ar-preview",
   "title": "Add global table 3D and AR preview",
   "description": "Add one manager-level preview modal for choosing existing, online, or uploaded table models and checking them in camera AR without attaching data to a concrete table.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-table-global-3d-ar-preview",
   "package": null,
@@ -11,22 +11,26 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "f945e0efb712125503f4054a4d94f61797ba172e",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": null,
   "relatedFiles": [
-    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
+    "src/App.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DPreviewLauncher.jsx",
     "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.jsx",
     "src/components/Dashboard_Manager/Table/Table3DActionBarV2.jsx",
-    "src/components/Dashboard_Manager/Table/TableManagement.test.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DReadiness.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DQuickGuide.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DPreviewLauncher.test.jsx",
     "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.test.jsx",
-    "src/components/Dashboard_Manager/Table/Table3DActionBarV2.test.jsx"
+    "src/components/Dashboard_Manager/Table/Table3DActionBarV2.test.jsx",
+    "tests/e2e/table-ar-mobile.spec.js"
   ],
-  "notes": "This is a session/catalog preview flow only. It reuses the existing catalog, URL import, authenticated GLB upload, camera fallback and model-viewer native AR. It must not restore per-table visualConfig persistence or AR-derived floor coordinates."
+  "notes": "Completed a global preview-only flow. It reuses the existing local/online catalog, URL import, authenticated GLB upload, camera fallback, and model-viewer native AR. The modal is lazy-loaded and follows the shared manager restaurant selection. No per-table visualConfig, AR-derived coordinates, apply action, table mutation, or GraphQL operation was restored. The GitHub connector had no runnable checkout or CI status, so Vitest, Playwright, GraphQL checks, build, and real-device AR validation were not executed."
 }
