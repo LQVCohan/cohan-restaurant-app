@@ -8,7 +8,10 @@ import {
 } from "../../../models/index.js";
 import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
-import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import {
+  hasPermission,
+  requireRestaurantPermission,
+} from "../../../src/services/auth/authorization.service.js";
 
 const MENU_ITEM_SORTS = new Set([
   "default",
@@ -287,7 +290,11 @@ export const MenuQuery = {
       };
     }
 
-    const internalQuery = isInternalMenuQuery({ filter });
+    const internalQuery =
+      isInternalMenuQuery({ filter }) ||
+      (ctx?.user
+        ? await hasPermission(ctx.user, PERMISSIONS.MENU_READ)
+        : false);
     if (internalQuery) {
       await requireRestaurantPermission(
         ctx,
@@ -418,53 +425,73 @@ export const MenuQuery = {
     _parent,
     { limit = 8, restaurantId, categoryId, categoryName, timeSlot },
   ) => {
-    const safeLimit = Math.min(Math.max(limit, 1), 200);
-    const query = {};
+    const safeLimit = Math.min(Math.max(limit || 8, 1), 50);
+    const query = applyPublicOrderableMenuItemFilter({});
 
     if (restaurantId) {
       if (!mongoose.isValidObjectId(restaurantId)) return [];
       const restaurant = await Restaurant.findById(restaurantId)
         .select(RESTAURANT_ORDERABILITY_SELECT)
         .lean();
-      if (!canRestaurantAcceptHomeOrders(restaurant)) return [];
+      if (!restaurant || !canRestaurantAcceptHomeOrders(restaurant)) return [];
       query.restaurantId = restaurantId;
     } else {
       const restaurants = await Restaurant.find({})
         .select(RESTAURANT_ORDERABILITY_SELECT)
         .lean();
-      const publicRestaurantIds = restaurants
+      const orderableIds = restaurants
         .filter(canRestaurantAcceptHomeOrders)
         .map((restaurant) => restaurant._id);
-      if (!publicRestaurantIds.length) return [];
-      query.restaurantId = { $in: publicRestaurantIds };
-    }
-
-    if (timeSlot) {
-      const menuFilter = { timeSlot, isActive: true };
-      if (query.restaurantId) {
-        menuFilter.restaurantId = query.restaurantId;
-      }
-      const menus = await Menu.find(menuFilter).select({ _id: 1 }).lean();
-      if (!menus.length) return [];
-      query.menuId = { $in: menus.map((menu) => menu._id) };
+      if (!orderableIds.length) return [];
+      query.restaurantId = { $in: orderableIds };
     }
 
     if (categoryId && mongoose.isValidObjectId(categoryId)) {
       query.categoryId = categoryId;
     } else if (categoryName?.trim()) {
-      const matchedCategories = await Category.find({
+      const category = await Category.findOne({
         name: new RegExp(`^${categoryName.trim()}$`, "i"),
+        ...(restaurantId ? { restaurantId } : {}),
       })
         .select({ _id: 1 })
         .lean();
-      const matchedIds = matchedCategories.map((category) => category._id);
-      if (!matchedIds.length) return [];
-      query.categoryId = { $in: matchedIds };
+      if (!category) return [];
+      query.categoryId = category._id;
     }
 
-    applyPublicOrderableMenuItemFilter(query);
+    if (timeSlot) {
+      const menuFilter = {
+        timeSlot,
+        isActive: true,
+      };
+      if (restaurantId) {
+        menuFilter.restaurantId = restaurantId;
+      } else if (query.restaurantId) {
+        menuFilter.restaurantId = query.restaurantId;
+      }
+      const menus = await Menu.find(menuFilter)
+        .select({ _id: 1 })
+        .lean();
+      const menuIds = menus.map((menu) => menu._id);
+      if (!menuIds.length) return [];
+      query.menuId = { $in: menuIds };
+    } else {
+      const menuFilter = { isActive: true };
+      if (restaurantId) {
+        menuFilter.restaurantId = restaurantId;
+      } else if (query.restaurantId) {
+        menuFilter.restaurantId = query.restaurantId;
+      }
+      const menus = await Menu.find(menuFilter)
+        .select({ _id: 1 })
+        .lean();
+      const menuIds = menus.map((menu) => menu._id);
+      if (!menuIds.length) return [];
+      query.menuId = { $in: menuIds };
+    }
+
     return MenuItem.find(query)
-      .sort({ rate: -1, orderCounter: -1, createdAt: -1, _id: 1 })
+      .sort({ orderCounter: -1, rate: -1, createdAt: -1 })
       .limit(safeLimit)
       .lean({ virtuals: true });
   },
