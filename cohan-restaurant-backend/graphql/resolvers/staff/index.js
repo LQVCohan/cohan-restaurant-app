@@ -22,6 +22,9 @@ import {
 import {
   getStaffRestaurantIds,
 } from "../../../src/services/auth/restaurantScope.service.js";
+import {
+  assertNoLockedPayrollPeriodOverlap,
+} from "../../../src/services/payroll/payrollLockGuard.service.js";
 import { sanitizeStaffPrivateProfile } from "../../../src/security/userDtos.js";
 
 const toFiniteNumber = (value, fallback = 0) => {
@@ -48,6 +51,9 @@ const clampPayrollOffset = (value) => {
 
 const normalizeSearch = (value) => String(value || "").trim().toLowerCase();
 const normalizeDepartment = (value) => String(value || "").trim().toLowerCase();
+const normalizeComparableText = (value) => String(value || "").trim();
+const normalizeComparableEnum = (value) =>
+  normalizeComparableText(value).toLowerCase();
 
 const filterPayrollItems = (items = [], { search, status } = {}) => {
   const keyword = normalizeSearch(search);
@@ -297,7 +303,9 @@ const loadStaffUpdateContext = async (userId, ctx) => {
   await requireRestaurantPermission(ctx, restaurantId, "staff.write");
 
   const staff = await Staff.findById(userId)
-    .select("_id userType deletedAt department baseSalary emergencyContact")
+    .select(
+      "_id userType deletedAt role department positionTitle employmentType employmentStatus dateJoined dateLeft baseSalary emergencyContact",
+    )
     .lean();
   if (!staff || staff.userType !== "STAFF" || staff.deletedAt) {
     throw new Error("Staff not found");
@@ -312,16 +320,53 @@ const normalizeOptionalNumber = (value) => {
   return Number.isFinite(numeric) ? numeric : null;
 };
 
-const updateStaff = async (parent, args = {}, ctx, info) => {
-  const userId = args.userId || args.id || null;
-  const { restaurantId, staff } = await loadStaffUpdateContext(userId, ctx);
-  const input = { ...(args.input || {}) };
+const normalizeOptionalDate = (value) => {
+  if (!value) return null;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : null;
+};
 
+const removeUnchangedPayrollFields = (input, staff) => {
   if (Object.prototype.hasOwnProperty.call(input, "baseSalary")) {
     const nextSalary = normalizeOptionalNumber(input.baseSalary);
     const currentSalary = normalizeOptionalNumber(staff.baseSalary);
     if (nextSalary === currentSalary) delete input.baseSalary;
   }
+
+  const enumFields = ["department", "employmentType", "employmentStatus"];
+  enumFields.forEach((field) => {
+    if (
+      Object.prototype.hasOwnProperty.call(input, field) &&
+      normalizeComparableEnum(input[field]) === normalizeComparableEnum(staff[field])
+    ) {
+      delete input[field];
+    }
+  });
+
+  if (
+    Object.prototype.hasOwnProperty.call(input, "positionTitle") &&
+    normalizeComparableText(input.positionTitle) ===
+      normalizeComparableText(staff.positionTitle)
+  ) {
+    delete input.positionTitle;
+  }
+
+  ["dateJoined", "dateLeft"].forEach((field) => {
+    if (
+      Object.prototype.hasOwnProperty.call(input, field) &&
+      normalizeOptionalDate(input[field]) === normalizeOptionalDate(staff[field])
+    ) {
+      delete input[field];
+    }
+  });
+};
+
+const updateStaff = async (parent, args = {}, ctx, info) => {
+  const userId = args.userId || args.id || null;
+  const { restaurantId, staff } = await loadStaffUpdateContext(userId, ctx);
+  const input = { ...(args.input || {}) };
+
+  removeUnchangedPayrollFields(input, staff);
 
   if (input.emergencyContact && typeof input.emergencyContact === "object") {
     input.emergencyContact = {
@@ -331,13 +376,26 @@ const updateStaff = async (parent, args = {}, ctx, info) => {
   }
 
   if (input.roleId) {
-    const role = await resolveAssignableRole({
-      roleId: input.roleId,
-      department: input.department || staff.department,
-      actor: ctx.user,
-    });
-    input.role = role._id;
-    delete input.roleId;
+    const currentRoleId = String(staff.role?._id || staff.role || "");
+    const requestedRoleId = String(input.roleId);
+    if (requestedRoleId === currentRoleId) {
+      delete input.roleId;
+    } else {
+      const role = await resolveAssignableRole({
+        roleId: input.roleId,
+        department: input.department || staff.department,
+        actor: ctx.user,
+      });
+      await assertNoLockedPayrollPeriodOverlap({
+        restaurantId,
+        employeeId: staff._id,
+        startDate: staff.dateJoined || new Date("2000-01-01"),
+        endDate: new Date(),
+        action: "update_staff",
+      });
+      input.role = role._id;
+      delete input.roleId;
+    }
   }
 
   return staffMutation.updateStaff(
