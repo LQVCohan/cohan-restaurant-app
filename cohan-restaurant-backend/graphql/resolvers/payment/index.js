@@ -9,12 +9,28 @@ import TransferPaymentMutation from "./transferMutation.js";
 import { PaymentResolvers } from "./types.js";
 import publicTablePaymentMutation from "./publicTablePaymentMutation.js";
 import wallet from "../wallet/index.js";
+import {
+  normalizeFinanceDashboardResult,
+  prepareFinanceDashboardRequest,
+} from "../../../src/services/finance/financeDashboardRange.service.js";
+
+const financeDashboard = async (parent, { input }, ctx, info) => {
+  const request = prepareFinanceDashboardRequest(input);
+  const result = await PaymentQuery.financeDashboard(
+    parent,
+    { input: request.input },
+    ctx,
+    info,
+  );
+  return normalizeFinanceDashboardResult(result, request);
+};
 
 export default {
   Query: {
     ...PaymentQuery,
     ...BankTransferPaymentQuery,
     ...(wallet.Query || {}),
+    financeDashboard,
   },
   Mutation: {
     ...PaymentMutation,
