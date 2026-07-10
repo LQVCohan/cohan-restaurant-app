@@ -30,7 +30,18 @@ jobs:
           fetch-depth: 0
 
       - name: Apply root-cause patch
-        run: python scripts/apply-schedule-ui-data-integrity.py
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/apply-schedule-ui-data-integrity.py 2>&1 | tee /tmp/schedule-patch.log
+
+      - name: Upload patch diagnostic
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schedule-patch-diagnostic
+          path: /tmp/schedule-patch.log
+          if-no-files-found: error
 
       - name: Remove one-shot patch payload
         run: rm scripts/apply-schedule-ui-data-integrity.py
