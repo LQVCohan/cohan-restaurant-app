@@ -1,3 +1,4 @@
+import { PaymentReconciliation } from "../../../models/index.js";
 import { PaymentQuery } from "./query.js";
 import { BankTransferPaymentQuery } from "./bankTransferQuery.js";
 import PaymentMutation from "./mutation.js";
@@ -22,7 +23,20 @@ const financeDashboard = async (parent, { input }, ctx, info) => {
     ctx,
     info,
   );
-  return normalizeFinanceDashboardResult(result, request);
+  const resolvedCount = await PaymentReconciliation.countDocuments({
+    restaurantId: request.input.restaurantId,
+    status: "resolved",
+  });
+  const normalized = normalizeFinanceDashboardResult(result, request);
+  return {
+    ...normalized,
+    reconciliationSummary: {
+      ...normalized.reconciliationSummary,
+      matched:
+        Number(normalized.reconciliationSummary?.matched || 0) +
+        Number(resolvedCount || 0),
+    },
+  };
 };
 
 export default {
