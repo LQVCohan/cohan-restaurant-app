@@ -1,0 +1,27 @@
+{
+  "id": "finance-management-upgrade",
+  "name": "finance-management-upgrade",
+  "title": "Upgrade finance management UI and flows",
+  "description": "Audit and harden the finance dashboard from backend range logic through Apollo state, currency display, permissions, drill-down actions, and responsive UI.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "manager-finance",
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "src/hooks/useFinance.js",
+    "src/components/Dashboard_Manager/Finance/FinanceDashboard.jsx",
+    "src/components/Dashboard_Manager/Finance/FinanceComponents.jsx",
+    "src/components/Dashboard_Manager/Finance/FinanceDashboardPolishPriority.scss",
+    "cohan-restaurant-backend/graphql/resolvers/payment/query.js",
+    "cohan-restaurant-backend/tests/finance/finance-dashboard.test.js"
+  ],
+  "notes": "Trace schema -> resolver/permissions -> Apollo hook -> finance controls/drill-down -> targeted tests before editing."
+}
