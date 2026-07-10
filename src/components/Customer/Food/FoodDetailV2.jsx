@@ -165,6 +165,7 @@ const MENU_ITEM_LIVE_STATE = gql`
       myCartQty
       myHoldExpiresAt
       reservedCartQty
+      servingVariantKey
     }
   }
 `;
@@ -241,6 +242,7 @@ const ADD_CART_ITEM = gql`
         servingVariantKey
         holdExpiresAt
         holdStatus
+        serviceAt
         modifiers {
           groupId
           groupName
@@ -493,6 +495,7 @@ const FoodDetailV2 = () => {
     getTotalItems,
     getTotalPrice,
     upsertCartLine,
+    refetchServerCart,
   } = useCart();
   const {
     updateCartItemQuantity,
@@ -740,6 +743,8 @@ const FoodDetailV2 = () => {
     pollInterval: 10000,
   });
   const liveState = liveData?.menuItemLiveState || null;
+  const resolvedServingVariantKey =
+    liveState?.servingVariantKey || selectedVariant?.key || "portion";
 
   useEffect(() => {
     if (!dish?.restaurantId || !dish?.id) return undefined;
@@ -887,7 +892,7 @@ const FoodDetailV2 = () => {
       return (
         String(item.menuItemId) === String(dish.id) &&
         String(item.servingVariantKey || "portion") ===
-          String(selectedVariant.key || "portion") &&
+          String(resolvedServingVariantKey) &&
         normalizeNote(item.note) === normalizeNote(note) &&
         itemKey === wantedKey
       );
@@ -902,7 +907,7 @@ const FoodDetailV2 = () => {
         restaurantId: dish.restaurantId,
         menuId: dish.menuId,
         categoryId: dish.categoryId,
-        serviceAt,
+        serviceAt: returnedItem.serviceAt || serviceAt,
         name: returnedItem.name || dish.name,
         price: Number(returnedItem.price || baseUnitPrice),
         modifiersPrice: Number(returnedItem.modifiersPrice || 0),
@@ -910,8 +915,8 @@ const FoodDetailV2 = () => {
         image: returnedItem.thumbImage || dish.thumbImage || FOOD_PLACEHOLDER,
         thumbImage: returnedItem.thumbImage || dish.thumbImage || FOOD_PLACEHOLDER,
         note: returnedItem.note || "",
-        servingVariantKey: returnedItem.servingVariantKey || selectedVariant.key,
-        servingKey: returnedItem.servingVariantKey || selectedVariant.key,
+        servingVariantKey: returnedItem.servingVariantKey || resolvedServingVariantKey,
+        servingKey: returnedItem.servingVariantKey || resolvedServingVariantKey,
         servingVariant: selectedVariant,
         method: selectedVariant.name,
         modifiers: returnedItem.modifiers || [],
@@ -964,15 +969,21 @@ const FoodDetailV2 = () => {
             menuItemId: dish.id,
             quantity,
             note: normalizeNote(note) || null,
-            servingVariantKey: selectedVariant.key,
+            servingVariantKey: resolvedServingVariantKey,
             selectedModifiers: modifierSelections,
             serviceAt,
           },
         },
       });
       const cartData = data?.addCartItem;
-      if (!cartData?.id || !syncAddedLine(cartData)) {
-        throw new Error("Không nhận được dòng giỏ hàng đã đồng bộ từ máy chủ.");
+      if (!cartData?.id) {
+        throw new Error("Máy chủ không trả về giỏ hàng sau khi giữ món.");
+      }
+      if (!syncAddedLine(cartData)) {
+        const refreshed = await refetchServerCart?.();
+        if (!syncAddedLine(refreshed?.data?.myCart)) {
+          throw new Error("Không nhận được dòng giỏ hàng đã đồng bộ từ máy chủ.");
+        }
       }
 
       recordForYouItemInteraction(
