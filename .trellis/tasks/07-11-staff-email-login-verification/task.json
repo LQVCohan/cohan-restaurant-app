@@ -3,7 +3,7 @@
   "name": "staff-email-login-verification",
   "title": "Complete staff email invitation and login verification flow",
   "description": "Send staff login credentials only after account scope and role setup succeeds, then verify and activate the staff account after the first successful password login.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack",
   "scope": "staff-account-onboarding",
   "package": null,
@@ -11,23 +11,25 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-11",
-  "completedAt": null,
+  "completedAt": "2026-07-11",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "b2159713b6517a013a769f65c07d66280440ead5",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": "07-10-staff-brand-flow-audit",
   "relatedFiles": [
-    "cohan-restaurant-backend/graphql/resolvers/staff/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/staff/invitationFlow.js",
     "cohan-restaurant-backend/src/services/auth/staffInvitation.service.js",
     "cohan-restaurant-backend/graphql/resolvers/user/loginWithPendingVerification.mutation.js",
     "cohan-restaurant-backend/tests/resolvers/staff-email-invitation-flow.test.js",
-    "cohan-restaurant-backend/tests/resolvers/staff-login-verification.test.js"
+    "cohan-restaurant-backend/tests/resolvers/login-with-pending-verification.test.js",
+    "cohan-restaurant-backend/tests/services/staff-invitation.service.test.js"
   ],
-  "notes": "Initial passwords are included only in the staff invitation email body. They must never be placed in URLs, logs, audit metadata, or GraphQL responses.",
+  "notes": "Initial passwords are included only in the invitation email body and never in URLs, audit metadata, or GraphQL responses. No GitHub status checks or pull-request workflow runs were available for the direct main commits, so focused Vitest and live SMTP delivery were not executed in this session.",
   "meta": {
     "skills": ["ponytail", "ui-ux-pro-max"]
   }
