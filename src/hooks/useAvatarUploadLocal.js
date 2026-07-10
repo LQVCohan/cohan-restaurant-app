@@ -22,7 +22,7 @@ const toUploadUrl = (pathname) => toBackendRootUrl(pathname);
 const normalizeUploadedUrl = (url) => toApiAssetUrl(url);
 
 const prepareUploadFile = async (file) => {
-  if (!file) throw new Error("No file selected");
+  if (!file) throw new Error("Vui lòng chọn ảnh trước khi tải lên.");
   if (!String(file.type || "").startsWith("image/")) return file;
 
   return compressImageForUpload(file, {
@@ -52,7 +52,7 @@ export function useAvatarUploadLocal() {
 
     if (!signRes.ok) {
       const err = await signRes.json().catch(() => ({}));
-      throw new Error(err?.message || "Cannot create signed upload URL");
+      throw new Error(err?.message || "Không thể chuẩn bị tải ảnh lên.");
     }
 
     const signData = await signRes.json();
@@ -74,10 +74,10 @@ export function useAvatarUploadLocal() {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve();
         } else {
-          reject(new Error(`Direct upload failed (status ${xhr.status})`));
+          reject(new Error("Không thể tải ảnh lên. Vui lòng thử lại."));
         }
       };
-      xhr.onerror = () => reject(new Error("Network error while uploading"));
+      xhr.onerror = () => reject(new Error("Kết nối bị gián đoạn khi tải ảnh lên."));
       xhr.send(file);
     });
 
@@ -93,7 +93,7 @@ export function useAvatarUploadLocal() {
     const completeData = await completeRes.json().catch(() => ({}));
 
     if (!completeRes.ok || !completeData?.ok || !completeData?.url) {
-      throw new Error(completeData?.message || "Upload completion failed");
+      throw new Error(completeData?.message || "Ảnh đã tải lên nhưng chưa lưu được. Vui lòng thử lại.");
     }
 
     return normalizeUploadedUrl(completeData.url);
@@ -127,7 +127,7 @@ export function useAvatarUploadLocal() {
           res = JSON.parse(xhr.responseText);
         } catch {
           return reject(
-            new Error(`Invalid server response (status ${status})`),
+            new Error("Hệ thống trả về phản hồi chưa hợp lệ. Vui lòng thử lại."),
           );
         }
 
@@ -136,13 +136,13 @@ export function useAvatarUploadLocal() {
         } else {
           reject(
             new Error(
-              res?.error || res?.message || `Upload failed (status ${status})`,
+              res?.error || res?.message || "Không thể tải ảnh lên. Vui lòng thử lại.",
             ),
           );
         }
       };
 
-      xhr.onerror = () => reject(new Error("Network error"));
+      xhr.onerror = () => reject(new Error("Kết nối bị gián đoạn khi tải ảnh lên."));
       xhr.send(form);
     });
   };
@@ -155,7 +155,7 @@ export function useAvatarUploadLocal() {
     }
 
     try {
-      return await uploadViaSignedUrl(uploadFile, onProgress);
+      return await uploadViaSignedUrl(uploadFile);
     } catch (error) {
       console.warn(
         "Signed avatar upload failed; falling back to local upload.",
