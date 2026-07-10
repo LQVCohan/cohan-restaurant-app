@@ -16,7 +16,7 @@
   "base_branch": "main",
   "worktree_path": null,
   "commit": null,
-  "pr_url": null,
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1327",
   "subtasks": [],
   "children": [],
   "parent": null,
@@ -26,7 +26,8 @@
     "cohan-restaurant-backend/tests/resolvers/payment-transfer-queue.test.js",
     "src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.jsx",
     "src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.test.jsx",
-    "src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPagePolish.scss"
+    "src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPagePolish.scss",
+    "src/hooks/useDashboard.test.jsx"
   ],
-  "notes": "Reuse the canonical manager scope hook directly. Preserve payment.read/payment.write authorization, settlement transactions, audit logging, realtime events, and customer proof retry behavior."
+  "notes": "Reuse the canonical manager scope hook directly. Preserve payment.read/payment.write authorization, settlement transactions, audit logging, realtime events, and customer proof retry behavior. The dashboard test assertion now reflects that a restored restaurant from an old account is hidden until the current scope is confirmed."
 }
