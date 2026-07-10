@@ -1,0 +1,30 @@
+input ScheduleMenuPriceRestoreTargetInput {
+  menuItemIds: [ID!]!
+}
+
+input ScheduleMenuPriceRestoreInput {
+  restaurantId: ID!
+  target: ScheduleMenuPriceRestoreTargetInput!
+  mode: PriceUpdateMode!
+  value: Float!
+  roundTo: Int = 0
+  floorZero: Boolean = true
+  eventName: String
+  restoreAt: DateTime!
+}
+
+type MenuPriceEvent {
+  id: ID!
+  restaurantId: ID!
+  eventName: String!
+  restoreAt: DateTime!
+  status: String!
+  itemCount: Int!
+  createdAt: DateTime
+}
+
+extend type Mutation {
+  scheduleMenuPriceRestore(
+    input: ScheduleMenuPriceRestoreInput!
+  ): MenuPriceEvent!
+}
