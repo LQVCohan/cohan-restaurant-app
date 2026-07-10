@@ -1,0 +1,25 @@
+{
+  "id": "07-10-table-type-space-modal",
+  "title": "Gộp loại bàn và không gian vào modal quản lý bàn",
+  "status": "in_progress",
+  "type": "frontend-feature",
+  "scope": [
+    "src/components/Dashboard_Manager/Table/TableTypeManagementPage.jsx",
+    "src/components/Dashboard_Manager/Table/TableTypeManagementPage.scss",
+    "src/components/Dashboard_Manager/Table/TableTypeManagementPage.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Dashboard_Manager/Table/TableTypeManagementPage.test.jsx",
+      "npm run check:conflicts",
+      "npm run check:graphql",
+      "npm run build"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, frontend-design and responsive redesign skills",
+      "traced Table.type and Floor CRUD from Mongoose/schema through resolvers, Apollo hooks and manager UI",
+      "confirmed table types remain the six shared enum values while table records and floor spaces already have server CRUD"
+    ],
+    "notRun": []
+  }
+}
