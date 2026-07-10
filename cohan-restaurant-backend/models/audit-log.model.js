@@ -37,6 +37,47 @@ AuditLogSchema.index({
   createdAt: -1,
 });
 
+const comparable = (value) => JSON.stringify(value ?? null);
+
+export function isMeaningfulAuditPayload(payload = {}) {
+  if (String(payload?.action || "").toLowerCase() !== "update") return true;
+
+  const diff = payload?.diff || {
+    before: payload?.before,
+    after: payload?.after,
+  };
+  if (!diff || typeof diff !== "object" || Array.isArray(diff)) return false;
+
+  if (Object.prototype.hasOwnProperty.call(diff, "field")) {
+    return comparable(diff.before) !== comparable(diff.after);
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(diff, "before") ||
+    Object.prototype.hasOwnProperty.call(diff, "after")
+  ) {
+    const before = diff.before;
+    const after = diff.after;
+    if (
+      !before ||
+      !after ||
+      typeof before !== "object" ||
+      typeof after !== "object" ||
+      Array.isArray(before) ||
+      Array.isArray(after)
+    ) {
+      return comparable(before) !== comparable(after);
+    }
+
+    const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+    return [...keys].some(
+      (key) => comparable(before[key]) !== comparable(after[key]),
+    );
+  }
+
+  return Object.keys(diff).some((key) => key !== "type");
+}
+
 AuditLogSchema.pre("validate", function fillCompatFields(next) {
   if (!this.entity && this.targetType) this.entity = this.targetType;
   if (!this.entityId && this.targetId) this.entityId = this.targetId;
@@ -50,4 +91,18 @@ AuditLogSchema.pre("validate", function fillCompatFields(next) {
   next();
 });
 
-export default mongoose.models.AuditLog || mongoose.model("AuditLog", AuditLogSchema);
+const AuditLog =
+  mongoose.models.AuditLog || mongoose.model("AuditLog", AuditLogSchema);
+const originalCreate = AuditLog.create.bind(AuditLog);
+
+AuditLog.create = function createMeaningfulAuditLogs(docs, ...args) {
+  const isBatch = Array.isArray(docs);
+  const meaningfulDocs = (isBatch ? docs : [docs]).filter(
+    isMeaningfulAuditPayload,
+  );
+
+  if (!meaningfulDocs.length) return Promise.resolve(isBatch ? [] : null);
+  return originalCreate(isBatch ? meaningfulDocs : meaningfulDocs[0], ...args);
+};
+
+export default AuditLog;
