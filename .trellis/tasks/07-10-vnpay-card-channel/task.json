@@ -3,7 +3,7 @@
   "name": "07-10-vnpay-card-channel",
   "title": "Allow VNPAY card-channel testing",
   "description": "Allow the shared VNPAY provider to select a configured payment channel such as VNBANK for sandbox card testing without changing the existing GraphQL or REST contracts.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "backend",
   "scope": "vnpay-payment-channel",
   "package": null,
@@ -11,12 +11,12 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "fix/vnpay-card-channel-20260710",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": null,
+  "commit": "0e9250bf59e1a1067b174d67f6a81bdc298a994e",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1340",
   "subtasks": [],
   "children": [],
   "parent": "payment-provider-flow-audit-20260710",
@@ -25,7 +25,7 @@
     "cohan-restaurant-backend/src/services/payment/providers.js",
     "cohan-restaurant-backend/tests/services/payment-providers.security.test.js"
   ],
-  "notes": "Use the existing provider boundary; all VNPAY callers already route through createVnpayPayment. POS card-label cleanup is intentionally separate because it does not affect the online card-channel contract.",
+  "notes": "Shared VNPAY provider now includes configured VNPAY_BANK_CODE in the signed URL and leaves it absent by default. GitHub CI passed backend lint/tests/build and frontend conflict, lint, unit, changed-component, build, and smoke checks. No live VNPAY transaction was executed.",
   "meta": {
     "skills": ["ponytail"]
   }
