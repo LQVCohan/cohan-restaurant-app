@@ -127,11 +127,20 @@ const mockStaffForUpdate = (staff = {}) => {
     dateJoined: new Date("2026-01-01T00:00:00.000Z"),
     dateLeft: null,
     baseSalary: 5_000_000,
-    emergencyContact: {
-      name: "Nguyễn Thị B",
-      phone: "0912345678",
-      relation: "Mẹ",
-    },
+    emergencyContacts: [
+      {
+        name: "Nguyễn Thị B",
+        phone: "0912345678",
+        relation: "Mẹ",
+        isPrimary: true,
+      },
+      {
+        name: "Nguyễn Văn C",
+        phone: "0988888888",
+        relation: "Anh",
+        isPrimary: false,
+      },
+    ],
     ...staff,
   };
   mocks.Staff.findById.mockReturnValue({
@@ -147,6 +156,11 @@ const createArgs = {
     fullName: "Nhân viên mới",
     department: "service",
     roleId: "role-server",
+    emergencyContact: {
+      name: "Nguyễn Thị B",
+      phone: "0912345678",
+      relation: "Mẹ",
+    },
     staffBusinessContext: {
       brandId: "brand-active",
       restaurantId: "restaurant-active",
@@ -204,6 +218,14 @@ describe("staff active business context", () => {
         input: {
           fullName: "Nhân viên mới",
           department: "service",
+          emergencyContacts: [
+            {
+              name: "Nguyễn Thị B",
+              phone: "0912345678",
+              relation: "Mẹ",
+              isPrimary: true,
+            },
+          ],
           businessRestaurantId: "restaurant-active",
         },
       },
@@ -307,11 +329,20 @@ describe("staff active business context", () => {
         userId: "staff-1",
         input: {
           fullName: "Nhân viên cập nhật",
-          emergencyContact: {
-            name: "Nguyễn Thị B",
-            phone: "0999999999",
-            relation: "Mẹ",
-          },
+          emergencyContacts: [
+            {
+              name: "Nguyễn Thị B",
+              phone: "0999999999",
+              relation: "Mẹ",
+              isPrimary: true,
+            },
+            {
+              name: "Nguyễn Văn C",
+              phone: "0988888888",
+              relation: "Anh",
+              isPrimary: false,
+            },
+          ],
         },
         restaurantId: "restaurant-active",
       },
