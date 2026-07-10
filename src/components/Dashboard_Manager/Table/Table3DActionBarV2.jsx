@@ -1,11 +1,8 @@
 import React from "react";
-import { Camera, Loader2, ScanLine } from "lucide-react";
+import { Loader2, ScanLine } from "lucide-react";
 import Button from "@/components/common/Button";
 
 export default function Table3DActionBarV2({
-  selectedModel,
-  canPreviewCamera,
-  onOpenCamera,
   canLaunchNativeAr,
   isOpeningAr,
   arUnavailableReason,
@@ -14,28 +11,13 @@ export default function Table3DActionBarV2({
   return (
     <div className="table-3d-modal__footer table-3d-modal__footer--clear-actions">
       <Button
-        variant="secondary"
-        onClick={onOpenCamera}
-        disabled={!selectedModel || !canPreviewCamera}
-        title={
-          !selectedModel
-            ? "Hãy chọn một mẫu bàn trước"
-            : !canPreviewCamera
-              ? "Thiết bị hoặc trình duyệt chưa cho phép sử dụng camera"
-              : "Mở camera để ước lượng nhanh vị trí và kích thước hiển thị"
-        }
-      >
-        <Camera size={16} aria-hidden="true" /> Xem camera 2D
-      </Button>
-
-      <Button
         type="button"
         variant="primary"
         onClick={onOpenNativeAr}
         disabled={!canLaunchNativeAr || isOpeningAr}
         title={
           canLaunchNativeAr
-            ? "Mở camera AR của thiết bị để đặt thử mẫu bàn trong không gian thật"
+            ? "Mở camera AR, quét mặt sàn và đặt thử mẫu bàn trong không gian thật"
             : arUnavailableReason
         }
       >
@@ -44,7 +26,7 @@ export default function Table3DActionBarV2({
         ) : (
           <ScanLine size={15} aria-hidden="true" />
         )}
-        {isOpeningAr ? "Đang mở camera AR..." : "Mở camera AR"}
+        {isOpeningAr ? "Đang mở camera AR…" : "Mở camera AR"}
       </Button>
     </div>
   );
