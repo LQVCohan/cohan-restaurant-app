@@ -77,6 +77,17 @@ type BulkPriceUpdateResult {
   items: [MenuItem!]!
 }
 
+input RestoreMenuItemPricesInput {
+  restaurantId: ID!
+  menuItemIds: [ID!]!
+}
+
+type RestoreMenuItemPricesResult {
+  restoredCount: Int!
+  skippedCount: Int!
+  items: [MenuItem!]!
+}
+
 type Menu {
   id: ID!
   restaurantId: ID!
@@ -394,6 +405,7 @@ extend type Query {
 
 extend type Mutation {
   bulkUpdateMenuItemPrices(input: BulkPriceUpdateInput!): BulkPriceUpdateResult!
+  restoreMenuItemPrices(input: RestoreMenuItemPricesInput!): RestoreMenuItemPricesResult!
 
   ensureMenu(input: EnsureMenuInput!): Menu!
   copyMenu(input: CopyMenuInput!): Menu!
