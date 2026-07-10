@@ -1,38 +1,28 @@
 {
   "id": "07-10-table-type-space-modal",
   "title": "Gộp loại bàn và không gian vào modal quản lý bàn",
-  "status": "implemented_unverified",
+  "status": "in_progress",
   "type": "frontend-feature",
   "scope": [
+    "src/components/Dashboard_Manager/Sidebar.jsx",
     "src/layouts/ManagerLayout.jsx",
-    "src/components/Dashboard_Manager/Table/TableTypeManagementPage.jsx",
-    "src/components/Dashboard_Manager/Table/TableTypeManagementPage.scss",
-    "src/components/Dashboard_Manager/Table/TableTypeManagementPage.test.jsx",
-    "src/components/Dashboard_Manager/Sidebar.jsx"
+    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
+    "src/components/Dashboard_Manager/Table/TableManagement.test.jsx"
   ],
-  "rootCause": "table-types was persisted as a manager page in the URL hash and localStorage while its modal was permanently open. Restoring that page therefore opened the modal automatically. Its stylesheet also used a separate warm beige palette and inherited the shared blue primary button instead of the manager sage tokens.",
+  "rootCause": "The table settings modal is contextual to TableManagement but its trigger is still exposed as a standalone global navigation/search choice. The smallest correct fix is to remove that choice and pass the existing controlled-modal opener directly into the table page header.",
   "validation": {
     "planned": [
-      "npx vitest run src/components/Dashboard_Manager/Table/TableTypeManagementPage.test.jsx",
+      "npx vitest run src/components/Dashboard_Manager/Table/TableManagement.test.jsx",
       "npm run check:conflicts",
       "npm run build"
     ],
     "completed": [
       "read AGENTS.md and Trellis workflow",
-      "read ponytail, frontend-design, ui-ux-pro-max, taste-ui-redesign and redesign-existing-projects skills",
-      "traced Table.type and Floor CRUD from schema/resolvers through Apollo hooks and modal actions",
-      "removed table-types from persistent manager page state and render routing",
-      "converted the sidebar/search destination into an explicit action that opens a controlled modal while the current page remains tables",
-      "normalized stale #table-types hashes and localStorage values to tables without opening the modal",
-      "converted TableTypeManagementPage into a controlled modal and skipped scoped queries while closed",
-      "reused the shared --manager-* sage palette and semantic state tokens, replaced modal emoji controls with installed Lucide icons, and retained responsive/reduced-motion states",
-      "updated focused component tests for closed-by-default behavior, restaurant scoping, close callback and existing CRUD actions"
+      "read ponytail and ui-ux-pro-max skills",
+      "traced the current Sidebar and manager search action through ManagerLayout showTableSettings state to TableTypeManagementPage",
+      "confirmed no other runtime caller references table-types",
+      "confirmed ManagementPageHeader secondaryActions accepts React icons and existing callbacks"
     ],
-    "notRun": [
-      "targeted Vitest was not executable in the GitHub connector environment",
-      "npm run check:conflicts was not executable in the GitHub connector environment",
-      "npm run build was not executable in the GitHub connector environment",
-      "desktop and mobile browser screenshots were not executable in the GitHub connector environment"
-    ]
+    "notRun": []
   }
 }
