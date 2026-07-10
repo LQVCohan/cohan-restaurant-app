@@ -25,14 +25,16 @@
       "focused AvailabilitySnapshotModal Vitest: 15 tests",
       "npm run check:conflicts",
       "npm run check:graphql:schema",
-      "npm run build"
+      "npm run build",
+      "standard CI backend lint, tests, Menu RBAC, and build"
     ],
     "knownBaseline": [
-      "npm run check:graphql:operations reaches an existing JS parse error in src/components/Dashboard_Manager/Combo/ComboManagement.test.jsx:18"
+      "npm run check:graphql:operations reaches an existing JS parse error in src/components/Dashboard_Manager/Combo/ComboManagement.test.jsx:18",
+      "standard frontend unit run: 346/347 tests passed; existing useDashboard.test.jsx:69 assertion failed and AuthProvider.logout-route-order.test.jsx reported two async timer leaks"
     ],
     "notRun": [
       "authenticated browser visual verification on the user's live local database",
-      "full frontend unit/component/smoke suites"
+      "full component and Playwright smoke suites were skipped by standard CI after the unrelated unit baseline failure"
     ]
   },
   "meta": {
