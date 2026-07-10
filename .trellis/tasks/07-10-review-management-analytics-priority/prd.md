@@ -1,42 +1,43 @@
-# PRD — Ưu tiên phân tích và harden luồng review
+# PRD — Đồng bộ màu và tách tab phân tích review
 
 ## Hiện trạng
 
-- Khối phân tích được render trước danh sách trong JSX nhưng CSS đặt `order: 3`, khiến nó xuất hiện sau danh sách review dài.
-- Trang review dùng một theme cam riêng, không đồng bộ sage/warm-neutral của các trang manager.
-- Hàng đợi báo cáo chỉ lấy review có `status = reported`, bỏ sót review vẫn công khai nhưng đang có report chờ xử lý.
-- UI quản trị hiển thị thao tác xóa review công khai trong khi backend chỉ cho phép hậu kiểm bằng trạng thái ẩn/từ chối có lý do.
-- Sau khi phản hồi chính thức, chỉ comment trong modal được refetch; KPI, danh sách và analytics bên ngoài vẫn cũ.
-- Phía khách chưa đồng bộ validation với backend, có nút bình luận không có hành động, và một số mutation không cập nhật/hiển thị phản hồi đầy đủ.
+- Trang review vẫn tự khai báo nền kem, viền nâu và accent cam/xanh cũ thay vì dùng trực tiếp token sage của manager shell.
+- `ManagementPageHeader`, `ManagerCommandBar`, sidebar, danh sách review và modal bị các style cục bộ ghi đè bằng nhiều hệ màu khác nhau.
+- Khối phân tích nằm chung với danh sách review, làm trang vận hành quá dài và trộn hai công việc: xử lý review với đọc insight.
+- Hàng đợi báo cáo đã lấy đúng cả review `reported` và review còn `published` nhưng có report chờ xử lý.
+- Luồng review phía khách, validation và refresh dữ liệu đã được harden ở lần triển khai trước.
 
 ## Luồng thật
 
-`review.graphql → Review model → review query/mutation + reviewInsight/reviewHardening service → Apollo operations → ReviewManagement/ReviewModal/ReviewsList → RestaurantDetail/ReviewsSection/PostOrderReviewPrompt → thao tác tạo, phản hồi, report, reaction và helpful`.
+`review.graphql → Review model → review query/mutation + reviewInsight service → Apollo operations → ReviewManagement state/currentTab → ManagerCommandBar → analytics view hoặc review filters/list → ReviewModal`.
+
+Thay đổi lần này chỉ nằm ở frontend presentation/state. Không đổi schema, resolver, permission, restaurant scoping hoặc payload analytics.
 
 ## Hướng xử lý
 
-1. Đưa phân tích lên trước danh sách bằng đúng DOM/flex ordering hiện có; giữ insight và hàng đợi ưu tiên nhìn thấy ngay.
-2. Đồng bộ màu, surface, border, focus, responsive và motion theo template manager sage/warm-neutral; không thêm dependency.
-3. Khi người quản lý lọc báo cáo, trả cả review `reported` và review còn `published` nhưng có `reportsCount > 0`; public vẫn chỉ nhận contract công khai hiện tại.
-4. Gỡ nút xóa sai nghiệp vụ khỏi danh sách quản trị; giữ luồng ẩn/từ chối qua moderation.
-5. Sau official reply, refetch các operation liên quan để KPI, list và analytics cập nhật ngay.
-6. Đồng bộ validation khách với backend, làm mới dữ liệu sau create/report, thay nút bình luận chết bằng chỉ số không tương tác, và hiển thị lỗi ở prompt sau đơn.
-7. Với 0 review, trả insight trạng thái chưa có dữ liệu bằng tiếng Việt thay vì câu heuristic pha tiếng Anh.
+1. Thêm tab `Phân tích` vào command bar khi người dùng có quyền `review.analytics.read`.
+2. Chỉ query và render analytics/report center khi tab `Phân tích` đang mở; tab review chỉ hiển thị bộ lọc và danh sách.
+3. Khi bấm một hàng đợi trong tab phân tích, chuyển về tab review tương ứng và giữ bộ lọc hành động.
+4. Ở tab phân tích, dùng bộ chọn phạm vi nhà hàng gọn thay cho toàn bộ sidebar vận hành.
+5. Bỏ canvas màu riêng của review và ánh xạ toàn bộ surface, border, text, focus, shadow sang `--manager-*`.
+6. Xóa màu cam/xanh hard-code còn lại trong sidebar, review card và modal; chỉ giữ vàng/đỏ/xanh cho trạng thái có ý nghĩa.
+7. Không thêm dependency hoặc abstraction mới.
 
 ## Tiêu chí nghiệm thu
 
-- Khối “Tổng quan đánh giá” xuất hiện trước tiêu đề và danh sách review, không phụ thuộc độ dài danh sách.
-- Giao diện thống nhất template manager ở desktop/tablet/mobile, có focus rõ và không dùng `transition: all`.
-- Hàng đợi report không bỏ sót review công khai đang có report chờ xử lý.
-- Không còn nút xóa review công khai gây lỗi backend.
-- Gửi phản hồi chính thức cập nhật ngay số review cần phản hồi và nội dung list.
-- Khách không thể gửi nội dung dưới 10 ký tự; create/report cập nhật lại dữ liệu; không còn nút bình luận giả.
-- Prompt review sau đơn hiển thị lỗi thay vì thất bại im lặng.
-- Public visibility, restaurant scoping, quyền moderation/report/reply và notification không bị nới lỏng.
+- Mặc định trang mở ở tab `Tất cả`; không render khối `Tổng quan đánh giá` trong view danh sách.
+- Tab `Phân tích` hiển thị insight, hàng đợi, report center và các bảng tổng hợp trên một vùng nội dung toàn chiều rộng.
+- Search và các bộ lọc review không xuất hiện trong tab phân tích; phạm vi nhà hàng vẫn chọn được.
+- Bấm `Báo cáo cần xử lý`, `Đánh giá cần phản hồi` hoặc hàng đợi khác chuyển về danh sách đúng bộ lọc.
+- Người không có `review.analytics.read` không thấy tab phân tích và không gọi analytics query.
+- Toàn bộ trang dùng cùng palette `--manager-bg-*`, `--manager-surface*`, `--manager-border*`, `--manager-text`, `--manager-muted`, `--manager-primary` và `--manager-accent`.
+- Semantic warning/danger/success vẫn có nhãn chữ, không chỉ dựa vào màu.
+- Responsive, focus, loading/error/empty state và quyền hiện tại không bị mất.
 
 ## Validation
 
-- Targeted Vitest cho resolver/service review.
-- Targeted Vitest cho ReviewModal, ReviewsSection và PostOrderReviewPrompt.
+- Targeted Vitest cho `ReviewManagement` tab và query skip.
+- Targeted test cho queue chuyển từ analytics về danh sách.
 - Build frontend.
 - Browser smoke 375, 768, 1024 và 1440 px.
