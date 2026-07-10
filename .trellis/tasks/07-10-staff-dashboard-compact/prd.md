@@ -17,9 +17,8 @@ No schema, resolver, Apollo query or mutation is involved in this screen. The re
 ## Files
 
 - `src/components/Staff/StaffDashboardPage.jsx`: remove duplicated identity/static previews and rebuild the information hierarchy.
-- `src/components/Staff/StaffDashboardPage.scss`: compact responsive layout using existing tokens.
+- `src/components/Staff/StaffDashboardPage.scss`: compact responsive layout using existing tokens and scope the shorter phone shell only while this dashboard is mounted.
 - `src/components/Staff/StaffDashboardPage.test.jsx`: assert the new hierarchy and retained links.
-- `src/layouts/StaffLayout.scss`: reduce mobile shell height without changing navigation behavior.
 
 ## Acceptance criteria
 
@@ -36,4 +35,4 @@ No schema, resolver, Apollo query or mutation is involved in this screen. The re
 
 - Loading real shift status or notification counts.
 - Changing role/permission rules.
-- Redesigning staff subpages other than the shared mobile shell spacing.
+- Redesigning other staff subpages.
