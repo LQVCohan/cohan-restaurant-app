@@ -118,6 +118,123 @@
   box-shadow: 0 5px 14px rgba(42, 61, 50, 0.06);
 }
 
+.accessCard {
+  border-color: #ddc996;
+  background: #fffaf0;
+}
+
+.accessHeader {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+
+  > div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  span {
+    color: #776849;
+    font-size: 0.68rem;
+  }
+
+  strong {
+    color: #5e461e;
+    font-size: 0.92rem;
+  }
+
+  em {
+    border-radius: 999px;
+    padding: 5px 8px;
+    color: #7a5018;
+    background: #f4e4bd;
+    font-size: 0.78rem;
+    font-style: normal;
+    font-weight: 850;
+    letter-spacing: 0.08em;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.accessIcon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: #8b631e;
+  background: #f3e6c7;
+}
+
+.securityNote {
+  margin: 0;
+  border-left: 3px solid #ca9136;
+  border-radius: 0 8px 8px 0;
+  padding: 8px 9px;
+  color: #69583a;
+  background: rgba(246, 232, 200, 0.62);
+  font-size: 0.72rem;
+  line-height: 1.48;
+}
+
+.accessMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 5px 10px;
+  color: #81765f;
+  font-size: 0.67rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.revealCode {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  border: 1px solid #966922;
+  border-radius: 10px;
+  padding: 0 11px;
+  color: #fff;
+  background: #966922;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 3px solid rgba(150, 105, 34, 0.26);
+    outline-offset: 2px;
+  }
+}
+
+.confirmationCode {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  border: 1px dashed #b27b23;
+  border-radius: 11px;
+  padding: 10px;
+  background: #fff4d9;
+
+  span,
+  small {
+    color: #786746;
+    font-size: 0.68rem;
+    text-align: center;
+  }
+
+  strong {
+    color: #784b0c;
+    font-size: 1.52rem;
+    letter-spacing: 0.16em;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
 .cardHeader {
   display: flex;
   align-items: flex-start;
