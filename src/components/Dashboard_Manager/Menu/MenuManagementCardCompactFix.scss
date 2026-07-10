@@ -208,16 +208,11 @@
 
 .mm-page-container .mm-grid--grid .variants-list,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .variants-list {
+  display: block !important;
   margin-top: 0 !important;
   padding: 8px !important;
   overflow: hidden !important;
   border-radius: 11px !important;
-}
-
-/* Price is already visible above; one/default variant does not need a second table. */
-.mm-page-container .mm-grid--grid .variants-list:has(.list-content > .variant-row:only-child),
-.mm-page-container .mm-grid--grid.mm-grid--sparse .variants-list:has(.list-content > .variant-row:only-child) {
-  display: none !important;
 }
 
 .mm-page-container .mm-grid--grid .variants-list .list-header,
@@ -229,7 +224,7 @@
 
 .mm-page-container .mm-grid--grid .variants-list .list-content,
 .mm-page-container .mm-grid--grid.mm-grid--sparse .variants-list .list-content {
-  max-height: 54px !important;
+  max-height: 72px !important;
   overflow: hidden !important;
 }
 
@@ -239,6 +234,28 @@
   gap: 5px !important;
   margin-bottom: 5px !important;
   font-size: 0.75rem !important;
+}
+
+.mm-page-container .mm-grid--grid .variants-list .variant-row:nth-of-type(n + 3),
+.mm-page-container .mm-grid--grid.mm-grid--sparse .variants-list .variant-row:nth-of-type(n + 3) {
+  display: none !important;
+}
+
+.mm-page-container .mm-grid--grid .variants-list .list-content:has(> .variant-row:nth-of-type(3))::after,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .variants-list .list-content:has(> .variant-row:nth-of-type(3))::after {
+  content: "…";
+  display: block;
+  margin-top: 2px;
+  color: #756a5d;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+
+.mm-page-container .mm-grid--grid .variants-list .list-content:has(> .variant-row:nth-of-type(3)) > .variant-more,
+.mm-page-container .mm-grid--grid.mm-grid--sparse .variants-list .list-content:has(> .variant-row:nth-of-type(3)) > .variant-more {
+  display: none !important;
 }
 
 .mm-page-container .mm-grid--grid .variants-list .v-name,
