@@ -17,6 +17,67 @@ const enforceGeminiProviderPolicy = () => {
 const normalizePathname = (pathname = "") =>
   String(pathname || "").split(/[?#]/)[0].replace(/\/+$/, "") || "/";
 
+const normalizeText = (value = "") =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d")
+    .toLowerCase();
+
+const ROLE_MANAGER_LIKE = new Set(["admin", "manager", "hr", "accountant"]);
+const ROLE_STAFF_SHARED = new Set([
+  "admin",
+  "manager",
+  "hr",
+  "staff",
+  "server",
+  "supervisor",
+  "host",
+  "cashier",
+  "chef",
+  "cook",
+  "kitchen_helper",
+  "cleaner",
+  "shipper",
+  "storekeeper",
+  "bartender",
+]);
+const ROLE_STAFF_ORDER = new Set([
+  "admin",
+  "manager",
+  "server",
+  "host",
+  "cashier",
+  "supervisor",
+]);
+const ROLE_STAFF_KITCHEN = new Set([
+  "admin",
+  "manager",
+  "chef",
+  "cook",
+  "kitchen_helper",
+  "bartender",
+]);
+const ROLE_CUSTOMER_NAV = new Set(["customer", "admin", "manager"]);
+const ROLE_CUSTOMER_ONLY = new Set(["customer"]);
+
+const getAuthenticatedRole = (user) => {
+  if (!user || typeof user !== "object") return "guest";
+  const role =
+    user.roleName ||
+    user.roleSlug ||
+    user.userType ||
+    (typeof user.role === "string"
+      ? user.role
+      : user.role?.slug ||
+        user.role?.name ||
+        user.role?.parentRole?.slug ||
+        user.role?.parentRole?.name) ||
+    "guest";
+  return String(role).trim().toLowerCase() || "guest";
+};
+
 const CUSTOMER_PAGE_RULES = [
   { key: "home", label: "Trang chủ", match: (path) => path === "/", description: "Khám phá nhà hàng, ưu đãi và các lối tắt chính." },
   { key: "contact", label: "Trung tâm hỗ trợ", match: (path) => path === "/contact", description: "Gửi yêu cầu hỗ trợ hoặc liên hệ nhân viên." },
@@ -46,6 +107,56 @@ const CUSTOMER_PAGE_RULES = [
   { key: "profile", label: "Hồ sơ của tôi", match: (path) => path === "/profile", description: "Xem và cập nhật thông tin tài khoản được phép chỉnh sửa." },
 ];
 
+const STAFF_PAGE_RULES = [
+  { key: "staff-dashboard", label: "Tổng quan nhân viên", match: (path) => path === "/staff" || path === "/staff/dashboard", description: "Xem công việc, ca làm và thông tin vận hành dành cho nhân viên." },
+  { key: "staff-orders", label: "Xử lý đơn hàng", match: (path) => path === "/staff/orders", description: "Tiếp nhận và xử lý đơn hàng theo quyền được giao." },
+  { key: "staff-reservation-changes", label: "Yêu cầu đổi đặt bàn", match: (path) => path === "/staff/reservation-changes", description: "Xem và xử lý yêu cầu thay đổi đặt bàn." },
+  { key: "staff-kitchen", label: "Màn hình bếp", match: (path) => path === "/staff/kitchen", description: "Theo dõi và cập nhật tiến độ chế biến." },
+  { key: "staff-performance", label: "Hiệu suất làm việc", match: (path) => path === "/staff/performance", description: "Xem chỉ số và kết quả làm việc cá nhân." },
+  { key: "staff-schedule", label: "Lịch làm việc", match: (path) => path === "/staff/schedule", description: "Xem lịch làm việc và ca trực." },
+  { key: "staff-attendance", label: "Chấm công", match: (path) => path === "/staff/attendance", description: "Xem và thực hiện tác vụ chấm công được cho phép." },
+  { key: "staff-leave", label: "Đơn nghỉ phép", match: (path) => path === "/staff/leave", description: "Tạo và theo dõi đơn xin nghỉ phép." },
+  { key: "staff-profile", label: "Hồ sơ nhân viên", match: (path) => path === "/staff/profile", description: "Xem thông tin hồ sơ nhân viên." },
+  { key: "staff-notifications", label: "Thông báo nhân viên", match: (path) => path === "/staff/notifications", description: "Xem thông báo liên quan đến công việc." },
+  { key: "staff-contacts", label: "Liên lạc nội bộ", match: (path) => path === "/staff/contacts", description: "Trao đổi và liên hệ với đồng nghiệp." },
+  { key: "staff-ai-handoff", label: "Hỗ trợ khách từ chatbot", match: (path) => path === "/staff/ai-handoff", description: "Tiếp nhận các cuộc trò chuyện được chatbot chuyển cho nhân viên." },
+  { key: "staff-payslips", label: "Phiếu lương", match: (path) => path === "/staff/payslips", description: "Xem phiếu lương của tài khoản nhân viên." },
+  { key: "staff-settings", label: "Cài đặt nhân viên", match: (path) => path === "/staff/settings", description: "Điều chỉnh các thiết lập cá nhân được cho phép." },
+];
+
+const APP_PAGE_RULES = [...CUSTOMER_PAGE_RULES, ...STAFF_PAGE_RULES];
+
+const STAFF_NAVIGATION_FEATURES = [
+  { key: "staff-dashboard", label: "Mở tổng quan", href: "/staff/dashboard", roles: ROLE_STAFF_SHARED, aliases: ["tong quan", "dashboard nhan vien", "trang nhan vien"] },
+  { key: "staff-orders", label: "Mở xử lý đơn", href: "/staff/orders", roles: ROLE_STAFF_ORDER, aliases: ["don hang", "xu ly don", "nhan don", "goi mon tai ban"] },
+  { key: "staff-reservation-changes", label: "Mở yêu cầu đổi đặt bàn", href: "/staff/reservation-changes", roles: ROLE_STAFF_ORDER, aliases: ["doi dat ban", "thay doi dat ban", "yeu cau dat ban", "reservation change"] },
+  { key: "staff-kitchen", label: "Mở màn hình bếp", href: "/staff/kitchen", roles: ROLE_STAFF_KITCHEN, aliases: ["bep", "man hinh bep", "che bien", "mon dang nau"] },
+  { key: "staff-performance", label: "Mở hiệu suất", href: "/staff/performance", roles: ROLE_STAFF_SHARED, aliases: ["hieu suat", "kpi", "ket qua lam viec"] },
+  { key: "staff-schedule", label: "Mở lịch làm việc", href: "/staff/schedule", roles: ROLE_STAFF_SHARED, aliases: ["lich lam", "lich lam viec", "ca lam", "ca truc"] },
+  { key: "staff-attendance", label: "Mở chấm công", href: "/staff/attendance", roles: ROLE_STAFF_SHARED, aliases: ["cham cong", "diem danh", "check in", "check out"] },
+  { key: "staff-leave", label: "Mở đơn nghỉ phép", href: "/staff/leave", roles: ROLE_STAFF_SHARED, aliases: ["nghi phep", "xin nghi", "don nghi", "nghi lam"] },
+  { key: "staff-profile", label: "Mở hồ sơ nhân viên", href: "/staff/profile", roles: ROLE_STAFF_SHARED, aliases: ["ho so nhan vien", "thong tin nhan vien", "profile nhan vien"] },
+  { key: "staff-notifications", label: "Mở thông báo", href: "/staff/notifications", roles: ROLE_STAFF_SHARED, aliases: ["thong bao", "tin moi", "canh bao"] },
+  { key: "staff-contacts", label: "Mở liên lạc nội bộ", href: "/staff/contacts", roles: ROLE_STAFF_SHARED, aliases: ["lien lac", "dong nghiep", "noi bo", "danh ba"] },
+  { key: "staff-ai-handoff", label: "Mở hỗ trợ khách", href: "/staff/ai-handoff", roles: ROLE_STAFF_SHARED, aliases: ["ho tro khach", "chatbot chuyen", "ai handoff", "tra loi khach"] },
+  { key: "staff-payslips", label: "Mở phiếu lương", href: "/staff/payslips", roles: ROLE_STAFF_SHARED, aliases: ["phieu luong", "bang luong", "luong cua toi"] },
+  { key: "staff-settings", label: "Mở cài đặt", href: "/staff/settings", roles: ROLE_STAFF_SHARED, aliases: ["cai dat nhan vien", "thiet lap nhan vien", "settings nhan vien"] },
+];
+
+const CUSTOMER_NAVIGATION_FEATURES = [
+  { key: "restaurants", label: "Chọn nhà hàng", href: "/restaurants", roles: null, aliases: ["nha hang", "chon nha hang", "danh sach nha hang"] },
+  { key: "menu", label: "Xem thực đơn", href: "/cus-menu", roles: null, aliases: ["menu", "thuc don", "xem mon", "tim mon"] },
+  { key: "cart", label: "Mở giỏ hàng", href: "", type: "openCart", roles: ROLE_CUSTOMER_NAV, aliases: ["gio hang", "mo gio", "xem gio"] },
+  { key: "orders", label: "Mở đơn hàng", href: "/orders", roles: ROLE_CUSTOMER_NAV, aliases: ["don hang cua toi", "lich su don", "kiem tra don"] },
+  { key: "coupons", label: "Mở kho Coupon", href: "/coupons", roles: ROLE_CUSTOMER_NAV, aliases: ["coupon", "voucher", "ma giam gia", "uu dai"] },
+  { key: "profile", label: "Mở hồ sơ", href: "/profile", roles: ROLE_CUSTOMER_NAV, aliases: ["ho so", "tai khoan", "thong tin cua toi"] },
+  { key: "checkout", label: "Đi tới thanh toán", href: "/checkout", roles: ROLE_CUSTOMER_ONLY, aliases: ["thanh toan", "xac nhan don", "tra tien"] },
+  { key: "wallet", label: "Mở ví", href: "/wallet", roles: ROLE_CUSTOMER_ONLY, aliases: ["vi cua toi", "so du", "lich su vi"] },
+  { key: "combos", label: "Xem combo", href: "/combos", roles: null, aliases: ["combo", "set mon", "goi mon"] },
+  { key: "search", label: "Mở tìm kiếm", href: "/search", roles: null, aliases: ["tim kiem", "tim nhanh", "search"] },
+  { key: "contact", label: "Liên hệ hỗ trợ", href: "/contact", roles: null, aliases: ["lien he", "ho tro", "gap nhan vien"] },
+];
+
 const decodePathPart = (value = "") => {
   try {
     return decodeURIComponent(value);
@@ -56,7 +167,7 @@ const decodePathPart = (value = "") => {
 
 const resolveCustomerPage = (pathname = "") => {
   const path = normalizePathname(pathname);
-  const rule = CUSTOMER_PAGE_RULES.find((item) => item.match(path));
+  const rule = APP_PAGE_RULES.find((item) => item.match(path));
   if (!rule) return null;
   const { match, ...page } = rule;
   return { ...page, pathname: path };
@@ -91,6 +202,32 @@ const removeCurrentPageAction = (response, page) => {
   const label = `Trang hiện tại: ${page.label}`;
   const actions = response.actions.filter(
     (action) => action?.icon !== key && action?.label !== label,
+  );
+  return actions.length === response.actions.length
+    ? response
+    : { ...response, actions };
+};
+
+const canUseActionPathForRole = (href = "", role = "guest") => {
+  if (!String(href || "").startsWith("/")) return true;
+  const path = normalizePathname(href);
+  if (path.startsWith("/admin")) return role === "admin";
+  if (path.startsWith("/manager")) return ROLE_MANAGER_LIKE.has(role);
+  if (path === "/staff/orders" || path === "/staff/reservation-changes") {
+    return ROLE_STAFF_ORDER.has(role);
+  }
+  if (path === "/staff/kitchen") return ROLE_STAFF_KITCHEN.has(role);
+  if (path === "/staff" || path.startsWith("/staff/")) {
+    return ROLE_STAFF_SHARED.has(role);
+  }
+  return true;
+};
+
+const filterRoleAwareActions = (response, user) => {
+  if (!Array.isArray(response?.actions)) return response;
+  const role = getAuthenticatedRole(user);
+  const actions = response.actions.filter((action) =>
+    canUseActionPathForRole(action?.href, role),
   );
   return actions.length === response.actions.length
     ? response
@@ -144,10 +281,73 @@ const isHowToQuestion = (message = "") =>
     String(message || ""),
   );
 
+const isGeneralHelpQuestion = (message = "") => {
+  const value = normalizeText(message);
+  return /(?:ban co the.*(?:giup|lam)|giup duoc gi|giup gi|lam duoc gi|cac chuc nang|huong dan su dung|toi can lam gi|can lam gi o day|bat dau tu dau)/.test(value);
+};
+
 const isReservationHowToQuestion = (message = "") =>
   /(?:làm sao|lam sao|cách|cach|hướng dẫn|huong dan|muốn|muon|ở đâu|o dau).*(?:đặt bàn|dat ban|giữ chỗ|giu cho|đặt chỗ|dat cho)|(?:đặt bàn|dat ban|giữ chỗ|giu cho|đặt chỗ|dat cho).*(?:thế nào|the nao|làm sao|lam sao|ở đâu|o dau)/i.test(
     String(message || ""),
   );
+
+const featureAllowedForRole = (feature, role) =>
+  !feature.roles || feature.roles.has(role);
+
+const featureMatchesMessage = (feature, normalizedMessage) =>
+  feature.aliases.some((alias) => normalizedMessage.includes(alias));
+
+const toNavigationAction = (feature, priority) => ({
+  type: feature.type || "link",
+  label: feature.label,
+  href: feature.href,
+  description: `Đi thẳng tới ${feature.label.toLowerCase()} theo quyền hiện tại.`,
+  icon: feature.key,
+  priority,
+});
+
+const buildRoleNavigationActions = ({ message, user, page }) => {
+  const role = getAuthenticatedRole(user);
+  const normalizedMessage = normalizeText(message);
+  const isStaffPage = String(page?.pathname || "").startsWith("/staff");
+  const useStaffFeatures =
+    isStaffPage || (ROLE_STAFF_SHARED.has(role) && !ROLE_CUSTOMER_NAV.has(role));
+  const features = useStaffFeatures
+    ? STAFF_NAVIGATION_FEATURES
+    : CUSTOMER_NAVIGATION_FEATURES;
+  const allowed = features.filter((feature) => featureAllowedForRole(feature, role));
+  const matched = allowed.filter((feature) =>
+    featureMatchesMessage(feature, normalizedMessage),
+  );
+  const selected = matched.length
+    ? matched
+    : isGeneralHelpQuestion(message)
+      ? allowed
+      : [];
+  return selected
+    .slice(0, 6)
+    .map((feature, index) => toNavigationAction(feature, index + 1));
+};
+
+const mergeRoleNavigationActions = ({ response, options, page }) => {
+  const directActions = buildRoleNavigationActions({
+    message: options?.message,
+    user: options?.user,
+    page,
+  });
+  if (!directActions.length) return response;
+
+  const actions = [];
+  const seen = new Set();
+  for (const action of [...directActions, ...(response?.actions || [])]) {
+    const key = `${action?.type || "link"}:${action?.href || action?.label || ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    actions.push(action);
+    if (actions.length >= 6) break;
+  }
+  return { ...response, actions };
+};
 
 const buildReservationPageGuidance = (pathname = "") => {
   const path = normalizePathname(pathname);
@@ -215,10 +415,20 @@ const applyPageAwareGuidance = ({ response, options, page = null }) => {
 export const handleRestaurantChatbotMessage = async (options = {}) => {
   enforceGeminiProviderPolicy();
   const enriched = enrichPageAwareOptions(options);
-  const response = removeCurrentPageAction(
-    await handleCoreRestaurantChatbotMessage(enriched.options),
+  const coreResponse = await handleCoreRestaurantChatbotMessage(enriched.options);
+  const withoutCurrentPageAction = removeCurrentPageAction(
+    coreResponse,
     enriched.page,
   );
+  const roleFilteredResponse = filterRoleAwareActions(
+    withoutCurrentPageAction,
+    enriched.options.user,
+  );
+  const response = mergeRoleNavigationActions({
+    response: roleFilteredResponse,
+    options: enriched.options,
+    page: enriched.page,
+  });
   return applyPageAwareGuidance({
     response,
     options: enriched.options,
@@ -229,15 +439,26 @@ export const handleRestaurantChatbotMessage = async (options = {}) => {
 export const __testables = {
   ...coreTestables,
   CUSTOMER_PAGE_RULES,
+  STAFF_PAGE_RULES,
+  APP_PAGE_RULES,
+  STAFF_NAVIGATION_FEATURES,
+  CUSTOMER_NAVIGATION_FEATURES,
   normalizePathname,
+  normalizeText,
+  getAuthenticatedRole,
   resolveCustomerPage,
   extractRestaurantIdFromCustomerPath,
   extractMenuItemIdFromCustomerPath,
   buildCurrentPageFeature,
   removeCurrentPageAction,
+  canUseActionPathForRole,
+  filterRoleAwareActions,
   enrichPageAwareOptions,
   isHowToQuestion,
+  isGeneralHelpQuestion,
   isReservationHowToQuestion,
+  buildRoleNavigationActions,
+  mergeRoleNavigationActions,
   buildReservationPageGuidance,
   applyPageAwareGuidance,
   callAiProvider: async (options = {}) => {
