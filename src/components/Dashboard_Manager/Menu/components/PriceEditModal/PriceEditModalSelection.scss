@@ -1,0 +1,80 @@
+.pem-selection-note {
+  margin-top: 10px;
+  color: #667085;
+  font-size: 0.82rem;
+  line-height: 1.45;
+
+  strong {
+    color: #17554d;
+  }
+}
+
+.pem-check-cell {
+  width: 46px;
+  min-width: 46px;
+  text-align: center !important;
+
+  input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: #1f6a60;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 3px solid rgba(31, 106, 96, 0.2);
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+    }
+  }
+}
+
+.pem-item-name {
+  font-weight: 700;
+}
+
+.pem-current-price {
+  color: #667085 !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.pem-search-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 8px;
+  background: #e2e8f0;
+}
+
+.pem-filter-select {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #667085;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.pem-error {
+  margin-bottom: 12px !important;
+  color: #b42318 !important;
+}
+
+.pem-error-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pem-error-list {
+  margin-top: 8px;
+  text-align: left;
+}
+
+@media (max-width: 640px) {
+  .pem-selection-note {
+    margin-top: 12px;
+  }
+}
