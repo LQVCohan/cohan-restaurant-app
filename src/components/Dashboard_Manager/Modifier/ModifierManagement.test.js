@@ -3,12 +3,19 @@ import {
   blankForm,
   buildModifierInput,
   getModifierFormValidationError,
+  getModifierSubmitErrorMessage,
   normalizeModifierOptions,
   toForm,
 } from "./ModifierManagement.jsx";
 
+const namedOption = (name, patch = {}) => ({
+  ...blankForm().options[0],
+  name,
+  ...patch,
+});
+
 describe("ModifierManagement helpers", () => {
-  it("builds a GLOBAL single-select modifier payload and clears item ids", () => {
+  it("builds a GLOBAL single-select payload and clears item ids", () => {
     const form = {
       ...blankForm("restaurant-1"),
       name: " Size ",
@@ -18,13 +25,10 @@ describe("ModifierManagement helpers", () => {
       selectionType: "single",
       required: true,
       options: [
-        {
-          name: " Size L ",
+        namedOption(" Size L ", {
           isDefault: true,
-          isActive: true,
           priceRule: { rule: "DELTA", amount: "15000" },
-          inventoryRule: { rule: "NONE", ingredientLines: [] },
-        },
+        }),
       ],
     };
 
@@ -38,6 +42,7 @@ describe("ModifierManagement helpers", () => {
       required: true,
       minSelected: 1,
       maxSelected: 1,
+      note: null,
       options: [
         {
           name: "Size L",
@@ -50,7 +55,7 @@ describe("ModifierManagement helpers", () => {
     });
   });
 
-  it("keeps item coverage ids and omits unlimited maxSelected", () => {
+  it("keeps item coverage ids and sends null to clear an unlimited maximum", () => {
     const form = {
       ...blankForm("restaurant-1"),
       name: "Topping",
@@ -59,69 +64,183 @@ describe("ModifierManagement helpers", () => {
       selectionType: "multiple",
       minSelected: "1",
       maxSelected: "",
-      options: [{ ...blankForm().options[0], name: "Thêm bò" }],
+      note: "   ",
+      options: [namedOption("Thêm bò")],
     };
 
     const input = buildModifierInput(form, "restaurant-1");
 
     expect(input.menuItemIds).toEqual(["item-1", "item-2"]);
     expect(input.minSelected).toBe(1);
-    expect(input).not.toHaveProperty("maxSelected");
+    expect(input.maxSelected).toBeNull();
+    expect(input.note).toBeNull();
   });
 
-  it("normalizes required multiple selection and keeps only one default", () => {
-    const options = normalizeModifierOptions([
-      { ...blankForm().options[0], name: "Ít cay", isDefault: true },
-      { ...blankForm().options[0], name: "Cay vừa", isDefault: true },
-    ], { selectionType: "multiple", required: true });
+  it("normalizes required selections and keeps only one default", () => {
+    const options = normalizeModifierOptions(
+      [
+        namedOption("Ít cay", { isDefault: true }),
+        namedOption("Cay vừa", { isDefault: true }),
+      ],
+      { selectionType: "multiple", required: true },
+    );
 
     expect(options.map((option) => option.isDefault)).toEqual([true, false]);
 
-    const input = buildModifierInput({
-      ...blankForm("restaurant-1"),
-      name: "Độ cay",
-      required: true,
-      selectionType: "multiple",
-      minSelected: 0,
-      options,
-    }, "restaurant-1");
-
-    expect(input.minSelected).toBe(1);
+    const requiredSingle = normalizeModifierOptions(
+      [namedOption("Nhỏ"), namedOption("Lớn")],
+      { selectionType: "single", required: true },
+    );
+    expect(requiredSingle.map((option) => option.isDefault)).toEqual([
+      true,
+      false,
+    ]);
   });
 
-  it("validates required item coverage, options and selection limits", () => {
-    expect(getModifierFormValidationError({ ...blankForm(), name: "Size" }, "")).toBe("Vui lòng chọn chi nhánh.");
-    expect(getModifierFormValidationError({ ...blankForm("r1"), name: "Theo món", coverage: "ITEMS" }, "r1")).toBe("Chọn ít nhất một món khi áp dụng theo món.");
-    expect(getModifierFormValidationError({ ...blankForm("r1"), name: "Rỗng", options: [] }, "r1")).toBe("Cần ít nhất một lựa chọn.");
-    expect(getModifierFormValidationError({ ...blankForm("r1"), name: "Giới hạn", minSelected: 3, maxSelected: 2, options: [{ ...blankForm().options[0], name: "Thêm bò" }, { ...blankForm().options[0], name: "Thêm trứng" }, { ...blankForm().options[0], name: "Thêm rau" }] }, "r1")).toBe("Số lựa chọn tối đa phải lớn hơn hoặc bằng tối thiểu.");
-    expect(getModifierFormValidationError({ ...blankForm("r1"), name: "Thiếu lựa chọn", minSelected: 2, options: [{ ...blankForm().options[0], name: "Thêm bò" }] }, "r1")).toBe("Số lựa chọn tối thiểu không được vượt quá số lựa chọn đang có.");
+  it("validates scope, duplicate names, active options and selection limits", () => {
+    expect(
+      getModifierFormValidationError({ ...blankForm(), name: "Size" }, ""),
+    ).toBe("Vui lòng chọn chi nhánh.");
+
+    expect(
+      getModifierFormValidationError(
+        {
+          ...blankForm("r1"),
+          name: "Theo món",
+          coverage: "ITEMS",
+        },
+        "r1",
+      ),
+    ).toBe("Chọn ít nhất một món khi áp dụng theo món.");
+
+    expect(
+      getModifierFormValidationError(
+        { ...blankForm("r1"), name: "Rỗng", options: [] },
+        "r1",
+      ),
+    ).toBe("Cần ít nhất một lựa chọn.");
+
+    expect(
+      getModifierFormValidationError(
+        {
+          ...blankForm("r1"),
+          name: "Trùng",
+          options: [namedOption("Size L"), namedOption(" size l ")],
+        },
+        "r1",
+      ),
+    ).toBe("Tên các lựa chọn không được trùng nhau.");
+
+    expect(
+      getModifierFormValidationError(
+        {
+          ...blankForm("r1"),
+          name: "Đã tắt hết",
+          options: [namedOption("A", { isActive: false })],
+        },
+        "r1",
+      ),
+    ).toBe("Nhóm đang bật phải có ít nhất một lựa chọn đang bật.");
+
+    expect(
+      getModifierFormValidationError(
+        {
+          ...blankForm("r1"),
+          name: "Giới hạn",
+          minSelected: 3,
+          maxSelected: 2,
+          options: [
+            namedOption("Thêm bò"),
+            namedOption("Thêm trứng"),
+            namedOption("Thêm rau"),
+          ],
+        },
+        "r1",
+      ),
+    ).toBe("Số lựa chọn tối đa phải lớn hơn hoặc bằng tối thiểu.");
+
+    expect(
+      getModifierFormValidationError(
+        {
+          ...blankForm("r1"),
+          name: "Thiếu lựa chọn",
+          minSelected: 2,
+          options: [namedOption("Thêm bò")],
+        },
+        "r1",
+      ),
+    ).toBe(
+      "Số lựa chọn tối thiểu không được vượt quá số lựa chọn đang bật.",
+    );
+
+    expect(
+      getModifierFormValidationError(
+        {
+          ...blankForm("r1"),
+          name: "Tối đa quá lớn",
+          maxSelected: 3,
+          options: [namedOption("A"), namedOption("B")],
+        },
+        "r1",
+      ),
+    ).toBe("Số lựa chọn tối đa không được vượt quá số lựa chọn đang có.");
   });
 
   it("maps existing groups back to form state without losing inventory rules", () => {
-    const form = toForm({
-      id: "group-1",
-      restaurantId: "restaurant-1",
-      name: "Cách chế biến",
-      menuItemIds: [1, "2"],
-      options: [
-        {
-          id: "option-1",
-          name: "Nhiều sốt",
-          priceRule: { rule: "DELTA", amount: 5000 },
-          inventoryRule: {
-            rule: "ADD_INGREDIENTS",
-            ingredientLines: [{ ingredientId: "ingredient-1", qty: 10, unit: "g", wastePct: 0 }],
-            note: "Thêm sốt",
+    const form = toForm(
+      {
+        id: "group-1",
+        restaurantId: "restaurant-1",
+        name: "Cách chế biến",
+        menuItemIds: [1, "2"],
+        options: [
+          {
+            id: "option-1",
+            name: "Nhiều sốt",
+            priceRule: { rule: "DELTA", amount: 5000 },
+            inventoryRule: {
+              rule: "ADD_INGREDIENTS",
+              ingredientLines: [
+                {
+                  ingredientId: "ingredient-1",
+                  qty: 10,
+                  unit: "g",
+                  wastePct: 0,
+                },
+              ],
+              note: "Thêm sốt",
+            },
           },
-        },
-      ],
-    }, "restaurant-1");
+        ],
+      },
+      "restaurant-1",
+    );
 
     expect(form.menuItemIds).toEqual(["1", "2"]);
     expect(form.options[0].inventoryRule).toMatchObject({
       rule: "ADD_INGREDIENTS",
-      ingredientLines: [{ ingredientId: "ingredient-1", qty: 10, unit: "g", wastePct: 0 }],
+      ingredientLines: [
+        {
+          ingredientId: "ingredient-1",
+          qty: 10,
+          unit: "g",
+          wastePct: 0,
+        },
+      ],
       note: "Thêm sốt",
     });
+  });
+
+  it("turns backend errors into manager-facing messages", () => {
+    expect(
+      getModifierSubmitErrorMessage(
+        new Error("Duplicate restaurantId, name"),
+      ),
+    ).toBe("Tên nhóm tuỳ chọn đã tồn tại trong chi nhánh này.");
+    expect(
+      getModifierSubmitErrorMessage(
+        new Error("Cannot delete: group already used in orders"),
+      ),
+    ).toBe("Nhóm đã được dùng trong đơn hàng. Hãy tắt nhóm thay vì xoá.");
   });
 });
