@@ -1,7 +1,7 @@
 {
   "id": "07-11-brand-staff-workforce-seed",
   "title": "Seed complete brand staff workforce demo",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "area": "backend-demo-data",
   "createdAt": "2026-07-11",
   "updatedAt": "2026-07-11",
@@ -9,7 +9,14 @@
     "completed": [
       "audited staff profile, scheduling, two-week roster, payroll readiness and brand membership seeds",
       "confirmed runtime payroll calculation is centralized in payrollRuntime.service.js",
-      "selected a single orchestrator seed to reuse existing scripts and avoid duplicating their detailed scenarios"
+      "implemented one orchestrator seed that reuses existing detailed demo scripts",
+      "added Brand and Restaurant scope validation before child seeds run",
+      "added active BrandMembership rows for manager, operators and demo staff",
+      "normalized full-time to monthly salary and part-time to hourly salary",
+      "filled missing two-week shifts and approved past timesheets for every active demo staff account",
+      "created two payroll periods through upsertPeriodItems and adjusted part-time totals from actual hours",
+      "added idempotent result checks for memberships, shift coverage and payroll items",
+      "ran node --check against the exact new seed and test file contents"
     ],
     "notRun": [
       "targeted Vitest",
@@ -18,7 +25,9 @@
     ],
     "notes": [
       "Default target brand is 6a5018c92a9577d6a9cf4bad and default restaurant is 6a5018c92a9577d6a9cf4bb1; both remain environment-overridable.",
-      "The seed is local/demo only and must keep scriptSafety enforcement."
+      "The seed is local/demo only and retains assertDemoScriptAllowed protection.",
+      "Payroll periods remain draft; the seed does not finalize, lock or pay them.",
+      "The connector has no runnable repository checkout or MongoDB; git clone also failed because github.com could not be resolved from the container."
     ]
   }
 }
