@@ -1,0 +1,35 @@
+{
+  "id": "07-11-ai-chatbot-latency",
+  "name": "ai-chatbot-latency",
+  "title": "Giảm độ trễ AI chatbot",
+  "description": "Giới hạn thời gian chờ Gemini, embedding và fallback local trên critical path chatbot mà không đổi schema hoặc nghiệp vụ.",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "ai-chatbot-runtime",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/ai/restaurantChatbotCore.service.js",
+    "cohan-restaurant-backend/src/services/ai/restaurantChatbotEmbedding.service.js",
+    "cohan-restaurant-backend/src/services/ai/localAiProvider.service.js",
+    "cohan-restaurant-backend/tests/services/restaurantChatbot.service.test.js",
+    "cohan-restaurant-backend/tests/services/restaurantChatbotEmbedding.service.test.js"
+  ],
+  "validation": {
+    "planned": [
+      "vitest run cohan-restaurant-backend/tests/services/restaurantChatbot.service.test.js",
+      "vitest run cohan-restaurant-backend/tests/services/restaurantChatbotEmbedding.service.test.js",
+      "npm run check:graphql",
+      "npm run build"
+    ],
+    "completed": [],
+    "notRun": []
+  },
+  "meta": {
+    "skills": ["ponytail"]
+  }
+}
