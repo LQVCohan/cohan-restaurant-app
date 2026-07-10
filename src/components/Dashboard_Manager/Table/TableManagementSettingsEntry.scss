@@ -14,8 +14,55 @@
   order: 4;
 }
 
+/* Keep operational cards readable instead of letting competing grid layers
+   compress them into narrow columns. */
+.manager-layout--tables .tm-settings-page {
+  .tm-table-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 340px)) !important;
+    justify-content: start !important;
+  }
+
+  .tm-table-card {
+    width: 100% !important;
+    min-width: 300px !important;
+    max-width: 340px !important;
+
+    .card-top {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start !important;
+    }
+
+    .table-no {
+      display: block;
+      min-width: 0;
+      overflow: hidden;
+      overflow-wrap: normal !important;
+      text-overflow: ellipsis;
+      white-space: nowrap !important;
+      word-break: normal !important;
+    }
+
+    .card-top-right {
+      max-width: 52%;
+      align-content: start;
+    }
+  }
+}
+
 @media (max-width: 720px) {
   .tm-settings-page__button {
     width: 100%;
+  }
+
+  .manager-layout--tables .tm-settings-page {
+    .tm-table-grid {
+      grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .tm-table-card {
+      min-width: 0 !important;
+      max-width: none !important;
+    }
   }
 }
