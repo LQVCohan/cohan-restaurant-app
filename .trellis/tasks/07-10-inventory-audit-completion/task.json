@@ -1,0 +1,24 @@
+{
+  "id": "07-10-inventory-audit-completion",
+  "title": "Complete inventory count and legacy transfer safety",
+  "status": "ready_for_review",
+  "area": "inventory",
+  "createdAt": "2026-07-10",
+  "updatedAt": "2026-07-10",
+  "validation": {
+    "completed": [
+      "end-to-end inventory flow trace",
+      "manual diff and contract review",
+      "checked latest main changes for overlapping files"
+    ],
+    "notRun": [
+      "targeted InventoryAuditTab Vitest",
+      "targeted SupplyList Vitest",
+      "targeted supply transfer resolver test",
+      "npm run check:graphql:operations",
+      "npm run check:conflicts",
+      "npm run build",
+      "browser smoke"
+    ]
+  }
+}

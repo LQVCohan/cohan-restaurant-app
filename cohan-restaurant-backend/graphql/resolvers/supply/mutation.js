@@ -264,42 +264,124 @@ export default {
   stockTransfer: async (_p, { input }, ctx) => {
     const { restaurantId, fromWarehouseId, toWarehouseId, supplyId, qty, reason, meta } = input;
     const nQty = Number(qty);
-    if (![restaurantId, fromWarehouseId, toWarehouseId, supplyId].every(mongoose.isValidObjectId)) throw new Error("Invalid IDs");
-    if (!Number.isFinite(nQty) || nQty <= 0) throw new Error("qty must be > 0");
-    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_WRITE);
-    await getActiveSupplyOrThrow({ restaurantId, supplyId });
-    if (fromWarehouseId === toWarehouseId) throw new Error("Cannot transfer to the same warehouse");
-    const warehouses = await Warehouse.find({ _id: { $in: [fromWarehouseId, toWarehouseId] }, restaurantId }).lean();
-    if (warehouses.length !== 2) throw new GraphQLError("Warehouse does not belong to this restaurant", { extensions: { code: "BAD_USER_INPUT" } });
-
-    const supply = await Supply.findById(supplyId).lean();
-    const fromStock = await StockItem.findOne({ restaurantId, warehouseId: fromWarehouseId, supplyId });
-    if (!fromStock) throw new Error("No stock found in source warehouse");
-    if ((fromStock.onHand || 0) < nQty) throw new Error("Insufficient stock in source warehouse");
-
-    let remain = nQty;
-    const sorted = sortBatchesFIFO(fromStock.batches);
-    const transferredBatches = [];
-    for (const batch of sorted) {
-      if (remain <= 0) break;
-      const take = Math.min(batch.qty, remain);
-      batch.qty -= take;
-      remain -= take;
-      if (take > 0) transferredBatches.push({ lot: batch.lot, qty: take, expiry: batch.expiry, costPerBaseUnit: batch.costPerBaseUnit });
+    if (![restaurantId, fromWarehouseId, toWarehouseId, supplyId].every(mongoose.isValidObjectId)) {
+      throw new GraphQLError("Thông tin kho hoặc vật tư không hợp lệ.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
     }
-    fromStock.batches = sorted.filter((b) => b.qty > 0);
-    fromStock.onHand -= nQty;
-    await fromStock.save();
-    await StockMovement.create({ restaurantId, warehouseId: fromWarehouseId, itemType: "supply", itemId: supplyId, supplyId, type: "transfer", qty: -Math.abs(nQty), reason: reason || "Xuất kho chuyển kho", meta: { ...meta, toWarehouseId } });
+    if (!Number.isFinite(nQty) || nQty <= 0) {
+      throw new GraphQLError("Số lượng chuyển phải lớn hơn 0.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    if (String(fromWarehouseId) === String(toWarehouseId)) {
+      throw new GraphQLError("Kho nguồn và kho đích phải khác nhau.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
 
-    const toStock = await StockItem.findOneAndUpdate(
-      { restaurantId, warehouseId: toWarehouseId, supplyId },
-      { $setOnInsert: buildStockInsertDefaults(supply), $inc: { onHand: nQty } },
-      { new: true, upsert: true },
-    );
-    for (const b of transferredBatches) toStock.batches.push(b);
-    await toStock.save();
-    await StockMovement.create({ restaurantId, warehouseId: toWarehouseId, itemType: "supply", itemId: supplyId, supplyId, type: "transfer", qty: nQty, reason: reason || "Nhập kho (từ kho khác)", meta: { ...meta, fromWarehouseId } });
-    return true;
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STOCK_WRITE);
+    const supply = await getActiveSupplyOrThrow({ restaurantId, supplyId });
+    const session = await mongoose.startSession();
+
+    try {
+      await session.withTransaction(async () => {
+        const warehouses = await Warehouse.find({
+          _id: { $in: [fromWarehouseId, toWarehouseId] },
+          restaurantId,
+          isActive: { $ne: false },
+        })
+          .session(session)
+          .lean();
+        if (warehouses.length !== 2) {
+          throw new GraphQLError("Warehouse does not belong to this restaurant", {
+            extensions: { code: "BAD_USER_INPUT" },
+          });
+        }
+
+        const fromStock = await StockItem.findOne({
+          restaurantId,
+          warehouseId: fromWarehouseId,
+          supplyId,
+        }).session(session);
+        if (!fromStock) {
+          throw new GraphQLError("Vật tư chưa có tồn kho tại kho nguồn.", {
+            extensions: { code: "STOCK_ITEM_NOT_FOUND" },
+          });
+        }
+
+        const available = Number(fromStock.onHand || 0) - Number(fromStock.reserved || 0);
+        if (available < nQty) {
+          throw new GraphQLError("Không đủ tồn khả dụng tại kho nguồn.", {
+            extensions: { code: "INSUFFICIENT_STOCK", currentAvailable: available },
+          });
+        }
+
+        let remain = nQty;
+        const sorted = sortBatchesFIFO(fromStock.batches);
+        const transferredBatches = [];
+        for (const batch of sorted) {
+          if (remain <= 0) break;
+          const take = Math.min(Number(batch.qty || 0), remain);
+          batch.qty -= take;
+          remain -= take;
+          if (take > 0) {
+            transferredBatches.push({
+              lot: batch.lot,
+              qty: take,
+              expiry: batch.expiry,
+              costPerBaseUnit: batch.costPerBaseUnit,
+            });
+          }
+        }
+
+        fromStock.batches = sorted.filter((batch) => Number(batch.qty || 0) > 0);
+        fromStock.onHand = Number(fromStock.onHand || 0) - nQty;
+        await fromStock.save({ session });
+
+        const toStock = await StockItem.findOneAndUpdate(
+          { restaurantId, warehouseId: toWarehouseId, supplyId },
+          {
+            $setOnInsert: buildStockInsertDefaults(supply),
+            $inc: { onHand: nQty },
+            ...(transferredBatches.length ? { $push: { batches: { $each: transferredBatches } } } : {}),
+          },
+          { new: true, upsert: true, runValidators: true, session },
+        );
+        if (!toStock) throw new GraphQLError("Không thể cập nhật kho đích.");
+
+        await StockMovement.create(
+          [
+            {
+              restaurantId,
+              warehouseId: fromWarehouseId,
+              itemType: "supply",
+              itemId: supplyId,
+              supplyId,
+              type: "transfer",
+              qty: -nQty,
+              reason: reason || "Xuất kho chuyển kho",
+              meta: { ...meta, toWarehouseId },
+            },
+            {
+              restaurantId,
+              warehouseId: toWarehouseId,
+              itemType: "supply",
+              itemId: supplyId,
+              supplyId,
+              type: "transfer",
+              qty: nQty,
+              reason: reason || "Nhập kho từ kho khác",
+              meta: { ...meta, fromWarehouseId },
+            },
+          ],
+          { session },
+        );
+      });
+
+      return true;
+    } finally {
+      session.endSession();
+    }
   },
 };

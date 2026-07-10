@@ -38,11 +38,15 @@ export const INVENTORY_DOCUMENT_MOVEMENTS_QUERY = gql`
   query InventoryDocumentMovements(
     $restaurantId: ID!
     $warehouseId: ID
+    $dateFrom: DateTime
+    $dateTo: DateTime
     $limit: Int = 50
   ) {
     inventoryDocumentMovements(
       restaurantId: $restaurantId
       warehouseId: $warehouseId
+      dateFrom: $dateFrom
+      dateTo: $dateTo
       limit: $limit
     ) {
       id
@@ -79,6 +83,15 @@ export const CLOSE_INVENTORY_COUNT = gql`
   ${INVENTORY_COUNT_FIELDS}
   mutation CloseInventoryCount($input: CloseInventoryCountInput!) {
     closeInventoryCount(input: $input) {
+      ...InventoryCountFields
+    }
+  }
+`;
+
+export const CANCEL_INVENTORY_COUNT = gql`
+  ${INVENTORY_COUNT_FIELDS}
+  mutation CancelInventoryCount($id: ID!) {
+    cancelInventoryCount(id: $id) {
       ...InventoryCountFields
     }
   }

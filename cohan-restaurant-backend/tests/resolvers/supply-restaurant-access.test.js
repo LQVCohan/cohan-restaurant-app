@@ -133,7 +133,9 @@ describe("supply restaurant access hardening", () => {
     await expect(mutationResolver.stockTransfer(null, { input: { restaurantId: "valid-r1", fromWarehouseId: "valid-w1", toWarehouseId: "valid-w2", supplyId: "valid-s1", qty: 1 } }, ctx)).rejects.toThrow("denied");
 
     Supply.findOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue({ restaurantId: "valid-r1" }) });
-    Warehouse.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([{ _id: "w1" }]) });
+    Warehouse.find.mockReturnValueOnce({
+      session: vi.fn(() => ({ lean: vi.fn().mockResolvedValue([{ _id: "w1" }]) })),
+    });
     await expect(mutationResolver.stockTransfer(null, { input: { restaurantId: "valid-r1", fromWarehouseId: "valid-w1", toWarehouseId: "valid-w2", supplyId: "valid-s1", qty: 1 } }, ctx)).rejects.toThrow("Warehouse does not belong");
   });
 
