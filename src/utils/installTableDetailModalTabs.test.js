@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/dom";
+import { fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { enhanceTableDetailModal } from "./installTableDetailModalTabs";
 
