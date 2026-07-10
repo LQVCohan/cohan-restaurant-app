@@ -1,7 +1,7 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
 import Header from "./Header";
 
@@ -68,6 +68,10 @@ describe("manager Header", () => {
   beforeEach(() => {
     localStorage.clear();
     document.body.classList.remove("manager-dark-mode");
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it("renders slash-prefixed upload avatars as images", () => {
