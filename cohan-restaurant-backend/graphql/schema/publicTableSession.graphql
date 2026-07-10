@@ -18,6 +18,9 @@ type PublicTableOrderItem {
   lineSubtotal: Int
   note: String
   status: ItemStatus
+  proofImages: [String!]!
+  requiresProofImage: Boolean!
+  proofUploaded: Boolean!
 }
 
 type PublicTableCustomerRequest {
@@ -35,6 +38,8 @@ type PublicTableSessionSummary {
   orderCode: String
   orderKind: String
   currentStatus: OrderStatus
+  sessionStatus: String
+  orderPaymentStatus: String
   payment: PublicOrderPayment
 }
 
@@ -56,6 +61,9 @@ type PublicActiveTableSessionOrdersResult {
   customerRequests: [PublicTableCustomerRequest!]!
   tableId: ID
   tableCode: String
+  tableStatus: String
+  canOrder: Boolean!
+  orderBlockedReason: String
 }
 
 type PublicRequestTablePaymentResult {
@@ -77,12 +85,69 @@ type PublicCallStaffForTableResult {
   requestedAt: String
 }
 
+type PublicTableIdentityOtpResult {
+  ok: Boolean!
+  message: String
+  challengeToken: String
+  maskedPhone: String
+  demoOtp: String
+}
+
+type PublicTableIdentityVerificationResult {
+  ok: Boolean!
+  message: String
+  requiresAccountConfirmation: Boolean!
+  candidateToken: String
+  identityToken: String
+  maskedCustomerName: String
+  linkedAsGuest: Boolean!
+}
+
+type PublicTableIdentityResult {
+  ok: Boolean!
+  message: String
+  identityToken: String
+}
+
+type PublicSubmitTableOrderResult {
+  ok: Boolean!
+  message: String
+  order: PublicTableOrder
+}
+
 input PublicRequestTablePaymentInput {
   restaurantId: ID!
   tableId: ID!
   tableCode: String
   token: String!
   note: String
+}
+
+input PublicTableIdentityOtpInput {
+  restaurantId: ID!
+  tableId: ID!
+  token: String!
+  phone: String!
+}
+
+input PublicTableIdentityVerifyInput {
+  challengeToken: String!
+  otp: String!
+}
+
+input PublicTableIdentityConfirmInput {
+  candidateToken: String!
+  accept: Boolean!
+}
+
+input PublicSubmitTableOrderInput {
+  restaurantId: ID!
+  tableId: ID!
+  token: String!
+  identityToken: String
+  items: [OrderItemInput!]!
+  note: String
+  idempotencyKey: String!
 }
 
 extend type Query {
@@ -101,4 +166,20 @@ extend type Mutation {
   publicCallStaffForTable(
     input: PublicRequestTablePaymentInput!
   ): PublicCallStaffForTableResult!
+
+  publicRequestTableIdentityOtp(
+    input: PublicTableIdentityOtpInput!
+  ): PublicTableIdentityOtpResult!
+
+  publicVerifyTableIdentityOtp(
+    input: PublicTableIdentityVerifyInput!
+  ): PublicTableIdentityVerificationResult!
+
+  publicConfirmTableIdentity(
+    input: PublicTableIdentityConfirmInput!
+  ): PublicTableIdentityResult!
+
+  publicSubmitTableOrder(
+    input: PublicSubmitTableOrderInput!
+  ): PublicSubmitTableOrderResult!
 }
