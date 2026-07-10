@@ -1,0 +1,22 @@
+{
+  "id": "07-11-table-page-layout-entry-fix",
+  "name": "table-page-layout-entry-fix",
+  "title": "Fix table page layout and settings entry",
+  "description": "Move the table type/space action into the page header and replace the conflicting table layout override with a stable responsive contract.",
+  "status": "in_progress",
+  "dev_type": "feature-fix",
+  "scope": "manager-tables",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
+    "src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.jsx",
+    "src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.scss",
+    "src/components/Dashboard_Manager/Table/TableManagementFinalQC.scss",
+    "src/components/Dashboard_Manager/Table/TableManagementSettingsEntry.test.jsx"
+  ]
+}
