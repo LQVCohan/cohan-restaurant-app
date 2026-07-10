@@ -3,25 +3,24 @@
   "name": "manager-global-search",
   "title": "Upgrade manager global search and deep navigation",
   "description": "Index permission-scoped manager pages and nested functions, show breadcrumbs, and deep-link search results to the correct page/tab.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-search",
   "priority": "P0",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-10",
-  "completedAt": null,
+  "completedAt": "2026-07-10",
   "branch": "main",
   "base_branch": "main",
-  "commit": null,
+  "commit": "fbb228a26b58ee2cb5069a7ca1f9e3f00d25950c",
   "pr_url": null,
   "relatedFiles": [
-    "src/layouts/ManagerLayout.jsx",
+    "src/data/searchData.js",
     "src/components/SearchBox/SearchBox.jsx",
-    "src/components/SearchBox/SearchBox.scss",
     "src/components/SearchBox/SearchBox.test.jsx",
-    "src/components/Dashboard_Manager/Storage/StorageManagement.jsx",
-    "src/components/Dashboard_Manager/Storage/StorageManagement.test.jsx"
+    "src/components/Dashboard_Manager/Storage/layout/Tabs/Tabs.jsx",
+    "src/components/Dashboard_Manager/Storage/layout/Tabs/Tabs.test.jsx"
   ],
-  "notes": "Root cause: the header search indexes only top-level pages and directly changes currentPage, so nested destinations and query/tab context cannot be represented or opened. Preserve allowedPages permission filtering and use the existing manager:navigate contract."
+  "notes": "Completed permission-scoped nested search, Vietnamese accent-insensitive multi-token matching, breadcrumb display, manager:navigate deep links, and URL/event-driven storage tab activation. Targeted regression tests were added; runtime test/build commands were not available through the GitHub connector."
 }
