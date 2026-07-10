@@ -150,6 +150,7 @@ export default {
   },
 
   ...(role.Role ? { Role: role.Role } : {}),
+  ...(role.ParentRole ? { ParentRole: role.ParentRole } : {}),
   ...(restaurant.Restaurant ? { Restaurant: restaurant.Restaurant } : {}),
   ...(brand.Brand ? { Brand: brand.Brand } : {}),
   ...(brand.BrandMembership ? { BrandMembership: brand.BrandMembership } : {}),
