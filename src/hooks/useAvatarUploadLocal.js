@@ -155,7 +155,7 @@ export function useAvatarUploadLocal() {
     }
 
     try {
-      return await uploadViaSignedUrl(uploadFile);
+      return await uploadViaSignedUrl(uploadFile, onProgress);
     } catch (error) {
       console.warn(
         "Signed avatar upload failed; falling back to local upload.",
