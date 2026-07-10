@@ -5,6 +5,7 @@ import {
 } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import { syncKitchenOrderWorkItemsForKitchenEntry } from "../../../src/services/kitchen/kitchenOrderWorkItem.service.js";
 import { emitOrderEvent } from "./helper/emitOrderEvent.js";
 import { toId } from "./helper/orderUtils.js";
 
@@ -158,29 +159,82 @@ export const ConfirmedOrderPrintMutation = {
       throw new Error("updateOrderStatus resolver is unavailable");
     }
 
-    const updated = await this.updateOrderStatus(
-      parent,
+    const acceptedAt = new Date();
+    const acceptedBy = toId(ctx?.user?.id || ctx?.user?._id);
+    const claimed = await Order.findOneAndUpdate(
       {
-        input: {
-          id: String(order._id),
-          restaurantId: restaurantId || String(order.restaurantId),
-          status: "confirmed",
-          note: note || "Incoming order confirmed by POS",
-          warehouseId,
+        _id: order._id,
+        currentStatus: "pending",
+        $or: [
+          { "clientMeta.acceptedAt": { $exists: false } },
+          { "clientMeta.acceptedAt": null },
+        ],
+      },
+      {
+        $set: {
+          "clientMeta.acceptedAt": acceptedAt,
+          "clientMeta.acceptedBy": acceptedBy || null,
         },
       },
-      ctx,
+      { new: true },
     );
 
-    const printJobs = await enqueueStationTickets(updated);
+    if (!claimed) {
+      throw new Error("Đơn đã được nhân viên/POS khác tiếp nhận.");
+    }
+
+    let updated;
+    try {
+      updated = await this.updateOrderStatus(
+        parent,
+        {
+          input: {
+            id: String(order._id),
+            restaurantId: restaurantId || String(order.restaurantId),
+            status: "confirmed",
+            note: note || "Incoming order confirmed by POS",
+            warehouseId,
+          },
+        },
+        ctx,
+      );
+    } catch (error) {
+      await Order.updateOne(
+        {
+          _id: order._id,
+          currentStatus: "pending",
+          "clientMeta.acceptedAt": acceptedAt,
+          "clientMeta.acceptedBy": acceptedBy || null,
+        },
+        {
+          $unset: {
+            "clientMeta.acceptedAt": "",
+            "clientMeta.acceptedBy": "",
+          },
+        },
+      ).catch(() => {});
+      throw error;
+    }
+
+    const confirmedOrder = await Order.findById(order._id);
+    if (!confirmedOrder) throw new Error("Order not found after confirmation");
+
+    await syncKitchenOrderWorkItemsForKitchenEntry({
+      order: confirmedOrder,
+      actorUserId: acceptedBy,
+      now: acceptedAt,
+      session: null,
+    });
+
+    const printJobs = await enqueueStationTickets(confirmedOrder);
     if (printJobs.length) {
       await emitOrderEvent(
         ctx,
-        String(updated.restaurantId),
+        String(confirmedOrder.restaurantId),
         "ORDER_PRINT_JOBS_CREATED",
         {
-          orderId: String(updated._id || updated.id),
-          orderCode: updated.orderCode,
+          orderId: String(confirmedOrder._id),
+          orderCode: confirmedOrder.orderCode,
           printJobs,
         },
       );
