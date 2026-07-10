@@ -1,0 +1,31 @@
+{
+  "id": "07-10-schedule-ui-data-integrity",
+  "name": "schedule-ui-data-integrity",
+  "title": "Upgrade manager schedule UI and availability data integrity",
+  "description": "Align the registered-availability modal with the current schedule-week queries, show real loading/error/unavailable states, and polish the sage responsive interface.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-schedule-ui-data",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-10",
+  "branch": "fix/schedule-ui-data-integrity-20260710",
+  "base_branch": "main",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Schedule/ScheduleManagement.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.scss",
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.test.jsx",
+    "src/styles/schedule-manager-sage-upgrade.css"
+  ],
+  "meta": {
+    "skills": [
+      "ponytail",
+      "ui-ux-pro-max",
+      "frontend-design",
+      "taste-ui-redesign",
+      "redesign-existing-projects"
+    ]
+  }
+}
