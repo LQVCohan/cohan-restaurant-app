@@ -239,31 +239,92 @@ const IGNORE_BANK_TRANSACTION = gql`
 const pad2 = (value) => String(value).padStart(2, "0");
 
 export const toLocalDateInputValue = (date) => {
-  const d = date instanceof Date ? date : new Date(date);
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  const value = date instanceof Date ? date : new Date(date);
+  return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(
+    value.getDate(),
+  )}`;
 };
 
 export const toGraphqlDateTime = (value, { endOfDay = false } = {}) => {
   if (!value) return null;
   const text = String(value).trim();
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
-  if (match) return `${match[1]}-${match[2]}-${match[3]}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`;
+  if (match) {
+    return `${match[1]}-${match[2]}-${match[3]}T${
+      endOfDay ? "23:59:59.999" : "00:00:00.000"
+    }Z`;
+  }
   const date = new Date(text);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 };
 
-const today = new Date();
-const monthStart = toLocalDateInputValue(new Date(today.getFullYear(), today.getMonth(), 1));
-const monthEnd = toLocalDateInputValue(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+export const getRequestedTransactionRestaurantId = (search = "") =>
+  new URLSearchParams(search).get("restaurantId") || "";
 
-export const CASHFLOW_CATEGORIES = ["sale", "refund", "payroll", "inventory", "operations", "supplier_payment", "adjustment", "other"];
-export const CASHFLOW_SUBCATEGORIES = ["labor", "cogs", "rent", "utility", "maintenance", "marketing", "bank_fee", "tax", "etc", "other"];
-export const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "e_wallet", "transfer", "provider", "other"];
+export const selectAccessibleTransactionRestaurant = (
+  restaurants = [],
+  requestedRestaurantId = "",
+) => {
+  const requested = String(requestedRestaurantId || "");
+  const match = restaurants.find(
+    (restaurant) => String(restaurant?.id || "") === requested,
+  );
+  return match?.id || restaurants?.[0]?.id || "";
+};
+
+const today = new Date();
+const monthStart = toLocalDateInputValue(
+  new Date(today.getFullYear(), today.getMonth(), 1),
+);
+const monthEnd = toLocalDateInputValue(
+  new Date(today.getFullYear(), today.getMonth() + 1, 0),
+);
+
+export const CASHFLOW_CATEGORIES = [
+  "sale",
+  "refund",
+  "payroll",
+  "inventory",
+  "operations",
+  "supplier_payment",
+  "adjustment",
+  "other",
+];
+export const CASHFLOW_SUBCATEGORIES = [
+  "labor",
+  "cogs",
+  "rent",
+  "utility",
+  "maintenance",
+  "marketing",
+  "bank_fee",
+  "tax",
+  "etc",
+  "other",
+];
+export const PAYMENT_METHODS = [
+  "cash",
+  "card",
+  "bank_transfer",
+  "e_wallet",
+  "transfer",
+  "provider",
+  "other",
+];
 export const CASHFLOW_STATUSES = ["draft", "pending", "completed", "voided"];
 
 export function useTransactions() {
   const { restaurants = [] } = useContext(AuthContext) || {};
-  const [restaurantId, setRestaurantId] = useState(restaurants?.[0]?.id || "");
+  const requestedRestaurantId = useMemo(
+    () =>
+      getRequestedTransactionRestaurantId(
+        typeof window !== "undefined" ? window.location.search : "",
+      ),
+    [],
+  );
+  const [restaurantId, setRestaurantId] = useState(() =>
+    selectAccessibleTransactionRestaurant(restaurants, requestedRestaurantId),
+  );
   const [filters, setFilters] = useState({
     dateFrom: monthStart,
     dateTo: monthEnd,
@@ -280,8 +341,32 @@ export function useTransactions() {
   const [bankStatus, setBankStatus] = useState("");
 
   useEffect(() => {
-    if (!restaurantId && restaurants?.length) setRestaurantId(restaurants[0].id);
-  }, [restaurantId, restaurants]);
+    const nextRestaurantId = selectAccessibleTransactionRestaurant(
+      restaurants,
+      restaurantId || requestedRestaurantId,
+    );
+    if (String(nextRestaurantId) !== String(restaurantId)) {
+      setRestaurantId(nextRestaurantId);
+    }
+  }, [requestedRestaurantId, restaurantId, restaurants]);
+
+  useEffect(() => {
+    const handleNavigation = (event) => {
+      if (event?.detail?.page !== "transactions") return;
+      const requested = event.detail.query?.restaurantId;
+      if (!requested) return;
+      const nextRestaurantId = selectAccessibleTransactionRestaurant(
+        restaurants,
+        requested,
+      );
+      if (String(nextRestaurantId) === String(requested)) {
+        setRestaurantId(nextRestaurantId);
+      }
+    };
+    window.addEventListener("manager:navigation-query", handleNavigation);
+    return () =>
+      window.removeEventListener("manager:navigation-query", handleNavigation);
+  }, [restaurants]);
 
   const variables = useMemo(() => {
     const base = {
@@ -303,7 +388,8 @@ export function useTransactions() {
       transactionsInput: base,
       cashflowsInput: base,
       refundInput: { restaurantId, limit: 50 },
-      reconciliationStatus: reconciliationStatus === "all" ? null : reconciliationStatus,
+      reconciliationStatus:
+        reconciliationStatus === "all" ? null : reconciliationStatus,
       bankStatus: bankStatus || null,
     };
   }, [bankStatus, filters, reconciliationStatus, restaurantId]);
@@ -315,23 +401,74 @@ export function useTransactions() {
   });
 
   const mutationOptions = { onCompleted: () => query.refetch() };
-  const [createManualCashflowMutation] = useMutation(CREATE_MANUAL_CASHFLOW, mutationOptions);
-  const [updateManualCashflowMutation] = useMutation(UPDATE_MANUAL_CASHFLOW, mutationOptions);
-  const [voidManualCashflowMutation] = useMutation(VOID_MANUAL_CASHFLOW, mutationOptions);
-  const [createRefundRequestMutation] = useMutation(CREATE_REFUND_REQUEST, mutationOptions);
-  const [approveRefundRequestMutation] = useMutation(APPROVE_REFUND_REQUEST, mutationOptions);
-  const [processRefundRequestMutation] = useMutation(PROCESS_REFUND_REQUEST, mutationOptions);
-  const [cancelRefundRequestMutation] = useMutation(CANCEL_REFUND_REQUEST, mutationOptions);
-  const [retryRefundRequestMutation] = useMutation(RETRY_REFUND_REQUEST, mutationOptions);
-  const [rejectRefundRequestMutation] = useMutation(REJECT_REFUND_REQUEST, mutationOptions);
-  const [reconcileBankTransactionMutation] = useMutation(RECONCILE_BANK_TRANSACTION, mutationOptions);
-  const [manualMatchBankTransactionMutation] = useMutation(MANUAL_MATCH_BANK_TRANSACTION, mutationOptions);
-  const [resolveReconciliationMutation] = useMutation(RESOLVE_RECONCILIATION, mutationOptions);
-  const [ignoreBankTransactionMutation] = useMutation(IGNORE_BANK_TRANSACTION, mutationOptions);
-  const [createSupplierPayableMutation] = useMutation(CREATE_SUPPLIER_PAYABLE, mutationOptions);
-  const [updateSupplierPayableMutation] = useMutation(UPDATE_SUPPLIER_PAYABLE, mutationOptions);
-  const [recordSupplierPaymentMutation] = useMutation(RECORD_SUPPLIER_PAYMENT, mutationOptions);
-  const [voidSupplierPayableMutation] = useMutation(VOID_SUPPLIER_PAYABLE, mutationOptions);
+  const [createManualCashflowMutation] = useMutation(
+    CREATE_MANUAL_CASHFLOW,
+    mutationOptions,
+  );
+  const [updateManualCashflowMutation] = useMutation(
+    UPDATE_MANUAL_CASHFLOW,
+    mutationOptions,
+  );
+  const [voidManualCashflowMutation] = useMutation(
+    VOID_MANUAL_CASHFLOW,
+    mutationOptions,
+  );
+  const [createRefundRequestMutation] = useMutation(
+    CREATE_REFUND_REQUEST,
+    mutationOptions,
+  );
+  const [approveRefundRequestMutation] = useMutation(
+    APPROVE_REFUND_REQUEST,
+    mutationOptions,
+  );
+  const [processRefundRequestMutation] = useMutation(
+    PROCESS_REFUND_REQUEST,
+    mutationOptions,
+  );
+  const [cancelRefundRequestMutation] = useMutation(
+    CANCEL_REFUND_REQUEST,
+    mutationOptions,
+  );
+  const [retryRefundRequestMutation] = useMutation(
+    RETRY_REFUND_REQUEST,
+    mutationOptions,
+  );
+  const [rejectRefundRequestMutation] = useMutation(
+    REJECT_REFUND_REQUEST,
+    mutationOptions,
+  );
+  const [reconcileBankTransactionMutation] = useMutation(
+    RECONCILE_BANK_TRANSACTION,
+    mutationOptions,
+  );
+  const [manualMatchBankTransactionMutation] = useMutation(
+    MANUAL_MATCH_BANK_TRANSACTION,
+    mutationOptions,
+  );
+  const [resolveReconciliationMutation] = useMutation(
+    RESOLVE_RECONCILIATION,
+    mutationOptions,
+  );
+  const [ignoreBankTransactionMutation] = useMutation(
+    IGNORE_BANK_TRANSACTION,
+    mutationOptions,
+  );
+  const [createSupplierPayableMutation] = useMutation(
+    CREATE_SUPPLIER_PAYABLE,
+    mutationOptions,
+  );
+  const [updateSupplierPayableMutation] = useMutation(
+    UPDATE_SUPPLIER_PAYABLE,
+    mutationOptions,
+  );
+  const [recordSupplierPaymentMutation] = useMutation(
+    RECORD_SUPPLIER_PAYMENT,
+    mutationOptions,
+  );
+  const [voidSupplierPayableMutation] = useMutation(
+    VOID_SUPPLIER_PAYABLE,
+    mutationOptions,
+  );
 
   return {
     restaurants,
@@ -352,22 +489,45 @@ export function useTransactions() {
     reconciliations: query.data?.reconciliationQueue || [],
     supplierPayables: query.data?.supplierPayables || [],
     bankTransactions: query.data?.bankTransactions || [],
-    createManualCashflow: (input) => createManualCashflowMutation({ variables: { input: { ...input, restaurantId } } }),
-    updateManualCashflow: (id, input) => updateManualCashflowMutation({ variables: { id, input } }),
-    voidManualCashflow: (id, reason) => voidManualCashflowMutation({ variables: { id, reason } }),
-    createRefundRequest: (input) => createRefundRequestMutation({ variables: { input: { ...input, restaurantId } } }),
-    approveRefundRequest: (id) => approveRefundRequestMutation({ variables: { id } }),
-    processRefundRequest: (id, input = {}) => processRefundRequestMutation({ variables: { id, input } }),
-    cancelRefundRequest: (id, reason) => cancelRefundRequestMutation({ variables: { id, reason } }),
-    retryRefundRequest: (id, input = {}) => retryRefundRequestMutation({ variables: { id, input } }),
-    rejectRefundRequest: (id, reason) => rejectRefundRequestMutation({ variables: { id, reason } }),
-    reconcileBankTransaction: (bankTransactionId) => reconcileBankTransactionMutation({ variables: { bankTransactionId } }),
-    manualMatchBankTransaction: (input) => manualMatchBankTransactionMutation({ variables: { input } }),
-    resolveReconciliation: (input) => resolveReconciliationMutation({ variables: { input } }),
-    ignoreBankTransaction: (id, reason) => ignoreBankTransactionMutation({ variables: { id, reason } }),
-    createSupplierPayable: (input) => createSupplierPayableMutation({ variables: { input: { ...input, restaurantId } } }),
-    updateSupplierPayable: (id, input) => updateSupplierPayableMutation({ variables: { id, input } }),
-    recordSupplierPayment: (id, input) => recordSupplierPaymentMutation({ variables: { id, input } }),
-    voidSupplierPayable: (id, reason) => voidSupplierPayableMutation({ variables: { id, reason } }),
+    createManualCashflow: (input) =>
+      createManualCashflowMutation({
+        variables: { input: { ...input, restaurantId } },
+      }),
+    updateManualCashflow: (id, input) =>
+      updateManualCashflowMutation({ variables: { id, input } }),
+    voidManualCashflow: (id, reason) =>
+      voidManualCashflowMutation({ variables: { id, reason } }),
+    createRefundRequest: (input) =>
+      createRefundRequestMutation({
+        variables: { input: { ...input, restaurantId } },
+      }),
+    approveRefundRequest: (id) =>
+      approveRefundRequestMutation({ variables: { id } }),
+    processRefundRequest: (id, input = {}) =>
+      processRefundRequestMutation({ variables: { id, input } }),
+    cancelRefundRequest: (id, reason) =>
+      cancelRefundRequestMutation({ variables: { id, reason } }),
+    retryRefundRequest: (id, input = {}) =>
+      retryRefundRequestMutation({ variables: { id, input } }),
+    rejectRefundRequest: (id, reason) =>
+      rejectRefundRequestMutation({ variables: { id, reason } }),
+    reconcileBankTransaction: (bankTransactionId) =>
+      reconcileBankTransactionMutation({ variables: { bankTransactionId } }),
+    manualMatchBankTransaction: (input) =>
+      manualMatchBankTransactionMutation({ variables: { input } }),
+    resolveReconciliation: (input) =>
+      resolveReconciliationMutation({ variables: { input } }),
+    ignoreBankTransaction: (id, reason) =>
+      ignoreBankTransactionMutation({ variables: { id, reason } }),
+    createSupplierPayable: (input) =>
+      createSupplierPayableMutation({
+        variables: { input: { ...input, restaurantId } },
+      }),
+    updateSupplierPayable: (id, input) =>
+      updateSupplierPayableMutation({ variables: { id, input } }),
+    recordSupplierPayment: (id, input) =>
+      recordSupplierPaymentMutation({ variables: { id, input } }),
+    voidSupplierPayable: (id, reason) =>
+      voidSupplierPayableMutation({ variables: { id, reason } }),
   };
 }
