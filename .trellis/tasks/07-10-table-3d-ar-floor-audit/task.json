@@ -4,25 +4,31 @@
   "status": "in_progress",
   "type": "frontend-fix",
   "scope": [
-    "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.jsx",
-    "src/components/Dashboard_Manager/Table/Table3DQuickGuide.jsx",
-    "src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.test.jsx"
+    "src/components/Dashboard_Manager/Table/Table3DActionBarV2.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DActionBarV2.test.jsx",
+    "src/components/Dashboard_Manager/Table/Table3DQuickGuide.jsx"
   ],
-  "rootCause": "The initial floor-placement fix changed ar-scale to auto so users could resize oversized assets. In Scene Viewer this keeps the model resizable, and native instant/depth tracking transitions can look like the object grows, shrinks or drifts when the device moves closer or farther. The web page cannot control Scene Viewer anchors after handoff. The smallest stable fix is to use fixed physical scale and keep supported devices in WebXR instead of falling through to Scene Viewer.",
+  "rootCause": "The parent AR launcher still writes ar-scale=auto immediately before activateAR. On Android native Scene Viewer that permits resizing, while native instant/depth tracking transitions can look like the object grows, shrinks or drifts as device distance changes. The shared action boundary now selects WebXR when available and normalizes the launch to fixed scale, while retaining Scene Viewer and Quick Look as device fallbacks.",
   "validation": {
     "planned": [
-      "npx vitest run src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.test.jsx",
+      "npx vitest run src/components/Dashboard_Manager/Table/Table3DActionBarV2.test.jsx",
       "npm run check:conflicts",
       "npm run build",
       "manual Android AR test over HTTPS"
     ],
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail and frontend-design skills",
-      "traced catalog model metadata through the shared model-viewer modal and native activateAR boundary",
-      "confirmed the current Android screenshot is the native Scene Viewer handoff rather than the in-page WebXR renderer",
-      "confirmed model-viewer maps ar-scale=fixed to resizable=false for Scene Viewer and disables model scaling in WebXR",
-      "confirmed Scene Viewer anchor tracking cannot be controlled from the web page after native handoff"
+      "traced catalog model metadata through the shared model-viewer modal, AR action boundary and native activateAR handoff",
+      "inspected the only modal caller and the direct action-bar and modal tests",
+      "prefer WebXR at launch when immersive-ar is supported",
+      "force ar-scale=fixed at the launch boundary even when the legacy parent writes auto",
+      "retain scene-viewer and quick-look fallback for devices without WebXR",
+      "updated user guidance to wait for a stable floor and avoid pinch resizing",
+      "added regression coverage for WebXR preference, fixed scale and native fallback"
     ],
-    "notRun": []
+    "notRun": [
+      "Targeted Vitest, conflict check and build were not run because the GitHub connector does not provide a repository checkout with installed dependencies.",
+      "Physical Android validation remains pending and must be repeated through the HTTPS ngrok URL."
+    ]
   }
 }
