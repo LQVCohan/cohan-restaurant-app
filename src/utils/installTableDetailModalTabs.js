@@ -16,7 +16,17 @@ const TAB_STATE_COPY = {
   assistant: "Gợi ý AI chỉ hỗ trợ quyết định và không tự thay đổi dữ liệu bàn.",
 };
 
+const SUMMARY_KEYS = new Map([
+  ["mã bàn", "code"],
+  ["tầng", "floor"],
+  ["sức chứa", "capacity"],
+  ["loại", "type"],
+  ["khu vực", "zone"],
+  ["trạng thái", "status"],
+]);
+
 const normalizeText = (value) => String(value || "").trim().toLocaleLowerCase("vi");
+const normalizeLabel = (value) => normalizeText(value).replace(/:$/, "");
 
 const getGroupTitle = (group) =>
   normalizeText(
@@ -48,6 +58,35 @@ const classifyGroup = (group) => {
   return "configuration";
 };
 
+const classifyGroupKind = (group) => {
+  const title = getGroupTitle(group);
+
+  if (title.includes("thông tin bàn")) return "basics";
+  if (title.includes("trạng thái")) return "status";
+  if (title.includes("chuyển bàn")) return "move";
+  if (title.includes("đổi vị trí") || title.includes("đổi chỗ")) return "swap";
+  if (title.includes("ghép hoặc tách")) return "merge";
+  if (title.includes("đặt cọc")) return "promotion";
+  if (title.includes("chính sách đặt bàn")) return "policy";
+  if (title.includes("trợ lý vận hành") || title.includes("gợi ý ai")) {
+    return "assistant";
+  }
+
+  return "configuration";
+};
+
+const resolveStatusTone = (value) => {
+  const text = normalizeText(value);
+  if (text.includes("phục vụ") || text.includes("đang dùng")) return "busy";
+  if (text.includes("đặt")) return "reserved";
+  if (text.includes("dọn")) return "cleaning";
+  if (text.includes("thanh toán") || text.includes("thu tiền")) return "payment";
+  if (text.includes("ngưng") || text.includes("tạm khóa") || text.includes("offline")) {
+    return "offline";
+  }
+  return "available";
+};
+
 const isStatusGroup = (group) => getGroupTitle(group).includes("trạng thái");
 
 const getDirectSections = (body) =>
@@ -61,6 +100,25 @@ const getDirectSummary = (body) =>
   Array.from(body?.children || []).find((element) =>
     element.classList?.contains("talite-info"),
   );
+
+const decorateSummary = (modal) => {
+  const summary = getDirectSummary(modal.querySelector(".talite-body"));
+  if (!summary) return;
+
+  summary.querySelectorAll(":scope > .kv").forEach((row) => {
+    const key = SUMMARY_KEYS.get(normalizeLabel(row.querySelector(".k")?.textContent));
+    if (!key) return;
+
+    row.dataset.tableDetailSummary = key;
+    row.setAttribute("aria-label", row.textContent?.trim() || key);
+
+    if (key === "status") {
+      const tone = resolveStatusTone(row.querySelector(".v")?.textContent);
+      row.dataset.tableStatusTone = tone;
+      modal.dataset.tableDetailStatusTone = tone;
+    }
+  });
+};
 
 const getSaveButton = (modal) =>
   modal.querySelector(".talite-footer .btn.primary") ||
@@ -92,12 +150,13 @@ const syncSections = (modal, activeKey) => {
   if (summary) summary.hidden = false;
 
   getDirectSections(body).forEach((section) => {
-    const sectionKey = section.classList.contains("talite-group")
-      ? classifyGroup(section)
-      : "configuration";
-    const visibleInOverview = section.classList.contains("talite-group") && isStatusGroup(section);
+    const isGroup = section.classList.contains("talite-group");
+    const sectionKey = isGroup ? classifyGroup(section) : "configuration";
+    const sectionKind = isGroup ? classifyGroupKind(section) : "danger";
+    const visibleInOverview = isGroup && isStatusGroup(section);
 
     section.dataset.tableDetailSection = sectionKey;
+    section.dataset.tableDetailKind = sectionKind;
     section.hidden = !(
       sectionKey === activeKey ||
       (activeKey === "overview" && visibleInOverview)
@@ -211,6 +270,7 @@ export const enhanceTableDetailModal = (modal) => {
   if (!modal?.matches?.(".talite-modal")) return;
 
   ensureTabBar(modal);
+  decorateSummary(modal);
   modal.dataset.tableDetailTabsReady = "true";
   activateTableDetailTab(modal, modal.dataset.tableDetailActiveTab || "overview");
 };
