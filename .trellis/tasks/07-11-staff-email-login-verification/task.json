@@ -1,0 +1,34 @@
+{
+  "id": "07-11-staff-email-login-verification",
+  "name": "staff-email-login-verification",
+  "title": "Complete staff email invitation and login verification flow",
+  "description": "Send staff login credentials only after account scope and role setup succeeds, then verify and activate the staff account after the first successful password login.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "staff-account-onboarding",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "07-10-staff-brand-flow-audit",
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/resolvers/staff/index.js",
+    "cohan-restaurant-backend/src/services/auth/staffInvitation.service.js",
+    "cohan-restaurant-backend/graphql/resolvers/user/loginWithPendingVerification.mutation.js",
+    "cohan-restaurant-backend/tests/resolvers/staff-email-invitation-flow.test.js",
+    "cohan-restaurant-backend/tests/resolvers/staff-login-verification.test.js"
+  ],
+  "notes": "Initial passwords are included only in the staff invitation email body. They must never be placed in URLs, logs, audit metadata, or GraphQL responses.",
+  "meta": {
+    "skills": ["ponytail", "ui-ux-pro-max"]
+  }
+}
