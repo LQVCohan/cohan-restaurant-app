@@ -1,7 +1,7 @@
 {
   "id": "07-10-review-management-analytics-priority",
   "title": "Đồng bộ màu và tách tab phân tích review",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-ui-bugfix",
   "scope": [
     "src/components/Dashboard_Manager/Review/ReviewManagement.jsx",
@@ -22,9 +22,18 @@
       "read ponytail, frontend-design, redesign-existing-projects and ui-ux-pro-max skills",
       "reviewed the latest screenshot and traced manager shell tokens to review page overrides",
       "confirmed schema, resolver and analytics payload do not require changes",
-      "identified mixed local cream/orange/blue hard-codes in the page, sidebar, list and modal",
-      "planned a permission-gated analytics tab with lazy query and queue navigation back to review lists"
+      "added a permission-gated Phân tích tab and lazy analytics/report queries",
+      "kept the operational review tabs limited to search, filters and the review list",
+      "made analytics queues navigate back to the matching review list filter",
+      "replaced local cream, orange and blue presentation values with shared manager sage tokens",
+      "synchronized the page header, command bar, filter sidebar, review cards and detail modal",
+      "added focused tests for tab visibility, query skipping, scope rules and queue navigation"
     ],
-    "notRun": []
+    "notRun": [
+      "targeted Vitest was unavailable in the GitHub connector environment",
+      "npm run build was unavailable in the GitHub connector environment",
+      "browser smoke at 375, 768, 1024 and 1440 px was unavailable in the GitHub connector environment",
+      "no GitHub status checks were attached to commit 85856a21afef7f5a257461eeb436fa25d8af800b at verification time"
+    ]
   }
 }
