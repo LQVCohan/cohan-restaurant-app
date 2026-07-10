@@ -1,7 +1,7 @@
 {
   "id": "07-11-schedule-board-responsive-optimization",
   "title": "Tối ưu trang lịch lớn",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-ui",
   "scope": [
     "src/components/Dashboard_Manager/Schedule/components/ShiftCard.jsx",
@@ -18,8 +18,18 @@
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail and ui-ux-pro-max skills",
       "traced scheduling policy shift templates through Apollo to the weekly board",
-      "confirmed the last-loaded sage stylesheet overrides earlier responsive breakpoints"
+      "confirmed the last-loaded sage stylesheet overrides earlier responsive breakpoints",
+      "compacted the schedule header, KPI row, quality summary and legend",
+      "changed the weekly board to 7/4/2/1 responsive columns",
+      "added visible shift duration labels for four-hour, eight-hour and flexible shifts",
+      "added a focused ShiftCard regression test",
+      "re-fetched changed files from main and reviewed the resulting JSX and CSS selectors"
     ],
-    "notRun": []
+    "notRun": [
+      "targeted ShiftCard Vitest was unavailable in the GitHub connector environment",
+      "npm run check:conflicts was unavailable in the GitHub connector environment",
+      "npm run build was unavailable in the GitHub connector environment",
+      "desktop and mobile visual review was unavailable in the GitHub connector environment"
+    ]
   }
 }
