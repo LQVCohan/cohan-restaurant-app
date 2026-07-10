@@ -74,6 +74,7 @@ import { installTableEmptyStateEnhancement } from "./utils/installTableEmptyStat
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 import "./styles/ResponsiveFoundation.css";
 import "./styles/CustomTableBuilderResponsiveFix.css";
+import "./styles/AvailabilitySnapshotOverlayLight.css";
 
 const normalizeLegacyManagerHash = () => {
   if (
