@@ -26,7 +26,11 @@ vi.mock("@/components/common/Button", () => ({
 
 vi.mock("@/components/common/Modal", () => {
   const Modal = ({ isOpen, children, className = "" }) =>
-    isOpen ? <div role="dialog" className={className}>{children}</div> : null;
+    isOpen ? (
+      <div role="dialog" className={className}>
+        {children}
+      </div>
+    ) : null;
   return { default: Modal };
 });
 
@@ -52,36 +56,65 @@ vi.mock("@/config/table3dCustomModelStorage", () => ({
 }));
 
 vi.mock("./Table3DCatalogPanel", () => ({
-  default: ({ filteredModels, selectedModel, onSelectModel }) => (
+  default: ({
+    filteredModels,
+    selectedModel,
+    onSelectModel,
+    onCreateCustomModel,
+  }) => (
     <aside data-testid="catalog-panel">
       {filteredModels.map((model) => (
-        <button key={model.key} type="button" onClick={() => onSelectModel(model.key)}>
+        <button
+          key={model.key}
+          type="button"
+          onClick={() => onSelectModel(model.key)}
+        >
           {model.label}
         </button>
       ))}
+      <button type="button" onClick={onCreateCustomModel}>
+        Tạo mẫu mới
+      </button>
       <span data-testid="selected-model">{selectedModel?.label}</span>
     </aside>
   ),
 }));
 
-vi.mock("./CustomTableModelBuilderModal", () => ({ default: () => null }));
-vi.mock("./TableCameraPlacementPreviewModal", () => ({ default: () => null }));
-vi.mock("./ArTablePlacementModal", () => ({
-  default: ({ open }) => (open ? <div data-testid="ar-placement-modal">Đặt vị trí bàn bằng AR</div> : null),
+vi.mock("./CustomTableModelBuilderModal", () => ({
+  default: ({ open, onApply }) =>
+    open ? (
+      <div data-testid="custom-model-builder">
+        <button
+          type="button"
+          onClick={() =>
+            onApply({
+              key: "online-custom",
+              label: "Bàn URL tùy chỉnh",
+              tableType: "round-table",
+              capacity: 4,
+              defaultScale: 1,
+              modelUrl: "https://example.com/custom.glb",
+            })
+          }
+        >
+          Dùng model URL test
+        </button>
+      </div>
+    ) : null,
+}));
+
+vi.mock("./TableCameraPlacementPreviewModal", () => ({
+  default: ({ open, modelItem }) =>
+    open ? (
+      <div data-testid="camera-preview">Camera {modelItem?.label}</div>
+    ) : null,
 }));
 
 const baseProps = {
   open: true,
   onClose: vi.fn(),
-  onApply: vi.fn(),
-  currentFloorName: "Tầng 1",
   restaurantName: "COHAN Demo",
   restaurantId: "restaurant-1",
-  table: { id: "table-1", code: "A1" },
-  restaurant: { name: "COHAN Demo" },
-  floor: { id: "floor-1", name: "Tầng 1" },
-  currentFloorLayout: { id: "floor-1", name: "Tầng 1" },
-  onSaveArPosition: vi.fn(),
 };
 
 beforeEach(() => {
@@ -98,58 +131,53 @@ beforeEach(() => {
     configurable: true,
     value: undefined,
   });
-  Object.defineProperty(navigator, "clipboard", {
-    configurable: true,
-    value: { writeText: vi.fn().mockResolvedValue(undefined) },
-  });
-  globalThis.customElements = globalThis.customElements || {
-    get: vi.fn(() => true),
-  };
 });
 
 describe("Table3DSimulatorModalV2", () => {
-  it("renders the 3D modal with mobile AR readiness messaging", async () => {
+  it("renders the global catalog preview without table persistence actions", () => {
     render(<Table3DSimulatorModalV2 {...baseProps} />);
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Xem thử và bố trí bàn 3D/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: /Xem thử bàn 3D trong không gian/i,
+      }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("Bàn tròn 4 ghế").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Cần HTTPS").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: /Báo cáo test/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Mở camera AR/i }),
+    ).toBeDisabled();
+    expect(screen.queryByText(/lưu vị trí/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Áp dụng mẫu/i)).not.toBeInTheDocument();
   });
 
-  it("copies a diagnostic report for mobile debugging", async () => {
+  it("opens the existing custom model flow and keeps the imported model selected", () => {
     render(<Table3DSimulatorModalV2 {...baseProps} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Báo cáo test/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo mẫu mới" }));
+    expect(screen.getByTestId("custom-model-builder")).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1);
-    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Dùng model URL test" }),
+    );
 
-    const report = JSON.parse(navigator.clipboard.writeText.mock.calls[0][0]);
-    expect(report.appState.table).toBe("A1");
-    expect(report.appState.selectedModel).toBe("Bàn tròn 4 ghế");
-    expect(report.secureContext).toBe(false);
-    expect(screen.getByText("Đã copy báo cáo")).toBeInTheDocument();
+    expect(screen.getByTestId("selected-model")).toHaveTextContent(
+      "Bàn URL tùy chỉnh",
+    );
   });
 
-  it("opens the AR placement modal when a table is selected", () => {
+  it("opens the camera fallback for the selected model", () => {
     render(<Table3DSimulatorModalV2 {...baseProps} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Đặt bàn vào sơ đồ bằng AR/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Xem camera 2D/i }));
 
-    expect(screen.getByTestId("ar-placement-modal")).toBeInTheDocument();
+    expect(screen.getByTestId("camera-preview")).toHaveTextContent(
+      "Bàn tròn 4 ghế",
+    );
   });
 
-  it("disables AR placement when no table is selected", () => {
-    render(<Table3DSimulatorModalV2 {...baseProps} table={null} />);
-
-    expect(screen.getByRole("button", { name: /Chưa chọn bàn/i })).toBeDisabled();
-    expect(screen.getByText(/Mở chi tiết một bàn trước để lưu vị trí/i)).toBeInTheDocument();
-  });
-
-  it("shows ready status when secure WebXR is available", async () => {
+  it("launches native camera AR when the page is secure", async () => {
     Object.defineProperty(window, "isSecureContext", {
       configurable: true,
       value: true,
@@ -159,10 +187,17 @@ describe("Table3DSimulatorModalV2", () => {
       value: { isSessionSupported: vi.fn().mockResolvedValue(true) },
     });
 
-    render(<Table3DSimulatorModalV2 {...baseProps} />);
+    const { container } = render(<Table3DSimulatorModalV2 {...baseProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText("Sẵn sàng đặt bàn")).toBeInTheDocument();
+      expect(screen.getByText("Sẵn sàng AR")).toBeInTheDocument();
     });
+
+    const viewer = container.querySelector("model-viewer");
+    viewer.activateAR = vi.fn().mockResolvedValue(undefined);
+
+    fireEvent.click(screen.getByRole("button", { name: /Mở camera AR/i }));
+
+    await waitFor(() => expect(viewer.activateAR).toHaveBeenCalledTimes(1));
   });
 });
