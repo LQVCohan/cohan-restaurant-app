@@ -238,12 +238,6 @@ const GET_REVIEW_STATS = gql`
   }
 `;
 
-const DELETE_REVIEW = gql`
-  mutation DeleteReview($id: ID!) {
-    deleteReview(id: $id)
-  }
-`;
-
 const SET_REVIEW_STATUS = gql`
   mutation SetReviewStatus(
     $id: ID!
@@ -317,6 +311,7 @@ function getReportStatusLabel(status) {
 function asList(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
 }
+
 function getRoleText(user) {
   return String(user?.roleName || user?.role?.slug || user?.role?.name || "")
     .trim()
@@ -348,8 +343,6 @@ const ReviewManagement = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedReview, setSelectedReview] = useState(null);
   const [notification, setNotification] = useState(null);
-  const [reviewPendingDelete, setReviewPendingDelete] = useState(null);
-  const [isDeletingReview, setIsDeletingReview] = useState(false);
 
   const notify = useCallback((message, type = "success") => {
     setNotification({ message, type });
@@ -365,9 +358,8 @@ const ReviewManagement = () => {
   const me = meData?.me;
   const roleText = getRoleText(me);
   const isAdminUser = roleText.includes("admin");
-  const isManagerOrStaffUser =
-    roleText.includes("manager") || roleText.includes("staff");
   const canReadAnalytics = hasPermission(me, "review.analytics.read");
+  const isAnalyticsTab = currentTab === "analytics";
 
   const { data: scopedRestaurantsData } = useQuery(GET_SCOPED_RESTAURANTS, {
     variables: { limit: 100 },
@@ -400,13 +392,18 @@ const ReviewManagement = () => {
     );
   }, [filters.restaurant, isAdminUser, me, restaurantOptions]);
 
-  const gqlTargetType = ["all", "reported", "hidden", "rejected"].includes(
-    currentTab,
-  )
+  const gqlTargetType = [
+    "all",
+    "analytics",
+    "reported",
+    "hidden",
+    "rejected",
+  ].includes(currentTab)
     ? undefined
     : currentTab;
-  const gqlStatus =
-    currentTab === "reported"
+  const gqlStatus = isAnalyticsTab
+    ? undefined
+    : currentTab === "reported"
       ? "reported"
       : currentTab === "hidden"
         ? "hidden"
@@ -439,7 +436,9 @@ const ReviewManagement = () => {
   });
 
   const shouldSkipAnalytics =
-    !canReadAnalytics || (!isAdminUser && !filters.restaurant);
+    !isAnalyticsTab ||
+    !canReadAnalytics ||
+    (!isAdminUser && !filters.restaurant);
 
   const {
     data: analyticsData,
@@ -449,7 +448,7 @@ const ReviewManagement = () => {
   } = useQuery(GET_REVIEW_ANALYTICS, {
     variables: {
       restaurantId: filters.restaurant || undefined,
-      targetType: gqlTargetType,
+      targetType: undefined,
     },
     skip: shouldSkipAnalytics,
     fetchPolicy: "cache-and-network",
@@ -468,7 +467,6 @@ const ReviewManagement = () => {
     },
   );
 
-  const [deleteReview] = useMutation(DELETE_REVIEW);
   const [setReviewStatus] = useMutation(SET_REVIEW_STATUS);
   const [resolveReviewReport] = useMutation(RESOLVE_REVIEW_REPORT);
 
@@ -483,7 +481,7 @@ const ReviewManagement = () => {
     let list = [...reviews];
 
     if (filters.ratings?.length) {
-      list = list.filter((r) => filters.ratings.includes(r.rating));
+      list = list.filter((review) => filters.ratings.includes(review.rating));
     }
 
     if (filters.time) {
@@ -493,71 +491,79 @@ const ReviewManagement = () => {
       if (filters.time === "week") cutoff.setDate(now.getDate() - 7);
       if (filters.time === "month") cutoff.setMonth(now.getMonth() - 1);
       if (filters.time === "quarter") cutoff.setMonth(now.getMonth() - 3);
-      list = list.filter((r) => new Date(r.created_at) >= cutoff);
+      list = list.filter((review) => new Date(review.created_at) >= cutoff);
     }
 
     if (filters.image === "with-images") {
-      list = list.filter((r) => JSON.parse(r.images || "[]").length > 0);
+      list = list.filter(
+        (review) => JSON.parse(review.images || "[]").length > 0,
+      );
     }
     if (filters.image === "no-images") {
-      list = list.filter((r) => JSON.parse(r.images || "[]").length === 0);
+      list = list.filter(
+        (review) => JSON.parse(review.images || "[]").length === 0,
+      );
     }
 
     if (filters.verified === "verified") {
-      list = list.filter((r) => r.verified_purchase);
+      list = list.filter((review) => review.verified_purchase);
     }
     if (filters.verified === "unverified") {
-      list = list.filter((r) => !r.verified_purchase);
+      list = list.filter((review) => !review.verified_purchase);
     }
 
     if (filters.staffAssigned === "with-staff") {
-      list = list.filter((r) => Boolean(r.staff_id));
+      list = list.filter((review) => Boolean(review.staff_id));
     }
     if (filters.staffAssigned === "without-staff") {
-      list = list.filter((r) => !r.staff_id);
+      list = list.filter((review) => !review.staff_id);
     }
 
     if (filters.actionQueue === "needsModeration") {
       list = list.filter(
-        (r) => r.status === "reported" || Number(r.reports_count || 0) > 0,
+        (review) =>
+          review.status === "reported" || Number(review.reports_count || 0) > 0,
       );
     }
     if (filters.actionQueue === "needsReply") {
       list = list.filter(
-        (r) =>
-          ["published", "reported"].includes(r.status) &&
-          Number(r.rating || 0) <= 2 &&
-          !r.first_official_reply,
+        (review) =>
+          ["published", "reported"].includes(review.status) &&
+          Number(review.rating || 0) <= 2 &&
+          !review.first_official_reply,
       );
     }
     if (filters.actionQueue === "reports") {
       list = list.filter(
-        (r) => r.status === "reported" || Number(r.reports_count || 0) > 0,
+        (review) =>
+          review.status === "reported" || Number(review.reports_count || 0) > 0,
       );
     }
     if (filters.actionQueue === "highRisk") {
       list = list.filter(
-        (r) => Number(r.reports_count || 0) >= 3 || Number(r.rating || 0) <= 1,
+        (review) =>
+          Number(review.reports_count || 0) >= 3 ||
+          Number(review.rating || 0) <= 1,
       );
     }
     if (filters.actionQueue === "recentlyDone") {
       list = list.filter(
-        (r) =>
-          ["published", "hidden", "rejected"].includes(r.status) &&
-          (r.first_official_reply || r.reports_count === 0),
+        (review) =>
+          ["published", "hidden", "rejected"].includes(review.status) &&
+          (review.first_official_reply || review.reports_count === 0),
       );
     }
 
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       list = list.filter(
-        (r) =>
-          (r.customer_name || "").toLowerCase().includes(term) ||
-          (r.title || "").toLowerCase().includes(term) ||
-          (r.content || "").toLowerCase().includes(term) ||
-          (r.staff_name || "").toLowerCase().includes(term) ||
-          (r.target_name || "").toLowerCase().includes(term) ||
-          (r.restaurant_name || "").toLowerCase().includes(term),
+        (review) =>
+          (review.customer_name || "").toLowerCase().includes(term) ||
+          (review.title || "").toLowerCase().includes(term) ||
+          (review.content || "").toLowerCase().includes(term) ||
+          (review.staff_name || "").toLowerCase().includes(term) ||
+          (review.target_name || "").toLowerCase().includes(term) ||
+          (review.restaurant_name || "").toLowerCase().includes(term),
       );
     }
 
@@ -585,7 +591,9 @@ const ReviewManagement = () => {
 
     const total = reviews.length;
     const avg = total
-      ? (reviews.reduce((sum, r) => sum + r.rating, 0) / total).toFixed(1)
+      ? (
+          reviews.reduce((sum, review) => sum + review.rating, 0) / total
+        ).toFixed(1)
       : "0.0";
     return { total, avg };
   }, [reviews, statsData]);
@@ -595,7 +603,8 @@ const ReviewManagement = () => {
   const reportRows = reportsData?.reviewReports?.items || [];
   const reportStats = reportsData?.reviewReportStats;
   const localUnderReviewCount = reviews.filter(
-    (r) => r.status === "reported" || Number(r.reports_count || 0) > 0,
+    (review) =>
+      review.status === "reported" || Number(review.reports_count || 0) > 0,
   ).length;
   const underReviewCount =
     analytics?.reportedCount ??
@@ -605,37 +614,38 @@ const ReviewManagement = () => {
   const needsReplyCount =
     queueCounts.needsReply ??
     reviews.filter(
-      (r) =>
-        ["published", "reported"].includes(r.status) &&
-        Number(r.rating || 0) <= 2 &&
-        !r.first_official_reply,
+      (review) =>
+        ["published", "reported"].includes(review.status) &&
+        Number(review.rating || 0) <= 2 &&
+        !review.first_official_reply,
     ).length;
   const highRiskCount =
     queueCounts.highRisk ??
     reviews.filter(
-      (r) =>
-        Number(r.reports_count || 0) >= 3 ||
-        (Number(r.rating || 0) <= 2 && Number(r.reports_count || 0) > 0),
+      (review) =>
+        Number(review.reports_count || 0) >= 3 ||
+        (Number(review.rating || 0) <= 2 &&
+          Number(review.reports_count || 0) > 0),
     ).length;
   const negativeCount =
     analytics?.negativeCount ??
-    reviews.filter((r) => Number(r.rating || 0) <= 2).length;
+    reviews.filter((review) => Number(review.rating || 0) <= 2).length;
   const doneCount = reviews.filter(
-    (r) =>
-      (r.status === "published" && r.first_official_reply) ||
-      (r.status === "reported" && Number(r.reports_count || 0) === 0),
+    (review) =>
+      (review.status === "published" && review.first_official_reply) ||
+      (review.status === "reported" && Number(review.reports_count || 0) === 0),
   ).length;
   const hasActiveFilters = Boolean(
     searchTerm.trim() ||
-    filters.status ||
-    filters.time ||
-    filters.image ||
-    filters.verified ||
-    filters.staffAssigned ||
-    filters.actionQueue ||
-    filters.sort !== defaultReviewFilters.sort ||
-    (isAdminUser && filters.restaurant) ||
-    (filters.ratings || []).length !== defaultReviewFilters.ratings.length,
+      filters.status ||
+      filters.time ||
+      filters.image ||
+      filters.verified ||
+      filters.staffAssigned ||
+      filters.actionQueue ||
+      filters.sort !== defaultReviewFilters.sort ||
+      (isAdminUser && filters.restaurant) ||
+      (filters.ratings || []).length !== defaultReviewFilters.ratings.length,
   );
   const reviewsById = new Map(reviews.map((review) => [review.id, review]));
 
@@ -680,41 +690,45 @@ const ReviewManagement = () => {
       actionQueue: tile.id,
       ratings: tile.id === "needsReply" ? [1, 2] : prev.ratings,
     }));
-    if (tile.id === "reports") setCurrentTab("reported");
-    else setCurrentTab("all");
+    setCurrentTab(tile.id === "reports" ? "reported" : "all");
   }, []);
 
   const actionCenterItems = useMemo(
     () => ({
       reports: reviews
         .filter(
-          (r) => r.status === "reported" || Number(r.reports_count || 0) > 0,
+          (review) =>
+            review.status === "reported" ||
+            Number(review.reports_count || 0) > 0,
         )
         .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
         .slice(0, 5),
       needsReply: reviews
         .filter(
-          (r) =>
-            ["published", "reported"].includes(r.status) &&
-            Number(r.rating || 0) <= 2 &&
-            !r.first_official_reply,
+          (review) =>
+            ["published", "reported"].includes(review.status) &&
+            Number(review.rating || 0) <= 2 &&
+            !review.first_official_reply,
         )
         .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
         .slice(0, 5),
       highRisk: reviews
         .filter(
-          (r) =>
-            Number(r.reports_count || 0) >= 3 || Number(r.rating || 0) <= 1,
+          (review) =>
+            Number(review.reports_count || 0) >= 3 ||
+            Number(review.rating || 0) <= 1,
         )
         .sort(
-          (a, b) => Number(b.reports_count || 0) - Number(a.reports_count || 0),
+          (a, b) =>
+            Number(b.reports_count || 0) - Number(a.reports_count || 0),
         )
         .slice(0, 5),
       recentlyDone: reviews
         .filter(
-          (r) =>
-            ["published", "hidden", "rejected"].includes(r.status) &&
-            (r.first_official_reply || Number(r.reports_count || 0) === 0),
+          (review) =>
+            ["published", "hidden", "rejected"].includes(review.status) &&
+            (review.first_official_reply ||
+              Number(review.reports_count || 0) === 0),
         )
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         .slice(0, 5),
@@ -771,33 +785,6 @@ const ReviewManagement = () => {
     setModalVisible(true);
   }, []);
 
-  const handleDeleteReview = useCallback((review) => {
-    setReviewPendingDelete(review);
-  }, []);
-
-  const handleCancelDeleteReview = useCallback(() => {
-    if (isDeletingReview) return;
-    setReviewPendingDelete(null);
-  }, [isDeletingReview]);
-
-  const handleConfirmDeleteReview = useCallback(async () => {
-    if (!reviewPendingDelete?.id || isDeletingReview) return;
-    setIsDeletingReview(true);
-    try {
-      await deleteReview({ variables: { id: reviewPendingDelete.id } });
-      await refetch();
-      setReviewPendingDelete(null);
-      notify("Đã xóa đánh giá");
-    } catch (err) {
-      notify(
-        err?.message || "Không thể xóa đánh giá. Vui lòng thử lại.",
-        "error",
-      );
-    } finally {
-      setIsDeletingReview(false);
-    }
-  }, [deleteReview, isDeletingReview, notify, refetch, reviewPendingDelete]);
-
   const handleModerate = useCallback(
     async (review, status) => {
       try {
@@ -844,30 +831,30 @@ const ReviewManagement = () => {
       "Target",
       "Thời gian",
     ].join(",");
-    const rows = filteredReviews.map((r) =>
+    const rows = filteredReviews.map((review) =>
       [
-        r.id,
-        escapeCsv(r.customer_name),
-        escapeCsv(r.staff_name || "Không gắn nhân viên"),
-        r.rating,
-        escapeCsv(r.title),
-        escapeCsv(r.content),
-        escapeCsv(r.restaurant_name),
-        r.type,
-        r.status,
-        r.verified_purchase ? "yes" : "no",
-        escapeCsv(r.verified_source),
-        escapeCsv(r.sentiment),
-        escapeCsv((r.topic_tags || []).join("; ")),
-        r.first_official_reply ? "replied" : "unreplied",
+        review.id,
+        escapeCsv(review.customer_name),
+        escapeCsv(review.staff_name || "Không gắn nhân viên"),
+        review.rating,
+        escapeCsv(review.title),
+        escapeCsv(review.content),
+        escapeCsv(review.restaurant_name),
+        review.type,
+        review.status,
+        review.verified_purchase ? "yes" : "no",
+        escapeCsv(review.verified_source),
+        escapeCsv(review.sentiment),
+        escapeCsv((review.topic_tags || []).join("; ")),
+        review.first_official_reply ? "replied" : "unreplied",
         escapeCsv(
-          r.first_official_reply_at
-            ? new Date(r.first_official_reply_at).toLocaleString("vi-VN")
+          review.first_official_reply_at
+            ? new Date(review.first_official_reply_at).toLocaleString("vi-VN")
             : "",
         ),
-        r.reports_count || 0,
-        escapeCsv(r.target_name),
-        escapeCsv(new Date(r.created_at).toLocaleString("vi-VN")),
+        review.reports_count || 0,
+        escapeCsv(review.target_name),
+        escapeCsv(new Date(review.created_at).toLocaleString("vi-VN")),
       ].join(","),
     );
     const csv = `\uFEFF${[header, ...rows].join("\n")}`;
@@ -923,7 +910,6 @@ const ReviewManagement = () => {
   const permissions = {
     canModerate: hasPermission(me, "review.moderate"),
     canAdminModerate: isAdminUser && hasPermission(me, "review.moderate"),
-    canDelete: isAdminUser && hasPermission(me, "review.delete"),
     canExport: hasPermission(me, "review.export"),
     canReply: hasPermission(me, "review.reply"),
     canReadAnalytics,
@@ -939,6 +925,17 @@ const ReviewManagement = () => {
     hidden: "Đã ẩn",
     rejected: "Từ chối",
   };
+
+  const commandTabs = [
+    { id: "all", label: "Tất cả" },
+    ...(canReadAnalytics ? [{ id: "analytics", label: "Phân tích" }] : []),
+    { id: "restaurant", label: "Nhà hàng" },
+    { id: "food", label: "Món ăn" },
+    { id: "service", label: "Dịch vụ" },
+    { id: "reported", label: "Bị báo cáo" },
+    { id: "hidden", label: "Đã ẩn" },
+    { id: "rejected", label: "Từ chối" },
+  ];
 
   return (
     <div className="reviews-page">
@@ -996,8 +993,8 @@ const ReviewManagement = () => {
           <div>
             <strong>Thông báo đánh giá gần đây</strong>
             <span>
-              Quản lý và khách hàng có thể xem thông báo trong ứng dụng và
-              đánh dấu đã đọc.
+              Quản lý và khách hàng có thể xem thông báo trong ứng dụng và đánh
+              dấu đã đọc.
             </span>
           </div>
           <NotificationBell
@@ -1007,19 +1004,11 @@ const ReviewManagement = () => {
         </div>
 
         <ManagerCommandBar
-          tabs={[
-            { id: "all", label: "Tất cả" },
-            { id: "restaurant", label: "Nhà hàng" },
-            { id: "food", label: "Món ăn" },
-            { id: "service", label: "Dịch vụ" },
-            { id: "reported", label: "Bị báo cáo" },
-            { id: "hidden", label: "Đã ẩn" },
-            { id: "rejected", label: "Từ chối" },
-          ]}
+          tabs={commandTabs}
           activeTab={currentTab}
           onTabChange={setCurrentTab}
-          searchValue={searchTerm}
-          onSearchChange={setSearchTerm}
+          searchValue={isAnalyticsTab ? "" : searchTerm}
+          onSearchChange={isAnalyticsTab ? undefined : setSearchTerm}
           searchPlaceholder="Tìm khách hàng, nhân viên, tiêu đề, nội dung..."
         />
 
@@ -1027,468 +1016,492 @@ const ReviewManagement = () => {
           className="reviews-main-content"
           aria-label="Nội dung quản lý đánh giá"
         >
-          <div className="reviews-content-grid">
-            <ReviewsSidebarFilters
-              filters={filters}
-              onChange={setFilters}
-              restaurantOptions={restaurantOptions}
-              onReset={handleResetFilters}
-            />
+          <div
+            className={`reviews-content-grid ${isAnalyticsTab ? "reviews-content-grid--analytics" : ""}`}
+          >
+            {!isAnalyticsTab && (
+              <ReviewsSidebarFilters
+                filters={filters}
+                onChange={setFilters}
+                restaurantOptions={restaurantOptions}
+                onReset={handleResetFilters}
+              />
+            )}
 
-            <section className="reviews-content-area">
-              <section
-                className="reviews-analytics-panel"
-                aria-label="Tổng quan đánh giá"
-              >
-                <div className="reviews-analytics-panel__header">
-                  <div>
-                    <p className="reviews-analytics-panel__eyebrow">
-                      Phân tích
-                    </p>
-                    <h2>Tổng quan đánh giá</h2>
+            <section
+              className={`reviews-content-area ${isAnalyticsTab ? "reviews-content-area--analytics" : ""}`}
+            >
+              {isAnalyticsTab ? (
+                <>
+                  <div className="reviews-analytics-scope">
+                    <div>
+                      <span>Phạm vi dữ liệu</span>
+                      <strong>Phân tích đánh giá</strong>
+                    </div>
+                    <label>
+                      <span>Nhà hàng</span>
+                      <select
+                        aria-label="Phạm vi nhà hàng phân tích"
+                        value={filters.restaurant}
+                        onChange={(event) =>
+                          setFilters((prev) => ({
+                            ...prev,
+                            restaurant: event.target.value,
+                          }))
+                        }
+                      >
+                        {isAdminUser && (
+                          <option value="">Tất cả nhà hàng</option>
+                        )}
+                        {!isAdminUser && !filters.restaurant && (
+                          <option value="">Chọn nhà hàng</option>
+                        )}
+                        {restaurantOptions.map((restaurant) => (
+                          <option key={restaurant.id} value={restaurant.id}>
+                            {restaurant.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
-                  {!shouldSkipAnalytics && analyticsError && (
-                    <button
-                      type="button"
-                      className="reviews-btn reviews-btn-secondary"
-                      onClick={() => refetchAnalytics()}
-                    >
-                      Thử lại phân tích
-                    </button>
-                  )}
-                </div>
 
-                {shouldSkipAnalytics ? (
-                  <div className="reviews-analytics-loading">
-                    Chọn nhà hàng để xem phân tích trong phạm vi quản
-                    lý.
-                  </div>
-                ) : analyticsLoading ? (
-                  <div className="reviews-analytics-loading">
-                    Đang tải dữ liệu phân tích...
-                  </div>
-                ) : analyticsError ? (
-                  <div className="reviews-error-box">
-                    Không thể tải phân tích. Dữ liệu đánh giá vẫn hiển thị bên
-                    dưới.
-                  </div>
-                ) : (
-                  <>
-                    {analytics?.reviewInsightSummary ? (
-                      <div className="reviews-insight-card">
-                        <div>
-                          <p>Tóm tắt phân tích</p>
-                          <div className="reviews-insight-card__meta">
-                            <span>
-                              Nguồn:{" "}
-                              {getInsightSourceLabel(
-                                analytics.reviewInsightSummary.source,
-                              )}
-                            </span>
-                            {Number.isFinite(
-                              Number(analytics.reviewInsightSummary.confidence),
-                            ) && (
-                              <span>
-                                Độ tin cậy{" "}
-                                {Math.round(
-                                  Number(
-                                    analytics.reviewInsightSummary.confidence,
-                                  ) * 100,
-                                )}
-                                %
-                              </span>
-                            )}
-                          </div>
-                          <h3>{analytics.reviewInsightSummary.summary}</h3>
-                          {analytics.reviewInsightSummary.source ===
-                            "heuristic_fallback" && (
-                            <small className="reviews-insight-card__fallback-note">
-                              AI không khả dụng, hệ thống dùng phân tích
-                              dự phòng.
-                            </small>
-                          )}
-                        </div>
-                        <div className="reviews-insight-card__columns">
-                          <section>
-                            <strong>Khách khen</strong>
-                            {asList(
-                              analytics.reviewInsightSummary.positives,
-                            ).map((item) => (
-                              <span key={item}>{item}</span>
-                            ))}
-                          </section>
-                          <section>
-                            <strong>Khách chê</strong>
-                            {asList(
-                              analytics.reviewInsightSummary.negatives,
-                            ).map((item) => (
-                              <span key={item}>{item}</span>
-                            ))}
-                          </section>
-                          <section>
-                            <strong>Hành động đề xuất</strong>
-                            {asList(
-                              analytics.reviewInsightSummary.recommendedActions,
-                            )
-                              .slice(0, 3)
-                              .map((item) => (
-                                <span key={item}>{item}</span>
-                              ))}
-                          </section>
-                        </div>
+                  <section
+                    className="reviews-analytics-panel"
+                    aria-label="Tổng quan đánh giá"
+                  >
+                    <div className="reviews-analytics-panel__header">
+                      <div>
+                        <p className="reviews-analytics-panel__eyebrow">
+                          Phân tích
+                        </p>
+                        <h2>Tổng quan đánh giá</h2>
                       </div>
-                    ) : (
-                      <div className="reviews-insight-card reviews-insight-card--empty">
-                        Chưa đủ dữ liệu để tạo phân tích.
-                      </div>
-                    )}
-
-                    <div className="reviews-queue-grid">
-                      {queueTiles.map((tile) => (
+                      {!shouldSkipAnalytics && analyticsError && (
                         <button
                           type="button"
-                          key={tile.label}
-                          className={`reviews-queue-tile reviews-queue-tile--${tile.tone} ${filters.actionQueue === tile.id ? "is-active" : ""}`}
-                          onClick={() => handleQueueClick(tile)}
+                          className="reviews-btn reviews-btn-secondary"
+                          onClick={() => refetchAnalytics()}
                         >
-                          <strong>{tile.value}</strong>
-                          <span>{tile.label}</span>
-                          <small>{tile.hint}</small>
+                          Thử lại phân tích
                         </button>
-                      ))}
-                    </div>
-
-                    <div className="reviews-action-center">
-                      <div className="reviews-action-center__header">
-                        <div>
-                          <p>Trung tâm xử lý đánh giá</p>
-                          <h3>Trung tâm xử lý đánh giá</h3>
-                        </div>
-                        {filters.actionQueue && (
-                          <button
-                            type="button"
-                            className="reviews-btn reviews-btn-secondary"
-                            onClick={() =>
-                              setFilters((prev) => ({
-                                ...prev,
-                                actionQueue: "",
-                              }))
-                            }
-                          >
-                            Xem tất cả
-                          </button>
-                        )}
-                      </div>
-                      <div className="reviews-action-center__grid">
-                        {[
-                          ["reports", "Báo cáo cần xử lý"],
-                          ["needsReply", "Đánh giá cần phản hồi"],
-                          ["highRisk", "Review rủi ro cao"],
-                          ["recentlyDone", "Đã xử lý gần đây"],
-                        ].map(([key, label]) => (
-                          <div
-                            className="reviews-action-center__lane"
-                            key={key}
-                          >
-                            <h4>{label}</h4>
-                            {actionCenterItems[key].length ? (
-                              actionCenterItems[key].map((item) => (
-                                <button
-                                  type="button"
-                                  key={item.id}
-                                  onClick={() => handleViewReview(item)}
-                                >
-                                  <strong>
-                                    {item.rating}/5 ·{" "}
-                                    {item.customer_name || "Khách hàng"}
-                                  </strong>
-                                  <span>{item.title}</span>
-                                  <small>
-                                    {item.reports_count || 0} báo cáo ·{" "}
-                                    {new Date(
-                                      item.created_at,
-                                    ).toLocaleDateString("vi-VN")}
-                                  </small>
-                                </button>
-                              ))
-                            ) : (
-                              <p>Không có mục cần xử lý.</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="reviews-report-center">
-                      <div className="reviews-report-center__header">
-                        <div>
-                          <p>Trung tâm báo cáo vi phạm</p>
-                          <h3>Trung tâm báo cáo vi phạm</h3>
-                        </div>
-                        <div className="reviews-report-center__stats">
-                          <span>Báo cáo chờ xử lý: {reportStats?.pending || 0}</span>
-                          <span>Đã xử lý: {reportStats?.resolved || 0}</span>
-                          <span>Đã từ chối: {reportStats?.rejected || 0}</span>
-                        </div>
-                      </div>
-                      {reportRows.length ? (
-                        <div className="reviews-report-center__list">
-                          {reportRows.slice(0, 6).map((report) => {
-                            const reportedReview = reviewsById.get(
-                              report.reviewId,
-                            );
-                            return (
-                              <article key={report.id}>
-                                <header>
-                                  <strong>{report.reason}</strong>
-                                  <span>{getReportStatusLabel(report.status)}</span>
-                                </header>
-                                <p>{report.detail || "Không có mô tả thêm"}</p>
-                                <small>
-                                  {reportedReview?.title ||
-                                    "Đánh giá được báo cáo"}{" "}
-                                  ·{" "}
-                                  {reportedReview?.customer_name ||
-                                    "Người báo cáo đã gửi thông tin"}{" "}
-                                  ·{" "}
-                                  {new Date(report.createdAt).toLocaleString(
-                                    "vi-VN",
-                                  )}
-                                </small>
-                                {report.resolutionNote && (
-                                  <small>
-                                    Ghi chú: {report.resolutionNote}
-                                  </small>
-                                )}
-                                <div>
-                                  {permissions.canResolveReports && (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleResolveReport(
-                                            report,
-                                            "resolved",
-                                          )
-                                        }
-                                      >
-                                        Đánh dấu đã xử lý
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleResolveReport(
-                                            report,
-                                            "rejected",
-                                          )
-                                        }
-                                      >
-                                        Từ chối báo cáo
-                                      </button>
-                                    </>
-                                  )}
-                                  {permissions.canAdminModerate && (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleReportReviewAction(
-                                            report,
-                                            "hidden",
-                                          )
-                                        }
-                                      >
-                                        Ẩn đánh giá vi phạm
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleReportReviewAction(
-                                            report,
-                                            "rejected",
-                                          )
-                                        }
-                                      >
-                                        Từ chối đánh giá vi phạm
-                                      </button>
-                                    </>
-                                  )}
-                                  {!permissions.canResolveReports &&
-                                    !permissions.canAdminModerate && (
-                                      <small>
-                                        Bạn không có quyền xử lý báo cáo.
-                                      </small>
-                                    )}
-                                </div>
-                              </article>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="reviews-report-center__empty">
-                          Chưa có báo cáo trong phạm vi hiện tại.
-                        </p>
                       )}
                     </div>
 
-                    <div className="reviews-analytics-tables">
-                      <div className="reviews-mini-table">
-                        <h3>Top vấn đề khách phàn nàn</h3>
-                        {(analytics?.topTags || []).length ? (
-                          (analytics.topTags || []).slice(0, 7).map((item) => (
-                            <div
-                              key={item.name}
-                              className="reviews-mini-table__row"
-                            >
-                              <span>{item.name}</span>
-                              <strong>{item.count}</strong>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="reviews-mini-table__empty">
-                            Chưa có tag/vấn đề nổi bật.
-                          </p>
-                        )}
+                    {shouldSkipAnalytics ? (
+                      <div className="reviews-analytics-loading">
+                        Chọn nhà hàng để xem phân tích trong phạm vi quản lý.
                       </div>
-                      <div className="reviews-mini-table">
-                        <h3>Nhân viên được nhắc nhiều</h3>
-                        {(analytics?.topStaffMentioned || []).length ? (
-                          (analytics.topStaffMentioned || []).map((item) => (
-                            <div
-                              key={item.id || item.name}
-                              className="reviews-mini-table__row"
-                            >
-                              <span>{item.name || "Chưa đặt tên"}</span>
-                              <strong>{item.count}</strong>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="reviews-mini-table__empty">
-                            Chưa có đánh giá gắn nhân viên.
-                          </p>
-                        )}
+                    ) : analyticsLoading ? (
+                      <div className="reviews-analytics-loading">
+                        Đang tải dữ liệu phân tích...
                       </div>
-                      <div className="reviews-mini-table">
-                        <h3>Đối tượng điểm thấp</h3>
-                        {(analytics?.lowRatedTargets || []).length ? (
-                          (analytics.lowRatedTargets || []).map((item) => (
-                            <div
-                              key={`${item.targetType}-${item.id}`}
-                              className="reviews-mini-table__row"
-                            >
-                              <span>{item.name || "Mục chưa có tên"}</span>
-                              <strong>{item.count}</strong>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="reviews-mini-table__empty">
-                            Chưa có món/dịch vụ điểm thấp.
-                          </p>
-                        )}
+                    ) : analyticsError ? (
+                      <div className="reviews-error-box">
+                        Không thể tải phân tích. Hãy thử lại hoặc chuyển về tab
+                        đánh giá để tiếp tục xử lý review.
                       </div>
-                      <div className="reviews-mini-table">
-                        <h3>Xu hướng điểm đánh giá</h3>
-                        {(analytics?.ratingTrend || []).length ? (
-                          (analytics.ratingTrend || [])
-                            .slice(-6)
-                            .map((item) => (
-                              <div
-                                key={item.date}
-                                className="reviews-mini-table__row"
-                              >
-                                <span>{item.date}</span>
-                                <strong>
-                                  {item.avgRating}/5 · {item.total}
-                                </strong>
+                    ) : (
+                      <>
+                        {analytics?.reviewInsightSummary ? (
+                          <div className="reviews-insight-card">
+                            <div>
+                              <p>Tóm tắt phân tích</p>
+                              <div className="reviews-insight-card__meta">
+                                <span>
+                                  Nguồn:{" "}
+                                  {getInsightSourceLabel(
+                                    analytics.reviewInsightSummary.source,
+                                  )}
+                                </span>
+                                {Number.isFinite(
+                                  Number(
+                                    analytics.reviewInsightSummary.confidence,
+                                  ),
+                                ) && (
+                                  <span>
+                                    Độ tin cậy{" "}
+                                    {Math.round(
+                                      Number(
+                                        analytics.reviewInsightSummary
+                                          .confidence,
+                                      ) * 100,
+                                    )}
+                                    %
+                                  </span>
+                                )}
                               </div>
-                            ))
+                              <h3>
+                                {analytics.reviewInsightSummary.summary}
+                              </h3>
+                              {analytics.reviewInsightSummary.source ===
+                                "heuristic_fallback" && (
+                                <small className="reviews-insight-card__fallback-note">
+                                  AI không khả dụng, hệ thống dùng phân tích dự
+                                  phòng.
+                                </small>
+                              )}
+                            </div>
+                            <div className="reviews-insight-card__columns">
+                              <section>
+                                <strong>Khách khen</strong>
+                                {asList(
+                                  analytics.reviewInsightSummary.positives,
+                                ).map((item) => (
+                                  <span key={item}>{item}</span>
+                                ))}
+                              </section>
+                              <section>
+                                <strong>Khách chê</strong>
+                                {asList(
+                                  analytics.reviewInsightSummary.negatives,
+                                ).map((item) => (
+                                  <span key={item}>{item}</span>
+                                ))}
+                              </section>
+                              <section>
+                                <strong>Hành động đề xuất</strong>
+                                {asList(
+                                  analytics.reviewInsightSummary
+                                    .recommendedActions,
+                                )
+                                  .slice(0, 3)
+                                  .map((item) => (
+                                    <span key={item}>{item}</span>
+                                  ))}
+                              </section>
+                            </div>
+                          </div>
                         ) : (
-                          <p className="reviews-mini-table__empty">
-                            Chưa có dữ liệu xu hướng.
-                          </p>
+                          <div className="reviews-insight-card reviews-insight-card--empty">
+                            Chưa đủ dữ liệu để tạo phân tích.
+                          </div>
                         )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </section>
 
-              <div className="reviews-content-header">
-                <h2 className="reviews-content-header__title">
-                  {titleMap[currentTab]}
-                </h2>
-                <div className="reviews-content-header__meta">
-                  Hiển thị {filteredReviews.length} / {reviewsTotal} đánh giá
-                  {isPartialReviewList &&
-                    " · Đang hiển thị 100 đánh giá mới nhất, hãy dùng bộ lọc để thu hẹp kết quả."}
-                </div>
-              </div>
+                        <div className="reviews-queue-grid">
+                          {queueTiles.map((tile) => (
+                            <button
+                              type="button"
+                              key={tile.label}
+                              className={`reviews-queue-tile reviews-queue-tile--${tile.tone} ${filters.actionQueue === tile.id ? "is-active" : ""}`}
+                              onClick={() => handleQueueClick(tile)}
+                            >
+                              <strong>{tile.value}</strong>
+                              <span>{tile.label}</span>
+                              <small>{tile.hint}</small>
+                            </button>
+                          ))}
+                        </div>
 
-              {error ? (
-                <div className="reviews-error-box">
-                  <span>Không thể tải dữ liệu đánh giá. Vui lòng thử lại.</span>
-                  <button
-                    type="button"
-                    className="reviews-btn reviews-btn-secondary"
-                    onClick={() => refetch()}
-                  >
-                    Thử lại
-                  </button>
-                </div>
+                        <div className="reviews-action-center">
+                          <div className="reviews-action-center__header">
+                            <div>
+                              <p>Trung tâm xử lý đánh giá</p>
+                              <h3>Trung tâm xử lý đánh giá</h3>
+                            </div>
+                            {filters.actionQueue && (
+                              <button
+                                type="button"
+                                className="reviews-btn reviews-btn-secondary"
+                                onClick={() =>
+                                  setFilters((prev) => ({
+                                    ...prev,
+                                    actionQueue: "",
+                                  }))
+                                }
+                              >
+                                Xem tất cả
+                              </button>
+                            )}
+                          </div>
+                          <div className="reviews-action-center__grid">
+                            {[
+                              ["reports", "Báo cáo cần xử lý"],
+                              ["needsReply", "Đánh giá cần phản hồi"],
+                              ["highRisk", "Review rủi ro cao"],
+                              ["recentlyDone", "Đã xử lý gần đây"],
+                            ].map(([key, label]) => (
+                              <div
+                                className="reviews-action-center__lane"
+                                key={key}
+                              >
+                                <h4>{label}</h4>
+                                {actionCenterItems[key].length ? (
+                                  actionCenterItems[key].map((item) => (
+                                    <button
+                                      type="button"
+                                      key={item.id}
+                                      onClick={() => handleViewReview(item)}
+                                    >
+                                      <strong>
+                                        {item.rating}/5 ·{" "}
+                                        {item.customer_name || "Khách hàng"}
+                                      </strong>
+                                      <span>{item.title}</span>
+                                      <small>
+                                        {item.reports_count || 0} báo cáo ·{" "}
+                                        {new Date(
+                                          item.created_at,
+                                        ).toLocaleDateString("vi-VN")}
+                                      </small>
+                                    </button>
+                                  ))
+                                ) : (
+                                  <p>Không có mục cần xử lý.</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="reviews-report-center">
+                          <div className="reviews-report-center__header">
+                            <div>
+                              <p>Trung tâm báo cáo vi phạm</p>
+                              <h3>Trung tâm báo cáo vi phạm</h3>
+                            </div>
+                            <div className="reviews-report-center__stats">
+                              <span>
+                                Báo cáo chờ xử lý: {reportStats?.pending || 0}
+                              </span>
+                              <span>
+                                Đã xử lý: {reportStats?.resolved || 0}
+                              </span>
+                              <span>
+                                Đã từ chối: {reportStats?.rejected || 0}
+                              </span>
+                            </div>
+                          </div>
+                          {reportRows.length ? (
+                            <div className="reviews-report-center__list">
+                              {reportRows.slice(0, 6).map((report) => {
+                                const reportedReview = reviewsById.get(
+                                  report.reviewId,
+                                );
+                                return (
+                                  <article key={report.id}>
+                                    <header>
+                                      <strong>{report.reason}</strong>
+                                      <span>
+                                        {getReportStatusLabel(report.status)}
+                                      </span>
+                                    </header>
+                                    <p>
+                                      {report.detail || "Không có mô tả thêm"}
+                                    </p>
+                                    <small>
+                                      {reportedReview?.title ||
+                                        "Đánh giá được báo cáo"}{" "}
+                                      ·{" "}
+                                      {reportedReview?.customer_name ||
+                                        "Người báo cáo đã gửi thông tin"}{" "}
+                                      ·{" "}
+                                      {new Date(
+                                        report.createdAt,
+                                      ).toLocaleString("vi-VN")}
+                                    </small>
+                                    {report.resolutionNote && (
+                                      <small>
+                                        Ghi chú: {report.resolutionNote}
+                                      </small>
+                                    )}
+                                    <div>
+                                      {permissions.canResolveReports && (
+                                        <>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleResolveReport(
+                                                report,
+                                                "resolved",
+                                              )
+                                            }
+                                          >
+                                            Đánh dấu đã xử lý
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleResolveReport(
+                                                report,
+                                                "rejected",
+                                              )
+                                            }
+                                          >
+                                            Từ chối báo cáo
+                                          </button>
+                                        </>
+                                      )}
+                                      {permissions.canAdminModerate && (
+                                        <>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleReportReviewAction(
+                                                report,
+                                                "hidden",
+                                              )
+                                            }
+                                          >
+                                            Ẩn đánh giá vi phạm
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleReportReviewAction(
+                                                report,
+                                                "rejected",
+                                              )
+                                            }
+                                          >
+                                            Từ chối đánh giá vi phạm
+                                          </button>
+                                        </>
+                                      )}
+                                      {!permissions.canResolveReports &&
+                                        !permissions.canAdminModerate && (
+                                          <small>
+                                            Bạn không có quyền xử lý báo cáo.
+                                          </small>
+                                        )}
+                                    </div>
+                                  </article>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="reviews-report-center__empty">
+                              Chưa có báo cáo trong phạm vi hiện tại.
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="reviews-analytics-tables">
+                          <div className="reviews-mini-table">
+                            <h3>Top vấn đề khách phàn nàn</h3>
+                            {(analytics?.topTags || []).length ? (
+                              (analytics.topTags || [])
+                                .slice(0, 7)
+                                .map((item) => (
+                                  <div
+                                    key={item.name}
+                                    className="reviews-mini-table__row"
+                                  >
+                                    <span>{item.name}</span>
+                                    <strong>{item.count}</strong>
+                                  </div>
+                                ))
+                            ) : (
+                              <p className="reviews-mini-table__empty">
+                                Chưa có tag/vấn đề nổi bật.
+                              </p>
+                            )}
+                          </div>
+                          <div className="reviews-mini-table">
+                            <h3>Nhân viên được nhắc nhiều</h3>
+                            {(analytics?.topStaffMentioned || []).length ? (
+                              (analytics.topStaffMentioned || []).map((item) => (
+                                <div
+                                  key={item.id || item.name}
+                                  className="reviews-mini-table__row"
+                                >
+                                  <span>{item.name || "Chưa đặt tên"}</span>
+                                  <strong>{item.count}</strong>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="reviews-mini-table__empty">
+                                Chưa có đánh giá gắn nhân viên.
+                              </p>
+                            )}
+                          </div>
+                          <div className="reviews-mini-table">
+                            <h3>Đối tượng điểm thấp</h3>
+                            {(analytics?.lowRatedTargets || []).length ? (
+                              (analytics.lowRatedTargets || []).map((item) => (
+                                <div
+                                  key={`${item.targetType}-${item.id}`}
+                                  className="reviews-mini-table__row"
+                                >
+                                  <span>{item.name || "Mục chưa có tên"}</span>
+                                  <strong>{item.count}</strong>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="reviews-mini-table__empty">
+                                Chưa có món/dịch vụ điểm thấp.
+                              </p>
+                            )}
+                          </div>
+                          <div className="reviews-mini-table">
+                            <h3>Xu hướng điểm đánh giá</h3>
+                            {(analytics?.ratingTrend || []).length ? (
+                              (analytics.ratingTrend || [])
+                                .slice(-6)
+                                .map((item) => (
+                                  <div
+                                    key={item.date}
+                                    className="reviews-mini-table__row"
+                                  >
+                                    <span>{item.date}</span>
+                                    <strong>
+                                      {item.avgRating}/5 · {item.total}
+                                    </strong>
+                                  </div>
+                                ))
+                            ) : (
+                              <p className="reviews-mini-table__empty">
+                                Chưa có dữ liệu xu hướng.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </section>
+                </>
               ) : (
-                <ReviewsList
-                  isLoading={loading}
-                  reviews={filteredReviews}
-                  currentTab={currentTab}
-                  onView={handleViewReview}
-                  onDelete={handleDeleteReview}
-                  onEdit={handleModerate}
-                  permissions={permissions}
-                  emptyType={hasActiveFilters ? "filtered" : undefined}
-                />
+                <>
+                  <div className="reviews-content-header">
+                    <h2 className="reviews-content-header__title">
+                      {titleMap[currentTab]}
+                    </h2>
+                    <div className="reviews-content-header__meta">
+                      Hiển thị {filteredReviews.length} / {reviewsTotal} đánh giá
+                      {isPartialReviewList &&
+                        " · Đang hiển thị 100 đánh giá mới nhất, hãy dùng bộ lọc để thu hẹp kết quả."}
+                    </div>
+                  </div>
+
+                  {error ? (
+                    <div className="reviews-error-box">
+                      <span>
+                        Không thể tải dữ liệu đánh giá. Vui lòng thử lại.
+                      </span>
+                      <button
+                        type="button"
+                        className="reviews-btn reviews-btn-secondary"
+                        onClick={() => refetch()}
+                      >
+                        Thử lại
+                      </button>
+                    </div>
+                  ) : (
+                    <ReviewsList
+                      isLoading={loading}
+                      reviews={filteredReviews}
+                      currentTab={currentTab}
+                      onView={handleViewReview}
+                      onEdit={handleModerate}
+                      permissions={permissions}
+                      emptyType={hasActiveFilters ? "filtered" : undefined}
+                    />
+                  )}
+                </>
               )}
             </section>
           </div>
         </section>
       </div>
-
-      {reviewPendingDelete && (
-        <div className="reviews-confirm-overlay" role="presentation">
-          <div
-            className="reviews-confirm-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="review-delete-title"
-          >
-            <h3 id="review-delete-title">Xóa đánh giá?</h3>
-            <p>
-              Bạn đang xóa đánh giá của{" "}
-              <strong>
-                {reviewPendingDelete.customer_name || "khách hàng"}
-              </strong>
-              . Hành động này không thể hoàn tác.
-            </p>
-            <div className="reviews-confirm-dialog__actions">
-              <button
-                type="button"
-                className="reviews-btn reviews-btn-secondary"
-                disabled={isDeletingReview}
-                onClick={handleCancelDeleteReview}
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                className="reviews-btn reviews-btn-danger"
-                disabled={isDeletingReview}
-                onClick={handleConfirmDeleteReview}
-              >
-                {isDeletingReview ? "Đang xóa..." : "Xóa đánh giá"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <ReviewModal
         visible={modalVisible}
