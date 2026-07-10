@@ -9,6 +9,7 @@ import MergedTablePaymentMutation from "./mergedTablePaymentMutation.js";
 import TransferPaymentMutation from "./transferMutation.js";
 import { PaymentResolvers } from "./types.js";
 import publicTablePaymentMutation from "./publicTablePaymentMutation.js";
+import PublicTableAccessGuardMutation from "./publicTableAccessGuardMutation.js";
 import {
   PaymentCredentialMutation,
   PaymentCredentialQuery,
@@ -53,6 +54,7 @@ export default {
     ...StrictOrderPaymentMutation,
     ...TransferPaymentMutation,
     ...publicTablePaymentMutation,
+    ...PublicTableAccessGuardMutation,
     ...(wallet.Mutation || {}),
     ...MergedTablePaymentMutation,
     ...PaymentCredentialMutation,
