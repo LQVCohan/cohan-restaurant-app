@@ -416,11 +416,11 @@ describe("BackupManagement scope and user-facing wording", () => {
   });
 
   it("replaces an unknown English backend error with a useful Vietnamese message", async () => {
-    previewExport.mockRejectedValueOnce(new Error("resolver missing"));
+    previewExport.mockRejectedValueOnce(new Error("resolver unavailable"));
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Kiểm tra nội dung file" }));
     expect(await screen.findByText("Không thể kiểm tra nội dung file sao lưu. Hãy thử lại.")).toBeInTheDocument();
-    expect(screen.queryByText(/resolver missing/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/resolver unavailable/i)).not.toBeInTheDocument();
   });
 });
 
