@@ -82,7 +82,7 @@ const failedPayment = {
 
 const renderPage = (mocks) => render(
   <AuthContext.Provider value={{ user: { id: "manager-1" } }}>
-    <MockedProvider mocks={mocks} addTypename={false}>
+    <MockedProvider mocks={mocks}>
       <TransferPaymentReviewPage />
     </MockedProvider>
   </AuthContext.Provider>,
