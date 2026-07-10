@@ -9,8 +9,12 @@ import {
   AlertCircle,
   ListFilter,
   Trash2,
+  ShieldAlert,
+  RotateCcw,
 } from "lucide-react";
 import { useApolloClient, useQuery } from "@apollo/client";
+import Modal from "../../../../common/Modal";
+import Button from "../../../../common/Button";
 import IngredientCard from "./IngredientCard";
 import IngredientModal from "./IngredientModal";
 import QuickStockModal from "./QuickStockModal";
@@ -90,6 +94,8 @@ const IngredientList = ({
   const [quickEntries, setQuickEntries] = useState([]);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState("active");
+  const [deletePrompt, setDeletePrompt] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [blockedDeleteModal, setBlockedDeleteModal] = useState(null);
   const [trashBusyId, setTrashBusyId] = useState("");
 
@@ -178,17 +184,54 @@ const IngredientList = ({
     setQuickStockOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa nguyên liệu này?")) return;
+  const handleDelete = (id) => {
+    const ingredient = filteredIngredients.find((item) => item.id === id);
+    if (!ingredient) return;
+    setDeletePrompt({ mode: "soft", ingredient });
+  };
+
+  const handleRestoreFromTrash = async (id) => {
     try {
-      await deleteIngredient(id);
+      setTrashBusyId(`restore:${id}`);
+      await restoreIngredient(id);
+      showNotification("Đã khôi phục nguyên liệu từ thùng rác.", "success");
+    } catch (e) {
+      showNotification(toFriendlyIngredientError(e), "error");
+    } finally {
+      setTrashBusyId("");
+    }
+  };
+
+  const handlePermanentDelete = (id) => {
+    const ingredient = trashIngredients.find((item) => item.id === id);
+    if (!ingredient) return;
+    setDeletePrompt({ mode: "permanent", ingredient });
+  };
+
+  const handleConfirmDelete = async () => {
+    const target = deletePrompt?.ingredient;
+    const mode = deletePrompt?.mode;
+    if (!target?.id || deleteBusy) return;
+
+    try {
+      setDeleteBusy(true);
+
+      if (mode === "permanent") {
+        await deleteIngredientPermanently(target.id);
+        setDeletePrompt(null);
+        showNotification("Đã xóa vĩnh viễn nguyên liệu.", "success");
+        return;
+      }
+
+      await deleteIngredient(target.id);
+      setDeletePrompt(null);
       showNotification(
         {
           message: "Đã chuyển nguyên liệu vào thùng rác (lưu 30 ngày).",
           actionLabel: "Hoàn tác",
           onAction: async () => {
             try {
-              await restoreIngredient(id);
+              await restoreIngredient(target.id);
               showNotification("Đã hoàn tác xóa nguyên liệu.", "success");
             } catch (restoreErr) {
               showNotification(
@@ -204,9 +247,11 @@ const IngredientList = ({
     } catch (e) {
       const graphQLErrors = e?.graphQLErrors || e?.networkError?.result?.errors || [];
       const blocker = graphQLErrors[0]?.extensions?.activeMenuItems;
-      if (Array.isArray(blocker) && blocker.length) {
+      if (mode === "soft" && Array.isArray(blocker) && blocker.length) {
+        setDeletePrompt(null);
         setBlockedDeleteModal({
-          ingredientId: id,
+          ingredientId: target.id,
+          ingredientName: target.name,
           items: blocker,
           message:
             graphQLErrors[0]?.message ||
@@ -215,33 +260,8 @@ const IngredientList = ({
         return;
       }
       showNotification(toFriendlyIngredientError(e), "error");
-    }
-  };
-
-  const handleRestoreFromTrash = async (id) => {
-    try {
-      setTrashBusyId(`restore:${id}`);
-      await restoreIngredient(id);
-      showNotification("Đã khôi phục nguyên liệu từ thùng rác.", "success");
-    } catch (e) {
-      showNotification(toFriendlyIngredientError(e), "error");
     } finally {
-      setTrashBusyId("");
-    }
-  };
-
-  const handlePermanentDelete = async (id) => {
-    if (!window.confirm("Xóa vĩnh viễn nguyên liệu này? Hành động không thể hoàn tác.")) {
-      return;
-    }
-    try {
-      setTrashBusyId(`delete:${id}`);
-      await deleteIngredientPermanently(id);
-      showNotification("Đã xóa vĩnh viễn nguyên liệu.", "success");
-    } catch (e) {
-      showNotification(toFriendlyIngredientError(e), "error");
-    } finally {
-      setTrashBusyId("");
+      setDeleteBusy(false);
     }
   };
 
@@ -718,7 +738,7 @@ const IngredientList = ({
                     <button
                       type="button"
                       className="il-btn-icon"
-                      disabled={Boolean(trashBusyId)}
+                      disabled={Boolean(trashBusyId) || deleteBusy}
                       onClick={() => handleRestoreFromTrash(row.id)}
                     >
                       Khôi phục
@@ -726,7 +746,7 @@ const IngredientList = ({
                     <button
                       type="button"
                       className="il-btn-icon danger"
-                      disabled={Boolean(trashBusyId)}
+                      disabled={Boolean(trashBusyId) || deleteBusy}
                       onClick={() => handlePermanentDelete(row.id)}
                     >
                       Xóa vĩnh viễn
@@ -844,34 +864,109 @@ const IngredientList = ({
         }}
       />
 
-      {blockedDeleteModal && (
-        <div className="il-report-modal-overlay">
-          <div className="il-report-modal il-blocked-modal">
-            <h3>Không thể xóa nguyên liệu</h3>
-            <p>
-              {blockedDeleteModal.message ||
-                "Nguyên liệu đang được sử dụng trong các món ăn đang hoạt động."}
-            </p>
-            <p>Vui lòng ngừng bán các món sau trước khi xóa:</p>
-            <div className="il-blocked-modal__list">
-              {(blockedDeleteModal.items || []).map((item) => (
-                <div key={item.id} className="il-blocked-modal__item">
-                  {item.name}
+      <Modal
+        isOpen={Boolean(deletePrompt)}
+        onClose={deleteBusy ? undefined : () => setDeletePrompt(null)}
+        title={
+          deletePrompt?.mode === "permanent"
+            ? "Xóa vĩnh viễn nguyên liệu"
+            : "Đưa nguyên liệu vào thùng rác"
+        }
+        size="sm"
+        className="il-delete-confirm-modal"
+        closeOnEscape={!deleteBusy}
+        closeOnOverlayClick={!deleteBusy}
+      >
+        <Modal.Body>
+          <p>
+            Bạn đang chọn <strong>{deletePrompt?.ingredient?.name || "nguyên liệu này"}</strong>.
+          </p>
+          {deletePrompt?.mode === "permanent" ? (
+            <>
+              <p>Hành động này xóa hoàn toàn dữ liệu nguyên liệu khỏi hệ thống.</p>
+              <div className="il-blocked-modal__list" role="list">
+                <div className="il-blocked-modal__item" role="listitem">
+                  <ShieldAlert size={16} aria-hidden="true" /> Không thể khôi phục sau khi xác nhận.
                 </div>
-              ))}
-            </div>
-            <div className="il-report-actions">
-              <button
-                type="button"
-                className="il-btn-primary"
-                onClick={() => setBlockedDeleteModal(null)}
-              >
-                Đã hiểu
-              </button>
-            </div>
+                <div className="il-blocked-modal__item" role="listitem">
+                  <Trash2 size={16} aria-hidden="true" /> Chỉ áp dụng với nguyên liệu đang ở thùng rác.
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <p>Nguyên liệu sẽ ngừng xuất hiện trong danh sách đang hoạt động.</p>
+              <div className="il-blocked-modal__list" role="list">
+                <div className="il-blocked-modal__item" role="listitem">
+                  <RotateCcw size={16} aria-hidden="true" /> Có thể khôi phục trong vòng 30 ngày.
+                </div>
+                <div className="il-blocked-modal__item" role="listitem">
+                  <ShieldAlert size={16} aria-hidden="true" /> Món đang hoạt động sử dụng nguyên liệu sẽ chặn thao tác xóa.
+                </div>
+              </div>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setDeletePrompt(null)}
+            disabled={deleteBusy}
+          >
+            Hủy
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={handleConfirmDelete}
+            disabled={deleteBusy}
+          >
+            {deleteBusy
+              ? "Đang xử lý…"
+              : deletePrompt?.mode === "permanent"
+              ? "Xóa vĩnh viễn"
+              : "Đưa vào thùng rác"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(blockedDeleteModal)}
+        onClose={() => setBlockedDeleteModal(null)}
+        title="Chưa thể xóa nguyên liệu"
+        size="sm"
+        className="il-blocked-modal"
+      >
+        <Modal.Body>
+          <p>
+            {blockedDeleteModal?.message ||
+              "Nguyên liệu đang được sử dụng trong các món ăn đang hoạt động."}
+          </p>
+          <p>
+            Hãy tạm ngưng các món sau trước khi xóa
+            {blockedDeleteModal?.ingredientName
+              ? ` “${blockedDeleteModal.ingredientName}”`
+              : " nguyên liệu"}:
+          </p>
+          <div className="il-blocked-modal__list" role="list">
+            {(blockedDeleteModal?.items || []).map((item) => (
+              <div key={item.id} className="il-blocked-modal__item" role="listitem">
+                {item.name}
+              </div>
+            ))}
           </div>
-        </div>
-      )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => setBlockedDeleteModal(null)}
+          >
+            Đã hiểu
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {reportModalOpen && (
         <div className="il-report-modal-overlay">
