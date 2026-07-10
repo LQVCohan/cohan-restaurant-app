@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeRestaurantAvailability,
   getNextOpeningTime,
+  resolveMenuTimeSlotAt,
 } from "../../src/services/restaurantAvailability.service.js";
 
 const base = {
@@ -14,6 +15,21 @@ const base = {
     wednesday: [{ open: "09:00", close: "21:00" }],
   },
 };
+
+describe("resolveMenuTimeSlotAt", () => {
+  it.each([
+    ["2026-07-11T01:00:00.000Z", "breakfast"],
+    ["2026-07-11T04:00:00.000Z", "lunch"],
+    ["2026-07-11T08:00:00.000Z", "dinner"],
+    ["2026-07-11T15:00:00.000Z", "late_night"],
+  ])("maps Vietnam service time %s to %s", (value, expected) => {
+    expect(resolveMenuTimeSlotAt(value, "Asia/Ho_Chi_Minh")).toBe(expected);
+  });
+
+  it("returns null for an invalid service time", () => {
+    expect(resolveMenuTimeSlotAt("not-a-date")).toBeNull();
+  });
+});
 
 describe("restaurant availability", () => {
   const nowOpen = new Date("2026-05-19T10:00:00+07:00");
