@@ -179,13 +179,16 @@ describe("Table3DSimulatorModalV2", () => {
     viewer.activateAR = vi.fn().mockResolvedValue(undefined);
 
     expect(viewer).toHaveAttribute("ar-placement", "floor");
-    expect(viewer).toHaveAttribute("ar-scale", "fixed");
+    expect(viewer).toHaveAttribute("ar-scale", "auto");
     expect(viewer).toHaveAttribute(
       "ar-modes",
       "webxr scene-viewer quick-look",
     );
     expect(viewer).toHaveAttribute("scale", "1 1 1");
     expect(viewer).toHaveAttribute("xr-environment");
+    expect(viewer.querySelector('[slot="ar-button"]')).toHaveAttribute(
+      "hidden",
+    );
 
     fireEvent.load(viewer);
 
@@ -199,5 +202,79 @@ describe("Table3DSimulatorModalV2", () => {
     fireEvent.click(screen.getByRole("button", { name: /Mở camera AR/i }));
 
     await waitFor(() => expect(viewer.activateAR).toHaveBeenCalledTimes(1));
+  });
+
+  it("reconciles a model that loaded before effect listeners were attached", async () => {
+    const loadedDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "loaded",
+    );
+    const canActivateDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "canActivateAR",
+    );
+    const activateDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "activateAR",
+    );
+    const activateAR = vi.fn().mockResolvedValue(undefined);
+
+    Object.defineProperty(window, "isSecureContext", {
+      configurable: true,
+      value: true,
+    });
+    Object.defineProperty(HTMLElement.prototype, "loaded", {
+      configurable: true,
+      get() {
+        return this.tagName === "MODEL-VIEWER";
+      },
+    });
+    Object.defineProperty(HTMLElement.prototype, "canActivateAR", {
+      configurable: true,
+      get() {
+        return this.tagName === "MODEL-VIEWER";
+      },
+    });
+    Object.defineProperty(HTMLElement.prototype, "activateAR", {
+      configurable: true,
+      value: activateAR,
+    });
+
+    try {
+      render(<Table3DSimulatorModalV2 {...baseProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText("Đang tải mô hình 3D"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /Mở camera AR/i }),
+        ).toBeEnabled();
+      });
+    } finally {
+      if (loadedDescriptor) {
+        Object.defineProperty(HTMLElement.prototype, "loaded", loadedDescriptor);
+      } else {
+        delete HTMLElement.prototype.loaded;
+      }
+      if (canActivateDescriptor) {
+        Object.defineProperty(
+          HTMLElement.prototype,
+          "canActivateAR",
+          canActivateDescriptor,
+        );
+      } else {
+        delete HTMLElement.prototype.canActivateAR;
+      }
+      if (activateDescriptor) {
+        Object.defineProperty(
+          HTMLElement.prototype,
+          "activateAR",
+          activateDescriptor,
+        );
+      } else {
+        delete HTMLElement.prototype.activateAR;
+      }
+    }
   });
 });
