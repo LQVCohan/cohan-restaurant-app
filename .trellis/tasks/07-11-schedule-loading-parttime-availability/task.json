@@ -1,12 +1,12 @@
 {
   "id": "07-11-schedule-loading-parttime-availability",
   "title": "Bỏ loading giả và tối ưu lịch rảnh part-time",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-fix",
   "scope": [
     "src/components/Dashboard_Manager/Schedule/ScheduleManagementPage.jsx",
     "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModalInline.jsx",
-    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.scss",
+    "src/styles/AvailabilitySnapshotOverlayLight.css",
     "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.test.jsx"
   ],
   "validation": {
@@ -20,8 +20,19 @@
       "read repository workflow and relevant ponytail/UI skills",
       "traced scheduling policy shift templates through manager and staff availability UIs",
       "confirmed backend validates availability against configured shift templates and computes hours from template duration",
-      "confirmed hydration overlay is synthetic and independent from Apollo loading"
+      "confirmed hydration overlay is synthetic and independent from Apollo loading",
+      "removed initScheduleHydrationPolish from the schedule page",
+      "split manager availability review into day-level full-time and shift-block part-time tables",
+      "displayed configured start/end times and computed shift duration",
+      "preserved shift types referenced by existing part-time submissions",
+      "added regression tests for four-hour part-time blocks and non-duplicated full-time day status",
+      "re-fetched changed files from main and reviewed the resulting JSX and selector scope"
     ],
-    "notRun": []
+    "notRun": [
+      "targeted Vitest was unavailable in the GitHub connector environment",
+      "npm run check:conflicts was unavailable in the GitHub connector environment",
+      "npm run build was unavailable in the GitHub connector environment",
+      "desktop and mobile visual review was unavailable in the GitHub connector environment"
+    ]
   }
 }
