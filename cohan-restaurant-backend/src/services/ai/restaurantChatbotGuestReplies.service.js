@@ -1,11 +1,20 @@
 import mongoose from "mongoose";
-import { AiChatConversation, ChatThread, Notification } from "../../../models/index.js";
-import { normalizeGuestId, buildGuestSafeStaffReplyPayload } from "./restaurantChatbotRealtime.service.js";
-import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit } from "./restaurantChatbotRateLimit.service.js";
+import {
+  AiChatConversation,
+  ChatThread,
+  Notification,
+} from "../../../models/index.js";
+import {
+  normalizeGuestId,
+  buildGuestSafeStaffReplyPayload,
+} from "./restaurantChatbotRealtime.service.js";
+import {
+  AI_CHATBOT_RATE_LIMIT_POLICIES,
+  consumeAiChatbotRateLimit,
+} from "./restaurantChatbotRateLimit.service.js";
 import { resolveChatRecipientIdsByRole } from "../communication/chatRecipientScope.service.js";
 
 const HANDOFF_MARKER = "[AI HANDOFF]";
-
 
 const safeObjectId = (value) => {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -40,7 +49,19 @@ const parseAfterDate = (after) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-export const toGuestStaffReplies = ({ messages = [], after = null, limit = 30 } = {}) => {
+const isAiHandoffThread = (thread) =>
+  String(thread?.kind || "").toLowerCase() === "ai_chatbot_handoff" ||
+  String(thread?.subject || "")
+    .trim()
+    .toLowerCase()
+    .startsWith("ai handoff") ||
+  String(thread?.messages?.[0]?.content || "").includes(HANDOFF_MARKER);
+
+export const toGuestStaffReplies = ({
+  messages = [],
+  after = null,
+  limit = 30,
+} = {}) => {
   const parsedAfter = parseAfterDate(after);
   const max = Math.max(1, Math.min(Number(limit || 30), 50));
 
@@ -51,8 +72,16 @@ export const toGuestStaffReplies = ({ messages = [], after = null, limit = 30 } 
       if (!content) return false;
       if (content.includes(HANDOFF_MARKER)) return false;
 
-      const senderRole = String(message?.senderRole || "").trim().toLowerCase();
-      if (!senderRole || senderRole === "system" || CUSTOMER_DENYLIST.has(senderRole)) return false;
+      const senderRole = String(message?.senderRole || "")
+        .trim()
+        .toLowerCase();
+      if (
+        !senderRole ||
+        senderRole === "system" ||
+        CUSTOMER_DENYLIST.has(senderRole)
+      ) {
+        return false;
+      }
       if (!STAFF_ALLOWLIST.has(senderRole)) return false;
       if (!message?.senderId && !message?.senderName) return false;
 
@@ -62,11 +91,16 @@ export const toGuestStaffReplies = ({ messages = [], after = null, limit = 30 } 
       return true;
     })
     .slice(-max)
-    .map(({ message, index }) => buildGuestSafeStaffReplyPayload({ message, fallbackIndex: index }))
+    .map(({ message, index }) =>
+      buildGuestSafeStaffReplyPayload({ message, fallbackIndex: index }),
+    )
     .filter(Boolean);
 };
 
-export async function getRestaurantChatbotGuestReplies({ input, clientIp } = {}) {
+export async function getRestaurantChatbotGuestReplies({
+  input,
+  clientIp,
+} = {}) {
   const conversationId = String(input?.conversationId || "").trim();
   const normalizedGuestId = normalizeGuestId(input?.guestId);
   const conversationObjectId = safeObjectId(conversationId);
@@ -89,14 +123,16 @@ export async function getRestaurantChatbotGuestReplies({ input, clientIp } = {})
       clientIp,
     },
   });
-  if (!rateResult.allowed) {
-    return { ...safeEmpty, ok: true };
-  }
-
+  if (!rateResult.allowed) return { ...safeEmpty, ok: true };
   if (!conversationObjectId || !normalizedGuestId) return safeEmpty;
 
-  const conversation = await AiChatConversation.findById(conversationObjectId).lean();
-  if (!conversation || String(conversation.guestId || "") !== normalizedGuestId) {
+  const conversation = await AiChatConversation.findById(
+    conversationObjectId,
+  ).lean();
+  if (
+    !conversation ||
+    String(conversation.guestId || "") !== normalizedGuestId
+  ) {
     return safeEmpty;
   }
 
@@ -124,11 +160,13 @@ export async function getRestaurantChatbotGuestReplies({ input, clientIp } = {})
     };
   }
 
-  const thread = await ChatThread.findById(conversation.chatThreadId).select("messages").lean();
+  const thread = await ChatThread.findById(conversation.chatThreadId)
+    .select("restaurantId kind subject status messages")
+    .lean();
   if (!thread) {
     return {
       ok: true,
-      handoffRequested: hasHandoff,
+      handoffRequested: false,
       conversationStatus: String(conversation.status || ""),
       handoffClosed: isClosed,
       conversationId: String(conversation._id),
@@ -136,29 +174,46 @@ export async function getRestaurantChatbotGuestReplies({ input, clientIp } = {})
     };
   }
 
+  const validScope =
+    String(thread.restaurantId || "") ===
+      String(conversation.restaurantId || "") && isAiHandoffThread(thread);
+  const threadClosed = String(thread.status || "open") === "closed";
+  const handoffClosed = isClosed || threadClosed || !validScope;
+
   return {
     ok: true,
-    handoffRequested: hasHandoff,
-    conversationStatus: String(conversation.status || ""),
-    handoffClosed: isClosed,
+    handoffRequested: hasHandoff && !handoffClosed,
+    conversationStatus: handoffClosed
+      ? "closed"
+      : String(conversation.status || ""),
+    handoffClosed,
     conversationId: String(conversation._id),
-    replies: toGuestStaffReplies({
-      messages: thread.messages || [],
-      after: input?.after,
-      limit: input?.limit,
-    }),
+    replies: validScope
+      ? toGuestStaffReplies({
+          messages: thread.messages || [],
+          after: input?.after,
+          limit: input?.limit,
+        })
+      : [],
   };
 }
-
 
 const toObjectId = (value) => {
   if (!value || !mongoose.isValidObjectId(value)) return null;
   return new mongoose.Types.ObjectId(value);
 };
 
-const preview = (text, max = 140) => String(text || "").replace(/\s+/g, " ").trim().slice(0, max);
+const preview = (text, max = 140) =>
+  String(text || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
 
-export async function sendRestaurantChatbotGuestMessage({ input, io, clientIp } = {}) {
+export async function sendRestaurantChatbotGuestMessage({
+  input,
+  io,
+  clientIp,
+} = {}) {
   const conversationId = String(input?.conversationId || "").trim();
   const normalizedGuestId = normalizeGuestId(input?.guestId);
   const content = String(input?.content || "").trim();
@@ -166,21 +221,78 @@ export async function sendRestaurantChatbotGuestMessage({ input, io, clientIp } 
 
   const rateResult = consumeAiChatbotRateLimit({
     policy: AI_CHATBOT_RATE_LIMIT_POLICIES.sendAiChatbotGuestMessage,
-    keyParts: { guestId: normalizedGuestId, conversationId, restaurantId: "", clientIp },
+    keyParts: {
+      guestId: normalizedGuestId,
+      conversationId,
+      restaurantId: "",
+      clientIp,
+    },
   });
-  if (!rateResult.allowed) return { ...safeEmpty, message: { id: "", role: "assistant", senderLabel: "", content: rateResult.safeMessage, createdAt: "" } };
+  if (!rateResult.allowed) {
+    return {
+      ...safeEmpty,
+      message: {
+        id: "",
+        role: "assistant",
+        senderLabel: "",
+        content: rateResult.safeMessage,
+        createdAt: "",
+      },
+    };
+  }
 
   if (!safeObjectId(conversationId) || !normalizedGuestId) return safeEmpty;
   if (!content || content.length > 1000) return safeEmpty;
 
   const conversation = await AiChatConversation.findById(conversationId);
-  if (!conversation || String(conversation.guestId || "") !== normalizedGuestId) return safeEmpty;
-  if (conversation.status !== "handoff_requested") return { ok: false, conversationId: String(conversation._id), message: null };
-  if (!conversation.chatThreadId) return { ok: false, conversationId: String(conversation._id), message: null };
+  if (
+    !conversation ||
+    String(conversation.guestId || "") !== normalizedGuestId
+  ) {
+    return safeEmpty;
+  }
+  if (conversation.status !== "handoff_requested") {
+    return {
+      ok: false,
+      conversationId: String(conversation._id),
+      message: null,
+    };
+  }
+  if (!conversation.chatThreadId) {
+    return {
+      ok: false,
+      conversationId: String(conversation._id),
+      message: null,
+    };
+  }
 
   const thread = await ChatThread.findById(conversation.chatThreadId);
-  if (!thread) return { ok: false, conversationId: String(conversation._id), message: null };
+  if (
+    !thread ||
+    String(thread.status || "open") !== "open" ||
+    String(thread.restaurantId || "") !==
+      String(conversation.restaurantId || "") ||
+    !isAiHandoffThread(thread)
+  ) {
+    return {
+      ok: false,
+      conversationId: String(conversation._id),
+      message: null,
+    };
+  }
 
+  const directRecipientIds = (thread.participants || []).map((id) =>
+    String(id),
+  );
+  const roleRecipientIds = await resolveChatRecipientIdsByRole({
+    restaurantId: thread.restaurantId,
+    targetRole: thread.targetRole,
+    senderId: `guest:${normalizedGuestId}`,
+  });
+  const recipientIds = [
+    ...new Set([...directRecipientIds, ...roleRecipientIds]),
+  ];
+  const unreadObjectIds = recipientIds.map(toObjectId).filter(Boolean);
   const createdAt = new Date();
   const message = {
     senderRole: "guest",
@@ -190,60 +302,73 @@ export async function sendRestaurantChatbotGuestMessage({ input, io, clientIp } 
     createdAt,
   };
 
-  thread.messages.push(message);
-  thread.lastMessageAt = createdAt;
-  thread.lastMessagePreview = preview(content, 140);
-
-  const directRecipientIds = (thread.participants || []).map((id) => String(id));
-  const roleRecipientIds = await resolveChatRecipientIdsByRole({ restaurantId: thread.restaurantId, targetRole: thread.targetRole, senderId: `guest:${normalizedGuestId}` });
-  const recipientIds = [...new Set([...directRecipientIds, ...roleRecipientIds])];
-
-  thread.unreadBy = recipientIds.map((id) => toObjectId(id)).filter(Boolean);
-  await thread.save();
+  const updatedThread = await ChatThread.findOneAndUpdate(
+    {
+      _id: thread._id,
+      restaurantId: conversation.restaurantId,
+      status: "open",
+    },
+    {
+      $push: { messages: message },
+      $set: {
+        lastMessageAt: createdAt,
+        lastMessagePreview: preview(content, 140),
+      },
+      $addToSet: { unreadBy: { $each: unreadObjectIds } },
+    },
+    { new: true },
+  );
+  if (!updatedThread) {
+    return {
+      ok: false,
+      conversationId: String(conversation._id),
+      message: null,
+    };
+  }
 
   if (recipientIds.length > 0) {
     try {
       await Notification.insertMany(
         recipientIds.map((toUserId) => ({
           toUserId,
-          toRole: thread.targetRole || null,
-          restaurantId: thread.restaurantId,
+          toRole: updatedThread.targetRole || null,
+          restaurantId: updatedThread.restaurantId,
           type: "chat_message",
           payload: {
-            threadId: String(thread._id),
-            channel: thread.channel,
+            threadId: String(updatedThread._id),
+            channel: updatedThread.channel,
             senderId: null,
             senderName: "Khách hàng",
-            messagePreview: thread.lastMessagePreview,
+            messagePreview: updatedThread.lastMessagePreview,
           },
-        }))
+        })),
       );
     } catch {
-      // best effort notification only
+      // Persisted thread is authoritative; notification delivery is best effort.
     }
   }
 
   if (io) {
     try {
-      io.to(`chat_thread_${thread._id}`).emit("chatMessageCreated", {
-        threadId: String(thread._id),
-        restaurantId: String(thread.restaurantId || ""),
+      io.to(`chat_thread_${updatedThread._id}`).emit("chatMessageCreated", {
+        threadId: String(updatedThread._id),
+        restaurantId: String(updatedThread.restaurantId || ""),
         message,
       });
-      io.to(`restaurant_${thread.restaurantId}`).emit("threadUpdated", {
-        threadId: String(thread._id),
-        lastMessagePreview: thread.lastMessagePreview,
-        lastMessageAt: thread.lastMessageAt,
+      io.to(`restaurant_${updatedThread.restaurantId}`).emit("threadUpdated", {
+        threadId: String(updatedThread._id),
+        lastMessagePreview: updatedThread.lastMessagePreview,
+        lastMessageAt: updatedThread.lastMessageAt,
       });
       recipientIds.forEach((uid) => {
         io.to(`user_${uid}`).emit("notificationCreated", {
           type: "chat_message",
-          threadId: String(thread._id),
-          messagePreview: thread.lastMessagePreview,
+          threadId: String(updatedThread._id),
+          messagePreview: updatedThread.lastMessagePreview,
         });
       });
     } catch {
-      // best effort realtime only
+      // Persisted thread is authoritative; realtime delivery is best effort.
     }
   }
 
@@ -251,7 +376,9 @@ export async function sendRestaurantChatbotGuestMessage({ input, io, clientIp } 
     ok: true,
     conversationId: String(conversation._id),
     message: {
-      id: `${createdAt.toISOString()}_${thread.messages.length - 1}`,
+      id: `${createdAt.toISOString()}_${
+        Math.max((updatedThread.messages || []).length - 1, 0)
+      }`,
       role: "guest",
       senderLabel: "Khách hàng",
       content,
