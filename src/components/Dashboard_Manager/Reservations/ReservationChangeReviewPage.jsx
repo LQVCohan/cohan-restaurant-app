@@ -3,6 +3,7 @@ import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { AuthContext } from "@/context/AuthContext";
 import { useNotification } from "@/hooks/useNotification";
+import { hasPermission } from "@/utils/frontendPermissionAccess";
 import "./ReservationChangeReviewPage.scss";
 
 const PENDING_RESERVATION_CHANGES = gql`
@@ -74,8 +75,10 @@ const getRestaurantId = (restaurant) =>
   String(restaurant?.id || restaurant?.restaurantId || "");
 
 export default function ReservationChangeReviewPage() {
-  const { restaurants = [] } = useContext(AuthContext) || {};
+  const { user, restaurants = [] } = useContext(AuthContext) || {};
   const { showNotification } = useNotification();
+  const canReadChanges = hasPermission(user, "reservation.read");
+  const canUpdateChanges = hasPermission(user, "reservation.update");
   const restaurantOptions = useMemo(() => restaurants || [], [restaurants]);
   const [restaurantId, setRestaurantId] = useState(() =>
     getRestaurantId(restaurantOptions[0]),
@@ -90,7 +93,7 @@ export default function ReservationChangeReviewPage() {
 
   const { data, loading, error, refetch } = useQuery(PENDING_RESERVATION_CHANGES, {
     variables: { restaurantId, limit: 50 },
-    skip: !restaurantId,
+    skip: !restaurantId || !canReadChanges,
     fetchPolicy: "network-only",
   });
 
@@ -121,6 +124,7 @@ export default function ReservationChangeReviewPage() {
   const busy = approving || rejecting;
 
   const handleApprove = (reservation) => {
+    if (!canUpdateChanges) return;
     approveChange({
       variables: {
         input: {
@@ -132,6 +136,7 @@ export default function ReservationChangeReviewPage() {
   };
 
   const handleReject = (reservation) => {
+    if (!canUpdateChanges) return;
     const reason =
       noteById[reservation.id] ||
       window.prompt("Nhập lý do từ chối yêu cầu này:") ||
@@ -153,123 +158,140 @@ export default function ReservationChangeReviewPage() {
           </p>
         </div>
 
-        <label className="reservation-change-review__restaurant">
-          <span>Nhà hàng</span>
-          <select
-            value={restaurantId}
-            onChange={(event) => setRestaurantId(event.target.value)}
-          >
-            {restaurantOptions.map((restaurant) => {
-              const id = getRestaurantId(restaurant);
-              return (
-                <option key={id} value={id}>
-                  {restaurant.name || restaurant.restaurantName || id}
-                </option>
-              );
-            })}
-          </select>
-        </label>
+        {canReadChanges ? (
+          <label className="reservation-change-review__restaurant">
+            <span>Nhà hàng</span>
+            <select
+              value={restaurantId}
+              onChange={(event) => setRestaurantId(event.target.value)}
+            >
+              {restaurantOptions.map((restaurant) => {
+                const id = getRestaurantId(restaurant);
+                return (
+                  <option key={id} value={id}>
+                    {restaurant.name || restaurant.restaurantName || id}
+                  </option>
+                );
+              })}
+            </select>
+          </label>
+        ) : null}
       </section>
 
-      {loading ? (
+      {!canReadChanges ? (
+        <div className="reservation-change-review__state is-error" role="alert">
+          Bạn chưa được cấp quyền xem yêu cầu đổi đặt bàn.
+        </div>
+      ) : null}
+      {canReadChanges && loading ? (
         <div className="reservation-change-review__state" role="status">
           Đang tải yêu cầu...
         </div>
       ) : null}
-      {error ? (
+      {canReadChanges && error ? (
         <div className="reservation-change-review__state is-error" role="alert">
           {error.message}
         </div>
       ) : null}
-      {!loading && !error && !requests.length ? (
+      {canReadChanges && !loading && !error && !requests.length ? (
         <div className="reservation-change-review__state" role="status">
           <strong>Không có yêu cầu chờ duyệt</strong>
           <span>Yêu cầu mới của khách sẽ xuất hiện tại đây.</span>
         </div>
       ) : null}
 
-      <section className="reservation-change-review__list" aria-live="polite">
-        {requests.map((reservation) => {
-          const isTimeChange =
-            String(reservation.changeRequestType).toLowerCase() === "time";
-          const customerContact =
-            reservation.customerPhone || reservation.customerEmail || "--";
+      {canReadChanges ? (
+        <section className="reservation-change-review__list" aria-live="polite">
+          {requests.map((reservation) => {
+            const isTimeChange =
+              String(reservation.changeRequestType).toLowerCase() === "time";
+            const customerContact =
+              reservation.customerPhone || reservation.customerEmail || "--";
 
-          return (
-            <article className="reservation-change-card" key={reservation.id}>
-              <header className="reservation-change-card__header">
-                <div>
-                  <strong>#{reservation.orderCode || reservation.id}</strong>
-                  <p>
-                    {reservation.customerName || "Khách hàng"} · {customerContact}
-                  </p>
-                  <span>
-                    Loại yêu cầu: <b>{isTimeChange ? "Đổi giờ" : "Đổi bàn"}</b>
-                  </span>
-                </div>
-                <span className="reservation-change-card__status">Chờ duyệt</span>
-              </header>
+            return (
+              <article className="reservation-change-card" key={reservation.id}>
+                <header className="reservation-change-card__header">
+                  <div>
+                    <strong>#{reservation.orderCode || reservation.id}</strong>
+                    <p>
+                      {reservation.customerName || "Khách hàng"} · {customerContact}
+                    </p>
+                    <span>
+                      Loại yêu cầu: <b>{isTimeChange ? "Đổi giờ" : "Đổi bàn"}</b>
+                    </span>
+                  </div>
+                  <span className="reservation-change-card__status">Chờ duyệt</span>
+                </header>
 
-              <dl className="reservation-change-card__details">
-                <div>
-                  <dt>Giờ hiện tại</dt>
-                  <dd>{formatDateTime(reservation.timeTo)}</dd>
-                </div>
-                <div>
-                  <dt>Bàn hiện tại</dt>
-                  <dd>{reservation.tableId || "--"}</dd>
-                </div>
-                <div>
-                  <dt>Yêu cầu mới</dt>
-                  <dd>
-                    {isTimeChange
-                      ? formatDateTime(reservation.requestedTimeTo)
-                      : reservation.requestedTableId || "--"}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Phí đổi</dt>
-                  <dd>{formatMoney(reservation.changeRequestFee)}</dd>
-                </div>
-              </dl>
+                <dl className="reservation-change-card__details">
+                  <div>
+                    <dt>Giờ hiện tại</dt>
+                    <dd>{formatDateTime(reservation.timeTo)}</dd>
+                  </div>
+                  <div>
+                    <dt>Bàn hiện tại</dt>
+                    <dd>{reservation.tableId || "--"}</dd>
+                  </div>
+                  <div>
+                    <dt>Yêu cầu mới</dt>
+                    <dd>
+                      {isTimeChange
+                        ? formatDateTime(reservation.requestedTimeTo)
+                        : reservation.requestedTableId || "--"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Phí đổi</dt>
+                    <dd>{formatMoney(reservation.changeRequestFee)}</dd>
+                  </div>
+                </dl>
 
-              <label className="reservation-change-card__note">
-                <span>Ghi chú xử lý</span>
-                <textarea
-                  value={noteById[reservation.id] || ""}
-                  onChange={(event) =>
-                    setNoteById((previous) => ({
-                      ...previous,
-                      [reservation.id]: event.target.value,
-                    }))
-                  }
-                  placeholder="Ghi chú duyệt hoặc lý do từ chối..."
-                  rows={2}
-                />
-              </label>
+                {canUpdateChanges ? (
+                  <>
+                    <label className="reservation-change-card__note">
+                      <span>Ghi chú xử lý</span>
+                      <textarea
+                        value={noteById[reservation.id] || ""}
+                        onChange={(event) =>
+                          setNoteById((previous) => ({
+                            ...previous,
+                            [reservation.id]: event.target.value,
+                          }))
+                        }
+                        placeholder="Ghi chú duyệt hoặc lý do từ chối..."
+                        rows={2}
+                      />
+                    </label>
 
-              <div className="reservation-change-card__actions">
-                <button
-                  type="button"
-                  className="is-reject"
-                  disabled={busy}
-                  onClick={() => handleReject(reservation)}
-                >
-                  Từ chối
-                </button>
-                <button
-                  type="button"
-                  className="is-approve"
-                  disabled={busy}
-                  onClick={() => handleApprove(reservation)}
-                >
-                  Duyệt thay đổi
-                </button>
-              </div>
-            </article>
-          );
-        })}
-      </section>
+                    <div className="reservation-change-card__actions">
+                      <button
+                        type="button"
+                        className="is-reject"
+                        disabled={busy}
+                        onClick={() => handleReject(reservation)}
+                      >
+                        Từ chối
+                      </button>
+                      <button
+                        type="button"
+                        className="is-approve"
+                        disabled={busy}
+                        onClick={() => handleApprove(reservation)}
+                      >
+                        Duyệt thay đổi
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="reservation-change-review__state" role="status">
+                    Bạn chỉ có quyền xem yêu cầu, chưa được phép duyệt hoặc từ chối.
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </section>
+      ) : null}
     </main>
   );
 }
