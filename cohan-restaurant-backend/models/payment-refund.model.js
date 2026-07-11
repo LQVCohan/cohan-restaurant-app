@@ -46,6 +46,65 @@ const PaymentRefundSchema = BaseSchemaModel({
   meta: { type: Schema.Types.Mixed },
 });
 
+export async function ensureSuccessfulRefundCashflow(refund) {
+  if (refund.status !== "success" || refund.cashflowId) return null;
+
+  const Cashflow = mongoose.models.Cashflow;
+  if (!Cashflow) return null;
+
+  const session = typeof refund.$session === "function" ? refund.$session() : null;
+  const options = {
+    upsert: true,
+    new: true,
+    setDefaultsOnInsert: true,
+    ...(session ? { session } : {}),
+  };
+  const cashflow = await Cashflow.findOneAndUpdate(
+    {
+      restaurantId: refund.restaurantId,
+      source: "refund",
+      "ref.refundId": refund._id,
+    },
+    {
+      $setOnInsert: {
+        restaurantId: refund.restaurantId,
+        type: "OUTFLOW",
+        amount: refund.amount,
+        currency: refund.currency || "VND",
+        category: "refund",
+        subcategory: "other",
+        method: refund.method || "cash",
+        status: "completed",
+        source: "refund",
+        ref: {
+          kind: "PaymentRefund",
+          id: refund._id,
+          orderId: refund.orderId || null,
+          invoiceId: refund.invoiceId || null,
+          paymentTransactionId: refund.paymentTransactionId || null,
+          refundId: refund._id,
+        },
+        note: refund.reason,
+        occurredAt: refund.processedAt || new Date(),
+        createdBy: refund.processedBy || refund.createdBy || null,
+      },
+    },
+    options,
+  );
+
+  if (cashflow?._id) {
+    refund.cashflowId = cashflow._id;
+    const RefundModel = refund.constructor;
+    await RefundModel.updateOne(
+      { _id: refund._id, cashflowId: null },
+      { $set: { cashflowId: cashflow._id } },
+      session ? { session } : undefined,
+    );
+  }
+  return cashflow;
+}
+
+PaymentRefundSchema.post("save", ensureSuccessfulRefundCashflow);
 PaymentRefundSchema.index({ restaurantId: 1, status: 1, createdAt: -1 });
 PaymentRefundSchema.index({ paymentTransactionId: 1, status: 1 });
 
