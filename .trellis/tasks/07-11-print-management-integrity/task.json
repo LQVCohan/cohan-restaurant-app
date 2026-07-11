@@ -1,15 +1,19 @@
 {
   "id": "07-11-print-management-integrity",
   "title": "Harden print management integrity",
-  "status": "in_progress",
+  "status": "completed",
   "type": "full-stack-bugfix",
   "scope": [
     "cohan-restaurant-backend/graphql/resolvers/printSetting/index.js",
     "cohan-restaurant-backend/graphql/resolvers/order/confirmedOrderPrintMutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/order/temporaryBillPrintMutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/order/accessGuard.js",
     "cohan-restaurant-backend/src/constants/permissions.js",
     "cohan-restaurant-backend/src/services/auth/authorization.service.js",
     "cohan-restaurant-backend/scripts/seedRoles.js",
     "cohan-restaurant-backend/tests/resolvers/print-setting-access.test.js",
+    "cohan-restaurant-backend/tests/resolvers/temporary-bill-print-mutation.test.js",
+    "cohan-restaurant-backend/tests/resolvers/order-restaurant-access-guard.test.js",
     "cohan-restaurant-backend/tests/graphql/confirmed-order-print-mutation.test.js",
     "src/components/Dashboard_Manager/PrintManagement/PrintManagement.jsx",
     "src/components/Dashboard_Manager/PrintManagement/PrintManagement.test.jsx",
@@ -19,15 +23,27 @@
   ],
   "validation": {
     "planned": [
-      "cd cohan-restaurant-backend && npx vitest run tests/resolvers/print-setting-access.test.js tests/graphql/confirmed-order-print-mutation.test.js",
+      "cd cohan-restaurant-backend && npx vitest run tests/resolvers/print-setting-access.test.js tests/resolvers/temporary-bill-print-mutation.test.js tests/resolvers/order-restaurant-access-guard.test.js tests/graphql/confirmed-order-print-mutation.test.js",
       "npx vitest run src/components/Dashboard_Manager/PrintManagement/PrintManagement.test.jsx",
       "npm run check:graphql",
       "npm run build"
     ],
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail, ui-ux-pro-max and cross-layer guide",
-      "traced PrintSetting persistence, GraphQL operations, order-confirmation routing, POS callers and manager UI actions"
+      "traced PrintSetting persistence, GraphQL operations, order-confirmation routing, temporary-bill routing, POS callers and manager UI actions",
+      "separated scoped print reads, configuration writes and operational POS enqueue permissions",
+      "made queue appends and single-job updates atomic without rewriting the complete jobs array",
+      "protected hydrated printer configuration from an early empty POS autosave",
+      "routed confirmed kitchen/bar tickets and temporary cashier bills to every assigned valid printer",
+      "aligned manager page and sidebar access with print.read and added read-only controls for users without print.write",
+      "made simulated configuration checks explicit and added focused backend/frontend regression tests",
+      "re-fetched changed files and reviewed current callers and resolver composition"
     ],
-    "notRun": []
+    "notRun": [
+      "Vitest was not run because the GitHub connector does not provide a repository runtime",
+      "GraphQL validation was not run",
+      "frontend build was not run",
+      "real printer or LAN hardware testing was not run"
+    ]
   }
 }
