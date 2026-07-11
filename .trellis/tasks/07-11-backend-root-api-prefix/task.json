@@ -5,7 +5,8 @@
   "type": "frontend-bugfix",
   "scope": [
     "src/lib/apiBaseUrl.ts",
-    "src/lib/apiBaseUrl.test.js"
+    "src/lib/apiBaseUrl.test.js",
+    "src/lib/apiBaseUrl.test.ts"
   ],
   "rootCause": "Fastify registers upload.route.js with the /api prefix, but getBackendRootUrl strips or omits /api. Calls such as /table-3d-ai/generate therefore hit the frontend/Vite origin at the wrong path and return HTTP 404 before reaching the backend.",
   "validation": {
