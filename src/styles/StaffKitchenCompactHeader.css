@@ -65,8 +65,175 @@
   box-shadow: 0 0 0 3px rgba(31, 111, 74, 0.1);
 }
 
+/* Compact station dock: same fast switching pattern as Order Management,
+   with a light kitchen-specific template and independent station tones. */
 .staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-switcher {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: stretch;
+  gap: 6px;
   margin-top: 12px;
+  padding: 6px;
+  overflow-x: auto;
+  border: 1px solid #d8dfd8;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 244, 237, 0.96));
+  box-shadow:
+    0 10px 24px rgba(67, 74, 66, 0.08),
+    inset 0 1px rgba(255, 255, 255, 0.92);
+  scrollbar-width: none;
+}
+
+.staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-switcher::-webkit-scrollbar {
+  display: none;
+}
+
+.staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-switcher--locked {
+  width: min(100%, 310px);
+  max-width: 310px;
+}
+
+.staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-button {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name count"
+    "description description";
+  min-width: 184px;
+  min-height: 60px;
+  gap: 3px 12px;
+  align-items: center;
+  padding: 9px 11px 8px 13px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.58);
+  color: #314038;
+  box-shadow: none;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease;
+}
+
+.staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-button:hover {
+  border-color: #cbd6cd;
+  background: rgba(255, 255, 255, 0.92);
+  transform: translateY(-1px);
+}
+
+.staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-button:active {
+  transform: scale(0.985);
+}
+
+.staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-name {
+  grid-area: name;
+  color: inherit;
+  font-size: 0.84rem;
+  font-weight: 850;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-description {
+  grid-area: description;
+  overflow: hidden;
+  color: #748078;
+  font-size: 0.69rem;
+  font-weight: 650;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-count {
+  display: grid;
+  grid-area: count;
+  min-width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid rgba(91, 104, 95, 0.1);
+  border-radius: 9px;
+  background: #f0f2ef;
+  color: #435047;
+  font-size: 0.78rem;
+  font-weight: 900;
+  box-shadow: none;
+}
+
+.staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-button.is-active {
+  transform: none;
+}
+
+.staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-button.is-active[data-station="kitchen"] {
+  border-color: #9fc5ac;
+  background: linear-gradient(145deg, #f1f7f2, #e1eee5);
+  color: #185f3e;
+  box-shadow:
+    0 8px 18px rgba(31, 111, 74, 0.13),
+    inset 3px 0 #2d7b53;
+}
+
+.staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-button.is-active[data-station="bar"] {
+  border-color: #9fc3d0;
+  background: linear-gradient(145deg, #f1f7f9, #e2eff3);
+  color: #245e73;
+  box-shadow:
+    0 8px 18px rgba(47, 111, 134, 0.13),
+    inset 3px 0 #3b7f97;
+}
+
+.staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-button.is-active[data-station="all"] {
+  border-color: #c7bda9;
+  background: linear-gradient(145deg, #faf8f3, #eee9df);
+  color: #4e493f;
+  box-shadow:
+    0 8px 18px rgba(88, 79, 61, 0.11),
+    inset 3px 0 #756b59;
+}
+
+.staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__mode-button.is-active[data-station="kitchen"]
+  .staff-kitchen-page__mode-count {
+  border-color: transparent;
+  background: #216f49;
+  color: #ffffff;
+}
+
+.staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__mode-button.is-active[data-station="bar"]
+  .staff-kitchen-page__mode-count {
+  border-color: transparent;
+  background: #34758c;
+  color: #ffffff;
+}
+
+.staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__mode-button.is-active[data-station="all"]
+  .staff-kitchen-page__mode-count {
+  border-color: transparent;
+  background: #655c4d;
+  color: #ffffff;
+}
+
+.staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__mode-button.is-active
+  .staff-kitchen-page__mode-description {
+  color: currentColor;
+  opacity: 0.76;
+}
+
+.staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-button[data-station="bar"]:focus-visible {
+  outline-color: rgba(47, 111, 134, 0.32);
+}
+
+.staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-switcher--locked .staff-kitchen-page__mode-button {
+  width: 100%;
+  min-width: 0;
 }
 
 @media (min-width: 641px) and (max-width: 900px) {
@@ -77,6 +244,15 @@
 
   .staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__venue {
     width: auto;
+  }
+
+  .staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-switcher:not(.staff-kitchen-page__mode-switcher--locked) {
+    width: 100%;
+  }
+
+  .staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-button {
+    flex: 1 1 0;
+    min-width: 0;
   }
 }
 
@@ -115,6 +291,41 @@
     justify-self: end;
     white-space: nowrap;
   }
+
+  .staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-switcher {
+    width: 100%;
+    gap: 5px;
+    padding: 5px;
+    border-radius: 16px;
+    scroll-padding-inline: 5px;
+    scroll-snap-type: x proximity;
+  }
+
+  .staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-button {
+    flex: 0 0 clamp(152px, calc((100vw - 42px) / 2), 190px);
+    min-width: 0;
+    min-height: 50px;
+    grid-template-areas: "name count";
+    padding: 8px 9px 8px 11px;
+    scroll-snap-align: start;
+  }
+
+  .staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-description {
+    display: none;
+  }
+
+  .staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-name {
+    font-size: 0.78rem;
+  }
+
+  .staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-switcher--locked {
+    width: 100%;
+    max-width: none;
+  }
+
+  .staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-switcher--locked .staff-kitchen-page__mode-button {
+    flex-basis: 100%;
+  }
 }
 
 @media (max-width: 430px) {
@@ -127,5 +338,14 @@
     grid-row: auto;
     justify-self: start;
     white-space: normal;
+  }
+
+  .staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-button {
+    flex-basis: calc((100vw - 38px) / 2);
+  }
+
+  .staff-kitchen-page.staff-kitchen-page .staff-kitchen-page__mode-count {
+    min-width: 26px;
+    height: 26px;
   }
 }
