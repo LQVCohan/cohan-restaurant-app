@@ -62,13 +62,18 @@ const CartItemSchema = new Schema(
   {
     itemType: {
       type: String,
-      enum: ["MENU_ITEM", "COMBO"],
+      enum: ["MENU_ITEM", "COMBO", "SUPPLY"],
       default: "MENU_ITEM",
       index: true,
     },
     menuItemId: {
       type: Types.ObjectId,
       ref: "MenuItem",
+      required: false,
+    },
+    supplyId: {
+      type: Types.ObjectId,
+      ref: "Supply",
       required: false,
     },
     comboId: { type: Types.ObjectId, ref: "Combo" },
