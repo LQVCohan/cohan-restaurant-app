@@ -23,7 +23,7 @@ const CashflowSchema = BaseSchemaModel(
     },
     method: {
       type: String,
-      enum: ["cash", "card", "bank_transfer", "e_wallet", "transfer", "provider", "other"],
+      enum: ["cash", "card", "bank_transfer", "e_wallet", "transfer", "provider", "momo", "vnpay", "other"],
       default: "cash",
     },
     status: {
@@ -64,14 +64,46 @@ const CashflowSchema = BaseSchemaModel(
   {},
 );
 
-CashflowSchema.pre("validate", function normalizeLegacyClassifications(next) {
+CashflowSchema.pre("validate", async function normalizeCashflowClassification() {
   if (!String(this.category || "").trim()) {
     this.category = this.type === "INFLOW" ? "sale" : "other";
   }
   if (!String(this.subcategory || "").trim()) {
     this.subcategory = "other";
   }
-  next();
+
+  const refKind = String(this.ref?.kind || "").trim().toLowerCase();
+  const invoiceId =
+    this.ref?.invoiceId || (refKind === "invoice" ? this.ref?.id : null);
+  const shouldEnrichInvoiceCashflow =
+    this.type === "INFLOW" &&
+    invoiceId &&
+    this.category === "other" &&
+    this.source === "system";
+
+  if (!shouldEnrichInvoiceCashflow) return;
+
+  this.category = "sale";
+  this.source = "order";
+  this.ref.invoiceId = invoiceId;
+
+  const session = typeof this.$session === "function" ? this.$session() : null;
+  let invoiceQuery = mongoose
+    .model("Invoice")
+    .findById(invoiceId)
+    .select("refTransactionId");
+  if (session) invoiceQuery = invoiceQuery.session(session);
+  const invoice = await invoiceQuery.lean();
+  if (!invoice?.refTransactionId) return;
+
+  this.ref.paymentTransactionId = invoice.refTransactionId;
+  let transactionQuery = mongoose
+    .model("Transaction")
+    .findById(invoice.refTransactionId)
+    .select("method");
+  if (session) transactionQuery = transactionQuery.session(session);
+  const transaction = await transactionQuery.lean();
+  if (transaction?.method) this.method = transaction.method;
 });
 
 CashflowSchema.index({ restaurantId: 1, occurredAt: -1 });
