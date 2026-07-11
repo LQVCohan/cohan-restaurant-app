@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import {
   Cashflow,
   EventLog,
+  Invoice,
   Order,
   PaymentRefund,
   PaymentSession,
@@ -10,15 +11,20 @@ import {
   User,
   WalletTransaction,
 } from "../../../models/index.js";
-import {
-  settlePaidOrderPaymentSession,
-} from "../payment/paymentSession.service.js";
+import { settlePaidOrderPaymentSession } from "../payment/paymentSession.service.js";
 import { createMomoPayment, createVnpayPayment } from "../payment/providers.js";
 
 const DEFAULT_CURRENCY = "VND";
 const WALLET_PROVIDER = "cohan_wallet";
 const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 100;
+const ACTIVE_REFUND_STATUSES = [
+  "pending",
+  "approved",
+  "processing",
+  "failed",
+  "success",
+];
 
 const toObjectId = (value) => {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -547,10 +553,9 @@ export async function payOrdersWithWallet({
         user.wallet.updatedAt = now;
         await user.save({ session });
 
-        // The shared provider settlement currently uses `provider` as the
-        // accounting method. Adapt only this internal session so it produces
-        // the canonical `e_wallet` transaction while preserving Cohan as the
-        // real provider on the stored PaymentSession.
+        // Shared provider settlement still uses `provider` as the accounting
+        // method. The adapter keeps the stored provider truthful while the
+        // ledger receives the canonical e_wallet method.
         const settlementPayment = createWalletSettlementAdapter(payment);
         const settlement = await settlePaidOrderPaymentSession({
           payment: settlementPayment,
@@ -674,6 +679,32 @@ export async function payOrdersWithWallet({
   }
 }
 
+async function findRefundPaymentTransaction({ order, restaurantId, session }) {
+  const transactionId = toObjectId(order?.payment?.transactionId);
+  if (transactionId) {
+    const linked = await PaymentTransaction.findOne({
+      _id: transactionId,
+      restaurantId,
+      status: "SUCCESS",
+    }).session(session);
+    if (linked) return linked;
+  }
+  return PaymentTransaction.findOne({
+    restaurantId,
+    status: "SUCCESS",
+    $or: [{ orderId: order._id }, { orderIds: order._id }],
+  })
+    .sort({ paidAt: -1, _id: -1 })
+    .session(session);
+}
+
+function invoicePaymentStatus(invoice) {
+  const paid = Number(invoice?.paid || 0);
+  const total = Number(invoice?.totals?.grandTotal || 0);
+  if (paid <= 0) return "UNPAID";
+  return paid + 1e-6 >= total ? "PAID" : "PARTIAL";
+}
+
 export async function refundToWallet({
   userId,
   restaurantId,
@@ -689,55 +720,89 @@ export async function refundToWallet({
   const actorId = toObjectId(processedBy);
   if (!uid) throw new Error("Invalid userId");
   if (!rid) throw new Error("Invalid restaurantId");
+  if (!actorId) throw new Error("Unauthorized");
+  const normalizedReason = String(reason || "").trim();
+  if (!normalizedReason) throw new Error("Refund reason is required");
   const normalizedAmount = normalizeAmount(amount);
-  const orderObjectIds = (orderIds || []).map(toObjectId).filter(Boolean);
+  const uniqueOrderIds = [...new Set((orderIds || []).map(String))];
+  if (
+    uniqueOrderIds.length !== 1 ||
+    !mongoose.isValidObjectId(uniqueOrderIds[0])
+  ) {
+    throw new Error("Exactly one refund order is required");
+  }
+  const orderId = new mongoose.Types.ObjectId(uniqueOrderIds[0]);
+
   const session = await mongoose.startSession();
   try {
     let result;
     await session.withTransaction(async () => {
-      if (orderObjectIds.length) {
-        const orders = await Order.find({
-          _id: { $in: orderObjectIds },
-          restaurantId: rid,
-        }).session(session);
-        if (orders.length !== orderObjectIds.length) {
-          throw new Error(
-            "Some refund orders are not eligible for this restaurant",
-          );
-        }
-        const paidTotal = orders.reduce((sum, order) => {
-          if (String(order.userId || "") !== String(uid)) {
-            throw new Error("Refund target does not match order customer");
-          }
-          return (
-            sum +
-            Math.max(
-              0,
-              roundMoney(
-                order?.payment?.paidAmount || order?.totals?.grandTotal || 0,
-              ),
-            )
-          );
-        }, 0);
-        const previousRefunds = await PaymentRefund.find({
-          restaurantId: rid,
-          orderId: { $in: orderObjectIds },
-          status: {
-            $in: ["pending", "approved", "processing", "failed", "success"],
-          },
-        })
-          .session(session)
-          .lean();
-        const refundedTotal = previousRefunds.reduce(
-          (sum, refund) => sum + roundMoney(refund.amount || 0),
-          0,
+      const order = await Order.findOne({
+        _id: orderId,
+        restaurantId: rid,
+        userId: uid,
+      }).session(session);
+      if (!order) {
+        throw new Error("Refund order is not eligible for this restaurant");
+      }
+      const paymentTransaction = await findRefundPaymentTransaction({
+        order,
+        restaurantId: rid,
+        session,
+      });
+      if (!paymentTransaction) {
+        throw new Error("Successful payment transaction not found for refund");
+      }
+      const invoice = await Invoice.findOne({
+        restaurantId: rid,
+        refTransactionId: paymentTransaction._id,
+      }).session(session);
+      const orderPaidAmount = Math.max(
+        0,
+        roundMoney(
+          order?.payment?.paidAmount || order?.totals?.grandTotal || 0,
+        ),
+      );
+      if (orderPaidAmount <= 0) {
+        throw new Error("Order has no refundable payment");
+      }
+
+      const orderRefunds = await PaymentRefund.find({
+        restaurantId: rid,
+        orderId: order._id,
+        status: { $in: ACTIVE_REFUND_STATUSES },
+      })
+        .session(session)
+        .lean();
+      const orderReserved = orderRefunds.reduce(
+        (sum, refund) => sum + roundMoney(refund.amount || 0),
+        0,
+      );
+      if (orderReserved + normalizedAmount > orderPaidAmount + 1e-6) {
+        throw new Error(
+          `Refund amount exceeds refundable balance (${Math.max(
+            0,
+            orderPaidAmount - orderReserved,
+          )})`,
         );
-        const refundableAmount = Math.max(0, paidTotal - refundedTotal);
-        if (normalizedAmount > refundableAmount) {
-          throw new Error(
-            `Refund amount exceeds refundable balance (${refundableAmount})`,
-          );
-        }
+      }
+
+      const transactionRefunds = await PaymentRefund.find({
+        restaurantId: rid,
+        paymentTransactionId: paymentTransaction._id,
+        status: { $in: ACTIVE_REFUND_STATUSES },
+      })
+        .session(session)
+        .lean();
+      const transactionReserved = transactionRefunds.reduce(
+        (sum, refund) => sum + roundMoney(refund.amount || 0),
+        0,
+      );
+      if (
+        transactionReserved + normalizedAmount >
+        Number(paymentTransaction.paidAmount || 0) + 1e-6
+      ) {
+        throw new Error("Refund amount exceeds payment transaction balance");
       }
 
       const user = await User.findById(uid).session(session);
@@ -745,34 +810,38 @@ export async function refundToWallet({
       const wallet = ensureWalletOnUser(user);
       const balanceBefore = roundMoney(wallet.balance);
       const balanceAfter = balanceBefore + normalizedAmount;
+      const now = new Date();
       user.wallet.balance = balanceAfter;
       user.wallet.provider = wallet.provider || WALLET_PROVIDER;
       user.wallet.currency = wallet.currency || DEFAULT_CURRENCY;
-      user.wallet.updatedAt = new Date();
+      user.wallet.updatedAt = now;
       await user.save({ session });
+
       const [refund] = await PaymentRefund.create(
         [
           {
             restaurantId: rid,
-            orderId: orderObjectIds[0] || null,
+            orderId: order._id,
+            invoiceId: invoice?._id || null,
+            paymentTransactionId: paymentTransaction._id,
             amount: normalizedAmount,
             currency: user.wallet.currency,
-            reason: String(reason || "Refund to wallet").trim(),
+            reason: normalizedReason,
             method: "e_wallet",
             status: "success",
             providerRefundId: createReference("REFUND"),
             createdBy: actorId,
             approvedBy: actorId,
-            approvedAt: new Date(),
+            approvedAt: now,
             processedBy: actorId,
-            processedAt: new Date(),
+            processedAt: now,
             auditTrail: [
               {
-                at: new Date(),
+                at: now,
                 action: "refund_to_wallet",
                 actorId,
                 nextStatus: "success",
-                reason,
+                reason: normalizedReason,
                 note: `Refunded ${normalizedAmount} to Cohan Wallet`,
               },
             ],
@@ -780,6 +849,7 @@ export async function refundToWallet({
         ],
         { session },
       );
+
       const walletTransaction = await createWalletTransactionDoc({
         userId: uid,
         type: "REFUND",
@@ -789,26 +859,17 @@ export async function refundToWallet({
         balanceAfter,
         referenceType,
         referenceId: toObjectId(referenceId) || refund._id,
-        orderIds: orderObjectIds,
+        orderIds: [order._id],
         metadata: {
           restaurantId: String(rid),
-          reason,
+          reason: normalizedReason,
           refundId: String(refund._id),
+          paymentTransactionId: String(paymentTransaction._id),
+          invoiceId: invoice?._id ? String(invoice._id) : null,
         },
         session,
       });
-      if (orderObjectIds.length) {
-        await Order.updateMany(
-          { _id: { $in: orderObjectIds }, restaurantId: rid },
-          {
-            $set: {
-              "payment.status": "refunded",
-              orderPaymentStatus: "refunded",
-            },
-          },
-          { session },
-        );
-      }
+
       const refundCashflow = await Cashflow.findOneAndUpdate(
         {
           restaurantId: rid,
@@ -826,27 +887,96 @@ export async function refundToWallet({
             method: "e_wallet",
             status: "completed",
             source: "refund",
-            occurredAt: new Date(),
+            occurredAt: now,
             ref: {
               kind: "PaymentRefund",
               id: refund._id,
-              orderId: orderObjectIds[0] || null,
-              orderIds: orderObjectIds,
+              orderId: order._id,
+              invoiceId: invoice?._id || null,
+              paymentTransactionId: paymentTransaction._id,
               refundId: refund._id,
             },
-            note: reason,
+            note: normalizedReason,
             createdBy: actorId,
           },
         },
         { upsert: true, new: true, setDefaultsOnInsert: true, session },
       );
-      if (
-        refundCashflow?._id &&
-        String(refund.cashflowId || "") !== String(refundCashflow._id)
-      ) {
+      if (refundCashflow?._id) {
         refund.cashflowId = refundCashflow._id;
         await refund.save({ session });
       }
+
+      const nextTransactionRefunded =
+        Number(paymentTransaction.refundedAmount || 0) + normalizedAmount;
+      paymentTransaction.refundedAmount = nextTransactionRefunded;
+      paymentTransaction.refundStatus =
+        nextTransactionRefunded + 1e-6 >=
+        Number(paymentTransaction.paidAmount || 0)
+          ? "refunded"
+          : "partial_refunded";
+      paymentTransaction.refundIds = Array.from(
+        new Set([
+          ...(paymentTransaction.refundIds || []).map(String),
+          String(refund._id),
+        ]),
+      ).map((id) => new mongoose.Types.ObjectId(id));
+      await paymentTransaction.save({ session });
+
+      const successfulOrderRefunded =
+        orderRefunds
+          .filter((item) => item.status === "success")
+          .reduce(
+            (sum, item) => sum + roundMoney(item.amount || 0),
+            0,
+          ) + normalizedAmount;
+      const orderRefundStatus =
+        successfulOrderRefunded + 1e-6 >= orderPaidAmount
+          ? "refunded"
+          : "partially_refunded";
+      order.payment = {
+        ...(order.payment || {}),
+        status: orderRefundStatus,
+        refundedAmount: successfulOrderRefunded,
+      };
+      order.orderPaymentStatus = orderRefundStatus;
+      await order.save({ session });
+
+      if (invoice) {
+        invoice.paid = Math.max(
+          0,
+          Number(invoice.paid || 0) - normalizedAmount,
+        );
+        invoice.status = invoicePaymentStatus(invoice);
+        invoice.meta = {
+          ...(invoice.meta || {}),
+          refundedAmount:
+            Number(invoice.meta?.refundedAmount || 0) + normalizedAmount,
+          lastRefundId: String(refund._id),
+        };
+        await invoice.save({ session });
+      }
+
+      await EventLog.log(
+        {
+          restaurantId: rid,
+          actorUserId: actorId,
+          verb: "payment.refund",
+          object: { kind: "PaymentRefund", id: refund._id },
+          source: "api",
+          status: "success",
+          meta: {
+            method: "cohan_wallet",
+            amount: normalizedAmount,
+            userId: String(uid),
+            orderId: String(order._id),
+            paymentTransactionId: String(paymentTransaction._id),
+            invoiceId: invoice?._id ? String(invoice._id) : null,
+          },
+        },
+        { session },
+      );
+
       result = {
         ok: true,
         message: "Đã hoàn tiền vào ví khách hàng.",
@@ -863,19 +993,34 @@ export async function refundToWallet({
 }
 
 export async function adjustWalletBalance({
+  restaurantId,
   userId,
   amount,
   reason,
   actorId,
 }) {
+  const rid = toObjectId(restaurantId);
+  const uid = toObjectId(userId);
+  const aid = toObjectId(actorId);
+  if (!rid) throw new Error("Invalid restaurantId");
+  if (!uid) throw new Error("Invalid userId");
+  if (!aid) throw new Error("Unauthorized");
+  const normalizedReason = String(reason || "").trim();
+  if (!normalizedReason) throw new Error("Adjustment reason is required");
   const normalizedAmount = roundMoney(amount);
   if (!normalizedAmount) throw new Error("Invalid wallet amount");
-  const uid = toObjectId(userId);
-  if (!uid) throw new Error("Invalid userId");
+
   const session = await mongoose.startSession();
   try {
     let result;
     await session.withTransaction(async () => {
+      const customerOrder = await Order.exists({
+        restaurantId: rid,
+        userId: uid,
+      }).session(session);
+      if (!customerOrder) {
+        throw new Error("Customer does not belong to selected restaurant");
+      }
       const user = await User.findById(uid).session(session);
       if (!user) throw new Error("User not found");
       const wallet = ensureWalletOnUser(user);
@@ -884,10 +1029,11 @@ export async function adjustWalletBalance({
       if (balanceAfter < 0) {
         throw new Error("Wallet balance cannot be negative");
       }
+      const now = new Date();
       user.wallet.balance = balanceAfter;
       user.wallet.provider = wallet.provider || WALLET_PROVIDER;
       user.wallet.currency = wallet.currency || DEFAULT_CURRENCY;
-      user.wallet.updatedAt = new Date();
+      user.wallet.updatedAt = now;
       await user.save({ session });
       const walletTransaction = await createWalletTransactionDoc({
         userId: uid,
@@ -898,12 +1044,31 @@ export async function adjustWalletBalance({
         balanceAfter,
         referenceType: "MANUAL_ADJUSTMENT",
         metadata: {
+          restaurantId: String(rid),
           direction: normalizedAmount > 0 ? "credit" : "debit",
-          reason,
-          actorId,
+          reason: normalizedReason,
+          actorId: String(aid),
         },
         session,
       });
+      await EventLog.log(
+        {
+          restaurantId: rid,
+          actorUserId: aid,
+          verb: "wallet.adjust",
+          object: { kind: "WalletTransaction", id: walletTransaction._id },
+          source: "api",
+          status: "success",
+          meta: {
+            userId: String(uid),
+            amount: normalizedAmount,
+            balanceBefore,
+            balanceAfter,
+            reason: normalizedReason,
+          },
+        },
+        { session },
+      );
       result = {
         ok: true,
         message: "Đã điều chỉnh số dư ví.",
