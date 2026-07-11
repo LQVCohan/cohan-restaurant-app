@@ -10,6 +10,7 @@ const ATTENDANCE_EVENT_TYPES = [
 ];
 const STALE_REVIEW_NOTE =
   "Attendance final state no longer triggers this incident.";
+const ATTENDANCE_SCORE_RULE = "punctuality_component";
 
 function toNumber(value) {
   const next = Number(value || 0);
@@ -44,18 +45,6 @@ function earlyLeaveSeverity(minutes) {
   return "warning";
 }
 
-function lateScoreDelta(minutes) {
-  if (minutes >= 30) return -5;
-  if (minutes >= 15) return -3;
-  return -1;
-}
-
-function earlyLeaveScoreDelta(minutes) {
-  if (minutes >= 30) return -5;
-  if (minutes >= 15) return -3;
-  return -1;
-}
-
 function baseIncident(timesheet, eventType, overrides = {}) {
   const sourceId = toSourceId(timesheet);
   return {
@@ -69,8 +58,8 @@ function baseIncident(timesheet, eventType, overrides = {}) {
     eventType,
     severity: overrides.severity || "warning",
     responsibilityStatus: overrides.responsibilityStatus || "pending_review",
-    scoreImpactStatus: overrides.scoreImpactStatus || "pending",
-    proposedScoreDelta: Number(overrides.proposedScoreDelta || 0),
+    scoreImpactStatus: overrides.scoreImpactStatus || "not_applicable",
+    proposedScoreDelta: 0,
     occurredAt: resolveOccurredAt(timesheet),
     detectedAt: new Date(),
     metadata: {
@@ -88,6 +77,7 @@ function baseIncident(timesheet, eventType, overrides = {}) {
       approvedOvertimeMinutes: toNumber(timesheet.approvedOvertimeMinutes),
       overtimeApprovalStatus: timesheet.overtimeApprovalStatus || "not_required",
       source: timesheet.source || null,
+      scoreRule: ATTENDANCE_SCORE_RULE,
       ...(overrides.metadata || {}),
     },
   };
@@ -108,7 +98,7 @@ export function derivePerformanceIncidentsFromTimesheet(timesheet, context = {})
       baseIncident(timesheet, "ATTENDANCE_ABSENT", {
         ...context,
         severity: "critical",
-        proposedScoreDelta: -10,
+        proposedScoreDelta: 0,
         metadata: { reason: "scheduled_absent" },
       }),
     );
@@ -120,7 +110,7 @@ export function derivePerformanceIncidentsFromTimesheet(timesheet, context = {})
       baseIncident(timesheet, "ATTENDANCE_MISSING_CHECKOUT", {
         ...context,
         severity: "warning",
-        proposedScoreDelta: -3,
+        proposedScoreDelta: 0,
       }),
     );
   }
@@ -130,7 +120,7 @@ export function derivePerformanceIncidentsFromTimesheet(timesheet, context = {})
       baseIncident(timesheet, "ATTENDANCE_LATE", {
         ...context,
         severity: lateSeverity(latenessMinutes),
-        proposedScoreDelta: lateScoreDelta(latenessMinutes),
+        proposedScoreDelta: 0,
         metadata: { latenessMinutes },
       }),
     );
@@ -141,7 +131,7 @@ export function derivePerformanceIncidentsFromTimesheet(timesheet, context = {})
       baseIncident(timesheet, "ATTENDANCE_EARLY_LEAVE", {
         ...context,
         severity: earlyLeaveSeverity(earlyLeaveMinutes),
-        proposedScoreDelta: earlyLeaveScoreDelta(earlyLeaveMinutes),
+        proposedScoreDelta: 0,
         metadata: { earlyLeaveMinutes },
       }),
     );
