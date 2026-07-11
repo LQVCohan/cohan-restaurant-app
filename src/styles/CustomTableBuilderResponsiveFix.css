@@ -1,29 +1,37 @@
-/* Final scoped repair for the current CustomTableModelBuilderModal DOM.
-   Keep this after ResponsiveFoundation.css so portal/global rules cannot
-   stretch the close button or collapse the builder on phone widths. */
+/* Scoped repair for the current CustomTableModelBuilderModal DOM.
+   Route-level Table3DSimulatorModal.scss may be injected after entry styles,
+   so these selectors intentionally include the modal and builder roots. */
 
-.custom-table-builder-modal {
+.modal-container.custom-table-builder-modal {
   width: min(1120px, calc(100vw - 32px));
   max-width: min(1120px, calc(100vw - 32px));
   max-height: min(92dvh, 860px);
 }
 
-.custom-table-builder-modal > .modal-header {
+.modal-container.custom-table-builder-modal > .modal-header {
   min-width: 0;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 12px;
   padding: 14px 20px;
 }
 
-.custom-table-builder-modal > .modal-header h2 {
-  flex: 1 1 auto;
+.modal-container.custom-table-builder-modal > .modal-header h2 {
+  width: auto !important;
   min-width: 0;
-  max-width: calc(100% - 60px);
+  max-width: none !important;
+  margin: 0;
   font-size: 1.1rem;
   line-height: 1.25;
   overflow-wrap: normal;
   word-break: normal;
+  text-wrap: pretty;
 }
 
-.custom-table-builder-modal > .modal-header .modal-close {
+.modal-container.custom-table-builder-modal > .modal-header .modal-close {
+  position: static !important;
+  justify-self: end;
   flex: 0 0 44px !important;
   width: 44px !important;
   min-width: 44px !important;
@@ -31,16 +39,16 @@
   height: 44px !important;
   min-height: 44px !important;
   padding: 0 !important;
-  margin-left: auto;
+  margin: 0 !important;
 }
 
-.custom-table-builder-modal > .modal-body {
+.modal-container.custom-table-builder-modal > .modal-body {
   min-height: 0;
-  padding: 0;
+  padding: 0 !important;
   overflow: hidden;
 }
 
-.custom-table-builder-modal .custom-table-builder {
+.modal-container.custom-table-builder-modal .custom-table-builder {
   width: 100%;
   height: 100%;
   max-height: none;
@@ -49,20 +57,26 @@
   box-shadow: none;
 }
 
-.custom-table-builder-modal .custom-table-builder__tabs {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+.modal-container.custom-table-builder-modal
+  .custom-table-builder
+  .custom-table-builder__tabs {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   gap: 10px;
   padding: 12px 18px;
   overflow: visible;
 }
 
-.custom-table-builder-modal .custom-table-builder__tabs > button {
+.modal-container.custom-table-builder-modal
+  .custom-table-builder
+  .custom-table-builder__tabs
+  > button {
   appearance: none;
-  width: auto;
+  width: 100% !important;
   min-width: 0;
   min-height: 68px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
   grid-template-rows: auto auto;
   align-items: center;
   column-gap: 10px;
@@ -70,11 +84,12 @@
   padding: 10px 12px;
   border: 1px solid rgba(213, 185, 148, 0.72);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.86);
   color: var(--builder-ink, #1f2937);
   text-align: left;
   cursor: pointer;
   touch-action: manipulation;
+  box-sizing: border-box;
   transition:
     transform 180ms ease,
     border-color 180ms ease,
@@ -82,34 +97,70 @@
     box-shadow 180ms ease;
 }
 
-.custom-table-builder-modal .custom-table-builder__tabs > button:hover:not(:disabled) {
+.modal-container.custom-table-builder-modal
+  .custom-table-builder
+  .custom-table-builder__tabs
+  > button:hover:not(:disabled) {
   border-color: var(--builder-primary-2, #b89365);
   transform: translateY(-1px);
   box-shadow: 0 10px 24px rgba(139, 94, 60, 0.1);
 }
 
-.custom-table-builder-modal .custom-table-builder__tabs > button:active:not(:disabled) {
+.modal-container.custom-table-builder-modal
+  .custom-table-builder
+  .custom-table-builder__tabs
+  > button:active:not(:disabled) {
   transform: scale(0.985);
 }
 
-.custom-table-builder-modal .custom-table-builder__tabs > button:focus-visible {
+.modal-container.custom-table-builder-modal
+  .custom-table-builder
+  .custom-table-builder__tabs
+  > button:focus-visible {
   outline: 3px solid rgba(184, 147, 101, 0.34);
   outline-offset: 2px;
 }
 
-.custom-table-builder-modal .custom-table-builder__tabs > button.active {
+.modal-container.custom-table-builder-modal
+  .custom-table-builder
+  .custom-table-builder__tabs
+  > button.active {
   border-color: transparent;
   background: linear-gradient(135deg, #8b5e3c, #b89365);
   color: #fffdf9;
   box-shadow: 0 12px 26px rgba(139, 94, 60, 0.22);
 }
 
-.custom-table-builder-modal .custom-table-builder__tab-icon {
+.modal-container.custom-table-builder-modal
+  .custom-table-builder
+  .custom-table-builder__tab-icon {
   grid-row: 1 / 3;
   flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(184, 147, 101, 0.12);
+  color: var(--builder-primary, #8b5e3c);
+  font-size: 1rem;
+  line-height: 1;
 }
 
-.custom-table-builder-modal .custom-table-builder__tabs > button > strong {
+.modal-container.custom-table-builder-modal
+  .custom-table-builder
+  .custom-table-builder__tabs
+  > button.active
+  .custom-table-builder__tab-icon {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.modal-container.custom-table-builder-modal
+  .custom-table-builder
+  .custom-table-builder__tabs
+  > button
+  > strong {
   min-width: 0;
   font-size: 0.9rem;
   line-height: 1.15;
@@ -118,7 +169,11 @@
   text-overflow: ellipsis;
 }
 
-.custom-table-builder-modal .custom-table-builder__tabs > button > small {
+.modal-container.custom-table-builder-modal
+  .custom-table-builder
+  .custom-table-builder__tabs
+  > button
+  > small {
   min-width: 0;
   margin: 0;
   color: var(--builder-muted, #64748b);
@@ -129,11 +184,17 @@
   white-space: nowrap;
 }
 
-.custom-table-builder-modal .custom-table-builder__tabs > button.active > small {
+.modal-container.custom-table-builder-modal
+  .custom-table-builder
+  .custom-table-builder__tabs
+  > button.active
+  > small {
   color: rgba(255, 253, 249, 0.82);
 }
 
-.custom-table-builder-modal .custom-table-builder__content {
+.modal-container.custom-table-builder-modal
+  .custom-table-builder
+  .custom-table-builder__content {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
@@ -146,19 +207,23 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.custom-table-builder-modal .custom-table-builder__content > .custom-table-builder__status {
+.modal-container.custom-table-builder-modal
+  .custom-table-builder__content
+  > .custom-table-builder__status {
   margin: 0;
 }
 
-.custom-table-builder-modal .custom-table-builder__field.span-2,
-.custom-table-builder-modal .custom-table-builder__content .span-2 {
+.modal-container.custom-table-builder-modal .custom-table-builder__field.span-2,
+.modal-container.custom-table-builder-modal
+  .custom-table-builder__content
+  .span-2 {
   grid-column: 1 / -1;
 }
 
-.custom-table-builder-modal .custom-table-builder__field > input,
-.custom-table-builder-modal .custom-table-builder__field > select,
-.custom-table-builder-modal .custom-table-builder__field > textarea,
-.custom-table-builder-modal .custom-table-builder__image-chip > input {
+.modal-container.custom-table-builder-modal .custom-table-builder__field > input,
+.modal-container.custom-table-builder-modal .custom-table-builder__field > select,
+.modal-container.custom-table-builder-modal .custom-table-builder__field > textarea,
+.modal-container.custom-table-builder-modal .custom-table-builder__image-chip > input {
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -173,26 +238,26 @@
   box-sizing: border-box;
 }
 
-.custom-table-builder-modal .custom-table-builder__field > select {
+.modal-container.custom-table-builder-modal .custom-table-builder__field > select {
   padding-right: 2.35rem;
 }
 
-.custom-table-builder-modal .custom-table-builder__field > textarea {
+.modal-container.custom-table-builder-modal .custom-table-builder__field > textarea {
   min-height: 104px;
   resize: vertical;
 }
 
-.custom-table-builder-modal .custom-table-builder__field > input:focus,
-.custom-table-builder-modal .custom-table-builder__field > select:focus,
-.custom-table-builder-modal .custom-table-builder__field > textarea:focus,
-.custom-table-builder-modal .custom-table-builder__image-chip > input:focus {
+.modal-container.custom-table-builder-modal .custom-table-builder__field > input:focus,
+.modal-container.custom-table-builder-modal .custom-table-builder__field > select:focus,
+.modal-container.custom-table-builder-modal .custom-table-builder__field > textarea:focus,
+.modal-container.custom-table-builder-modal .custom-table-builder__image-chip > input:focus {
   outline: none;
   border-color: var(--builder-primary-2, #b89365);
   box-shadow: 0 0 0 4px rgba(184, 147, 101, 0.18);
   background: #fff;
 }
 
-.custom-table-builder-modal .custom-table-builder__shape {
+.modal-container.custom-table-builder-modal .custom-table-builder__shape {
   min-width: 0;
   min-height: 44px;
   padding: 9px 12px;
@@ -205,152 +270,196 @@
   touch-action: manipulation;
 }
 
-.custom-table-builder-modal .custom-table-builder__shape.active {
+.modal-container.custom-table-builder-modal .custom-table-builder__shape.active {
   border-color: #8b5e3c;
   background: #8b5e3c;
   color: #fff;
 }
 
-.custom-table-builder-modal .custom-table-builder__actions {
+.modal-container.custom-table-builder-modal .custom-table-builder__actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
   padding: 2px 0 0;
 }
 
-.custom-table-builder-modal .custom-table-builder__actions :where(.btn, button) {
+.modal-container.custom-table-builder-modal
+  .custom-table-builder__actions
+  :where(.btn, button) {
   min-height: 44px;
 }
 
-.custom-table-builder-modal .custom-table-builder__status--danger {
+.modal-container.custom-table-builder-modal .custom-table-builder__status--danger {
   border-color: #fecaca;
   background: #fff1f2;
   color: #9f1239;
 }
 
 @media (max-width: 640px) {
-  .custom-table-builder-modal,
+  .modal-container.custom-table-builder-modal,
   .modal-container.custom-table-builder-modal.modal--xl {
-    width: 100%;
-    max-width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
     max-height: 96dvh;
     border-radius: 22px 22px 0 0;
   }
 
-  .custom-table-builder-modal > .modal-header {
-    min-height: 62px;
-    padding: 9px 12px 9px 16px;
+  .modal-container.custom-table-builder-modal > .modal-header {
+    min-height: 60px;
+    grid-template-columns: minmax(0, 1fr) 44px !important;
+    gap: 8px;
+    padding: 8px 10px 8px 16px !important;
   }
 
-  .custom-table-builder-modal > .modal-header h2 {
-    max-width: calc(100% - 56px);
-    font-size: 1.02rem;
+  .modal-container.custom-table-builder-modal > .modal-header h2 {
+    width: auto !important;
+    max-width: none !important;
+    font-size: 1rem;
     line-height: 1.25;
     white-space: normal;
   }
 
-  .custom-table-builder-modal .custom-table-builder__tabs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .modal-container.custom-table-builder-modal
+    .custom-table-builder
+    .custom-table-builder__tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 8px;
     padding: 10px 12px;
   }
 
-  .custom-table-builder-modal .custom-table-builder__tabs > button {
+  .modal-container.custom-table-builder-modal
+    .custom-table-builder
+    .custom-table-builder__tabs
+    > button {
     min-height: 52px;
-    grid-template-rows: 1fr;
+    grid-template-columns: 30px minmax(0, 1fr) !important;
+    grid-template-rows: 1fr !important;
     column-gap: 8px;
     padding: 8px 9px;
     border-radius: 14px;
   }
 
-  .custom-table-builder-modal .custom-table-builder__tab-icon {
+  .modal-container.custom-table-builder-modal
+    .custom-table-builder
+    .custom-table-builder__tab-icon {
     grid-row: 1;
     width: 30px;
     height: 30px;
     border-radius: 10px;
   }
 
-  .custom-table-builder-modal .custom-table-builder__tabs > button > strong {
+  .modal-container.custom-table-builder-modal
+    .custom-table-builder
+    .custom-table-builder__tabs
+    > button
+    > strong {
     font-size: 0.82rem;
   }
 
-  .custom-table-builder-modal .custom-table-builder__tabs > button > small {
+  .modal-container.custom-table-builder-modal
+    .custom-table-builder
+    .custom-table-builder__tabs
+    > button
+    > small {
     display: none;
   }
 
-  .custom-table-builder-modal .custom-table-builder__content {
+  .modal-container.custom-table-builder-modal
+    .custom-table-builder
+    .custom-table-builder__content {
     gap: 12px;
     padding: 2px 12px calc(18px + env(safe-area-inset-bottom));
   }
 
-  .custom-table-builder-modal .custom-table-builder__section {
+  .modal-container.custom-table-builder-modal .custom-table-builder__section {
     padding: 14px;
     border-radius: 18px;
   }
 
-  .custom-table-builder-modal .custom-table-builder__section-heading {
+  .modal-container.custom-table-builder-modal
+    .custom-table-builder__section-heading {
     align-items: flex-start;
     flex-wrap: wrap;
     gap: 4px 10px;
     margin-bottom: 12px;
   }
 
-  .custom-table-builder-modal .custom-table-builder__section-heading h4 {
+  .modal-container.custom-table-builder-modal
+    .custom-table-builder__section-heading
+    h4 {
     font-size: 0.98rem;
   }
 
-  .custom-table-builder-modal .custom-table-builder__grid {
-    grid-template-columns: minmax(0, 1fr);
+  .modal-container.custom-table-builder-modal
+    .custom-table-builder
+    .custom-table-builder__grid {
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 14px;
   }
 
-  .custom-table-builder-modal .custom-table-builder__field.span-2,
-  .custom-table-builder-modal .custom-table-builder__content .span-2 {
+  .modal-container.custom-table-builder-modal .custom-table-builder__field.span-2,
+  .modal-container.custom-table-builder-modal
+    .custom-table-builder__content
+    .span-2 {
     grid-column: 1;
   }
 
-  .custom-table-builder-modal .custom-table-builder__field > input,
-  .custom-table-builder-modal .custom-table-builder__field > select,
-  .custom-table-builder-modal .custom-table-builder__field > textarea,
-  .custom-table-builder-modal .custom-table-builder__image-chip > input {
+  .modal-container.custom-table-builder-modal .custom-table-builder__field > input,
+  .modal-container.custom-table-builder-modal .custom-table-builder__field > select,
+  .modal-container.custom-table-builder-modal .custom-table-builder__field > textarea,
+  .modal-container.custom-table-builder-modal
+    .custom-table-builder__image-chip
+    > input {
     min-height: 48px;
     font-size: 16px;
   }
 
-  .custom-table-builder-modal .custom-table-builder__image-chip {
+  .modal-container.custom-table-builder-modal .custom-table-builder__image-chip {
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
   }
 
-  .custom-table-builder-modal .custom-table-builder__image-chip span,
-  .custom-table-builder-modal .custom-table-builder__image-chip small {
+  .modal-container.custom-table-builder-modal .custom-table-builder__image-chip span,
+  .modal-container.custom-table-builder-modal .custom-table-builder__image-chip small {
     white-space: normal;
     overflow-wrap: anywhere;
   }
 
-  .custom-table-builder-modal .custom-table-builder__actions {
+  .modal-container.custom-table-builder-modal .custom-table-builder__actions {
     width: 100%;
     padding-top: 2px;
   }
 
-  .custom-table-builder-modal .custom-table-builder__actions :where(.btn, button) {
+  .modal-container.custom-table-builder-modal
+    .custom-table-builder__actions
+    :where(.btn, button) {
     width: 100%;
     min-height: 48px;
   }
 }
 
 @media (max-width: 380px) {
-  .custom-table-builder-modal .custom-table-builder__tabs > button {
+  .modal-container.custom-table-builder-modal
+    .custom-table-builder
+    .custom-table-builder__tabs
+    > button {
     padding-inline: 7px;
   }
 
-  .custom-table-builder-modal .custom-table-builder__tabs > button > strong {
+  .modal-container.custom-table-builder-modal
+    .custom-table-builder
+    .custom-table-builder__tabs
+    > button
+    > strong {
     font-size: 0.77rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .custom-table-builder-modal .custom-table-builder__tabs > button {
+  .modal-container.custom-table-builder-modal
+    .custom-table-builder
+    .custom-table-builder__tabs
+    > button {
     transition: none;
   }
 }
