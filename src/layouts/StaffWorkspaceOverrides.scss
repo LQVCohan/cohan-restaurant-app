@@ -19,6 +19,13 @@
   max-width: 100%;
 }
 
+.staff-shell__content {
+  display: grid;
+  gap: clamp(16px, 2vw, 24px);
+  align-content: start;
+  overflow: visible;
+}
+
 .staff-shell__nav-count {
   display: inline-grid;
   min-width: 20px;
