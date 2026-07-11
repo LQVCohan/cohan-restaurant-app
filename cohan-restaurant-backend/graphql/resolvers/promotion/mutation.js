@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Category, MenuItem, Promotion } from "../../../models/index.js";
-import { requireRole } from "../../../utils/authz.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
@@ -287,8 +286,6 @@ const loadPromotionForOutput = async (id) =>
 
 export const PromotionMutation = {
   async createPromotion(_, { input }, ctx) {
-    const { user } = ctx;
-    requireRole(user, ["admin", "manager"]);
     const payload = sanitizeInput(input);
     validatePromotionPayload(payload);
     await requireRestaurantPermission(
@@ -302,8 +299,6 @@ export const PromotionMutation = {
   },
 
   async updatePromotion(_, { id, input }, ctx) {
-    const { user } = ctx;
-    requireRole(user, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(id)) {
       throw new GraphQLError("promotion id không hợp lệ");
     }
@@ -344,8 +339,6 @@ export const PromotionMutation = {
   },
 
   async deletePromotion(_, { id }, ctx) {
-    const { user } = ctx;
-    requireRole(user, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(id)) {
       throw new GraphQLError("promotion id không hợp lệ");
     }
@@ -363,8 +356,6 @@ export const PromotionMutation = {
   },
 
   async togglePromotion(_, { id, isActive }, ctx) {
-    const { user } = ctx;
-    requireRole(user, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(id)) {
       throw new GraphQLError("promotion id không hợp lệ");
     }
