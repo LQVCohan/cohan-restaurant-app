@@ -19,11 +19,24 @@ const MenuPriceHistoryMutations = createMenuPriceHistoryMutations(MenuMutation);
 const getMenuId = (parent) => parent?._id || parent?.id;
 const getMenuItemId = (parent) => parent?._id || parent?.id;
 
-const withOrderableSupplySync = (resolver, getRestaurantId) =>
+const dedupeUnscopedSupplies = (items, hasTimeSlot) => {
+  if (hasTimeSlot || !Array.isArray(items)) return items;
+  const seenSupplyIds = new Set();
+  return items.filter((item) => {
+    if (item?.sourceType !== "supply" || !item?.supplyId) return true;
+    const key = String(item.supplyId);
+    if (seenSupplyIds.has(key)) return false;
+    seenSupplyIds.add(key);
+    return true;
+  });
+};
+
+const withOrderableSupplySync = (resolver, getRestaurantId, transform) =>
   async (parent, args, ctx, info) => {
     const restaurantId = getRestaurantId(args || {});
     if (restaurantId) await syncOrderableSuppliesToMenus(restaurantId);
-    return resolver(parent, args, ctx, info);
+    const result = await resolver(parent, args, ctx, info);
+    return transform ? transform(result, args || {}) : result;
   };
 
 const MenuQueryWithSupplies = {
@@ -31,6 +44,7 @@ const MenuQueryWithSupplies = {
   menuItems: withOrderableSupplySync(
     MenuQuery.menuItems,
     (args) => args.restaurantId,
+    (items, args) => dedupeUnscopedSupplies(items, Boolean(args.timeSlot)),
   ),
   menuItemsConnection: withOrderableSupplySync(
     MenuQuery.menuItemsConnection,
