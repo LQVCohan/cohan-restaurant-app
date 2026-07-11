@@ -142,20 +142,27 @@ const installStaffLeaveMocks = async (page) => {
 };
 
 test.describe("P1 staff leave self-service", () => {
-  test("staff creates a leave request without hidden backend errors", async ({ page, backendGuard }) => {
+  test("staff creates a leave request through the guided steps", async ({ page, backendGuard }) => {
     await installStaffLeaveMocks(page);
 
     await page.goto("/staff/leave");
-    await expect(page.getByRole("heading", { name: "Xin nghỉ phép trong vài bước" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Đăng ký nghỉ phép" })).toBeVisible();
 
     await page.getByRole("button", { name: "+ Tạo đơn nghỉ phép" }).click();
     const modal = page.getByRole("dialog", { name: "Tạo đơn nghỉ phép" });
     await expect(modal).toBeVisible();
+    await expect(modal.getByRole("heading", { name: "Chọn loại nghỉ phù hợp" })).toBeVisible();
 
     await modal.locator("label.radio-card", { hasText: "Nghỉ năm" }).click();
     await expect(modal.locator('input[name="leaveType"][value="ANNUAL"]')).toBeChecked();
+    await modal.getByRole("button", { name: "Tiếp tục đến bước 2" }).click();
+
     await modal.locator('input[name="startDate"]').fill("2026-07-01");
     await modal.locator('input[name="endDate"]').fill("2026-07-01");
+    await modal.getByRole("button", { name: "Tiếp tục đến bước 3" }).click();
+
+    await expect(modal.getByText("Nghỉ năm")).toBeVisible();
+    await expect(modal.getByText("1 ngày")).toBeVisible();
     await modal.locator('textarea[name="reason"]').fill("P1 xin nghỉ phép tự phục vụ");
 
     backendGuard.clear();
