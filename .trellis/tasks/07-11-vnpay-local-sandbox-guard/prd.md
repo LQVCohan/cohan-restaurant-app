@@ -10,13 +10,13 @@
 
 ## Luồng thật
 
-`Restaurant.paymentSettings.mode -> PaymentSession pre-save -> getRestaurantProviderMode -> resolvePaymentProviderCredential -> providerCredentialMode -> createVnpayPayment -> QRPaymentModal mở payUrl`.
+`Restaurant.paymentSettings.mode -> PaymentSession pre-save -> getRestaurantProviderMode -> resolvePaymentRuntimeMode -> resolvePaymentProviderCredential -> providerCredentialMode -> createVnpayPayment -> QRPaymentModal mở payUrl`.
 
 ## Phạm vi thay đổi
 
-- `paymentCredential.service.js`: chuẩn hóa runtime mode; local/development luôn sandbox trừ khi `PAYMENT_ALLOW_PRODUCTION_IN_DEVELOPMENT=true`.
-- `payment-platform-mode.service.test.js`: test restaurant mode và platform mode production đều bị hạ về sandbox trong development; production runtime vẫn giữ production.
-- `.env.example`: tài liệu hóa cờ opt-in.
+- `cohan-restaurant-backend/models/payment-session.model.js`: chặn production gateway ngoài runtime production ngay trước khi resolve credential; callback lịch sử không bị thay đổi.
+- `cohan-restaurant-backend/tests/models/payment-session-runtime-mode.model.test.js`: khóa development, production và opt-in rõ ràng.
+- `.env.example`: tài liệu hóa `PAYMENT_ALLOW_PRODUCTION_IN_DEVELOPMENT`.
 
 ## Tiêu chí nghiệm thu
 
@@ -29,8 +29,8 @@
 ## Validation
 
 ```bash
-npx vitest run cohan-restaurant-backend/tests/services/payment-platform-mode.service.test.js
-node --check cohan-restaurant-backend/src/services/payment/paymentCredential.service.js
+npx vitest run cohan-restaurant-backend/tests/models/payment-session-runtime-mode.model.test.js
+node --check cohan-restaurant-backend/models/payment-session.model.js
 ```
 
 ## Ngoài phạm vi
