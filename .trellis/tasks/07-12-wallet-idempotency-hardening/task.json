@@ -28,7 +28,9 @@
     "c7d020064eefd7e55c8874e1a71530b3b35e5282",
     "c1728ac83abad715f0bcc8166033b94265920356",
     "ce5d10037d1a2831b5fcb9937add5401d3892e2a",
-    "1e4fcb78a9f46bdc028b3d45ef8d11b9f61b95e8"
+    "1e4fcb78a9f46bdc028b3d45ef8d11b9f61b95e8",
+    "c419734bc4ef75a3e3f737906b529ae1d9aa3275",
+    "681c06678113ac9c2c9eea4254d0e1ac423f2947"
   ],
-  "notes": "Unified the actual browser key lifecycle in Apollo, required and fingerprint-bound direct wallet keys, routed all current wallet callers through one shared boundary, and added targeted regression contracts. Targeted tests, GraphQL validation, and build were not executed because this connector session has no runnable checkout; GitHub reported no workflow runs or statuses for the code commit."
+  "notes": "Unified the actual browser key lifecycle in Apollo, required and fingerprint-bound direct wallet keys, routed all current wallet callers through one shared boundary, normalized concurrent duplicate-key races to the same business error contract, and added targeted regression contracts. Targeted tests, GraphQL validation, and build were not executed because this connector session has no runnable checkout; GitHub reported no workflow runs or statuses for the final wallet-boundary code commit."
 }
