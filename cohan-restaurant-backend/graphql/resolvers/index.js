@@ -187,4 +187,7 @@ export default {
     : {}),
   ...(search.SearchResult ? { SearchResult: search.SearchResult } : {}),
   ...(communication.ChatThread ? { ChatThread: communication.ChatThread } : {}),
+  ...(analytics.ManagerDashboard
+    ? { ManagerDashboard: analytics.ManagerDashboard }
+    : {}),
 };
