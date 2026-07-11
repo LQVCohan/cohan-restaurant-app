@@ -1,7 +1,7 @@
 {
   "id": "07-12-print-management-ui-refresh",
   "title": "Refresh print management UI",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-ui",
   "scope": [
     "src/components/Dashboard_Manager/PrintManagement/PrintManagementPolish.scss"
@@ -15,8 +15,16 @@
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
       "reviewed the current PrintManagement JSX, base SCSS, polish SCSS, component test and ManagerLayout caller",
-      "confirmed the GraphQL, permission and print queue behavior should remain unchanged"
+      "confirmed the GraphQL, permission and print queue behavior should remain unchanged",
+      "reworked the final visual override layer without changing React markup or data flow",
+      "added stronger section hierarchy, scan-friendly device and job states, 44px action targets, mobile stacking and reduced-motion support",
+      "re-fetched and reviewed the changed stylesheet after commit"
     ],
-    "notRun": []
+    "notRun": [
+      "Vitest was not run because the GitHub connector does not provide a repository runtime",
+      "frontend build was not run",
+      "responsive browser checks at 390x844, 430x932, 768px, 1024px and 1440px were not run",
+      "real device review was not run"
+    ]
   }
 }
