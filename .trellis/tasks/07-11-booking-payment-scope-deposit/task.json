@@ -3,30 +3,43 @@
   "name": "booking-payment-scope-deposit",
   "title": "Sửa quyền tạo order món kèm, cọc 1 đồng và bước thanh toán đặt bàn",
   "description": "Cho phép khách hàng hoàn tất order món gắn với reservation của chính mình, loại bỏ cọc mặc định 1 đồng và thay thông báo kỹ thuật bằng nội dung dễ hiểu.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "cross-layer-bugfix",
   "scope": "customer-booking-payment",
   "priority": "P1",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-11",
-  "completedAt": null,
+  "completedAt": "2026-07-11",
   "branch": "main",
   "base_branch": "main",
-  "commit": null,
+  "commit": "7b1d92de937a05283d84f570d46ff79424630b85",
   "pr_url": null,
   "parent": "07-11-booking-addon-food-detail-flow",
   "relatedFiles": [
     "cohan-restaurant-backend/models/table.model.js",
     "cohan-restaurant-backend/graphql/resolvers/table/index.js",
-    "cohan-restaurant-backend/graphql/resolvers/reservation/mutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/table/query.js",
     "cohan-restaurant-backend/graphql/resolvers/order/accessGuard.js",
-    "cohan-restaurant-backend/tests/resolvers/order-restaurant-access-guard.test.js",
-    "cohan-restaurant-backend/tests/resolvers/capability-gating.mutations.test.js",
+    "cohan-restaurant-backend/tests/resolvers/order-reservation-addon-access-guard.test.js",
+    "cohan-restaurant-backend/tests/resolvers/table-legacy-deposit-normalization.test.js",
     "src/components/Customer/TableBooking/BookingSummary/BookingSummary.jsx",
-    "src/components/Customer/TableBooking/TableBooking.jsx",
-    "src/components/Customer/BookingTableModal/BookingModal.jsx",
     "src/components/Customer/QRPaymentModal/QRPaymentModal.jsx"
   ],
-  "notes": "The canonical createOrderForTable resolver already authenticates reservation_cart_addon customers, checks reservation ownership and validates cart holds. The outer restaurant access guard incorrectly rejects the customer first. Table.deposit also uses legacy default 1 while customer summary reads unrelated fields."
+  "validation": {
+    "completed": [
+      "read AGENTS.md, .trellis/workflow.md, ponytail, ui-ux-pro-max and frontend-design skills",
+      "traced table deposit schema through publicTables, reservation calculation and booking UI",
+      "traced createOrderForTable through the outer restaurant guard and canonical customer reservation/cart validation",
+      "added focused regression tests for reservation addon guard delegation and legacy deposit migration",
+      "confirmed the payment modal already opens after reservation plus addon order succeeds",
+      "removed technical payment wording and raw payment API messages from the customer modal"
+    ],
+    "notRun": [
+      "targeted Vitest because the execution environment could not resolve github.com to clone the repository",
+      "frontend/backend build and GraphQL check",
+      "manual browser retest of MoMo and VNPAY"
+    ]
+  },
+  "notes": "Only reservation_cart_addon bypasses the outer staff restaurant scope. The canonical resolver still requires a customer account, reservation ownership and valid cart holds. New tables default to zero deposit; legacy deposit=1 rows are migrated to zero before table data is returned."
 }
