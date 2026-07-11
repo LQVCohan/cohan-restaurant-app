@@ -153,6 +153,14 @@ export default defineConfig(({ mode }) => {
           target: devBackendUrl,
           changeOrigin: true,
         },
+        "/table-3d-ai": {
+          target: devBackendUrl,
+          changeOrigin: true,
+        },
+        "/table-3d-assets": {
+          target: devBackendUrl,
+          changeOrigin: true,
+        },
         "/upload": {
           target: devBackendUrl,
           changeOrigin: true,
