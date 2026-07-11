@@ -25,6 +25,10 @@ export default {
     ...CustomerPublicTableMutation,
   },
   Table: {
+    deposit: (p) => {
+      const amount = Number(p?.deposit || 0);
+      return amount === 1 ? 0 : Math.max(0, Number.isFinite(amount) ? amount : 0);
+    },
     viewLockUserId: (p) => p?.viewLock?.userId || null,
     viewLockExpiresAt: (p) => p?.viewLock?.expiresAt || null,
     viewLockViewerName: (p) => p?.viewLock?.viewerName || null,
