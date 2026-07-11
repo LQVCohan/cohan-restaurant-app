@@ -626,7 +626,7 @@ export async function buildPayrollItemsForRange({
               {
                 $and: [
                   "$includeInPayroll",
-                  { $ne: [{ $dayOfWeek: "$workDate" }, 1] },
+                  { $ne: [{ $dayOfWeek: { date: "$workDate", timezone: settings?.timezone || DEFAULT_PAYROLL_TIMEZONE } }, 1] },
                   { $gt: ["$approvedOvertimePayableMinutes", 0] },
                 ],
               },
@@ -832,6 +832,7 @@ export async function buildPayrollItemsForRange({
         overtimeHolidayHours: ts.overtimeHolidayHours,
         nightHours: ts.nightHours,
         overtimeNightHours: ts.overtimeNightHours,
+        scheduleShiftCount: shiftCountByStaff.get(sid) || 0,
       },
       regionCode,
       payrollStatus: forceStatus || "draft",
