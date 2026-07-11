@@ -1,12 +1,11 @@
 {
   "id": "07-12-staff-kitchen-compact-header",
   "title": "Compact staff kitchen header",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-ui",
   "scope": [
-    "src/components/Staff/StaffKitchenPage.jsx",
-    "src/components/Staff/StaffKitchenPage.scss",
-    "src/components/Staff/StaffKitchenPage.test.jsx"
+    "src/main.jsx",
+    "src/styles/StaffKitchenCompactHeader.css"
   ],
   "validation": {
     "planned": [
@@ -18,8 +17,18 @@
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
       "traced StaffKitchenPage route, order hook, station filter, item-status action and component tests",
-      "confirmed the reported issue is presentation-only: oversized title, padding, spacing and venue card"
+      "confirmed the reported issue is presentation-only: oversized title, padding, spacing and venue card",
+      "kept the existing component and operational copy unchanged and applied a scoped CSS override",
+      "reduced hero padding, title scale, subtitle spacing, radius, shadow and venue-card footprint",
+      "kept the header in two columns through tablet widths and stacked it only on phone widths",
+      "re-fetched the changed files and reviewed selectors against the existing component classes"
     ],
-    "notRun": []
+    "notRun": [
+      "Vitest was not run because the GitHub connector does not provide a repository runtime",
+      "staff theme check was not run",
+      "frontend build was not run",
+      "responsive browser checks at 390x844, 430x932, 768px, 1024px and 1440px were not run",
+      "real-device review was not run"
+    ]
   }
 }
