@@ -83,7 +83,7 @@ const PaymentSessionSchema = BaseSchemaModel({
 
   provider: {
     type: String,
-    enum: ["momo", "vnpay", "bank_transfer"],
+    enum: ["momo", "vnpay", "bank_transfer", "cohan_wallet"],
     required: true,
     index: true,
   },
