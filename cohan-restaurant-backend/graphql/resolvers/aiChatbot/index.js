@@ -1,6 +1,7 @@
 import { GraphQLError } from "graphql";
 import { AI_CHATBOT_RATE_LIMIT_CODE } from "../../../src/services/ai/restaurantChatbotRateLimit.service.js";
 import { handleRestaurantChatbotMessage } from "../../../src/services/ai/restaurantChatbotReviewed.service.js";
+import { resolveUniqueKnowledgeRestaurantOptions } from "../../../src/services/ai/restaurantChatbotKnowledgeScope.service.js";
 import { requestRestaurantChatbotHandoff } from "../../../src/services/ai/restaurantChatbotHandoff.service.js";
 import { getRestaurantChatbotGuestReplies, sendRestaurantChatbotGuestMessage } from "../../../src/services/ai/restaurantChatbotGuestReplies.service.js";
 import { resolveRestaurantChatbotHandoff } from "../../../src/services/ai/restaurantChatbotResolveHandoff.service.js";
@@ -130,7 +131,7 @@ const Query = {
 const Mutation = {
   askAiChatbot: async (_, { input }, ctx) => {
     try {
-      const response = await handleRestaurantChatbotMessage({
+      const requestOptions = await resolveUniqueKnowledgeRestaurantOptions({
         message: input?.message,
         restaurantId: input?.restaurantId,
         history: input?.history || [],
@@ -140,6 +141,7 @@ const Mutation = {
         user: ctx?.user || null,
         clientIp: ctx?.request?.ip || ctx?.reply?.request?.ip || "",
       });
+      const response = await handleRestaurantChatbotMessage(requestOptions);
       return sanitizeAiChatbotResponse(response, input?.message);
     } catch (err) {
       throw new GraphQLError(err?.message || "Không thể xử lý tin nhắn chatbot", {
