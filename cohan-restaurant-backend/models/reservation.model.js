@@ -122,14 +122,14 @@ ReservationSchema.pre("save", function rememberNewReservation() {
   this.$locals.wasNewReservation = this.isNew;
 });
 
-ReservationSchema.post("save", async function recordNewCashDeposit(reservation) {
+export async function ensureNewCashReservationDeposit(reservation) {
   const shouldRecord =
     reservation.$locals.wasNewReservation &&
     reservation.paymentMethod === "cash" &&
     reservation.depositStatus === "paid" &&
     Number(reservation.depositAmount || 0) > 0 &&
     !reservation.depositTxnId;
-  if (!shouldRecord) return;
+  if (!shouldRecord) return null;
 
   const PaymentTransaction = mongoose.models.Transaction;
   if (!PaymentTransaction) {
@@ -163,7 +163,10 @@ ReservationSchema.post("save", async function recordNewCashDeposit(reservation) 
     session ? { session } : undefined,
   );
   reservation.depositTxnId = transaction._id;
-});
+  return transaction;
+}
+
+ReservationSchema.post("save", ensureNewCashReservationDeposit);
 
 ReservationSchema.index({ restaurantId: 1, tableId: 1, timeTo: 1 });
 ReservationSchema.index({ userId: 1, createdAt: -1 });
