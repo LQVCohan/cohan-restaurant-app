@@ -1,0 +1,13 @@
+{
+  "id": "07-11-ai-chatbot-unique-knowledge-scope",
+  "title": "Resolve chatbot scope from unique restaurant knowledge",
+  "status": "in_progress",
+  "createdAt": "2026-07-11",
+  "scope": [
+    "Search enabled chatbot knowledge across eligible restaurants for global questions",
+    "When relevant knowledge belongs to exactly one restaurant, resolve the chatbot scope to that restaurant before loading menu data",
+    "Preserve existing restaurant-specific behavior and response contracts"
+  ],
+  "validation": [],
+  "notRun": []
+}
