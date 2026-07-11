@@ -2,7 +2,7 @@
 
 ## Steps
 
-1. Key the manager route by authenticated account ID and add a remount regression.
+1. Reset Header, Sidebar and account-center UI state from the authenticated account ID.
 2. Switch the shared manager restaurant selector to the live full-brand query already refetched by branch creation.
 3. Persist sidebar destinations synchronously and cover hash/local-storage behavior.
 4. Add a manager menu catalog modal and expose it only on the menu page.
@@ -12,7 +12,7 @@
 
 ```bash
 npx vitest run \
-  src/routes/AppRouter.account-scope.test.jsx \
+  src/components/Dashboard_Manager/Header.account-switch.test.jsx \
   src/hooks/useManagerRestaurantSelection.test.jsx \
   src/components/Dashboard_Manager/Sidebar.test.jsx \
   src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.test.jsx
