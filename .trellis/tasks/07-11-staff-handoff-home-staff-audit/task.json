@@ -2,8 +2,8 @@
   "id": "staff-handoff-home-staff-audit",
   "name": "staff-handoff-home-staff-audit",
   "title": "Audit AI handoff from home to staff",
-  "description": "Trace and harden the customer-home AI handoff flow through conversation persistence, handoff thread creation, notifications, staff inbox, replies and resolution.",
-  "status": "in_progress",
+  "description": "Trace and harden the customer-home AI handoff flow through conversation persistence, unique handoff thread creation, notifications, staff inbox, guest/staff replies and transactional resolution.",
+  "status": "completed",
   "dev_type": "fullstack-fix",
   "scope": "ai-chatbot-handoff",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-11",
-  "completedAt": null,
+  "completedAt": "2026-07-11",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "05063b8aee4bac0e5b0324932ad60583cb2e2fe1",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -34,7 +34,14 @@
     "src/components/common/AiChatbotWidget.jsx",
     "src/components/communication/AiHandoffInbox.jsx",
     "src/hooks/useCommunication.js",
-    "src/layouts/StaffLayout.jsx"
+    "src/layouts/StaffLayout.jsx",
+    "cohan-restaurant-backend/tests/resolvers/ai-chatbot-conversation-lifecycle.test.js",
+    "cohan-restaurant-backend/tests/services/restaurantChatbot.handoff.service.test.js",
+    "cohan-restaurant-backend/tests/services/restaurant-chatbot-resolve-handoff.service.test.js",
+    "cohan-restaurant-backend/tests/services/restaurant-chatbot-guest-replies.service.test.js",
+    "src/hooks/useCommunication.test.js",
+    "src/components/communication/AiHandoffInbox.test.jsx",
+    "src/layouts/StaffLayout.test.jsx"
   ],
-  "notes": "Preserve the public GraphQL contract, existing handoff permissions, notification types, customer-safe reply filtering and current visual language."
+  "notes": "Completed with Home stale-conversation rollover, one thread per source conversation, idempotent handoff requests, scoped guest writes, transactional resolution, active-restaurant Staff inbox/badge behavior, selected-detail refresh and resolved deep-links. Public GraphQL operations, permissions, recipient policy, notification types and visual language remain unchanged. Tests/build were not executed because the session could not obtain a runnable repository checkout."
 }
