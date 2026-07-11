@@ -19,6 +19,12 @@ export const TableType = [
   "private",
 ];
 
+const normalizeLegacyDate = (value) => (
+  Object.prototype.toString.call(value) === "[object Object]" && Object.keys(value).length === 0
+    ? null
+    : value
+);
+
 // Subschema cho vị trí (không cần timestamps/virtual id)
 const PositionSchema = new mongoose.Schema(
   {
@@ -65,8 +71,8 @@ const TableSchema = BaseSchemaModel({
   tableAccessToken: { type: String, default: null },
   tableAccessUrl: { type: String, default: null },
   tableQrCodeDataUrl: { type: String, default: null },
-  tableQrGeneratedAt: { type: Date, default: null },
-  tableQrExpiresAt: { type: Date, default: null },
+  tableQrGeneratedAt: { type: Date, default: null, set: normalizeLegacyDate },
+  tableQrExpiresAt: { type: Date, default: null, set: normalizeLegacyDate },
 
   status: {
     type: String,
@@ -96,7 +102,7 @@ const TableSchema = BaseSchemaModel({
     ref: "Table",
     default: null,
   },
-  mergedAt: { type: Date, default: null },
+  mergedAt: { type: Date, default: null, set: normalizeLegacyDate },
   mergedIntoTableId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Table",
@@ -106,7 +112,7 @@ const TableSchema = BaseSchemaModel({
 
   viewLock: {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    expiresAt: { type: Date },
+    expiresAt: { type: Date, set: normalizeLegacyDate },
     sessionId: { type: String },
     viewerName: { type: String },
   },
