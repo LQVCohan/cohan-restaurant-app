@@ -198,11 +198,14 @@ async function hydrateSupplyOrderItem({ restaurantId, item, session }) {
 
   const variant = catalogItem.servingVariants[0];
   const unitPrice = Number(variant.price || catalogItem.basePrice || 0);
+  const normalizedSupplyId = toObjectId(catalogItem.supplyId);
   return {
     ...item,
     itemType: "SUPPLY",
-    supplyId: toObjectId(catalogItem.supplyId),
-    dishId: null,
+    supplyId: normalizedSupplyId,
+    // Legacy order/inventory callers still forward dishId as menuItemId.
+    // The inventory router resolves this id against Supply when no MenuItem exists.
+    dishId: normalizedSupplyId,
     menuId: null,
     categoryId: null,
     prepStation: "bar",
