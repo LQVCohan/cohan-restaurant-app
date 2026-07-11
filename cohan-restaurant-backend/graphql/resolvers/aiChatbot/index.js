@@ -1,4 +1,6 @@
+import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
+import { AiChatConversation } from "../../../models/index.js";
 import { AI_CHATBOT_RATE_LIMIT_CODE } from "../../../src/services/ai/restaurantChatbotRateLimit.service.js";
 import { handleRestaurantChatbotMessage } from "../../../src/services/ai/restaurantChatbotReviewed.service.js";
 import { resolveUniqueKnowledgeRestaurantOptions } from "../../../src/services/ai/restaurantChatbotKnowledgeScope.service.js";
@@ -59,6 +61,26 @@ const isManagerNavigationRequest = (message = "") =>
   /(?:mở|mo|đi tới|di toi|vào|vao|truy cập|truy cap).*(?:quản lý|quan ly|dashboard)|(?:trang quản lý|trang quan ly|dashboard)/i.test(String(message || ""));
 
 const isManagerPath = (href = "") => /^\/manager(?:$|[/?#])/.test(String(href || ""));
+
+export async function keepOnlyOpenAiConversationReference(options = {}) {
+  const conversationId = String(options?.conversationId || "").trim();
+  if (!conversationId || !mongoose.isValidObjectId(conversationId)) {
+    return { ...options, conversationId: null };
+  }
+
+  try {
+    const conversation = await AiChatConversation.findById(conversationId)
+      .select({ status: 1 })
+      .lean();
+    if (!conversation || String(conversation.status || "open") !== "open") {
+      return { ...options, conversationId: null };
+    }
+  } catch {
+    return { ...options, conversationId: null };
+  }
+
+  return options;
+}
 
 export const sanitizeAiChatbotResponse = (response = {}, message = "") => {
   const intent = String(response?.intent || "general");
@@ -131,7 +153,7 @@ const Query = {
 const Mutation = {
   askAiChatbot: async (_, { input }, ctx) => {
     try {
-      const requestOptions = await resolveUniqueKnowledgeRestaurantOptions({
+      const openConversationInput = await keepOnlyOpenAiConversationReference({
         message: input?.message,
         restaurantId: input?.restaurantId,
         history: input?.history || [],
@@ -141,6 +163,9 @@ const Mutation = {
         user: ctx?.user || null,
         clientIp: ctx?.request?.ip || ctx?.reply?.request?.ip || "",
       });
+      const requestOptions = await resolveUniqueKnowledgeRestaurantOptions(
+        openConversationInput,
+      );
       const response = await handleRestaurantChatbotMessage(requestOptions);
       return sanitizeAiChatbotResponse(response, input?.message);
     } catch (err) {
