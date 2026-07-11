@@ -111,7 +111,14 @@ export function withOrderRestaurantAccessGuards(mutation = {}) {
     ...mutation,
 
     async createOrderForTable(parent, args, ctx, info) {
-      await requireInputRestaurantAccess(ctx, args?.input?.restaurantId);
+      const isReservationAddon =
+        String(args?.input?.clientMeta?.source || "") ===
+        "reservation_cart_addon";
+      // ponytail: the canonical resolver already validates customer auth,
+      // reservation ownership and every cart hold for this one source.
+      if (!isReservationAddon) {
+        await requireInputRestaurantAccess(ctx, args?.input?.restaurantId);
+      }
       return mutation.createOrderForTable.call(mutation, parent, args, ctx, info);
     },
 
