@@ -11,30 +11,28 @@ const joinUrl = (base, path) =>
   `${base}${path.startsWith("/") ? path : `/${path}`}`;
 
 describe("apiBaseUrl helpers", () => {
-  it("routes Fastify plugin endpoints through the shared /api prefix", () => {
+  it("keeps Fastify plugin routes at the backend root", () => {
     const apiBase = getApiBaseUrl();
+    const backendRoot = getBackendRootUrl();
 
     expect(apiBase.endsWith("/api")).toBe(true);
-    expect(getBackendRootUrl()).toBe(apiBase);
+    expect(backendRoot.endsWith("/api")).toBe(false);
     expect(toApiUrl("/orders")).toBe(joinUrl(apiBase, "/orders"));
-    expect(toBackendRootUrl("/upload")).toBe(joinUrl(apiBase, "/upload"));
+    expect(toBackendRootUrl("/upload")).toBe(joinUrl(backendRoot, "/upload"));
     expect(toBackendRootUrl("/upload/sign")).toBe(
-      joinUrl(apiBase, "/upload/sign"),
+      joinUrl(backendRoot, "/upload/sign"),
     );
     expect(toBackendRootUrl("/table-3d-assets/upload")).toBe(
-      joinUrl(apiBase, "/table-3d-assets/upload"),
+      joinUrl(backendRoot, "/table-3d-assets/upload"),
     );
     expect(toBackendRootUrl("/table-3d-ai/generate")).toBe(
-      joinUrl(apiBase, "/table-3d-ai/generate"),
+      joinUrl(backendRoot, "/table-3d-ai/generate"),
     );
   });
 
-  it("does not duplicate /api when callers pass an /api-prefixed REST path", () => {
+  it("does not duplicate /api for regular REST callers", () => {
     expect(toApiUrl("/api/reverse-geocode?lat=10&lng=106")).toBe(
       joinUrl(getApiBaseUrl(), "/reverse-geocode?lat=10&lng=106"),
-    );
-    expect(toBackendRootUrl("/api/table-3d-ai/generate")).toBe(
-      joinUrl(getApiBaseUrl(), "/table-3d-ai/generate"),
     );
   });
 
