@@ -73,9 +73,11 @@ import { installTableDetailModalTabs } from "./utils/installTableDetailModalTabs
 import { installMergedTableCustomerProfiles } from "./utils/installMergedTableCustomerProfiles";
 import { installMergedTableLifecycleUi } from "./utils/installMergedTableLifecycleUi";
 import { installTableEmptyStateEnhancement } from "./utils/installTableEmptyStateEnhancement";
+import { installGuidedAiCaptureCards } from "./utils/installGuidedAiCaptureCards";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 import "./styles/ResponsiveFoundation.css";
 import "./styles/CustomTableBuilderResponsiveFix.css";
+import "./styles/GuidedAiCaptureCards.css";
 import "./styles/AvailabilitySnapshotOverlayLight.css";
 
 const normalizeLegacyManagerHash = () => {
@@ -104,6 +106,7 @@ installTableDetailModalTabs();
 installMergedTableCustomerProfiles();
 installMergedTableLifecycleUi();
 installTableEmptyStateEnhancement();
+installGuidedAiCaptureCards();
 installAttendanceWordingTuning();
 
 createRoot(document.getElementById("root")).render(
