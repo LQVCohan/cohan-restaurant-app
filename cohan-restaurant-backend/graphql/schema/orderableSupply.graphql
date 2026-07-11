@@ -1,0 +1,54 @@
+type OrderableSupplyServingVariant {
+  key: String!
+  name: String
+  mode: ServingMode!
+  sellQty: Float
+  sellUnit: String
+  price: Int
+  isDefault: Boolean
+}
+
+type OrderableSupply {
+  id: ID!
+  itemType: String!
+  supplyId: ID!
+  restaurantId: ID!
+  menuId: ID
+  categoryId: ID
+  code: String
+  name: String!
+  description: String
+  labels: [String!]
+  basePrice: Int!
+  defaultServingKey: String!
+  hasByWeightVariant: Boolean!
+  servingVariants: [OrderableSupplyServingVariant!]!
+  servingUnit: String
+  prepStation: String
+  printStationId: String
+  thumbImage: String
+  status: MenuItemStatus!
+  inventoryStatus: String
+  maxAvailable: Int
+  stockWarnings: [String!]
+  avgPrepTimeMin: Int
+  notes: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+extend type Query {
+  orderableSupplies(
+    restaurantId: ID!
+    warehouseId: ID
+    search: String
+    includeOutOfStock: Boolean = false
+  ): [OrderableSupply!]!
+
+  orderableSupply(
+    restaurantId: ID!
+    supplyId: ID!
+    warehouseId: ID
+    includeOutOfStock: Boolean = false
+  ): OrderableSupply
+}
