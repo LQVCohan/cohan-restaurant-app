@@ -118,10 +118,7 @@ describe("resolveRestaurantChatbotHandoff", () => {
   });
 
   it("resolves by chatThreadId", async () => {
-    const { conversation } = mockLifecycle();
-    AiChatConversation.findById
-      .mockResolvedValueOnce(null)
-      .mockResolvedValue(conversation);
+    mockLifecycle();
 
     const result = await resolveRestaurantChatbotHandoff({
       input: { chatThreadId: IDS.thread },
