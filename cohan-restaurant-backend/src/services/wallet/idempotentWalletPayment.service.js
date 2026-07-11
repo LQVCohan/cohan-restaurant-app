@@ -206,12 +206,49 @@ export async function payOrdersWithWallet({
     });
   }
 
-  const result = await settleOrdersWithWallet({
-    userId: uid,
-    restaurantId: rid,
-    orderIds: normalizedOrderIds,
-    idempotencyKey: key,
-  });
+  let result;
+  try {
+    result = await settleOrdersWithWallet({
+      userId: uid,
+      restaurantId: rid,
+      orderIds: normalizedOrderIds,
+      idempotencyKey: key,
+    });
+  } catch (error) {
+    if (error?.code !== 11000) throw error;
+
+    const [racedTransaction, racedSession] = await Promise.all([
+      PaymentTransaction.findOne({
+        restaurantId: rid,
+        userId: uid,
+        method: "e_wallet",
+        externalRef: key,
+        status: "SUCCESS",
+      }).lean(),
+      PaymentSession.findOne({
+        provider: WALLET_PROVIDER,
+        reference: key,
+      }).lean(),
+    ]);
+    if (!racedTransaction && !racedSession) throw error;
+
+    assertRequestMatches({
+      transaction: racedTransaction,
+      paymentSession: racedSession,
+      userId: uid,
+      restaurantId: rid,
+      requestFingerprint,
+      orderIds: normalizedOrderIds,
+    });
+    if (!racedTransaction) throw error;
+
+    result = await settleOrdersWithWallet({
+      userId: uid,
+      restaurantId: rid,
+      orderIds: normalizedOrderIds,
+      idempotencyKey: key,
+    });
+  }
 
   const [settledTransaction, settledSession] = await Promise.all([
     PaymentTransaction.findOne({
