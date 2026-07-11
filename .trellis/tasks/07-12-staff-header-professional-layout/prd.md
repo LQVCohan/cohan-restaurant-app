@@ -16,12 +16,12 @@ Compact two-tier operations header: page context and account controls on top, th
 
 ## Scope
 
-- Add a link wrapper and stable key for each existing navigation group.
-- Keep the same visible items, permission checks, role checks and role-workspace-first ordering.
-- Rebuild the desktop navigation layout into aligned labeled rows.
+- Reuse the existing `StaffLayout` markup, visible items, permission checks, role checks and role-workspace-first ordering.
+- Add one scoped presentation override following the repository's existing `*Polish/*Override` pattern.
+- Rebuild the desktop navigation layout into aligned labeled rows without duplicating navigation code.
 - Reduce individual card styling and use one shared navigation surface.
 - Keep the notification bell, identity card, mobile menu and messenger behavior intact.
-- Update the focused shared-layout test.
+- Load the scoped override after component styles from `src/main.jsx`.
 
 ## Acceptance criteria
 
@@ -32,6 +32,11 @@ Compact two-tier operations header: page context and account controls on top, th
 5. The role workspace remains first in the visible navigation without looking active on unrelated pages.
 6. Mobile menu remains keyboard accessible, grouped and usable at 390x844 and 430x932.
 7. Route, permission, notification and messenger behavior remain unchanged.
+
+## Files changed
+
+- `src/styles/StaffHeaderProfessional.css`
+- `src/main.jsx`
 
 ## Out of scope
 
