@@ -5,6 +5,7 @@ import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { ConfirmedOrderPrintMutation } from "./confirmedOrderPrintMutation.js";
+import { TemporaryBillPrintMutation } from "./temporaryBillPrintMutation.js";
 import { emitOrderEvent } from "./helper/emitOrderEvent.js";
 
 const PREPARATION_STATION_BY_ROLE = Object.freeze({
@@ -260,13 +261,13 @@ export function withOrderRestaurantAccessGuards(mutation = {}) {
     },
 
     async createTemporaryBillPrintJob(parent, args, ctx, info) {
-      const input = args?.input || {};
-      await loadScopedOrder({
-        orderId: input.orderId,
-        restaurantId: input.restaurantId,
+      return TemporaryBillPrintMutation.createTemporaryBillPrintJob.call(
+        mutation,
+        parent,
+        args,
         ctx,
-      });
-      return mutation.createTemporaryBillPrintJob.call(mutation, parent, args, ctx, info);
+        info,
+      );
     },
 
     async requestPaymentForOrder(parent, args, ctx, info) {
