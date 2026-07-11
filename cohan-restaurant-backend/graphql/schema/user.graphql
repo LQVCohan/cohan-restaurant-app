@@ -594,6 +594,7 @@ type StaffPrivateProfile {
   emergencyContacts: [EmergencyContactExtended!]
   baseSalary: Int
   hourlyRate: Float
+  commissionRate: Float
   allowanceAmount: Float
   bankName: String
   bankAccountNumber: String
