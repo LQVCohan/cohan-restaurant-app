@@ -3,7 +3,7 @@
   "name": "ai-chatbot-menu-selection-polish",
   "title": "Nâng cấp giao diện chọn món trong AI chatbot",
   "description": "Làm rõ luồng tùy chỉnh món trong chatbot, giảm nhiễu hội thoại và tối ưu responsive mà không thay đổi hợp đồng GraphQL hay nghiệp vụ giỏ hàng.",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "dev_type": "frontend",
   "scope": "ai-chatbot-customer-ui",
   "priority": "P1",
@@ -23,8 +23,16 @@
       "Targeted AiChatbotWidget component tests",
       "Responsive browser check at 390x844, 430x932 and desktop"
     ],
-    "completed": [],
-    "notRun": []
+    "completed": [
+      "Traced AskAiChatbot schema -> resolver -> reviewed/base/core services -> verified context and knowledge -> widget menu source -> selected item queries -> live stock -> addCartItem",
+      "Reviewed existing selected-menu, compact-answer, unavailable restaurant and serving-unit component tests",
+      "Added a late-loaded focused selected-menu CSS layer using the existing COHAN orange and warm-neutral visual language",
+      "Verified the new stylesheet is imported after the existing global chatbot styles"
+    ],
+    "notRun": [
+      "Targeted Vitest and npm build were not run because the GitHub connector has no repository execution environment",
+      "Responsive browser and screenshot checks were not run because no application runtime was available"
+    ]
   },
   "meta": {
     "skills": [
