@@ -70,6 +70,7 @@ const MANAGER_PERMISSIONS = [
   "refund.write",
   "payroll.read",
   "print.read",
+  "print.write",
   "ai.chatbot.read",
   "ai.chatbot.write",
   "ai.chatbot.moderate",
