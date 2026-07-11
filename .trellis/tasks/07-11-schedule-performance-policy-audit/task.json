@@ -1,0 +1,38 @@
+{
+  "id": "07-11-schedule-performance-policy-audit",
+  "title": "Align schedule auto-planner contract and performance evaluation descriptions",
+  "status": "implemented_unverified",
+  "type": "fullstack",
+  "scope": [
+    "cohan-restaurant-backend/graphql/schema/staffResolverCompatibility.graphql",
+    "src/components/Dashboard_Manager/Schedule/ScheduleManagement.jsx",
+    "src/__tests__/graphql-schema-validation.test.js",
+    "src/components/Dashboard_Manager/Staff/components/Performance/utils/performanceFormula.js",
+    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.jsx",
+    "src/components/Dashboard_Manager/Staff/components/Performance/utils/performanceReport.js",
+    "cohan-restaurant-backend/models/staffPerformanceSnapshot.model.js"
+  ],
+  "createdAt": "2026-07-11",
+  "updatedAt": "2026-07-11",
+  "validation": {
+    "completed": [
+      "static schema -> resolver/service -> Apollo/UI contract audit",
+      "static schedule -> attendance -> payroll -> performance risk audit",
+      "re-fetched target files from branch after each write",
+      "draft PR opened as #1354"
+    ],
+    "notRun": [
+      "npm run check:graphql",
+      "npm run check:conflicts",
+      "npm run test:performance",
+      "npm run build",
+      "browser smoke"
+    ],
+    "notes": [
+      "GitHub connector workspace has no runnable repository checkout.",
+      "gh CLI is unavailable in the environment.",
+      "CI workflow run 29140208472 is still in_progress.",
+      "No performance weights or payroll calculation rules were changed."
+    ]
+  }
+}

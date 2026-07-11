@@ -464,6 +464,16 @@ input AiSchedulePlannerPreviewInput {
   periodEnd: DateTime
   timezone: String
   staffIds: [ID!]
+  requiredRoles: JSON
+  mandatoryShiftRoles: JSON
+  weeklyHoursCap: Float
+  respectAvailability: Boolean
+  avoidOvertime: Boolean
+  horizonDays: Int
+  shiftConfig: JSON
+  shiftTemplates: JSON
+  allowOverride: Boolean
+  overrideReason: String
   options: JSON
 }
 
@@ -473,6 +483,16 @@ input ApplyAutoScheduleInput {
   periodEnd: DateTime
   timezone: String
   shifts: [JSON!]
+  requiredRoles: JSON
+  mandatoryShiftRoles: JSON
+  weeklyHoursCap: Float
+  respectAvailability: Boolean
+  avoidOvertime: Boolean
+  shiftConfig: JSON
+  shiftTemplates: JSON
+  allowOverride: Boolean
+  overrideReason: String
+  selectedShiftKeys: [String!]
   options: JSON
 }
 

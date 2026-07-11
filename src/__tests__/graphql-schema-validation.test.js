@@ -393,7 +393,30 @@ describe('frontend GraphQL documents', () => {
     expect(queryFields.aiSchedulePlannerPreview.args.map((arg) => `${arg.name}:${arg.type}`)).toContain(
       'input:AiSchedulePlannerPreviewInput',
     );
-    expect(schema.getType('AiSchedulePlannerPreviewInput')).toBeTruthy();
+    const previewInputFields = schema.getType('AiSchedulePlannerPreviewInput').getFields();
+    expect(Object.keys(previewInputFields)).toEqual(
+      expect.arrayContaining([
+        'weeklyHoursCap',
+        'respectAvailability',
+        'avoidOvertime',
+        'horizonDays',
+        'shiftConfig',
+        'shiftTemplates',
+        'requiredRoles',
+      ]),
+    );
+    const applyInputFields = schema.getType('ApplyAutoScheduleInput').getFields();
+    expect(Object.keys(applyInputFields)).toEqual(
+      expect.arrayContaining([
+        'weeklyHoursCap',
+        'respectAvailability',
+        'avoidOvertime',
+        'shiftConfig',
+        'shiftTemplates',
+        'requiredRoles',
+        'selectedShiftKeys',
+      ]),
+    );
     expect(compatibilityFields.recommendedShiftTemplates.type.toString()).toBe('JSON');
     expect(compatibilityFields.recommendedRoles.type.toString()).toBe('JSON');
     expect(compatibilityFields.riskWarnings.type.toString()).toBe('[CompatibilityNode!]');

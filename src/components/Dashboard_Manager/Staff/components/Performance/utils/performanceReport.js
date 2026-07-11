@@ -118,7 +118,7 @@ export const buildPerformanceReportHtml = (reportData) => `
       <p><strong>Xếp loại:</strong> ${escapeHtml(reportData.performanceLevel)}</p>
       <h3>Công thức tính điểm</h3>
       <p>Năng suất 25% · Đúng giờ 25% · Chất lượng 20% · Đánh giá quản lý 20% · Tuân thủ 10%</p>
-      <p>Năng suất được tính bằng thời lượng làm thực tế / thời lượng ca được phân công.</p>
+      <p>Năng suất = thời lượng làm thực tế / thời lượng ca được phân công × 100; order chỉ là dữ liệu tham khảo.</p>
       <p><em>${reportData.hasCustomWeight ? "Dùng weight thực tế từ snapshot." : "Dùng weight mặc định."}</em></p>
       <table border="1" cellspacing="0" cellpadding="6"><tr><th>Thành phần</th><th>Điểm</th><th>Trọng số</th><th>Đóng góp</th></tr>
       ${reportData.formulaBreakdown.map((item) => `<tr><td>${escapeHtml(item.label)}</td><td>${scoreText(item.score)}</td><td>${formatPercent(item.weight)}</td><td>${formatContributionScore(item.contribution)}</td></tr>`).join("")}
@@ -129,6 +129,7 @@ export const buildPerformanceReportHtml = (reportData) => `
       <p>Delta hoàn từ appeal: ${formatDelta(reportData.appealReversalDelta)}</p>
       <p>Điều chỉnh incident/appeal: ${reportData.hasAdjustment ? `${formatDelta(reportData.adjustmentDelta)} điểm` : "Không có điều chỉnh"}</p>
       <p>Điểm cuối: ${scoreText(reportData.finalPerformanceScore)}</p>
+      <p><em>Điểm trừ incident chỉ áp dụng sau khi quản lý xác nhận trách nhiệm và duyệt; delta dương từ appeal là hoàn điểm, không phải thưởng.</em></p>
       <h3>So sánh kỳ trước</h3>
       ${reportData.hasPreviousSnapshot ? `
       <p>Điểm kỳ này: ${scoreText(reportData.finalPerformanceScore)}</p>
@@ -139,12 +140,12 @@ export const buildPerformanceReportHtml = (reportData) => `
       <h3>Đánh giá khách hàng</h3>
       <p>${escapeHtml(reportData.customerRating.label)}</p>
       ${reportData.customerRating.hasRating ? `<p>${escapeHtml(reportData.customerRating.hint)}</p>` : ""}
-      <p><em>Đánh giá khách hàng chỉ là dữ liệu tham khảo cho quản lý.</em></p>
+      <p><em>Đánh giá khách hàng chỉ là bằng chứng Quality cho nhóm order/phục vụ và thu ngân khi đủ mẫu; không thay thế điểm quản lý.</em></p>
       <p><em>Dữ liệu này được cập nhật vào kỳ đánh giá khi tính lại hiệu suất.</em></p>
       ${reportData.snapshotUpdatedAt ? `<p><em>Snapshot cập nhật lần cuối: ${escapeHtml(formatDate(reportData.snapshotUpdatedAt))}</em></p>` : ""}
       <h3>Nguồn dữ liệu năng suất</h3>
       ${reportData.productivitySource === "shift_completion" ? `
-      <p>Năng suất dựa trên tỷ lệ hoàn thành ca được phân công.</p>
+      <p>Năng suất dựa trên tỷ lệ thời lượng làm thực tế / thời lượng ca được phân công; order chỉ dùng để tham khảo.</p>
       <p>Thời lượng ca được phân công: ${escapeHtml(formatMinutesDuration(reportData.scheduledMinutes))}</p>
       <p>Thời lượng làm thực tế: ${escapeHtml(formatMinutesDuration(reportData.actualWorkedMinutes))}</p>
       <p>Order chỉ là dữ liệu tham khảo: ${escapeHtml(reportData.orderCount ?? "--")}</p>
@@ -188,7 +189,7 @@ export const buildPerformanceReportHtml = (reportData) => `
       <p>Tổng trừ nghiệp vụ thu ngân: ${escapeHtml(reportData.cashierMetrics?.operationalPenalty ?? 0)}</p>
       <p>Trừ theo nghiệp vụ thu ngân (Quality): ${escapeHtml(reportData.qualityEvidence?.cashierOperationalPenalty ?? 0)}</p>
       <p>Có bằng chứng nghiệp vụ thu ngân: ${reportData.qualityEvidence?.hasCashierOperationalEvidence ? "Có" : "Không"}</p>
-      <p>${Number(reportData.qualityEvidence?.cashierOperationalPenalty || 0) > 0 ? "Điểm Quality của thu ngân đã được điều chỉnh theo lỗi nghiệp vụ có thể quy trách nhiệm, ví dụ sai bill, lỗi thanh toán, refund do thao tác sai, xử lý yêu cầu thanh toán chậm hoặc giảm giá không hợp lệ." : "Không có lỗi nghiệp vụ thu ngân có thể quy trách nhiệm trong kỳ."}</p>
+      <p>${Number(reportData.qualityEvidence?.cashierOperationalPenalty || 0) > 0 ? "Quality của thu ngân chỉ bị trừ theo lỗi nghiệp vụ có thể quy trách nhiệm như sai bill, lỗi thanh toán, refund do thao tác sai, xử lý yêu cầu thanh toán chậm hoặc giảm giá không hợp lệ." : "Không có lỗi nghiệp vụ thu ngân có thể quy trách nhiệm trong kỳ."}</p>
       ${Number(reportData.cashierMetrics?.cashVarianceRate || 0) === 0 ? "<p>Dữ liệu lệch tiền mặt chưa được tính vì chưa có reconciliation/chốt quỹ thu ngân.</p>" : `<p>Tỷ lệ lệch tiền mặt: ${escapeHtml(Math.round(Number(reportData.cashierMetrics?.cashVarianceRate || 0) * 1000) / 10)}%</p>`}
       ` : ""}
       <h3>Lịch sử điều chỉnh điểm</h3>
