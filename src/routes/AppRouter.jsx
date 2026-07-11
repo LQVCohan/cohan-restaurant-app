@@ -215,6 +215,11 @@ const withLazyRoute = (children) => (
 );
 const withStaffLayout = (children) => <StaffLayout>{children}</StaffLayout>;
 
+const StaffEntryRedirect = () => {
+  const { user } = useContext(AuthContext) || {};
+  return <Navigate to={getDefaultPathForRole(user)} replace />;
+};
+
 const AppRouter = () => (
   <Routes>
     <Route path="/login" element={<Login />} />
@@ -234,7 +239,7 @@ const AppRouter = () => (
     <Route
       path="/staff"
       element={withPrivateRoute(
-        <Navigate to="/staff/dashboard" replace />,
+        <StaffEntryRedirect />,
         STAFF_SHARED_ROLES,
       )}
     />
