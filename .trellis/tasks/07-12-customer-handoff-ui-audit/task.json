@@ -1,0 +1,28 @@
+{
+  "id": "customer-handoff-ui-audit",
+  "name": "customer-handoff-ui-audit",
+  "title": "Audit customer handoff interface",
+  "description": "Review and polish the customer-facing call-staff experience in AiChatbotWidget without changing the public GraphQL handoff contract.",
+  "status": "in_progress",
+  "dev_type": "frontend-fix",
+  "scope": "customer-ai-handoff-ui",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-12",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/schema/aiChatbot.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/aiChatbot/index.js",
+    "cohan-restaurant-backend/src/services/ai/restaurantChatbotHandoff.service.js",
+    "src/App.jsx",
+    "src/components/common/AiChatbotWidget.jsx",
+    "src/components/common/AiChatbotWidget.scss",
+    "src/components/common/AiChatbotWidget.handoff.test.jsx"
+  ],
+  "notes": "Keep restaurant scope, guest ownership, notification delivery, staff replies, Socket.IO events and public GraphQL fields unchanged."
+}
