@@ -125,7 +125,7 @@ const readSchemaFile = (fileName) => {
     return source
       .replace(
         "  e_wallet\n  other",
-        "  e_wallet\n  momo\n  vnpay\n  other",
+        "  e_wallet\n  provider\n  momo\n  vnpay\n  other",
       )
       .replace(
         "  orderId: ID!\n  customerId:",
