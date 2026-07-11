@@ -1,0 +1,27 @@
+{
+  "id": "07-11-table-ai-guided-camera-cards",
+  "title": "Hướng dẫn chụp 5 ảnh tạo mẫu bàn AI",
+  "status": "in_progress",
+  "type": "frontend-feature",
+  "scope": [
+    "src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.jsx",
+    "src/styles/CustomTableBuilderResponsiveFix.css",
+    "src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx"
+  ],
+  "rootCause": "The AI flow already opens the rear camera through native file inputs, but each capture step is rendered as a plain row with the browser file control. Users cannot see a camera-style frame, the required angle inside that frame, a clear shutter action, or a preview confirming the captured image.",
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx",
+      "npm run check:conflicts",
+      "npm run build",
+      "manual mobile check at 390x844 and 430x932"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max skills",
+      "traced Table3DSimulatorModalV2 -> CustomTableModelBuilderModal -> native rear-camera file inputs -> existing Hi3D request",
+      "confirmed the backend request contract and five-image order do not need changes",
+      "inspected the current component, responsive stylesheet, caller and focused component test"
+    ],
+    "notRun": []
+  }
+}
