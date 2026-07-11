@@ -1,46 +1,51 @@
-# Backend REST API prefix fix
+# Table 3D development proxy fix
 
 ## Current behavior
 
-The AI table screen submits five images through `toBackendRootUrl("/table-3d-ai/generate")`. With the mobile/ngrok development setup, the helper returns `/table-3d-ai/generate`, so Vite serves a 404 instead of forwarding the request to Fastify.
+The AI table screen submits five images through `toBackendRootUrl("/table-3d-ai/generate")`. In mobile/ngrok development the correct root-relative URL was not included in the Vite proxy table, so Vite returned HTTP 404. A previous attempt changed the URL to `/api/table-3d-ai/generate`, which reached Fastify but returned `Route not found` because that route does not exist.
 
 ## End-to-end trace
 
 1. `CustomTableModelBuilderModal` calls `toBackendRootUrl("/table-3d-ai/generate")`.
-2. `getBackendRootUrl` removes or omits the `/api` segment.
-3. Mobile development uses `VITE_API_URL=/graphql` and a same-origin Vite proxy.
-4. Fastify registers `upload.route.js` using `{ prefix: "/api" }`.
-5. The actual route is `/api/table-3d-ai/generate`; the generated `/table-3d-ai/generate` URL never reaches the route.
-6. The same shared helper is used by model upload, avatar upload, account verification and chatbot streaming routes from the same plugin.
+2. Mobile development uses `VITE_API_URL=/graphql` and sends same-origin requests through Vite/ngrok.
+3. `vite.config.js` proxies `/graphql`, `/api`, `/auth`, `/ai`, `/upload` and `/uploads`, but not `/table-3d-ai` or `/table-3d-assets`.
+4. `createServer` registers `uploadRoutes` with `{ prefix: "/api" }`.
+5. `upload.route.js` is wrapped by `fastify-plugin`; its backend tests register it with the same prefix but successfully call root paths such as `/upload/sign`.
+6. Therefore the real generation route is `/table-3d-ai/generate`, and Vite must proxy that root prefix to the backend.
 
 ## Root cause
 
-The frontend helper contract drifted from the backend route registration. It treats non-GraphQL routes in `upload.route.js` as backend-root routes, while the backend mounts every route in that plugin below `/api`.
+The backend-root URL helper was correct before the previous change. The actual missing boundary was the development proxy configuration: the table 3D route prefixes were absent. Adding `/api` created a second bug by targeting a non-existent Fastify route.
 
 ## Scope
 
-- Make `getBackendRootUrl` and `toBackendRootUrl` resolve to the mounted `/api` base.
-- Update the focused helper regression test to assert the real route contract.
-- Preserve upload asset URL normalization, which still exposes static files under `/uploads` rather than `/api/uploads`.
+- Restore `getBackendRootUrl` and `toBackendRootUrl` to backend-root URL behavior.
+- Add Vite proxy entries for `/table-3d-ai` and `/table-3d-assets`.
+- Update focused URL helper tests for root-relative and absolute backend configurations.
+- Add one focused Vite config test that locks the two proxy entries.
+- Preserve static `/uploads/*` handling and all existing backend route contracts.
 
 ## Acceptance criteria
 
-- `toBackendRootUrl("/table-3d-ai/generate")` resolves to `/api/table-3d-ai/generate` for same-origin mobile development.
-- Absolute GraphQL backends resolve the same route against their origin with `/api`.
-- Upload, verification and chatbot callers using the helper receive the corrected prefix.
+- `toBackendRootUrl("/table-3d-ai/generate")` resolves to `/table-3d-ai/generate` for same-origin mobile development.
+- Absolute GraphQL backends resolve the route against their origin without an `/api` prefix.
+- Vite proxies `/table-3d-ai` and `/table-3d-assets` to `devBackendUrl`.
+- Upload, account verification and chatbot callers retain their existing root paths.
 - Static `/uploads/*` asset URLs remain outside `/api`.
 - No backend, Hi3D, authentication or multipart request contract changes.
 
 ## Out of scope
 
-- Changing Hi3D credentials or provider behavior.
-- Adding duplicate backend root aliases without `/api`.
-- Reworking Vite proxy entries that already proxy `/api`.
+- Adding duplicate `/api/table-3d-*` backend aliases.
+- Changing Hi3D credentials, task submission or polling.
+- Reworking production reverse-proxy infrastructure.
 
 ## Validation plan
 
 ```bash
-npx vitest run src/lib/apiBaseUrl.test.js src/lib/apiBaseUrl.test.ts
+npx vitest run src/lib/apiBaseUrl.test.js src/lib/apiBaseUrl.test.ts vite.config.test.js
 npx vitest run src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx
 npm run build
 ```
+
+A manual retry through the ngrok mobile URL is still required after restarting Vite so the updated proxy table is loaded.
