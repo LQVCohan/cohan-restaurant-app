@@ -1,0 +1,25 @@
+{
+  "id": "07-12-staff-leave-remove-redundant-header",
+  "title": "Remove redundant staff leave header",
+  "status": "in_progress",
+  "type": "frontend-ui",
+  "scope": [
+    "src/components/Staff/StaffLeavePage.jsx",
+    "src/components/Staff/StaffLeavePage.test.jsx",
+    "tests/e2e/p1/staff-leave.spec.js"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Staff/StaffLeavePage.test.jsx",
+      "npx playwright test tests/e2e/p1/staff-leave.spec.js",
+      "npm run build",
+      "manual responsive review at 390x844, 430x932, 768px and 1440px"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
+      "traced StaffLeavePage through useLeaveManagement, LeaveRequestsList, modal wizard and E2E caller",
+      "confirmed the hero, identity card and external guide duplicate data/actions already present in the history panel and wizard"
+    ],
+    "notRun": []
+  }
+}
