@@ -259,7 +259,7 @@ export default function StaffLayout({ children }) {
       {
         label: "Đổi đặt bàn",
         to: "/staff/reservation-changes",
-        roles: STAFF_ORDER_ROLES,
+        permissions: ["reservation.read"],
       },
       {
         label: "Bếp / Quầy bar",
