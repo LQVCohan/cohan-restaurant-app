@@ -7,7 +7,8 @@
     "src/lib/apiBaseUrl.ts",
     "src/lib/apiBaseUrl.test.js",
     "src/lib/apiBaseUrl.test.ts",
-    "vite.config.js"
+    "vite.config.js",
+    "vite.config.test.js"
   ],
   "rootCause": "upload.route.js is wrapped with fastify-plugin, so the prefix option passed by createServer is not applied to its routes. The real endpoints remain at backend-root paths such as /table-3d-ai/generate. The mobile/ngrok Vite server did not proxy /table-3d-ai or /table-3d-assets, while the previous attempted fix incorrectly added /api and therefore reached Fastify at a non-existent route.",
   "validation": {
@@ -22,8 +23,14 @@
       "traced CustomTableModelBuilderModal -> toBackendRootUrl -> Vite/ngrok proxy -> Fastify uploadRoutes",
       "confirmed uploadRoutes is wrapped with fastify-plugin",
       "confirmed backend route tests register the plugin with prefix /api but successfully call root paths such as /upload/sign",
-      "identified missing Vite proxies for /table-3d-ai and /table-3d-assets as the original 404 cause"
+      "restored backend-root URL generation",
+      "added Vite proxies for /table-3d-ai and /table-3d-assets",
+      "added focused URL and proxy regression tests"
     ],
-    "notRun": []
+    "notRun": [
+      "Vitest was not run because the GitHub connector has no checked-out dependency environment",
+      "production build was not run for the same reason",
+      "mobile/ngrok retry requires restarting the user's Vite server"
+    ]
   }
 }
