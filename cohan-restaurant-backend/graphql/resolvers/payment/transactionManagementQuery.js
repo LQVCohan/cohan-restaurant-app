@@ -132,6 +132,7 @@ const buildCashflowFilter = (input = {}) => {
   if (!restaurantId) throw new Error("Invalid restaurantId");
 
   const filter = { restaurantId };
+  const conditions = [];
   const dateFrom = resolveBoundary(input.dateFrom);
   const dateTo = resolveBoundary(input.dateTo, { endOfDay: true });
   if (dateFrom || dateTo) {
@@ -144,23 +145,43 @@ const buildCashflowFilter = (input = {}) => {
   }
   if (input.category) filter.category = normalize(input.category);
   if (input.subcategory) filter.subcategory = normalize(input.subcategory);
-  if (input.method) filter.method = normalize(input.method);
+  if (input.method) {
+    const method = normalize(input.method);
+    filter.method =
+      method === "e_wallet" ? { $in: ["e_wallet", "momo", "vnpay"] } : method;
+  }
   if (input.status) filter.status = normalize(input.status);
   if (input.source) filter.source = normalize(input.source);
   if (input.referenceId && mongoose.isValidObjectId(input.referenceId)) {
-    filter["ref.id"] = new mongoose.Types.ObjectId(input.referenceId);
+    const referenceId = new mongoose.Types.ObjectId(input.referenceId);
+    conditions.push({
+      $or: [
+        { "ref.id": referenceId },
+        { "ref.orderId": referenceId },
+        { "ref.orderIds": referenceId },
+        { "ref.invoiceId": referenceId },
+        { "ref.paymentTransactionId": referenceId },
+        { "ref.payrollPaymentId": referenceId },
+        { "ref.stockMovementId": referenceId },
+        { "ref.reconciliationId": referenceId },
+        { "ref.refundId": referenceId },
+      ],
+    });
   }
   if (input.search) {
     const escaped = String(input.search).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const expression = new RegExp(escaped, "i");
-    filter.$or = [
-      { note: expression },
-      { category: expression },
-      { subcategory: expression },
-      { source: expression },
-      { "ref.kind": expression },
-    ];
+    conditions.push({
+      $or: [
+        { note: expression },
+        { category: expression },
+        { subcategory: expression },
+        { source: expression },
+        { "ref.kind": expression },
+      ],
+    });
   }
+  if (conditions.length) filter.$and = conditions;
 
   return { restaurantId, filter };
 };
