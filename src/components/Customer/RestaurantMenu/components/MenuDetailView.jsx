@@ -1,5 +1,21 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
+import {
+  ArrowLeft,
+  CircleAlert,
+  LayoutGrid,
+  List,
+  MapPin,
+  Moon,
+  RotateCcw,
+  Search,
+  ShoppingBag,
+  Star,
+  Sun,
+  Sunrise,
+  UtensilsCrossed,
+  X,
+} from "lucide-react";
 import { AuthContext } from "../../../../context/AuthContext";
 import useFoodPreferences from "../../../../hooks/useFoodPreferences";
 import { useActiveMenuPromotions } from "../../../../hooks/useActiveMenuPromotions";
@@ -86,10 +102,10 @@ export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
 `;
 
 const TIME_SLOTS = [
-  { id: "breakfast", label: "Bữa sáng", icon: "🍳" },
-  { id: "lunch", label: "Bữa trưa", icon: "☀️" },
-  { id: "dinner", label: "Bữa tối", icon: "🌙" },
-  { id: "late_night", label: "Ăn đêm", icon: "🦉" },
+  { id: "breakfast", label: "Bữa sáng", icon: Sunrise },
+  { id: "lunch", label: "Bữa trưa", icon: Sun },
+  { id: "dinner", label: "Bữa tối", icon: UtensilsCrossed },
+  { id: "late_night", label: "Ăn đêm", icon: Moon },
 ];
 
 const SORT_OPTIONS = [
@@ -103,6 +119,7 @@ const MenuDetailView = ({
   restaurant,
   canOrder = true,
   initialTimeSlot = null,
+  lockedTimeSlot = null,
   serviceAt = null,
   onBack,
   onOpenFoodDetail,
@@ -121,9 +138,10 @@ const MenuDetailView = ({
   const { preferences } = useFoodPreferences({ skip: !isAuthenticated });
   const hasFoodPreferences = hasMeaningfulFoodPreferences(preferences);
   const restaurantId = restaurant?.id || restaurant?._id || "";
-  const bookingSlot = TIME_SLOTS.find((slot) => slot.id === initialTimeSlot);
+  const activeSlot = TIME_SLOTS.find((slot) => slot.id === timeSlot);
+  const bookingSlot = TIME_SLOTS.find((slot) => slot.id === lockedTimeSlot);
   const matchesBookingTimeSlot =
-    !initialTimeSlot || timeSlot === initialTimeSlot;
+    !lockedTimeSlot || timeSlot === lockedTimeSlot;
   const canOrderSelectedSlot = canOrder && matchesBookingTimeSlot;
   const { getPromotionForMenuItem, getPromotionLabel } =
     useActiveMenuPromotions(restaurantId);
@@ -160,6 +178,10 @@ const MenuDetailView = ({
           String(left.name || "").localeCompare(String(right.name || ""), "vi"),
         ),
     [categoriesData?.customerMenuCategories],
+  );
+
+  const activeCategory = categories.find(
+    (category) => String(category.id) === String(activeCat),
   );
 
   const menuItemFilter = useMemo(
@@ -230,6 +252,16 @@ const MenuDetailView = ({
     rawItems,
     sort,
   ]);
+
+  const hasActiveFilters =
+    Boolean(search.trim()) || activeCat !== "all" || sort !== "default";
+
+  const resetFilters = () => {
+    setSearch("");
+    setDebouncedSearch("");
+    setActiveCat("all");
+    setSort("default");
+  };
 
   const handleLoadMore = async () => {
     if (!pageInfo?.hasNextPage || !pageInfo?.endCursor || isLoadingMore) return;
