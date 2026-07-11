@@ -4,20 +4,27 @@
   "status": "in_progress",
   "type": "frontend-bugfix",
   "scope": [
-    "src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.jsx",
-    "src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx"
+    "src/utils/installGuidedAiCaptureCards.js",
+    "src/utils/installGuidedAiCaptureCards.test.js"
   ],
-  "rootCause": "Original phone photos are checked against the 5 MB limit before client-side optimization.",
+  "rootCause": "Original phone photos reach React state and are checked against the 5 MB limit before client-side optimization.",
   "validation": {
     "planned": [
+      "npx vitest run src/utils/installGuidedAiCaptureCards.test.js",
       "npx vitest run src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx",
       "npm run build",
       "manual mobile capture above 5 MB"
     ],
     "completed": [
-      "traced camera input to validation and upload",
-      "inspected existing compressImageForUpload helper"
+      "traced camera input to React validation and upload",
+      "reused the existing compressImageForUpload helper",
+      "intercepted the camera change before React and redispatched the optimized file",
+      "kept the original five-image order and backend 5 MB validation",
+      "added a focused test for a 6 MB source photo becoming a WebP file"
     ],
-    "notRun": []
+    "notRun": [
+      "Vitest and build were not run because the GitHub connector has no checked-out dependency environment",
+      "manual phone validation is still required"
+    ]
   }
 }
