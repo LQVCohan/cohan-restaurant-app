@@ -1,0 +1,33 @@
+{
+  "id": "07-11-print-management-integrity",
+  "title": "Harden print management integrity",
+  "status": "in_progress",
+  "type": "full-stack-bugfix",
+  "scope": [
+    "cohan-restaurant-backend/graphql/resolvers/printSetting/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/order/confirmedOrderPrintMutation.js",
+    "cohan-restaurant-backend/src/constants/permissions.js",
+    "cohan-restaurant-backend/src/services/auth/authorization.service.js",
+    "cohan-restaurant-backend/scripts/seedRoles.js",
+    "cohan-restaurant-backend/tests/resolvers/print-setting-access.test.js",
+    "cohan-restaurant-backend/tests/graphql/confirmed-order-print-mutation.test.js",
+    "src/components/Dashboard_Manager/PrintManagement/PrintManagement.jsx",
+    "src/components/Dashboard_Manager/PrintManagement/PrintManagement.test.jsx",
+    "src/layouts/ManagerLayout.jsx",
+    "src/components/Dashboard_Manager/Sidebar.jsx",
+    "src/utils/frontendPermissionAccess.js"
+  ],
+  "validation": {
+    "planned": [
+      "cd cohan-restaurant-backend && npx vitest run tests/resolvers/print-setting-access.test.js tests/graphql/confirmed-order-print-mutation.test.js",
+      "npx vitest run src/components/Dashboard_Manager/PrintManagement/PrintManagement.test.jsx",
+      "npm run check:graphql",
+      "npm run build"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, ui-ux-pro-max and cross-layer guide",
+      "traced PrintSetting persistence, GraphQL operations, order-confirmation routing, POS callers and manager UI actions"
+    ],
+    "notRun": []
+  }
+}
