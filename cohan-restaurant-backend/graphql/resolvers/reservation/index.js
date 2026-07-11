@@ -3,6 +3,7 @@
 import { ReservationQuery } from "./query.js";
 import { PaymentSession, PaymentTransaction } from "../../../models/index.js";
 import { ReservationMutation } from "./mutation.js";
+import { createReservationWithPromotion } from "./createWithPromotion.js";
 import { ReservationChangeReviewMutation } from "./changeReview.js";
 import {
   ReservationCustomerHistoryMutation,
@@ -56,12 +57,17 @@ const ReservationType = {
 
 const ReviewReservationMutation = {
   ...ReservationMutation,
+  createReservation: createReservationWithPromotion,
   ...ReservationChangeReviewMutation,
   ...ReservationCheckInMutation,
 };
 
-const SafeReservationMutation = withSafeReservationStatusMutation(ReviewReservationMutation);
-const RealtimeReservationMutation = withReservationRealtimeEvents(SafeReservationMutation);
+const SafeReservationMutation = withSafeReservationStatusMutation(
+  ReviewReservationMutation,
+);
+const RealtimeReservationMutation = withReservationRealtimeEvents(
+  SafeReservationMutation,
+);
 const ReservationMutationWithAliases = {
   ...RealtimeReservationMutation,
   markReservationNoShow: RealtimeReservationMutation.deleteReservation,
