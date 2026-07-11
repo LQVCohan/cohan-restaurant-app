@@ -1,13 +1,12 @@
 {
   "id": "07-11-custom-table-builder-mobile-css-order",
   "title": "Ổn định giao diện tạo mẫu bàn trên mobile",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-fix",
   "scope": [
-    "src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.jsx",
-    "src/main.jsx"
+    "src/styles/CustomTableBuilderResponsiveFix.css"
   ],
-  "rootCause": "The mobile repair stylesheet is imported from the application entry while Table3DSimulatorModal.scss belongs to a route-level feature dependency. When the feature chunk is loaded, its equal-specificity mobile rules can be inserted after the global repair and restore the legacy one-column tabs and conflicting modal controls. The repair must be owned by CustomTableModelBuilderModal so it loads with the component after the parent feature stylesheet.",
+  "rootCause": "CustomTableBuilderResponsiveFix.css is loaded globally while Table3DSimulatorModal.scss can be injected later with the route feature. Their mobile selectors had equal specificity, so the later one-column builder rules could override the intended compact phone layout. The smallest correct fix is to anchor the repair selectors to both .modal-container.custom-table-builder-modal and .custom-table-builder so the scoped repair wins regardless of stylesheet insertion order.",
   "validation": {
     "planned": [
       "npx vitest run src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx",
@@ -18,8 +17,15 @@
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max skills",
       "traced Table3DSimulatorModalV2 -> CustomTableModelBuilderModal -> shared Modal and existing form/upload/AI actions",
-      "inspected the current JSX, shared modal contract, feature SCSS, responsive repair and application import order"
+      "inspected the current JSX, shared modal contract, feature SCSS, responsive repair and application import order",
+      "strengthened the existing scoped CSS boundary instead of changing the working React, upload, AI or persistence flow",
+      "stabilized the mobile header and 44px close control, forced a compact two-by-two mode selector, preserved one scroll owner, single-column fields and full-width phone actions",
+      "re-fetched the committed stylesheet and reviewed the changed mobile selectors",
+      "checked the code commit for GitHub workflow runs and combined statuses; none were available"
     ],
-    "notRun": []
+    "notRun": [
+      "Targeted Vitest, conflict check and production build were not run because the GitHub connector does not provide a repository checkout with installed dependencies.",
+      "390x844, 430x932 and physical Android browser validation remain pending because no browser/device session is available through the connector."
+    ]
   }
 }
