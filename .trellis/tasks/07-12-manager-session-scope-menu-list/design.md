@@ -2,43 +2,39 @@
 
 ## Direction
 
-Use the current manager shell and sage UI, fix state ownership at the existing shared boundaries, and add progressive disclosure for menu dishes inside the current time-slot modal.
+Keep the existing manager shell and sage UI. Remount account-scoped state at the route boundary, reuse the live brand query already refreshed by branch creation, persist navigation in the click action, and add one focused menu catalog modal.
 
-## Account isolation
+## Account-scoped manager shell
 
-`normalizeUserModel` may reuse fallback fields only when the raw and fallback identities do not conflict. An explicit login starts a new session epoch before waiting, serializes any pending cache reset, clears Apollo account data, and publishes the new token/user only if the epoch is still current. This keeps the existing refresh and late-`Me` guards while removing cross-account field fallback.
+The authentication boundary already prevents stale session callbacks and clears Apollo on logout. The remaining stateful descendants—Header, Sidebar, image failure flags, dropdown state and account-center queries—must not survive a user-ID change. `AppRouter` renders `ManagerLayout` through a small account-scoped component keyed by the authenticated user ID. A new account therefore receives fresh manager component and Apollo hook instances without duplicating auth logic.
 
-## Shared branch scope
+## Live branch selector
 
-`AuthProvider` remains the owner of `myBrandMemberships` and `scopedRestaurants`. It exposes the existing business-context query's `refetch` as `refreshBusinessContext`. After `createRestaurant` succeeds, Brand Management awaits that shared refresh and only then selects the created restaurant. The header and page therefore read the same updated source without a second store.
+`useManagerRestaurantSelection` currently requests `loadFullBrands: false`, causing the header to consume the AuthContext business snapshot. It will instead use `loadFullBrands: true`. `BrandManagement` already refetches the exact `MY_BRANDS_QUERY` after `createRestaurant`, so every selector watcher receives the new branch immediately. No new event or store is added.
 
 ## Manager destination persistence
 
-A small pure helper validates and normalizes a manager page, writes `manager.currentPage`, and updates the canonical `/manager#page` URL synchronously. Sidebar/search selection calls it in the same user action before React effects. The existing hash listener and permission fallback remain unchanged.
+Sidebar navigation writes `manager.currentPage` and the canonical hash synchronously before calling `onPageChange`. `ManagerLayout` keeps its existing effect, hash listener and permission fallback as secondary synchronization. The browser now has a durable destination even when reload follows the click immediately.
 
-## Menu overview
+## Menu catalog
 
-The public GraphQL contract already supports internal `menuItemsConnection` by `restaurantId` and `timeSlot`. `useMenuManagement` adds one lazy overview operation with four aliases, limited to 200 items per slot. `CompactMenuStrip` calls it only when the user opens the existing list modal and renders native `details/summary` sections under each menu card.
+A new `ManagerMenuCatalogModal` uses the existing `Modal` component and one manager-scoped GraphQL operation:
 
-Each menu section shows:
+- `menus(restaurantId)` returns menu metadata, including inactive menus for authorized managers;
+- four `menuItemsConnection` aliases load up to 200 items for breakfast, lunch, dinner and late night;
+- items are matched to their `menuId`, avoiding accidental cross-slot display.
 
-- loading and retry-safe error feedback;
-- dish name, price and status;
-- an empty state when a menu contains no dishes;
-- a note when a slot has more than 200 items.
-
-The normal selected-time-slot item query and menu CRUD flows remain unchanged.
+The manager Header shows a “Danh sách thực đơn” action only on the menu page. The modal groups cards by time slot and shows status, dish count, dish name, price and serving status. Missing restaurant, loading, error, empty-menu and truncated-result states are explicit.
 
 ## Files changing
 
-- `src/context/AuthProvider.jsx` — isolate identities, clear account cache on explicit login, expose business-context refresh.
-- `src/context/__tests__/AuthProvider.login-race.test.jsx` — account-field and cache-reset regressions.
-- `src/components/Dashboard_Manager/Brand/BrandManagement.jsx` — refresh shared business context after branch creation.
-- `src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx` — assert refresh ordering and selection.
-- `src/layouts/ManagerLayout.jsx` — synchronous canonical destination persistence.
-- `src/layouts/ManagerLayout.navigation.test.js` — pure navigation persistence regression.
-- `src/hooks/useMenuManagement.js` — lazy grouped menu overview query.
-- `src/components/Dashboard_Manager/Menu/MenuManagement.jsx` — pass the lazy loader to the existing menu list.
-- `src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.jsx` — render dishes per time-slot menu.
-- `src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.scss` — compact responsive dish rows.
-- `src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx` — overview loading, grouping and error behavior.
+- `src/routes/AppRouter.jsx` — account-keyed manager route.
+- `src/routes/AppRouter.account-scope.test.jsx` — remount regression.
+- `src/hooks/useManagerRestaurantSelection.js` — subscribe to live `MyBrands` data.
+- `src/hooks/useManagerRestaurantSelection.test.jsx` — assert the full-brand mode.
+- `src/components/Dashboard_Manager/Sidebar.jsx` — persist destination in the user action.
+- `src/components/Dashboard_Manager/Sidebar.test.jsx` — reload-state regression.
+- `src/components/Dashboard_Manager/Header.jsx` — menu-page catalog launcher.
+- `src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.jsx` — grouped menu/dish query and UI.
+- `src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.scss` — responsive catalog styles.
+- `src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.test.jsx` — grouping, empty, error and close behavior.
