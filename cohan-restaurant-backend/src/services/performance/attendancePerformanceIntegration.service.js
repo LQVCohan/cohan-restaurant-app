@@ -58,7 +58,7 @@ function baseIncident(timesheet, eventType, overrides = {}) {
     eventType,
     severity: overrides.severity || "warning",
     responsibilityStatus: overrides.responsibilityStatus || "pending_review",
-    scoreImpactStatus: overrides.scoreImpactStatus || "not_applicable",
+    scoreImpactStatus: "not_applicable",
     proposedScoreDelta: 0,
     occurredAt: resolveOccurredAt(timesheet),
     detectedAt: new Date(),
