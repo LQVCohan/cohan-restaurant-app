@@ -95,13 +95,26 @@ describe("StaffLayout", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows reservation review navigation only with reservation.read", () => {
+  it("shows reservation review navigation only with the matching role and reservation.read", () => {
     const firstRender = renderStaffLayout();
 
     expect(
       screen.queryByRole("link", { name: "Đổi đặt bàn" }),
     ).not.toBeInTheDocument();
     firstRender.unmount();
+
+    const kitchenRender = renderStaffLayout({
+      user: {
+        ...baseUser,
+        roleSlug: "bartender",
+        effectivePermissionCodes: ["reservation.read"],
+      },
+    });
+
+    expect(
+      screen.queryByRole("link", { name: "Đổi đặt bàn" }),
+    ).not.toBeInTheDocument();
+    kitchenRender.unmount();
 
     renderStaffLayout({
       user: {
