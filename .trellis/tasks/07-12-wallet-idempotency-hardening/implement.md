@@ -17,7 +17,7 @@
   - Computes SHA-256 over operation version, user, restaurant, and sorted unique order IDs.
   - Verifies existing PaymentSession/PaymentTransaction ownership and payload before delegating to the existing transactional wallet settlement.
   - Reads the authoritative transaction again after settlement to close concurrent same-key/different-payload races.
-  - Returns `IDEMPOTENCY_KEY_REUSED` for cross-account, cross-restaurant, or different-order reuse.
+  - Converts a concurrent unique-index collision into the same payload check, so cross-account, cross-restaurant, or different-order reuse returns `IDEMPOTENCY_KEY_REUSED` instead of leaking Mongo error `11000`.
   - Adds correlation ID and request fingerprint metadata to PaymentSession, PaymentTransaction, WalletTransaction, and EventLog without turning a committed debit into a client-visible failure if an observability-only metadata update fails.
 - Both wallet callers now import the shared boundary:
   - `graphql/resolvers/wallet/index.js`
@@ -25,6 +25,7 @@
 - `graphql/schema/wallet.graphql` now requires `idempotencyKey: String!` for direct wallet payment.
 - Tests:
   - Added deterministic/reordered/different-order fingerprint assertions and source-contract checks.
+  - Added a regression contract for concurrent duplicate-key recovery.
   - Updated deferred checkout mocking to the new boundary path.
   - Added checks for secure browser generation and the retain-until-success key lifecycle.
 
@@ -35,6 +36,6 @@ No `CheckoutIntent` collection was added. Existing `CheckoutRequestLock`, Paymen
 ## Validation
 
 - Repository files and all known callers were re-fetched from the latest `main` before writes.
-- GitHub reports no workflow runs and no combined status checks for code commit `c1728ac83abad715f0bcc8166033b94265920356`.
+- GitHub reports no workflow runs and no combined status checks for final wallet-boundary code commit `c419734bc4ef75a3e3f737906b529ae1d9aa3275`.
 - Targeted Vitest, GraphQL validation, and frontend build were not executed because this connector session has no runnable repository checkout and container DNS cannot resolve GitHub for cloning.
 - Therefore runtime/test pass is not claimed.
