@@ -118,6 +118,53 @@ ReservationSchema.pre("validate", function (next) {
   next();
 });
 
+ReservationSchema.pre("save", function rememberNewReservation() {
+  this.$locals.wasNewReservation = this.isNew;
+});
+
+ReservationSchema.post("save", async function recordNewCashDeposit(reservation) {
+  const shouldRecord =
+    reservation.$locals.wasNewReservation &&
+    reservation.paymentMethod === "cash" &&
+    reservation.depositStatus === "paid" &&
+    Number(reservation.depositAmount || 0) > 0 &&
+    !reservation.depositTxnId;
+  if (!shouldRecord) return;
+
+  const PaymentTransaction = mongoose.models.Transaction;
+  if (!PaymentTransaction) {
+    throw new Error("PaymentTransaction model is not registered");
+  }
+
+  const session =
+    typeof reservation.$session === "function" ? reservation.$session() : null;
+  const [transaction] = await PaymentTransaction.create(
+    [
+      {
+        restaurantId: reservation.restaurantId,
+        userId: reservation.userId,
+        method: "cash",
+        paidAmount: Number(reservation.depositAmount),
+        changeAmount: 0,
+        currency: "VND",
+        status: "SUCCESS",
+        externalRef: `reservation:${String(reservation._id)}:deposit`,
+        note: `Reservation deposit ${reservation.orderCode}`,
+        createdBy: reservation.userId,
+        paidAt: new Date(),
+      },
+    ],
+    session ? { session } : undefined,
+  );
+
+  await reservation.constructor.updateOne(
+    { _id: reservation._id, depositTxnId: { $exists: false } },
+    { $set: { depositTxnId: transaction._id } },
+    session ? { session } : undefined,
+  );
+  reservation.depositTxnId = transaction._id;
+});
+
 ReservationSchema.index({ restaurantId: 1, tableId: 1, timeTo: 1 });
 ReservationSchema.index({ userId: 1, createdAt: -1 });
 ReservationSchema.index({
