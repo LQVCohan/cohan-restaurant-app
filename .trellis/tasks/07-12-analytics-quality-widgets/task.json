@@ -1,0 +1,18 @@
+{
+  "id": "07-12-analytics-quality-widgets",
+  "title": "Polish analytics occupancy and staff widgets",
+  "status": "in_progress",
+  "type": "frontend-ui-fix",
+  "scope": [
+    "src/components/Dashboard_Manager/Analyst/components/SmartOccupancyHeatmap.jsx",
+    "src/components/Dashboard_Manager/Analyst/components/SmartOccupancyHeatmap.scss",
+    "src/components/Dashboard_Manager/Analyst/components/StaffPerformance.jsx",
+    "src/components/Dashboard_Manager/Analyst/components/StaffPerformance.scss",
+    "src/components/Dashboard_Manager/Analyst/components/AnalystQualityWidgets.test.jsx"
+  ],
+  "createdAt": "2026-07-12",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "notes": "Preserve managerDashboard schema, analytics resolver output, useAnalyst restaurant scoping and performance formulas. Fix only widget layout, accessibility and empty/filter states without dependencies."
+}
