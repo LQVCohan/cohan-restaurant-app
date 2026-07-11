@@ -12,30 +12,36 @@ No schema, resolver, permission, restaurant scope, realtime listener, order filt
 
 ## Direction
 
-Compact operational header using the existing kitchen/bar palette: short mode title, one-line supporting copy, inline venue status, and reduced vertical spacing so queue controls appear earlier.
+Compact operational header using the existing kitchen/bar palette: smaller typography, tighter spacing, a compact venue status block, and reduced vertical depth so queue controls appear earlier.
 
 ## Scope
 
-- Shorten the visible title for kitchen, bar, and combined modes.
-- Reduce hero padding, title size, subtitle spacing, radius, shadow, and venue-card footprint.
-- Keep the desktop/tablet header in two columns until the mobile breakpoint.
+- Preserve the existing component structure and operational wording.
+- Reduce hero padding, title size, subtitle spacing, radius, shadow, and venue-card footprint through a scoped style override.
+- Remove the narrow title width that forced avoidable wrapping on desktop.
+- Keep the desktop/tablet header in two columns until the phone breakpoint.
 - Preserve current station identity, restaurant name, live update status, semantics, focus behavior, and responsive containment.
-- Update the focused component test for the new headings.
 
 ## Acceptance criteria
 
-1. The combined header title is `Khu chế biến` and does not wrap at normal desktop widths.
-2. Kitchen and bar modes use concise operational headings.
-3. The hero is visibly shorter while retaining restaurant and live-update information.
-4. The station switcher and summary appear higher on the page without changing their behavior.
-5. The layout remains contained at 390x844 and 430x932 without horizontal overflow.
+1. The existing per-mode heading receives more horizontal space and a smaller responsive type scale.
+2. The hero is visibly shorter while retaining restaurant and live-update information.
+3. The station switcher and summary appear higher on the page without changing their behavior.
+4. Tablet widths retain a compact two-column header instead of prematurely stacking the venue card.
+5. Phone widths stack safely without horizontal overflow at 390x844 and 430x932.
 6. Existing queue counts, filters, status actions, loading, error, and empty states remain unchanged.
+
+## Implementation
+
+- `src/styles/StaffKitchenCompactHeader.css` contains only selectors scoped to `.staff-kitchen-page`.
+- `src/main.jsx` loads the scoped override with the repository's existing global presentation styles.
+- No React component, hook, test contract, GraphQL operation, or backend code changed.
 
 ## Out of scope
 
 - Changing GraphQL, backend routing, item station assignment, permissions, or realtime behavior.
 - Reworking the queue cards, metrics, filters, or action buttons.
-- Adding icons, dependencies, a new component, or a second kitchen page.
+- Changing the visible copy or adding icons, dependencies, a new component, or a second kitchen page.
 
 ## Validation plan
 
