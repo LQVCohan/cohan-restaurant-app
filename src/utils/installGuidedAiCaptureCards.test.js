@@ -82,4 +82,75 @@ describe("installGuidedAiCaptureCards", () => {
       "blob:guided-table-photo",
     );
   });
+
+  it("keeps only understandable COHAN metadata visible for Hi3D", () => {
+    document.body.innerHTML = `
+      <div class="custom-table-builder-modal">
+        <section class="custom-table-builder__section">
+          <div class="custom-table-builder__section-heading">
+            <span>5 góc chụp</span>
+            <h4>Tạo mẫu bằng AI</h4>
+          </div>
+          <div class="custom-table-builder__grid">
+            <label class="custom-table-builder__field">
+              <span class="custom-table-builder__label">Tên mẫu</span>
+              <input name="label" />
+            </label>
+            <label class="custom-table-builder__field">
+              <span class="custom-table-builder__label">Loại bàn</span>
+              <select name="type">
+                <option value="round-table">Round table</option>
+                <option value="rect-4-seat">Rectangular 4-seat</option>
+              </select>
+            </label>
+            <label class="custom-table-builder__field">
+              <span class="custom-table-builder__label">Sức chứa</span>
+              <input name="capacity" type="number" />
+            </label>
+            <label class="custom-table-builder__field span-2">
+              <span class="custom-table-builder__label">Prompt</span>
+              <textarea name="prompt"></textarea>
+            </label>
+            <label class="custom-table-builder__field">
+              <span class="custom-table-builder__label">Khu vực</span>
+              <select name="area"><option>Trong nhà</option></select>
+            </label>
+            <label class="custom-table-builder__field">
+              <span class="custom-table-builder__label">Scale</span>
+              <input name="defaultScale" />
+            </label>
+            <label class="custom-table-builder__field">
+              <span class="custom-table-builder__label">Tag</span>
+              <input name="tags" />
+            </label>
+          </div>
+        </section>
+      </div>
+    `;
+
+    installGuidedAiCaptureCards();
+
+    const note = document.querySelector(".cohan-ai-metadata-note");
+    expect(note).toHaveTextContent("Hi3D tạo model trực tiếp từ 5 ảnh");
+    expect(note).toHaveTextContent("không nhận prompt");
+
+    const hiddenFields = document.querySelectorAll(
+      "[data-cohan-ai-hidden-field]",
+    );
+    expect(hiddenFields).toHaveLength(4);
+    hiddenFields.forEach((field) => expect(field.hidden).toBe(true));
+
+    expect(document.querySelector('input[name="label"]')).toHaveAttribute(
+      "placeholder",
+      "Ví dụ: Bàn gỗ 4 chỗ",
+    );
+    expect(document.querySelector('input[name="capacity"]')).toHaveAttribute(
+      "inputmode",
+      "numeric",
+    );
+    expect(document.querySelector('select[name="type"] option')).toHaveTextContent(
+      "Bàn tròn",
+    );
+    expect(document.querySelector(".cohan-ai-metadata-grid")).toBeTruthy();
+  });
 });
