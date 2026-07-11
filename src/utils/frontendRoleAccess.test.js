@@ -4,6 +4,7 @@ import {
   canAccessMenuManagementAction,
   canAccessRoute,
   getDefaultPathForRole,
+  getStaffWorkspacePath,
   hasStaffKitchenAccess,
   hasStaffOrderAccess,
   isRestaurantScopedRole,
@@ -40,6 +41,14 @@ describe("restaurant-scoped frontend roles", () => {
     expect(isRestaurantScopedRole("server")).toBe(true);
     expect(isRestaurantScopedRole("manager")).toBe(false);
     expect(isRestaurantScopedRole("customer")).toBe(false);
+  });
+
+  it("routes operational roles to their primary workspace", () => {
+    expect(getStaffWorkspacePath("server")).toBe("/staff/orders");
+    expect(getDefaultPathForRole("cashier")).toBe("/staff/orders");
+    expect(getDefaultPathForRole("chef")).toBe("/staff/kitchen");
+    expect(getDefaultPathForRole("bartender")).toBe("/staff/kitchen");
+    expect(getDefaultPathForRole("storekeeper")).toBe("/staff/dashboard");
   });
 
   it("maps custom staff roles to the existing workspace for their department", () => {
