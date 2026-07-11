@@ -3,6 +3,7 @@ import {
   BankTransaction,
   Invoice,
   PaymentReconciliation,
+  PaymentRefund,
   PaymentTransaction,
   SupplierPayable,
 } from "../../../models/index.js";
@@ -17,6 +18,14 @@ const toId = (value) =>
   value && mongoose.isValidObjectId(value)
     ? new mongoose.Types.ObjectId(value)
     : null;
+
+const activeRefundStatuses = [
+  "pending",
+  "approved",
+  "processing",
+  "failed",
+  "success",
+];
 
 const createRefundRequest = async (parent, { input = {} }, ctx, info) => {
   const restaurantId = toId(input.restaurantId);
@@ -51,6 +60,7 @@ const createRefundRequest = async (parent, { input = {} }, ctx, info) => {
           : null);
   }
 
+  let paidAmount = 0;
   if (normalizedInput.paymentTransactionId) {
     const transaction = await PaymentTransaction.findOne({
       _id: toId(normalizedInput.paymentTransactionId),
@@ -60,6 +70,49 @@ const createRefundRequest = async (parent, { input = {} }, ctx, info) => {
     if (!transaction) {
       throw new Error("Successful payment transaction not found in restaurant scope");
     }
+    paidAmount = Number(transaction.paidAmount || 0);
+  } else if (normalizedInput.orderId) {
+    const normalizedOrderId = toId(normalizedInput.orderId);
+    const transactions = await PaymentTransaction.find({
+      restaurantId,
+      status: "SUCCESS",
+      $or: [
+        { orderId: normalizedOrderId },
+        { orderIds: normalizedOrderId },
+      ],
+    }).lean();
+    paidAmount = transactions.reduce(
+      (sum, transaction) => sum + Number(transaction.paidAmount || 0),
+      0,
+    );
+  }
+
+  const sourceClauses = [];
+  if (normalizedInput.paymentTransactionId) {
+    sourceClauses.push({
+      paymentTransactionId: toId(normalizedInput.paymentTransactionId),
+    });
+  }
+  if (invoiceId) sourceClauses.push({ invoiceId });
+  if (normalizedInput.orderId) {
+    sourceClauses.push({ orderId: toId(normalizedInput.orderId) });
+  }
+
+  const activeRefunds = sourceClauses.length
+    ? await PaymentRefund.find({
+        restaurantId,
+        status: { $in: activeRefundStatuses },
+        $or: sourceClauses,
+      }).lean()
+    : [];
+  const reservedAmount = activeRefunds.reduce(
+    (sum, refund) => sum + Number(refund.amount || 0),
+    0,
+  );
+  const requestedAmount = Number(input.amount || 0);
+  if (paidAmount <= 0) throw new Error("No successful payment found for refund");
+  if (reservedAmount + requestedAmount > paidAmount + 1e-6) {
+    throw new Error("Refund amount exceeds remaining paid amount");
   }
 
   return PaymentMutation.createRefundRequest(
