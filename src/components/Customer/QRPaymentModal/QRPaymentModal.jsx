@@ -34,7 +34,6 @@ const PROVIDER_OPTIONS = [
 
 const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
   const depositAmount = Number(booking?.depositAmount ?? booking?.deposit ?? 0);
-  const orderCode = booking?.orderCode || null;
 
   const [provider, setProvider] = useState("momo");
   const [creating, setCreating] = useState(false);
@@ -65,19 +64,19 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
     const id = setInterval(async () => {
       try {
         const { data } = await fetchStatus({ variables: { id: booking.id } });
-        const rs = data?.reservation;
-        if (!rs) return;
-        if (rs.depositStatus === "paid") {
+        const reservation = data?.reservation;
+        if (!reservation) return;
+        if (reservation.depositStatus === "paid") {
           setPolling(false);
           stopTimer();
-          showNotification("✅ Thanh toán thành công!", "success");
-          onPaymentConfirmed?.(rs);
-        } else if (["failed", "cancelled"].includes(rs.depositStatus)) {
+          showNotification("Thanh toán thành công.", "success");
+          onPaymentConfirmed?.(reservation);
+        } else if (["failed", "cancelled"].includes(reservation.depositStatus)) {
           setPolling(false);
-          showNotification("Thanh toán thất bại hoặc đã hủy.", "error");
+          showNotification("Giao dịch không thành công hoặc đã được hủy.", "error");
         }
       } catch {
-        // ignore intermittent poll failures
+        // Lỗi kiểm tra tạm thời sẽ được thử lại ở nhịp tiếp theo.
       }
     }, 3000);
 
@@ -89,8 +88,8 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
     if (timeLeft === 0) {
       setPolling(false);
       showNotification(
-        "⏰ Hết thời gian thanh toán! Đặt cọc đã bị hủy tự động.",
-        "error"
+        "Đã hết thời gian thanh toán. Lịch giữ chỗ tạm thời đã kết thúc.",
+        "error",
       );
       onClose?.();
     }
@@ -112,21 +111,32 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       };
 
-      const res = await fetch(`${API_BASE}/api/payments/reservations/${booking.id}/create`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ provider }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json?.ok) throw new Error(json?.message || "Tạo payment thất bại");
-      setActivePayment(json.payment);
-      setPolling(true);
-      if (json.payment?.payUrl) {
-        window.open(json.payment.payUrl, "_blank", "noopener,noreferrer");
+      const response = await fetch(
+        `${API_BASE}/api/payments/reservations/${booking.id}/create`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ provider }),
+        },
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok) {
+        throw new Error("PAYMENT_CREATE_FAILED");
       }
-      showNotification(`Đã tạo giao dịch ${provider.toUpperCase()}.`, "success");
-    } catch (err) {
-      showNotification(err?.message || "Không thể tạo payment", "error");
+      setActivePayment(payload.payment);
+      setPolling(true);
+      if (payload.payment?.payUrl) {
+        window.open(payload.payment.payUrl, "_blank", "noopener,noreferrer");
+      }
+      showNotification(
+        `Đã mở bước thanh toán bằng ${provider.toUpperCase()}.`,
+        "success",
+      );
+    } catch {
+      showNotification(
+        "Chưa thể tạo giao dịch. Vui lòng thử lại sau ít phút.",
+        "error",
+      );
     } finally {
       setCreating(false);
     }
@@ -136,16 +146,22 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
     setIsChecking(true);
     try {
       const { data } = await fetchStatus({ variables: { id: booking?.id } });
-      const rs = data?.reservation;
-      if (!rs) throw new Error("Không tìm thấy trạng thái đặt bàn");
-      if (rs.depositStatus === "paid") {
+      const reservation = data?.reservation;
+      if (!reservation) throw new Error("RESERVATION_NOT_FOUND");
+      if (reservation.depositStatus === "paid") {
         stopTimer();
-        onPaymentConfirmed?.(rs);
+        onPaymentConfirmed?.(reservation);
       } else {
-        showNotification("Giao dịch vẫn đang chờ callback xác nhận.", "warning");
+        showNotification(
+          "Hệ thống chưa ghi nhận thanh toán. Vui lòng chờ một chút rồi kiểm tra lại.",
+          "warning",
+        );
       }
-    } catch (err) {
-      showNotification(err?.message || "Không thể query trạng thái", "error");
+    } catch {
+      showNotification(
+        "Chưa thể kiểm tra thanh toán lúc này. Vui lòng thử lại.",
+        "error",
+      );
     } finally {
       setIsChecking(false);
     }
@@ -157,7 +173,7 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="💳 Thanh toán đặt cọc"
+      title="Thanh toán đặt cọc"
       size="sm"
       closeOnOverlayClick
       closeOnEscape
@@ -173,7 +189,7 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
         </div>
 
         <div className="qrpay__body">
-          <div className="provider-picker">
+          <div className="provider-picker" aria-label="Chọn phương thức thanh toán">
             {PROVIDER_OPTIONS.map((item) => (
               <button
                 key={item.provider}
@@ -181,6 +197,7 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
                 onClick={() => setProvider(item.provider)}
                 type="button"
                 disabled={creating}
+                aria-pressed={provider === item.provider}
               >
                 {item.label}
               </button>
@@ -192,10 +209,10 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
 
         <Modal.Footer>
           <button className="btn btn--primary" onClick={createPayment} disabled={creating}>
-            {creating ? "Đang tạo giao dịch..." : `Thanh toán với ${provider.toUpperCase()}`}
+            {creating ? "Đang chuẩn bị..." : `Thanh toán bằng ${provider.toUpperCase()}`}
           </button>
           <button className="btn btn--success" onClick={handleManualCheck} disabled={isChecking}>
-            {isChecking ? "Đang kiểm tra..." : "Query trạng thái"}
+            {isChecking ? "Đang kiểm tra..." : "Kiểm tra thanh toán"}
           </button>
           <button className="btn btn--secondary" onClick={onClose}>
             Đóng
@@ -228,13 +245,21 @@ const PaymentInfo = ({ booking, amount, activePayment }) => {
         />
         {linkedOrders.length > 0 && (
           <PaymentDetail
-            label="Order kèm"
+            label="Mã món đi kèm"
             value={linkedOrders.map((order) => `#${order.orderCode || order.id}`).join(", ")}
           />
         )}
-        <PaymentDetail label="Trạng thái" value={activePayment?.status || "pending"} />
-        <PaymentDetail label="Provider" value={activePayment?.provider || "-"} />
-        <PaymentDetail label="Reference" value={activePayment?.reference || "-"} />
+        <PaymentDetail
+          label="Trạng thái"
+          value={activePayment ? "Đang chờ xác nhận" : "Chưa tạo giao dịch"}
+        />
+        <PaymentDetail
+          label="Phương thức"
+          value={activePayment?.provider?.toUpperCase() || "Chưa chọn"}
+        />
+        {activePayment?.reference ? (
+          <PaymentDetail label="Mã giao dịch" value={activePayment.reference} />
+        ) : null}
       </div>
 
       {linkedOrders.length > 0 && (
@@ -242,13 +267,13 @@ const PaymentInfo = ({ booking, amount, activePayment }) => {
           <button
             type="button"
             className="btn btn--secondary"
-            onClick={() => setExpandedOrders((prev) => !prev)}
+            onClick={() => setExpandedOrders((previous) => !previous)}
           >
-            {expandedOrders ? "Ẩn món ăn" : "Mở rộng món ăn"}
+            {expandedOrders ? "Ẩn danh sách món" : "Xem danh sách món"}
           </button>
           {expandedOrders && linkedOrders.map((order) => (
             <div key={order.id || order.orderCode} className="detail-item" style={{ display: "block" }}>
-              <strong>Order #{order.orderCode || order.id}</strong>
+              <strong>Mã món #{order.orderCode || order.id}</strong>
               <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
                 {(order.items || []).map((item) => (
                   <li key={item._id || item.name}>
@@ -266,15 +291,15 @@ const PaymentInfo = ({ booking, amount, activePayment }) => {
 
       {booking?.linkedOrderError && (
         <div className="payment-warning">
-          <p>⚠️ {booking.linkedOrderError}</p>
+          <p>Món đi kèm chưa được đồng bộ đầy đủ. Vui lòng liên hệ nhà hàng nếu cần hỗ trợ.</p>
         </div>
       )}
 
       <div className="payment-warning">
         <p>
-          ⚠️ <strong>Lưu ý:</strong> Redirect không phải xác nhận cuối cùng.
+          Sau khi thanh toán, hệ thống sẽ tự kiểm tra và xác nhận đặt bàn.
         </p>
-        <p>Hệ thống chỉ xác nhận khi backend nhận callback/IPN hợp lệ.</p>
+        <p>Bạn cũng có thể bấm “Kiểm tra thanh toán” nếu đã hoàn tất trên MoMo hoặc VNPAY.</p>
       </div>
     </div>
   );
