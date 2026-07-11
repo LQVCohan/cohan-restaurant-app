@@ -11,7 +11,7 @@
 }
 
 .staff-shell.staff-shell .staff-shell__topbar {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 350px);
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 410px);
   gap: 24px;
 }
 
@@ -41,8 +41,47 @@
   gap: 8px;
 }
 
+.staff-shell.staff-shell .staff-shell__messenger-button {
+  position: relative;
+  display: grid;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid #dce8df;
+  border-radius: 14px;
+  color: #1f2a24;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(31, 42, 36, 0.07);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.staff-shell.staff-shell .staff-shell__messenger-button:hover,
+.staff-shell.staff-shell .staff-shell__messenger-button.is-active {
+  border-color: rgba(31, 111, 74, 0.38);
+  color: #1f6f4a;
+  background: #f5fbf7;
+  transform: translateY(-1px);
+}
+
+.staff-shell.staff-shell .staff-shell__messenger-button:active {
+  transform: translateY(1px);
+}
+
+.staff-shell.staff-shell .staff-shell__messenger-button:focus-visible {
+  outline: 3px solid rgba(31, 111, 74, 0.25);
+  outline-offset: 2px;
+}
+
 .staff-shell.staff-shell .staff-shell__identity {
-  flex: 0 1 320px;
+  flex: 1 1 0;
   padding: 8px 10px;
   border-color: rgba(103, 119, 92, 0.17);
   border-radius: 14px;
@@ -137,9 +176,13 @@
   color: #165c3c;
 }
 
+.staff-shell.staff-shell .staff-shell__main {
+  padding-bottom: calc(28px + env(safe-area-inset-bottom));
+}
+
 @media (min-width: 761px) and (max-width: 1020px) {
   .staff-shell.staff-shell .staff-shell__topbar {
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
     gap: 16px;
   }
 
@@ -185,7 +228,7 @@
   }
 
   .staff-shell.staff-shell .staff-shell__identity {
-    flex: 1;
+    flex: 1 1 0;
   }
 
   .staff-shell.staff-shell .staff-shell__nav {
@@ -246,6 +289,10 @@
     border-color: #1f6f4a;
     background: #1f6f4a;
     color: #fff;
+  }
+
+  .staff-shell.staff-shell .staff-shell__main {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
   }
 }
 
