@@ -677,6 +677,7 @@ input RestaurantPayoutAccountInput {
 
 input PayrollSettingsInput {
   restaurantId: ID
+  timezone: String
   currentPayrollPeriodId: ID
   standardWorkDaysPerMonth: Float
   standardHoursPerDay: Float
