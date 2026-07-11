@@ -60,6 +60,8 @@ export const PERMISSIONS = {
 
   REPORT_READ: "report.read",
   REPORT_EXPORT: "report.export",
+  PRINT_READ: "print.read",
+  PRINT_WRITE: "print.write",
 
   REVIEW_READ: "review.read",
   REVIEW_WRITE: "review.write",
