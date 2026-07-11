@@ -382,7 +382,10 @@ const MenuDetailView = ({
                   <button
                     type="button"
                     className="search-box__clear"
-                    onClick={() => setSearch("")}
+                    onClick={() => {
+                      setSearch("");
+                      setDebouncedSearch("");
+                    }}
                     aria-label="Xóa từ khóa tìm món"
                   >
                     <X size={17} aria-hidden="true" />
