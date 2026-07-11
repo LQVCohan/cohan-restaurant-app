@@ -38,14 +38,35 @@ export function getGraphqlUrl() {
 const stripGraphqlSuffix = (value: string) =>
   String(value || "").replace(/\/graphql\/?$/, "").replace(/\/$/, "");
 
+const stripApiSuffix = (value: string) =>
+  String(value || "").replace(/\/api\/?$/, "").replace(/\/$/, "");
+
 export function getBackendRootUrl() {
-  // Legacy name: these Fastify REST routes are mounted through uploadRoutes
-  // with the shared /api prefix, so they use the same base as other REST calls.
-  return getApiBaseUrl();
+  const gqlUrl = getGraphqlUrl();
+  const baseWithoutGraphql = stripGraphqlSuffix(gqlUrl);
+
+  // Routes from upload.route.js are exposed at backend-root paths because the
+  // plugin is wrapped with fastify-plugin. Vite proxies these paths in dev.
+  if (!baseWithoutGraphql || baseWithoutGraphql === "/") return "";
+
+  if (baseWithoutGraphql.startsWith("/")) {
+    return stripApiSuffix(baseWithoutGraphql);
+  }
+
+  try {
+    const parsed = new URL(baseWithoutGraphql);
+    parsed.pathname = stripApiSuffix(parsed.pathname);
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return stripApiSuffix(baseWithoutGraphql);
+  }
 }
 
 export function toBackendRootUrl(pathname: string) {
-  return toApiUrl(pathname);
+  const normalizedPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  return `${getBackendRootUrl()}${normalizedPath}`;
 }
 
 export function getApiBaseUrl() {
