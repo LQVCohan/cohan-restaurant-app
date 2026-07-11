@@ -43,6 +43,11 @@ const ReservationSchema = BaseSchemaModel(
     note: { type: String, trim: true },
 
     linkedMenuSubtotal: { type: Number, default: 0, min: 0 },
+    linkedMenuDiscount: { type: Number, default: 0, min: 0 },
+    linkedMenuTotal: { type: Number, default: 0, min: 0 },
+    linkedMenuPromotionIds: [
+      { type: Types.ObjectId, ref: "Promotion", index: true },
+    ],
     depositAmount: { type: Number, default: 0, min: 0 },
     depositTxnId: { type: Types.ObjectId, ref: "Transaction" },
     depositStatus: {
