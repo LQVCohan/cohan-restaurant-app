@@ -123,6 +123,7 @@ describe("performanceIncident.service", () => {
       proposedScoreDelta: -3,
       save,
     };
+    save.mockResolvedValue(incident);
     mocks.findById.mockResolvedValue(incident);
 
     const reviewed = await reviewPerformanceIncident({
@@ -198,7 +199,6 @@ describe("performanceIncident.service", () => {
     mocks.adjustmentCreate.mockResolvedValue([{ _id: "adj1" }]);
 
     await applyPerformanceIncidentScore({ incidentId: "i1", actor: { id: "u1" }, note: "apply" });
-
     const snapshotQuery = mocks.snapshotFindOne.mock.calls[0][0];
     expect(snapshotQuery.periodStart.$lte.toISOString()).toBe(incident.occurredAt);
     expect(snapshotQuery.periodEnd.$gte.toISOString()).toBe(incident.occurredAt);
