@@ -1,0 +1,29 @@
+{
+  "id": "07-12-staff-leave-step-flow",
+  "title": "Compact staff leave request into steps",
+  "status": "in_progress",
+  "type": "frontend-ui",
+  "scope": [
+    "src/components/Staff/StaffLeavePage.jsx",
+    "src/components/Staff/StaffLeavePage.scss",
+    "src/components/Staff/StaffLeavePage.test.jsx",
+    "src/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestForm.jsx",
+    "src/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestForm.scss",
+    "src/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestForm.test.jsx",
+    "tests/e2e/p1/staff-leave.spec.js"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestForm.test.jsx src/components/Staff/StaffLeavePage.test.jsx",
+      "npx playwright test tests/e2e/p1/staff-leave.spec.js",
+      "npm run build",
+      "manual responsive review at 390x844, 430x932, 768px and 1440px"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
+      "traced LeaveRequest model, staff leave GraphQL resolver, Apollo hook, staff page, shared form and E2E caller",
+      "confirmed backend payload, leave-day calculation, permissions and history behavior remain unchanged"
+    ],
+    "notRun": []
+  }
+}
