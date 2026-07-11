@@ -1,0 +1,18 @@
+extend type OrderItem {
+  itemType: String!
+  supplyId: ID
+}
+
+extend input OrderItemInput {
+  itemType: String = "MENU_ITEM"
+  supplyId: ID
+}
+
+extend type CartItem {
+  supplyId: ID
+}
+
+extend input AddCartItemInput {
+  itemType: String = "MENU_ITEM"
+  supplyId: ID
+}
