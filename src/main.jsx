@@ -81,6 +81,7 @@ import "./styles/GuidedAiCaptureCards.css";
 import "./styles/AiTableMetadataSimplification.css";
 import "./styles/AvailabilitySnapshotOverlayLight.css";
 import "./styles/AiChatbotMenuSelectionPolish.css";
+import "./styles/StaffKitchenCompactHeader.css";
 
 const normalizeLegacyManagerHash = () => {
   if (
