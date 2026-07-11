@@ -34,7 +34,7 @@ vi.mock("mongoose", () => ({
     startSession: startSessionMock,
     Types: {
       ObjectId: vi.fn(function ObjectId() {
-        return "valid-temp-code";
+        this.toString = () => "valid-temp-code";
       }),
     },
   },
