@@ -12,6 +12,10 @@ type Reservation {
   customerEmail: String
   partySize: Int!
   note: String
+  linkedMenuSubtotal: Int
+  linkedMenuDiscount: Int
+  linkedMenuTotal: Int
+  linkedMenuPromotionIds: [ID!]!
   depositAmount: Int!
   depositTxnId: ID
   depositStatus: String!
@@ -129,7 +133,6 @@ extend type Mutation {
   rejectReservationChange(input: RejectReservationChangeInput!): Reservation!
   checkInReservation(input: CheckInReservationInput!): Reservation!
 }
-
 
 input SubmitReservationPaymentInput {
   reservationId: ID!
