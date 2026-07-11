@@ -17,7 +17,21 @@ const inv = vi.hoisted(() => ({ reserveForOrderTx: vi.fn(), cancelReservationFor
 const guards = vi.hoisted(() => ({ getPublicRestaurantOrThrow: vi.fn(), assertRestaurantCanOrder: vi.fn(), assertRestaurantCanReserve: vi.fn() }));
 
 vi.mock("../../models/index.js", () => model);
-vi.mock("mongoose", () => ({ default: mg }));
+vi.mock("mongoose", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    default: {
+      ...actual.default,
+      isValidObjectId: mg.isValidObjectId,
+      startSession: mg.startSession,
+      Types: {
+        ...actual.default.Types,
+        ObjectId: mg.Types.ObjectId,
+      },
+    },
+  };
+});
 vi.mock("../../src/services/inventory.service.js", () => inv);
 vi.mock("../../src/services/eventLog.service.js", () => ({ logObjectEvent: vi.fn() }));
 vi.mock("../../src/services/menuAvailabilityWatch.service.js", () => ({ notifyAvailabilityWatchersForMenuItem: vi.fn(), publishMenuItemOutOfStock: vi.fn() }));
@@ -79,7 +93,6 @@ describe("capability gating regressions", () => {
     await expect(CartMutation.clearCart(null, { input: { cartId: "c1" } }, { user: { id: "u1" } })).resolves.toBe(true);
   });
 
-
   it("addCartItem fails when menuItem status not available", async () => {
     const { CartMutation } = await import("../../graphql/resolvers/cart/mutation.js");
     model.MenuItem.findById.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue({ _id: "m1", restaurantId: "r1", status: "unavailable", inventoryStatus: "IN_STOCK", menuId: "menu1" }) });
@@ -116,5 +129,4 @@ describe("capability gating regressions", () => {
     model.Menu.findOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue(null) });
     await expect(CartMutation.addCartItem(null, { input: { restaurantId: "r1", menuItemId: "m1", quantity: 1, name: "A", price: 1 } }, { user: { id: "u1" } })).rejects.toBeTruthy();
   });
-
 });
