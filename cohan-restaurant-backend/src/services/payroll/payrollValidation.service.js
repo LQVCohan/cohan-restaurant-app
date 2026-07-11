@@ -191,17 +191,17 @@ export async function validatePayrollPeriod(periodId, options = {}) {
         "Duyệt, từ chối hoặc hủy yêu cầu chỉnh công trước khi chốt kỳ lương.",
     });
   });
-  const start = toStartOfDay(period.startDate);
-  const end = toEndOfDay(period.endDate);
+  const settings = await getPayrollSettings(period.restaurantId);
+  const start = toStartOfDay(period.startDate, settings?.timezone);
+  const end = toEndOfDay(period.endDate, settings?.timezone);
   const restaurantId = oid(period.restaurantId);
   const strictMinimumWage = Boolean(options.strictMinimumWage);
   const staffScopeFilter = await getStaffMembershipRestaurantFilter(restaurantId, {
     roles: ["staff", "manager"],
   });
 
-  const [settings, items, staffs, shifts, timesheets, leaves, adjustments] =
+  const [items, staffs, shifts, timesheets, leaves, adjustments] =
     await Promise.all([
-      getPayrollSettings(period.restaurantId),
       PayrollItem.find({ periodId: period._id }).lean(),
       Staff.find({
         userType: { $in: ["STAFF", "MANAGER"] },
