@@ -227,6 +227,16 @@ extend input StaffPerformanceSummaryInput {
   toDate: DateTime
 }
 
+extend input ManagerPerformanceDashboardInput {
+  month: Int
+  year: Int
+  fromDate: DateTime
+  toDate: DateTime
+  employeeIds: [ID!]
+  lowScoreThreshold: Float
+  limit: Int
+}
+
 extend input StaffPerformanceScoreAdjustmentFilterInput {
   incidentId: ID
   eventType: String
