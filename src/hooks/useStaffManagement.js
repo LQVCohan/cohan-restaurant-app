@@ -51,6 +51,9 @@ const STAFF_FIELDS = gql`
     dateJoined
     dateLeft
     baseSalary
+    hourlyRate
+    commissionRate
+    salaryType
 
     isOnline
 

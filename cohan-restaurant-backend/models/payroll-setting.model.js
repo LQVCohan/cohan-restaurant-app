@@ -17,6 +17,7 @@ const payrollSettingSchema = new Schema(
       default: null,
       index: true,
     },
+    timezone: { type: String, default: "Asia/Ho_Chi_Minh", trim: true },
     standardWorkDaysPerMonth: { type: Number, default: 26 },
     standardHoursPerDay: { type: Number, default: 8 },
     overtimeMultiplierWeekday: { type: Number, default: 1.5 },

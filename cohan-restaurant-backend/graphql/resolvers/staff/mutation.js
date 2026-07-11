@@ -1275,6 +1275,10 @@ const mutationResolvers = {
       doc.employmentType = doc.employmentType.toString().toLowerCase();
     }
 
+    if (doc.salaryType) {
+      doc.salaryType = doc.salaryType.toString().toLowerCase();
+    }
+
     // EmploymentStatus: ON_LEAVE -> on_leave
     if (doc.employmentStatus) {
       doc.employmentStatus = doc.employmentStatus.toString().toLowerCase();
@@ -1453,6 +1457,10 @@ const mutationResolvers = {
     // Chuẩn hoá enum giống như createStaff
     if (input.employmentType) {
       input.employmentType = input.employmentType.toString().toLowerCase();
+    }
+
+    if (input.salaryType) {
+      input.salaryType = input.salaryType.toString().toLowerCase();
     }
 
     if (input.employmentStatus) {
@@ -3552,6 +3560,7 @@ const mutationResolvers = {
 
     const update = {
       currentPayrollPeriodId: nextCurrentPeriodId,
+      timezone: input.timezone,
       standardWorkDaysPerMonth: input.standardWorkDaysPerMonth,
       standardHoursPerDay: input.standardHoursPerDay,
       overtimeMultiplierWeekday: input.overtimeMultiplierWeekday,

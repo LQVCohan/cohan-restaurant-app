@@ -54,6 +54,7 @@ const StaffIncidentsList = ({ incidents = [], appeals = [], onAppeal }) => {
         const incidentAppeals = appeals.filter((appeal) => appeal.incidentId === item.id);
         const hasOpenAppeal = incidentAppeals.some((appeal) => OPEN_STATUSES.includes(appeal.status));
         const latestAppeal = incidentAppeals[0];
+        const isAttendanceIncident = String(item.eventType || "").startsWith("ATTENDANCE_");
         return (
           <article key={item.id} className={`staff-incident-item staff-incident-item--${getSeverityTone(item.severity)}`}>
             <div className="staff-incident-item__header">
@@ -63,11 +64,14 @@ const StaffIncidentsList = ({ incidents = [], appeals = [], onAppeal }) => {
             <p className="staff-incident-item__context">Trách nhiệm: {RESPONSIBILITY_LABELS[item.responsibilityStatus] || item.responsibilityStatus || "-"}</p>
             <dl>
               <div><dt>Trách nhiệm</dt><dd>{RESPONSIBILITY_LABELS[item.responsibilityStatus] || item.responsibilityStatus || "-"}</dd></div>
-              <div><dt>Trạng thái điểm</dt><dd>{SCORE_IMPACT_LABELS[item.scoreImpactStatus] || item.scoreImpactStatus || "-"}</dd></div>
-              <div><dt>Điểm đề xuất</dt><dd>{item.proposedScoreDelta ?? "-"}</dd></div>
+              <div><dt>Trạng thái điểm</dt><dd>{isAttendanceIncident ? "Đã tính trong Đúng giờ" : SCORE_IMPACT_LABELS[item.scoreImpactStatus] || item.scoreImpactStatus || "-"}</dd></div>
+              <div><dt>Điểm đề xuất</dt><dd>{isAttendanceIncident ? 0 : item.proposedScoreDelta ?? "-"}</dd></div>
               <div><dt>Điểm áp dụng</dt><dd>{item.scoreDelta ?? "-"}</dd></div>
               <div><dt>Thời điểm</dt><dd>{item.occurredAt ? new Date(item.occurredAt).toLocaleString("vi-VN") : "-"}</dd></div>
             </dl>
+            {isAttendanceIncident ? (
+              <p>Chấm công này đã được dùng trong thành phần Đúng giờ; incident không trừ điểm thêm.</p>
+            ) : null}
             <p>{item.reviewNote || item.waiveReason || item.applyNote || item.note || "Chưa có ghi chú."}</p>
             {latestAppeal ? <p className="staff-incident-item__appeal">Trạng thái phản hồi: {APPEAL_STATUS_LABELS[latestAppeal.status] || latestAppeal.status}</p> : null}
             {latestAppeal?.scoreReversalStatus === "reversed" ? <p className="staff-incident-item__appeal"><strong>Đã hoàn điểm</strong>: +{latestAppeal?.scoreReversalDelta || 0}</p> : null}

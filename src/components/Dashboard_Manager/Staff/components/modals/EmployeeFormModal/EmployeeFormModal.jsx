@@ -44,6 +44,9 @@ const toDraftComparableForm = (
   positionTitle: normalizeDraftText(value?.positionTitle ?? value?.role),
   address: normalizeDraftText(value?.address),
   salary: normalizeDraftText(value?.salary),
+  salaryType: value?.salaryType || "MONTHLY",
+  hourlyRate: normalizeDraftText(value?.hourlyRate),
+  commissionRate: normalizeDraftText(value?.commissionRate),
   shift: normalizeDraftText(value?.shift),
   startDate: value?.startDate || fallbackStartDate,
   emergencyRelation: normalizeDraftText(value?.emergencyRelation),
@@ -62,6 +65,9 @@ const createBaselineForm = (fallbackStartDate, fallbackRestaurantId) =>
       positionTitle: "",
       address: "",
       salary: "",
+      salaryType: "MONTHLY",
+      hourlyRate: "",
+      commissionRate: "",
       shift: "",
       startDate: fallbackStartDate,
       emergencyRelation: "",
@@ -100,6 +106,9 @@ const EmployeeFormModal = ({
     email: "",
     address: "",
     salary: "",
+    salaryType: "MONTHLY",
+    hourlyRate: "",
+    commissionRate: "",
     shift: "",
     startDate: todayStr,
     emergencyContact: "",
@@ -419,6 +428,28 @@ const EmployeeFormModal = ({
       }
     }
 
+    if (step === 3) {
+      const salaryType = String(formData.salaryType || "MONTHLY").toUpperCase();
+      const baseSalary = parseCurrencyInputToNumber(formData.salary);
+      const hourlyRate = parseCurrencyInputToNumber(formData.hourlyRate);
+      const commissionRate = Number(formData.commissionRate || 0);
+      if (salaryType === "MONTHLY" && baseSalary <= 0) {
+        newErrors.salary = "Cần nhập lương tháng cho loại lương tháng.";
+      }
+      if (["HOURLY", "SHIFT"].includes(salaryType) && hourlyRate <= 0) {
+        newErrors.hourlyRate =
+          salaryType === "SHIFT"
+            ? "Cần nhập mức tiền mỗi ca."
+            : "Cần nhập mức tiền mỗi giờ.";
+      }
+      if (
+        salaryType === "COMMISSION" &&
+        (!Number.isFinite(commissionRate) || commissionRate <= 0 || commissionRate > 100)
+      ) {
+        newErrors.commissionRate = "Tỷ lệ hoa hồng phải lớn hơn 0 và không vượt quá 100%.";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -537,7 +568,7 @@ const EmployeeFormModal = ({
   };
 
   useEffect(() => {
-    if (!isOpen || !salaryReference) return;
+    if (!isOpen || !salaryReference || formData.salaryType !== "MONTHLY") return;
     if (parseCurrencyInputToNumber(formData.salary) > 0) return;
     const suggested = getSuggestedSalaryByEmploymentType(
       formData.employmentType,
@@ -548,7 +579,13 @@ const EmployeeFormModal = ({
       ...prev,
       salary: formatCurrencyDisplay(suggested),
     }));
-  }, [formData.employmentType, formData.salary, isOpen, salaryReference]);
+  }, [
+    formData.employmentType,
+    formData.salary,
+    formData.salaryType,
+    isOpen,
+    salaryReference,
+  ]);
 
   const applySuggestedPositionTitle = () => {
     if (!positionTitleSuggestion) return;
@@ -668,6 +705,12 @@ const EmployeeFormModal = ({
       const baseSalary = formData.salary
         ? Number(formData.salary.toString().replace(/[^\d]/g, ""))
         : undefined;
+      const hourlyRate = formData.hourlyRate
+        ? Number(formData.hourlyRate.toString().replace(/[^\d]/g, ""))
+        : undefined;
+      const commissionRate = formData.commissionRate
+        ? Number(formData.commissionRate)
+        : undefined;
 
       const dateJoined = formData.startDate
         ? new Date(formData.startDate + "T00:00:00").toISOString()
@@ -695,6 +738,9 @@ const EmployeeFormModal = ({
         department: formData.department,
         restaurantId: formData.restaurantId || undefined,
         employmentType: formData.employmentType,
+        salaryType: formData.salaryType,
+        hourlyRate,
+        commissionRate,
         shiftType: formData.shift || undefined,
         dateJoined,
         baseSalary,
@@ -1063,7 +1109,21 @@ const EmployeeFormModal = ({
         </div>
       </div>
       <div className="form-group section-box salary-box">
-        <label className="form-label">Mức lương cơ bản</label>
+        <label className="form-label">Cách tính lương</label>
+        <select
+          className="form-input"
+          value={formData.salaryType}
+          onChange={(e) => handleInputChange("salaryType", e.target.value)}
+          disabled={isSubmitting}
+        >
+          <option value="MONTHLY">Theo tháng</option>
+          <option value="HOURLY">Theo giờ</option>
+          <option value="SHIFT">Theo ca</option>
+          <option value="COMMISSION">Theo hoa hồng</option>
+        </select>
+        {formData.salaryType === "MONTHLY" ? (
+          <>
+            <label className="form-label">Mức lương cơ bản</label>
         <div className="salary-input-row">
           <input
             type="text"
@@ -1081,6 +1141,52 @@ const EmployeeFormModal = ({
           />
           <span className="currency-badge">VNĐ</span>
         </div>
+        </> 
+        ) : null}
+        {["HOURLY", "SHIFT"].includes(formData.salaryType) ? (
+          <>
+            <label className="form-label">
+              {formData.salaryType === "SHIFT" ? "Mức tiền mỗi ca" : "Mức tiền mỗi giờ"}
+            </label>
+            <div className="salary-input-row">
+              <input
+                type="text"
+                className="salary-input-field"
+                value={formData.hourlyRate}
+                onChange={(e) =>
+                  handleInputChange(
+                    "hourlyRate",
+                    formatCurrencyDisplay(parseCurrencyInputToNumber(e.target.value)),
+                  )
+                }
+                placeholder="0"
+                disabled={isSubmitting}
+              />
+              <span className="currency-badge">VNĐ</span>
+            </div>
+            {errors.hourlyRate ? <p className="error-text">{errors.hourlyRate}</p> : null}
+          </>
+        ) : null}
+        {formData.salaryType === "COMMISSION" ? (
+          <>
+            <label className="form-label">Tỷ lệ hoa hồng</label>
+            <div className="salary-input-row">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                className="salary-input-field"
+                value={formData.commissionRate}
+                onChange={(e) => handleInputChange("commissionRate", e.target.value)}
+                placeholder="5"
+                disabled={isSubmitting}
+              />
+              <span className="currency-badge">%</span>
+            </div>
+            {errors.commissionRate ? <p className="error-text">{errors.commissionRate}</p> : null}
+          </>
+        ) : null}
         <p className="hint-text">Chưa bao gồm phụ cấp & thưởng.</p>
         <p className="hint-text">
           {salaryReferenceLoading

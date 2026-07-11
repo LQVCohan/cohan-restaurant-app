@@ -71,6 +71,9 @@ input AdminUpdateUserInput {
   dateJoined: DateTime
   dateLeft: DateTime
   baseSalary: Int
+  hourlyRate: Float
+  commissionRate: Float
+  salaryType: StaffSalaryType
   noteInternal: String
   emergencyContact: EmergencyContactInput
 }

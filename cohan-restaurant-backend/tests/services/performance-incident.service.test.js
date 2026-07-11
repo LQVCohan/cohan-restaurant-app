@@ -112,6 +112,54 @@ describe("performanceIncident.service", () => {
     expect(result).toBe(doc);
   });
 
+  it("keeps attendance incidents out of score adjustments", async () => {
+    const save = vi.fn();
+    const incident = {
+      restaurantId: "r1",
+      sourceType: "timesheet",
+      eventType: "ATTENDANCE_LATE",
+      responsibilityStatus: "pending_review",
+      scoreImpactStatus: "pending",
+      proposedScoreDelta: -3,
+      save,
+    };
+    mocks.findById.mockResolvedValue(incident);
+
+    const reviewed = await reviewPerformanceIncident({
+      input: {
+        incidentId: "i1",
+        responsibilityStatus: "staff_responsible",
+      },
+      ctx: { user: { id: "u1" } },
+    });
+
+    expect(reviewed).toBe(incident);
+    expect(incident.scoreImpactStatus).toBe("not_applicable");
+    expect(incident.proposedScoreDelta).toBe(0);
+    expect(save).toHaveBeenCalled();
+  });
+
+  it("rejects promoting attendance incidents to eligible", async () => {
+    mocks.findById.mockResolvedValue({
+      restaurantId: "r1",
+      sourceType: "timesheet",
+      eventType: "ATTENDANCE_ABSENT",
+      scoreImpactStatus: "pending",
+      responsibilityStatus: "pending_review",
+      save: vi.fn(),
+    });
+
+    await expect(markPerformanceIncidentEligible({
+      input: {
+        incidentId: "i1",
+        responsibilityStatus: "staff_responsible",
+        proposedScoreDelta: -10,
+        note: "attendance",
+      },
+      ctx: { user: { id: "u1" } },
+    })).rejects.toThrow("ATTENDANCE_SCORE_OWNED_BY_PUNCTUALITY");
+  });
+
   it("eligible rejects positive delta", async () => {
     mocks.findById.mockResolvedValue({
       restaurantId: "r1",
@@ -131,9 +179,9 @@ describe("performanceIncident.service", () => {
       _id: "i1",
       restaurantId: "r1",
       employeeId: "e1",
-      sourceType: "timesheet",
-      sourceId: "ts1",
-      eventType: "ATTENDANCE_LATE",
+      sourceType: "schedule_revision",
+      sourceId: "schedule1",
+      eventType: "SCHEDULE_RETURNED_FOR_REVISION",
       occurredAt: "2026-04-10T00:00:00.000Z",
       scoreImpactStatus: "eligible",
       responsibilityStatus: "staff_responsible",
@@ -191,9 +239,9 @@ describe("performanceIncident.service", () => {
       _id: "i1",
       restaurantId: "r1",
       employeeId: "e1",
-      sourceType: "timesheet",
-      sourceId: "ts1",
-      eventType: "ATTENDANCE_ABSENT",
+      sourceType: "schedule_revision",
+      sourceId: "schedule2",
+      eventType: "SCHEDULE_RETURNED_FOR_REVISION",
       occurredAt: "2026-04-10T00:00:00.000Z",
       scoreImpactStatus: "eligible",
       responsibilityStatus: "staff_responsible",

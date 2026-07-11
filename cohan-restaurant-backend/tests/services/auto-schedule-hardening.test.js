@@ -11,12 +11,20 @@ const modelMocks = vi.hoisted(() => ({
 const validationMocks = vi.hoisted(() => ({
   validateShiftAssignment: vi.fn(),
 }));
+const scopeMocks = vi.hoisted(() => ({
+  getStaffMembershipRestaurantFilter: vi.fn(),
+}));
+const policyMocks = vi.hoisted(() => ({
+  getSchedulingPolicy: vi.fn(),
+}));
 
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock(
   "../../src/services/scheduling/shiftAssignmentValidation.service.js",
   () => validationMocks,
 );
+vi.mock("../../src/services/auth/restaurantScope.service.js", () => scopeMocks);
+vi.mock("../../src/services/scheduling/schedulingPolicy.service.js", () => policyMocks);
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn(() => true),
@@ -47,6 +55,10 @@ describe("auto schedule backend hardening", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    scopeMocks.getStaffMembershipRestaurantFilter.mockResolvedValue({});
+    policyMocks.getSchedulingPolicy.mockResolvedValue({
+      scoringWeights: { fairness: 10 },
+    });
     modelMocks.Staff.find.mockReturnValue(
       q([
         {
@@ -253,6 +265,45 @@ describe("auto schedule backend hardening", () => {
 
     expect(rowEnd.getTime()).toBeGreaterThan(rowStart.getTime());
     expect(rowDurationHours).toBe(8);
+  });
+
+  it("uses the restaurant timezone when expanding a date from a UTC boundary", async () => {
+    const { buildAutoSchedulePreviewBackend } =
+      await import("../../src/services/scheduling/autoSchedule.service.js");
+    const preview = await buildAutoSchedulePreviewBackend({
+      restaurantId: "r1",
+      timezone: "Asia/Ho_Chi_Minh",
+      periodStart: "2026-05-18T17:00:00.000Z",
+      periodEnd: "2026-05-18T17:00:00.000Z",
+      requiredRoles: { morning: ["kitchen"] },
+      shiftTemplates: [
+        { shiftType: "morning", startTime: "08:00", endTime: "12:00" },
+      ],
+    });
+
+    expect(preview.items).toHaveLength(1);
+    expect(preview.items[0].startTime.toISOString()).toBe(
+      "2026-05-19T01:00:00.000Z",
+    );
+  });
+
+  it("rotates equal candidates by accumulated scheduled hours", async () => {
+    const { buildAutoSchedulePreviewBackend } =
+      await import("../../src/services/scheduling/autoSchedule.service.js");
+    const preview = await buildAutoSchedulePreviewBackend({
+      restaurantId: "r1",
+      timezone: "Asia/Ho_Chi_Minh",
+      periodStart: "2026-05-18",
+      periodEnd: "2026-05-19",
+      shiftTemplates: [
+        { shiftType: "morning", startTime: "08:00", endTime: "12:00" },
+      ],
+    });
+
+    expect(preview.plannedAssignments).toHaveLength(2);
+    expect(preview.plannedAssignments[0].employeeId).toBe("cash1");
+    expect(preview.plannedAssignments[1].employeeId).toBe("cook1");
+    expect(preview.plannedAssignments[1].fairnessContribution).toBeGreaterThan(0);
   });
 
   it("apply rebuilds preview server-side instead of trusting client preview data", async () => {

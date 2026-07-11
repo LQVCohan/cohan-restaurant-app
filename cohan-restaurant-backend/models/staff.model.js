@@ -77,6 +77,7 @@ const staffSchema = new mongoose.Schema(
     terminationReason: { type: String, trim: true },
     salaryType: { type: String, enum: ["monthly", "hourly", "shift", "commission"], default: "monthly" },
     hourlyRate: { type: Number, min: 0 },
+    commissionRate: { type: Number, min: 0, max: 100 },
     allowanceAmount: { type: Number, min: 0 },
     bankName: { type: String, trim: true },
     bankAccountNumber: { type: String, trim: true },
@@ -101,6 +102,25 @@ const staffSchema = new mongoose.Schema(
     emergencyContacts: [{ name: String, phone: String, relation: String, address: String, isPrimary: Boolean }],
   }
 );
+
+staffSchema.pre(/^find/, function includeCompleteCompensationProjection() {
+  const projection = this.projection();
+  if (!projection || Object.keys(projection).length === 0) return;
+
+  const isInclusionProjection = Object.values(projection).some(
+    (value) => value === 1 || value === true,
+  );
+  const requestsCompensationProfile =
+    projection.baseSalary || projection.salaryType || projection.hourlyRate;
+
+  if (
+    isInclusionProjection &&
+    requestsCompensationProfile &&
+    projection.commissionRate == null
+  ) {
+    this.select({ commissionRate: 1 });
+  }
+});
 
 
 export const Staff =
