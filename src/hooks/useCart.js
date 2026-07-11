@@ -98,9 +98,9 @@ const mergeCartLines = (localCart = [], incomingCart = []) => {
       lineMap.set(key, {
         ...existing,
         ...item,
-        quantity: Math.max(Number(existing.quantity || 1), Number(item.quantity || 1)),
-        holdExpiresAt: item.holdExpiresAt || existing.holdExpiresAt,
-        holdStatus: item.holdStatus || existing.holdStatus,
+        quantity: Number(item.quantity || 1),
+        holdExpiresAt: item.holdExpiresAt ?? null,
+        holdStatus: item.holdStatus ?? null,
         backendCartItemId: item.backendCartItemId || existing.backendCartItemId,
         backendCartId: item.backendCartId || existing.backendCartId,
       });
