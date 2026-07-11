@@ -1,17 +1,18 @@
 {
   "id": "07-11-table-ai-guided-camera-cards",
   "title": "Hướng dẫn chụp 5 ảnh tạo mẫu bàn AI",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-feature",
   "scope": [
-    "src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.jsx",
-    "src/styles/CustomTableBuilderResponsiveFix.css",
-    "src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx"
+    "src/utils/installGuidedAiCaptureCards.js",
+    "src/styles/GuidedAiCaptureCards.css",
+    "src/utils/installGuidedAiCaptureCards.test.js",
+    "src/main.jsx"
   ],
   "rootCause": "The AI flow already opens the rear camera through native file inputs, but each capture step is rendered as a plain row with the browser file control. Users cannot see a camera-style frame, the required angle inside that frame, a clear shutter action, or a preview confirming the captured image.",
   "validation": {
     "planned": [
-      "npx vitest run src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx",
+      "npx vitest run src/utils/installGuidedAiCaptureCards.test.js src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx",
       "npm run check:conflicts",
       "npm run build",
       "manual mobile check at 390x844 and 430x932"
@@ -20,8 +21,16 @@
       "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max skills",
       "traced Table3DSimulatorModalV2 -> CustomTableModelBuilderModal -> native rear-camera file inputs -> existing Hi3D request",
       "confirmed the backend request contract and five-image order do not need changes",
-      "inspected the current component, responsive stylesheet, caller and focused component test"
+      "inspected the current component, responsive stylesheet, caller and focused component test",
+      "added guided camera frames around the existing inputs without replacing React form state or request handling",
+      "added real camera buttons, angle instructions inside each frame, object-URL previews, retake wording and text-based completion states",
+      "loaded the enhancement and scoped styles from the existing application installer layer",
+      "added focused jsdom coverage for five frames, camera activation and captured preview state",
+      "re-fetched the changed utility, stylesheet, test and application entry to verify committed content"
     ],
-    "notRun": []
+    "notRun": [
+      "Targeted Vitest, conflict-marker check and production build were not run because the GitHub connector does not provide a repository checkout with installed dependencies.",
+      "390x844, 430x932 and physical phone camera validation remain pending because no browser/device session is available through the connector."
+    ]
   }
 }
