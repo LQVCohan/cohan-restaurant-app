@@ -1,13 +1,14 @@
 {
   "id": "07-11-promotion-flow-hardening",
   "title": "Hardening promotion management and application flows",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "full-stack-bugfix",
   "scope": [
     "cohan-restaurant-backend/models/promotion.model.js",
+    "cohan-restaurant-backend/graphql/resolvers/promotion/query.js",
     "cohan-restaurant-backend/graphql/resolvers/promotion/mutation.js",
+    "cohan-restaurant-backend/tests/models/promotion-active-capacity.test.js",
     "cohan-restaurant-backend/tests/resolvers/promotion-validation-and-query.test.js",
-    "cohan-restaurant-backend/tests/services/discount-calculation-business.test.js",
     "src/hooks/usePromotions.js",
     "src/hooks/usePromotions.test.js",
     "src/hooks/useActiveDiscountPromotions.js",
@@ -16,15 +17,22 @@
   "validation": {
     "planned": [
       "npx vitest run src/hooks/usePromotions.test.js src/hooks/useActiveDiscountPromotions.test.js",
-      "cd cohan-restaurant-backend && npx vitest run tests/resolvers/promotion-validation-and-query.test.js tests/services/discount-calculation-business.test.js",
+      "cd cohan-restaurant-backend && npx vitest run tests/models/promotion-active-capacity.test.js tests/resolvers/promotion-validation-and-query.test.js",
       "npm run check:graphql",
       "npm run build"
     ],
     "completed": [
       "read AGENTS.md and Trellis workflow",
       "read ponytail and ui-ux-pro-max skills",
-      "traced model, resolver, hook, management UI, POS, checkout, discount and usage flows"
+      "traced model, resolver, hook, management UI, menu display, POS/payment selection, checkout, discount calculation and atomic usage updates",
+      "reviewed current GraphQL promotion schema against frontend operations",
+      "reviewed changed files after each write"
     ],
-    "notRun": []
+    "notRun": [
+      "Vitest suites: GitHub connector has no dependency execution environment",
+      "GraphQL check: GitHub connector has no dependency execution environment",
+      "production build: GitHub connector has no dependency execution environment",
+      "manual browser/POS/checkout regression: no running application session is available"
+    ]
   }
 }
