@@ -4395,7 +4395,6 @@ const ScheduleManagement = ({ readOnly = false, restaurantId: scopedRestaurantId
                 : undefined,
             allowOverride: needsOverride,
             overrideReason: needsOverride ? trimmedOverrideReason : undefined,
-            allowPartialApply: true,
             selectedShiftKeys,
           },
         },
