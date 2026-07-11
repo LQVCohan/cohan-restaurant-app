@@ -77,6 +77,7 @@ const staffSchema = new mongoose.Schema(
     terminationReason: { type: String, trim: true },
     salaryType: { type: String, enum: ["monthly", "hourly", "shift", "commission"], default: "monthly" },
     hourlyRate: { type: Number, min: 0 },
+    commissionRate: { type: Number, min: 0, max: 100 },
     allowanceAmount: { type: Number, min: 0 },
     bankName: { type: String, trim: true },
     bankAccountNumber: { type: String, trim: true },
