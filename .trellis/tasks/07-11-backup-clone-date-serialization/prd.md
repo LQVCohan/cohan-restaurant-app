@@ -21,7 +21,7 @@
 - `cohan-restaurant-backend/src/services/restaurantConfigBackup.service.js`
   - serialize `Date` values as ISO strings at the shared snapshot boundary;
   - remove source-only table QR, view-lock, and active merge runtime fields before clone upserts;
-  - preserve existing target runtime state when a clone conflict is merged.
+  - retain the existing clone safety contract: reset table status to `available` and clear the target `viewLock`.
 - `cohan-restaurant-backend/tests/services/restaurant-config-backup-date.service.test.js`
   - cover ISO date serialization;
   - cover cloning an older snapshot containing `{}` runtime date placeholders without forwarding them to Mongoose.
@@ -31,13 +31,15 @@
 - A newly exported configuration snapshot stores date fields as valid ISO strings rather than `{}`.
 - Copying floor/table configuration to another restaurant does not copy source QR URLs/images/timestamps, view locks, or active merged-table references.
 - An older snapshot whose table runtime dates are `{}` can still be cloned because those runtime fields are removed before the table write.
-- Floor remapping, table status reset, conflict handling, checksums, permissions, audit logging, GraphQL operations, and UI behavior remain unchanged.
+- Clone mode still remaps floors, resets table status to `available`, and clears `viewLock`.
+- Conflict handling, checksums, permissions, audit logging, GraphQL operations, and UI behavior remain unchanged.
 
-## Validation plan
+## Validation
 
-- `npm --prefix cohan-restaurant-backend test -- tests/services/restaurant-config-backup-date.service.test.js tests/services/restaurant-config-backup.service.test.js`
-- `npm --prefix cohan-restaurant-backend test -- tests/resolvers/backup-config.resolver.test.js`
-- `npm run check:graphql`
+- CI run 8246: `restaurant-config-backup.service.test.js` passed 38/38 tests.
+- CI run 8246: `restaurant-config-backup-date.service.test.js` passed 2/2 tests.
+- CI run 8246: `backup-config.resolver.test.js` passed 14/14 tests.
+- The complete CI run remains red because of an unrelated existing failure in `capability-gating.mutations.test.js` and an unrelated frontend unit-test failure.
 
 ## Out of scope
 
