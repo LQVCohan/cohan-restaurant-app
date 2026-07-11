@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import { MenuItem } from "../../models/index.js";
-import "./orderableSupplyOrderModelSupport.js";
 import {
   getOrderableSupplyCatalogItem,
   isSupplyCatalogItem,
