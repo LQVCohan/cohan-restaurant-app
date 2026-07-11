@@ -47,7 +47,7 @@ input WalletTopupInput {
 input PayOrdersWithWalletInput {
   restaurantId: ID!
   orderIds: [ID!]!
-  idempotencyKey: String
+  idempotencyKey: String!
 }
 
 input RefundToWalletInput {
