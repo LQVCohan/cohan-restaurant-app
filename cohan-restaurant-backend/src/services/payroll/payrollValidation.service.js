@@ -204,7 +204,7 @@ export async function validatePayrollPeriod(periodId, options = {}) {
       getPayrollSettings(period.restaurantId),
       PayrollItem.find({ periodId: period._id }).lean(),
       Staff.find({
-        userType: "STAFF",
+        userType: { $in: ["STAFF", "MANAGER"] },
         ...staffScopeFilter,
       })
         .select({
