@@ -1,0 +1,32 @@
+{
+  "id": "redesign-home-for-you-section",
+  "name": "redesign-home-for-you-section",
+  "title": "Redesign customer home recommendations",
+  "description": "Upgrade the customer homepage personalized dish section with stronger hierarchy, responsive recommendation cards, and accessible navigation while preserving the existing recommendation data flow.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "customer-homepage",
+  "package": null,
+  "priority": "P2",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/schema/menu.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/menu/query.js",
+    "src/hooks/useForYouRecommendations.js",
+    "src/components/Customer/Homepage_Client/Home.jsx",
+    "src/components/Customer/Homepage_Client/components/HomeForYouSection.jsx",
+    "src/styles/Homepage/HomeForYouSection.scss"
+  ],
+  "notes": "Frontend-only redesign. Preserve GraphQL fields, recommendation ranking, restaurant scoping, analytics signals, and food-detail navigation behavior."
+}
