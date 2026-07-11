@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 import { Supply, StockItem } from "../../../models/index.js";
 import { listSupplyCategories, suggestSupplyCategory } from "./category-ai.js";
 import { requireRestaurantAccess } from "../../guards.js";
+import {
+  getOrderableSupplyCatalogItem,
+  listOrderableSupplyCatalogItems,
+} from "../../../src/services/orderableSupplyCatalog.service.js";
 
 const ACTIVE_SUPPLY_FILTER = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
 
@@ -93,6 +97,37 @@ async function listWithStock({ restaurantId, warehouseId, supplyFilter, limit = 
 }
 
 export default {
+  orderableSupplies: async (
+    _p,
+    { restaurantId, warehouseId, search, includeOutOfStock = false },
+  ) => {
+    if (!mongoose.isValidObjectId(restaurantId)) return [];
+    return listOrderableSupplyCatalogItems({
+      restaurantId,
+      warehouseId,
+      search,
+      includeOutOfStock,
+    });
+  },
+
+  orderableSupply: async (
+    _p,
+    { restaurantId, supplyId, warehouseId, includeOutOfStock = false },
+  ) => {
+    if (
+      !mongoose.isValidObjectId(restaurantId) ||
+      !mongoose.isValidObjectId(supplyId)
+    ) {
+      return null;
+    }
+    return getOrderableSupplyCatalogItem({
+      restaurantId,
+      supplyId,
+      warehouseId,
+      includeOutOfStock,
+    });
+  },
+
   supplyCategories: async (_p, { restaurantId, search, includeInactive, limit }, ctx) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
     await requireRestaurantAccess(ctx, restaurantId);
