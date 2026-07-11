@@ -46,6 +46,16 @@ describe("PaymentProviderSettingsPage", () => {
             version: 0,
             updatedAt: null,
           },
+          {
+            restaurantId: "restaurant-1",
+            provider: "vnpay",
+            mode: "production",
+            configured: true,
+            source: "restaurant",
+            maskedIdentifier: "PRD••••9876",
+            version: 1,
+            updatedAt: "2026-07-11T00:00:00.000Z",
+          },
         ],
         restaurantPaymentPublicConfig: {
           defaultProvider: "vnpay",
@@ -124,5 +134,19 @@ describe("PaymentProviderSettingsPage", () => {
     });
     expect(updateSettingsMock).toHaveBeenCalled();
     expect(refetchMock).toHaveBeenCalled();
+  });
+
+  it("does not persist an unsaved mode when only toggling provider visibility", async () => {
+    render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
+
+    fireEvent.click(screen.getAllByLabelText("Tài khoản chính thức")[1]);
+    fireEvent.click(screen.getAllByRole("checkbox")[1]);
+
+    await waitFor(() => expect(updateSettingsMock).toHaveBeenCalledTimes(1));
+    const providers = updateSettingsMock.mock.calls[0][0].variables.input.providers;
+    expect(providers.find((item) => item.provider === "vnpay")).toMatchObject({
+      active: false,
+      mode: "sandbox",
+    });
   });
 });
