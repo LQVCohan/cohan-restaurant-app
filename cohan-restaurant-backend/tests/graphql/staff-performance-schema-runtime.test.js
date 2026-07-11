@@ -95,6 +95,85 @@ describe("runtime GraphQL schema for staff performance", () => {
     expect(errors).toEqual([]);
   });
 
+  it("accepts the manager performance dashboard operation", () => {
+    const errors = validateOperation(/* GraphQL */ `
+      query ManagerPerformanceDashboard(
+        $input: ManagerPerformanceDashboardInput!
+      ) {
+        managerPerformanceDashboard(input: $input) {
+          period {
+            restaurantId
+            periodStart
+            periodEnd
+          }
+          incidentOverview {
+            totalIncidents
+            openIncidents
+            pendingReviewCount
+            overdueCount
+            dueSoonCount
+            eligibleCount
+            appliedCount
+            waivedCount
+            notApplicableCount
+            criticalCount
+            highPriorityCount
+          }
+          scoringOverview {
+            averageScore
+            lowestScore
+            highestScore
+            lowScoreEmployeeCount
+            totalScoreDelta
+            appliedAdjustmentCount
+            eligibleScoreDeltaPending
+            waivedScoreDelta
+          }
+          slaOverview {
+            totalRequiringReview
+            overdueCount
+            dueSoonCount
+            onTrackCount
+            slaComplianceRate
+            averageResolutionHours
+            oldestOpenIncidentAt
+          }
+          topRiskEmployees {
+            employeeId
+            finalPerformanceScore
+            totalScoreDelta
+            pendingReviewCount
+            overdueCount
+            eligibleCount
+            appliedAdjustmentCount
+            latestIncidentAt
+            riskLevel
+            riskReasons
+          }
+          topEventTypes {
+            eventType
+            count
+            appliedCount
+            waivedCount
+            totalScoreDelta
+          }
+          responsibilityBreakdown {
+            responsibilityStatus
+            count
+            totalScoreDelta
+          }
+          recommendedActions {
+            action
+            count
+            priority
+          }
+        }
+      }
+    `);
+
+    expect(errors).toEqual([]);
+  });
+
   it("accepts appeal evidence, review decision and score reversal inputs", () => {
     const errors = validateOperation(/* GraphQL */ `
       mutation StaffPerformanceAppealFlow(
