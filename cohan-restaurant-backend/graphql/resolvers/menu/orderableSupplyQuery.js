@@ -2,6 +2,8 @@ import {
   getOrderableSupplyCatalogItem,
   listOrderableSupplyCatalogItems,
 } from "../../../src/services/orderableSupplyCatalog.service.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { hasPermission } from "../../../src/services/auth/authorization.service.js";
 import { MenuQuery } from "./query.js";
 
 const normalizeSort = (value) =>
@@ -66,11 +68,10 @@ export const OrderableSupplyMenuQuery = {
   async menuItemsConnection(parent, args, ctx, info) {
     const connection = await MenuQuery.menuItemsConnection(parent, args, ctx, info);
     const filter = args?.filter || {};
-    if (
-      filter.includeSupplies !== true ||
-      args?.cursor ||
-      filter.categoryId
-    ) {
+    const isMenuManager = ctx?.user
+      ? await hasPermission(ctx.user, PERMISSIONS.MENU_READ)
+      : false;
+    if (isMenuManager || args?.cursor || filter.categoryId) {
       return connection;
     }
 
