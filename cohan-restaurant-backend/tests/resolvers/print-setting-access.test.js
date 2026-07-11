@@ -1,109 +1,311 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const requireRole = vi.fn();
-const requireRestaurantAccess = vi.fn();
-
-const PrintSetting = vi.hoisted(() => ({
-  findOne: vi.fn(),
-  create: vi.fn(),
-  findOneAndUpdate: vi.fn(),
-  updateOne: vi.fn(),
+const permissionMocks = vi.hoisted(() => ({
+  requireRestaurantPermission: vi.fn(),
 }));
 
-const Restaurant = vi.hoisted(() => ({
-  findById: vi.fn(),
+const modelMocks = vi.hoisted(() => ({
+  PrintSetting: {
+    findOne: vi.fn(),
+    create: vi.fn(),
+    findOneAndUpdate: vi.fn(),
+    updateOne: vi.fn(),
+  },
+  Restaurant: { findById: vi.fn() },
 }));
 
-vi.mock("../../models/index.js", () => ({ PrintSetting, Restaurant }));
-vi.mock("../../utils/authz.js", () => ({ requireRole }));
-vi.mock("../../graphql/guards.js", () => ({ requireRestaurantAccess }));
+vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/authorization.service.js", () => permissionMocks);
 vi.mock("mongoose", async () => {
   const actual = await vi.importActual("mongoose");
-  const fn = (v) => typeof v === "string" && v.startsWith("valid-");
+  const isValidObjectId = (value) => typeof value === "string" && value.startsWith("valid-");
   return {
     ...actual,
-    default: { ...actual.default, isValidObjectId: fn },
-    isValidObjectId: fn,
+    default: { ...actual.default, isValidObjectId },
+    isValidObjectId,
   };
 });
 
-describe("printSetting restaurant access hardening", () => {
+const queryResult = (value) => ({ lean: vi.fn().mockResolvedValue(value) });
+
+const baseSetting = (overrides = {}) => ({
+  _id: "ps1",
+  restaurantId: "valid-r1",
+  printers: [
+    {
+      id: "p1",
+      name: "Máy bếp",
+      ip: "192.168.1.20",
+      type: "thermal",
+      location: "kitchen",
+      status: "configured",
+    },
+  ],
+  stations: { kitchen: ["p1"] },
+  templates: [
+    { key: "kitchen", name: "Phiếu bếp", enabled: true, content: "{{orderCode}}" },
+    { key: "receipt", name: "Hóa đơn", enabled: true, content: "{{orderCode}}" },
+  ],
+  jobs: [],
+  ...overrides,
+});
+
+describe("printSetting permission and queue integrity", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    requireRole.mockReturnValue(true);
-    requireRestaurantAccess.mockResolvedValue(true);
-    Restaurant.findById.mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "valid-r1" }) });
-    PrintSetting.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "ps1", restaurantId: "valid-r1", printers: [], stations: {}, templates: [], jobs: [] }) });
-    PrintSetting.create.mockResolvedValue({ toObject: vi.fn().mockReturnValue({ _id: "ps1", restaurantId: "valid-r1", printers: [], stations: {}, templates: [], jobs: [] }) });
-    PrintSetting.findOneAndUpdate.mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "ps1", restaurantId: "valid-r1", printers: [{ id: "p1", name: "A" }], stations: { kitchen: ["p1"] }, templates: [], jobs: [] }) });
-    PrintSetting.updateOne.mockResolvedValue({ acknowledged: true });
+    permissionMocks.requireRestaurantPermission.mockResolvedValue(true);
+    modelMocks.Restaurant.findById.mockReturnValue(queryResult({ _id: "valid-r1" }));
+    modelMocks.PrintSetting.findOne.mockReturnValue(queryResult(baseSetting()));
+    modelMocks.PrintSetting.create.mockResolvedValue({
+      toObject: vi.fn().mockReturnValue(baseSetting()),
+    });
+    modelMocks.PrintSetting.findOneAndUpdate.mockReturnValue(queryResult(baseSetting()));
+    modelMocks.PrintSetting.updateOne.mockResolvedValue({ acknowledged: true, modifiedCount: 1 });
   });
 
-  it("printSettings denied by restaurant access before Restaurant.findById and PrintSetting.findOne", async () => {
-    requireRestaurantAccess.mockRejectedValueOnce(new Error("FORBIDDEN_SCOPE"));
+  it("requires print.read for the scoped settings query", async () => {
     const resolver = await import("../../graphql/resolvers/printSetting/index.js");
+    const ctx = { user: { id: "manager-1" } };
 
-    await expect(resolver.Query.printSettings(null, { restaurantId: "valid-r1" }, { user: { id: "m1" } })).rejects.toThrow("FORBIDDEN_SCOPE");
-    expect(Restaurant.findById).not.toHaveBeenCalled();
-    expect(PrintSetting.findOne).not.toHaveBeenCalled();
+    const result = await resolver.Query.printSettings(
+      null,
+      { restaurantId: "valid-r1" },
+      ctx,
+    );
+
+    expect(permissionMocks.requireRestaurantPermission).toHaveBeenCalledWith(
+      ctx,
+      "valid-r1",
+      "print.read",
+    );
+    expect(result).toEqual(expect.objectContaining({ restaurantId: "valid-r1" }));
   });
 
-  it("printSettings invalid restaurantId does not call requireRestaurantAccess or DB", async () => {
+  it("rejects an invalid restaurant id before permission and database calls", async () => {
     const resolver = await import("../../graphql/resolvers/printSetting/index.js");
-    await expect(resolver.Query.printSettings(null, { restaurantId: "bad-id" }, { user: { id: "m1" } })).rejects.toThrow("Invalid restaurantId");
-    expect(requireRestaurantAccess).not.toHaveBeenCalled();
-    expect(Restaurant.findById).not.toHaveBeenCalled();
-    expect(PrintSetting.findOne).not.toHaveBeenCalled();
+
+    await expect(
+      resolver.Query.printSettings(null, { restaurantId: "bad-id" }, { user: { id: "m1" } }),
+    ).rejects.toThrow("Invalid restaurantId");
+
+    expect(permissionMocks.requireRestaurantPermission).not.toHaveBeenCalled();
+    expect(modelMocks.Restaurant.findById).not.toHaveBeenCalled();
   });
 
-  it("printSettings allowed calls role + scoped access and returns normalized payload", async () => {
+  it("requires print.write for configuration and queue mutations", async () => {
+    permissionMocks.requireRestaurantPermission.mockRejectedValue(new Error("FORBIDDEN_PRINT_WRITE"));
     const resolver = await import("../../graphql/resolvers/printSetting/index.js");
-    const result = await resolver.Query.printSettings(null, { restaurantId: "valid-r1" }, { user: { id: "m1", roleName: "manager" } });
-    expect(requireRole).toHaveBeenCalled();
-    expect(requireRestaurantAccess).toHaveBeenCalledWith({ user: { id: "m1", roleName: "manager" } }, "valid-r1");
-    expect(Restaurant.findById).toHaveBeenCalledWith("valid-r1");
-    expect(PrintSetting.findOne).toHaveBeenCalledWith({ restaurantId: "valid-r1" });
-    expect(result).toEqual(expect.objectContaining({ restaurantId: "valid-r1", printers: expect.any(Array), templates: expect.any(Array), jobs: expect.any(Array) }));
+    const ctx = { user: { id: "viewer-1" } };
+
+    await expect(
+      resolver.Mutation.upsertPrintSettings(
+        null,
+        { input: { restaurantId: "valid-r1", printers: [] } },
+        ctx,
+      ),
+    ).rejects.toThrow("FORBIDDEN_PRINT_WRITE");
+    await expect(
+      resolver.Mutation.enqueuePrintJob(
+        null,
+        {
+          input: {
+            restaurantId: "valid-r1",
+            printerId: "p1",
+            printType: "manual_test",
+          },
+        },
+        ctx,
+      ),
+    ).rejects.toThrow("FORBIDDEN_PRINT_WRITE");
+    await expect(
+      resolver.Mutation.retryPrintJob(
+        null,
+        { input: { restaurantId: "valid-r1", jobId: "j1" } },
+        ctx,
+      ),
+    ).rejects.toThrow("FORBIDDEN_PRINT_WRITE");
+    await expect(
+      resolver.Mutation.updatePrintJobStatus(
+        null,
+        { input: { restaurantId: "valid-r1", jobId: "j1", status: "completed" } },
+        ctx,
+      ),
+    ).rejects.toThrow("FORBIDDEN_PRINT_WRITE");
+    await expect(
+      resolver.Mutation.testPrint(
+        null,
+        { input: { restaurantId: "valid-r1", printerId: "p1" } },
+        ctx,
+      ),
+    ).rejects.toThrow("FORBIDDEN_PRINT_WRITE");
+
+    expect(permissionMocks.requireRestaurantPermission).toHaveBeenCalledWith(
+      ctx,
+      "valid-r1",
+      "print.write",
+    );
+    expect(modelMocks.PrintSetting.updateOne).not.toHaveBeenCalled();
+    expect(modelMocks.PrintSetting.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
-  it("mutation denied paths block DB writes after scope guard", async () => {
-    requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
+  it("sanitizes station assignments during settings upsert", async () => {
+    modelMocks.PrintSetting.findOneAndUpdate.mockReturnValue(
+      queryResult(baseSetting({ stations: { kitchen: ["p1"] } })),
+    );
     const resolver = await import("../../graphql/resolvers/printSetting/index.js");
-    const ctx = { user: { id: "m1", roleName: "manager" } };
 
-    await expect(resolver.Mutation.upsertPrintSettings(null, { input: { restaurantId: "valid-r1" } }, ctx)).rejects.toThrow("FORBIDDEN_SCOPE");
-    await expect(resolver.Mutation.enqueuePrintJob(null, { input: { restaurantId: "valid-r1", printType: "kitchen" } }, ctx)).rejects.toThrow("FORBIDDEN_SCOPE");
-    await expect(resolver.Mutation.retryPrintJob(null, { input: { restaurantId: "valid-r1", jobId: "j1" } }, ctx)).rejects.toThrow("FORBIDDEN_SCOPE");
-    await expect(resolver.Mutation.updatePrintJobStatus(null, { input: { restaurantId: "valid-r1", jobId: "j1", status: "completed" } }, ctx)).rejects.toThrow("FORBIDDEN_SCOPE");
-    await expect(resolver.Mutation.testPrint(null, { input: { restaurantId: "valid-r1", printerId: "p1" } }, ctx)).rejects.toThrow("FORBIDDEN_SCOPE");
+    await resolver.Mutation.upsertPrintSettings(
+      null,
+      {
+        input: {
+          restaurantId: "valid-r1",
+          printers: [
+            { id: "p1", name: "Máy bếp", ip: "192.168.1.20" },
+            { id: "", name: "Không hợp lệ" },
+          ],
+          stations: { kitchen: ["p1", "missing-printer", "p1"] },
+        },
+      },
+      { user: { id: "manager-1" } },
+    );
 
-    expect(PrintSetting.findOne).not.toHaveBeenCalled();
-    expect(PrintSetting.findOneAndUpdate).not.toHaveBeenCalled();
-    expect(PrintSetting.updateOne).not.toHaveBeenCalled();
-  });
-
-  it("upsertPrintSettings allowed preserves normalization", async () => {
-    PrintSetting.findOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue({ _id: "ps1", restaurantId: "valid-r1", printers: [{ id: "p1", name: "A" }], stations: { kitchen: ["p1"] }, templates: [], jobs: [] }) });
-    const resolver = await import("../../graphql/resolvers/printSetting/index.js");
-    await resolver.Mutation.upsertPrintSettings(null, { input: { restaurantId: "valid-r1", printers: [{ id: "p1", name: "A" }, { id: "", name: "x" }], stations: { kitchen: ["p1", "p2"] }, templates: [{ key: "kitchen", name: "K", enabled: true, content: "x" }] } }, { user: { id: "m1", roleName: "manager" } });
-    const payload = PrintSetting.findOneAndUpdate.mock.calls[0][1].$set;
+    const payload = modelMocks.PrintSetting.findOneAndUpdate.mock.calls[0][1].$set;
     expect(payload.stations.kitchen).toEqual(["p1"]);
   });
 
-  it("role check still required", async () => {
-    requireRole.mockImplementationOnce(() => { throw new Error("FORBIDDEN_ROLE"); });
+  it("rejects a manual job for a printer outside the restaurant configuration", async () => {
     const resolver = await import("../../graphql/resolvers/printSetting/index.js");
-    await expect(resolver.Query.printSettings(null, { restaurantId: "valid-r1" }, { user: { id: "m1" } })).rejects.toThrow("FORBIDDEN_ROLE");
-    expect(requireRestaurantAccess).not.toHaveBeenCalled();
-    expect(Restaurant.findById).not.toHaveBeenCalled();
+
+    await expect(
+      resolver.Mutation.enqueuePrintJob(
+        null,
+        {
+          input: {
+            restaurantId: "valid-r1",
+            printerId: "unknown-printer",
+            printType: "manual_test",
+          },
+        },
+        { user: { id: "manager-1" } },
+      ),
+    ).rejects.toThrow("Configured printer not found");
+
+    expect(modelMocks.PrintSetting.updateOne).not.toHaveBeenCalled();
   });
 
-  it("restaurant not found after scoped access keeps NOT_FOUND behavior", async () => {
-    Restaurant.findById.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue(null) });
+  it("appends a validated print job atomically without rewriting the queue", async () => {
     const resolver = await import("../../graphql/resolvers/printSetting/index.js");
-    await expect(resolver.Query.printSettings(null, { restaurantId: "valid-r1" }, { user: { id: "m1" } })).rejects.toThrow("Restaurant not found");
-    expect(requireRestaurantAccess).toHaveBeenCalled();
-    expect(PrintSetting.findOne).not.toHaveBeenCalled();
+
+    const job = await resolver.Mutation.enqueuePrintJob(
+      null,
+      {
+        input: {
+          restaurantId: "valid-r1",
+          printerId: "p1",
+          stationId: "kitchen",
+          printType: "manual_test",
+          templateKey: "kitchen",
+        },
+      },
+      { user: { id: "manager-1" } },
+    );
+
+    expect(job).toEqual(expect.objectContaining({ printerId: "p1", status: "pending" }));
+    const update = modelMocks.PrintSetting.updateOne.mock.calls[0][1];
+    expect(update.$push.jobs).toEqual(expect.objectContaining({
+      $position: 0,
+      $slice: 300,
+      $each: [expect.objectContaining({ printerId: "p1" })],
+    }));
+    expect(update.$set).not.toHaveProperty("jobs");
+  });
+
+  it("retries only failed jobs with a positional atomic update", async () => {
+    const failedJob = {
+      id: "j-failed",
+      printType: "order_confirmed",
+      status: "failed",
+      retryCount: 1,
+      items: [{ name: "Món bếp" }],
+      createdAt: "2026-07-11T00:00:00.000Z",
+    };
+    modelMocks.PrintSetting.findOne.mockReturnValue(
+      queryResult(baseSetting({ jobs: [failedJob] })),
+    );
+    modelMocks.PrintSetting.findOneAndUpdate.mockReturnValue(
+      queryResult(baseSetting({
+        jobs: [{ ...failedJob, status: "pending", retryCount: 2, error: null }],
+      })),
+    );
+    const resolver = await import("../../graphql/resolvers/printSetting/index.js");
+
+    const retried = await resolver.Mutation.retryPrintJob(
+      null,
+      { input: { restaurantId: "valid-r1", jobId: "j-failed" } },
+      { user: { id: "manager-1" } },
+    );
+
+    expect(retried).toEqual(expect.objectContaining({
+      id: "j-failed",
+      status: "pending",
+      retryCount: 2,
+      items: [{ name: "Món bếp" }],
+    }));
+    const [filter, update] = modelMocks.PrintSetting.findOneAndUpdate.mock.calls[0];
+    expect(filter.jobs.$elemMatch).toEqual({ id: "j-failed", status: "failed" });
+    expect(update.$set["jobs.$.status"]).toBe("pending");
+    expect(update.$inc["jobs.$.retryCount"]).toBe(1);
+    expect(update.$set).not.toHaveProperty("jobs");
+  });
+
+  it("rejects retry for a job that is not failed", async () => {
+    modelMocks.PrintSetting.findOne.mockReturnValue(
+      queryResult(baseSetting({
+        jobs: [{ id: "j-pending", printType: "receipt", status: "pending" }],
+      })),
+    );
+    const resolver = await import("../../graphql/resolvers/printSetting/index.js");
+
+    await expect(
+      resolver.Mutation.retryPrintJob(
+        null,
+        { input: { restaurantId: "valid-r1", jobId: "j-pending" } },
+        { user: { id: "manager-1" } },
+      ),
+    ).rejects.toThrow("Only failed print jobs can be retried");
+  });
+
+  it("records a simulated configuration check without claiming hardware is online", async () => {
+    modelMocks.PrintSetting.findOneAndUpdate.mockReturnValue(
+      queryResult(baseSetting({
+        printers: [{
+          id: "p1",
+          name: "Máy bếp",
+          ip: "192.168.1.20",
+          status: "configured",
+        }],
+      })),
+    );
+    const resolver = await import("../../graphql/resolvers/printSetting/index.js");
+
+    const job = await resolver.Mutation.testPrint(
+      null,
+      {
+        input: {
+          restaurantId: "valid-r1",
+          printerId: "p1",
+          draftIp: "192.168.1.50",
+        },
+      },
+      { user: { id: "manager-1" } },
+    );
+
+    const update = modelMocks.PrintSetting.findOneAndUpdate.mock.calls[0][1];
+    expect(update.$set["printers.$.status"]).toBe("configured");
+    expect(job.payload).toEqual(expect.objectContaining({
+      simulated: true,
+      hardwareHandshake: false,
+    }));
   });
 });
