@@ -9,32 +9,40 @@ export async function notifyAvailableMenuWatchers({
 } = {}) {
   const groupLimit = Math.max(1, Number(maxGroups || 100));
   const watcherLimit = Math.max(1, Number(maxWatchersPerGroup || 50));
-  const candidates = await MenuAvailabilityWatch.find({
-    status: "watching",
-    expiresAt: { $gt: new Date() },
-  })
-    .sort({ createdAt: 1, _id: 1 })
-    .limit(groupLimit * watcherLimit)
-    .lean({ virtuals: true });
-
-  const groups = new Map();
-  for (const watch of candidates) {
-    const restaurantId = String(watch?.restaurantId || "");
-    const menuItemId = String(watch?.menuItemId || "");
-    const servingKey = String(watch?.servingKey || "portion");
-    if (!restaurantId || !menuItemId) continue;
-    const key = `${restaurantId}:${menuItemId}:${servingKey}`;
-    if (!groups.has(key) && groups.size < groupLimit) {
-      groups.set(key, { restaurantId, menuItemId, servingKey });
-    }
-  }
+  const groups = await MenuAvailabilityWatch.aggregate([
+    {
+      $match: {
+        status: "watching",
+        expiresAt: { $gt: new Date() },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          restaurantId: "$restaurantId",
+          menuItemId: "$menuItemId",
+          servingKey: { $ifNull: ["$servingKey", "portion"] },
+        },
+        firstCreatedAt: { $min: "$createdAt" },
+      },
+    },
+    { $sort: { firstCreatedAt: 1, "_id.menuItemId": 1 } },
+    { $limit: groupLimit },
+  ]);
 
   let notified = 0;
   let skipped = 0;
-  for (const group of groups.values()) {
+  for (const group of groups) {
+    const restaurantId = String(group?._id?.restaurantId || "");
+    const menuItemId = String(group?._id?.menuItemId || "");
+    const servingKey = String(group?._id?.servingKey || "portion");
+    if (!restaurantId || !menuItemId) continue;
+
     const result = await notifyAvailabilityWatchersForMenuItem({
       io,
-      ...group,
+      restaurantId,
+      menuItemId,
+      servingKey,
       source,
       maxWatchers: watcherLimit,
     });
@@ -42,5 +50,5 @@ export async function notifyAvailableMenuWatchers({
     skipped += Number(result?.skipped || 0);
   }
 
-  return { groupsScanned: groups.size, notified, skipped };
+  return { groupsScanned: groups.length, notified, skipped };
 }
