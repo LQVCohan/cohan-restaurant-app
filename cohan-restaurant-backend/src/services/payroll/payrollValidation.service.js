@@ -212,6 +212,9 @@ export async function validatePayrollPeriod(periodId, options = {}) {
           fullName: 1,
           employeeCode: 1,
           baseSalary: 1,
+          salaryType: 1,
+          hourlyRate: 1,
+          commissionRate: 1,
           employmentStatus: 1,
           department: 1,
           positionTitle: 1,
@@ -278,18 +281,42 @@ export async function validatePayrollPeriod(periodId, options = {}) {
       String(staff.employmentStatus || "").toLowerCase() === "working";
     if (!working) return;
 
-    if (!Number(staff.baseSalary || 0)) {
+    const salaryType = String(staff.salaryType || "monthly").toLowerCase();
+    const hasBaseSalary = Number(staff.baseSalary || 0) > 0;
+    const hasHourlyRate = Number(staff.hourlyRate || 0) > 0;
+    const hasCommissionRate = Number(staff.commissionRate || 0) > 0;
+    const salaryConfigured =
+      salaryType === "monthly"
+        ? hasBaseSalary
+        : salaryType === "hourly"
+          ? hasHourlyRate
+          : salaryType === "shift"
+            ? hasHourlyRate || hasBaseSalary
+            : salaryType === "commission"
+              ? hasCommissionRate
+              : hasBaseSalary;
+    if (!salaryConfigured) {
       pushIssue(issues, {
-        code: "STAFF_MISSING_BASE_SALARY",
+        code: salaryType === "commission"
+          ? "STAFF_MISSING_COMMISSION_RATE"
+          : salaryType === "hourly"
+            ? "STAFF_MISSING_HOURLY_RATE"
+            : "STAFF_MISSING_BASE_SALARY",
         severity: "error",
-        message: "Nhân viên đang làm việc nhưng chưa có lương cơ bản hợp lệ.",
+        message:
+          salaryType === "commission"
+            ? "Nhân viên hưởng hoa hồng nhưng chưa có tỷ lệ hoa hồng."
+            : salaryType === "hourly"
+              ? "Nhân viên tính lương theo giờ nhưng chưa có đơn giá giờ."
+              : salaryType === "shift"
+                ? "Nhân viên tính lương theo ca chưa có đơn giá ca hoặc lương cơ bản dự phòng."
+                : "Nhân viên đang làm việc nhưng chưa có lương cơ bản hợp lệ.",
         employeeId: sid,
         employeeName: staff.fullName,
         employeeCode: staff.employeeCode,
         sourceType: "Staff",
         sourceId: sid,
-        suggestedAction:
-          "Cập nhật lương cơ bản cho nhân viên trước khi chốt kỳ.",
+        suggestedAction: "Cập nhật đúng cấu hình lương trước khi chốt kỳ.",
       });
     }
 
@@ -453,6 +480,18 @@ export async function validatePayrollPeriod(periodId, options = {}) {
     staffs.map((s) => [String(s._id), String(period.restaurantId)]),
   );
   items.forEach((item) => {
+    const salaryConfigurationIssue = item?.breakdown?.salaryConfigurationIssue;
+    if (salaryConfigurationIssue) {
+      pushIssue(issues, {
+        code: salaryConfigurationIssue,
+        severity: "error",
+        message: "Phiếu lương chưa có đủ cấu hình để tính đúng loại lương.",
+        employeeId: String(item.employeeId),
+        sourceType: "PayrollItem",
+        sourceId: String(item._id),
+        suggestedAction: "Bổ sung đơn giá/tỷ lệ lương rồi tính lại kỳ lương.",
+      });
+    }
     const netSalary = Number(item?.breakdown?.netSalary || 0);
     if (netSalary < 0) {
       pushIssue(issues, {
