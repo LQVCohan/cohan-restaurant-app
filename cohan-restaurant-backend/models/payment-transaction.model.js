@@ -33,6 +33,52 @@ const TransactionSchema = BaseSchemaModel(
   {}
 );
 
+TransactionSchema.post("save", async function recordReservationDepositCashflow(doc) {
+  const hasOrders = Boolean(doc.orderId) || (Array.isArray(doc.orderIds) && doc.orderIds.length > 0);
+  const isReservationDeposit = String(doc.note || "").startsWith("Reservation deposit ");
+  if (doc.status !== "SUCCESS" || hasOrders || !isReservationDeposit) return;
+
+  const Cashflow = mongoose.models.Cashflow;
+  if (!Cashflow) return;
+
+  const session = typeof doc.$session === "function" ? doc.$session() : null;
+  const options = {
+    upsert: true,
+    new: true,
+    setDefaultsOnInsert: true,
+    ...(session ? { session } : {}),
+  };
+  await Cashflow.findOneAndUpdate(
+    {
+      restaurantId: doc.restaurantId,
+      source: "reservation",
+      "ref.paymentTransactionId": doc._id,
+    },
+    {
+      $setOnInsert: {
+        restaurantId: doc.restaurantId,
+        type: "INFLOW",
+        amount: doc.paidAmount,
+        currency: doc.currency || "VND",
+        category: "sale",
+        subcategory: "other",
+        method: doc.method,
+        status: "completed",
+        source: "reservation",
+        ref: {
+          kind: "PaymentTransaction",
+          id: doc._id,
+          paymentTransactionId: doc._id,
+        },
+        note: doc.note,
+        occurredAt: doc.paidAt || new Date(),
+        createdBy: doc.createdBy || doc.userId || null,
+      },
+    },
+    options,
+  );
+});
+
 TransactionSchema.index({ restaurantId: 1, orderId: 1 });
 TransactionSchema.index({ restaurantId: 1, orderIds: 1 });
 TransactionSchema.index({ paidAt: -1 });
