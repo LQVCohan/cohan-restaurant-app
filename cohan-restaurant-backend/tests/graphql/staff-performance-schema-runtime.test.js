@@ -96,6 +96,23 @@ describe("runtime GraphQL schema for staff performance", () => {
   });
 
   it("accepts the manager performance dashboard operation", () => {
+    const inputFields = schema
+      .getType("ManagerPerformanceDashboardInput")
+      .getFields();
+
+    expect(Object.keys(inputFields)).toEqual(
+      expect.arrayContaining([
+        "restaurantId",
+        "month",
+        "year",
+        "fromDate",
+        "toDate",
+        "employeeIds",
+        "lowScoreThreshold",
+        "limit",
+      ]),
+    );
+
     const errors = validateOperation(/* GraphQL */ `
       query ManagerPerformanceDashboard(
         $input: ManagerPerformanceDashboardInput!
