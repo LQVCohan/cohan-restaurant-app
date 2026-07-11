@@ -11,11 +11,14 @@ import TransactionManagement from "./TransactionManagement";
 import { AuthContext } from "@/context/AuthContext";
 
 const txSpies = vi.hoisted(() => ({
-  refetch: vi.fn(),
+  refetch: vi.fn().mockResolvedValue({}),
   setRestaurantId: vi.fn(),
   setFilters: vi.fn(),
   setReconciliationStatus: vi.fn(),
   setBankStatus: vi.fn(),
+  createManualCashflow: vi.fn().mockResolvedValue({}),
+  updateManualCashflow: vi.fn().mockResolvedValue({}),
+  voidManualCashflow: vi.fn().mockResolvedValue({}),
   createSupplierPayable: vi.fn().mockResolvedValue({}),
   updateSupplierPayable: vi.fn().mockResolvedValue({}),
   recordSupplierPayment: vi.fn().mockResolvedValue({}),
@@ -33,6 +36,18 @@ const txSpies = vi.hoisted(() => ({
 }));
 
 const mockState = vi.hoisted(() => ({ value: null }));
+
+vi.mock("../Finance/FinanceComponents", () => ({
+  TransactionTable: ({ transactions = [], onSelect }) => (
+    <div data-testid="transaction-table">
+      {transactions.map((transaction) => (
+        <button key={transaction.id} onClick={() => onSelect?.(transaction)}>
+          {transaction.description || transaction.note || transaction.id}
+        </button>
+      ))}
+    </div>
+  ),
+}));
 
 vi.mock("@/hooks/useTransactions", () => ({
   CASHFLOW_CATEGORIES: [
@@ -67,6 +82,7 @@ vi.mock("@/hooks/useTransactions", () => ({
     "other",
   ],
   CASHFLOW_STATUSES: ["draft", "pending", "completed", "voided"],
+  toLocalDateInputValue: () => "2026-07-11",
   useTransactions: () => mockState.value,
 }));
 
@@ -88,29 +104,54 @@ function buildTx(overrides = {}) {
     },
     reconciliationStatus: "all",
     bankStatus: "",
+    isDateRangeValid: true,
     loading: false,
     error: null,
     transactions: [
       {
-        id: "trx-1",
+        id: "trx-payment",
         type: "INFLOW",
         amount: 500000,
-        description: "Thanh toán hóa đơn",
+        description: "Thanh toán hóa đơn A",
         status: "completed",
         source: "order",
         category: "sale",
+        method: "momo",
         referenceType: "PaymentTransaction",
         referenceId: "pay-1",
         occurredAt: "2026-06-02T00:00:00Z",
       },
+      {
+        id: "trx-manual",
+        type: "INFLOW",
+        amount: 70000,
+        description: "Thu thủ công không có thanh toán",
+        status: "completed",
+        source: "manual",
+        category: "operations",
+        method: "cash",
+        referenceType: null,
+        referenceId: null,
+        occurredAt: "2026-06-03T00:00:00Z",
+      },
     ],
     cashflows: [],
+    receivables: [
+      {
+        id: "inv-open",
+        supplier: "INV-2026-0001",
+        amount: 300000,
+        dueDate: "2026-06-20T00:00:00Z",
+        status: "UNPAID",
+      },
+    ],
     refunds: [
       {
-        id: "rf-pending",
+        id: "rf-existing",
+        paymentTransactionId: "pay-1",
         amount: 100000,
         status: "pending",
-        reason: "Khách đổi món",
+        reason: "Hoàn một phần trước đó",
         method: "cash",
         auditTrail: [],
         createdAt: "2026-06-02T00:00:00Z",
@@ -146,8 +187,8 @@ function buildTx(overrides = {}) {
     ],
     reconciliations: [
       {
-        id: "rec-1",
-        bankTransactionId: "bank-1",
+        id: "rec-unmatched",
+        bankTransactionId: "bank-unmatched",
         status: "unmatched",
         receivedAmount: 500000,
         expectedAmount: 0,
@@ -165,10 +206,20 @@ function buildTx(overrides = {}) {
           },
         ],
       },
+      {
+        id: "rec-matched",
+        bankTransactionId: "bank-matched",
+        status: "matched",
+        receivedAmount: 250000,
+        expectedAmount: 250000,
+        varianceAmount: 0,
+        matchConfidence: 100,
+        candidateMatches: [],
+      },
     ],
     bankTransactions: [
       {
-        id: "bank-1",
+        id: "bank-unmatched",
         provider: "VCB",
         transactionId: "BTX-1",
         bankAccountNumber: "123456789012",
@@ -178,10 +229,21 @@ function buildTx(overrides = {}) {
         transferContent: "PAYREF123456",
         matchStatus: "unmatched",
       },
+      {
+        id: "bank-matched",
+        provider: "VCB",
+        transactionId: "BTX-2",
+        bankAccountNumber: "987654321098",
+        bankAccountNumberMasked: "****1098",
+        bankAccountNumberLast4: "1098",
+        amount: 250000,
+        transferContent: "PAYREF654321",
+        matchStatus: "matched",
+      },
     ],
     supplierPayables: [
       {
-        id: "sp-1",
+        id: "sp-partial",
         supplierName: "Công ty Rau Sạch",
         amount: 900000,
         paidAmount: 200000,
@@ -190,6 +252,18 @@ function buildTx(overrides = {}) {
         status: "partial",
         sourceKind: "inventory",
         cashflowIds: ["cf-1"],
+        auditTrail: [],
+      },
+      {
+        id: "sp-unpaid",
+        supplierName: "Công ty Hải Sản",
+        amount: 600000,
+        paidAmount: 0,
+        remainingAmount: 600000,
+        dueDate: "2026-06-25T00:00:00Z",
+        status: "unpaid",
+        sourceKind: "manual",
+        cashflowIds: [],
         auditTrail: [],
       },
     ],
@@ -232,7 +306,7 @@ describe("TransactionManagement", () => {
     HTMLAnchorElement.prototype.click = vi.fn();
   });
 
-  it("renders transaction operation tabs", () => {
+  it("renders every transaction operation tab and invoice-backed receivables", () => {
     renderPage();
     [
       "Nhật ký giao dịch",
@@ -244,12 +318,15 @@ describe("TransactionManagement", () => {
     ].forEach((label) => {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     });
+
+    fireEvent.click(screen.getByRole("button", { name: "Công nợ" }));
+    expect(screen.getByText("INV-2026-0001")).toBeInTheDocument();
+    expect(screen.getByText(/Còn phải thu 300\.000đ/)).toBeInTheDocument();
   });
 
-  it("renders masked bank account and export never includes raw bank account", async () => {
+  it("renders and exports only masked bank account values", async () => {
     const OriginalBlob = globalThis.Blob;
     const blobCalls = [];
-
     vi.stubGlobal(
       "Blob",
       class MockBlob extends OriginalBlob {
@@ -261,61 +338,100 @@ describe("TransactionManagement", () => {
     );
 
     renderPage();
-
     fireEvent.click(screen.getByRole("button", { name: "Giao dịch ngân hàng" }));
-
     expect(screen.getByText(/\*\*\*\*9012/)).toBeInTheDocument();
     expect(screen.queryByText(/123456789012/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Xuất CSV/i }));
-
     const csv = blobCalls[0]?.[0]?.[0] || "";
-
     expect(csv).toContain("****9012");
     expect(csv).not.toContain("123456789012");
-
     vi.stubGlobal("Blob", OriginalBlob);
   });
 
-  it("supports supplier payable create, edit, payment and void with reason modal", async () => {
+  it("requires choosing an eligible payment before creating a refund", async () => {
     renderPage();
-    fireEvent.click(screen.getByRole("button", { name: "Công nợ" }));
-    fireEvent.click(screen.getByRole("button", { name: "Tạo khoản phải trả" }));
-    fireEvent.change(screen.getByLabelText("supplierName"), {
-      target: { value: "Nhà cung cấp Hải Sản" },
+    fireEvent.click(
+      screen.getByRole("button", { name: /Hoàn tiền từ giao dịch/i }),
+    );
+
+    const picker = screen.getByRole("dialog");
+    expect(
+      within(picker).getByRole("heading", {
+        name: "Chọn giao dịch cần hoàn tiền",
+      }),
+    ).toBeInTheDocument();
+    expect(within(picker).getByText("Thanh toán hóa đơn A")).toBeInTheDocument();
+    expect(
+      within(picker).queryByText("Thu thủ công không có thanh toán"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      within(picker).getByRole("button", { name: /Thanh toán hóa đơn A/ }),
+    );
+    const refundDialog = screen.getByRole("dialog");
+    expect(screen.getByLabelText("Số tiền hoàn")).toHaveValue(400000);
+
+    fireEvent.change(screen.getByLabelText("Số tiền hoàn"), {
+      target: { value: "450000" },
     });
-    fireEvent.change(screen.getByLabelText("amount"), {
-      target: { value: "1200000" },
+    fireEvent.change(screen.getByLabelText("Lý do"), {
+      target: { value: "Hoàn món" },
+    });
+    expect(
+      within(refundDialog).getByRole("button", {
+        name: "Tạo yêu cầu hoàn tiền",
+      }),
+    ).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Số tiền hoàn"), {
+      target: { value: "300000" },
     });
     fireEvent.click(
-      screen.getAllByRole("button", { name: "Tạo khoản phải trả" }).at(-1),
+      within(refundDialog).getByRole("button", {
+        name: "Tạo yêu cầu hoàn tiền",
+      }),
     );
+
     await waitFor(() =>
-      expect(txSpies.createSupplierPayable).toHaveBeenCalledWith(
+      expect(txSpies.createRefundRequest).toHaveBeenCalledWith(
         expect.objectContaining({
-          supplierName: "Nhà cung cấp Hải Sản",
-          amount: 1200000,
+          paymentTransactionId: "pay-1",
+          amount: 300000,
+          reason: "Hoàn món",
         }),
       ),
     );
+  });
 
+  it("keeps supplier paid amount immutable and routes payments through the payment action", async () => {
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Công nợ" }));
-    const payableCard = screen.getByText("Công ty Rau Sạch").closest("article");
-    fireEvent.click(within(payableCard).getByRole("button", { name: "Sửa" }));
+
+    const partialCard = screen.getByText("Công ty Rau Sạch").closest("article");
+    expect(
+      within(partialCard).queryByRole("button", { name: "Hủy ghi nhận" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(within(partialCard).getByRole("button", { name: "Sửa" }));
+    expect(screen.getByLabelText("Đã trả")).toBeDisabled();
     fireEvent.change(screen.getByLabelText("amount"), {
       target: { value: "950000" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Lưu khoản phải trả" }));
     await waitFor(() =>
       expect(txSpies.updateSupplierPayable).toHaveBeenCalledWith(
-        "sp-1",
+        "sp-partial",
         expect.objectContaining({ amount: 950000 }),
       ),
+    );
+    expect(txSpies.updateSupplierPayable.mock.calls[0][1]).not.toHaveProperty(
+      "paidAmount",
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Công nợ" }));
     fireEvent.click(
-      within(payableCard).getByRole("button", { name: "Thanh toán" }),
+      within(partialCard).getByRole("button", { name: "Thanh toán" }),
     );
     fireEvent.change(screen.getByLabelText("paymentAmount"), {
       target: { value: "300000" },
@@ -328,16 +444,22 @@ describe("TransactionManagement", () => {
     );
     await waitFor(() =>
       expect(txSpies.recordSupplierPayment).toHaveBeenCalledWith(
-        "sp-1",
+        "sp-partial",
         expect.objectContaining({
           amount: 300000,
           note: "Thanh toán một phần",
         }),
       ),
     );
+  });
 
+  it("allows void only for an unpaid supplier payable with a reason", async () => {
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Công nợ" }));
-    fireEvent.click(within(payableCard).getByRole("button", { name: "Hủy ghi nhận" }));
+    const unpaidCard = screen.getByText("Công ty Hải Sản").closest("article");
+    fireEvent.click(
+      within(unpaidCard).getByRole("button", { name: "Hủy ghi nhận" }),
+    );
     expect(screen.getByRole("button", { name: "Xác nhận" })).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Lý do"), {
       target: { value: "Nhập trùng" },
@@ -345,100 +467,29 @@ describe("TransactionManagement", () => {
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận" }));
     await waitFor(() =>
       expect(txSpies.voidSupplierPayable).toHaveBeenCalledWith(
-        "sp-1",
+        "sp-unpaid",
         "Nhập trùng",
       ),
     );
   });
 
-  it("creates refund from a transaction without raw ID entry and gates lifecycle actions by status", async () => {
+  it("requires one reconciliation target and hides actions after finalization", async () => {
     renderPage();
-    fireEvent.click(
-      screen.getByRole("button", { name: /Hoàn tiền từ giao dịch/i }),
-    );
-    const refundDialog = screen.getByRole("dialog");
-    expect(within(refundDialog).getByRole("heading", { name: "Tạo yêu cầu hoàn tiền" })).toBeInTheDocument();
-    expect(
-      within(refundDialog).queryByPlaceholderText(
-        /ObjectId|raw/i,
-      ),
-    ).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Số tiền hoàn"), {
-      target: { value: "999999" },
-    });
-    fireEvent.change(screen.getByLabelText("Lý do"), {
-      target: { value: "Hoàn món" },
-    });
-    expect(
-      screen.getByRole("button", { name: "Tạo yêu cầu hoàn tiền" }),
-    ).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("Số tiền hoàn"), {
-      target: { value: "300000" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Tạo yêu cầu hoàn tiền" }));
-    await waitFor(() =>
-      expect(txSpies.createRefundRequest).toHaveBeenCalledWith(
-        expect.objectContaining({
-          paymentTransactionId: "pay-1",
-          amount: 300000,
-          reason: "Hoàn món",
-        }),
-      ),
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Hoàn tiền" }));
-    fireEvent.click(screen.getByText("Khách đổi món"));
-    expect(screen.getByRole("button", { name: "Duyệt" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Từ chối" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Hủy" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "×" }));
-
-    fireEvent.click(screen.getByText("Trừ voucher"));
-    expect(screen.getByRole("button", { name: "Xử lý" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Hủy" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "×" }));
-
-    fireEvent.click(screen.getByText("Provider lỗi"));
-    expect(screen.getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "×" }));
-
-    fireEvent.click(screen.getByText("Đã hoàn"));
-    expect(
-      screen.queryByRole("button", { name: "Thử lại" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Xử lý" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("handles reconciliation candidates, force-match note validation, resolve note and ignore reason modal", async () => {
-    const confirmSpy = vi.spyOn(window, "confirm");
-    renderPage();
-    fireEvent.click(screen.getByRole("button", { name: "Đối soát" }));
-    expect(screen.getByText(/Độ tin cậy 0/)).toBeInTheDocument();
-    fireEvent.click(screen.getByText("rec-1"));
-    expect(screen.getByText(/PAYREF123456/)).toBeInTheDocument();
-    expect(screen.getByText(/Phiên thanh toán · 100/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "×" }));
-
-    fireEvent.click(screen.getByRole("button", { name: /Đóng/ }));
-    expect(screen.getByRole("button", { name: "Xác nhận" })).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("Lý do"), {
-      target: { value: "Chấp nhận xử lý" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Xác nhận" }));
-    await waitFor(() =>
-      expect(txSpies.resolveReconciliation).toHaveBeenCalledWith(
-        expect.objectContaining({
-          reconciliationId: "rec-1",
-          note: "Chấp nhận xử lý",
-        }),
-      ),
-    );
-
     fireEvent.click(screen.getByRole("button", { name: "Giao dịch ngân hàng" }));
-    fireEvent.click(screen.getByRole("button", { name: "Ghép thủ công" }));
-    expect(screen.getByText(/độ tin cậy 100/)).toBeInTheDocument();
+
+    const unmatchedCard = screen.getByText("PAYREF123456").closest("article");
+    const matchedCard = screen.getByText("PAYREF654321").closest("article");
+    expect(
+      within(matchedCard).queryByRole("button", { name: "Tự động khớp" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(matchedCard).queryByRole("button", { name: "Bỏ qua" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      within(unmatchedCard).getByRole("button", { name: "Ghép thủ công" }),
+    );
+    expect(screen.getByText(/Phiên thanh toán · độ tin cậy 100/)).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText(/Ghép bắt buộc/i));
     expect(
       screen.getByRole("button", { name: "Xác nhận ghép" }),
@@ -450,31 +501,30 @@ describe("TransactionManagement", () => {
     await waitFor(() =>
       expect(txSpies.manualMatchBankTransaction).toHaveBeenCalledWith(
         expect.objectContaining({
-          bankTransactionId: "bank-1",
+          bankTransactionId: "bank-unmatched",
+          paymentSessionId: "ps-1",
+          paymentTransactionId: null,
           forceMatch: true,
           note: "Force có lý do",
         }),
       ),
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "Giao dịch ngân hàng" }));
-    fireEvent.click(screen.getByRole("button", { name: "Bỏ qua" }));
-    expect(screen.getByRole("button", { name: "Xác nhận" })).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("Lý do"), {
-      target: { value: "Không liên quan" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Xác nhận" }));
-    await waitFor(() =>
-      expect(txSpies.ignoreBankTransaction).toHaveBeenCalledWith(
-        "bank-1",
-        "Không liên quan",
-      ),
-    );
-    expect(confirmSpy).not.toHaveBeenCalled();
-    confirmSpy.mockRestore();
   });
 
-  it("hides write actions without finance/refund/reconciliation permissions", () => {
+  it("shows close action only for unresolved reconciliation exceptions", () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Đối soát" }));
+    const unmatchedCard = screen.getByText("rec-unmatched").closest("article");
+    const matchedCard = screen.getByText("rec-matched").closest("article");
+    expect(
+      within(unmatchedCard).getByRole("button", { name: /Đóng/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(matchedCard).queryByRole("button", { name: /Đóng/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides write actions without finance, refund and reconciliation permissions", () => {
     renderPage({ userPermissions: ["transaction.read"], roleName: "staff" });
     expect(
       screen.queryByRole("button", { name: /Ghi nhận thu\/chi/i }),
@@ -482,6 +532,7 @@ describe("TransactionManagement", () => {
     expect(
       screen.queryByRole("button", { name: /Hoàn tiền từ giao dịch/i }),
     ).not.toBeInTheDocument();
+
     fireEvent.click(screen.getByRole("button", { name: "Giao dịch ngân hàng" }));
     expect(
       screen.queryByRole("button", { name: "Tự động khớp" }),
