@@ -3,7 +3,7 @@
   "name": "staff-messenger-modal",
   "title": "Convert staff contacts page into messenger modal",
   "description": "Replace the dedicated staff contacts workspace with an in-page messenger launcher and responsive conversation modal while preserving existing communication queries, permissions, notification deep-links and restaurant scope.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend-redesign",
   "scope": "staff-communication",
   "package": null,
@@ -11,12 +11,12 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-12",
-  "completedAt": null,
+  "completedAt": "2026-07-12",
   "branch": "agent/staff-messenger-modal",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": null,
+  "commit": "0b7b8641c9b814555c61c63398839791d85b4917",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1357",
   "subtasks": [],
   "children": [],
   "parent": null,
@@ -24,7 +24,6 @@
     "src/layouts/StaffLayout.jsx",
     "src/layouts/StaffLayout.scss",
     "src/components/Staff/StaffCommunicationPage.jsx",
-    "src/components/Staff/StaffCommunicationPage.scss",
     "src/components/Staff/components/ContactsView.jsx",
     "src/components/Staff/components/ContactsView.scss",
     "src/components/common/ChatThreadPanel.jsx",
@@ -32,5 +31,5 @@
     "src/layouts/StaffLayout.test.jsx",
     "src/components/Staff/components/ContactsView.test.jsx"
   ],
-  "notes": "Planning completed after tracing ChatThread model -> communication resolver -> useCommunication Apollo hook -> StaffLayout notification/nav entry -> ContactsView -> ChatThreadPanel. Backend contract remains unchanged."
+  "notes": "Completed after tracing ChatThread model -> communication resolver -> useCommunication Apollo hook -> StaffLayout notification/nav entry -> ContactsView -> ChatThreadPanel. Added an in-page desktop dock, mobile full-screen modal, notification/legacy deep-links, embedded thread mode, correct manager role targeting and focused tests. Backend contract remains unchanged. Vitest, build and GraphQL operation validation were not executed because the connector session had no runnable checkout and the container could not resolve github.com."
 }
