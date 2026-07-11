@@ -1,0 +1,28 @@
+{
+  "id": "backup-legacy-date-restore",
+  "name": "backup-legacy-date-restore",
+  "title": "Handle legacy date placeholders during config restore",
+  "description": "Prevent old restaurant configuration snapshots containing empty-object date placeholders from failing table restore operations.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "manager-backup",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "backup-clone-date-serialization",
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/restaurantConfigBackup.service.js",
+    "cohan-restaurant-backend/tests/services/restaurant-config-backup-date.service.test.js"
+  ],
+  "notes": "The earlier fix covered new exports and clone mode. This follow-up adds backward-compatible handling for legacy empty-object table date placeholders during restore modes."
+}
