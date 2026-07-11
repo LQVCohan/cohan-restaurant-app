@@ -3,7 +3,7 @@ import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import StaffLeavePage from "./StaffLeavePage";
 
-const captures = vi.hoisted(() => ({ formProps: null }));
+const captures = vi.hoisted(() => ({ formProps: null, listProps: null }));
 
 vi.mock("@/context/AuthContext", async () => {
   const ReactActual = await vi.importActual("react");
@@ -42,7 +42,10 @@ vi.mock(
 vi.mock(
   "@/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestsList",
   () => ({
-    default: () => <div data-testid="leave-list" />,
+    default: (props) => {
+      captures.listProps = props;
+      return <div data-testid="leave-list" />;
+    },
   }),
 );
 
@@ -53,8 +56,14 @@ vi.mock("@/components/common/Modal", () => {
 });
 
 describe("StaffLeavePage", () => {
-  it("passes the authenticated staff scope and guided mode to the leave form", () => {
-    render(<StaffLeavePage />);
+  it("keeps one history panel and passes guided self-service scope to the form", () => {
+    const { container } = render(<StaffLeavePage />);
+
+    expect(captures.listProps.title).toBe("Đơn nghỉ phép của tôi");
+    expect(captures.listProps.subtitle).toBe("Tạo đơn mới và theo dõi trạng thái duyệt");
+    expect(captures.listProps.headerAction).toBeTruthy();
+    expect(container.querySelector(".staff-leave-hero")).not.toBeInTheDocument();
+    expect(container.querySelector(".staff-leave-guide")).not.toBeInTheDocument();
 
     expect(captures.formProps.restaurantId).toBe("restaurant-active");
     expect(captures.formProps.selfServiceEmployeeId).toBe("staff-1");
