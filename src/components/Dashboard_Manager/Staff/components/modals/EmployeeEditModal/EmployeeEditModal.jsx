@@ -83,6 +83,12 @@ const EmployeeEditModal = ({
         email: source.email || employee.email || "",
         address: source.address?.line1 || employee.address || "",
         baseSalary: source.baseSalary || employee.salary || "",
+        salaryType: String(source.salaryType || employee.salaryType || "monthly").toUpperCase(),
+        hourlyRate: source.hourlyRate ? formatCurrencyDisplay(source.hourlyRate) : "",
+        commissionRate:
+          source.commissionRate !== undefined && source.commissionRate !== null
+            ? String(source.commissionRate)
+            : "",
         shiftType: source.shiftType || employee.shift || "",
         dateJoined: formatDateInput(source.dateJoined || employee.startDate),
         employmentStatus: source.employmentStatus || "WORKING",
@@ -145,6 +151,9 @@ const EmployeeEditModal = ({
       roleSlug: v?.roleSlug || getDefaultRoleSlug(v?.department || "service"),
       employmentType: v?.employmentType || "FULL_TIME",
       baseSalary: v?.baseSalary || "",
+      salaryType: v?.salaryType || "MONTHLY",
+      hourlyRate: v?.hourlyRate || "",
+      commissionRate: v?.commissionRate || "",
       shiftType: v?.shiftType || "",
       dateJoined: v?.dateJoined || "",
       employmentStatus: v?.employmentStatus || "WORKING",
@@ -177,9 +186,11 @@ const EmployeeEditModal = ({
       return next;
     });
 
-    if (field === "baseSalary") setSalaryManuallyEdited(true);
+    if (field === "baseSalary" || field === "hourlyRate" || field === "commissionRate") {
+      setSalaryManuallyEdited(true);
+    }
     if (field === "positionTitle") setPositionTitleSelectionSource("manual");
-    if (field === "employmentType") {
+    if (field === "employmentType" && formData.salaryType === "MONTHLY") {
       const suggested = getSuggestedSalaryByEmploymentType(
         value,
         salaryReference,
@@ -197,7 +208,7 @@ const EmployeeEditModal = ({
   };
 
   useEffect(() => {
-    if (!isOpen || !salaryReference) return;
+    if (!isOpen || !salaryReference || formData.salaryType !== "MONTHLY") return;
     if (parseCurrencyInputToNumber(formData.baseSalary) > 0) return;
     const suggested = getSuggestedSalaryByEmploymentType(
       formData.employmentType,
@@ -208,7 +219,13 @@ const EmployeeEditModal = ({
       ...prev,
       baseSalary: formatCurrencyDisplay(suggested),
     }));
-  }, [formData.baseSalary, formData.employmentType, isOpen, salaryReference]);
+  }, [
+    formData.baseSalary,
+    formData.employmentType,
+    formData.salaryType,
+    isOpen,
+    salaryReference,
+  ]);
 
   const availableRoleOptions = useMemo(
     () => getStaffRolesByDepartment(formData.department),
@@ -419,6 +436,26 @@ const EmployeeEditModal = ({
       newErrors.emergencyPhone = emergencyPhoneError;
     }
 
+    const salaryType = String(formData.salaryType || "MONTHLY").toUpperCase();
+    const baseSalary = parseCurrencyInputToNumber(formData.baseSalary);
+    const hourlyRate = parseCurrencyInputToNumber(formData.hourlyRate);
+    const commissionRate = Number(formData.commissionRate || 0);
+    if (salaryType === "MONTHLY" && baseSalary <= 0) {
+      newErrors.baseSalary = "Cần nhập lương tháng cho loại lương tháng.";
+    }
+    if (["HOURLY", "SHIFT"].includes(salaryType) && hourlyRate <= 0) {
+      newErrors.hourlyRate =
+        salaryType === "SHIFT"
+          ? "Cần nhập mức tiền mỗi ca."
+          : "Cần nhập mức tiền mỗi giờ.";
+    }
+    if (
+      salaryType === "COMMISSION" &&
+      (!Number.isFinite(commissionRate) || commissionRate <= 0 || commissionRate > 100)
+    ) {
+      newErrors.commissionRate = "Tỷ lệ hoa hồng phải lớn hơn 0 và không vượt quá 100%.";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -434,6 +471,12 @@ const EmployeeEditModal = ({
       const baseSalary = formData.baseSalary
         ? Number(formData.baseSalary.toString().replace(/[^\d]/g, ""))
         : undefined;
+      const hourlyRate = formData.hourlyRate
+        ? Number(formData.hourlyRate.toString().replace(/[^\d]/g, ""))
+        : undefined;
+      const commissionRate = formData.commissionRate
+        ? Number(formData.commissionRate)
+        : undefined;
 
       const roleChanged = Boolean(
         formData.roleSlug && formData.roleSlug !== originalData.roleSlug,
@@ -446,6 +489,9 @@ const EmployeeEditModal = ({
         positionTitle: formData.positionTitle.trim(),
         department: formData.department,
         employmentType: formData.employmentType || undefined,
+        salaryType: formData.salaryType || undefined,
+        hourlyRate,
+        commissionRate,
         phone: formData.phone ? formData.phone.trim() : undefined,
         email: formData.email ? formData.email.trim() : undefined,
         address: formData.address ? { line1: formData.address } : undefined,
@@ -790,8 +836,24 @@ const EmployeeEditModal = ({
       </div>
 
       <div className="form-group">
-        <label className="form-label">Mức lương cơ bản</label>
-        <div className="salary-input-group">
+        <label className="form-label">Cách tính lương</label>
+        <select
+          className="form-select"
+          value={formData.salaryType || "MONTHLY"}
+          onChange={(e) => handleInputChange("salaryType", e.target.value)}
+          disabled={isSubmitting}
+        >
+          <option value="MONTHLY">Theo tháng</option>
+          <option value="HOURLY">Theo giờ</option>
+          <option value="SHIFT">Theo ca</option>
+          <option value="COMMISSION">Theo hoa hồng</option>
+        </select>
+      </div>
+
+      {(formData.salaryType === "MONTHLY" || formData.salaryType === "COMMISSION") && (
+        <div className="form-group">
+          <label className="form-label">Mức lương cơ bản</label>
+          <div className="salary-input-group">
           <input
             type="text"
             className="form-input"
@@ -809,9 +871,58 @@ const EmployeeEditModal = ({
           />
           <span className="salary-currency">VNĐ</span>
         </div>
-        <div className="salary-note">
-          💡 Lương cơ bản chưa bao gồm thưởng và phụ cấp
+          <div className="salary-note">
+            💡 Lương cơ bản chưa bao gồm thưởng và phụ cấp
+          </div>
+          {errors.baseSalary ? <div className="salary-note">{errors.baseSalary}</div> : null}
         </div>
+      )}
+
+      {["HOURLY", "SHIFT"].includes(formData.salaryType) ? (
+        <div className="form-group">
+          <label className="form-label">
+            {formData.salaryType === "SHIFT" ? "Mức tiền mỗi ca" : "Mức tiền mỗi giờ"}
+          </label>
+          <div className="salary-input-group">
+            <input
+              type="text"
+              className="form-input"
+              value={formData.hourlyRate || ""}
+              onChange={(e) =>
+                handleInputChange(
+                  "hourlyRate",
+                  formatCurrencyDisplay(parseCurrencyInputToNumber(e.target.value)),
+                )
+              }
+              placeholder="0"
+              disabled={isSubmitting}
+            />
+            <span className="salary-currency">VNĐ</span>
+          </div>
+          {errors.hourlyRate ? <div className="salary-note">{errors.hourlyRate}</div> : null}
+        </div>
+      ) : null}
+
+      {formData.salaryType === "COMMISSION" ? (
+        <div className="form-group">
+          <label className="form-label">Tỷ lệ hoa hồng</label>
+          <div className="salary-input-group">
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              className="form-input"
+              value={formData.commissionRate || ""}
+              onChange={(e) => handleInputChange("commissionRate", e.target.value)}
+              placeholder="5"
+              disabled={isSubmitting}
+            />
+            <span className="salary-currency">%</span>
+          </div>
+          {errors.commissionRate ? <div className="salary-note">{errors.commissionRate}</div> : null}
+        </div>
+      ) : null}
         <div className="salary-note">
           {salaryReferenceLoading
             ? "Đang tải mức lương tham khảo từ nguồn văn bản nhà nước..."
