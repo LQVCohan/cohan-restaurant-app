@@ -115,6 +115,42 @@ describe("useCart", () => {
     expect(result.current.cart[0].backendCartItemId).toBe("cart-item-1");
   });
 
+  it("uses server quantity and hold state when reconciling an existing line", () => {
+    const { result } = renderHook(() => useCart());
+
+    act(() => {
+      result.current.addToCart({
+        id: "dish-1",
+        dishId: "dish-1",
+        restaurantId: "restaurant-1",
+        name: "Bún bò",
+        price: 70000,
+        quantity: 3,
+        holdExpiresAt: new Date(Date.now() + 300000).toISOString(),
+        holdStatus: "active",
+      });
+      result.current.syncServerCart([
+        {
+          id: "dish-1",
+          dishId: "dish-1",
+          restaurantId: "restaurant-1",
+          name: "Bún bò",
+          price: 70000,
+          quantity: 1,
+          backendCartId: "cart-1",
+          backendCartItemId: "cart-item-1",
+          holdExpiresAt: null,
+          holdStatus: "active",
+        },
+      ]);
+    });
+
+    expect(result.current.cart).toHaveLength(1);
+    expect(result.current.cart[0].quantity).toBe(1);
+    expect(result.current.cart[0].backendCartItemId).toBe("cart-item-1");
+    expect(result.current.cart[0].holdExpiresAt).toBeNull();
+  });
+
   it("updates, removes and clears cart lines", () => {
     const { result } = renderHook(() => useCart());
 
