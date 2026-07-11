@@ -47,7 +47,6 @@ const isAiHandoffThread = (thread) => {
   if (fields.includes("ai_chatbot_handoff") || fields.includes("ai_chatbot")) {
     return true;
   }
-
   if (thread?.metadata?.handoff === true) return true;
 
   return String(thread?.subject || "")
@@ -64,19 +63,14 @@ const TAB_RESOLVED = "resolved";
 
 const resolveSenderLabel = (message) => {
   const role = String(message?.senderRole || "").toLowerCase();
-
   if (role === "guest" || role === "customer") return "Khách hàng";
-
   if (role === "assistant" || role === "ai" || role === "chatbot") {
     return "Trợ lý tự động";
   }
-
   if (["staff", "manager", "admin"].includes(role)) {
     return message?.senderName || "Nhân viên";
   }
-
   if (role === "system") return "Hệ thống";
-
   return message?.senderName || message?.senderRole || "Hệ thống";
 };
 
@@ -93,6 +87,8 @@ const getRestaurantId = (value) => {
 const resolveRestaurantId = ({
   propRestaurantId,
   selectedRestaurantId,
+  activeRestaurantId,
+  activeRestaurant,
   restaurants,
   user,
 }) => {
@@ -101,6 +97,12 @@ const resolveRestaurantId = ({
 
   const fromSelected = getRestaurantId(selectedRestaurantId);
   if (fromSelected) return fromSelected;
+
+  const fromActiveId = getRestaurantId(activeRestaurantId);
+  if (fromActiveId) return fromActiveId;
+
+  const fromActiveRestaurant = getRestaurantId(activeRestaurant);
+  if (fromActiveRestaurant) return fromActiveRestaurant;
 
   const fromStaff = getRestaurantId(user?.restaurantForStaff);
   if (fromStaff) return fromStaff;
@@ -116,6 +118,8 @@ export default function AiHandoffInbox({
 }) {
   const {
     user,
+    activeRestaurant,
+    activeRestaurantId,
     restaurants = [],
     restaurantsLoading = false,
   } = useContext(AuthContext) || {};
@@ -149,10 +153,19 @@ export default function AiHandoffInbox({
       resolveRestaurantId({
         propRestaurantId,
         selectedRestaurantId,
+        activeRestaurantId,
+        activeRestaurant,
         restaurants,
         user,
       }),
-    [propRestaurantId, selectedRestaurantId, restaurants, user],
+    [
+      propRestaurantId,
+      selectedRestaurantId,
+      activeRestaurantId,
+      activeRestaurant,
+      restaurants,
+      user,
+    ],
   );
 
   const activeCommunication = useCommunication({
@@ -236,7 +249,8 @@ export default function AiHandoffInbox({
           notificationId: null,
           threadId: item.id,
           unread: false,
-          preview: item.lastMessagePreview || item.subject || "Yêu cầu cần hỗ trợ",
+          preview:
+            item.lastMessagePreview || item.subject || "Yêu cầu cần hỗ trợ",
           time: item.updatedAt || item.lastMessageAt,
           restaurantId: item.restaurantId,
         }))
@@ -249,7 +263,6 @@ export default function AiHandoffInbox({
 
     for (const item of [...notificationItems, ...threadItems]) {
       const key = item.threadId || item.id;
-
       if (!map.has(key)) {
         map.set(key, item);
       } else {
@@ -291,13 +304,22 @@ export default function AiHandoffInbox({
     setActionError("");
   }, [activeTab]);
 
+  useEffect(() => {
+    openedThreadIdRef.current = "";
+    setActiveTab(TAB_ACTIVE);
+    setSelectedItem(null);
+    setReply("");
+    setWarning("");
+    setActionError("");
+    setResolvedThreadIds(new Set());
+  }, [restaurantId]);
+
   const openItem = async (item) => {
     setWarning("");
     setActionError("");
     setSelectedItem(item);
 
     const threadId = item?.threadId || null;
-
     if (!threadId) {
       setWarning(
         "Thiếu thông tin hội thoại để gửi phản hồi. Vui lòng tải lại trang hoặc chọn yêu cầu khác.",
@@ -307,7 +329,6 @@ export default function AiHandoffInbox({
 
     try {
       const { data } = await loadThread({ variables: { id: threadId } });
-
       if (!data?.chatThread) {
         setActionError(
           "Không thể tải hội thoại hoặc bạn không có quyền truy cập.",
@@ -334,28 +355,42 @@ export default function AiHandoffInbox({
 
   useEffect(() => {
     if (
-      activeTab !== TAB_ACTIVE ||
       !requestedThreadId ||
       openedThreadIdRef.current === requestedThreadId
     ) {
       return;
     }
 
-    const item = mergedItems.find(
+    const activeItem = mergedItems.find(
       (candidate) => String(candidate.threadId || "") === requestedThreadId,
     );
-    if (!item) return;
+    if (activeItem) {
+      if (activeTab !== TAB_ACTIVE) {
+        setActiveTab(TAB_ACTIVE);
+        return;
+      }
+      openedThreadIdRef.current = requestedThreadId;
+      void openItem(activeItem);
+      return;
+    }
 
+    const resolvedItem = resolvedItems.find(
+      (candidate) => String(candidate.threadId || "") === requestedThreadId,
+    );
+    if (!resolvedItem) return;
+    if (activeTab !== TAB_RESOLVED) {
+      setActiveTab(TAB_RESOLVED);
+      return;
+    }
     openedThreadIdRef.current = requestedThreadId;
-    void openItem(item);
-  }, [activeTab, mergedItems, openItem, requestedThreadId]);
+    void openItem(resolvedItem);
+  }, [activeTab, mergedItems, openItem, requestedThreadId, resolvedItems]);
 
   const onSend = async (event) => {
     event.preventDefault();
 
     const content = reply.trim();
     const threadId = thread?.id || selectedItem?.threadId;
-
     if (
       !canResolveHandoff ||
       !content ||
@@ -367,7 +402,6 @@ export default function AiHandoffInbox({
     }
 
     setActionError("");
-
     try {
       await sendMessage({ variables: { input: { threadId, content } } });
       setReply("");
@@ -381,7 +415,6 @@ export default function AiHandoffInbox({
 
   const onResolve = async () => {
     const threadId = thread?.id || selectedItem?.threadId || null;
-
     if (
       !canResolveHandoff ||
       !threadId ||
@@ -392,12 +425,10 @@ export default function AiHandoffInbox({
     }
 
     setActionError("");
-
     try {
       const { data } = await resolveHandoff({
         variables: { input: { chatThreadId: threadId } },
       });
-
       if (!data?.resolveAiChatbotHandoff?.ok) {
         throw new Error(
           data?.resolveAiChatbotHandoff?.message ||
@@ -407,9 +438,7 @@ export default function AiHandoffInbox({
 
       setResolvedThreadIds((current) => new Set(current).add(String(threadId)));
       setReply("");
-
       await loadThread({ variables: { id: threadId } });
-
       runBestEffort(refetchActiveThreads?.());
       runBestEffort(refetchResolvedThreads?.());
       runBestEffort(refetchNotifications?.());
@@ -483,7 +512,6 @@ export default function AiHandoffInbox({
 
                 {restaurants.map((restaurant) => {
                   const id = getRestaurantId(restaurant);
-
                   return (
                     <option key={id} value={id}>
                       {restaurant.name || `Nhà hàng ${String(id).slice(-6)}`}
@@ -523,10 +551,15 @@ export default function AiHandoffInbox({
         ) : currentItems.length === 0 ? (
           <div className="ai-handoff-inbox__content">
             <div className="ai-handoff-inbox__empty">
-              <strong>Chưa có yêu cầu cần hỗ trợ</strong>
+              <strong>
+                {activeTab === TAB_RESOLVED
+                  ? "Chưa có yêu cầu đã xử lý"
+                  : "Chưa có yêu cầu cần hỗ trợ"}
+              </strong>
               <p>
-                Khi khách cần nhân viên hỗ trợ, yêu cầu sẽ xuất hiện ở đây để
-                bạn tiếp nhận nhanh.
+                {activeTab === TAB_RESOLVED
+                  ? "Các phiên hỗ trợ đã hoàn tất sẽ xuất hiện tại đây."
+                  : "Khi khách cần nhân viên hỗ trợ, yêu cầu sẽ xuất hiện ở đây để bạn tiếp nhận nhanh."}
               </p>
             </div>
           </div>
