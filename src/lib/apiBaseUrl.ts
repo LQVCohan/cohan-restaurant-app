@@ -38,36 +38,14 @@ export function getGraphqlUrl() {
 const stripGraphqlSuffix = (value: string) =>
   String(value || "").replace(/\/graphql\/?$/, "").replace(/\/$/, "");
 
-const stripApiSuffix = (value: string) =>
-  String(value || "").replace(/\/api\/?$/, "").replace(/\/$/, "");
-
 export function getBackendRootUrl() {
-  const gqlUrl = getGraphqlUrl();
-  const baseWithoutGraphql = stripGraphqlSuffix(gqlUrl);
-
-  // Non-GraphQL Fastify routes such as /upload, /upload/sign,
-  // /table-3d-assets/upload and /table-3d-ai/generate are mounted at backend
-  // root, not under /api. Keep this helper separate from getApiBaseUrl().
-  if (!baseWithoutGraphql || baseWithoutGraphql === "/") return "";
-
-  if (baseWithoutGraphql.startsWith("/")) {
-    return stripApiSuffix(baseWithoutGraphql);
-  }
-
-  try {
-    const parsed = new URL(baseWithoutGraphql);
-    parsed.pathname = stripApiSuffix(parsed.pathname);
-    parsed.search = "";
-    parsed.hash = "";
-    return parsed.toString().replace(/\/$/, "");
-  } catch {
-    return stripApiSuffix(baseWithoutGraphql);
-  }
+  // Legacy name: these Fastify REST routes are mounted through uploadRoutes
+  // with the shared /api prefix, so they use the same base as other REST calls.
+  return getApiBaseUrl();
 }
 
 export function toBackendRootUrl(pathname: string) {
-  const normalizedPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
-  return `${getBackendRootUrl()}${normalizedPath}`;
+  return toApiUrl(pathname);
 }
 
 export function getApiBaseUrl() {
