@@ -19,12 +19,13 @@ export const resolveMenuTimeSlotAt = (
 
 export const buildFoodDetailPath = (foodId, options = {}) => {
   if (!foodId) return "";
-  const { restaurantId, timeSlot, categoryId, serviceAt } = options;
+  const { restaurantId, timeSlot, categoryId, serviceAt, returnTo } = options;
   const params = new URLSearchParams();
   if (restaurantId) params.set("restaurantId", String(restaurantId));
   if (timeSlot) params.set("timeSlot", String(timeSlot));
   if (categoryId) params.set("categoryId", String(categoryId));
   if (serviceAt) params.set("serviceAt", String(serviceAt));
+  if (returnTo) params.set("returnTo", String(returnTo));
   const query = params.toString();
   return query ? `/food/${foodId}?${query}` : `/food/${foodId}`;
 };
@@ -36,6 +37,7 @@ export const buildFoodDetailState = (item, options = {}) => {
     categoryId,
     selectedVariantKey,
     serviceAt,
+    returnTo,
   } = options;
   return {
     ...(item ? { dish: item } : {}),
@@ -44,5 +46,6 @@ export const buildFoodDetailState = (item, options = {}) => {
     ...(categoryId ? { categoryId } : {}),
     ...(selectedVariantKey ? { selectedVariantKey } : {}),
     ...(serviceAt ? { serviceAt } : {}),
+    ...(returnTo ? { returnTo } : {}),
   };
 };
