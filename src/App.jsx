@@ -23,6 +23,7 @@ import NotificationProvider from "./context/NotificationProvider";
 import { CartProvider } from "./context/CartProvider";
 import { CustomerNotificationProvider } from "./context/CustomerNotificationContext";
 import AiChatbotWidget from "./components/common/AiChatbotWidget";
+import "./components/common/AiChatbotHandoffPolish.scss";
 import AppErrorBoundary from "./components/common/AppErrorBoundary";
 import Table3DPreviewLauncher from "./components/Dashboard_Manager/Table/Table3DPreviewLauncher";
 
@@ -32,6 +33,7 @@ function ScopedAiChatbotWidget() {
     location.pathname.startsWith("/login") ||
     location.pathname.startsWith("/business/register") ||
     location.pathname.startsWith("/manager") ||
+    location.pathname.startsWith("/staff") ||
     location.pathname.startsWith("/preview/") ||
     location.pathname === "/scan-table" ||
     location.pathname.startsWith("/table/")
