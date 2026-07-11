@@ -218,8 +218,8 @@ export const PromotionQuery = {
       throw new Error("Invalid restaurantId");
     }
 
-    const safeLimit = clamp(limit, 1, 100);
-    const safeOffset = Math.max(0, Number(offset) || 0);
+    const safeLimit = clamp(limit, 1, activeOnly ? 100 : 500);
+    const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
 
     const rid = new mongoose.Types.ObjectId(restaurantId);
     if (!activeOnly) {
@@ -231,6 +231,9 @@ export const PromotionQuery = {
     if (activeOnly) {
       query.isActive = true;
       const nowDate = now ? new Date(now) : new Date();
+      if (Number.isNaN(nowDate.getTime())) {
+        throw new Error("Invalid now");
+      }
       query.$and = [
         {
           $or: [
@@ -247,9 +250,6 @@ export const PromotionQuery = {
           ],
         },
       ];
-      query.$expr = {
-        $or: [{ $lte: ["$usageLimit", 0] }, { $lt: ["$usageCount", "$usageLimit"] }],
-      };
     }
 
     const rows = await Promotion.find(query)
