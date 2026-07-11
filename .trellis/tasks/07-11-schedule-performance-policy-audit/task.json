@@ -1,0 +1,30 @@
+{
+  "id": "07-11-schedule-performance-policy-audit",
+  "title": "Align schedule auto-planner contract and performance evaluation descriptions",
+  "status": "in_progress",
+  "type": "fullstack",
+  "scope": [
+    "cohan-restaurant-backend/graphql/schema/staffResolverCompatibility.graphql",
+    "src/__tests__/graphql-schema-validation.test.js",
+    "src/components/Dashboard_Manager/Staff/components/Performance/utils/performanceFormula.js",
+    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.jsx",
+    "src/components/Dashboard_Manager/Staff/components/Performance/utils/performanceReport.js",
+    "cohan-restaurant-backend/models/staffPerformanceSnapshot.model.js"
+  ],
+  "createdAt": "2026-07-11",
+  "updatedAt": "2026-07-11",
+  "validation": {
+    "planned": [
+      "npm run check:graphql",
+      "npm run check:conflicts",
+      "npm run test:performance",
+      "npm run build"
+    ],
+    "notRun": [],
+    "notes": [
+      "GitHub connector is used for the remote checkout; local runtime execution may be unavailable.",
+      "No performance weights or score formula are changed in this task.",
+      "Payroll and attendance risks are documented for follow-up rather than silently changed."
+    ]
+  }
+}
