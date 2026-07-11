@@ -2,8 +2,28 @@ const INSTALL_KEY = "__cohanGuidedAiCaptureCardsCleanup";
 const CARD_SELECTOR =
   ".custom-table-builder-modal .custom-table-builder__image-chip";
 const INPUT_SELECTOR = 'input[type="file"][capture="environment"]';
+const AI_SECTION_SELECTOR =
+  ".custom-table-builder-modal .custom-table-builder__section";
+const HIDDEN_AI_FIELD_LABELS = new Set(["prompt", "khu vuc", "scale", "tag"]);
+const TABLE_TYPE_LABELS = {
+  "round-table": "Bàn tròn",
+  "rect-2-seat": "Bàn chữ nhật 2 chỗ",
+  "rect-4-seat": "Bàn chữ nhật 4 chỗ",
+  "vip-table": "Bàn VIP",
+  "booth-sofa": "Booth / sofa",
+  "bar-table": "Bàn bar",
+  "outdoor-table": "Bàn ngoài trời",
+};
 
 let guideSequence = 0;
+
+const normalizeText = (value) =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
 
 const getDirectChild = (element, tagName) =>
   Array.from(element?.children || []).find(
@@ -17,6 +37,81 @@ const createElement = (tagName, className, text) => {
   element.className = className;
   if (text) element.textContent = text;
   return element;
+};
+
+const isAiSection = (section) =>
+  normalizeText(
+    section?.querySelector(".custom-table-builder__section-heading h4")
+      ?.textContent,
+  ).includes("tao mau bang ai");
+
+const prepareAiMetadataSection = (section) => {
+  if (!section || section.dataset.cohanAiMetadataSimplified === "true") return;
+  if (!isAiSection(section)) return;
+
+  const grid = section.querySelector(":scope > .custom-table-builder__grid");
+  if (!grid) return;
+
+  const fields = Array.from(grid.children).filter((child) =>
+    child.classList?.contains("custom-table-builder__field"),
+  );
+  if (!fields.length) return;
+
+  fields.forEach((field) => {
+    const label = field.querySelector(":scope > .custom-table-builder__label");
+    const normalizedLabel = normalizeText(label?.textContent);
+
+    if (HIDDEN_AI_FIELD_LABELS.has(normalizedLabel)) {
+      field.hidden = true;
+      field.dataset.cohanAiHiddenField = normalizedLabel;
+      return;
+    }
+
+    if (normalizedLabel === "ten mau") {
+      label.textContent = "Tên mẫu (không bắt buộc)";
+      const input = field.querySelector("input");
+      if (input) input.placeholder = "Ví dụ: Bàn gỗ 4 chỗ";
+      return;
+    }
+
+    if (normalizedLabel === "loai ban") {
+      const select = field.querySelector("select");
+      select?.querySelectorAll("option").forEach((option) => {
+        option.textContent = TABLE_TYPE_LABELS[option.value] || option.textContent;
+      });
+      return;
+    }
+
+    if (normalizedLabel === "suc chua") {
+      label.textContent = "Số chỗ ngồi";
+      const input = field.querySelector("input");
+      if (input) input.inputMode = "numeric";
+    }
+  });
+
+  grid.classList.add("cohan-ai-metadata-grid");
+
+  const note = createElement("div", "cohan-ai-metadata-note");
+  const noteTitle = createElement(
+    "strong",
+    "cohan-ai-metadata-note__title",
+    "Hi3D tạo model trực tiếp từ 5 ảnh",
+  );
+  const noteText = createElement(
+    "p",
+    "cohan-ai-metadata-note__text",
+    "Hi3D không nhận prompt và không trả loại bàn hoặc số chỗ ngồi. Chỉ cần chọn hai thông tin này để COHAN lưu mẫu đúng; khu vực, scale và tag được hệ thống giữ mặc định.",
+  );
+  note.append(noteTitle, noteText);
+  grid.insertAdjacentElement("beforebegin", note);
+
+  section.dataset.cohanAiMetadataSimplified = "true";
+};
+
+const prepareAllAiMetadataSections = () => {
+  document
+    .querySelectorAll(AI_SECTION_SELECTOR)
+    .forEach(prepareAiMetadataSection);
 };
 
 const prepareCaptureCard = (card, index) => {
@@ -94,6 +189,11 @@ const prepareCaptureCard = (card, index) => {
 
 const prepareAllCaptureCards = () => {
   document.querySelectorAll(CARD_SELECTOR).forEach(prepareCaptureCard);
+};
+
+const prepareAll = () => {
+  prepareAllAiMetadataSections();
+  prepareAllCaptureCards();
 };
 
 export const installGuidedAiCaptureCards = () => {
@@ -183,13 +283,13 @@ export const installGuidedAiCaptureCards = () => {
         cards.forEach(releasePreview);
       });
     });
-    prepareAllCaptureCards();
+    prepareAll();
   });
 
   document.addEventListener("click", handleClick);
   document.addEventListener("change", handleChange);
   observer.observe(document.body, { childList: true, subtree: true });
-  prepareAllCaptureCards();
+  prepareAll();
 
   const cleanup = () => {
     observer.disconnect();
