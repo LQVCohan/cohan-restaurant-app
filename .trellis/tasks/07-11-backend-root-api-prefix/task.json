@@ -1,0 +1,25 @@
+{
+  "id": "07-11-backend-root-api-prefix",
+  "title": "Sửa 404 các REST route dùng backend root helper",
+  "status": "in_progress",
+  "type": "frontend-bugfix",
+  "scope": [
+    "src/lib/apiBaseUrl.ts",
+    "src/lib/apiBaseUrl.test.js"
+  ],
+  "rootCause": "Fastify registers upload.route.js with the /api prefix, but getBackendRootUrl strips or omits /api. Calls such as /table-3d-ai/generate therefore hit the frontend/Vite origin at the wrong path and return HTTP 404 before reaching the backend.",
+  "validation": {
+    "planned": [
+      "npx vitest run src/lib/apiBaseUrl.test.js src/lib/apiBaseUrl.test.ts",
+      "npx vitest run src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx",
+      "npm run build"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow and ponytail skill",
+      "traced CustomTableModelBuilderModal -> toBackendRootUrl -> Vite/ngrok -> Fastify uploadRoutes",
+      "confirmed uploadRoutes is registered with prefix /api",
+      "inspected every toBackendRootUrl caller and existing URL helper tests"
+    ],
+    "notRun": []
+  }
+}
