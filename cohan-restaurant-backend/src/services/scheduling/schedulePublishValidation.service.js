@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { Shift, Staff } from "../../../models/index.js";
 import { getSchedulingPolicy } from "./schedulingPolicy.service.js";
 import { validateShiftAssignment } from "./shiftAssignmentValidation.service.js";
+import { getStaffMembershipRestaurantFilter } from "../auth/restaurantScope.service.js";
 
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -48,7 +49,14 @@ export async function validateScheduleBeforePublish({ restaurantId, periodStart,
   const issues = [];
   const shifts = await Shift.find({ restaurantId: rid, startTime: { $lte: periodEnd }, endTime: { $gte: periodStart }, status: { $ne: "cancelled" } }).lean();
   const employeeIds = [...new Set(shifts.map((shift) => String(shift.employeeId)).filter(Boolean))];
-  const staffRows = employeeIds.length ? await Staff.find({ _id: { $in: employeeIds } }).lean() : [];
+  const staffScopeFilter = await getStaffMembershipRestaurantFilter(rid, {
+    roles: ["staff", "manager"],
+  });
+  const staffRows = employeeIds.length
+    ? await Staff.find({
+        $and: [{ _id: { $in: employeeIds } }, staffScopeFilter],
+      }).lean()
+    : [];
   const staffById = new Map(staffRows.map((staff) => [String(staff._id), staff]));
   const seenRequired = new Map();
 
@@ -62,7 +70,7 @@ export async function validateScheduleBeforePublish({ restaurantId, periodStart,
       continue;
     }
     const staff = staffById.get(String(shift.employeeId));
-    if (!staff || String(staff.restaurantForStaff || "") !== String(rid)) {
+    if (!staff) {
       pushIssue(issues, { code: "STAFF_NOT_IN_RESTAURANT", severity: "error", message: "Nhân viên trong ca không thuộc nhà hàng.", shiftId: shift._id, employeeId: shift.employeeId });
       continue;
     }
