@@ -26,6 +26,7 @@ import AiChatbotWidget from "./components/common/AiChatbotWidget";
 import "./components/common/AiChatbotHandoffPolish.scss";
 import AppErrorBoundary from "./components/common/AppErrorBoundary";
 import Table3DPreviewLauncher from "./components/Dashboard_Manager/Table/Table3DPreviewLauncher";
+import StaffKitchenFocusLauncher from "./components/Staff/StaffKitchenFocusLauncher";
 
 function ScopedAiChatbotWidget() {
   const location = useLocation();
@@ -55,6 +56,7 @@ function App() {
                 <CartProvider>
                   <AppRouter />
                   <Table3DPreviewLauncher />
+                  <StaffKitchenFocusLauncher />
                   <GlobalMenuAvailabilityPrompt />
                   <ScopedAiChatbotWidget />
                 </CartProvider>
