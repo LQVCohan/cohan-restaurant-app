@@ -1,5 +1,6 @@
 import React from "react";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { useQuery } from "@apollo/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import useManagerRestaurantSelection from "./useManagerRestaurantSelection";
 import { AuthContext } from "../context/AuthContext";
@@ -8,8 +9,15 @@ vi.mock("@apollo/client", async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
-    useQuery: vi.fn(() => ({ data: null, loading: false, error: null, refetch: vi.fn() })),
+    useQuery: vi.fn(),
   };
+});
+
+const emptyQueryResult = () => ({
+  data: null,
+  loading: false,
+  error: null,
+  refetch: vi.fn(),
 });
 
 const createMutableWrapper = (initialValue) => {
@@ -24,6 +32,8 @@ describe("useManagerRestaurantSelection", () => {
   beforeEach(() => {
     localStorage.clear();
     window.history.replaceState(null, "", "/manager#dashboard");
+    useQuery.mockReset();
+    useQuery.mockReturnValue(emptyQueryResult());
   });
 
   it("auto chọn nhà hàng đầu tiên sau khi restaurants load async", async () => {
@@ -96,8 +106,30 @@ describe("useManagerRestaurantSelection", () => {
     expect(localStorage.getItem("manager.selectedRestaurantId")).toBe("r2");
   });
 
-  it("mở dashboard với đúng chi nhánh khi chọn từ trang quản lý chuỗi", async () => {
+  it("dùng MyBrands đang được mutation refetch và mở dashboard với chi nhánh mới chọn", async () => {
     window.history.replaceState(null, "", "/manager#brands");
+    useQuery.mockReturnValue({
+      ...emptyQueryResult(),
+      data: {
+        myBrands: [
+          {
+            id: "b1",
+            name: "Cohan Group",
+            restaurants: [
+              { id: "r1", name: "Cohan Quận 1", brandId: "b1" },
+              { id: "r2", name: "Cohan Thủ Đức", brandId: "b1" },
+            ],
+          },
+        ],
+        myBrandMemberships: [
+          {
+            brandId: "b1",
+            role: "manager",
+            restaurantIds: ["r1", "r2"],
+          },
+        ],
+      },
+    });
     const { Wrapper } = createMutableWrapper({
       user: { id: "u1", userType: "MANAGER" },
       restaurantsLoading: false,
@@ -105,14 +137,7 @@ describe("useManagerRestaurantSelection", () => {
         { id: "r1", name: "Cohan Quận 1", brandId: "b1" },
         { id: "r2", name: "Cohan Thủ Đức", brandId: "b1" },
       ],
-      brandMemberships: [
-        {
-          brandId: "b1",
-          role: "manager",
-          restaurantIds: ["r1", "r2"],
-          brand: { id: "b1", name: "Cohan Group" },
-        },
-      ],
+      brandMemberships: [],
     });
     const onNavigate = vi.fn();
     window.addEventListener("manager:navigate", onNavigate);
@@ -122,6 +147,10 @@ describe("useManagerRestaurantSelection", () => {
         wrapper: Wrapper,
       });
 
+      expect(useQuery).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ skip: false, fetchPolicy: "cache-and-network" }),
+      );
       await waitFor(() => expect(result.current.selectedBrandId).toBe("b1"));
       await waitFor(() => expect(result.current.restaurantOptions).toHaveLength(2));
 
