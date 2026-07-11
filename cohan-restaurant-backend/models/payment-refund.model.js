@@ -26,7 +26,7 @@ const PaymentRefundSchema = BaseSchemaModel({
   reason: { type: String, required: true },
   method: {
     type: String,
-    enum: ["cash", "bank_transfer", "e_wallet", "provider", "card", "other"],
+    enum: ["cash", "bank_transfer", "e_wallet", "provider", "momo", "vnpay", "card", "other"],
     default: "cash",
   },
   status: {
