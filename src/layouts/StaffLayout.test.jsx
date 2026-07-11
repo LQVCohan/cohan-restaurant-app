@@ -20,20 +20,24 @@ const baseUser = {
 };
 const activeRestaurant = { id: "r1", name: "Cohan Test" };
 
-const renderStaffLayout = ({ user = baseUser, route = "/staff/dashboard" } = {}) =>
+const renderStaffLayout = ({
+  user = baseUser,
+  route = "/staff/dashboard",
+  restaurant = activeRestaurant,
+  activeRestaurantId = restaurant?.id,
+  children = <p>Nội dung nhân viên</p>,
+} = {}) =>
   render(
     <MemoryRouter initialEntries={[route]}>
       <AuthContext.Provider
         value={{
           user,
-          activeRestaurant,
-          activeRestaurantId: activeRestaurant.id,
-          restaurants: [activeRestaurant],
+          activeRestaurant: restaurant,
+          activeRestaurantId,
+          restaurants: restaurant ? [restaurant] : [],
         }}
       >
-        <StaffLayout>
-          <p>Nội dung nhân viên</p>
-        </StaffLayout>
+        <StaffLayout>{children}</StaffLayout>
       </AuthContext.Provider>
     </MemoryRouter>,
   );
@@ -47,10 +51,15 @@ describe("StaffLayout", () => {
   it("renders the shell header, scoped restaurant, shared navigation, and active route", () => {
     renderStaffLayout({ route: "/staff/schedule" });
 
-    expect(screen.getByRole("heading", { name: "Vận hành ca làm" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Vận hành ca làm" }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Cohan Test/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Tổng quan" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Lịch cá nhân" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Lịch cá nhân" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     expect(screen.getByRole("link", { name: "Hồ sơ" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Thông báo" })).toBeInTheDocument();
   });
@@ -59,13 +68,17 @@ describe("StaffLayout", () => {
     renderStaffLayout({ user: { ...baseUser, roleSlug: "cashier" } });
 
     expect(screen.getByRole("link", { name: "Order nội bộ" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Bếp / Quầy bar" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Bếp / Quầy bar" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows reservation review navigation only with reservation.read", () => {
     const firstRender = renderStaffLayout();
 
-    expect(screen.queryByRole("link", { name: "Đổi đặt bàn" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Đổi đặt bàn" }),
+    ).not.toBeInTheDocument();
     firstRender.unmount();
 
     renderStaffLayout({
@@ -80,39 +93,86 @@ describe("StaffLayout", () => {
   });
 
   it("shows kitchen navigation only for kitchen-capable roles", () => {
-    renderStaffLayout({ user: { ...baseUser, roleSlug: "chef" }, route: "/staff/kitchen" });
+    renderStaffLayout({
+      user: { ...baseUser, roleSlug: "chef" },
+      route: "/staff/kitchen",
+    });
 
-    expect(screen.getByRole("link", { name: "Bếp / Quầy bar" })).toHaveAttribute("aria-current", "page");
-    expect(screen.queryByRole("link", { name: "Order nội bộ" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Bếp / Quầy bar" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(
+      screen.queryByRole("link", { name: "Order nội bộ" }),
+    ).not.toBeInTheDocument();
   });
 
   it("hides AI handoff navigation without handoff permissions", () => {
     renderStaffLayout();
 
-    expect(screen.queryByRole("link", { name: /Bàn giao hỗ trợ/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Bàn giao hỗ trợ/i }),
+    ).not.toBeInTheDocument();
     expect(useCommunicationMock).not.toHaveBeenCalled();
   });
 
-  it("shows realtime unread AI handoff count for permitted staff", () => {
+  it("shows realtime unread AI handoff count for the effective restaurant", () => {
     useCommunicationMock.mockReturnValue({
       notifications: [
         { id: "n1", type: "ai_chatbot_handoff", readAt: null },
         { id: "n2", type: "ai_chatbot_handoff", readAt: null },
-        { id: "n3", type: "ai_chatbot_handoff", readAt: "2026-07-05T00:00:00.000Z" },
+        {
+          id: "n3",
+          type: "ai_chatbot_handoff",
+          readAt: "2026-07-05T00:00:00.000Z",
+        },
       ],
     });
 
     renderStaffLayout({
+      activeRestaurantId: "active-r2",
+      restaurant: { id: "active-r2", name: "Cohan Active" },
       user: {
         ...baseUser,
+        restaurantForStaff: "legacy-r1",
         permissions: ["ai.chatbot.handoff"],
       },
     });
 
-    expect(screen.getByRole("link", { name: /Bàn giao hỗ trợ/i })).toBeInTheDocument();
-    expect(screen.getByLabelText("2 yêu cầu hỗ trợ chưa đọc")).toHaveTextContent("2");
+    expect(
+      screen.getByRole("link", { name: /Bàn giao hỗ trợ/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("2 yêu cầu hỗ trợ chưa đọc")).toHaveTextContent(
+      "2",
+    );
     expect(useCommunicationMock).toHaveBeenCalledWith(
-      expect.objectContaining({ restaurantId: "r1", notificationsEnabled: true }),
+      expect.objectContaining({
+        restaurantId: "active-r2",
+        notificationsEnabled: true,
+      }),
+    );
+  });
+
+  it("injects the active restaurant into the staff handoff page", () => {
+    const HandoffProbe = ({ restaurantId }) => (
+      <div data-testid="handoff-probe" data-restaurant-id={restaurantId} />
+    );
+
+    renderStaffLayout({
+      route: "/staff/ai-handoff",
+      activeRestaurantId: "active-r2",
+      restaurant: { id: "active-r2", name: "Cohan Active" },
+      user: {
+        ...baseUser,
+        restaurantForStaff: "legacy-r1",
+        permissions: ["ai.chatbot.handoff"],
+      },
+      children: <HandoffProbe />,
+    });
+
+    expect(screen.getByTestId("handoff-probe")).toHaveAttribute(
+      "data-restaurant-id",
+      "active-r2",
     );
   });
 
