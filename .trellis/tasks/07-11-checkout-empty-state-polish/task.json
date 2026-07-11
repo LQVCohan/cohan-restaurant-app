@@ -1,0 +1,24 @@
+{
+  "id": "07-11-checkout-empty-state-polish",
+  "title": "Làm đẹp trạng thái checkout khi giỏ hàng trống",
+  "status": "in_progress",
+  "type": "frontend-ui-polish",
+  "scope": [
+    "src/pages/CheckoutPage.polish.css"
+  ],
+  "rootCause": "CheckoutPage already renders a structured CheckoutBlockedState with card, icon, eyebrow, actions and primary/secondary button classes, but the stylesheet only styles the outer page and applies the same orange treatment to every button. The missing component-level styles leave the content floating in a large empty background and remove the intended action hierarchy.",
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "npm run build",
+      "manual desktop review",
+      "manual 390x844 and 430x932 responsive review"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, ui-ux-pro-max, taste-ui-redesign and redesign-existing-projects skills",
+      "traced /checkout route through MainLayout, CheckoutPage, CartProvider state and CheckoutBlockedState",
+      "confirmed no schema, resolver, GraphQL operation or backend service change is required"
+    ],
+    "notRun": []
+  }
+}
