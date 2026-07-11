@@ -339,15 +339,44 @@ export async function assertAutoSchedulePeriodCanEdit({ restaurantId, periodStar
 export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
   const restaurantId = toObjectId(input.restaurantId);
   if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
-  const periodStart = startOfDay(input.periodStart);
-  const periodEnd = endOfDay(input.periodEnd);
+  const timezone = safeTimeZone(input.timezone);
+  const periodStart = startOfDay(input.periodStart, timezone);
+  const periodEnd = endOfDay(input.periodEnd, timezone);
   const avoidOvertime = input.avoidOvertime !== false;
   const respectAvailability = input.respectAvailability !== false;
   const weeklyHoursCap = Number(input.weeklyHoursCap || 0);
+  const policy = await getSchedulingPolicy({ restaurantId });
+  const fairnessWeight = Math.max(0, Number(policy?.scoringWeights?.fairness || 0));
+  const staffScopeFilter = await getStaffMembershipRestaurantFilter(restaurantId, {
+    roles: ["staff", "manager"],
+  });
 
-  const staffRows = await Staff.find({ userType: "STAFF", restaurantForStaff: restaurantId, $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }] }).lean();
-  const existingShifts = await Shift.find({ restaurantId, status: { $ne: "cancelled" }, startTime: { $lte: periodEnd }, endTime: { $gte: periodStart } }).lean();
-  const demandItems = buildDemandItems(input);
+  const staffRows = await Staff.find({
+    userType: "STAFF",
+    ...staffScopeFilter,
+    $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+  }).lean();
+  const existingShifts = await Shift.find({
+    restaurantId,
+    status: { $ne: "cancelled" },
+    startTime: { $lte: periodEnd },
+    endTime: { $gte: periodStart },
+  }).lean();
+  const demandItems = buildDemandItems({ ...input, timezone });
+  const rotationHoursByEmployee = new Map();
+  existingShifts.forEach((shift) => {
+    if (!shift.employeeId) return;
+    const employeeKey = String(shift.employeeId?._id || shift.employeeId);
+    rotationHoursByEmployee.set(
+      employeeKey,
+      Number(
+        (
+          Number(rotationHoursByEmployee.get(employeeKey) || 0) +
+          hoursBetween(shift.startTime, shift.endTime)
+        ).toFixed(2),
+      ),
+    );
+  });
   const plannedHoursByEmployee = new Map();
   const plannedWindowsByEmployee = new Map();
   const plannedAssignments = [];
@@ -380,10 +409,34 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
         blockedCandidates.push({ shiftKey: demand.shiftKey, employeeId: String(staff._id), requiredRole: demand.requiredRole, issues: normalizeIssueList(blocking) });
         continue;
       }
-      candidates.push({ staff, validation, afterPlanned });
+      candidates.push({
+        staff,
+        validation,
+        afterPlanned,
+        rotationHours: Number(rotationHoursByEmployee.get(String(staff._id)) || 0),
+      });
     }
 
-    candidates.sort((a, b) => Number(b.validation.score || 0) - Number(a.validation.score || 0));
+    const maxRotationHours = candidates.reduce(
+      (max, candidate) => Math.max(max, candidate.rotationHours),
+      0,
+    );
+    candidates.forEach((candidate) => {
+      const fairnessContribution =
+        maxRotationHours > 0
+          ? fairnessWeight * (1 - candidate.rotationHours / maxRotationHours)
+          : 0;
+      candidate.fairnessContribution = Number(fairnessContribution.toFixed(2));
+      candidate.rankScore = Number(
+        (Number(candidate.validation.score || 0) + candidate.fairnessContribution).toFixed(2),
+      );
+    });
+    candidates.sort(
+      (a, b) =>
+        Number(b.rankScore || 0) - Number(a.rankScore || 0) ||
+        Number(b.validation.score || 0) - Number(a.validation.score || 0) ||
+        String(a.staff._id).localeCompare(String(b.staff._id)),
+    );
     const selected = candidates[0] || null;
     if (!selected) {
       const validationIssues = [mapIssue({ code: "NO_ELIGIBLE_CANDIDATE", severity: "error", message: "Không có nhân viên đủ điều kiện." })];
@@ -399,7 +452,15 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
       continue;
     }
     const employeeId = String(selected.staff._id);
-    plannedHoursByEmployee.set(employeeId, Number((Number(plannedHoursByEmployee.get(employeeId) || 0) + hoursBetween(demand.startTime, demand.endTime)).toFixed(2)));
+    const assignedHours = hoursBetween(demand.startTime, demand.endTime);
+    plannedHoursByEmployee.set(
+      employeeId,
+      Number((Number(plannedHoursByEmployee.get(employeeId) || 0) + assignedHours).toFixed(2)),
+    );
+    rotationHoursByEmployee.set(
+      employeeId,
+      Number((Number(rotationHoursByEmployee.get(employeeId) || 0) + assignedHours).toFixed(2)),
+    );
     plannedWindowsByEmployee.set(employeeId, [
       ...(plannedWindowsByEmployee.get(employeeId) || []),
       { startTime: demand.startTime, endTime: demand.endTime },
@@ -411,6 +472,8 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
       employeeId,
       employeeName: selected.staff.fullName || null,
       score: selected.validation.score || 0,
+      selectionScore: selected.rankScore || selected.validation.score || 0,
+      fairnessContribution: selected.fairnessContribution || 0,
       warnings,
       validationIssues: warnings,
     });
