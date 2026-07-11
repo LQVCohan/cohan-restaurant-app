@@ -66,6 +66,12 @@ async function loadThread(threadId, session) {
   return withSession(ChatThread.findById(threadId), session);
 }
 
+const stateChangedError = () => {
+  const error = new Error("HANDOFF_STATE_CHANGED");
+  error.code = "HANDOFF_STATE_CHANGED";
+  return error;
+};
+
 export async function resolveRestaurantChatbotHandoff({
   input,
   user,
@@ -174,9 +180,7 @@ export async function resolveRestaurantChatbotHandoff({
         String(currentConversation.chatThreadId || "") !==
           String(conversation.chatThreadId || "")
       ) {
-        const err = new Error("HANDOFF_STATE_CHANGED");
-        err.code = "HANDOFF_STATE_CHANGED";
-        throw err;
+        throw stateChangedError();
       }
 
       if (thread) {
@@ -199,7 +203,7 @@ export async function resolveRestaurantChatbotHandoff({
         threadWasClosed = Number(threadUpdate?.modifiedCount || 0) === 0;
       }
 
-      await AiChatConversation.updateOne(
+      const conversationUpdate = await AiChatConversation.updateOne(
         {
           _id: conversation._id,
           status: { $in: ["handoff_requested", "closed"] },
@@ -218,6 +222,9 @@ export async function resolveRestaurantChatbotHandoff({
         },
         { session },
       );
+      if (Number(conversationUpdate?.matchedCount || 0) === 0) {
+        throw stateChangedError();
+      }
     });
   } finally {
     await session.endSession();
