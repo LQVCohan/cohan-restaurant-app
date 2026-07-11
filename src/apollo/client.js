@@ -31,12 +31,21 @@ const authLink = setContext((_, { headers }) => {
 });
 
 function makeClientIdempotencyKey(operationName = "order") {
-  const randomPart =
-    typeof globalThis.crypto !== "undefined" &&
-    typeof globalThis.crypto.randomUUID === "function"
-      ? globalThis.crypto.randomUUID()
-      : `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-  return `${operationName}:${randomPart}`;
+  const cryptoApi = globalThis.crypto;
+  let randomPart;
+
+  if (typeof cryptoApi?.randomUUID === "function") {
+    randomPart = cryptoApi.randomUUID();
+  } else if (typeof cryptoApi?.getRandomValues === "function") {
+    const bytes = cryptoApi.getRandomValues(new Uint8Array(16));
+    randomPart = Array.from(bytes, (value) =>
+      value.toString(16).padStart(2, "0"),
+    ).join("");
+  } else {
+    throw new Error("Secure idempotency key generation is unavailable");
+  }
+
+  return `${operationName}:v1:${randomPart}`;
 }
 
 function shouldAttachIdempotency(operationName = "") {
@@ -100,8 +109,13 @@ function storeCheckoutKey(storageKey, key) {
 }
 
 function getStableCheckoutIdempotencyKey(input) {
-  const fingerprint = hashIdempotencyPayload(input);
-  const storageKey = `${CHECKOUT_IDEMPOTENCY_STORAGE_PREFIX}${fingerprint}`;
+  const checkoutAttempt = String(
+    input?.idempotencyKey || input?.clientMeta?.idempotencyKey || "",
+  ).trim();
+  const storageIdentity = checkoutAttempt
+    ? `attempt:${checkoutAttempt}`
+    : `payload:${hashIdempotencyPayload(input)}`;
+  const storageKey = `${CHECKOUT_IDEMPOTENCY_STORAGE_PREFIX}${storageIdentity}`;
   const stored = readStoredCheckoutKey(storageKey);
   if (stored) return stored;
 
