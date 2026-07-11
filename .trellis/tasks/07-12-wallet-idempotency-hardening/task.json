@@ -1,0 +1,20 @@
+{
+  "id": "07-12-wallet-idempotency-hardening",
+  "title": "Unify checkout and wallet idempotency",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "checkout-wallet-idempotency",
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-12",
+  "updatedAt": "2026-07-12",
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "src/apollo/client.js",
+    "cohan-restaurant-backend/src/services/wallet/wallet.service.js",
+    "cohan-restaurant-backend/graphql/schema/wallet.graphql",
+    "cohan-restaurant-backend/tests/services/cohan-wallet-payment-parity.test.js"
+  ]
+}
