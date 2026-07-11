@@ -3,27 +3,26 @@
   "name": "staff-performance-progressive-disclosure",
   "title": "Compact staff performance page",
   "description": "Remove duplicated performance headings and move secondary adjustment/appeal content into an accessible drawer.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend-fix",
   "scope": "staff-performance-ui",
   "priority": "P1",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-12",
-  "completedAt": null,
+  "completedAt": "2026-07-12",
   "branch": "main",
   "base_branch": "main",
-  "commit": null,
+  "commit": "ad4e33cabe9dfe64edf465b548ca34341ad58af7",
   "pr_url": null,
   "relatedFiles": [
     "cohan-restaurant-backend/graphql/schema/staffResolverCompatibility.graphql",
     "cohan-restaurant-backend/src/services/performance/performanceAppeal.service.js",
     "src/hooks/useStaffPerformanceView.js",
     "src/hooks/usePerformanceIncidentAppeals.js",
-    "src/layouts/StaffLayout.jsx",
     "src/components/Staff/StaffPerformance/StaffPerformancePage.jsx",
     "src/components/Staff/StaffPerformance/StaffPerformance.scss",
     "src/components/Staff/StaffPerformance/StaffPerformancePage.test.jsx"
   ],
-  "notes": "Preserve GraphQL contracts, employee/restaurant scoping, appeal validation and notification side effects."
+  "notes": "Completed with one shared page heading, compact KPI and content hierarchy, conditional actions, responsive history/appeal drawer, Escape/backdrop close and regression coverage. StaffLayout was inspected and left unchanged because removing the duplicate inner hero was the smaller root-cause fix. GraphQL contracts, employee/restaurant scoping, appeal validation and notification side effects remain unchanged. Tests/build/browser smoke were not executed because this connector session has no runnable repository checkout; the implementation commit had no workflow or combined status at completion time."
 }
