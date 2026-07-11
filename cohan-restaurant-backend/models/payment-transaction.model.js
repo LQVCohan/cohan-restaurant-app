@@ -33,14 +33,20 @@ const TransactionSchema = BaseSchemaModel(
   {}
 );
 
-TransactionSchema.post("save", async function recordReservationDepositCashflow(doc) {
-  const hasOrders = Boolean(doc.orderId) || (Array.isArray(doc.orderIds) && doc.orderIds.length > 0);
-  const isReservationDeposit = String(doc.note || "").startsWith("Reservation deposit ");
-  if (doc.status !== "SUCCESS" || hasOrders || !isReservationDeposit) return;
+export async function ensurePaymentTransactionCashflow(doc) {
+  if (doc.status !== "SUCCESS") return null;
+
+  const orderIds = Array.isArray(doc.orderIds) ? doc.orderIds.filter(Boolean) : [];
+  const hasOrders = Boolean(doc.orderId) || orderIds.length > 0;
+  const isReservationDeposit =
+    !hasOrders && String(doc.note || "").startsWith("Reservation deposit ");
+  const isWalletOrderPayment = hasOrders && doc.method === "e_wallet";
+  if (!isReservationDeposit && !isWalletOrderPayment) return null;
 
   const Cashflow = mongoose.models.Cashflow;
-  if (!Cashflow) return;
+  if (!Cashflow) return null;
 
+  const source = isReservationDeposit ? "reservation" : "order";
   const session = typeof doc.$session === "function" ? doc.$session() : null;
   const options = {
     upsert: true,
@@ -48,10 +54,10 @@ TransactionSchema.post("save", async function recordReservationDepositCashflow(d
     setDefaultsOnInsert: true,
     ...(session ? { session } : {}),
   };
-  await Cashflow.findOneAndUpdate(
+  return Cashflow.findOneAndUpdate(
     {
       restaurantId: doc.restaurantId,
-      source: "reservation",
+      source,
       "ref.paymentTransactionId": doc._id,
     },
     {
@@ -64,20 +70,28 @@ TransactionSchema.post("save", async function recordReservationDepositCashflow(d
         subcategory: "other",
         method: doc.method,
         status: "completed",
-        source: "reservation",
+        source,
         ref: {
           kind: "PaymentTransaction",
           id: doc._id,
+          orderId: doc.orderId || orderIds[0] || null,
+          orderIds,
           paymentTransactionId: doc._id,
         },
-        note: doc.note,
+        note:
+          doc.note ||
+          (isReservationDeposit
+            ? "Reservation deposit"
+            : "Customer paid by Cohan Wallet"),
         occurredAt: doc.paidAt || new Date(),
         createdBy: doc.createdBy || doc.userId || null,
       },
     },
     options,
   );
-});
+}
+
+TransactionSchema.post("save", ensurePaymentTransactionCashflow);
 
 TransactionSchema.index({ restaurantId: 1, orderId: 1 });
 TransactionSchema.index({ restaurantId: 1, orderIds: 1 });
