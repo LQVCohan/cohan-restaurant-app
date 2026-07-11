@@ -7,6 +7,7 @@ import { isHoldExpired } from "@/hooks/useCart";
 import { AuthContext } from "@/context/AuthContext";
 import { useNotification } from "@/hooks/useNotification";
 import "./CheckoutPage.polish.css";
+import "./CheckoutPage.empty-state.css";
 
 const hasBackendCartRefs = (item) =>
   Boolean(
