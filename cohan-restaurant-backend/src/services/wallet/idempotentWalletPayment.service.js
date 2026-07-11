@@ -65,6 +65,8 @@ function storedOrderIds(transaction, paymentSession) {
 function assertRequestMatches({
   transaction,
   paymentSession,
+  userId,
+  restaurantId,
   requestFingerprint,
   orderIds,
 }) {
@@ -72,8 +74,14 @@ function assertRequestMatches({
     transaction?.meta?.requestFingerprint ||
     paymentSession?.metadata?.requestFingerprint;
   const actualOrderIds = storedOrderIds(transaction, paymentSession);
+  const ownerMismatch = Boolean(
+    paymentSession &&
+      (String(paymentSession.userId || "") !== String(userId) ||
+        String(paymentSession.restaurantId || "") !== String(restaurantId)),
+  );
 
   if (
+    ownerMismatch ||
     (storedFingerprint && storedFingerprint !== requestFingerprint) ||
     (actualOrderIds.length && !sameStrings(actualOrderIds, orderIds))
   ) {
@@ -93,11 +101,6 @@ async function attachIdempotencyMetadata({
   idempotencyKey,
   requestFingerprint,
 }) {
-  const sharedMetadata = {
-    correlationId: idempotencyKey,
-    requestFingerprint,
-  };
-
   await Promise.all([
     PaymentSession.updateOne(
       { provider: WALLET_PROVIDER, reference: idempotencyKey },
@@ -140,8 +143,8 @@ async function attachIdempotencyMetadata({
       {
         $set: {
           correlationId: idempotencyKey,
-          "meta.correlationId": sharedMetadata.correlationId,
-          "meta.requestFingerprint": sharedMetadata.requestFingerprint,
+          "meta.correlationId": idempotencyKey,
+          "meta.requestFingerprint": requestFingerprint,
         },
       },
     ),
@@ -154,7 +157,9 @@ export async function payOrdersWithWallet({
   orderIds = [],
   idempotencyKey,
 }) {
-  if (!mongoose.isValidObjectId(userId)) throw requestError("Unauthorized", "UNAUTHENTICATED");
+  if (!mongoose.isValidObjectId(userId)) {
+    throw requestError("Unauthorized", "UNAUTHENTICATED");
+  }
   if (!mongoose.isValidObjectId(restaurantId)) {
     throw requestError("Invalid restaurantId");
   }
@@ -194,6 +199,8 @@ export async function payOrdersWithWallet({
     assertRequestMatches({
       transaction: existingTransaction,
       paymentSession: existingSession,
+      userId: uid,
+      restaurantId: rid,
       requestFingerprint,
       orderIds: normalizedOrderIds,
     });
@@ -228,6 +235,8 @@ export async function payOrdersWithWallet({
   const settledOrderIds = assertRequestMatches({
     transaction: settledTransaction,
     paymentSession: settledSession,
+    userId: uid,
+    restaurantId: rid,
     requestFingerprint,
     orderIds: normalizedOrderIds,
   });
