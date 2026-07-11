@@ -62,6 +62,23 @@ describe("StaffLayout", () => {
     expect(screen.queryByRole("link", { name: "Bếp / Quầy bar" })).not.toBeInTheDocument();
   });
 
+  it("shows reservation review navigation only with reservation.read", () => {
+    const firstRender = renderStaffLayout();
+
+    expect(screen.queryByRole("link", { name: "Đổi đặt bàn" })).not.toBeInTheDocument();
+    firstRender.unmount();
+
+    renderStaffLayout({
+      user: {
+        ...baseUser,
+        roleSlug: "host",
+        effectivePermissionCodes: ["reservation.read", "reservation.update"],
+      },
+    });
+
+    expect(screen.getByRole("link", { name: "Đổi đặt bàn" })).toBeInTheDocument();
+  });
+
   it("shows kitchen navigation only for kitchen-capable roles", () => {
     renderStaffLayout({ user: { ...baseUser, roleSlug: "chef" }, route: "/staff/kitchen" });
 
