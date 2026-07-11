@@ -149,6 +149,19 @@ function toPrintSettingView(doc) {
   };
 }
 
+function buildDefaultPrintSettingView(restaurantId) {
+  return toPrintSettingView({
+    _id: restaurantId,
+    restaurantId,
+    printers: [],
+    stations: {},
+    templates: DEFAULT_TEMPLATES,
+    jobs: [],
+    createdAt: null,
+    updatedAt: null,
+  });
+}
+
 async function assertRestaurantPermission(ctx, restaurantId, permissionCode) {
   if (!mongoose.isValidObjectId(restaurantId)) {
     throw badInput("Invalid restaurantId");
@@ -204,8 +217,8 @@ async function appendJob(printSettingId, job) {
 export const Query = {
   async printSettings(_, { restaurantId }, ctx) {
     await assertRestaurantPermission(ctx, restaurantId, PERMISSIONS.PRINT_READ);
-    const doc = await findOrCreatePrintSetting(restaurantId);
-    return toPrintSettingView(doc);
+    const doc = await PrintSetting.findOne({ restaurantId }).lean();
+    return doc ? toPrintSettingView(doc) : buildDefaultPrintSettingView(restaurantId);
   },
 };
 
