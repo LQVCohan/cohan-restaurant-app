@@ -1,0 +1,26 @@
+{
+  "id": "07-12-staff-messenger-header-button",
+  "title": "Move staff messenger launcher into header",
+  "status": "in_progress",
+  "type": "frontend-ui",
+  "scope": [
+    "src/layouts/StaffLayout.jsx",
+    "src/layouts/StaffLayout.scss",
+    "src/layouts/StaffLayout.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run src/layouts/StaffLayout.test.jsx",
+      "npm run check:conflicts",
+      "npm run build",
+      "manual review at 390x844, 430x932, 768px and 1440px"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
+      "traced ChatThread -> communication resolver -> useCommunication -> StaffLayout -> ContactsView -> ChatThreadPanel",
+      "confirmed the Liên lạc nav action and fixed floating launcher open the same StaffLayout-owned messenger modal",
+      "confirmed /staff/contacts remains a compatibility redirect and notification thread actions already call the shared openMessenger handler"
+    ],
+    "notRun": []
+  }
+}
