@@ -64,6 +64,28 @@ describe("StaffLayout", () => {
     expect(screen.getByRole("link", { name: "Thông báo" })).toBeInTheDocument();
   });
 
+  it("puts the role workspace first in the visible navigation", () => {
+    const { container, unmount } = renderStaffLayout({
+      user: { ...baseUser, roleSlug: "server" },
+    });
+
+    const navigation = container.querySelector("#staff-shell-navigation");
+    expect(navigation?.querySelector("a")).toHaveTextContent("Order nội bộ");
+    expect(navigation?.querySelector("a")).toHaveClass("is-primary");
+    unmount();
+
+    const kitchenRender = renderStaffLayout({
+      user: { ...baseUser, roleSlug: "chef" },
+    });
+    const kitchenNavigation = kitchenRender.container.querySelector(
+      "#staff-shell-navigation",
+    );
+    expect(kitchenNavigation?.querySelector("a")).toHaveTextContent(
+      "Bếp / Quầy bar",
+    );
+    expect(kitchenNavigation?.querySelector("a")).toHaveClass("is-primary");
+  });
+
   it("shows staff ordering navigation only for order-capable roles", () => {
     renderStaffLayout({ user: { ...baseUser, roleSlug: "cashier" } });
 
