@@ -1,0 +1,28 @@
+{
+  "id": "07-12-growth-recommendation-provenance-ui",
+  "title": "Clarify recommendation data sources and compact growth widgets",
+  "status": "in_progress",
+  "type": "frontend-bugfix",
+  "scope": [
+    "src/components/Dashboard_Manager/Analyst/components/SmartPromotionEngineWidget.jsx",
+    "src/components/Dashboard_Manager/Analyst/components/SmartPromotionEngineWidget.scss",
+    "src/components/Dashboard_Manager/Analyst/components/MenuEngineeringAssistantWidget.jsx",
+    "src/components/Dashboard_Manager/Analyst/components/MenuEngineeringAssistantWidget.scss",
+    "src/components/Dashboard_Manager/Analyst/components/GrowthRecommendationWidgets.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Dashboard_Manager/Analyst/components/GrowthRecommendationWidgets.test.jsx",
+      "npx vitest run src/components/Dashboard_Manager/Analyst/ManagerAnalyst.test.jsx",
+      "npm run build",
+      "manual review at 390x844, 430x932, 1024 and 1440"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
+      "traced analytics resolver -> promotion/menu services -> useAnalyst -> ManagerAnalyst -> growth widgets",
+      "confirmed smart promotion uses orders, customers, promotions, coupons, stock and demand forecast; Gemini only rewrites text",
+      "confirmed menu engineering uses order items, recipe and ingredient cost with a fallback margin"
+    ],
+    "notRun": []
+  }
+}
