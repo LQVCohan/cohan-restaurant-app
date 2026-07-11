@@ -1,7 +1,7 @@
 {
   "id": "07-12-wallet-idempotency-hardening",
   "title": "Unify checkout and wallet idempotency",
-  "status": "in_progress",
+  "status": "done",
   "dev_type": "fullstack",
   "scope": "checkout-wallet-idempotency",
   "priority": "P0",
@@ -9,12 +9,26 @@
   "assignee": "LQVCohan",
   "createdAt": "2026-07-12",
   "updatedAt": "2026-07-12",
+  "completedAt": "2026-07-12",
   "branch": "main",
   "base_branch": "main",
   "relatedFiles": [
     "src/apollo/client.js",
-    "cohan-restaurant-backend/src/services/wallet/wallet.service.js",
+    "cohan-restaurant-backend/src/services/wallet/idempotentWalletPayment.service.js",
+    "cohan-restaurant-backend/graphql/resolvers/wallet/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/order/deferredOnlineCheckout.js",
     "cohan-restaurant-backend/graphql/schema/wallet.graphql",
-    "cohan-restaurant-backend/tests/services/cohan-wallet-payment-parity.test.js"
-  ]
+    "cohan-restaurant-backend/tests/services/cohan-wallet-payment-parity.test.js",
+    "cohan-restaurant-backend/tests/deferredOnlineCheckout.test.js"
+  ],
+  "implementationCommits": [
+    "c029322fc8497234fbca1bfdcfc2e5bdb5e69d20",
+    "5267cc828316f457d69636b17eca0f3155fe88b3",
+    "6c77578b2cffe4105c4e682d5f2b0b1c0dc91824",
+    "c7d020064eefd7e55c8874e1a71530b3b35e5282",
+    "c1728ac83abad715f0bcc8166033b94265920356",
+    "ce5d10037d1a2831b5fcb9937add5401d3892e2a",
+    "1e4fcb78a9f46bdc028b3d45ef8d11b9f61b95e8"
+  ],
+  "notes": "Unified the actual browser key lifecycle in Apollo, required and fingerprint-bound direct wallet keys, routed all current wallet callers through one shared boundary, and added targeted regression contracts. Targeted tests, GraphQL validation, and build were not executed because this connector session has no runnable checkout; GitHub reported no workflow runs or statuses for the code commit."
 }
