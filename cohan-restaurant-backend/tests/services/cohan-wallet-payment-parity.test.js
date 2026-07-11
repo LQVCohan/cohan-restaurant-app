@@ -105,6 +105,10 @@ describe("Cohan wallet payment parity", () => {
     expect(walletIdempotencySource).toContain("requestFingerprint");
     expect(walletIdempotencySource).toContain("correlationId");
     expect(walletIdempotencySource).toContain("settledTransaction");
+    expect(walletIdempotencySource).toContain(
+      "if (error?.code !== 11000) throw error;",
+    );
+    expect(walletIdempotencySource).toContain("racedSession");
     expect(walletResolverSource).toContain(
       "idempotentWalletPayment.service.js",
     );
