@@ -458,6 +458,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const [handoffRequested, setHandoffRequested] = useState(false);
   const [handoffClosed, setHandoffClosed] = useState(false);
   const [handoffConnecting, setHandoffConnecting] = useState(false);
+  const [staffReplyBaseline, setStaffReplyBaseline] = useState(0);
   const [latestStaffReplyAt, setLatestStaffReplyAt] = useState("");
   const [isSendInFlight, setIsSendInFlight] = useState(false);
   const sendInFlightRef = useRef(false);
@@ -618,10 +619,11 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       }).filter((action) => action?.type !== "handoff"),
     [handoffEnabled, lastActions],
   );
-  const hasStaffReply = useMemo(
-    () => messages.some((item) => item?.role === "staff"),
+  const staffReplyCount = useMemo(
+    () => messages.filter((item) => item?.role === "staff").length,
     [messages],
   );
+  const hasStaffReply = staffReplyCount > staffReplyBaseline;
   const supportState = handoffConnecting
     ? "connecting"
     : handoffRequested
@@ -632,6 +634,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
         ? "closed"
         : "idle";
   const isHumanSupportActive = handoffRequested && !handoffClosed;
+  const isHumanSupportMode = handoffConnecting || isHumanSupportActive;
 
   useEffect(() => {
     if (!guestId || typeof window === "undefined") return;
@@ -722,6 +725,12 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       setHandoffClosed(true);
       setHandoffConnecting(false);
       setConversationId("");
+      setLastActions([]);
+      setMenuSourceCards([]);
+      setLastContextSummary(null);
+      setLastQuickReplies(
+        buildStarterMessages({ restaurantId, publicSettings }),
+      );
       if (typeof window === "undefined") return;
       if (closedConversationId) {
         window.localStorage.removeItem(
@@ -739,7 +748,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
         window.localStorage.removeItem(restaurantStorageKey);
       }
     },
-    [conversationId, restaurantStorageKey],
+    [conversationId, publicSettings, restaurantId, restaurantStorageKey],
   );
 
   const fetchGuestReplies = useCallback(
@@ -896,7 +905,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       sendInFlightRef.current
     )
       return;
-    if (!chatbotEnabled) {
+    if (!chatbotEnabled && !isHumanSupportActive) {
       setMessages((c) => [
         ...c,
         { role: "assistant", content: handoffUnavailableMessage },
@@ -1230,6 +1239,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
             "1",
           );
         }
+        setStaffReplyBaseline(staffReplyCount);
         setConversationId(activeConversationId);
         setHandoffRequested(true);
         setHandoffClosed(false);
@@ -1372,9 +1382,9 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     <div className="ai-chatbot-widget" aria-live="polite">
       {open ? (
         <section
-          className={`ai-chatbot-panel ${selectedMenuItemSource ? "is-expanded" : ""} ${isHumanSupportActive ? "is-human-support" : ""}`}
+          className={`ai-chatbot-panel ${selectedMenuItemSource ? "is-expanded" : ""} ${isHumanSupportMode ? "is-human-support" : ""}`}
           aria-label={
-            isHumanSupportActive
+            isHumanSupportMode
               ? "Trò chuyện trực tiếp với nhân viên nhà hàng"
               : "Trợ lý A.I hỗ trợ nhà hàng"
           }
@@ -1382,7 +1392,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
           <header className="ai-chatbot-header">
             <div className="ai-chatbot-title">
               <span className="ai-chatbot-avatar">
-                {isHumanSupportActive ? (
+                {isHumanSupportMode ? (
                   <Headphones size={20} />
                 ) : (
                   <Bot size={20} />
@@ -1390,13 +1400,15 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
               </span>
               <div>
                 <strong>
-                  {isHumanSupportActive ? "Hỗ trợ trực tiếp" : "Trợ lý Cohan"}
+                  {isHumanSupportMode ? "Hỗ trợ trực tiếp" : "Trợ lý Cohan"}
                 </strong>
                 <small>
-                  {isHumanSupportActive
-                    ? hasStaffReply
-                      ? "Đang trò chuyện với nhân viên nhà hàng"
-                      : "Đang chờ nhân viên tiếp nhận"
+                  {isHumanSupportMode
+                    ? handoffConnecting
+                      ? "Đang kết nối đến nhà hàng"
+                      : hasStaffReply
+                        ? "Đang trò chuyện với nhân viên nhà hàng"
+                        : "Yêu cầu đã gửi, đang chờ tiếp nhận"
                     : restaurantId
                       ? "Hỗ trợ theo nhà hàng bạn đang xem"
                       : "Hỗ trợ khách hàng"}
@@ -1406,7 +1418,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="Đóng trợ lý hỗ trợ"
+              aria-label="Đóng chatbot – Đóng trợ lý hỗ trợ"
             >
               <X size={18} />
             </button>
@@ -1597,7 +1609,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                   </button>
                 </div>
               </div>
-            ) : !isHumanSupportActive ? (
+            ) : !isHumanSupportMode ? (
               <>
                 {lastContextSummary ? (
                   <div className="ai-chatbot-context">
@@ -1657,7 +1669,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
           </div>
 
           {!selectedMenuItemSource &&
-          !isHumanSupportActive &&
+          !isHumanSupportMode &&
           visibleActions.length ? (
             <div
               className="ai-chatbot-actions ai-chatbot-action-cards"
@@ -1690,7 +1702,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
           ) : null}
 
           {!selectedMenuItemSource &&
-          !isHumanSupportActive &&
+          !isHumanSupportMode &&
           lastQuickReplies.length ? (
             <div className="ai-chatbot-quick-replies">
               {lastQuickReplies.map((reply) => (
@@ -1758,13 +1770,13 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
               value={input}
               onChange={(event) => setInput(event.target.value)}
               placeholder={
-                chatbotEnabled
-                  ? isHumanSupportActive
-                    ? hasStaffReply
-                      ? "Nhắn tiếp cho nhân viên..."
-                      : "Mô tả thêm để nhân viên hỗ trợ..."
-                    : getInputPlaceholder(restaurantId)
-                  : "Chatbot đang tạm tắt cho nhà hàng này"
+                isHumanSupportActive
+                  ? hasStaffReply
+                    ? "Nhắn tiếp cho nhân viên..."
+                    : "Mô tả thêm để nhân viên hỗ trợ..."
+                  : chatbotEnabled
+                    ? getInputPlaceholder(restaurantId)
+                    : "Chatbot đang tạm tắt cho nhà hàng này"
               }
               aria-label={
                 isHumanSupportActive
@@ -1773,7 +1785,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
               }
               maxLength={500}
               disabled={
-                !chatbotEnabled ||
+                (!chatbotEnabled && !isHumanSupportActive) ||
                 loading ||
                 guestSendLoading ||
                 handoffLoading ||
@@ -1784,7 +1796,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
             <button
               type="submit"
               disabled={
-                !chatbotEnabled ||
+                (!chatbotEnabled && !isHumanSupportActive) ||
                 loading ||
                 guestSendLoading ||
                 handoffLoading ||
@@ -1807,7 +1819,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
           className="ai-chatbot-toggle"
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Mở trợ lý hỗ trợ"
+          aria-label="Mở ChatBot A.I – Mở trợ lý hỗ trợ"
         >
           <MessageCircle size={24} />
           <span>AI</span>
