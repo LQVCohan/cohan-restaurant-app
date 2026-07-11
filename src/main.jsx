@@ -78,6 +78,7 @@ import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/S
 import "./styles/ResponsiveFoundation.css";
 import "./styles/CustomTableBuilderResponsiveFix.css";
 import "./styles/GuidedAiCaptureCards.css";
+import "./styles/AiTableMetadataSimplification.css";
 import "./styles/AvailabilitySnapshotOverlayLight.css";
 
 const normalizeLegacyManagerHash = () => {
