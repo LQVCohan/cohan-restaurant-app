@@ -1,7 +1,7 @@
 {
   "id": "07-12-staff-kitchen-focus-mode",
   "title": "Staff kitchen focus mode",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-ui",
   "scope": [
     "src/components/Staff/StaffKitchenFocusLauncher.jsx",
@@ -21,9 +21,22 @@
       "traced OrderItem.station through ordersByRestaurantNow, useOrderManagement, StaffKitchenPage filters/actions and updateOrderItemStatus",
       "inspected OrderManagement focusMode, Escape handling, body scroll lock and fixed full-screen layout",
       "inspected StaffLayout and confirmed a fixed kitchen page can cover navigation without changing permissions or data flow",
-      "inspected the existing Table3DPreviewLauncher portal pattern and selected the same route-scoped launcher approach",
-      "confirmed the missing behavior is a focus presentation boundary, not a schema/resolver/hook issue"
+      "inspected the existing Table3DPreviewLauncher portal pattern and reused it for a route-scoped kitchen launcher",
+      "mounted the focus launcher globally without changing AppRouter, StaffLayout or StaffKitchenPage business behavior",
+      "ported the focus action into the existing restaurant venue block",
+      "added full-screen body-class presentation, dark kitchen board surfaces, compact sticky hero and larger queue cards",
+      "preserved the current kitchen, bar or combined selection because the existing StaffKitchenPage instance is not remounted",
+      "added visible exit, Escape handling and exact body overflow restoration",
+      "added targeted tests for button exit, Escape exit, unmount cleanup and route visibility",
+      "re-fetched App.jsx, launcher, stylesheet and test files and reviewed their final imports, selectors and cleanup paths",
+      "confirmed no workflow run or commit status check was attached to the final commits"
     ],
-    "notRun": []
+    "notRun": [
+      "Vitest was not run because the GitHub connector does not provide a repository runtime",
+      "staff theme check was not run",
+      "frontend build was not run",
+      "responsive browser checks at 390x844, 430x932, 768px, 1024px and 1440px were not run",
+      "real-device review was not run"
+    ]
   }
 }
