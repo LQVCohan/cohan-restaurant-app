@@ -1,0 +1,29 @@
+{
+  "id": "07-11-vnpay-platform-mode-resolution",
+  "name": "vnpay-platform-mode-resolution",
+  "title": "Sửa ghép sai mode và credential VNPAY",
+  "description": "Đảm bảo credential nền tảng sandbox không bị dùng với cổng VNPAY production và mọi payment session tạo URL theo mode credential thực tế.",
+  "status": "in_progress",
+  "dev_type": "backend-bugfix",
+  "scope": "payment-provider-credential-mode",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "parent": "07-11-restaurant-payment-credentials",
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/payment/paymentCredential.service.js",
+    "cohan-restaurant-backend/src/services/payment/paymentSession.service.js",
+    "cohan-restaurant-backend/tests/services/payment-platform-mode.service.test.js",
+    ".env.example"
+  ],
+  "notes": "PaymentSession pre-save already resolves restaurant/platform credentials correctly, but platform credentials have no explicit real mode and provider URL creation still uses Restaurant.paymentSettings.mode instead of PaymentSession.providerCredentialMode.",
+  "meta": {
+    "skills": ["ponytail"]
+  }
+}
