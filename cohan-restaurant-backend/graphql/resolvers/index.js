@@ -32,6 +32,7 @@ import customerFavorite from "./customerFavorite/index.js";
 import shippingTracking from "./shippingTracking/index.js";
 import supplier from "./supplier/index.js";
 import promotion from "./promotion/index.js";
+import customerPromotionPreview from "./customerPromotionPreview/index.js";
 import customerCombo from "./customerCombo/index.js";
 import coupon from "./coupon/index.js";
 import userCoupon from "./userCoupon/index.js";
@@ -93,6 +94,7 @@ export default {
     ...(search.Query || {}),
     ...(supplier.Query || {}),
     ...(promotion.Query || {}),
+    ...(customerPromotionPreview.Query || {}),
     ...(customerCombo.Query || {}),
     ...(coupon.Query || {}),
     ...(userCoupon.Query || {}),
