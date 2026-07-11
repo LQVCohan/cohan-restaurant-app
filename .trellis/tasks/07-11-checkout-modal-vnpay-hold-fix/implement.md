@@ -2,11 +2,19 @@
 
 - [x] Trace cart schema, cart hold mutation, checkout resolver, Apollo mutation and modal action.
 - [x] Trace VNPAY session creation, provider configuration, payment authorization and callback flow.
-- [ ] Bypass duplicate checkout-hold pre-processing and keep the canonical checkout transaction.
-- [ ] Enforce email-or-phone contact validation at the backend trust boundary.
-- [ ] Allow customers to create payment sessions only for their own orders.
-- [ ] Add VNPAY to the active customer checkout modal.
-- [ ] Make full name optional and compact the confirmation modal layout.
-- [ ] Add focused regression tests.
-- [ ] Re-fetch changed files and review callers/usages.
-- [ ] Record CI, build and manual-browser validation status.
+- [x] Bypass duplicate checkout-hold pre-processing and keep the canonical checkout transaction.
+- [x] Enforce email-or-phone contact validation at the backend trust boundary.
+- [x] Allow customers to create payment sessions only for their own orders.
+- [x] Add VNPAY to the active customer checkout modal.
+- [x] Make full name optional and compact the confirmation modal layout.
+- [x] Add focused regression tests.
+- [x] Remove the superseded checkout modal implementation and its obsolete test.
+- [x] Re-fetch changed files and review callers/usages.
+- [x] Verify frontend/backend lint, focused tests, menu RBAC, build and Playwright smoke in CI run 8253.
+- [x] Restore the repository's standard CI gates after the verification run.
+
+## Not run
+
+- Real VNPAY sandbox transaction from browser through provider ReturnURL/IPN.
+- Manual visual review on a physical 390×844 device and desktop POS browser.
+- A clean standard full-suite run is still blocked by unrelated baseline failures recorded in PR #1350.
