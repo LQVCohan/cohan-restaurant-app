@@ -2,67 +2,83 @@ import { gql } from "@apollo/client";
 import { useCallback } from "react";
 import { useLazyQuery } from "@apollo/client/react";
 
+const DISCOUNT_BREAKDOWN_FIELDS = gql`
+  fragment CustomerDiscountBreakdownFields on DiscountBreakdown {
+    subtotal
+    eligibleSubtotal
+    promotionDiscount
+    voucherDiscount
+    couponDiscount
+    shippingDiscount
+    totalDiscount
+    discount
+    promotionLines {
+      lineId
+      dishId
+      menuId
+      categoryId
+      name
+      quantity
+      lineSubtotal
+      promotionId
+      promotionName
+      promotionScope
+      discountType
+      discountValue
+      discount
+    }
+    eligibleGiftItems {
+      promotionId
+      promotionName
+      promotionCode
+      buyItemId
+      buyItemName
+      giftItemId
+      giftItemName
+      giftItemImage
+      giftItemPrice
+      giftMenuId
+      giftCategoryId
+      giftDefaultServingKey
+      buyQuantity
+      getQuantity
+      purchasedQuantity
+      giftQuantityLimit
+      giftQuantityInOrder
+      missingGiftQuantity
+      message
+    }
+    service
+    serviceRate
+    tax
+    taxRate
+    shippingFee
+    finalTotal
+    grandTotal
+    voucherCode
+    couponId
+    appliedPromotions
+    appliedCoupons
+    discountReason
+  }
+`;
+
 export const PREVIEW_ORDER_DISCOUNT = gql`
   query PreviewOrderDiscount($input: PreviewOrderDiscountInput!) {
     previewOrderDiscount(input: $input) {
-      subtotal
-      eligibleSubtotal
-      promotionDiscount
-      voucherDiscount
-      couponDiscount
-      shippingDiscount
-      totalDiscount
-      discount
-      promotionLines {
-        lineId
-        dishId
-        menuId
-        categoryId
-        name
-        quantity
-        lineSubtotal
-        promotionId
-        promotionName
-        promotionScope
-        discountType
-        discountValue
-        discount
-      }
-      eligibleGiftItems {
-        promotionId
-        promotionName
-        promotionCode
-        buyItemId
-        buyItemName
-        giftItemId
-        giftItemName
-        giftItemImage
-        giftItemPrice
-        giftMenuId
-        giftCategoryId
-        giftDefaultServingKey
-        buyQuantity
-        getQuantity
-        purchasedQuantity
-        giftQuantityLimit
-        giftQuantityInOrder
-        missingGiftQuantity
-        message
-      }
-      service
-      serviceRate
-      tax
-      taxRate
-      shippingFee
-      finalTotal
-      grandTotal
-      voucherCode
-      couponId
-      appliedPromotions
-      appliedCoupons
-      discountReason
+      ...CustomerDiscountBreakdownFields
     }
   }
+  ${DISCOUNT_BREAKDOWN_FIELDS}
+`;
+
+export const CUSTOMER_PROMOTION_PREVIEW = gql`
+  query CustomerPromotionPreview($input: CustomerPromotionPreviewInput!) {
+    customerPromotionPreview(input: $input) {
+      ...CustomerDiscountBreakdownFields
+    }
+  }
+  ${DISCOUNT_BREAKDOWN_FIELDS}
 `;
 
 export function getDiscountPreviewErrorMessage(error) {
@@ -80,6 +96,10 @@ export function getDiscountPreviewErrorMessage(error) {
 
   if (code === "BAD_USER_INPUT") {
     return message || "Coupon hoặc khuyến mãi không hợp lệ.";
+  }
+
+  if (code === "PROMOTION_USAGE_LIMIT_REACHED") {
+    return "Khuyến mãi vừa hết lượt sử dụng. Vui lòng kiểm tra lại tổng tiền.";
   }
 
   if (/usage limit/i.test(message)) {
@@ -120,6 +140,31 @@ export function useDiscountPreview() {
   return {
     previewOrderDiscount,
     breakdown: state.data?.previewOrderDiscount || null,
+    loading: state.loading,
+    error: state.error,
+    errorMessage: state.error
+      ? getDiscountPreviewErrorMessage(state.error)
+      : "",
+    called: state.called,
+  };
+}
+
+export function useCustomerPromotionPreview() {
+  const [runPreview, state] = useLazyQuery(CUSTOMER_PROMOTION_PREVIEW, {
+    fetchPolicy: "network-only",
+  });
+
+  const previewCustomerPromotion = useCallback(
+    async (input) => {
+      const response = await runPreview({ variables: { input } });
+      return response?.data?.customerPromotionPreview || null;
+    },
+    [runPreview],
+  );
+
+  return {
+    previewCustomerPromotion,
+    breakdown: state.data?.customerPromotionPreview || null,
     loading: state.loading,
     error: state.error,
     errorMessage: state.error
