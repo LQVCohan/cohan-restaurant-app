@@ -850,7 +850,7 @@ const EmployeeEditModal = ({
         </select>
       </div>
 
-      {(formData.salaryType === "MONTHLY" || formData.salaryType === "COMMISSION") && (
+      {formData.salaryType === "MONTHLY" && (
         <div className="form-group">
           <label className="form-label">Mức lương cơ bản</label>
           <div className="salary-input-group">
