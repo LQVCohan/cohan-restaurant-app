@@ -103,6 +103,25 @@ const staffSchema = new mongoose.Schema(
   }
 );
 
+staffSchema.pre(/^find/, function includeCompleteCompensationProjection() {
+  const projection = this.projection();
+  if (!projection || Object.keys(projection).length === 0) return;
+
+  const isInclusionProjection = Object.values(projection).some(
+    (value) => value === 1 || value === true,
+  );
+  const requestsCompensationProfile =
+    projection.baseSalary || projection.salaryType || projection.hourlyRate;
+
+  if (
+    isInclusionProjection &&
+    requestsCompensationProfile &&
+    projection.commissionRate == null
+  ) {
+    this.select({ commissionRate: 1 });
+  }
+});
+
 
 export const Staff =
   mongoose.models.Staff || User.discriminator("Staff", staffSchema, "STAFF");
