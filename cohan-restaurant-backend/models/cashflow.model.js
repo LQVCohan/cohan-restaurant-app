@@ -121,22 +121,12 @@ CashflowSchema.index(
   },
 );
 CashflowSchema.index(
-  { "ref.paymentTransactionId": 1 },
+  { "ref.paymentTransactionId": 1, source: 1 },
   {
     unique: true,
     partialFilterExpression: {
       "ref.paymentTransactionId": { $type: "objectId" },
-      source: "reservation",
-    },
-  },
-);
-CashflowSchema.index(
-  { "ref.paymentTransactionId": 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      "ref.paymentTransactionId": { $type: "objectId" },
-      source: "order",
+      source: { $in: ["order", "reservation"] },
     },
   },
 );
