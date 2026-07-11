@@ -372,6 +372,7 @@ type User {
   terminationReason: String
 
   salaryType: StaffSalaryType
+  commissionRate: Float
 
   insuranceEligible: Boolean
   insuranceStartDate: DateTime
@@ -679,6 +680,8 @@ input CreateUserInput {
   emergencyContact: EmergencyContactInput
 
   hourlyRate: Float
+  commissionRate: Float
+  salaryType: StaffSalaryType
   baseSalary: Int
   allowanceAmount: Float
   dateOfBirth: DateTime
@@ -732,6 +735,8 @@ input UpdateUserInput {
   noteInternal: String
 
   hourlyRate: Float
+  commissionRate: Float
+  salaryType: StaffSalaryType
   baseSalary: Int
   allowanceAmount: Float
   dateOfBirth: DateTime
