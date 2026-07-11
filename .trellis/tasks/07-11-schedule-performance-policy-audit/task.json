@@ -1,7 +1,7 @@
 {
   "id": "07-11-schedule-performance-policy-audit",
   "title": "Align schedule auto-planner contract and performance evaluation descriptions",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "fullstack",
   "scope": [
     "cohan-restaurant-backend/graphql/schema/staffResolverCompatibility.graphql",
@@ -15,17 +15,24 @@
   "createdAt": "2026-07-11",
   "updatedAt": "2026-07-11",
   "validation": {
-    "planned": [
+    "completed": [
+      "static schema -> resolver/service -> Apollo/UI contract audit",
+      "static schedule -> attendance -> payroll -> performance risk audit",
+      "re-fetched target files from branch after each write",
+      "draft PR opened as #1354"
+    ],
+    "notRun": [
       "npm run check:graphql",
       "npm run check:conflicts",
       "npm run test:performance",
-      "npm run build"
+      "npm run build",
+      "browser smoke"
     ],
-    "notRun": [],
     "notes": [
-      "GitHub connector is used for the remote checkout; local runtime execution may be unavailable.",
-      "No performance weights or score formula are changed in this task.",
-      "Payroll and attendance risks are documented for follow-up rather than silently changed."
+      "GitHub connector workspace has no runnable repository checkout.",
+      "gh CLI is unavailable in the environment.",
+      "CI workflow run 29140208472 is still in_progress.",
+      "No performance weights or payroll calculation rules were changed."
     ]
   }
 }
