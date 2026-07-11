@@ -9,6 +9,7 @@ import CustomerRequestQueuePanel from "@/components/Dashboard_Manager/POS/compon
 import "./StaffLayout.scss";
 import "./StaffWorkspaceOverrides.scss";
 import {
+  getStaffWorkspacePath,
   resolveUserRoleName,
   STAFF_KITCHEN_ROLES,
   STAFF_ORDER_ROLES,
@@ -230,6 +231,10 @@ export default function StaffLayout({ children }) {
     isOrderWorkspace &&
     canReceiveOrderNotice &&
     Boolean(orderNoticeRestaurantId);
+  const primaryWorkspacePath = useMemo(
+    () => getStaffWorkspacePath(user),
+    [user],
+  );
   const scopedChildren = useMemo(() => {
     if (
       !location.pathname.startsWith("/staff/ai-handoff") ||
@@ -283,20 +288,23 @@ export default function StaffLayout({ children }) {
     [],
   );
 
-  const visibleNavItems = useMemo(
-    () =>
-      navItems.filter((item) => {
-        if (
-          Array.isArray(item.permissions) &&
-          !hasAnyPermission(user, item.permissions)
-        ) {
-          return false;
-        }
-        if (!Array.isArray(item.roles)) return true;
-        return item.roles.includes(normalizedRole);
-      }),
-    [navItems, normalizedRole, user],
-  );
+  const visibleNavItems = useMemo(() => {
+    const filteredItems = navItems.filter((item) => {
+      if (
+        Array.isArray(item.permissions) &&
+        !hasAnyPermission(user, item.permissions)
+      ) {
+        return false;
+      }
+      if (!Array.isArray(item.roles)) return true;
+      return item.roles.includes(normalizedRole);
+    });
+
+    return [
+      ...filteredItems.filter((item) => item.to === primaryWorkspacePath),
+      ...filteredItems.filter((item) => item.to !== primaryWorkspacePath),
+    ];
+  }, [navItems, normalizedRole, primaryWorkspacePath, user]);
 
   return (
     <div className="staff-shell">
@@ -376,6 +384,8 @@ export default function StaffLayout({ children }) {
                         key={item.to}
                         className={`staff-shell__nav-link ${
                           active ? "is-active" : ""
+                        } ${
+                          item.to === primaryWorkspacePath ? "is-primary" : ""
                         }`}
                         to={item.to}
                         onClick={() => setMenuOpen(false)}
