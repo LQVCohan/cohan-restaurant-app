@@ -11,7 +11,7 @@ const TransactionSchema = BaseSchemaModel(
     userId: { type: Types.ObjectId, ref: "User" },
     method: {
       type: String,
-      enum: ["cash", "card", "transfer", "bank_transfer", "e_wallet", "momo", "vnpay", "other"],
+      enum: ["cash", "card", "transfer", "bank_transfer", "e_wallet", "provider", "momo", "vnpay", "other"],
       required: true,
     },
     paidAmount: { type: Number, required: true },
