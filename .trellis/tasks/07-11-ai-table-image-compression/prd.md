@@ -6,31 +6,34 @@ The five-photo AI table flow stores original camera files, then rejects any imag
 
 ## Flow
 
-`CustomTableModelBuilderModal` camera input -> `aiForm.images` -> `validateAiForm` -> `FormData` -> `/table-3d-ai/generate` -> backend image validation -> Hi3D.
+`CustomTableModelBuilderModal` camera input -> guided capture enhancer -> React `aiForm.images` -> `validateAiForm` -> `FormData` -> `/table-3d-ai/generate` -> backend image validation -> Hi3D.
 
 ## Root cause
 
-The frontend validates source file size before using the existing `compressImageForUpload` helper. The upload limit is correct; the missing step is client-side optimization before that final validation.
+The original camera change reaches React before the existing browser image compressor is used. The upload limit is correct; the missing step is optimizing each selected photo before React stores and validates it.
 
 ## Scope
 
-- Reuse `compressImageForUpload`.
-- Compress images sequentially before upload to avoid decoding five large phone photos at once.
+- Reuse `compressImageForUpload` from `compressAvatar.js`.
+- Intercept only the five rear-camera inputs in the custom table modal.
+- Clear the original file from React state while optimization runs, then redispatch the optimized file through the same native change event.
 - Limit the longest edge to 1920 px and target 4 MB per image.
-- Keep the existing 5 MB validation after compression.
-- Show optimization progress and prevent repeat submission while optimizing.
+- Keep the existing 5 MB frontend/backend validation as a final safety check.
+- Show per-photo optimizing, success, size, and failure feedback.
 
 ## Acceptance criteria
 
-- A supported source image above 5 MB is optimized before validation and upload.
-- All five images remain in front, left, right, rear, top order.
-- Uploaded files remain PNG, JPEG, or WebP and each is at most 5 MB.
+- A supported source image above 5 MB is optimized before React validation and upload.
+- The five image slots and front, left, right, rear, top order are unchanged.
+- Optimized files remain PNG, JPEG, or WebP and target less than 4 MB.
+- The submit action cannot use the original oversized file while optimization is running because that slot is temporarily cleared.
 - Existing metadata, backend route, Hi3D provider behavior, and catalog creation are unchanged.
-- Compression errors are shown in the existing error card.
+- Compression failure leaves the slot empty and asks the user to capture it again.
 
 ## Validation
 
 ```bash
+npx vitest run src/utils/installGuidedAiCaptureCards.test.js
 npx vitest run src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx
 npm run build
 ```
