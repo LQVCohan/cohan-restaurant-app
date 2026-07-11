@@ -12,6 +12,7 @@
     "src/components/Dashboard_Manager/Reservations/ReservationChangeReviewPage.test.jsx",
     "src/layouts/StaffLayout.jsx",
     "src/layouts/StaffLayout.test.jsx",
+    "src/routes/__tests__/AppRouter.test.jsx",
     "src/utils/frontendRoleAccess.js",
     "src/utils/frontendRoleAccess.test.js"
   ],
@@ -26,6 +27,8 @@
       "read project instructions and relevant skills",
       "traced final GraphQL resolver composition and frontend role flow",
       "verified permission constants and re-fetched changed files from main",
+      "aligned reservation navigation with both route roles and reservation.read",
+      "updated PrivateRoute tests to the current auth state contract",
       "added focused regression tests"
     ],
     "notRun": [
