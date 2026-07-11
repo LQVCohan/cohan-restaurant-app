@@ -83,8 +83,12 @@ const EmployeeEditModal = ({
         email: source.email || employee.email || "",
         address: source.address?.line1 || employee.address || "",
         baseSalary: source.baseSalary || employee.salary || "",
-        salaryType: String(source.salaryType || employee.salaryType || "monthly").toUpperCase(),
-        hourlyRate: source.hourlyRate ? formatCurrencyDisplay(source.hourlyRate) : "",
+        salaryType: String(
+          source.salaryType || employee.salaryType || "monthly",
+        ).toUpperCase(),
+        hourlyRate: source.hourlyRate
+          ? formatCurrencyDisplay(source.hourlyRate)
+          : "",
         commissionRate:
           source.commissionRate !== undefined && source.commissionRate !== null
             ? String(source.commissionRate)
@@ -186,7 +190,11 @@ const EmployeeEditModal = ({
       return next;
     });
 
-    if (field === "baseSalary" || field === "hourlyRate" || field === "commissionRate") {
+    if (
+      field === "baseSalary" ||
+      field === "hourlyRate" ||
+      field === "commissionRate"
+    ) {
       setSalaryManuallyEdited(true);
     }
     if (field === "positionTitle") setPositionTitleSelectionSource("manual");
@@ -451,9 +459,12 @@ const EmployeeEditModal = ({
     }
     if (
       salaryType === "COMMISSION" &&
-      (!Number.isFinite(commissionRate) || commissionRate <= 0 || commissionRate > 100)
+      (!Number.isFinite(commissionRate) ||
+        commissionRate <= 0 ||
+        commissionRate > 100)
     ) {
-      newErrors.commissionRate = "Tỷ lệ hoa hồng phải lớn hơn 0 và không vượt quá 100%.";
+      newErrors.commissionRate =
+        "Tỷ lệ hoa hồng phải lớn hơn 0 và không vượt quá 100%.";
     }
 
     setErrors(newErrors);
@@ -854,34 +865,38 @@ const EmployeeEditModal = ({
         <div className="form-group">
           <label className="form-label">Mức lương cơ bản</label>
           <div className="salary-input-group">
-          <input
-            type="text"
-            className="form-input"
-            value={formData.baseSalary || ""}
-            onChange={(e) =>
-              handleInputChange(
-                "baseSalary",
-                formatCurrencyDisplay(
-                  parseCurrencyInputToNumber(e.target.value),
-                ),
-              )
-            }
-            placeholder="8000000"
-            disabled={isSubmitting}
-          />
-          <span className="salary-currency">VNĐ</span>
-        </div>
+            <input
+              type="text"
+              className="form-input"
+              value={formData.baseSalary || ""}
+              onChange={(e) =>
+                handleInputChange(
+                  "baseSalary",
+                  formatCurrencyDisplay(
+                    parseCurrencyInputToNumber(e.target.value),
+                  ),
+                )
+              }
+              placeholder="8000000"
+              disabled={isSubmitting}
+            />
+            <span className="salary-currency">VNĐ</span>
+          </div>
           <div className="salary-note">
             💡 Lương cơ bản chưa bao gồm thưởng và phụ cấp
           </div>
-          {errors.baseSalary ? <div className="salary-note">{errors.baseSalary}</div> : null}
+          {errors.baseSalary ? (
+            <div className="salary-note">{errors.baseSalary}</div>
+          ) : null}
         </div>
       )}
 
       {["HOURLY", "SHIFT"].includes(formData.salaryType) ? (
         <div className="form-group">
           <label className="form-label">
-            {formData.salaryType === "SHIFT" ? "Mức tiền mỗi ca" : "Mức tiền mỗi giờ"}
+            {formData.salaryType === "SHIFT"
+              ? "Mức tiền mỗi ca"
+              : "Mức tiền mỗi giờ"}
           </label>
           <div className="salary-input-group">
             <input
@@ -891,7 +906,9 @@ const EmployeeEditModal = ({
               onChange={(e) =>
                 handleInputChange(
                   "hourlyRate",
-                  formatCurrencyDisplay(parseCurrencyInputToNumber(e.target.value)),
+                  formatCurrencyDisplay(
+                    parseCurrencyInputToNumber(e.target.value),
+                  ),
                 )
               }
               placeholder="0"
@@ -899,7 +916,9 @@ const EmployeeEditModal = ({
             />
             <span className="salary-currency">VNĐ</span>
           </div>
-          {errors.hourlyRate ? <div className="salary-note">{errors.hourlyRate}</div> : null}
+          {errors.hourlyRate ? (
+            <div className="salary-note">{errors.hourlyRate}</div>
+          ) : null}
         </div>
       ) : null}
 
@@ -914,52 +933,55 @@ const EmployeeEditModal = ({
               step="0.1"
               className="form-input"
               value={formData.commissionRate || ""}
-              onChange={(e) => handleInputChange("commissionRate", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("commissionRate", e.target.value)
+              }
               placeholder="5"
               disabled={isSubmitting}
             />
             <span className="salary-currency">%</span>
           </div>
-          {errors.commissionRate ? <div className="salary-note">{errors.commissionRate}</div> : null}
+          {errors.commissionRate ? (
+            <div className="salary-note">{errors.commissionRate}</div>
+          ) : null}
         </div>
       ) : null}
-        <div className="salary-note">
-          {salaryReferenceLoading
-            ? "Đang tải mức lương tham khảo từ nguồn văn bản nhà nước..."
-            : `Mức tham khảo: ${formatCurrencyDisplay(
-                getSuggestedSalaryByEmploymentType(
-                  formData.employmentType,
-                  salaryReference,
-                ),
-              )} VNĐ. Bạn có thể chỉnh sửa thủ công.`}
-        </div>
-        {salaryReference && (
-          <div className="salary-note">
-            Nguồn: {salaryReference.decreeName} ({salaryReference.year}) ·{" "}
-            <a
-              href={salaryReference.decreeUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              văn bản
-            </a>{" "}
-            ·{" "}
-            <a
-              href={salaryReference.articleUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              cổng công bố
-            </a>
-            {!salaryReference.isLive && (
-              <>
-                {" "}
-                · Đang dùng fallback tham chiếu khi chưa fetch được nguồn live.
-              </>
-            )}
-          </div>
-        )}
+      <div className="salary-note">
+        {salaryReferenceLoading
+          ? "Đang tải mức lương tham khảo từ nguồn văn bản nhà nước..."
+          : `Mức tham khảo: ${formatCurrencyDisplay(
+              getSuggestedSalaryByEmploymentType(
+                formData.employmentType,
+                salaryReference,
+              ),
+            )} VNĐ. Bạn có thể chỉnh sửa thủ công.`}
       </div>
+      {salaryReference && (
+        <div className="salary-note">
+          Nguồn: {salaryReference.decreeName} ({salaryReference.year}) ·{" "}
+          <a
+            href={salaryReference.decreeUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            văn bản
+          </a>{" "}
+          ·{" "}
+          <a
+            href={salaryReference.articleUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            cổng công bố
+          </a>
+          {!salaryReference.isLive && (
+            <>
+              {" "}
+              · Đang dùng fallback tham chiếu khi chưa fetch được nguồn live.
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 
