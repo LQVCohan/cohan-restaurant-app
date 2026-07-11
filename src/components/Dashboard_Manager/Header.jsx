@@ -4,6 +4,7 @@ import { FiAlertTriangle, FiBell, FiCheckCircle, FiChevronDown, FiHelpCircle, Fi
 import SearchBox from "../SearchBox/SearchBox";
 import ManagerAccountCenter from "./Account/ManagerAccountCenter";
 import RestaurantCuisineOnboarding from "./RestaurantSetup/RestaurantCuisineOnboarding";
+import ManagerMenuCatalogModal from "./Menu/ManagerMenuCatalogModal";
 import "./Styles/Header.scss";
 import "./Styles/HeaderShellFix.scss";
 import "./Account/ManagerAccountOverlay.scss";
@@ -50,6 +51,7 @@ const Header = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [accountTab, setAccountTab] = useState(null);
+  const [showMenuCatalog, setShowMenuCatalog] = useState(false);
   const [localNotifications, setLocalNotifications] = useState(notifications);
   const [showBadge, setShowBadge] = useState(readBadgePreference);
   const [avatarImageFailed, setAvatarImageFailed] = useState(false);
@@ -60,6 +62,7 @@ const Header = ({
   const userMenuRef = useRef(null);
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+  const accountId = String(user?.id || user?._id || "anonymous");
 
   const normalizedUser = useMemo(() => getDisplayUser(user), [user]);
   const systemRoleLabel = useMemo(() => getSystemRoleLabel(user), [user]);
@@ -77,10 +80,19 @@ const Header = ({
     [activeBrand?.restaurants, selectedRestaurantId],
   );
   const showCuisineOnboarding = !isAdminRole(user) && selectedRestaurant?.initialSetup?.status === "pending";
+  const showMenuCatalogAction = pageTitle === "Quản lý menu" || pageTitle === "Quản lý thực đơn";
   const unreadCount = localNotifications.filter((item) => !item.read).length;
 
   useEffect(() => setLocalNotifications(Array.isArray(notifications) ? notifications : []), [notifications]);
-  useEffect(() => setAvatarImageFailed(false), [avatarSrc]);
+  useEffect(() => setAvatarImageFailed(false), [accountId, avatarSrc]);
+  useEffect(() => {
+    setShowNotifications(false);
+    setShowUserMenu(false);
+    setAccountTab(null);
+    setShowMenuCatalog(false);
+    setAvatarImageFailed(false);
+    setSelectedRestaurantId(readSelectedRestaurantId());
+  }, [accountId]);
   useEffect(() => {
     document.body.classList.toggle("manager-dark-mode", isDarkMode);
     localStorage.setItem("manager.darkMode", isDarkMode ? "1" : "0");
@@ -146,7 +158,12 @@ const Header = ({
     openNotificationAction(notification);
   };
 
-  const handleLogout = () => { closeMenus(); logout?.(); };
+  const handleLogout = () => {
+    closeMenus();
+    setAccountTab(null);
+    setShowMenuCatalog(false);
+    logout?.();
+  };
   const toggleDarkMode = () => { setIsDarkMode((value) => !value); setShowUserMenu(false); };
 
   return (
@@ -162,6 +179,18 @@ const Header = ({
 
           <div className="header__center"><SearchBox items={searchItems} onSelectItem={onSelectSearchResult} placeholder="Tìm kiếm trang quản lý..." /></div>
           {scopeSelector && <div className="header__scope">{scopeSelector}</div>}
+          {showMenuCatalogAction ? (
+            <button
+              type="button"
+              className="manager-menu-catalog-trigger"
+              onClick={() => setShowMenuCatalog(true)}
+              disabled={!selectedRestaurantId}
+              title={selectedRestaurantId ? "Xem menu và món theo khung giờ" : "Chọn chi nhánh trước"}
+            >
+              <FiPackage aria-hidden="true" />
+              <span>Danh sách thực đơn</span>
+            </button>
+          ) : null}
 
           <div className="header__right">
             <div className="time-display hide-mobile"><div className="current-time">{formatTime()}</div><div className="current-status"><span className="status-dot" />Đang hoạt động</div></div>
@@ -216,14 +245,21 @@ const Header = ({
           </div>
         </div>
       </header>
-      {accountTab && <ManagerAccountCenter initialTab={accountTab} onClose={() => setAccountTab(null)} />}
+      {accountTab && <ManagerAccountCenter key={`${accountId}:${accountTab}`} initialTab={accountTab} onClose={() => setAccountTab(null)} />}
       {showCuisineOnboarding && (
         <RestaurantCuisineOnboarding
-          key={selectedRestaurant.id || selectedRestaurant._id}
+          key={`${accountId}:${selectedRestaurant.id || selectedRestaurant._id}`}
           restaurant={selectedRestaurant}
           openRequest={cuisineOnboardingRequest}
         />
       )}
+      <ManagerMenuCatalogModal
+        key={`${accountId}:${selectedRestaurantId || "no-restaurant"}`}
+        isOpen={showMenuCatalog}
+        onClose={() => setShowMenuCatalog(false)}
+        restaurantId={selectedRestaurantId}
+        restaurantName={selectedRestaurant?.name || ""}
+      />
     </>
   );
 };
