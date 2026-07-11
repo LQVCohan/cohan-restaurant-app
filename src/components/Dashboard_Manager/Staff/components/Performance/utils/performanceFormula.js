@@ -15,7 +15,7 @@ export const PERFORMANCE_FORMULA_ITEMS = [
     key: "quality",
     label: "Chất lượng",
     weight: 20,
-    description: "Điểm kỹ năng theo role; chỉ trừ khi có bằng chứng phù hợp vai trò",
+    description: "Phục vụ/host: phản hồi khách; thu ngân: lỗi nghiệp vụ; bếp/bar: work item; role khác: kỹ năng quản lý; chỉ trừ khi có bằng chứng đúng role.",
   },
   {
     key: "managerReview",
@@ -27,7 +27,7 @@ export const PERFORMANCE_FORMULA_ITEMS = [
     key: "compliance",
     label: "Tuân thủ",
     weight: 10,
-    description: "Mỗi yêu cầu chỉnh công hiện trừ 7 điểm, có dữ liệu thì tối thiểu 75",
+    description: "Mọi role: mỗi yêu cầu chỉnh công trừ 7 điểm trong Tuân thủ; incident ngoài chấm công chỉ cộng/trừ sau duyệt; điểm thành phần có sàn 75 khi đủ dữ liệu.",
   },
 ];
 
