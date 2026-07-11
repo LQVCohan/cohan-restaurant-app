@@ -1,27 +1,37 @@
 {
   "id": "07-11-staff-role-access-hardening",
   "title": "Harden staff role and station access",
-  "status": "in_progress",
+  "status": "completed",
   "type": "full-stack-bugfix",
   "scope": [
     "cohan-restaurant-backend/graphql/resolvers/order/accessGuard.js",
     "cohan-restaurant-backend/graphql/resolvers/order/queryCoreRecovery.js",
     "cohan-restaurant-backend/tests/resolvers/order-station-access.test.js",
+    "cohan-restaurant-backend/tests/resolvers/order-core-recovery-station.test.js",
     "src/components/Dashboard_Manager/Reservations/ReservationChangeReviewPage.jsx",
+    "src/components/Dashboard_Manager/Reservations/ReservationChangeReviewPage.test.jsx",
+    "src/layouts/StaffLayout.jsx",
+    "src/layouts/StaffLayout.test.jsx",
     "src/utils/frontendRoleAccess.js",
     "src/utils/frontendRoleAccess.test.js"
   ],
   "validation": {
     "planned": [
-      "cd cohan-restaurant-backend && npx vitest run tests/resolvers/order-station-access.test.js",
-      "npx vitest run src/utils/frontendRoleAccess.test.js",
-      "npm run check:graphql",
-      "npm run build"
+      "backend focused Vitest suites",
+      "frontend focused Vitest suites",
+      "GraphQL schema check",
+      "frontend build"
     ],
     "completed": [
-      "read AGENTS.md, Trellis workflow, ponytail, and cross-layer guide",
-      "traced role data, backend permission guards, GraphQL order queries/mutations, staff routes, and UI actions"
+      "read project instructions and relevant skills",
+      "traced final GraphQL resolver composition and frontend role flow",
+      "verified permission constants and re-fetched changed files from main",
+      "added focused regression tests"
     ],
-    "notRun": []
+    "notRun": [
+      "automated tests",
+      "GraphQL schema check",
+      "frontend build"
+    ]
   }
 }
