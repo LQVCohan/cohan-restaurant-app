@@ -134,8 +134,6 @@ export function withDeferredOnlineCheckout(mutation = {}) {
             $set: {
               "payment.method": "wallet",
               "payment.status": "paid",
-              "payment.paidAt": new Date(),
-              "payment.transactionId": walletPayment.paymentTransactionId,
             },
           },
         );
