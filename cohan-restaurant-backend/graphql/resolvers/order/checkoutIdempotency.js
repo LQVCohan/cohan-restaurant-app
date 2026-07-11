@@ -37,7 +37,7 @@ export function withCheckoutIdempotency(mutations = {}) {
         });
       } catch (error) {
         if (error?.extensions?.code === "CHECKOUT_IN_PROGRESS") {
-          const recovered = await loadCheckoutResult({ key, claim: null });
+          const recovered = await loadCheckoutResult({ key, claim: null, userId });
           if (recovered) {
             await markCheckoutCompleted({ key, result: recovered });
             return recovered;
@@ -50,6 +50,7 @@ export function withCheckoutIdempotency(mutations = {}) {
         const existing = await loadCheckoutResult({
           key,
           claim: claimResult.claim,
+          userId,
         });
         if (existing) return existing;
 
