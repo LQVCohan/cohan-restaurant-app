@@ -54,6 +54,41 @@ function isValidLatLng(lat, lng) {
   );
 }
 
+const isPaymentSettingsPath = (key) =>
+  key === "paymentSettings" || key.startsWith("paymentSettings.");
+
+export function protectPaymentSettingsUpdate(update = {}) {
+  if (!update || typeof update !== "object" || Array.isArray(update)) return update;
+
+  const directKeys = Object.keys(update).filter((key) => !key.startsWith("$"));
+  const operatorEntries = ["$set", "$unset"].flatMap((operator) =>
+    Object.keys(update[operator] || {}).map((key) => [operator, key]),
+  );
+  const hasPaymentSettings =
+    directKeys.some(isPaymentSettingsPath) ||
+    operatorEntries.some(([, key]) => isPaymentSettingsPath(key));
+  if (!hasPaymentSettings) return update;
+
+  const hasUnrelatedField =
+    directKeys.some((key) => !isPaymentSettingsPath(key)) ||
+    operatorEntries.some(([, key]) => !isPaymentSettingsPath(key));
+  if (!hasUnrelatedField) return update;
+
+  const next = { ...update };
+  for (const key of directKeys) {
+    if (isPaymentSettingsPath(key)) delete next[key];
+  }
+  for (const operator of ["$set", "$unset"]) {
+    if (!next[operator]) continue;
+    next[operator] = { ...next[operator] };
+    for (const key of Object.keys(next[operator])) {
+      if (isPaymentSettingsPath(key)) delete next[operator][key];
+    }
+    if (!Object.keys(next[operator]).length) delete next[operator];
+  }
+  return next;
+}
+
 const paymentProviderConfigSchema = new mongoose.Schema({
   provider: { type: String, enum: ["momo", "vnpay"], required: true },
   label: { type: String, default: "" },
@@ -174,6 +209,12 @@ const restaurantSchema = BaseSchemaModel({
   brandId: { type: mongoose.Schema.Types.ObjectId, ref: "Brand", index: true },
   initialSetup: { type: restaurantInitialSetupSchema, default: undefined },
 });
+
+for (const operation of ["findOneAndUpdate", "updateOne", "updateMany"]) {
+  restaurantSchema.pre(operation, function protectPaymentSettingsFromMixedUpdate() {
+    this.setUpdate(protectPaymentSettingsUpdate(this.getUpdate()));
+  });
+}
 
 restaurantSchema.index({ status: 1, avgRating: -1 });
 restaurantSchema.index({ businessStatus: 1, publicationStatus: 1, operationalStatus: 1 });
