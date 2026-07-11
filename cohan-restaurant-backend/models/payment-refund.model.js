@@ -20,7 +20,7 @@ const PaymentRefundSchema = BaseSchemaModel({
   restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true, index: true },
   orderId: { type: Types.ObjectId, ref: "Order", index: true },
   invoiceId: { type: Types.ObjectId, ref: "Invoice", index: true },
-  paymentTransactionId: { type: Types.ObjectId, ref: "PaymentTransaction", index: true },
+  paymentTransactionId: { type: Types.ObjectId, ref: "Transaction", index: true },
   amount: { type: Number, required: true, min: 0 },
   currency: { type: String, default: "VND" },
   reason: { type: String, required: true },
