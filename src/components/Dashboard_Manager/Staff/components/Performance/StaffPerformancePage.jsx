@@ -106,28 +106,28 @@ const COMPONENT_META = {
     label: "Năng suất",
     icon: TrendingUp,
     description:
-      "Khối lượng xử lý trong kỳ so với mặt bằng nhân viên cùng nhà hàng.",
+      "Tỷ lệ thời lượng làm thực tế trên thời lượng ca được phân công; số order chỉ dùng để tham khảo.",
   },
   punctuality: {
     label: "Đúng giờ",
     icon: CalendarDays,
-    description: "Đi trễ, về sớm, vắng mặt và tổng số phút vi phạm.",
+    description: "Điểm nền 100, trừ theo số lượt và số phút đi trễ, về sớm, vắng mặt; khi có dữ liệu điểm thành phần không thấp hơn 75.",
   },
   quality: {
     label: "Chất lượng",
     icon: Award,
-    description: "Đánh giá chất lượng phục vụ/vận hành hiện có.",
+    description: "Server/host dùng phản hồi khách hàng đủ mẫu; cashier dùng thêm lỗi nghiệp vụ; bếp chính/phụ bếp dùng lỗi bếp gắn đúng role; role khác dùng điểm kỹ năng quản lý.",
   },
   managerReview: {
     label: "Đánh giá quản lý",
     icon: ClipboardEdit,
     description:
-      "Đánh giá định kỳ từ manager/HR về thái độ, kỹ năng và phối hợp.",
+      "Điểm tổng quan do manager/HR nhập và là thành phần 20%; thái độ/phối hợp được lưu làm ngữ cảnh review, chưa có trọng số riêng.",
   },
   compliance: {
     label: "Tuân thủ",
     icon: ShieldCheck,
-    description: "Mức độ tuân thủ quy trình, ít chỉnh công và ít vi phạm.",
+    description: "Mỗi yêu cầu chỉnh công hiện trừ 7 điểm trong thành phần Tuân thủ; sự cố chỉ trừ thêm khi được duyệt riêng.",
   },
 };
 
@@ -228,7 +228,7 @@ const QUALITY_ROLE_LABELS = {
   cashier: "Thu ngân",
   head_chef: "Bếp chính",
   assistant_chef: "Phụ bếp",
-  other: "Khác",
+  other: "Vai trò khác (bar, vệ sinh, giao hàng, kho...)",
 };
 const STATUS_BADGES = {
   pending: "Chờ xem xét",
@@ -339,22 +339,22 @@ const ReviewModal = ({
             {
               key: "managerRatingScore",
               label: "Đánh giá tổng quan",
-              help: "Mức độ hoàn thành công việc và độ phù hợp vận hành.",
+              help: "Điểm tổng quan là thành phần Đánh giá quản lý 20% trong công thức nền.",
             },
             {
               key: "attitudeScore",
               label: "Thái độ",
-              help: "Tinh thần phục vụ, trách nhiệm, thái độ với khách và đồng đội.",
+              help: "Lưu làm căn cứ trao đổi với quản lý; hiện chưa có trọng số riêng trong công thức.",
             },
             {
               key: "teamworkScore",
               label: "Phối hợp đội nhóm",
-              help: "Khả năng hỗ trợ ca, phối hợp bếp/phục vụ/quầy.",
+              help: "Lưu làm căn cứ trao đổi với quản lý; hiện chưa có trọng số riêng trong công thức.",
             },
             {
               key: "skillScore",
               label: "Kỹ năng",
-              help: "Kỹ năng chuyên môn theo role: server, cashier, cook, bartender...",
+              help: "Là điểm nền cho Quality; hệ thống chỉ trừ thêm khi có bằng chứng đúng nhóm role.",
             },
           ].map((field) => (
             <label key={field.key} className="review-score-field">
@@ -512,8 +512,8 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
               <li><span>Delta điều chỉnh cuối</span><strong>{hasAdjustment ? formatDelta(adjustmentDelta) : "0"}</strong></li>
               <li className="total"><span>Final score = Base formula score + Final adjustment delta</span><strong>{scoreText(finalPerformanceScore)}</strong></li>
             </ul>
-            {adjustmentDelta < 0 ? <p className="formula-note warning-note">Điểm cuối đã bao gồm điểm trừ từ sự cố đã được quản lý xác nhận.</p> : null}
-            {appealReversalDelta > 0 ? <p className="formula-note success-note">Điểm cuối đã bao gồm điểm hoàn từ khiếu nại được chấp nhận.</p> : null}
+            {adjustmentDelta < 0 ? <p className="formula-note warning-note">Điểm trừ sự cố chỉ được áp dụng sau khi quản lý xác nhận trách nhiệm và duyệt áp dụng.</p> : null}
+            {appealReversalDelta > 0 ? <p className="formula-note success-note">Điểm được hoàn lại từ khiếu nại được chấp nhận, không phải điểm thưởng mới.</p> : null}
           </div>
 
           <div className="score-formula-card">
@@ -636,7 +636,7 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
               {customerRating.hasRating ? <span>{customerRating.hint}</span> : null}
             </div>
             <p className="formula-note">
-              Đánh giá khách hàng chỉ là dữ liệu tham khảo cho quản lý.
+              Đánh giá khách hàng chỉ là bằng chứng Quality cho nhóm order/phục vụ và thu ngân khi đủ mẫu; không thay thế điểm quản lý.
             </p>
             {snapshot.factors?.productivitySource === "shift_completion" ? (
               <p className="formula-note">
@@ -712,8 +712,8 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
               <div className="factor-grid">
                 <span>Nhóm vai trò: {QUALITY_ROLE_LABELS[qualityEvidence?.roleGroup] || QUALITY_ROLE_LABELS.other}</span>
                 <span>Điểm kỹ năng nền: {qualityEvidence?.baseSkillScore ?? 75}</span>
-                <span>Trừ phản hồi khách hàng: {qualityEvidence?.customerPenalty ?? 0}</span>
-                <span>Trừ vận hành bếp/bar: {qualityEvidence?.kitchenPenalty ?? 0}</span>
+                <span>Trừ phản hồi khách hàng đủ điều kiện: {qualityEvidence?.customerPenalty ?? 0}</span>
+                <span>Trừ lỗi bếp/bar có thể quy trách nhiệm: {qualityEvidence?.kitchenPenalty ?? 0}</span>
                 {(qualityEvidence?.roleGroup === "cashier" || Number(qualityEvidence?.cashierOperationalPenalty || 0) > 0) ? (
                   <span>Trừ nghiệp vụ thu ngân: {qualityEvidence?.cashierOperationalPenalty ?? 0}</span>
                 ) : null}
