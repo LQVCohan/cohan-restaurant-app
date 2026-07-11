@@ -181,7 +181,8 @@ export default function ContactsView({
         className={`staff-messenger ${activeThreadId ? "is-thread-open" : ""}`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleId}
+        aria-labelledby={activeThreadId ? undefined : titleId}
+        aria-label={activeThreadId ? "Hội thoại nhân viên" : undefined}
       >
         {activeThreadId ? (
           <ChatThreadPanel
