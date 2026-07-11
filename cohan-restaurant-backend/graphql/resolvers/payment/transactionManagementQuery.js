@@ -35,11 +35,71 @@ const isRefundCashflow = (cashflow = {}) =>
   normalize(cashflow.note).includes("refund") ||
   normalize(cashflow.note).includes("hoàn");
 
-const classifyFallbackCategory = (cashflow = {}) => {
+const classifyCost = (cashflow = {}) => {
+  const category = normalize(cashflow.category);
+  const subcategory = normalize(cashflow.subcategory);
+  const refKind = normalize(cashflow.ref?.kind);
+
+  if (
+    subcategory === "cogs" ||
+    category === "inventory" ||
+    refKind.includes("stock")
+  ) {
+    return "cogs";
+  }
+  if (
+    subcategory === "labor" ||
+    category === "payroll" ||
+    refKind.includes("payroll")
+  ) {
+    return "labor";
+  }
+  if (
+    ["operations", "supplier_payment"].includes(category) ||
+    [
+      "rent",
+      "utility",
+      "maintenance",
+      "marketing",
+      "bank_fee",
+      "tax",
+    ].includes(subcategory)
+  ) {
+    return "operations";
+  }
+
+  const note = normalize(cashflow.note);
+  if (
+    note.includes("nguyên liệu") ||
+    note.includes("ingredient") ||
+    note.includes("supply")
+  ) {
+    return "cogs";
+  }
+  if (
+    note.includes("lương") ||
+    note.includes("nhân sự") ||
+    note.includes("salary")
+  ) {
+    return "labor";
+  }
+  if (
+    note.includes("điện") ||
+    note.includes("nước") ||
+    note.includes("gas") ||
+    note.includes("vận hành") ||
+    note.includes("mặt bằng")
+  ) {
+    return "operations";
+  }
+  return "other";
+};
+
+const resolveCategory = (cashflow = {}) => {
   if (cashflow.category) return normalize(cashflow.category);
   if (cashflow.type === "INFLOW") return "sale";
   if (isRefundCashflow(cashflow)) return "refund";
-  return "other";
+  return classifyCost(cashflow);
 };
 
 const resolveSource = (cashflow = {}) => {
@@ -57,7 +117,7 @@ const toFinanceTransaction = (cashflow) => ({
   occurredAt: cashflow.occurredAt,
   description:
     cashflow.note || (cashflow.type === "INFLOW" ? "Thu tiền" : "Chi tiền"),
-  category: classifyFallbackCategory(cashflow),
+  category: resolveCategory(cashflow),
   type: cashflow.type,
   amount: Number(cashflow.amount || 0),
   method: cashflow.method || null,
