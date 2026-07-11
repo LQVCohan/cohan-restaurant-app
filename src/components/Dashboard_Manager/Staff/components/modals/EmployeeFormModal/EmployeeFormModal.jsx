@@ -1121,7 +1121,7 @@ const EmployeeFormModal = ({
           <option value="SHIFT">Theo ca</option>
           <option value="COMMISSION">Theo hoa hồng</option>
         </select>
-        {formData.salaryType === "MONTHLY" || formData.salaryType === "COMMISSION" ? (
+        {formData.salaryType === "MONTHLY" ? (
           <>
             <label className="form-label">Mức lương cơ bản</label>
         <div className="salary-input-row">
