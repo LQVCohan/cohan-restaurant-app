@@ -6,11 +6,13 @@
 - [x] Enforce email-or-phone contact validation at the backend trust boundary.
 - [x] Allow customers to create payment sessions only for their own orders.
 - [x] Add VNPAY to the active customer checkout modal.
+- [x] Keep online-card/VNPAY orders in `draft` and release them to kitchen only after the verified provider callback.
 - [x] Make full name optional and compact the confirmation modal layout.
 - [x] Add focused regression tests.
 - [x] Remove the superseded checkout modal implementation and its obsolete test.
 - [x] Re-fetch changed files and review callers/usages.
 - [x] Verify frontend/backend lint, focused tests, menu RBAC, build and Playwright smoke in CI run 8253.
+- [x] Verify the final deferred-online test in the restored standard suite; only unrelated baseline tests remain failing.
 - [x] Restore the repository's standard CI gates after the verification run.
 
 ## Not run
