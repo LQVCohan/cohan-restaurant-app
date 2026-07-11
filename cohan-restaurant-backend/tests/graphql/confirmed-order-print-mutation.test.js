@@ -121,6 +121,28 @@ function mockWorkItems(rows) {
   });
 }
 
+function mockPrintSetting(overrides = {}) {
+  modelMocks.PrintSetting.findOne.mockReturnValue({
+    lean: vi.fn(async () => ({
+      _id: "print-setting-1",
+      printers: [
+        { id: "printer-kitchen-a", name: "Bếp A", status: "configured" },
+        { id: "printer-kitchen-b", name: "Bếp B", status: "configured" },
+        { id: "printer-bar", name: "Quầy bar", status: "configured" },
+      ],
+      stations: {
+        kitchen: ["printer-kitchen-a", "printer-kitchen-b"],
+        bar: ["printer-bar"],
+      },
+      templates: [
+        { key: "kitchen", enabled: true },
+        { key: "bar", enabled: true },
+      ],
+      ...overrides,
+    })),
+  });
+}
+
 describe("ConfirmedOrderPrintMutation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -131,15 +153,7 @@ describe("ConfirmedOrderPrintMutation", () => {
     inventoryMocks.cancelReservationForOrderTx.mockResolvedValue(undefined);
     eventMocks.emitOrderEvent.mockResolvedValue(undefined);
     kitchenMocks.syncKitchenOrderWorkItemsForKitchenEntry.mockResolvedValue({ syncedCount: 2 });
-    modelMocks.PrintSetting.findOne.mockReturnValue({
-      lean: vi.fn(async () => ({
-        _id: "print-setting-1",
-        stations: {
-          kitchen: ["printer-kitchen"],
-          bar: ["printer-bar"],
-        },
-      })),
-    });
+    mockPrintSetting();
     modelMocks.PrintSetting.updateOne.mockResolvedValue({ modifiedCount: 1 });
     modelMocks.Warehouse.findOne.mockReturnValue({
       sort: vi.fn(() => ({
@@ -149,7 +163,7 @@ describe("ConfirmedOrderPrintMutation", () => {
     });
   });
 
-  it("atomically claims, confirms, creates kitchen work and groups print tickets", async () => {
+  it("atomically claims, confirms, creates kitchen work and routes every assigned printer", async () => {
     mockInitialPendingOrder();
     const claimedOrder = createOrderDocument();
     modelMocks.Order.findOneAndUpdate.mockResolvedValue(claimedOrder);
@@ -186,7 +200,18 @@ describe("ConfirmedOrderPrintMutation", () => {
     expect(result.order.currentStatus).toBe("confirmed");
 
     const jobs = modelMocks.PrintSetting.updateOne.mock.calls[0][1].$push.jobs.$each;
-    expect(jobs.map((job) => job.stationId).sort()).toEqual(["bar", "kitchen"]);
+    expect(jobs).toHaveLength(3);
+    expect(jobs.map((job) => job.stationId).sort()).toEqual([
+      "bar",
+      "kitchen",
+      "kitchen",
+    ]);
+    expect(jobs.map((job) => job.printerId).sort()).toEqual([
+      "printer-bar",
+      "printer-kitchen-a",
+      "printer-kitchen-b",
+    ]);
+    expect(jobs.every((job) => job.items.length === 1)).toBe(true);
     expect(eventMocks.emitOrderEvent).toHaveBeenCalledWith(
       expect.anything(),
       restaurantId,
@@ -194,6 +219,72 @@ describe("ConfirmedOrderPrintMutation", () => {
       expect.objectContaining({
         meta: expect.objectContaining({ statusFrom: "pending", statusTo: "confirmed" }),
       }),
+    );
+  });
+
+  it("does not enqueue a station whose template is disabled", async () => {
+    mockPrintSetting({
+      templates: [
+        { key: "kitchen", enabled: false },
+        { key: "bar", enabled: true },
+      ],
+    });
+    mockInitialPendingOrder();
+    const claimedOrder = createOrderDocument();
+    modelMocks.Order.findOneAndUpdate.mockResolvedValue(claimedOrder);
+    mockWorkItems([
+      { orderItemId: kitchenItemId, station: "kitchen" },
+      { orderItemId: barItemId, station: "bar" },
+    ]);
+    const { ConfirmedOrderPrintMutation } = await import(
+      "../../graphql/resolvers/order/confirmedOrderPrintMutation.js"
+    );
+
+    await ConfirmedOrderPrintMutation.confirmIncomingOrder(
+      null,
+      { input: { id: orderId, restaurantId } },
+      { user: { id: staffId } },
+    );
+
+    const jobs = modelMocks.PrintSetting.updateOne.mock.calls[0][1].$push.jobs.$each;
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toEqual(expect.objectContaining({
+      stationId: "bar",
+      printerId: "printer-bar",
+    }));
+  });
+
+  it("marks the ticket failed when an assigned printer is explicitly offline", async () => {
+    mockPrintSetting({
+      printers: [
+        { id: "printer-kitchen-a", name: "Bếp A", status: "offline" },
+        { id: "printer-bar", name: "Quầy bar", status: "configured" },
+      ],
+      stations: {
+        kitchen: ["printer-kitchen-a"],
+        bar: ["printer-bar"],
+      },
+    });
+    mockInitialPendingOrder();
+    const claimedOrder = createOrderDocument();
+    modelMocks.Order.findOneAndUpdate.mockResolvedValue(claimedOrder);
+    mockWorkItems([
+      { orderItemId: kitchenItemId, station: "kitchen" },
+      { orderItemId: barItemId, station: "bar" },
+    ]);
+    const { ConfirmedOrderPrintMutation } = await import(
+      "../../graphql/resolvers/order/confirmedOrderPrintMutation.js"
+    );
+
+    await ConfirmedOrderPrintMutation.confirmIncomingOrder(
+      null,
+      { input: { id: orderId, restaurantId } },
+      { user: { id: staffId } },
+    );
+
+    const jobs = modelMocks.PrintSetting.updateOne.mock.calls[0][1].$push.jobs.$each;
+    expect(jobs.find((job) => job.printerId === "printer-kitchen-a")).toEqual(
+      expect.objectContaining({ status: "failed", error: expect.any(String) }),
     );
   });
 
