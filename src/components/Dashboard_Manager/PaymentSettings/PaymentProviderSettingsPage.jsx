@@ -338,7 +338,7 @@ export default function PaymentProviderSettingsPage({ restaurantId, restaurantNa
     setSavingProvider(provider);
     clearNotice();
     try {
-      await persistProviderSettings(provider, { active, mode: modes[provider] });
+      await persistProviderSettings(provider, { active });
       setNotice({
         message: active
           ? `Khách hàng đã có thể chọn ${providerName} khi thanh toán.`
