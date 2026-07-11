@@ -206,7 +206,7 @@ describe("StaffLayout", () => {
     expect(
       screen.queryByRole("link", { name: /Bàn giao hỗ trợ/i }),
     ).not.toBeInTheDocument();
-    expect(useCommunicationMock).not.toHaveBeenCalled();
+    expect(useCommunicationMock).toHaveBeenCalledTimes(1);
   });
 
   it("shows realtime unread AI handoff count for the effective restaurant", () => {
@@ -238,6 +238,7 @@ describe("StaffLayout", () => {
     expect(screen.getByLabelText("2 yêu cầu hỗ trợ chưa đọc")).toHaveTextContent(
       "2",
     );
+    expect(useCommunicationMock).toHaveBeenCalledTimes(2);
     expect(useCommunicationMock).toHaveBeenCalledWith(
       expect.objectContaining({
         restaurantId: "active-r2",
