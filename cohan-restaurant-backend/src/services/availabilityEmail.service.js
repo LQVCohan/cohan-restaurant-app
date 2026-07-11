@@ -61,7 +61,7 @@ export async function sendAvailabilityEmail({
       </body>
     </html>`;
 
-  const result = await mailer.sendMail({ email, to: email, subject, text, html });
+  const result = await mailer.sendMail({ to: email, subject, text, html });
   return {
     ...result,
     delivered: !result?.skipped && Array.isArray(result?.accepted) && result.accepted.length > 0,
