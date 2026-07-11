@@ -1,14 +1,13 @@
 {
   "id": "07-12-staff-leave-step-flow",
   "title": "Compact staff leave request into steps",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-ui",
   "scope": [
     "src/components/Staff/StaffLeavePage.jsx",
-    "src/components/Staff/StaffLeavePage.scss",
+    "src/components/Staff/StaffLeaveWizard.scss",
     "src/components/Staff/StaffLeavePage.test.jsx",
     "src/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestForm.jsx",
-    "src/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestForm.scss",
     "src/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestForm.test.jsx",
     "tests/e2e/p1/staff-leave.spec.js"
   ],
@@ -22,8 +21,19 @@
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
       "traced LeaveRequest model, staff leave GraphQL resolver, Apollo hook, staff page, shared form and E2E caller",
-      "confirmed backend payload, leave-day calculation, permissions and history behavior remain unchanged"
+      "confirmed backend payload, leave-day calculation, permissions and history behavior remain unchanged",
+      "added an opt-in three-step form so the manager leave form keeps its existing layout",
+      "hid the known employee selector in self-service mode and preserved values when navigating backward",
+      "added final request review, current-step validation, compact page hierarchy and responsive wizard styles",
+      "updated component and browser regression tests for the guided flow",
+      "re-fetched changed files and reviewed the final import order so page-specific overrides load after shared modal styles"
     ],
-    "notRun": []
+    "notRun": [
+      "Vitest was not run because the GitHub connector does not provide a repository runtime",
+      "Playwright E2E was not run",
+      "frontend build was not run",
+      "responsive browser checks at 390x844, 430x932, 768px and 1440px were not run",
+      "real device review was not run"
+    ]
   }
 }
