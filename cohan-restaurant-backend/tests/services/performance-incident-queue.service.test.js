@@ -56,7 +56,11 @@ describe("performanceIncidentQueue.service", () => {
     const result = await listManagerIncidentReviewQueue({ restaurantId: "r1" }, { id: "m1" });
     expect(mocks.find).toHaveBeenCalledWith(expect.objectContaining({ $or: expect.any(Array) }));
     expect(result.items.length).toBeGreaterThan(0);
-    expect(result.items.find((x) => x.scoreImpactStatus === "eligible")?.canApplyScore).toBe(true);
+    const eligibleAttendance = result.items.find(
+      (x) => x.scoreImpactStatus === "eligible",
+    );
+    expect(eligibleAttendance?.canApplyScore).toBe(false);
+    expect(eligibleAttendance?.recommendedAction).toBe("already_in_punctuality");
 
     mocks.resolveUserRoles.mockReturnValue(["ACCOUNTANT"]);
     mocks.find.mockReturnValueOnce({ sort: vi.fn(() => ({ lean: vi.fn().mockResolvedValue([rows[1]]) })) });
