@@ -1,7 +1,7 @@
 {
   "id": "07-11-food-detail-cart-sync-false-error",
   "title": "Sửa lỗi giả đồng bộ giỏ hàng ở trang chi tiết món",
-  "status": "in_progress",
+  "status": "completed",
   "type": "cross-layer-bugfix",
   "scope": [
     "cohan-restaurant-backend/graphql/resolvers/index.js",
@@ -17,10 +17,15 @@
       "read AGENTS.md, .trellis/workflow.md and ponytail skill",
       "traced CartItem schema/model through cart resolver composition, Apollo mutation, CartProvider and FoodDetailV2 action",
       "confirmed CartItem resolver is exported by cart module but omitted by the root resolver map",
-      "kept the implementation at the shared resolver boundary instead of adding a frontend workaround"
+      "kept the implementation at the shared resolver boundary instead of adding a frontend workaround",
+      "CartItem resolver composition regression test passed in CI run 8298",
+      "frontend and backend lint passed in CI run 8298",
+      "338 backend test files and 93 frontend unit files passed; only unrelated baseline failures remained"
     ],
     "notRun": [
-      "local tests because the execution container cannot resolve github.com"
+      "local tests because the execution container could not resolve github.com",
+      "backend/frontend build and smoke because standard CI stopped after unrelated baseline test failures",
+      "manual browser retest of the reported FoodDetail flow"
     ]
   }
 }
