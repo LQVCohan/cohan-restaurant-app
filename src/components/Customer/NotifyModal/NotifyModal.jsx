@@ -1,91 +1,132 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { gql, useMutation } from "@apollo/client";
+import { useParams } from "react-router-dom";
 import "./NotifyModal.scss";
 
-const NotifyModal = ({ isOpen, onClose, table, user, onRegister }) => {
-  const [contact, setContact] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+const REGISTER_TABLE_AVAILABILITY_WATCH = gql`
+  mutation RegisterTableAvailabilityWatch($input: RegisterTableAvailabilityWatchInput!) {
+    registerTableAvailabilityWatch(input: $input) {
+      alreadyAvailable
+      message
+      watch {
+        id
+        status
+        contactEmail
+        expiresAt
+      }
+    }
+  }
+`;
 
-  // Logic Auto-fill: Ưu tiên Email -> SĐT
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function getMutationMessage(error) {
+  return (
+    error?.graphQLErrors?.[0]?.message ||
+    error?.networkError?.result?.errors?.[0]?.message ||
+    error?.message ||
+    "Không thể đăng ký thông báo bàn trống."
+  );
+}
+
+const NotifyModal = ({ isOpen, onClose, table, user, onRegister }) => {
+  const { id: restaurantId } = useParams();
+  const [contact, setContact] = useState("");
+  const [error, setError] = useState("");
+  const [registerWatch, { loading }] = useMutation(REGISTER_TABLE_AVAILABILITY_WATCH);
+
   useEffect(() => {
     if (isOpen) {
-      // ✅ Thay đổi thứ tự ưu tiên: Email trước
-      const autoFill = user?.email || user?.phone || "";
-
-      setContact(autoFill);
+      setContact(user?.email || "");
       setError("");
-      setLoading(false);
     }
   }, [isOpen, user]);
 
-  // Đóng khi nhấn ESC
   useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === "Escape" && isOpen) onClose();
+    const handleEsc = (event) => {
+      if (event.key === "Escape" && isOpen && !loading) onClose();
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [isOpen, onClose]);
+  }, [isOpen, loading, onClose]);
 
   if (!isOpen || !table) return null;
 
-  const handleSubmit = () => {
-    if (!contact.trim()) {
-      setError("Vui lòng nhập thông tin liên hệ.");
+  const handleSubmit = async () => {
+    const email = contact.trim().toLowerCase();
+    if (!EMAIL_PATTERN.test(email)) {
+      setError("Vui lòng nhập email hợp lệ.");
       return;
     }
-    setLoading(true);
+    if (!restaurantId || !table.id) {
+      setError("Thiếu thông tin nhà hàng hoặc bàn. Vui lòng tải lại trang.");
+      return;
+    }
 
-    setTimeout(() => {
-      onRegister(contact, table);
-      setLoading(false);
-    }, 800);
+    setError("");
+    try {
+      const { data } = await registerWatch({
+        variables: {
+          input: {
+            restaurantId,
+            tableId: table.id,
+            contactEmail: email,
+          },
+        },
+      });
+      const payload = data?.registerTableAvailabilityWatch;
+      if (!payload) throw new Error("Máy chủ không trả về kết quả đăng ký.");
+      onRegister(email, table, payload);
+    } catch (mutationError) {
+      setError(getMutationMessage(mutationError));
+    }
   };
 
-  // Kiểm tra xem giá trị hiện tại có khớp với data user không để hiện icon
-  const isAutoFilled =
-    user &&
-    (contact === user.email || contact === user.phone) &&
-    contact !== "";
+  const isAutoFilled = Boolean(user?.email && contact === user.email);
 
   return (
-    <div className="ntf-backdrop" onClick={onClose}>
-      <div className="ntf-container" onClick={(e) => e.stopPropagation()}>
-        <button className="ntf-close-btn" onClick={onClose}>
+    <div className="ntf-backdrop" onClick={loading ? undefined : onClose}>
+      <div className="ntf-container" onClick={(event) => event.stopPropagation()}>
+        <button
+          type="button"
+          className="ntf-close-btn"
+          onClick={onClose}
+          disabled={loading}
+          aria-label="Đóng đăng ký thông báo bàn trống"
+        >
           ✕
         </button>
 
         <div className="ntf-content">
           <div className="ntf-icon-wrapper">
-            <span className="icon">🔔</span>
+            <span className="icon" aria-hidden="true">🔔</span>
           </div>
 
           <div className="ntf-header">
-            <h3 className="ntf-title">Bật thông báo bàn trống</h3>
+            <h3 className="ntf-title">Báo tôi khi bàn trống</h3>
             <p className="ntf-desc">
-              Bàn <strong>{table.label}</strong> hiện đang có khách. Để lại
-              thông tin, chúng tôi sẽ nhắn cho bạn ngay khi bàn này sẵn sàng.
+              Bàn <strong>{table.label}</strong> chưa sẵn sàng. Cohan sẽ gửi email
+              khi bàn này chuyển về trạng thái trống. Thông báo không tự giữ bàn.
             </p>
           </div>
 
           <div className="ntf-form-group">
-            <label>Email hoặc Số điện thoại</label>
-
-            {/* Wrapper để đặt icon ✨ bên trong */}
+            <label htmlFor="table-watch-email">Email nhận thông báo</label>
             <div className="ntf-input-wrapper">
               <input
-                type="text"
+                id="table-watch-email"
+                type="email"
                 className={`ntf-input ${error ? "error" : ""}`}
-                placeholder="VD: email@example.com..."
+                placeholder="email@example.com"
                 value={contact}
-                onChange={(e) => {
-                  setContact(e.target.value);
+                onChange={(event) => {
+                  setContact(event.target.value);
                   if (error) setError("");
                 }}
+                autoComplete="email"
                 autoFocus
+                disabled={loading}
               />
-
-              {/* ✅ Chỉ hiện icon ✨ */}
               {isAutoFilled && (
                 <span
                   className="ntf-autofill-icon"
@@ -95,19 +136,24 @@ const NotifyModal = ({ isOpen, onClose, table, user, onRegister }) => {
                 </span>
               )}
             </div>
-
-            {error && <span className="ntf-error-text">{error}</span>}
+            {error && <span className="ntf-error-text" role="alert">{error}</span>}
           </div>
 
           <button
+            type="button"
             className="ntf-btn-submit"
             onClick={handleSubmit}
-            disabled={loading || !contact}
+            disabled={loading || !contact.trim()}
           >
-            {loading ? "Đang đăng ký..." : "Nhắc tôi khi có bàn"}
+            {loading ? "Đang đăng ký..." : "Gửi email khi bàn trống"}
           </button>
 
-          <button className="ntf-btn-cancel" onClick={onClose}>
+          <button
+            type="button"
+            className="ntf-btn-cancel"
+            onClick={onClose}
+            disabled={loading}
+          >
             Để sau
           </button>
         </div>
