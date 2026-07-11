@@ -1,0 +1,28 @@
+{
+  "id": "07-11-vnpay-local-sandbox-guard",
+  "name": "vnpay-local-sandbox-guard",
+  "title": "Chặn cổng thanh toán production khi chạy local",
+  "description": "Đảm bảo môi trường development/local luôn tạo giao dịch MoMo/VNPAY sandbox dù cấu hình nhà hàng còn lưu production, trừ khi có opt-in rõ ràng.",
+  "status": "in_progress",
+  "dev_type": "backend-bugfix",
+  "scope": "payment-provider-runtime-mode",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "parent": "07-11-vnpay-platform-mode-resolution",
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/payment/paymentCredential.service.js",
+    "cohan-restaurant-backend/tests/services/payment-platform-mode.service.test.js",
+    ".env.example"
+  ],
+  "notes": "The previous platform fallback fix does not cover an active restaurant-scoped credential stored as production. Local development must fail safe to sandbox at the shared credential mode boundary. Vite ECONNABORTED is a transient Socket.IO disconnect and is unrelated to payUrl generation.",
+  "meta": {
+    "skills": ["ponytail"]
+  }
+}
