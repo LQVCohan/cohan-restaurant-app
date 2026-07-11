@@ -489,10 +489,24 @@ const MenuDetailView = ({
           </div>
         </nav>
 
+        <div className="menu-results-context" aria-live="polite">
+          <div className="menu-results-context__copy">
+            <span>{activeSlot?.label || "Thực đơn"}</span>
+            <strong>{menuLoading ? "Đang cập nhật…" : `${visibleItems.length} món`}</strong>
+            <small>{activeCategory?.name || "Tất cả danh mục"}</small>
+          </div>
+          {hasActiveFilters ? (
+            <button type="button" onClick={resetFilters}>
+              <RotateCcw size={16} aria-hidden="true" />
+              Đặt lại bộ lọc
+            </button>
+          ) : null}
+        </div>
+
         {!matchesBookingTimeSlot ? (
           <div className="menu-inline-note" role="alert">
             <strong>Món không thuộc khung giờ đặt bàn.</strong>{" "}
-            Lịch của bạn dùng thực đơn {bookingSlot?.label || initialTimeSlot}.
+            Lịch của bạn dùng thực đơn {bookingSlot?.label || lockedTimeSlot}.
           </div>
         ) : !canOrder ? (
           <div className="menu-inline-note" role="status">
@@ -505,7 +519,7 @@ const MenuDetailView = ({
           renderSkeletons()
         ) : menuError ? (
           <div className="menu-state menu-state--error" role="alert">
-            <span>!</span>
+            <span><CircleAlert size={22} aria-hidden="true" /></span>
             <h3>Không thể tải thực đơn</h3>
             <p>Vui lòng kiểm tra kết nối rồi thử lại.</p>
             <button type="button" onClick={() => refetch?.()}>
@@ -514,7 +528,7 @@ const MenuDetailView = ({
           </div>
         ) : !visibleItems.length ? (
           <div className="menu-state" role="status">
-            <span>🍜</span>
+            <span>{debouncedSearch ? <Search size={22} aria-hidden="true" /> : <UtensilsCrossed size={22} aria-hidden="true" />}</span>
             <h3>
               {debouncedSearch
                 ? "Chưa tìm thấy món phù hợp"
@@ -525,6 +539,11 @@ const MenuDetailView = ({
                 ? "Thử từ khóa ngắn hơn, đổi danh mục hoặc khung giờ."
                 : "Đổi bữa ăn hoặc danh mục khác để xem thêm món."}
             </p>
+            {hasActiveFilters ? (
+              <button type="button" onClick={resetFilters}>
+                Đặt lại bộ lọc
+              </button>
+            ) : null}
           </div>
         ) : (
           <>
