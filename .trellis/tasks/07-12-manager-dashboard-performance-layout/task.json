@@ -1,0 +1,33 @@
+{
+  "id": "07-12-manager-dashboard-performance-layout",
+  "name": "manager-dashboard-performance-layout",
+  "title": "Fix manager performance dashboard and operational layout",
+  "description": "Align the manager performance GraphQL input contract and reorganize the manager dashboard by operational priority without changing business logic.",
+  "status": "in_progress",
+  "dev_type": "fullstack-fix",
+  "scope": "manager-dashboard",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-12",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/schema/staffResolverCompatibility.graphql",
+    "cohan-restaurant-backend/graphql/schema/operationCompatibilityExtras2.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/staff/query.js",
+    "cohan-restaurant-backend/src/services/performance/managerPerformanceDashboard.service.js",
+    "cohan-restaurant-backend/tests/graphql/staff-performance-schema-runtime.test.js",
+    "src/hooks/useManagerPerformanceDashboard.js",
+    "src/components/Dashboard_Manager/Performance/ManagerPerformancePanel.jsx",
+    "src/components/Dashboard_Manager/Dashboard/Dashboard.jsx",
+    "src/components/Dashboard_Manager/Dashboard/Dashboard.scss",
+    "src/components/Dashboard_Manager/Dashboard/DashboardSynchronized.jsx",
+    "src/components/Dashboard_Manager/Dashboard/DashboardSynchronized.scss",
+    "src/components/Dashboard_Manager/Dashboard/Dashboard.test.jsx"
+  ],
+  "notes": "Preserve restaurant scope, performance permissions, dashboard actions and existing Apollo/service behavior."
+}
