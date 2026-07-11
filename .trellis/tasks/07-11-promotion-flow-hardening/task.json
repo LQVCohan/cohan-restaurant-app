@@ -1,38 +1,54 @@
 {
   "id": "07-11-promotion-flow-hardening",
-  "title": "Hardening promotion management and application flows",
-  "status": "implemented_unverified",
+  "title": "Hardening promotion management and customer application flows",
+  "status": "in_progress",
   "type": "full-stack-bugfix",
   "scope": [
     "cohan-restaurant-backend/models/promotion.model.js",
+    "cohan-restaurant-backend/models/order.model.js",
+    "cohan-restaurant-backend/models/reservation.model.js",
     "cohan-restaurant-backend/graphql/resolvers/promotion/query.js",
     "cohan-restaurant-backend/graphql/resolvers/promotion/mutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/reservation/mutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/customerPromotionPreview/query.js",
+    "cohan-restaurant-backend/graphql/resolvers/index.js",
+    "cohan-restaurant-backend/graphql/schema/customerPromotionPreview.graphql",
+    "cohan-restaurant-backend/graphql/schema/index.js",
+    "cohan-restaurant-backend/graphql/schema/reservation.graphql",
+    "cohan-restaurant-backend/src/services/discountCalculation.service.js",
+    "cohan-restaurant-backend/src/services/customerPromotionPricing.service.js",
     "cohan-restaurant-backend/tests/models/promotion-active-capacity.test.js",
     "cohan-restaurant-backend/tests/resolvers/promotion-validation-and-query.test.js",
+    "cohan-restaurant-backend/tests/services/customer-promotion-pricing.test.js",
+    "cohan-restaurant-backend/tests/resolvers/reservation-promotion-deposit.test.js",
     "src/hooks/usePromotions.js",
     "src/hooks/usePromotions.test.js",
     "src/hooks/useActiveDiscountPromotions.js",
-    "src/hooks/useActiveDiscountPromotions.test.js"
+    "src/hooks/useActiveDiscountPromotions.test.js",
+    "src/hooks/useDiscountPreview.js",
+    "src/components/Customer/BookingDishesModal/OrderSummaryCheckoutModal.jsx",
+    "src/components/Customer/TableBooking/TableBooking.jsx",
+    "src/components/Customer/TableBooking/BookingSummary/BookingSummary.jsx",
+    "src/components/Customer/BookingTableModal/BookingModal.jsx"
   ],
   "validation": {
     "planned": [
       "npx vitest run src/hooks/usePromotions.test.js src/hooks/useActiveDiscountPromotions.test.js",
-      "cd cohan-restaurant-backend && npx vitest run tests/models/promotion-active-capacity.test.js tests/resolvers/promotion-validation-and-query.test.js",
+      "npx vitest run customer promotion checkout and booking component tests",
+      "cd cohan-restaurant-backend && npx vitest run tests/models/promotion-active-capacity.test.js tests/resolvers/promotion-validation-and-query.test.js tests/services/customer-promotion-pricing.test.js tests/resolvers/reservation-promotion-deposit.test.js",
       "npm run check:graphql",
-      "npm run build"
+      "npm run build",
+      "GitHub Actions CI"
     ],
     "completed": [
       "read AGENTS.md and Trellis workflow",
       "read ponytail and ui-ux-pro-max skills",
-      "traced model, resolver, hook, management UI, menu display, POS/payment selection, checkout, discount calculation and atomic usage updates",
-      "reviewed current GraphQL promotion schema against frontend operations",
-      "reviewed changed files after each write"
+      "traced promotion schema/model, resolver/service, menu query, booking menu, checkout mutation and customer UI actions",
+      "confirmed menu promotion badges are shared by normal ordering and booking add-on menu",
+      "confirmed off-premise checkout applies promotions but customer preview omits automatic promotions",
+      "confirmed createOrderForTable and reservation food deposit bypass promotion pricing",
+      "identified promotion usage accounting gap when no coupon is selected"
     ],
-    "notRun": [
-      "Vitest suites: GitHub connector has no dependency execution environment",
-      "GraphQL check: GitHub connector has no dependency execution environment",
-      "production build: GitHub connector has no dependency execution environment",
-      "manual browser/POS/checkout regression: no running application session is available"
-    ]
+    "notRun": []
   }
 }
