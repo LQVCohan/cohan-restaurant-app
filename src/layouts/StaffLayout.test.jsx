@@ -77,27 +77,32 @@ describe("StaffLayout", () => {
     );
     expect(screen.getByRole("link", { name: "Hồ sơ" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Thông báo" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Liên lạc" })).not.toBeInTheDocument();
   });
 
-  it("opens the same messenger from navigation and the floating launcher", () => {
-    renderStaffLayout();
+  it("opens the messenger from the header action without a nav or floating duplicate", () => {
+    const { container } = renderStaffLayout();
+    const messengerButton = screen.getByRole("button", {
+      name: "Mở tin nhắn nhân viên",
+    });
 
-    fireEvent.click(screen.getByRole("button", { name: "Liên lạc" }));
+    expect(messengerButton).toHaveClass("staff-shell__messenger-button");
+    expect(messengerButton).toHaveAttribute("aria-expanded", "false");
+    expect(container.querySelector(".staff-shell__messenger-launcher")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Liên lạc" })).not.toBeInTheDocument();
+
+    fireEvent.click(messengerButton);
+
     expect(
       screen.getByRole("dialog", { name: "Tin nhắn nhân viên" }),
     ).toHaveAttribute("data-restaurant-id", "r1");
-    expect(
-      screen.queryByRole("button", { name: "Mở tin nhắn nhân viên" }),
-    ).not.toBeInTheDocument();
+    expect(messengerButton).toHaveAttribute("aria-expanded", "true");
 
     fireEvent.click(screen.getByRole("button", { name: "Đóng messenger test" }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Mở tin nhắn nhân viên" }),
-    );
-
     expect(
-      screen.getByRole("dialog", { name: "Tin nhắn nhân viên" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("dialog", { name: "Tin nhắn nhân viên" }),
+    ).not.toBeInTheDocument();
+    expect(messengerButton).toHaveAttribute("aria-expanded", "false");
   });
 
   it("opens a notification thread from legacy router state without changing workspace", async () => {
