@@ -127,7 +127,7 @@ const COMPONENT_META = {
   compliance: {
     label: "Tuân thủ",
     icon: ShieldCheck,
-    description: "Mỗi yêu cầu chỉnh công hiện trừ 7 điểm trong thành phần Tuân thủ; sự cố chỉ trừ thêm khi được duyệt riêng.",
+    description: "Mỗi yêu cầu chỉnh công hiện trừ 7 điểm trong thành phần Tuân thủ; sự cố ngoài chấm công chỉ trừ thêm khi được duyệt riêng.",
   },
 };
 
