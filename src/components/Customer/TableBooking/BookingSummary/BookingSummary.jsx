@@ -11,7 +11,6 @@ const BookingSummary = ({
   menuItemsCount = 0,
   onOrderDishes,
 }) => {
-  // Helper: Format tiền tệ
   const formatPrice = (price) => {
     if (!price || price === 0) return "Miễn phí";
     return new Intl.NumberFormat("vi-VN", {
@@ -22,17 +21,14 @@ const BookingSummary = ({
 
   return (
     <div className="bsm-card">
-      {/* --- Header --- */}
       <div className="bsm-header">
         <h3 className="bsm-title">Thông tin đặt bàn</h3>
-        <span className="bsm-subtitle">Reservation Details</span>
+        <span className="bsm-subtitle">Bàn và chi phí dự kiến</span>
       </div>
 
-      {/* --- Body --- */}
       <div className="bsm-body">
         {selectedTable ? (
           <>
-            {/* 1. Visual hiển thị bàn đang chọn (Ticket Style) */}
             <div className="bsm-selected-visual">
               <div className="bsm-table-icon">
                 <span className="label">{selectedTable.label}</span>
@@ -45,7 +41,6 @@ const BookingSummary = ({
               </div>
             </div>
 
-            {/* 2. List thông tin chi tiết */}
             <div className="bsm-info-list">
               <div className="bsm-info-item">
                 <div className="icon-wrapper">
@@ -79,7 +74,9 @@ const BookingSummary = ({
                   <span className="label">Đặt cọc bàn</span>
                   <span className="value highlight">
                     {formatPrice(
-                      selectedTable.price || selectedTable.depositAmount
+                      selectedTable.deposit ??
+                        selectedTable.depositAmount ??
+                        selectedTable.price,
                     )}
                   </span>
                 </div>
@@ -118,7 +115,6 @@ const BookingSummary = ({
             </div>
           </>
         ) : (
-          /* Trạng thái chưa chọn bàn (Empty State) */
           <div className="bsm-empty-state">
             <div className="bsm-empty-icon">
               <UtensilsCrossed size={48} strokeWidth={1.6} />
@@ -129,7 +125,6 @@ const BookingSummary = ({
         )}
       </div>
 
-      {/* --- Footer Actions --- */}
       <div className="bsm-footer">
         <button
           className="bsm-btn bsm-btn-confirm"
