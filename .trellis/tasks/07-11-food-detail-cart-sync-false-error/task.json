@@ -1,0 +1,25 @@
+{
+  "id": "07-11-food-detail-cart-sync-false-error",
+  "title": "Sửa lỗi giả đồng bộ giỏ hàng ở trang chi tiết món",
+  "status": "in_progress",
+  "type": "cross-layer-bugfix",
+  "scope": [
+    "cohan-restaurant-backend/graphql/resolvers/index.js",
+    "src/components/Customer/Food/FoodDetailV2.jsx",
+    "src/components/Customer/Food/FoodDetailV2.helpers.test.jsx",
+    "cohan-restaurant-backend/tests/resolvers/cart-resolver-composition.test.js"
+  ],
+  "validation": {
+    "planned": [
+      "focused backend resolver composition test",
+      "focused frontend FoodDetailV2 helper/source regression test",
+      "frontend and backend lint/build if CI permits"
+    ],
+    "completed": [
+      "read AGENTS.md, .trellis/workflow.md and ponytail skill",
+      "traced CartItem schema/model through cart resolver composition, Apollo mutation, CartProvider and FoodDetailV2 action",
+      "confirmed CartItem resolver is exported by cart module but omitted by the root resolver map"
+    ],
+    "notRun": []
+  }
+}
