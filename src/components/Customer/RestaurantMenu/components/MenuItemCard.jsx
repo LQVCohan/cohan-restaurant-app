@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Clock3 } from "lucide-react";
+import { ChevronRight, Clock3, Sparkles, TriangleAlert } from "lucide-react";
 import { formatCurrency } from "../../../../utils/formatters";
 import {
   buildFoodDetailPath,
@@ -32,6 +32,16 @@ const MenuItemCard = ({ item, to, state, onClick, disabled = false }) => {
   const availability = getMenuItemAvailability(item);
   const canOrderNow = canCustomerOrderMenuItem(item) && !disabled;
   const imageSrc = item?.thumbImage || MENU_ITEM_PLACEHOLDER;
+  const maxAvailable = Number(item?.maxAvailable);
+  const lowStockLabel =
+    canOrderNow &&
+    Number.isFinite(maxAvailable) &&
+    maxAvailable > 0 &&
+    maxAvailable <= 5
+      ? `Chỉ còn ${maxAvailable.toLocaleString("vi-VN", {
+          maximumFractionDigits: 1,
+        })} suất`
+      : null;
   const defaultState =
     state ||
     buildFoodDetailState(item, {
@@ -111,7 +121,8 @@ const MenuItemCard = ({ item, to, state, onClick, disabled = false }) => {
               `Có thể chứa: ${(foodPreferenceMeta.matchedAllergies || []).join(", ")}`
             }
           >
-            ⚠ Cần kiểm tra dị ứng
+            <TriangleAlert size={14} aria-hidden="true" />
+            Cần kiểm tra dị ứng
           </div>
         ) : foodPreferenceMeta?.isRecommended ? (
           <div
@@ -121,7 +132,8 @@ const MenuItemCard = ({ item, to, state, onClick, disabled = false }) => {
               "Phù hợp khẩu vị của bạn"
             }
           >
-            ✨ Phù hợp khẩu vị
+            <Sparkles size={14} aria-hidden="true" />
+            Phù hợp khẩu vị
           </div>
         ) : null}
 
@@ -138,12 +150,16 @@ const MenuItemCard = ({ item, to, state, onClick, disabled = false }) => {
           {item.servingVariants?.length > 1 ? (
             <span>{item.servingVariants.length} lựa chọn</span>
           ) : null}
+          {lowStockLabel ? (
+            <span className="menu-item-card__low-stock">{lowStockLabel}</span>
+          ) : null}
         </div>
 
         <div className="bottom">
           <span className="price">{getMenuItemPriceLabel(item)}</span>
           <span className="add-btn" aria-hidden="true">
             {canOrderNow ? "Chọn món" : "Xem chi tiết"}
+            <ChevronRight size={16} />
           </span>
         </div>
       </div>
