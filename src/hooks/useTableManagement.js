@@ -209,12 +209,6 @@ export default function useTableManagement({ restaurantId }) {
 
   const [createMut] = useMutation(M_CREATE);
   const [updateMut] = useMutation(M_UPDATE, {
-    optimisticResponse: ({ input }) => ({
-      updateTable: {
-        __typename: "Table",
-        ...input,
-      },
-    }),
     update(cache, { data: mutationData }) {
       if (!mutationData?.updateTable) return;
       writeTable(cache, mutationData.updateTable);
@@ -244,19 +238,6 @@ export default function useTableManagement({ restaurantId }) {
   });
 
   const [moveMut] = useMutation(M_MOVE, {
-    optimisticResponse: ({ input }) => ({
-      moveTable: {
-        __typename: "Table",
-        id: input.id,
-        floorId:
-          input.floorId ??
-          readTable(window.__APOLLO_CLIENT__?.cache ?? {}, input.id)?.floorId,
-        floorLevel:
-          readTable(window.__APOLLO_CLIENT__?.cache ?? {}, input.id)
-            ?.floorLevel ?? null,
-        position: input.position ?? null,
-      },
-    }),
     update(cache, { data: mutationData }) {
       const table = mutationData?.moveTable;
       if (!table) return;
