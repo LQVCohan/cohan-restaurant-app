@@ -39,7 +39,6 @@ export async function syncOrderableSuppliesToMenus(restaurantId) {
       .select({
         _id: 1,
         name: 1,
-        sku: 1,
         notes: 1,
         photos: 1,
         pricePerUnit: 1,
@@ -86,7 +85,6 @@ export async function syncOrderableSuppliesToMenus(restaurantId) {
           $set: {
             categoryId: category._id,
             sourceType: "supply",
-            code: supply.sku || undefined,
             name: supply.name,
             description: buildSupplyDescription(supply),
             basePrice: price,
@@ -99,6 +97,7 @@ export async function syncOrderableSuppliesToMenus(restaurantId) {
             servingUnit: "đơn vị",
             avgPrepTimeMin: 0,
           },
+          $unset: { code: "" },
           $setOnInsert: {
             restaurantId: rid,
             menuId: menu._id,
