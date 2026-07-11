@@ -1,0 +1,25 @@
+{
+  "id": "07-12-cohan-wallet-momo-parity",
+  "title": "Align Cohan wallet checkout with MoMo settlement",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "customer-wallet-payment",
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-12",
+  "updatedAt": "2026-07-12",
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "cohan-restaurant-backend/models/payment-session.model.js",
+    "cohan-restaurant-backend/src/services/payment/paymentSession.service.js",
+    "cohan-restaurant-backend/src/services/wallet/wallet.service.js",
+    "cohan-restaurant-backend/graphql/resolvers/wallet/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/order/deferredOnlineCheckout.js",
+    "src/components/Customer/BookingDishesModal/OrderSummaryCheckoutModal.jsx",
+    "cohan-restaurant-backend/tests/deferredOnlineCheckout.test.js",
+    "cohan-restaurant-backend/tests/services/cohan-wallet-payment-parity.test.js",
+    "src/components/Customer/BookingDishesModal/OrderSummaryCheckoutModal.wallet.test.jsx"
+  ]
+}
