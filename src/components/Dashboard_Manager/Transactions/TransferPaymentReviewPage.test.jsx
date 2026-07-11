@@ -6,6 +6,7 @@ import { AuthContext } from "@/context/AuthContext";
 import TransferPaymentReviewPage, {
   ALL_REVIEW_STATUSES,
   GET_TRANSFER_PAYMENT_QUEUE,
+  isMatchingTransferAmount,
 } from "./TransferPaymentReviewPage";
 
 const scopeMocks = vi.hoisted(() => ({ useScope: vi.fn() }));
@@ -88,6 +89,23 @@ const failedPayment = {
   },
 };
 
+const submittedPayment = {
+  ...failedPayment,
+  id: "payment-submitted",
+  reference: "TX-SUBMITTED",
+  amount: 120000,
+  status: "pending",
+  callbackStatus: "received",
+  transfer: {
+    ...failedPayment.transfer,
+    status: "SUBMITTED",
+    proofImages: ["https://example.test/proof.jpg"],
+    rejectedAt: null,
+    rejectReason: null,
+    rejectedCount: 0,
+  },
+};
+
 const renderPage = (mocks) => render(
   <AuthContext.Provider value={{ user: { id: "manager-1" } }}>
     <MockedProvider mocks={mocks}>
@@ -133,5 +151,31 @@ describe("TransferPaymentReviewPage", () => {
     expect(within(card).getByText("Không hợp lệ")).toBeInTheDocument();
     expect(within(card).getByText("Bằng chứng không hợp lệ")).toBeInTheDocument();
     expect(within(card).getByText("3/3")).toBeInTheDocument();
+  });
+
+  it("requires the verified amount to match the expected VND amount", async () => {
+    renderPage([
+      queryMock({ statuses: ["SUBMITTED", "VERIFYING"], rows: [submittedPayment] }),
+    ]);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Xác minh thanh toán" }));
+    const amountInput = screen.getByLabelText("Số tiền thực nhận");
+    const submitButton = screen.getByRole("button", { name: "Xác minh và mở đơn" });
+
+    expect(submitButton).toBeEnabled();
+    fireEvent.change(amountInput, { target: { value: "119000" } });
+
+    expect(submitButton).toBeDisabled();
+    expect(screen.getByText(/Số tiền thực nhận phải khớp/)).toBeInTheDocument();
+  });
+});
+
+describe("isMatchingTransferAmount", () => {
+  it("rounds VND values and rejects zero, invalid, or mismatched amounts", () => {
+    expect(isMatchingTransferAmount(120000, 120000)).toBe(true);
+    expect(isMatchingTransferAmount("120000.4", 120000)).toBe(true);
+    expect(isMatchingTransferAmount(119999, 120000)).toBe(false);
+    expect(isMatchingTransferAmount(0, 120000)).toBe(false);
+    expect(isMatchingTransferAmount("invalid", 120000)).toBe(false);
   });
 });
