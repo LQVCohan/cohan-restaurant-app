@@ -117,7 +117,7 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   setting: ["system.manage"],
   backup: BACKUP_PAGE_PERMISSIONS,
   logs: LOG_PAGE_PERMISSIONS,
-  "print-management": ["print.read", "report.read"],
+  "print-management": ["print.read"],
   rbac: ["role.read", "permission.read", "staff.write"],
   "system-users": ["system.manage"],
   "ai-handoff": ["ai.chatbot.handoff", "ai.chatbot.moderate"],
