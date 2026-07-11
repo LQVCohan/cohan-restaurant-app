@@ -1,4 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const compressionMocks = vi.hoisted(() => ({
+  compressImageForUpload: vi.fn(),
+}));
+
+vi.mock("./compressAvatar", () => compressionMocks);
+
 import { installGuidedAiCaptureCards } from "./installGuidedAiCaptureCards";
 
 const STEPS = [
@@ -9,6 +17,17 @@ const STEPS = [
   ["5. Từ trên xuống", "Nâng camera cao, hướng xuống để thấy rõ hình dạng mặt bàn."],
 ];
 
+beforeEach(() => {
+  compressionMocks.compressImageForUpload.mockReset();
+  compressionMocks.compressImageForUpload.mockImplementation(async (file) =>
+    new File(
+      ["optimized-table-photo"],
+      String(file.name || "table.jpg").replace(/\.[^.]+$/, ".webp"),
+      { type: "image/webp" },
+    ),
+  );
+});
+
 afterEach(() => {
   window.__cohanGuidedAiCaptureCardsCleanup?.();
   document.body.replaceChildren();
@@ -16,7 +35,7 @@ afterEach(() => {
 });
 
 describe("installGuidedAiCaptureCards", () => {
-  it("adds five guided camera frames and updates a card after capture", () => {
+  it("compresses a large camera photo before React receives the change", async () => {
     document.body.innerHTML = `
       <div class="custom-table-builder-modal">
         <div class="custom-table-builder__image-list">
@@ -63,20 +82,51 @@ describe("installGuidedAiCaptureCards", () => {
     buttons[0].click();
     expect(clickSpy).toHaveBeenCalledTimes(1);
 
-    const file = new File(["table"], "ban-chinh-dien.jpg", {
+    const sourceFile = new File(["table"], "ban-chinh-dien.jpg", {
       type: "image/jpeg",
+    });
+    Object.defineProperty(sourceFile, "size", {
+      configurable: true,
+      value: 6 * 1024 * 1024,
     });
     Object.defineProperty(firstInput, "files", {
       configurable: true,
-      value: [file],
+      value: [sourceFile],
+    });
+
+    const receivedFiles = [];
+    firstInput.addEventListener("change", () => {
+      receivedFiles.push(firstInput.files?.[0] || null);
     });
     firstInput.dispatchEvent(new Event("change", { bubbles: true }));
 
+    expect(buttons[0]).toBeDisabled();
+    expect(firstInput.closest(".cohan-guided-capture")).toHaveTextContent(
+      "Đang tối ưu ảnh",
+    );
+
+    await waitFor(() => {
+      expect(compressionMocks.compressImageForUpload).toHaveBeenCalledTimes(1);
+      expect(firstInput.files?.[0]?.name).toBe("ban-chinh-dien.webp");
+    });
+
+    expect(compressionMocks.compressImageForUpload).toHaveBeenCalledWith(
+      sourceFile,
+      {
+        maxDimension: 1920,
+        targetMaxBytes: 4 * 1024 * 1024,
+        quality: 0.82,
+        keepSmallOriginal: true,
+      },
+    );
+    expect(receivedFiles.at(-1)?.name).toBe("ban-chinh-dien.webp");
+
     const firstCard = firstInput.closest(".cohan-guided-capture");
     expect(firstCard).toHaveClass("is-complete");
-    expect(firstCard).toHaveTextContent("Đã chụp");
-    expect(firstCard).toHaveTextContent("ban-chinh-dien.jpg");
+    expect(firstCard).toHaveTextContent("Đã tối ưu");
+    expect(firstCard).toHaveTextContent("ban-chinh-dien.webp");
     expect(buttons[0]).toHaveTextContent("Chụp lại");
+    expect(buttons[0]).toBeEnabled();
     expect(firstCard.querySelector("img")).toHaveAttribute(
       "src",
       "blob:guided-table-photo",
@@ -132,6 +182,7 @@ describe("installGuidedAiCaptureCards", () => {
 
     const note = document.querySelector(".cohan-ai-metadata-note");
     expect(note).toHaveTextContent("Hi3D tạo model trực tiếp từ 5 ảnh");
+    expect(note).toHaveTextContent("tối đa 1920px");
     expect(note).toHaveTextContent("không nhận prompt");
 
     const hiddenFields = document.querySelectorAll(
