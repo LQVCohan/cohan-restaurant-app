@@ -42,13 +42,11 @@ export async function ensurePaymentTransactionCashflow(doc) {
   const hasOrders = Boolean(doc.orderId) || orderIds.length > 0;
   const isReservationDeposit =
     !hasOrders && String(doc.note || "").startsWith("Reservation deposit ");
-  const isWalletOrderPayment = hasOrders && doc.method === "e_wallet";
-  if (!isReservationDeposit && !isWalletOrderPayment) return null;
+  if (!isReservationDeposit) return null;
 
   const Cashflow = mongoose.models.Cashflow;
   if (!Cashflow) return null;
 
-  const source = isReservationDeposit ? "reservation" : "order";
   const session = typeof doc.$session === "function" ? doc.$session() : null;
   const options = {
     upsert: true,
@@ -59,7 +57,7 @@ export async function ensurePaymentTransactionCashflow(doc) {
   return Cashflow.findOneAndUpdate(
     {
       restaurantId: doc.restaurantId,
-      source,
+      source: "reservation",
       "ref.paymentTransactionId": doc._id,
     },
     {
@@ -72,19 +70,13 @@ export async function ensurePaymentTransactionCashflow(doc) {
         subcategory: "other",
         method: doc.method,
         status: "completed",
-        source,
+        source: "reservation",
         ref: {
           kind: "PaymentTransaction",
           id: doc._id,
-          orderId: doc.orderId || orderIds[0] || null,
-          orderIds,
           paymentTransactionId: doc._id,
         },
-        note:
-          doc.note ||
-          (isReservationDeposit
-            ? "Reservation deposit"
-            : "Customer paid by Cohan Wallet"),
+        note: doc.note || "Reservation deposit",
         occurredAt: doc.paidAt || new Date(),
         createdBy: doc.createdBy || doc.userId || null,
       },
