@@ -32,12 +32,19 @@ const incomingReviewMocks = vi.hoisted(() => ({
   rejectIncomingOrder: vi.fn(),
 }));
 
+const temporaryBillMocks = vi.hoisted(() => ({
+  createTemporaryBillPrintJob: vi.fn(),
+}));
+
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../graphql/guards.js", () => guardMocks);
 vi.mock("../../src/services/auth/authorization.service.js", () => authorizationMocks);
 vi.mock("../../graphql/resolvers/order/helper/emitOrderEvent.js", () => eventMocks);
 vi.mock("../../graphql/resolvers/order/confirmedOrderPrintMutation.js", () => ({
   ConfirmedOrderPrintMutation: incomingReviewMocks,
+}));
+vi.mock("../../graphql/resolvers/order/temporaryBillPrintMutation.js", () => ({
+  TemporaryBillPrintMutation: temporaryBillMocks,
 }));
 vi.mock("mongoose", () => ({
   default: {
@@ -89,6 +96,10 @@ describe("order mutation restaurant access guards", () => {
     });
     incomingReviewMocks.rejectIncomingOrder.mockResolvedValue({
       order: { id: "valid-order-1", currentStatus: "cancelled" },
+    });
+    temporaryBillMocks.createTemporaryBillPrintJob.mockResolvedValue({
+      ok: true,
+      message: "Đã tạo 2 lệnh in tạm tính.",
     });
   });
 
@@ -189,24 +200,31 @@ describe("order mutation restaurant access guards", () => {
     expect(mutation.rejectIncomingOrder).not.toHaveBeenCalled();
   });
 
-  it("checks scoped order before creating a temporary bill print job", async () => {
-    modelMocks.Order.findById.mockReturnValue(
-      leanResult({ _id: "valid-order-1", restaurantId: "valid-restaurant-1" }),
-    );
+  it("routes temporary bill printing through the canonical multi-printer resolver", async () => {
     const mutation = buildMutation();
     const { withOrderRestaurantAccessGuards } = await import(
       "../../graphql/resolvers/order/accessGuard.js"
     );
     const guarded = withOrderRestaurantAccessGuards(mutation);
+    const args = {
+      input: {
+        orderId: "valid-order-1",
+        restaurantId: "valid-restaurant-1",
+      },
+    };
+    const ctx = { user: { id: "cashier-1" } };
 
-    await guarded.createTemporaryBillPrintJob(
+    const result = await guarded.createTemporaryBillPrintJob(null, args, ctx);
+
+    expect(result).toEqual({ ok: true, message: "Đã tạo 2 lệnh in tạm tính." });
+    expect(temporaryBillMocks.createTemporaryBillPrintJob).toHaveBeenCalledWith(
       null,
-      { input: { orderId: "valid-order-1", restaurantId: "valid-restaurant-1" } },
-      { user: { id: "cashier-1" } },
+      args,
+      ctx,
+      undefined,
     );
-
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalled();
-    expect(mutation.createTemporaryBillPrintJob).toHaveBeenCalled();
+    expect(mutation.createTemporaryBillPrintJob).not.toHaveBeenCalled();
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
   });
 
   it("blocks requestPaymentForOrder when an order is outside the requested restaurant", async () => {
