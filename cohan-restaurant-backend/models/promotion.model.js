@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
-const { Schema, model, Types } = mongoose;
+const { Schema, Types } = mongoose;
 
 const baseOptions = { timestamps: true };
 
 const PromotionSchema = new Schema(
   {
-    name: { type: String, required: true },
+    name: { type: String, required: true, trim: true },
     code: { type: String, trim: true, uppercase: true },
     description: String,
     promotionType: {
@@ -18,7 +18,12 @@ const PromotionSchema = new Schema(
       enum: ["ORDER", "CATEGORY", "ITEM"],
       default: "ORDER",
     },
-    restaurantId: { type: Types.ObjectId, ref: "Restaurant" },
+    restaurantId: {
+      type: Types.ObjectId,
+      ref: "Restaurant",
+      required: true,
+      index: true,
+    },
     categoryId: { type: Types.ObjectId, ref: "Category" },
     itemId: { type: Types.ObjectId, ref: "MenuItem" },
     giftItemId: { type: Types.ObjectId, ref: "MenuItem", default: null },
@@ -27,7 +32,7 @@ const PromotionSchema = new Schema(
       enum: ["PERCENT", "AMOUNT"],
       default: "PERCENT",
     },
-    discountValue: { type: Number, required: true },
+    discountValue: { type: Number, required: true, min: 0 },
     buyQuantity: { type: Number, default: 0, min: 0 },
     getQuantity: { type: Number, default: 0, min: 0 },
     comboItems: [
@@ -36,10 +41,10 @@ const PromotionSchema = new Schema(
         quantity: { type: Number, default: 1, min: 1 },
       },
     ],
-    minOrderValue: { type: Number, default: 0 },
-    maxDiscount: { type: Number, default: 0 },
-    usageLimit: { type: Number, default: 0 },
-    usageCount: { type: Number, default: 0 },
+    minOrderValue: { type: Number, default: 0, min: 0 },
+    maxDiscount: { type: Number, default: 0, min: 0 },
+    usageLimit: { type: Number, default: 0, min: 0 },
+    usageCount: { type: Number, default: 0, min: 0 },
     targetAudience: { type: String, default: "all" },
     conditions: [{ type: String }],
     startAt: Date,
@@ -53,7 +58,33 @@ const PromotionSchema = new Schema(
       default: 1,
     },
   },
-  baseOptions
+  baseOptions,
 );
+
+const activeCapacityFilter = {
+  $expr: {
+    $or: [
+      { $lte: [{ $ifNull: ["$usageLimit", 0] }, 0] },
+      {
+        $lt: [
+          { $ifNull: ["$usageCount", 0] },
+          { $ifNull: ["$usageLimit", 0] },
+        ],
+      },
+    ],
+  },
+};
+
+function enforceActiveCapacity(next) {
+  const filter = this.getFilter();
+  if (filter?.isActive !== true) return next();
+
+  this.setQuery({ $and: [filter, activeCapacityFilter] });
+  return next();
+}
+
+PromotionSchema.pre("find", enforceActiveCapacity);
+PromotionSchema.pre("findOne", enforceActiveCapacity);
+PromotionSchema.index({ restaurantId: 1, isActive: 1, startAt: 1, endAt: 1 });
 
 export default mongoose.model("Promotion", PromotionSchema);
