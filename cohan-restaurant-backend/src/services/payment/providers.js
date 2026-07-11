@@ -115,8 +115,9 @@ function normalizeVnpIpAddress(value) {
 }
 
 export async function createMomoPayment({ payment, ipnUrl, returnUrl, mode = "sandbox" }) {
+  const effectiveMode = payment?.providerCredentialMode || mode;
   const endpoint =
-    mode === "production"
+    effectiveMode === "production"
       ? (process.env.MOMO_ENDPOINT_PRODUCTION || "https://payment.momo.vn/v2/gateway/api/create")
       : (process.env.MOMO_ENDPOINT_SANDBOX || "https://test-payment.momo.vn/v2/gateway/api/create");
 
@@ -174,7 +175,7 @@ export async function createMomoPayment({ payment, ipnUrl, returnUrl, mode = "sa
       ? String(json.resultCode)
       : String(response.status || "unknown");
     if (/chữ ký không hợp lệ|invalid signature/i.test(providerMessage)) {
-      const environmentLabel = mode === "production" ? "Production" : "Sandbox";
+      const environmentLabel = effectiveMode === "production" ? "Production" : "Sandbox";
       throw new Error(
         `MoMo từ chối chữ ký (mã ${resultCode}). Kiểm tra ba thông tin merchant phải thuộc cùng một bộ ${environmentLabel}.`,
       );
@@ -247,8 +248,9 @@ export function createVnpayPayment({
   const tmnCode = String(merchant.tmnCode || "").trim();
   const hashSecret = String(merchant.hashSecret || "").trim();
   const bankCode = String(merchant.bankCode || "").trim().toUpperCase();
+  const effectiveMode = payment?.providerCredentialMode || mode;
   const baseUrl =
-    mode === "production"
+    effectiveMode === "production"
       ? (process.env.VNPAY_URL_PRODUCTION || "https://pay.vnpay.vn/vpcpay.html")
       : (process.env.VNPAY_URL_SANDBOX || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html");
 
