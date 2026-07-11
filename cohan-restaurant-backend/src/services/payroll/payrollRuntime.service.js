@@ -482,7 +482,7 @@ export async function buildPayrollItemsForRange({
   });
 
   const staffFilter = {
-    userType: "STAFF",
+    userType: { $in: ["STAFF", "MANAGER"] },
     ...staffScopeFilter,
   };
   const staffs = await Staff.find(staffFilter)
