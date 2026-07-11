@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   watchersLean: vi.fn(),
@@ -108,6 +108,10 @@ describe("menu availability notifications", () => {
     mocks.menuItemUpdateOne.mockResolvedValue({ modifiedCount: 1 });
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("creates the bell notification and emails the registered account", async () => {
     const emit = vi.fn();
     const io = { to: vi.fn(() => ({ emit })) };
@@ -152,7 +156,7 @@ describe("menu availability notifications", () => {
     );
   });
 
-  it("returns the watch to waiting when persistent delivery fails", async () => {
+  it("keeps successful email delivery when bell persistence fails", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     mocks.createNotificationOnce.mockRejectedValueOnce(new Error("write failed"));
 
@@ -163,10 +167,12 @@ describe("menu availability notifications", () => {
       servingKey: "portion",
     });
 
-    expect(result).toEqual({ notified: 0, skipped: 1 });
-    expect(mocks.watchUpdateOne).toHaveBeenCalledWith(
-      { _id: watchId, status: "notified" },
-      { $set: { status: "watching", notifiedAt: null } },
+    expect(result).toEqual({ notified: 1, skipped: 0 });
+    expect(mocks.sendAvailabilityEmail).toHaveBeenCalledTimes(1);
+    expect(mocks.watchUpdateOne).not.toHaveBeenCalled();
+    expect(mocks.menuItemUpdateOne).toHaveBeenCalledWith(
+      { _id: expect.anything(), restaurantId: expect.anything(), status: "out_of_stock" },
+      { $set: { status: "available" } },
     );
   });
 
