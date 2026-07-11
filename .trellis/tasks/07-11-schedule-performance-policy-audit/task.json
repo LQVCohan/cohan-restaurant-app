@@ -5,6 +5,7 @@
   "type": "fullstack",
   "scope": [
     "cohan-restaurant-backend/graphql/schema/staffResolverCompatibility.graphql",
+    "src/components/Dashboard_Manager/Schedule/ScheduleManagement.jsx",
     "src/__tests__/graphql-schema-validation.test.js",
     "src/components/Dashboard_Manager/Staff/components/Performance/utils/performanceFormula.js",
     "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.jsx",
