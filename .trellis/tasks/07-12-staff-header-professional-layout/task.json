@@ -1,12 +1,11 @@
 {
   "id": "07-12-staff-header-professional-layout",
   "title": "Reorganize staff header navigation",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-ui",
   "scope": [
-    "src/layouts/StaffLayout.jsx",
-    "src/layouts/StaffLayout.scss",
-    "src/layouts/StaffLayout.test.jsx"
+    "src/styles/StaffHeaderProfessional.css",
+    "src/main.jsx"
   ],
   "validation": {
     "planned": [
@@ -18,8 +17,18 @@
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
       "traced AppRouter through StaffLayout page metadata, permission-filtered navigation, notification controls and route tests",
-      "confirmed the issue is shared presentation: uneven three-column grouping, excessive card styling and two active-looking navigation items"
+      "confirmed the issue is shared presentation: uneven three-column grouping, excessive card styling and two active-looking navigation items",
+      "reused the existing StaffLayout markup and permission-filtered navigation without changing behavior",
+      "added a scoped two-tier header override with a full-width work row and aligned account/support row",
+      "reduced individual navigation card styling and removed the secondary active-looking treatment from the role workspace",
+      "kept the mobile menu grouped with 44px touch targets and one-column fallback at 430px",
+      "loaded the override after the existing staff layout styles"
     ],
-    "notRun": []
+    "notRun": [
+      "Vitest was not run because the GitHub connector does not provide a repository runtime",
+      "staff theme check was not run",
+      "frontend build was not run",
+      "manual responsive review at 390x844, 430x932, 768px, 1024px and 1440px was not run"
+    ]
   }
 }
