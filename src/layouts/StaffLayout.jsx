@@ -230,6 +230,18 @@ export default function StaffLayout({ children }) {
     isOrderWorkspace &&
     canReceiveOrderNotice &&
     Boolean(orderNoticeRestaurantId);
+  const scopedChildren = useMemo(() => {
+    if (
+      !location.pathname.startsWith("/staff/ai-handoff") ||
+      !React.isValidElement(children)
+    ) {
+      return children;
+    }
+    return React.cloneElement(children, {
+      key: orderNoticeRestaurantId || "staff-handoff-no-restaurant",
+      restaurantId: orderNoticeRestaurantId,
+    });
+  }, [children, location.pathname, orderNoticeRestaurantId]);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -372,7 +384,7 @@ export default function StaffLayout({ children }) {
                         {item.label}
                         {item.to === "/staff/ai-handoff" ? (
                           <StaffHandoffUnreadCount
-                            restaurantId={activeRestaurantId}
+                            restaurantId={orderNoticeRestaurantId}
                           />
                         ) : null}
                       </Link>
@@ -397,7 +409,7 @@ export default function StaffLayout({ children }) {
               />
             </>
           ) : null}
-          {children}
+          {scopedChildren}
         </div>
       </main>
     </div>
