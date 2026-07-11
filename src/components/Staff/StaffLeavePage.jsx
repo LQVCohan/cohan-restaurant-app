@@ -37,9 +37,9 @@ const buildSelfStaffOption = (user, restaurantId) => ({
 });
 
 const leaveGuide = [
-  { step: "01", title: "Chọn đúng loại nghỉ", copy: "Hệ thống tự tính số ngày dự kiến để quản lý duyệt và đồng bộ dữ liệu lương." },
-  { step: "02", title: "Ghi lý do rõ ràng", copy: "Lý do ngắn gọn giúp quản lý xử lý nhanh hơn." },
-  { step: "03", title: "Theo dõi trạng thái", copy: "Đơn đã gửi sẽ nằm ở lịch sử bên dưới." },
+  { step: "01", title: "Chọn loại nghỉ", copy: "Chọn hình thức nghỉ phù hợp với nhu cầu của bạn." },
+  { step: "02", title: "Chọn thời gian", copy: "Hệ thống tự tính số ngày từ mốc thời gian đã chọn." },
+  { step: "03", title: "Kiểm tra và gửi", copy: "Nhập lý do, xem lại thông tin rồi gửi quản lý duyệt." },
 ];
 
 export default function StaffLeavePage() {
@@ -95,8 +95,8 @@ export default function StaffLeavePage() {
       <section className="staff-leave-hero staff-leave-hero--compact" aria-label="Tổng quan nghỉ phép">
         <div className="staff-leave-hero__copy">
           <span className="staff-leave-badge">Nghỉ phép nhân viên</span>
-          <h1 id="staff-leave-title">Xin nghỉ phép trong vài bước</h1>
-          <p>Gửi đơn trong modal, theo dõi trạng thái duyệt và giữ lịch sử ngay trong khu vực nhân viên.</p>
+          <h1 id="staff-leave-title">Đăng ký nghỉ phép</h1>
+          <p>Hoàn thành từng bước ngắn, gửi quản lý duyệt và theo dõi kết quả ngay trong lịch sử bên dưới.</p>
           <div className="staff-leave-hero__actions">
             <button type="button" className="staff-leave-primary-btn" onClick={() => setIsCreateModalOpen(true)}>
               + Tạo đơn nghỉ phép
@@ -113,11 +113,11 @@ export default function StaffLeavePage() {
           <div className="staff-leave-identity-card__avatar" aria-hidden="true">{initials}</div>
           <span>Người làm đơn</span>
           <strong>{staffName}</strong>
-          <small>Form sẽ tự chọn tài khoản hiện tại.</small>
+          <small>Tài khoản được chọn tự động.</small>
         </aside>
       </section>
 
-      <section className="staff-leave-guide" aria-label="Hướng dẫn gửi đơn nghỉ phép">
+      <section className="staff-leave-guide" aria-label="Ba bước gửi đơn nghỉ phép">
         {leaveGuide.map((item) => (
           <article className="staff-leave-guide__item" key={item.step}>
             <span>{item.step}</span>
@@ -139,7 +139,7 @@ export default function StaffLeavePage() {
           onSearchChange={setSearch}
           loading={loading}
           error={error}
-          title="📋 Lịch sử đơn nghỉ phép"
+          title="Lịch sử đơn nghỉ phép"
           subtitle="Theo dõi trạng thái các đơn bạn đã gửi"
           allowDecisionActions={false}
           showSearch={false}
@@ -152,12 +152,12 @@ export default function StaffLeavePage() {
         onClose={closeCreateModal}
         title="Tạo đơn nghỉ phép"
         size="lg"
-        className="leave-request-modal"
+        className="leave-request-modal staff-leave-request-modal"
         autoWrapBody={false}
       >
         <Modal.Body className="leave-request-modal__body">
           <p className="leave-request-modal__intro">
-            Tài khoản của bạn được chọn tự động. Hãy nhập thời gian và lý do nghỉ trước khi gửi.
+            Hoàn thành lần lượt 3 bước. Thông tin đã nhập được giữ lại khi bạn quay về bước trước.
           </p>
           <LeaveRequestForm
             staffList={formStaffList}
@@ -168,6 +168,7 @@ export default function StaffLeavePage() {
             error={error}
             selfServiceEmployeeId={employeeId}
             compact
+            stepByStep
             title=""
             submitLabel="Gửi đơn"
             onCancel={closeCreateModal}
