@@ -194,23 +194,43 @@ async function enqueueStationTickets(order) {
   }
 
   const stationPrinters = printSetting?.stations || {};
-  const jobs = Object.entries(itemsByStation)
-    .filter(
-      ([station]) =>
-        Array.isArray(stationPrinters?.[station]) &&
-        Boolean(stationPrinters[station][0]),
-    )
-    .map(([station, items]) => {
+  const printerById = new Map(
+    (Array.isArray(printSetting?.printers) ? printSetting.printers : [])
+      .filter((printer) => printer?.id)
+      .map((printer) => [String(printer.id), printer]),
+  );
+  const templateEnabledByKey = new Map(
+    (Array.isArray(printSetting?.templates) ? printSetting.templates : [])
+      .filter((template) => template?.key)
+      .map((template) => [String(template.key), template.enabled !== false]),
+  );
+
+  const jobs = Object.entries(itemsByStation).flatMap(([station, items]) => {
+    if (templateEnabledByKey.get(station) === false) return [];
+    const assignedPrinterIds = Array.from(
+      new Set(
+        (Array.isArray(stationPrinters?.[station]) ? stationPrinters[station] : [])
+          .map(String)
+          .filter((printerId) => printerById.has(printerId)),
+      ),
+    );
+
+    return assignedPrinterIds.map((printerId) => {
+      const printer = printerById.get(printerId);
       const createdAt = new Date().toISOString();
+      const unavailable = String(printer?.status || "offline").toLowerCase() === "offline";
       return {
         id: `job_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
         orderId: String(order._id),
         stationId: station,
         stationType: station,
-        printerId: stationPrinters[station][0],
+        printerId,
+        printerName: printer?.name || null,
         printType: "order_confirmed",
+        templateKey: station,
         items: items.map(buildTicketLine),
-        status: "pending",
+        status: unavailable ? "failed" : "pending",
+        error: unavailable ? "Printer is not configured or available" : null,
         retryCount: 0,
         payload: {
           orderCode: order.orderCode,
@@ -221,6 +241,7 @@ async function enqueueStationTickets(order) {
         updatedAt: createdAt,
       };
     });
+  });
 
   if (!jobs.length) return [];
 
