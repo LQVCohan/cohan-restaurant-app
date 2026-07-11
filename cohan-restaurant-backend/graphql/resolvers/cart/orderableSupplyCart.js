@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 
-import { Cart, MenuItem } from "../../../models/index.js";
+import { Cart, MenuItem, Warehouse } from "../../../models/index.js";
 import { applyCartDerivedFields } from "../../../models/cartDerivedFields.js";
 import { reserveForOrderTx } from "../../../src/services/inventory.service.js";
 import { getOrderableSupplyCatalogItem } from "../../../src/services/orderableSupplyCatalog.service.js";
@@ -9,7 +9,6 @@ import {
   assertRestaurantCanOrder,
   getPublicRestaurantOrThrow,
 } from "../shared/restaurantCapabilityGuards.js";
-import { Warehouse } from "../../../models/index.js";
 
 const HOLD_TTL_MS = 5 * 60 * 1000;
 
@@ -42,8 +41,8 @@ const sameDate = (left, right) =>
   (right ? new Date(right).getTime() : null);
 
 async function resolveWarehouseId(restaurantId, session = null) {
-  let query = Warehouse.findOne({ restaurantId, isActive: { $ne: false } })
-    .sort({ isDefault: -1, createdAt: 1, _id: 1 })
+  let query = Warehouse.findOne({ restaurantId, isActive: true })
+    .sort({ createdAt: 1, _id: 1 })
     .select({ _id: 1 });
   if (session) query = query.session(session);
   const warehouse = await query.lean();
@@ -158,7 +157,10 @@ async function addSupplyCartItem({ input, ctx, catalogItem }) {
           session,
         });
       } catch (error) {
-        if (String(error?.message || "").includes("Insufficient")) {
+        if (
+          error?.code === "INSUFFICIENT_STOCK" ||
+          String(error?.message || "").includes("Insufficient")
+        ) {
           throw graphQLError(
             `${catalogItem.name} đã hết hàng hoặc không đủ tồn kho để giữ chỗ.`,
             "OUT_OF_STOCK",
