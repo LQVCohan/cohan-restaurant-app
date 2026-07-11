@@ -3,7 +3,7 @@
   "name": "table-management-flow-audit",
   "title": "Audit and harden table management flows",
   "description": "Trace manager, POS, floor, merge, QR and public table flows; fix confirmed data-integrity, restaurant-scope, search and Apollo-cache defects without changing product behavior.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack-fix",
   "scope": "table-management",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-11",
-  "completedAt": null,
+  "completedAt": "2026-07-11",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "058c837736f3a988376bff377d2707337f47a692",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -24,6 +24,7 @@
     "cohan-restaurant-backend/models/table.model.js",
     "cohan-restaurant-backend/graphql/schema/floor_table.graphql",
     "cohan-restaurant-backend/graphql/resolvers/table/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/table/integrityMutations.js",
     "cohan-restaurant-backend/graphql/resolvers/table/query.js",
     "cohan-restaurant-backend/graphql/resolvers/table/mutation.js",
     "cohan-restaurant-backend/graphql/resolvers/table/mergeTables.js",
@@ -35,5 +36,5 @@
     "cohan-restaurant-backend/tests/resolvers/table-management-core-audit.test.js",
     "src/hooks/useTableManagement.test.jsx"
   ],
-  "notes": "Keep composite merge/split, POS ownership, QR access and the current 360-only product contract unchanged. Fix only confirmed shared-boundary defects."
+  "notes": "Completed with focused integrity fixes. Composite merge/split, POS ownership, QR access and the current 360-only product contract remain unchanged. No GitHub Actions workflow was available for the implementation head."
 }
