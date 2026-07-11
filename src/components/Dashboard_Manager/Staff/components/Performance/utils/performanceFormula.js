@@ -3,7 +3,7 @@ export const PERFORMANCE_FORMULA_ITEMS = [
     key: "productivity",
     label: "Năng suất",
     weight: 25,
-    description: "Thời lượng làm thực tế / thời lượng ca được phân công; order chỉ tham khảo",
+    description: "Mọi role: thời lượng làm thực tế / thời lượng ca được phân công; order chỉ là bằng chứng tham khảo.",
   },
   {
     key: "punctuality",
