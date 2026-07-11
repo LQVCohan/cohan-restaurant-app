@@ -1,7 +1,7 @@
 {
   "id": "07-11-staff-role-workspace-responsive",
   "title": "Role-aware staff workspace and responsive shell",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-redesign",
   "scope": [
     "src/utils/frontendRoleAccess.js",
@@ -32,6 +32,10 @@
       "npm run build",
       "manual review at 390x844 and 430x932 when a browser is available"
     ],
-    "completed": []
+    "completed": [
+      "Re-fetched all changed files from main and verified role routes, navigation priority and responsive selectors.",
+      "Scanned changed files for conflict markers and contract-affecting changes.",
+      "GitHub commit status was empty; local test/build execution was unavailable in this workspace."
+    ]
   }
 }
