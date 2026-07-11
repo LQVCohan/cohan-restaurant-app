@@ -277,9 +277,9 @@ describe("AiHandoffInbox", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Đã xử lý" })).toHaveClass(
-        "active",
-      );
+      expect(
+        screen.getAllByRole("button", { name: "Đã xử lý" })[0],
+      ).toHaveClass("active");
       expect(loadResolvedThread).toHaveBeenCalledWith({
         variables: { id: "closed-1" },
       });
