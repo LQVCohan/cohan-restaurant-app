@@ -5,6 +5,7 @@
   "type": "cross-layer-bugfix-ui",
   "scope": [
     "cohan-restaurant-backend/graphql/resolvers/order/checkoutContactGuard.js",
+    "cohan-restaurant-backend/graphql/resolvers/order/deferredOnlineCheckout.js",
     "cohan-restaurant-backend/graphql/resolvers/order/index.js",
     "cohan-restaurant-backend/graphql/resolvers/payment/customerOrderPaymentMutation.js",
     "cohan-restaurant-backend/graphql/resolvers/payment/index.js",
@@ -14,7 +15,7 @@
   ],
   "validation": {
     "planned": [
-      "focused backend tests for checkout contact and customer payment ownership",
+      "focused backend tests for checkout contact, customer payment ownership and deferred online release",
       "focused frontend checkout contact tests",
       "frontend and backend lint",
       "menu RBAC, builds and Playwright smoke"
@@ -23,10 +24,11 @@
       "read AGENTS.md and .trellis/workflow.md",
       "read ponytail and relevant UI redesign skills",
       "traced cart schema and hold mutations through checkout hardening, canonical checkout resolver, Apollo mutation and modal action",
-      "traced createOrderPayment through payment resolver, payment session service and VNPAY provider",
-      "focused backend checkout-contact and payment-ownership tests passed",
+      "traced createOrderPayment through payment resolver, payment session service, verified callback settlement and VNPAY provider",
+      "focused backend checkout-contact, payment-ownership and deferred-online tests passed",
       "frontend email-or-phone validation tests passed",
       "frontend and backend lint, menu RBAC, builds, changed component tests and Playwright smoke passed in CI run 8253",
+      "final standard suite loaded the deferred-online path and passed all new tests; remaining failures are unrelated baseline tests",
       "superseded checkout modal and obsolete test removed",
       "standard CI workflow restored after verification"
     ],
