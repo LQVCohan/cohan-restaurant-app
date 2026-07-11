@@ -512,7 +512,7 @@ const PerformanceDetailPanel = ({ snapshot, previousSnapshot, employee, onClose 
               <li><span>Delta điều chỉnh cuối</span><strong>{hasAdjustment ? formatDelta(adjustmentDelta) : "0"}</strong></li>
               <li className="total"><span>Final score = Base formula score + Final adjustment delta</span><strong>{scoreText(finalPerformanceScore)}</strong></li>
             </ul>
-            {adjustmentDelta < 0 ? <p className="formula-note warning-note">Điểm trừ sự cố chỉ được áp dụng sau khi quản lý xác nhận trách nhiệm và duyệt áp dụng.</p> : null}
+            {adjustmentDelta < 0 ? <p className="formula-note warning-note">Điểm trừ sự cố ngoài chấm công chỉ áp dụng sau khi quản lý xác nhận trách nhiệm và duyệt; đi trễ/về sớm/vắng mặt đã được tính trong thành phần Đúng giờ.</p> : null}
             {appealReversalDelta > 0 ? <p className="formula-note success-note">Điểm được hoàn lại từ khiếu nại được chấp nhận, không phải điểm thưởng mới.</p> : null}
           </div>
 
