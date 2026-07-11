@@ -1,7 +1,7 @@
 {
   "id": "07-12-growth-recommendation-provenance-ui",
   "title": "Clarify recommendation data sources and compact growth widgets",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-bugfix",
   "scope": [
     "src/components/Dashboard_Manager/Analyst/components/SmartPromotionEngineWidget.jsx",
@@ -21,8 +21,17 @@
       "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
       "traced analytics resolver -> promotion/menu services -> useAnalyst -> ManagerAnalyst -> growth widgets",
       "confirmed smart promotion uses orders, customers, promotions, coupons, stock and demand forecast; Gemini only rewrites text",
-      "confirmed menu engineering uses order items, recipe and ingredient cost with a fallback margin"
+      "confirmed menu engineering uses order items, recipe and ingredient cost with a fallback margin",
+      "added visible provenance and calculation-mode explanations to both growth widgets",
+      "featured one promotion recommendation and collapsed secondary campaigns, reusable vouchers, extra dishes, actions and data notes with native details",
+      "translated technical discount and scoring values into manager-facing Vietnamese and percentage formats",
+      "added component regression coverage for provenance, AI limits, fallback cost explanation, progressive disclosure and navigation"
     ],
-    "notRun": []
+    "notRun": [
+      "focused growth widget Vitest was not run because the GitHub connector does not provide a repository runtime",
+      "existing ManagerAnalyst component test was not run",
+      "frontend build was not run",
+      "manual checks at 390x844, 430x932, 1024 and 1440 were not run"
+    ]
   }
 }
