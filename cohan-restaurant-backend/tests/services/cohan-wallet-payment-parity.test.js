@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import PaymentSession from "../../models/payment-session.model.js";
+import { fingerprintWalletPaymentRequest } from "../../src/services/wallet/idempotentWalletPayment.service.js";
 
 const repoRoot =
   basename(process.cwd()) === "cohan-restaurant-backend"
@@ -14,10 +15,17 @@ const readBackendSource = (relativePath) =>
 const walletServiceSource = readBackendSource(
   "src/services/wallet/wallet.service.js",
 );
+const walletIdempotencySource = readBackendSource(
+  "src/services/wallet/idempotentWalletPayment.service.js",
+);
 const walletResolverSource = readBackendSource("graphql/resolvers/wallet/index.js");
 const walletSchemaSource = readBackendSource("graphql/schema/wallet.graphql");
 const deferredCheckoutSource = readBackendSource(
   "graphql/resolvers/order/deferredOnlineCheckout.js",
+);
+const apolloClientSource = readFileSync(
+  join(repoRoot, "src/apollo/client.js"),
+  "utf8",
 );
 const managerWalletSource = readFileSync(
   join(
@@ -63,6 +71,54 @@ describe("Cohan wallet payment parity", () => {
       deferredCheckoutSource.indexOf("await payOrdersWithWallet({"),
     ).toBeLessThan(deferredCheckoutSource.indexOf('"payment.status": "paid"'));
     expect(deferredCheckoutSource).toContain("await emitPaymentRealtime({");
+    expect(deferredCheckoutSource).toContain(
+      "idempotentWalletPayment.service.js",
+    );
+  });
+
+  it("binds a wallet key to the canonical user, restaurant and order payload", () => {
+    const first = fingerprintWalletPaymentRequest({
+      userId: "64b000000000000000000001",
+      restaurantId: "64b000000000000000000002",
+      orderIds: [
+        "64b000000000000000000004",
+        "64b000000000000000000003",
+      ],
+    });
+    const reordered = fingerprintWalletPaymentRequest({
+      userId: "64b000000000000000000001",
+      restaurantId: "64b000000000000000000002",
+      orderIds: [
+        "64b000000000000000000003",
+        "64b000000000000000000004",
+      ],
+    });
+    const differentOrder = fingerprintWalletPaymentRequest({
+      userId: "64b000000000000000000001",
+      restaurantId: "64b000000000000000000002",
+      orderIds: ["64b000000000000000000005"],
+    });
+
+    expect(first).toBe(reordered);
+    expect(first).not.toBe(differentOrder);
+    expect(walletIdempotencySource).toContain('"IDEMPOTENCY_KEY_REUSED"');
+    expect(walletIdempotencySource).toContain("requestFingerprint");
+    expect(walletIdempotencySource).toContain("correlationId");
+    expect(walletIdempotencySource).toContain("settledTransaction");
+    expect(walletResolverSource).toContain(
+      "idempotentWalletPayment.service.js",
+    );
+    expect(walletSchemaSource).toMatch(
+      /input PayOrdersWithWalletInput[\s\S]*idempotencyKey: String!/,
+    );
+  });
+
+  it("generates the actual checkout key only from Web Crypto per checkout attempt", () => {
+    expect(apolloClientSource).toContain("cryptoApi.randomUUID");
+    expect(apolloClientSource).toContain("cryptoApi.getRandomValues");
+    expect(apolloClientSource).toContain("attempt:${checkoutAttempt}");
+    expect(apolloClientSource).toContain("CreateCheckoutOrders:v1:");
+    expect(apolloClientSource).not.toContain("Math.random()");
   });
 
   it("keeps duplicate submissions idempotent", () => {
