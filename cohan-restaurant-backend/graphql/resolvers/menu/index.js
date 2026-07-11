@@ -2,6 +2,7 @@
 
 import mongoose from "mongoose";
 import { MenuQuery } from "./query.js";
+import { OrderableSupplyMenuQuery } from "./orderableSupplyQuery.js";
 import { CustomerMenuLocationQuery } from "./customerLocationQuery.js";
 import { MenuMutation } from "./mutation.js";
 import { CopyMenuMutation } from "./copyMutation.js";
@@ -17,6 +18,9 @@ const MenuPriceHistoryMutations = createMenuPriceHistoryMutations(MenuMutation);
 
 const getMenuId = (parent) => parent?._id || parent?.id;
 const getMenuItemId = (parent) => parent?._id || parent?.id;
+const isSupplyItem = (parent) =>
+  String(parent?.itemType || "").toUpperCase() === "SUPPLY" ||
+  Boolean(parent?._supplyCatalog || parent?.supplyId);
 
 async function getMenuOrderStats(parent) {
   if (parent?._menuOrderStats) return parent._menuOrderStats;
@@ -92,6 +96,16 @@ async function getMenuRating(parent) {
 }
 
 async function getItemAvailability(parent) {
+  if (isSupplyItem(parent)) {
+    return {
+      inventoryStatus: parent?.inventoryStatus || "ERROR",
+      maxAvailable: Number(parent?.maxAvailable || 0),
+      stockWarnings: Array.isArray(parent?.stockWarnings)
+        ? parent.stockWarnings
+        : [],
+      stockShortages: [],
+    };
+  }
   if (parent?._inventoryAvailability) return parent._inventoryAvailability;
 
   const restaurantId = parent?.restaurantId;
@@ -104,6 +118,7 @@ async function getItemAvailability(parent) {
 export default {
   Query: {
     ...MenuQuery,
+    ...OrderableSupplyMenuQuery,
     ...CustomerMenuLocationQuery,
   },
 
@@ -116,7 +131,18 @@ export default {
   },
 
   MenuItem: {
+    itemType(parent) {
+      return isSupplyItem(parent) ? "SUPPLY" : "MENU_ITEM";
+    },
+    supplyId(parent) {
+      return isSupplyItem(parent)
+        ? parent?.supplyId || parent?._id || parent?.id || null
+        : null;
+    },
     async servingVariants(parent) {
+      if (isSupplyItem(parent) && Array.isArray(parent?.servingVariants)) {
+        return parent.servingVariants;
+      }
       if (parent?.recipe && Array.isArray(parent.recipe.servingVariants)) {
         return parent.recipe.servingVariants;
       }
