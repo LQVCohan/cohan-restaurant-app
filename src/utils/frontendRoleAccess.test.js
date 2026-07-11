@@ -48,6 +48,11 @@ describe("restaurant-scoped frontend roles", () => {
       department: "bar",
       permissions: ["order.read", "order.update"],
     });
+    const restoredCustomBar = {
+      roleName: "bar-lead",
+      department: "bar",
+      effectivePermissionCodes: ["order.read", "order.update"],
+    };
     const customKitchen = customStaff({
       slug: "grill-specialist",
       department: "kitchen",
@@ -60,9 +65,11 @@ describe("restaurant-scoped frontend roles", () => {
     });
 
     expect(resolveUserRoleName(customBar)).toBe("bartender");
+    expect(resolveUserRoleName(restoredCustomBar)).toBe("bartender");
     expect(resolveUserRoleName(customKitchen)).toBe("chef");
     expect(resolveUserRoleName(customStorekeeper)).toBe("storekeeper");
     expect(hasStaffKitchenAccess(customBar)).toBe(true);
+    expect(hasStaffKitchenAccess(restoredCustomBar)).toBe(true);
     expect(hasStaffKitchenAccess(customKitchen)).toBe(true);
     expect(getDefaultPathForRole(customStorekeeper)).toBe("/staff/dashboard");
   });
