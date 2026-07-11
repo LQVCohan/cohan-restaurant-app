@@ -1142,6 +1142,10 @@ const ScheduleManagement = ({ readOnly = false, restaurantId: scopedRestaurantId
     respectAvailability: true,
     avoidOvertime: true,
   });
+  const [autoSchedulePeriod, setAutoSchedulePeriod] = useState({
+    periodStart: null,
+    periodEnd: null,
+  });
   const [assistantPayload, setAssistantPayload] = useState(null);
   const [aiPlannerPayload, setAiPlannerPayload] = useState(null);
   const [autoScheduleSource, setAutoScheduleSource] = useState("ai");
@@ -4080,6 +4084,10 @@ const ScheduleManagement = ({ readOnly = false, restaurantId: scopedRestaurantId
       viewMode === "day"
         ? endOfDay(currentDate || new Date())
         : fallbackEnd;
+    setAutoSchedulePeriod({
+      periodStart: analysisStart.toISOString(),
+      periodEnd: analysisEnd.toISOString(),
+    });
 
     try {
       const aiInput = {
@@ -4375,8 +4383,11 @@ const ScheduleManagement = ({ readOnly = false, restaurantId: scopedRestaurantId
         variables: {
           input: {
             restaurantId: effectiveRestaurantId,
-            periodStart: autoSchedulePreview.items?.[0]?.startTime,
+            periodStart:
+              autoSchedulePeriod.periodStart ||
+              autoSchedulePreview.items?.[0]?.startTime,
             periodEnd:
+              autoSchedulePeriod.periodEnd ||
               autoSchedulePreview.items?.[autoSchedulePreview.items.length - 1]
                 ?.endTime,
             timezone: SCHEDULING_TIMEZONE,
