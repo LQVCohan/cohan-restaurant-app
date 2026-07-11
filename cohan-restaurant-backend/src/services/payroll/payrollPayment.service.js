@@ -3,7 +3,6 @@ import {
   PayrollPeriod,
   PayrollItem,
   PayrollPayment,
-  PayrollPayout,
   Cashflow,
   Staff,
 } from "../../../models/index.js";
@@ -19,10 +18,32 @@ function toNumber(value) {
   return Number(value || 0);
 }
 
-
-async function execMaybeLean(query) {
-  if (query && typeof query.lean === "function") return query.lean();
+function applySession(query, session) {
+  if (session && query && typeof query.session === "function") {
+    return query.session(session);
+  }
   return query;
+}
+
+async function execMaybeLean(query, session = null) {
+  const scopedQuery = applySession(query, session);
+  if (scopedQuery && typeof scopedQuery.lean === "function") {
+    return scopedQuery.lean();
+  }
+  return scopedQuery;
+}
+
+async function execAggregate(aggregate, session = null) {
+  if (session && aggregate && typeof aggregate.session === "function") {
+    return aggregate.session(session);
+  }
+  return aggregate;
+}
+
+async function createOne(Model, payload, session = null) {
+  if (!session) return Model.create(payload);
+  const rows = await Model.create([payload], { session });
+  return rows[0];
 }
 
 function roundMoney(value) {
@@ -30,13 +51,33 @@ function roundMoney(value) {
 }
 
 function normalizePaymentMethod(method) {
-  return ["cash", "bank_transfer", "card", "e_wallet", "other"].includes(String(method || ""))
+  return ["cash", "bank_transfer", "card", "e_wallet", "other"].includes(
+    String(method || ""),
+  )
     ? String(method)
     : "cash";
 }
 
 function getNetSalary(item) {
   return roundMoney(item?.breakdown?.netSalary || 0);
+}
+
+function assertValidPaidAt(value) {
+  const paidAt = value ? new Date(value) : new Date();
+  if (Number.isNaN(paidAt.getTime())) {
+    throw new Error("PAYROLL_PAYMENT_DATE_INVALID");
+  }
+  return paidAt;
+}
+
+function assertExistingPaymentScope(existingPayment, period, item) {
+  if (
+    String(existingPayment.periodId) !== String(period._id) ||
+    String(existingPayment.employeeId) !== String(item.employeeId) ||
+    String(existingPayment.payrollItemId) !== String(item._id)
+  ) {
+    throw new Error("PAYROLL_PAYMENT_IDEMPOTENCY_CONFLICT");
+  }
 }
 
 export function mapPayrollPaymentToGql(row) {
@@ -58,68 +99,125 @@ export function mapPayrollPaymentToGql(row) {
   };
 }
 
-async function getPaidAmount(periodId, employeeId) {
-  const rows = await PayrollPayment.aggregate([
-    { $match: { periodId: toObjectId(periodId), employeeId: toObjectId(employeeId) } },
-    { $group: { _id: null, amount: { $sum: "$amount" } } },
-  ]);
+async function getPaidAmount(periodId, employeeId, session = null) {
+  const rows = await execAggregate(
+    PayrollPayment.aggregate([
+      {
+        $match: {
+          periodId: toObjectId(periodId),
+          employeeId: toObjectId(employeeId),
+        },
+      },
+      { $group: { _id: null, amount: { $sum: "$amount" } } },
+    ]),
+    session,
+  );
   return roundMoney(rows?.[0]?.amount || 0);
 }
 
-
-async function createPayrollCashflow({ payment, period, note = "" }) {
+async function createPayrollCashflow({
+  payment,
+  period,
+  note = "",
+  session = null,
+}) {
   if (!payment?._id) return null;
-  const existing = await Cashflow.findOne({
-    "ref.kind": "PayrollPayment",
-    "ref.id": payment._id,
-  }).lean();
+  const existing = await execMaybeLean(
+    Cashflow.findOne({
+      "ref.kind": "PayrollPayment",
+      "ref.id": payment._id,
+    }),
+    session,
+  );
   if (existing) return existing;
-  return Cashflow.create({
-    restaurantId: payment.restaurantId,
-    type: "OUTFLOW",
-    amount: payment.amount,
-    currency: "VND",
-    occurredAt: payment.paidAt || new Date(),
-    note: note || `Chi lương kỳ ${period?.name || period?._id || ""}`.trim(),
-    ref: { kind: "PayrollPayment", id: payment._id },
-    category: "payroll",
-    subcategory: "labor",
-    meta: {
-      payrollPeriodId: String(payment.periodId),
-      payrollItemId: String(payment.payrollItemId),
-      employeeId: String(payment.employeeId),
-      method: payment.method || "cash",
+
+  return createOne(
+    Cashflow,
+    {
+      restaurantId: payment.restaurantId,
+      type: "OUTFLOW",
+      amount: payment.amount,
+      currency: "VND",
+      occurredAt: payment.paidAt || new Date(),
+      note:
+        note || `Chi lương kỳ ${period?.name || period?._id || ""}`.trim(),
+      ref: { kind: "PayrollPayment", id: payment._id },
+      category: "payroll",
+      subcategory: "labor",
+      meta: {
+        payrollPeriodId: String(payment.periodId),
+        payrollItemId: String(payment.payrollItemId),
+        employeeId: String(payment.employeeId),
+        method: payment.method || "cash",
+      },
     },
-  });
+    session,
+  );
 }
 
-async function refreshPeriodPaymentState(period, actorId) {
-  const docs = await PayrollItem.find({ periodId: period._id }).lean();
-  const items = docs.map(mapPayrollDocToGql);
+async function refreshPeriodPaymentState(period, actorId, session = null) {
+  const docs = await execMaybeLean(
+    PayrollItem.find({ periodId: period._id }),
+    session,
+  );
+  const items = (docs || []).map(mapPayrollDocToGql);
   const stats = summarize(items);
-  const paidRows = await PayrollPayment.aggregate([
-    { $match: { periodId: period._id } },
-    { $group: { _id: null, amount: { $sum: "$amount" } } },
-  ]);
+  const paidRows = await execAggregate(
+    PayrollPayment.aggregate([
+      { $match: { periodId: period._id } },
+      { $group: { _id: null, amount: { $sum: "$amount" } } },
+    ]),
+    session,
+  );
   stats.paidAmount = roundMoney(paidRows?.[0]?.amount || 0);
-  stats.remaining = Math.max(roundMoney(stats.totalPayroll - stats.paidAmount), 0);
-  stats.progress = stats.totalPayroll > 0 ? Math.min(100, Math.round((stats.paidAmount / stats.totalPayroll) * 100)) : 0;
-  const allPaid = docs.length > 0 && docs.every((item) => item.status === "paid");
+  stats.remaining = Math.max(
+    roundMoney(stats.totalPayroll - stats.paidAmount),
+    0,
+  );
+  stats.progress =
+    stats.totalPayroll > 0
+      ? Math.min(
+          100,
+          Math.max(
+            0,
+            Math.round((stats.paidAmount / stats.totalPayroll) * 100),
+          ),
+        )
+      : 0;
+
+  const allPaid =
+    (docs || []).length > 0 &&
+    docs.every((item) => ["paid", "locked"].includes(String(item.status)));
   const update = { statsSnapshot: stats };
   if (allPaid && !["paid", "locked"].includes(String(period.status))) {
     update.status = "paid";
     update.paidAt = new Date();
     update.paidBy = actorId || null;
-  } else if (!allPaid && String(period.status) === "finalized" && stats.paidAmount > 0) {
+  } else if (
+    !allPaid &&
+    String(period.status) === "finalized" &&
+    stats.paidAmount > 0
+  ) {
     update.status = "paying";
   }
-  await PayrollPeriod.findByIdAndUpdate(period._id, { $set: update });
+
+  await PayrollPeriod.findByIdAndUpdate(
+    period._id,
+    { $set: update },
+    { session },
+  );
   return { stats, allPaid };
 }
 
-async function getPeriodInScope(periodId, restaurantId = null) {
-  const periodQuery = PayrollPeriod.findById(periodId);
-  const period = await execMaybeLean(periodQuery);
+async function getPeriodInScope(
+  periodId,
+  restaurantId = null,
+  session = null,
+) {
+  const period = await execMaybeLean(
+    PayrollPeriod.findById(periodId),
+    session,
+  );
   if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
   if (restaurantId && String(period.restaurantId) !== String(restaurantId)) {
     throw new Error("FORBIDDEN_SCOPE");
@@ -127,34 +225,56 @@ async function getPeriodInScope(periodId, restaurantId = null) {
   return period;
 }
 
-async function getItemForPayment(period, employeeId) {
-  const item = await execMaybeLean(PayrollItem.findOne({
-    periodId: period._id,
-    restaurantId: period.restaurantId,
-    employeeId: toObjectId(employeeId),
-  }));
+async function getItemForPayment(period, employeeId, session = null) {
+  const item = await execMaybeLean(
+    PayrollItem.findOne({
+      periodId: period._id,
+      restaurantId: period.restaurantId,
+      employeeId: toObjectId(employeeId),
+    }),
+    session,
+  );
   if (!item) throw new Error("PAYROLL_ITEM_NOT_FOUND");
   return item;
+}
+
+async function getExistingPayment(
+  { idempotencyKey, payoutId },
+  session = null,
+) {
+  if (idempotencyKey) {
+    const existing = await execMaybeLean(
+      PayrollPayment.findOne({ idempotencyKey }),
+      session,
+    );
+    if (existing) return existing;
+  }
+  if (payoutId) {
+    const existing = await execMaybeLean(
+      PayrollPayment.findOne({ payoutId }),
+      session,
+    );
+    if (existing) return existing;
+  }
+  return null;
+}
+
+async function getLatestPayrollItem(itemId, session = null) {
+  return execMaybeLean(PayrollItem.findById(itemId), session);
 }
 
 export async function listPayrollPayments({ periodId, employeeId = null }) {
   const query = { periodId: toObjectId(periodId) };
   if (employeeId) query.employeeId = toObjectId(employeeId);
-  const rows = await PayrollPayment.find(query).sort({ paidAt: -1, createdAt: -1 }).lean();
+  const rows = await PayrollPayment.find(query)
+    .sort({ paidAt: -1, createdAt: -1 })
+    .lean();
   return rows.map(mapPayrollPaymentToGql);
 }
 
 export async function getPayrollPayslip({ periodId, employeeId }) {
-  const periodQuery = PayrollPeriod.findById(periodId);
-  const period = await execMaybeLean(periodQuery);
-  if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
-
-  const item = await execMaybeLean(PayrollItem.findOne({
-    periodId: period._id,
-    restaurantId: period.restaurantId,
-    employeeId: toObjectId(employeeId),
-  }));
-  if (!item) throw new Error("PAYROLL_ITEM_NOT_FOUND");
+  const period = await getPeriodInScope(periodId);
+  const item = await getItemForPayment(period, employeeId);
 
   const employee = await Staff.findById(employeeId)
     .select({
@@ -169,10 +289,17 @@ export async function getPayrollPayslip({ periodId, employeeId }) {
     })
     .lean();
 
-  const payments = await listPayrollPayments({ periodId: period._id, employeeId });
-  const paidAmount = roundMoney(payments.reduce((sum, row) => sum + toNumber(row.amount), 0));
-  const remainingAmount = Math.max(roundMoney(getNetSalary(item) - paidAmount), 0);
-
+  const payments = await listPayrollPayments({
+    periodId: period._id,
+    employeeId,
+  });
+  const paidAmount = roundMoney(
+    payments.reduce((sum, row) => sum + toNumber(row.amount), 0),
+  );
+  const remainingAmount = Math.max(
+    roundMoney(getNetSalary(item) - paidAmount),
+    0,
+  );
   const gqlItem = mapPayrollDocToGql(item);
 
   return {
@@ -186,13 +313,19 @@ export async function getPayrollPayslip({ periodId, employeeId }) {
       finalizedAt: period.finalizedAt || null,
       lockedAt: period.lockedAt || null,
       paidAt: period.paidAt || null,
-      stats: period.statsSnapshot || { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
+      stats: period.statsSnapshot || {
+        totalPayroll: 0,
+        paidAmount: 0,
+        remaining: 0,
+        progress: 0,
+      },
     },
     employee: {
       id: String(employee?._id || item.employeeId),
       name: employee?.fullName || item.employeeName || "Nhân viên",
       code: employee?.employeeCode || item.employeeCode || null,
-      role: employee?.positionTitle || employee?.roleName || item.role || null,
+      role:
+        employee?.positionTitle || employee?.roleName || item.role || null,
       department: employee?.department || item.department || null,
       avatar: employee?.avatarUrl || employee?.avatar || item.avatar || null,
     },
@@ -200,7 +333,9 @@ export async function getPayrollPayslip({ periodId, employeeId }) {
     breakdown: gqlItem,
     payments,
     remainingAmount,
-    canMarkPaid: ["finalized", "paying"].includes(String(period.status)) && remainingAmount > 0,
+    canMarkPaid:
+      ["finalized", "paying"].includes(String(period.status)) &&
+      remainingAmount > 0,
     canEdit: String(period.status) === "draft",
   };
 }
@@ -210,89 +345,179 @@ export async function markPayrollItemPaid({
   actorId = null,
   refreshPeriod = true,
 }) {
-  const period = await getPeriodInScope(input.periodId);
-  assertPayrollPeriodCanMarkPaid(period);
-  const item = await getItemForPayment(period, input.employeeId);
-  const paidAmount = await getPaidAmount(period._id, item.employeeId);
-  const remainingAmount = Math.max(roundMoney(getNetSalary(item) - paidAmount), 0);
-
-  if (remainingAmount <= 0 || item.status === "paid") {
-    throw new Error("ALREADY_PAID");
-  }
-
-  const amount = input.amount == null ? remainingAmount : roundMoney(input.amount);
-  if (!(amount > 0)) throw new Error("PAYROLL_PAYMENT_AMOUNT_INVALID");
-  if (amount > remainingAmount) throw new Error("PAYROLL_PAYMENT_OVERPAY");
-
-  const paidAt = input.paidAt ? new Date(input.paidAt) : new Date();
-  const idempotencyKey = String(input.idempotencyKey || input.requestId || "").trim();
-  if (idempotencyKey) {
-    const existingPayment = await PayrollPayment.findOne({ idempotencyKey }).lean();
-    if (existingPayment) return mapPayrollDocToGql(await PayrollItem.findById(item._id).lean());
-  }
+  const idempotencyKey = String(
+    input.idempotencyKey || input.requestId || "",
+  ).trim();
   const payoutId = toObjectId(input.payoutId);
-  if (payoutId) {
-    const existingPayoutPayment = await PayrollPayment.findOne({ payoutId }).lean();
-    if (existingPayoutPayment) return mapPayrollDocToGql(await PayrollItem.findById(item._id).lean());
-  }
-  if (String(period.status) === "finalized") {
-    await PayrollPeriod.findByIdAndUpdate(period._id, { $set: { status: "paying" } });
-    period.status = "paying";
-  }
-  const payment = await PayrollPayment.create({
-    periodId: period._id,
-    restaurantId: period.restaurantId,
-    employeeId: item.employeeId,
-    payrollItemId: item._id,
-    amount,
-    method: normalizePaymentMethod(input.method),
-    paidAt,
-    note: input.note || "",
-    referenceCode: input.referenceCode || "",
-    createdBy: actorId,
-    idempotencyKey,
-    payoutId,
-  });
+  const session = await mongoose.startSession();
+  let updatedItem = null;
 
-  await createPayrollCashflow({
-    payment,
-    period,
-    note: `Chi lương kỳ ${period.name || ""} - ${item.employeeName || "Nhân viên"}`.trim(),
-  });
+  try {
+    await session.withTransaction(async () => {
+      const period = await getPeriodInScope(
+        input.periodId,
+        null,
+        session,
+      );
+      assertPayrollPeriodCanMarkPaid(period);
+      const item = await getItemForPayment(
+        period,
+        input.employeeId,
+        session,
+      );
 
-  const nextPaidAmount = roundMoney(paidAmount + amount);
-  const update = {
-    paymentMethod: normalizePaymentMethod(input.method) || item.paymentMethod || "",
-    paymentNote: input.note || item.paymentNote || "",
-    "breakdown.paidAmount": nextPaidAmount,
-    "breakdown.remainingAmount": Math.max(roundMoney(getNetSalary(item) - nextPaidAmount), 0),
-  };
-  if (nextPaidAmount >= getNetSalary(item)) {
-    update.status = "paid";
-    update.paidAt = paidAt;
-    update.paidBy = actorId || null;
-  } else {
-    update.status = "pending_payment";
+      const existingPayment = await getExistingPayment(
+        { idempotencyKey, payoutId },
+        session,
+      );
+      if (existingPayment) {
+        assertExistingPaymentScope(existingPayment, period, item);
+        updatedItem = (await getLatestPayrollItem(item._id, session)) || item;
+        return;
+      }
+
+      const paidAmount = await getPaidAmount(
+        period._id,
+        item.employeeId,
+        session,
+      );
+      const netSalary = getNetSalary(item);
+      const remainingAmount = Math.max(
+        roundMoney(netSalary - paidAmount),
+        0,
+      );
+      if (remainingAmount <= 0 || item.status === "paid") {
+        throw new Error("ALREADY_PAID");
+      }
+
+      const amount =
+        input.amount == null ? remainingAmount : roundMoney(input.amount);
+      if (!(amount > 0)) {
+        throw new Error("PAYROLL_PAYMENT_AMOUNT_INVALID");
+      }
+      if (amount > remainingAmount) {
+        throw new Error("PAYROLL_PAYMENT_OVERPAY");
+      }
+
+      const paidAt = assertValidPaidAt(input.paidAt);
+      const method = normalizePaymentMethod(input.method);
+      if (String(period.status) === "finalized") {
+        await PayrollPeriod.findByIdAndUpdate(
+          period._id,
+          { $set: { status: "paying" } },
+          { session },
+        );
+        period.status = "paying";
+      }
+
+      const paymentPayload = {
+        periodId: period._id,
+        restaurantId: period.restaurantId,
+        employeeId: item.employeeId,
+        payrollItemId: item._id,
+        amount,
+        method,
+        paidAt,
+        note: input.note || "",
+        referenceCode: input.referenceCode || "",
+        createdBy: actorId,
+        ...(idempotencyKey ? { idempotencyKey } : {}),
+        ...(payoutId ? { payoutId } : {}),
+      };
+      const payment = await createOne(
+        PayrollPayment,
+        paymentPayload,
+        session,
+      );
+      await createPayrollCashflow({
+        payment,
+        period,
+        session,
+        note: `Chi lương kỳ ${period.name || ""} - ${item.employeeName || "Nhân viên"}`.trim(),
+      });
+
+      const nextPaidAmount = roundMoney(paidAmount + amount);
+      const remainingAfterPayment = Math.max(
+        roundMoney(netSalary - nextPaidAmount),
+        0,
+      );
+      const update = {
+        paymentMethod: method || item.paymentMethod || "",
+        paymentNote: input.note || item.paymentNote || "",
+        "breakdown.paidAmount": nextPaidAmount,
+        "breakdown.remainingAmount": remainingAfterPayment,
+        status: nextPaidAmount >= netSalary ? "paid" : "pending_payment",
+      };
+      if (nextPaidAmount >= netSalary) {
+        update.paidAt = paidAt;
+        update.paidBy = actorId || null;
+      } else {
+        update.paidAt = null;
+        update.paidBy = null;
+      }
+
+      updatedItem = await execMaybeLean(
+        PayrollItem.findOneAndUpdate(
+          {
+            _id: item._id,
+            periodId: period._id,
+            restaurantId: period.restaurantId,
+            status: { $nin: ["paid", "locked"] },
+          },
+          { $set: update },
+          { new: true, session },
+        ),
+        session,
+      );
+      if (!updatedItem) {
+        throw new Error("PAYROLL_PAYMENT_WRITE_CONFLICT");
+      }
+
+      if (refreshPeriod) {
+        await refreshPeriodPaymentState(period, actorId, session);
+      }
+    });
+  } catch (error) {
+    if (error?.code === 11000 && (idempotencyKey || payoutId)) {
+      const period = await getPeriodInScope(input.periodId);
+      const item = await getItemForPayment(period, input.employeeId);
+      const existingPayment = await getExistingPayment({
+        idempotencyKey,
+        payoutId,
+      });
+      if (existingPayment) {
+        assertExistingPaymentScope(existingPayment, period, item);
+        const latestItem = await getLatestPayrollItem(item._id);
+        return mapPayrollDocToGql(latestItem || item);
+      }
+    }
+    throw error;
+  } finally {
+    await session.endSession();
   }
-  const updated = await PayrollItem.findByIdAndUpdate(item._id, { $set: update }, { new: true });
-  if (refreshPeriod) {
-    await refreshPeriodPaymentState(period, actorId);
-  }
-  return mapPayrollDocToGql(updated || item);
+
+  return mapPayrollDocToGql(updatedItem);
 }
 
 export async function batchMarkPayrollPaid({ input, actorId = null }) {
   const period = await getPeriodInScope(input.periodId);
   assertPayrollPeriodCanMarkPaid(period);
-  let employeeIds = Array.from(new Set((input.employeeIds || []).map(String))).filter(Boolean);
+  let employeeIds = Array.from(
+    new Set((input.employeeIds || []).map(String)),
+  ).filter(Boolean);
   if (!employeeIds.length) {
-    const unpaidItems = await PayrollItem.find({ periodId: period._id, status: { $nin: ["paid", "locked"] } }).select({ employeeId: 1 }).lean();
+    const unpaidItems = await PayrollItem.find({
+      periodId: period._id,
+      status: { $nin: ["paid", "locked"] },
+    })
+      .select({ employeeId: 1 })
+      .lean();
     employeeIds = unpaidItems.map((row) => String(row.employeeId));
   }
   if (!employeeIds.length) throw new Error("PAYROLL_NO_UNPAID_ITEMS");
+
   const items = [];
   const errors = [];
-
   for (const employeeId of employeeIds) {
     try {
       const item = await markPayrollItemPaid({
@@ -308,17 +533,17 @@ export async function batchMarkPayrollPaid({ input, actorId = null }) {
         refreshPeriod: false,
       });
       items.push(item);
-    } catch (err) {
+    } catch (error) {
       errors.push({
         employeeId,
-        code: err?.message || "PAYROLL_PAYMENT_FAILED",
-        message: err?.message || "Unable to mark payroll item paid",
+        code: error?.message || "PAYROLL_PAYMENT_FAILED",
+        message: error?.message || "Unable to mark payroll item paid",
       });
     }
   }
 
-  await refreshPeriodPaymentState(period, actorId);
-
+  const refreshedPeriod = await getPeriodInScope(input.periodId);
+  await refreshPeriodPaymentState(refreshedPeriod, actorId);
   return {
     successCount: items.length,
     failedCount: errors.length,
@@ -328,36 +553,45 @@ export async function batchMarkPayrollPaid({ input, actorId = null }) {
 }
 
 export async function buildPayrollExportRows({ periodId }) {
-  const items = await PayrollItem.find({ periodId: toObjectId(periodId) }).sort({ employeeName: 1 }).lean();
+  const periodObjectId = toObjectId(periodId);
+  const items = await PayrollItem.find({ periodId: periodObjectId })
+    .sort({ employeeName: 1 })
+    .lean();
   const payments = await PayrollPayment.aggregate([
-    { $match: { periodId: toObjectId(periodId) } },
+    { $match: { periodId: periodObjectId } },
     { $group: { _id: "$employeeId", amount: { $sum: "$amount" } } },
   ]);
-  const paidByEmployee = new Map(payments.map((row) => [String(row._id), roundMoney(row.amount)]));
+  const paidByEmployee = new Map(
+    payments.map((row) => [String(row._id), roundMoney(row.amount)]),
+  );
 
   return items.map((item) => {
-    const b = item.breakdown || {};
-    const paidAmount = paidByEmployee.get(String(item.employeeId)) || 0;
-    const netSalary = roundMoney(b.netSalary || 0);
+    const breakdown = item.breakdown || {};
+    const paidAmount =
+      paidByEmployee.get(String(item.employeeId)) || 0;
+    const netSalary = roundMoney(breakdown.netSalary || 0);
     return {
       employeeId: String(item.employeeId),
       employeeCode: item.employeeCode || null,
       employeeName: item.employeeName || "Nhân viên",
       department: item.department || null,
       role: item.role || null,
-      baseSalary: toNumber(b.baseSalary),
-      actualWorkDays: toNumber(b.actualWorkDays),
-      totalHours: toNumber(b.totalHours),
-      overtimeNormalHours: toNumber(b.overtimeNormalHours),
-      overtimeWeekendHours: toNumber(b.overtimeWeekendHours),
-      overtimeHolidayHours: toNumber(b.overtimeHolidayHours),
-      nightHours: toNumber(b.nightHours),
-      grossIncome: toNumber(b.grossIncome),
-      allowance: toNumber(b.allowance),
-      bonus: toNumber(b.bonus),
-      deduction: toNumber(b.deduction) + toNumber(b.otherDeduction) + toNumber(b.advance),
-      insuranceTotal: toNumber(b.insuranceTotal),
-      personalIncomeTax: toNumber(b.personalIncomeTax),
+      baseSalary: toNumber(breakdown.baseSalary),
+      actualWorkDays: toNumber(breakdown.actualWorkDays),
+      totalHours: toNumber(breakdown.totalHours),
+      overtimeNormalHours: toNumber(breakdown.overtimeNormalHours),
+      overtimeWeekendHours: toNumber(breakdown.overtimeWeekendHours),
+      overtimeHolidayHours: toNumber(breakdown.overtimeHolidayHours),
+      nightHours: toNumber(breakdown.nightHours),
+      grossIncome: toNumber(breakdown.grossIncome),
+      allowance: toNumber(breakdown.allowance),
+      bonus: toNumber(breakdown.bonus),
+      deduction:
+        toNumber(breakdown.deduction) +
+        toNumber(breakdown.otherDeduction) +
+        toNumber(breakdown.advance),
+      insuranceTotal: toNumber(breakdown.insuranceTotal),
+      personalIncomeTax: toNumber(breakdown.personalIncomeTax),
       netSalary,
       paidAmount,
       remainingAmount: Math.max(roundMoney(netSalary - paidAmount), 0),
