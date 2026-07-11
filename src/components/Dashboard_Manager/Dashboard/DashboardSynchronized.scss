@@ -239,24 +239,26 @@
 }
 
 /*
- * Wide screens: keep the workflow column continuous and move support, alerts
- * and revenue into one balanced row. This removes the large empty block that
- * appeared on the left while the narrow right rail kept growing vertically.
+ * Operational priority: current orders and staff first, then support/alerts/
+ * performance, followed by secondary commercial insights.
  */
 @media (min-width: 1201px) {
   .dashboard-synchronized-shell .dashboard-operations-grid {
     grid-template-columns: repeat(12, minmax(0, 1fr));
     gap: 12px;
-    align-items: start;
+    align-items: stretch;
   }
 
-  .dashboard-synchronized-shell .dashboard-main-stack {
-    grid-column: 1 / span 8;
-    grid-row: 1;
-  }
-
+  .dashboard-synchronized-shell .dashboard-main-stack,
+  .dashboard-synchronized-shell .dashboard-main-secondary,
   .dashboard-synchronized-shell .dashboard-side-stack {
     display: contents;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--recent-orders {
+    grid-column: 1 / span 8;
+    grid-row: 1;
+    align-self: stretch;
   }
 
   .dashboard-synchronized-shell .dashboard-staff-roster-portal-slot {
@@ -283,16 +285,85 @@
     align-self: stretch;
   }
 
-  .dashboard-synchronized-shell .dashboard-card--revenue {
+  .dashboard-synchronized-shell .dashboard-card--performance-summary {
     grid-column: 9 / -1;
     grid-row: 2;
     align-self: stretch;
   }
+
+  .dashboard-synchronized-shell
+    .dashboard-main-secondary
+    > .dashboard-card:not(.dashboard-card--performance-summary) {
+    grid-column: 1 / span 6;
+    grid-row: 3;
+    align-self: stretch;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--revenue {
+    grid-column: 7 / -1;
+    grid-row: 3;
+    align-self: stretch;
+  }
 }
 
-@media (max-width: 1200px) and (min-width: 961px) {
-  .dashboard-synchronized-shell .dashboard-side-stack {
+@media (max-width: 1200px) and (min-width: 769px) {
+  .dashboard-synchronized-shell .dashboard-operations-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .dashboard-synchronized-shell .dashboard-main-stack,
+  .dashboard-synchronized-shell .dashboard-main-secondary,
+  .dashboard-synchronized-shell .dashboard-side-stack {
+    display: contents;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--recent-orders {
+    grid-column: 1 / -1;
+    order: 1;
+    align-self: stretch;
+  }
+
+  .dashboard-synchronized-shell .dashboard-staff-roster-portal-slot {
+    min-width: 0;
+    order: 2;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--support-queue {
+    order: 3;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--alerts {
+    order: 4;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--performance-summary {
+    order: 5;
+  }
+
+  .dashboard-synchronized-shell
+    .dashboard-main-secondary
+    > .dashboard-card:not(.dashboard-card--performance-summary) {
+    order: 6;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--revenue {
+    order: 7;
+  }
+
+  .dashboard-synchronized-shell
+    .dashboard-staff-roster-portal-slot
+    > .dashboard-staff-roster,
+  .dashboard-synchronized-shell .dashboard-card--support-queue,
+  .dashboard-synchronized-shell .dashboard-card--alerts,
+  .dashboard-synchronized-shell .dashboard-card--performance-summary,
+  .dashboard-synchronized-shell
+    .dashboard-main-secondary
+    > .dashboard-card:not(.dashboard-card--performance-summary),
+  .dashboard-synchronized-shell .dashboard-card--revenue {
+    height: 100%;
+    align-self: stretch;
   }
 }
 
@@ -303,6 +374,60 @@
 }
 
 @media (max-width: 768px) {
+  .dashboard-synchronized-shell .dashboard-operations-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .dashboard-synchronized-shell .dashboard-main-stack,
+  .dashboard-synchronized-shell .dashboard-main-secondary,
+  .dashboard-synchronized-shell .dashboard-side-stack {
+    display: contents;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--recent-orders,
+  .dashboard-synchronized-shell .dashboard-staff-roster-portal-slot,
+  .dashboard-synchronized-shell .dashboard-card--support-queue,
+  .dashboard-synchronized-shell .dashboard-card--alerts,
+  .dashboard-synchronized-shell .dashboard-card--performance-summary,
+  .dashboard-synchronized-shell
+    .dashboard-main-secondary
+    > .dashboard-card:not(.dashboard-card--performance-summary),
+  .dashboard-synchronized-shell .dashboard-card--revenue {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--recent-orders {
+    order: 1;
+  }
+
+  .dashboard-synchronized-shell .dashboard-staff-roster-portal-slot {
+    order: 2;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--support-queue {
+    order: 3;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--alerts {
+    order: 4;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--performance-summary {
+    order: 5;
+  }
+
+  .dashboard-synchronized-shell
+    .dashboard-main-secondary
+    > .dashboard-card:not(.dashboard-card--performance-summary) {
+    order: 6;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--revenue {
+    order: 7;
+  }
+
   .dashboard-synchronized-shell .stat-card--summary {
     min-height: 100px;
   }
