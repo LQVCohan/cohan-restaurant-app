@@ -1,0 +1,37 @@
+{
+  "id": "07-11-staff-role-workspace-responsive",
+  "title": "Role-aware staff workspace and responsive shell",
+  "status": "in_progress",
+  "type": "frontend-redesign",
+  "scope": [
+    "src/utils/frontendRoleAccess.js",
+    "src/utils/frontendRoleAccess.test.js",
+    "src/routes/AppRouter.jsx",
+    "src/layouts/StaffLayout.jsx",
+    "src/layouts/StaffLayout.scss",
+    "src/layouts/StaffLayout.test.jsx",
+    "src/layouts/StaffWorkspaceOverrides.scss"
+  ],
+  "rootCause": "All operational staff roles currently land on /staff/dashboard and the shared staff navigation presents many equal-weight links in one horizontal strip. The shell has shared mobile containment, but the primary operational workspace is not surfaced first for each role.",
+  "flow": "Login -> routeGuard.getRoleHomeRoute -> frontendRoleAccess.getDefaultPathForRole -> AppRouter /staff entry -> StaffLayout -> role-filtered navigation -> /staff/orders or /staff/kitchen workspace",
+  "acceptanceCriteria": [
+    "Server, host, cashier and supervisor roles land on /staff/orders.",
+    "Chef, cook, kitchen_helper and bartender roles land on /staff/kitchen.",
+    "Other operational staff roles retain /staff/dashboard.",
+    "Direct /staff entry uses the same role-aware landing rule.",
+    "Visible navigation keeps the role's primary workspace first without changing role or permission guards.",
+    "Desktop navigation is grouped and wraps without horizontal page overflow.",
+    "Mobile navigation remains keyboard/touch accessible, closes after route changes, and does not cover staff content.",
+    "No GraphQL contract, backend guard, restaurant scope or operational data flow changes."
+  ],
+  "validation": {
+    "planned": [
+      "frontendRoleAccess targeted Vitest",
+      "StaffLayout targeted Vitest",
+      "npm run check:conflicts",
+      "npm run build",
+      "manual review at 390x844 and 430x932 when a browser is available"
+    ],
+    "completed": []
+  }
+}
