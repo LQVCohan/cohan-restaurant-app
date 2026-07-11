@@ -2,7 +2,7 @@
   "id": "manager-session-scope-menu-list",
   "name": "manager-session-scope-menu-list",
   "title": "Fix manager account switching, branch scope, navigation persistence and menu overview",
-  "description": "Remount account-scoped manager state, use the live brand query for the shared restaurant selector, persist manager destinations synchronously, and add a grouped menu-and-dish overview.",
+  "description": "Reset account-scoped manager UI, use the live brand query for the shared restaurant selector, persist manager destinations synchronously, and add a grouped menu-and-dish overview.",
   "status": "in_progress",
   "dev_type": "frontend-root-cause-fix",
   "scope": "manager-session-scope-navigation-menu",
@@ -21,16 +21,15 @@
   "children": [],
   "parent": null,
   "relatedFiles": [
-    "src/routes/AppRouter.jsx",
-    "src/routes/AppRouter.account-scope.test.jsx",
-    "src/hooks/useManagerRestaurantSelection.js",
-    "src/hooks/useManagerRestaurantSelection.test.jsx",
+    "src/components/Dashboard_Manager/Header.jsx",
+    "src/components/Dashboard_Manager/Header.account-switch.test.jsx",
     "src/components/Dashboard_Manager/Sidebar.jsx",
     "src/components/Dashboard_Manager/Sidebar.test.jsx",
-    "src/components/Dashboard_Manager/Header.jsx",
+    "src/hooks/useManagerRestaurantSelection.js",
+    "src/hooks/useManagerRestaurantSelection.test.jsx",
     "src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.jsx",
     "src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.scss",
     "src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.test.jsx"
   ],
-  "notes": "The existing AuthProvider already contains epoch, account-ID and Apollo-clear protections. The remaining visible leak is manager-shell local/Apollo child state surviving an account swap, so the smallest correct boundary is an account-keyed manager route."
+  "notes": "AuthProvider already contains session-epoch, account-ID and Apollo-clear protections. The remaining visible leak was local manager Header/Sidebar/account-center state surviving an identity change; those states now reset from the authenticated account ID."
 }
