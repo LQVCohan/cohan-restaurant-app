@@ -10,7 +10,7 @@ The data and action flow is already correct. The missing boundary is presentatio
 
 `OrderItem.station` and timing metadata -> `ordersByRestaurantNow` -> `useOrderManagement` -> `StaffKitchenPage` station/status filtering -> kitchen/bar action -> `updateOrderItemStatus`.
 
-Focus mode wraps this existing page only. It must not change schema, resolver, restaurant scoping, permission checks, socket updates or item-status transitions.
+Focus mode changes presentation only. It must not change schema, resolver, restaurant scoping, permission checks, socket updates or item-status transitions.
 
 ## Direction
 
@@ -18,14 +18,14 @@ A dark, high-contrast full-screen kitchen board following the existing Order Man
 
 ## Scope
 
-- Add a route-level focus frame around the existing `StaffKitchenPage`.
-- Add an explicit `Mở chế độ tập trung` action and a persistent full-screen exit action.
+- Mount a route-scoped launcher through the repository's existing global launcher pattern.
+- Portal the focus action into the kitchen venue block so it belongs to the page instead of floating over unrelated screens.
+- Add an explicit `Mở chế độ tập trung` action and change it to a persistent exit action while active.
 - Support `Escape` to leave focus mode.
 - Lock and restore body scrolling safely while focus mode is active.
-- Hide the normal hero and overview only in focus mode so station controls and actionable orders move to the top.
+- Fix the existing kitchen page to the viewport and hide the overview only in focus mode so station controls and actionable orders move upward.
 - Keep station switching, status filters, live counts, item actions, loading, error and empty states unchanged.
-- Keep the focus header fixed while the kitchen queue scrolls.
-- Use one-column cards on phone widths and larger readable cards on wider screens.
+- Keep the compact hero visible as the focus header and use larger readable cards on wide screens.
 
 ## Acceptance criteria
 
@@ -34,27 +34,28 @@ A dark, high-contrast full-screen kitchen board following the existing Order Man
 3. The current Bếp chính, Quầy bar or Tổng hợp selection remains active when entering and leaving focus mode.
 4. The existing station buttons and status filters remain usable in focus mode.
 5. Staff can leave focus mode using the visible exit button or `Escape`.
-6. Body overflow is restored after exit and component unmount.
-7. Existing kitchen page tests remain valid, and the new focus boundary has a targeted component test.
-8. 390x844 and 430x932 layouts have no page-level horizontal overflow or covered actions.
+6. Body overflow is restored after exit, route change and component unmount.
+7. The launcher is absent outside `/staff/kitchen`.
+8. Existing kitchen page tests remain valid, and the new focus launcher has targeted component coverage.
+9. 390x844 and 430x932 layouts have no page-level horizontal overflow or covered actions.
 
 ## Files
 
-- `src/components/Staff/StaffKitchenFocusPage.jsx`: focus state, keyboard handling and scroll restoration.
-- `src/components/Staff/StaffKitchenFocusPage.scss`: normal launcher and full-screen presentation.
-- `src/components/Staff/StaffKitchenFocusPage.test.jsx`: focus enter/exit and cleanup coverage.
-- `src/routes/AppRouter.jsx`: route the kitchen workspace through the focus frame.
+- `src/components/Staff/StaffKitchenFocusLauncher.jsx`: route detection, portal target, focus state, keyboard handling and scroll restoration.
+- `src/components/Staff/StaffKitchenFocusLauncher.scss`: launcher styling and body-class full-screen presentation.
+- `src/components/Staff/StaffKitchenFocusLauncher.test.jsx`: route visibility, focus enter/exit and cleanup coverage.
+- `src/App.jsx`: mount the launcher beside the existing global launchers.
 
 ## Out of scope
 
 - New GraphQL fields, backend endpoints or mutations.
-- Duplicating the kitchen queue or rewriting `StaffKitchenPage`.
+- Duplicating or rewriting `StaffKitchenPage`.
 - Browser Fullscreen API permission prompts.
 - New dependencies or component libraries.
 
 ## Validation plan
 
-- `npx vitest run src/components/Staff/StaffKitchenFocusPage.test.jsx src/components/Staff/StaffKitchenPage.test.jsx`
+- `npx vitest run src/components/Staff/StaffKitchenFocusLauncher.test.jsx src/components/Staff/StaffKitchenPage.test.jsx`
 - `npm run check:staff-theme`
 - `npm run build`
 - Manual review at 390x844, 430x932, 768px, 1024px and 1440px when a browser runtime is available.
