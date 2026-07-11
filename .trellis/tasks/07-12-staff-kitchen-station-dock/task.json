@@ -1,0 +1,24 @@
+{
+  "id": "07-12-staff-kitchen-station-dock",
+  "title": "Staff kitchen station dock",
+  "status": "in_progress",
+  "type": "frontend-ui",
+  "scope": [
+    "src/styles/StaffKitchenCompactHeader.css"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Staff/StaffKitchenPage.test.jsx",
+      "npm run check:staff-theme",
+      "npm run build",
+      "manual responsive review at 390x844, 430x932, 768px, 1024px and 1440px"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, frontend-design, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
+      "traced OrderItem.station through ordersByRestaurantNow, useOrderManagement, StaffKitchenPage filtering and updateOrderItemStatus",
+      "compared the staff mode switcher with Order Management om-station-switcher",
+      "confirmed the behavior and accessibility contract already exist in StaffKitchenPage; the requested change is presentation-only"
+    ],
+    "notRun": []
+  }
+}
