@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import { io } from "socket.io-client";
 import { AuthContext } from "@/context/AuthContext";
@@ -6,6 +6,7 @@ import { getToken } from "@/lib/authStorage";
 import { getCommunicationActionErrorMessage } from "@/utils/activityActionErrorMessages";
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
+const THREAD_DETAIL_REFRESH_MS = 6000;
 
 export const Q_CHAT_THREADS = gql`
   query ChatThreads($restaurantId: ID, $channel: ChatChannel, $limit: Int = 30, $status: String) {
@@ -132,16 +133,21 @@ export const M_ARCHIVE_NOTIFICATION = gql`
   }
 `;
 
-export default function useCommunication({ restaurantId = null, status = "open", notificationsEnabled = true } = {}) {
+export default function useCommunication({
+  restaurantId = null,
+  status = "open",
+  notificationsEnabled = true,
+} = {}) {
   const auth = useContext(AuthContext);
   const userId = auth?.user?.id || auth?.user?._id || null;
   const notificationSocketRef = useRef(null);
+  const [selectedThreadId, setSelectedThreadId] = useState("");
 
   const threadsQuery = useQuery(Q_CHAT_THREADS, {
     variables: { restaurantId, limit: 30, status },
     skip: !restaurantId,
     fetchPolicy: "cache-and-network",
-    pollInterval: 6000,
+    pollInterval: THREAD_DETAIL_REFRESH_MS,
   });
 
   const notificationsQuery = useQuery(Q_NOTIFICATIONS, {
@@ -158,7 +164,7 @@ export default function useCommunication({ restaurantId = null, status = "open",
     pollInterval: 8000,
   });
 
-  const [loadThread, threadState] = useLazyQuery(Q_CHAT_THREAD, {
+  const [loadThreadQuery, threadState] = useLazyQuery(Q_CHAT_THREAD, {
     fetchPolicy: "network-only",
   });
 
@@ -168,6 +174,24 @@ export default function useCommunication({ restaurantId = null, status = "open",
   const [markNotificationReadMut] = useMutation(M_MARK_NOTIFICATION_READ);
   const [markAllNotificationsReadMut] = useMutation(M_MARK_ALL_NOTIFICATIONS_READ);
   const [archiveNotificationMut] = useMutation(M_ARCHIVE_NOTIFICATION);
+
+  const loadThread = async (options = {}) => {
+    const threadId = String(options?.variables?.id || "").trim();
+    if (threadId) setSelectedThreadId(threadId);
+    return loadThreadQuery(options);
+  };
+
+  useEffect(() => {
+    setSelectedThreadId("");
+  }, [restaurantId, status]);
+
+  useEffect(() => {
+    if (!selectedThreadId) return undefined;
+    const timer = window.setInterval(() => {
+      loadThreadQuery({ variables: { id: selectedThreadId } }).catch(() => {});
+    }, THREAD_DETAIL_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [loadThreadQuery, selectedThreadId]);
 
   useEffect(() => {
     if (!notificationsEnabled || !userId) return undefined;
@@ -194,7 +218,10 @@ export default function useCommunication({ restaurantId = null, status = "open",
     socket.on("connect", () => {
       socket.emit("joinUserChannel", userId, (ack) => {
         if (!ack?.ok) {
-          console.warn("[SOCKET.IO] joinUserChannel failed:", ack?.code || "UNKNOWN");
+          console.warn(
+            "[SOCKET.IO] joinUserChannel failed:",
+            ack?.code || "UNKNOWN",
+          );
         }
       });
     });
@@ -202,7 +229,10 @@ export default function useCommunication({ restaurantId = null, status = "open",
     socket.on("notificationCreated", refetchNotificationState);
 
     socket.on("connect_error", (err) => {
-      console.warn("[SOCKET.IO] Notification channel connection error:", err?.message || err);
+      console.warn(
+        "[SOCKET.IO] Notification channel connection error:",
+        err?.message || err,
+      );
     });
 
     return () => {
@@ -211,7 +241,12 @@ export default function useCommunication({ restaurantId = null, status = "open",
       socket.disconnect();
       notificationSocketRef.current = null;
     };
-  }, [notificationsEnabled, userId, notificationsQuery.refetch, unreadCountQuery.refetch]);
+  }, [
+    notificationsEnabled,
+    userId,
+    notificationsQuery.refetch,
+    unreadCountQuery.refetch,
+  ]);
 
   const openThread = async (options) => {
     try {
