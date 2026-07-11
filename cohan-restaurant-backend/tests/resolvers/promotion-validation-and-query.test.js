@@ -224,7 +224,7 @@ describe("Promotion validation and query filtering", () => {
     ).rejects.toThrow("Một hoặc nhiều món không thuộc nhà hàng đã chọn");
   });
 
-  it("builds active queries with date and usage-limit constraints", async () => {
+  it("builds public active queries with date constraints", async () => {
     const chain = mockFindChain();
     const { PromotionQuery } = await import(
       "../../graphql/resolvers/promotion/query.js"
@@ -244,13 +244,51 @@ describe("Promotion validation and query filtering", () => {
     expect(authorizationMocks.requireRestaurantPermission).not.toHaveBeenCalled();
     expect(passedQuery.isActive).toBe(true);
     expect(passedQuery.$and).toHaveLength(2);
-    expect(passedQuery.$expr).toEqual({
-      $or: [
-        { $lte: ["$usageLimit", 0] },
-        { $lt: ["$usageCount", "$usageLimit"] },
-      ],
-    });
+    expect(passedQuery).not.toHaveProperty("$expr");
     expect(chain.sort).toHaveBeenCalled();
+    expect(chain.limit).toHaveBeenCalledWith(20);
+  });
+
+  it("rejects invalid active-query timestamps", async () => {
+    mockFindChain();
+    const { PromotionQuery } = await import(
+      "../../graphql/resolvers/promotion/query.js"
+    );
+
+    await expect(
+      PromotionQuery.promotionsByRestaurant(
+        null,
+        {
+          restaurantId: "restaurant-1",
+          activeOnly: true,
+          now: "not-a-date",
+        },
+        managerContext,
+      ),
+    ).rejects.toThrow("Invalid now");
+    expect(modelMocks.Promotion.find).not.toHaveBeenCalled();
+  });
+
+  it("allows management listings to request up to 500 rows", async () => {
+    const chain = mockFindChain();
+    const { PromotionQuery } = await import(
+      "../../graphql/resolvers/promotion/query.js"
+    );
+
+    await PromotionQuery.promotionsByRestaurant(
+      null,
+      {
+        restaurantId: "restaurant-1",
+        activeOnly: false,
+        limit: 999,
+        offset: 2.9,
+      },
+      managerContext,
+    );
+
+    expect(authorizationMocks.requireRestaurantPermission).toHaveBeenCalled();
+    expect(chain.limit).toHaveBeenCalledWith(500);
+    expect(chain.skip).toHaveBeenCalledWith(2);
   });
 
   it("requires restaurant permission for management listings", async () => {
