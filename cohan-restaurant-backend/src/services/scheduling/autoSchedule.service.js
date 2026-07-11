@@ -352,7 +352,7 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
   });
 
   const staffRows = await Staff.find({
-    userType: "STAFF",
+    userType: { $in: ["STAFF", "MANAGER"] },
     ...staffScopeFilter,
     $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
   }).lean();
