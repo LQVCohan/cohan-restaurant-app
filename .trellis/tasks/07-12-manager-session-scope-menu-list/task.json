@@ -2,10 +2,10 @@
   "id": "manager-session-scope-menu-list",
   "name": "manager-session-scope-menu-list",
   "title": "Fix manager account switching, branch scope, navigation persistence and menu overview",
-  "description": "Harden account isolation, refresh shared manager restaurant scope after branch creation, persist manager destination before reload, and show dishes inside each time-slot menu.",
+  "description": "Remount account-scoped manager state, use the live brand query for the shared restaurant selector, persist manager destinations synchronously, and add a grouped menu-and-dish overview.",
   "status": "in_progress",
-  "dev_type": "fullstack-trace-frontend-fix",
-  "scope": "auth-manager-menu",
+  "dev_type": "frontend-root-cause-fix",
+  "scope": "manager-session-scope-navigation-menu",
   "package": null,
   "priority": "P1",
   "creator": "LQVCohan",
@@ -21,17 +21,16 @@
   "children": [],
   "parent": null,
   "relatedFiles": [
-    "src/context/AuthProvider.jsx",
-    "src/context/__tests__/AuthProvider.login-race.test.jsx",
-    "src/components/Dashboard_Manager/Brand/BrandManagement.jsx",
-    "src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx",
-    "src/layouts/ManagerLayout.jsx",
-    "src/layouts/ManagerLayout.navigation.test.js",
-    "src/hooks/useMenuManagement.js",
-    "src/components/Dashboard_Manager/Menu/MenuManagement.jsx",
-    "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.jsx",
-    "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.scss",
-    "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx"
+    "src/routes/AppRouter.jsx",
+    "src/routes/AppRouter.account-scope.test.jsx",
+    "src/hooks/useManagerRestaurantSelection.js",
+    "src/hooks/useManagerRestaurantSelection.test.jsx",
+    "src/components/Dashboard_Manager/Sidebar.jsx",
+    "src/components/Dashboard_Manager/Sidebar.test.jsx",
+    "src/components/Dashboard_Manager/Header.jsx",
+    "src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.jsx",
+    "src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.scss",
+    "src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.test.jsx"
   ],
-  "notes": "Planning completed after tracing auth session state, shared business context, brand creation cache updates, manager hash navigation, menu GraphQL queries and menu-list UI."
+  "notes": "The existing AuthProvider already contains epoch, account-ID and Apollo-clear protections. The remaining visible leak is manager-shell local/Apollo child state surviving an account swap, so the smallest correct boundary is an account-keyed manager route."
 }
