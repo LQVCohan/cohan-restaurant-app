@@ -103,13 +103,15 @@ describe("payroll calculation integrity", () => {
     expect(result.baseWorkIncome).toBe(1_200_000);
   });
 
-  it("uses persisted timesheet amount for commission staff", () => {
+  it("calculates commission from persisted timesheet amount and configured rate", () => {
     const result = calculate(
-      { salaryType: "commission" },
-      { totalAmount: 2_000_000, totalWage: 1_500_000, totalHours: 20 },
+      { salaryType: "commission", commissionRate: 10 },
+      { totalAmount: 20_000_000, totalWage: 1_500_000, totalHours: 20 },
     );
 
     expect(result.salaryType).toBe("commission");
+    expect(result.commissionRate).toBe(10);
+    expect(result.commissionableAmount).toBe(20_000_000);
     expect(result.baseWorkIncome).toBe(2_000_000);
     expect(result.grossIncome).toBe(2_000_000);
   });
