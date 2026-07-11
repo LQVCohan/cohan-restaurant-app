@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
-import BaseSchemaModel from "./baseSchemaModel.js"; // Giả định
+import BaseSchemaModel from "./baseSchemaModel.js";
+
 const { Schema, Types } = mongoose;
 
 const CashflowSchema = BaseSchemaModel(
@@ -39,7 +40,7 @@ const CashflowSchema = BaseSchemaModel(
     },
     ref: {
       kind: String,
-      id: { type: Types.ObjectId }, // e.g., kind: 'Invoice', id: ...
+      id: { type: Types.ObjectId },
       orderId: { type: Types.ObjectId },
       orderIds: [{ type: Types.ObjectId }],
       invoiceId: { type: Types.ObjectId },
@@ -51,28 +52,32 @@ const CashflowSchema = BaseSchemaModel(
     },
     evidenceAttachments: { type: [Schema.Types.Mixed], default: [] },
     note: String,
-
-        category: { type: String, default: "" },
-    subcategory: { type: String, default: "" },
     meta: { type: Object, default: {} },
-
     createdBy: { type: Types.ObjectId, ref: "User" },
     approvedBy: { type: Types.ObjectId, ref: "User" },
     approvedAt: Date,
     voidedBy: { type: Types.ObjectId, ref: "User" },
     voidedAt: Date,
     voidReason: String,
-
     occurredAt: { type: Date, default: Date.now },
   },
-  {} // Options bổ sung (nếu có)
+  {},
 );
 
 CashflowSchema.index({ restaurantId: 1, occurredAt: -1 });
 CashflowSchema.index({ restaurantId: 1, source: 1, status: 1 });
 CashflowSchema.index({ restaurantId: 1, category: 1, subcategory: 1, occurredAt: -1 });
 CashflowSchema.index({ "ref.kind": 1, "ref.id": 1 });
-  
+CashflowSchema.index(
+  { "ref.refundId": 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      "ref.refundId": { $type: "objectId" },
+      source: "refund",
+    },
+  },
+);
 
 export default mongoose.models.Cashflow ||
   mongoose.model("Cashflow", CashflowSchema);
