@@ -101,6 +101,17 @@ const RECIPE_INGREDIENT_WARNING = "Skipped recipe ingredient line because ingred
 const RECIPE_DEPENDENCY_WARNING = "Recipes may lose ingredient links because inventoryMaster is not selected.";
 const PROMOTION_DEPENDENCY_WARNING = "Promotion item/category references may be removed because menuCatalog is not selected.";
 const RUNTIME_DIFF_FIELDS = new Set(["legacyId", "restaurantId", "_id", "id", "createdAt", "updatedAt", "__v", "usageCount", "used", "orderCounter", "rate", "avgRating", "reviewCount", "viewLock"]);
+const TABLE_CLONE_RUNTIME_FIELDS = [
+  "tableAccessUrl",
+  "tableQrCodeDataUrl",
+  "tableQrGeneratedAt",
+  "tableQrExpiresAt",
+  "viewLock",
+  "mergedFromTableIds",
+  "mergeAnchorTableId",
+  "mergedAt",
+  "mergedIntoTableId",
+];
 const RESOLUTION_LABELS = new Set(["use_source", "keep_target", "merge", "create_copy", "rename_source", "skip", "replace_section"]);
 
 function cloneJson(value) {
@@ -148,6 +159,7 @@ export function refKey(value) {
 
 function sanitizeDocument(value) {
   if (Array.isArray(value)) return value.map(sanitizeDocument).filter((item) => item !== undefined);
+  if (value instanceof Date) return value.toISOString();
   if (isObjectIdLike(value)) return value.toHexString();
   if (!value || typeof value !== "object") return value;
   const source = typeof value.toObject === "function" ? value.toObject({ depopulate: true }) : value;
@@ -355,7 +367,10 @@ function comparableDoc(doc, mode = "clone") {
   for (const key of Object.keys(payload)) {
     if (RUNTIME_DIFF_FIELDS.has(key) || SENSITIVE_KEY_RE.test(key)) delete payload[key];
   }
-  if (mode === "clone") delete payload.status;
+  if (mode === "clone") {
+    delete payload.status;
+    for (const field of TABLE_CLONE_RUNTIME_FIELDS) delete payload[field];
+  }
   return payload;
 }
 
@@ -869,14 +884,14 @@ async function importFloorTable(targetRestaurantId, data, mode, context) {
       context.warnings.push(`Skipped table ${table.code || table.name || table.legacyId || "unknown"} because floorId could not be remapped.`);
       continue;
     }
+    const sourceTable = mode === "clone" ? { ...table } : table;
     const extra = { floorId: nextFloorId };
-    const options = {};
     if (mode === "clone") {
+      for (const field of TABLE_CLONE_RUNTIME_FIELDS) delete sourceTable[field];
       extra.status = "available";
-      options.unset = { viewLock: "" };
     }
-    const conflict = conflictFor(context, "floorTableLayout", "Table", table, table.code || table.name);
-    await upsertWithConflict(Table, targetRestaurantId, table, ["code", "name"], extra, context, conflict, "Table", null, options);
+    const conflict = conflictFor(context, "floorTableLayout", "Table", sourceTable, sourceTable.code || sourceTable.name);
+    await upsertWithConflict(Table, targetRestaurantId, sourceTable, ["code", "name"], extra, context, conflict, "Table", null);
   }
 }
 
