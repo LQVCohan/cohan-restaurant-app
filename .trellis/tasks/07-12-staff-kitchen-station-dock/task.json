@@ -1,7 +1,7 @@
 {
   "id": "07-12-staff-kitchen-station-dock",
   "title": "Staff kitchen station dock",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-ui",
   "scope": [
     "src/styles/StaffKitchenCompactHeader.css"
@@ -17,8 +17,20 @@
       "read AGENTS.md, Trellis workflow, ponytail, frontend-design, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
       "traced OrderItem.station through ordersByRestaurantNow, useOrderManagement, StaffKitchenPage filtering and updateOrderItemStatus",
       "compared the staff mode switcher with Order Management om-station-switcher",
-      "confirmed the behavior and accessibility contract already exist in StaffKitchenPage; the requested change is presentation-only"
+      "confirmed the behavior and accessibility contract already exist in StaffKitchenPage; the requested change is presentation-only",
+      "replaced the oversized three-card presentation with a compact horizontal station dock",
+      "added separate light active treatments for kitchen, bar and combined modes while retaining text and counts",
+      "kept locked chef and bartender modes as a single full-width station control",
+      "overrode the old mobile 82vw cards with two-up scrollable station buttons and hidden secondary descriptions",
+      "re-fetched the final stylesheet and reviewed selector specificity against StaffKitchenPage.scss"
     ],
-    "notRun": []
+    "notRun": [
+      "Vitest was not run because the GitHub connector does not provide a repository runtime",
+      "staff theme check was not run",
+      "frontend build was not run",
+      "responsive browser checks at 390x844, 430x932, 768px, 1024px and 1440px were not run",
+      "real-device review was not run",
+      "no GitHub Actions workflow was attached to the stylesheet commit"
+    ]
   }
 }
