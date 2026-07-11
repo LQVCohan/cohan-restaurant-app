@@ -11,7 +11,7 @@ export const PaymentResolvers = {
       if (Array.isArray(parent.orderIds) && parent.orderIds.length) {
         return String(parent.orderIds[0]);
       }
-      return String(parent._id);
+      return null;
     },
     method(parent) {
       const value = String(parent.method || "cash").toLowerCase();
@@ -27,7 +27,7 @@ export const PaymentResolvers = {
       if (Array.isArray(parent.orderIds) && parent.orderIds.length) {
         return String(parent.orderIds[0]);
       }
-      return String(parent._id);
+      return null;
     },
   },
   Cashflow: {
