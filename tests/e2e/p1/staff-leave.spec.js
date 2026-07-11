@@ -146,9 +146,9 @@ test.describe("P1 staff leave self-service", () => {
     await installStaffLeaveMocks(page);
 
     await page.goto("/staff/leave");
-    await expect(page.getByRole("heading", { name: "Đăng ký nghỉ phép" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Đơn nghỉ phép của tôi" })).toBeVisible();
 
-    await page.getByRole("button", { name: "+ Tạo đơn nghỉ phép" }).click();
+    await page.getByRole("button", { name: "+ Tạo đơn" }).click();
     const modal = page.getByRole("dialog", { name: "Tạo đơn nghỉ phép" });
     await expect(modal).toBeVisible();
     await expect(modal.getByRole("heading", { name: "Chọn loại nghỉ phù hợp" })).toBeVisible();
