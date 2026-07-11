@@ -22,7 +22,7 @@ import supply from "./supply/index.js";
 import eventLogResolvers from "./event_log/index.js";
 import payment from "./payment/index.js";
 import staff from "./staff/index.js";
-import payrollOverviewScope from "./staff/payrollOverviewScope.query.js";
+import { guardPayrollOverviewQueries } from "./staff/payrollOverviewScope.query.js";
 import { withStaffInvitationFlow } from "./staff/invitationFlow.js";
 import attendanceOvertime from "./attendance_overtime/index.js";
 import review from "./review/index.js";
@@ -57,6 +57,10 @@ const guardedBrandMemberMutations = guardBrandMemberRoleMutations({
   ...(brandInvitationFlow.Mutation || {}),
 });
 const staffMutations = withStaffInvitationFlow(staff.Mutation || {});
+const staffQueries = {
+  ...(staff.Query || {}),
+  ...guardPayrollOverviewQueries(staff.Query || {}),
+};
 
 export default {
   ...baseResolvers,
@@ -80,8 +84,7 @@ export default {
     ...(reservation.Query || {}),
     ...(eventLogResolvers.Query || {}),
     ...(payment.Query || {}),
-    ...(staff.Query || {}),
-    ...payrollOverviewScope,
+    ...staffQueries,
     ...(review.Query || {}),
     ...(reviewComment.Query || {}),
     ...(cart.Query || {}),
