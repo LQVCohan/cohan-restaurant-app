@@ -63,7 +63,8 @@ describe("usePromotions buildPromotionInput", () => {
     );
     expect(input).not.toHaveProperty("menuId");
   });
-  it("buildPromotionInput preserves comboItems for combo promotions", () => {
+
+  it("preserves comboItems for combo promotions", () => {
     const input = __testables.buildPromotionInput(
       {
         name: "Combo burger",
@@ -101,6 +102,57 @@ describe("usePromotions buildPromotionInput", () => {
         ],
       }),
     );
+  });
+});
+
+describe("usePromotions management helpers", () => {
+  const currentPromotion = {
+    id: "promotion-1",
+    restaurantId: "restaurant-1",
+    name: "Lunch",
+    code: "LUNCH10",
+    type: "percentage",
+    scope: "order",
+    discountType: "percent",
+    discountValue: 10,
+    minOrderValue: 0,
+    maxDiscount: 0,
+    usageLimit: 0,
+    targetAudience: "all",
+    conditions: [],
+    level: 1,
+    startDate: "2026-05-01T10:00",
+    endDate: "2026-05-05T22:00",
+    status: "active",
+    stacking: false,
+  };
+
+  it("detects status-only changes so the dedicated toggle mutation can be used", () => {
+    expect(
+      __testables.isStatusOnlyPromotionUpdate(
+        currentPromotion,
+        { ...currentPromotion, status: "draft" },
+        "restaurant-1",
+      ),
+    ).toBe(true);
+
+    expect(
+      __testables.isStatusOnlyPromotionUpdate(
+        currentPromotion,
+        { ...currentPromotion, status: "draft", discountValue: 20 },
+        "restaurant-1",
+      ),
+    ).toBe(false);
+  });
+
+  it("builds a unique duplicate code without changing the source promotion", () => {
+    expect(
+      __testables.buildDuplicatePromotionCode("LUNCH10", [
+        { code: "LUNCH10" },
+        { code: "LUNCH10_COPY" },
+        { code: "LUNCH10_COPY_2" },
+      ]),
+    ).toBe("LUNCH10_COPY_3");
   });
 });
 
