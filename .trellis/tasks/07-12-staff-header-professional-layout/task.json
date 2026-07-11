@@ -1,0 +1,25 @@
+{
+  "id": "07-12-staff-header-professional-layout",
+  "title": "Reorganize staff header navigation",
+  "status": "in_progress",
+  "type": "frontend-ui",
+  "scope": [
+    "src/layouts/StaffLayout.jsx",
+    "src/layouts/StaffLayout.scss",
+    "src/layouts/StaffLayout.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run src/layouts/StaffLayout.test.jsx",
+      "npm run check:staff-theme",
+      "npm run build",
+      "manual responsive review at 390x844, 430x932, 768px, 1024px and 1440px"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
+      "traced AppRouter through StaffLayout page metadata, permission-filtered navigation, notification controls and route tests",
+      "confirmed the issue is shared presentation: uneven three-column grouping, excessive card styling and two active-looking navigation items"
+    ],
+    "notRun": []
+  }
+}
