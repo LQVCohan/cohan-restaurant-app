@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import mongoose from "mongoose";
 import { print } from "graphql";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -25,9 +25,8 @@ const selectLeanQuery = (value) => ({
 });
 
 const walletServiceSource = readFileSync(
-  join(
-    process.cwd(),
-    "cohan-restaurant-backend/src/services/wallet/wallet.service.js",
+  fileURLToPath(
+    new URL("../../src/services/wallet/wallet.service.js", import.meta.url),
   ),
   "utf8",
 );
