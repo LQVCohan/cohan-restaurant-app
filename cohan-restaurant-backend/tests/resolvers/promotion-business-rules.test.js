@@ -7,20 +7,27 @@ const modelMocks = vi.hoisted(() => ({
     findByIdAndUpdate: vi.fn(),
     deleteOne: vi.fn(),
   },
+  Category: {
+    exists: vi.fn(),
+  },
+  MenuItem: {
+    countDocuments: vi.fn(),
+  },
 }));
 
-const guardMocks = vi.hoisted(() => ({
-  requireRestaurantAccess: vi.fn(),
+const authMocks = vi.hoisted(() => ({
+  requireRestaurantPermission: vi.fn(),
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
-vi.mock("../../graphql/guards.js", () => guardMocks);
+vi.mock("../../src/services/auth/authorization.service.js", () => authMocks);
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn(() => true),
     Types: {
       ObjectId: function ObjectId(value) {
         this.value = value;
+        this.toString = () => String(value);
       },
     },
   },
@@ -34,7 +41,9 @@ describe("PromotionMutation business rules", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    guardMocks.requireRestaurantAccess.mockResolvedValue(undefined);
+    authMocks.requireRestaurantPermission.mockResolvedValue(undefined);
+    modelMocks.Category.exists.mockResolvedValue(true);
+    modelMocks.MenuItem.countDocuments.mockResolvedValue(2);
   });
 
   it("rejects BOGO promotions when the gifted item is missing", async () => {
@@ -66,7 +75,7 @@ describe("PromotionMutation business rules", () => {
       thrownError = error;
     }
 
-    expect(thrownError?.message).toBe("BOGO promotion requires giftItemId");
+    expect(thrownError?.message).toBe("BOGO cần món mua và món tặng");
     expect(modelMocks.Promotion.create).not.toHaveBeenCalled();
   });
 
@@ -107,6 +116,12 @@ describe("PromotionMutation business rules", () => {
       { user: { id: "manager-1", roleName: "manager" } },
     );
 
+    expect(modelMocks.MenuItem.countDocuments).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: expect.anything(),
+        _id: { $in: expect.any(Array) },
+      }),
+    );
     expect(modelMocks.Promotion.create).toHaveBeenCalledWith(
       expect.objectContaining({
         promotionType: "BOGO",
