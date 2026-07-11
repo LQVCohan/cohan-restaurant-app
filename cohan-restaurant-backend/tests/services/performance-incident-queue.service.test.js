@@ -48,9 +48,9 @@ describe("performanceIncidentQueue.service", () => {
 
   it("returns queue with default filtering and role capabilities", async () => {
     const rows = [
-      { _id: "i1", restaurantId: "r1", employeeId: "e1", eventType: "ATTENDANCE_LATE", severity: "warning", responsibilityStatus: "pending_review", scoreImpactStatus: "pending", createdAt: "2026-05-01T00:00:00.000Z", occurredAt: "2026-05-01T00:00:00.000Z" },
-      { _id: "i2", restaurantId: "r1", employeeId: "e1", eventType: "ATTENDANCE_ABSENT", severity: "violation", responsibilityStatus: "staff_responsible", scoreImpactStatus: "eligible", createdAt: "2026-05-01T00:00:00.000Z", occurredAt: "2026-05-01T00:00:00.000Z" },
-      { _id: "i3", restaurantId: "r1", employeeId: "e2", eventType: "ATTENDANCE_LATE", severity: "info", responsibilityStatus: "no_fault", scoreImpactStatus: "waived", createdAt: "2026-05-01T00:00:00.000Z", occurredAt: "2026-05-01T00:00:00.000Z" },
+      { _id: "i1", restaurantId: "r1", employeeId: "e1", sourceType: "timesheet", eventType: "ATTENDANCE_LATE", severity: "warning", responsibilityStatus: "pending_review", scoreImpactStatus: "pending", createdAt: "2026-05-01T00:00:00.000Z", occurredAt: "2026-05-01T00:00:00.000Z" },
+      { _id: "i2", restaurantId: "r1", employeeId: "e1", sourceType: "timesheet", eventType: "ATTENDANCE_ABSENT", severity: "violation", responsibilityStatus: "staff_responsible", scoreImpactStatus: "eligible", createdAt: "2026-05-01T00:00:00.000Z", occurredAt: "2026-05-01T00:00:00.000Z" },
+      { _id: "i3", restaurantId: "r1", employeeId: "e2", sourceType: "timesheet", eventType: "ATTENDANCE_LATE", severity: "info", responsibilityStatus: "no_fault", scoreImpactStatus: "waived", createdAt: "2026-05-01T00:00:00.000Z", occurredAt: "2026-05-01T00:00:00.000Z" },
     ];
     mocks.find.mockReturnValueOnce({ sort: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(rows) })) });
     const result = await listManagerIncidentReviewQueue({ restaurantId: "r1" }, { id: "m1" });
@@ -71,9 +71,9 @@ describe("performanceIncidentQueue.service", () => {
 
   it("builds queue summary", async () => {
     const rows = [
-      { restaurantId: "r1", employeeId: "e1", eventType: "ATTENDANCE_LATE", severity: "warning", responsibilityStatus: "pending_review", scoreImpactStatus: "pending", createdAt: "2026-05-01T00:00:00.000Z", occurredAt: "2026-05-01T00:00:00.000Z" },
-      { restaurantId: "r1", employeeId: "e1", eventType: "ATTENDANCE_ABSENT", severity: "violation", responsibilityStatus: "staff_responsible", scoreImpactStatus: "eligible", createdAt: "2026-05-01T00:00:00.000Z", occurredAt: "2026-05-01T00:00:00.000Z" },
-      { restaurantId: "r1", employeeId: "e2", eventType: "ATTENDANCE_LATE", severity: "info", responsibilityStatus: "no_fault", scoreImpactStatus: "waived", createdAt: "2026-05-01T00:00:00.000Z", occurredAt: "2026-05-01T00:00:00.000Z" },
+      { restaurantId: "r1", employeeId: "e1", sourceType: "timesheet", eventType: "ATTENDANCE_LATE", severity: "warning", responsibilityStatus: "pending_review", scoreImpactStatus: "pending", createdAt: "2026-05-01T00:00:00.000Z", occurredAt: "2026-05-01T00:00:00.000Z" },
+      { restaurantId: "r1", employeeId: "e1", sourceType: "timesheet", eventType: "ATTENDANCE_ABSENT", severity: "violation", responsibilityStatus: "staff_responsible", scoreImpactStatus: "eligible", createdAt: "2026-05-01T00:00:00.000Z", occurredAt: "2026-05-01T00:00:00.000Z" },
+      { restaurantId: "r1", employeeId: "e2", sourceType: "timesheet", eventType: "ATTENDANCE_LATE", severity: "info", responsibilityStatus: "no_fault", scoreImpactStatus: "waived", createdAt: "2026-05-01T00:00:00.000Z", occurredAt: "2026-05-01T00:00:00.000Z" },
     ];
     mocks.find.mockReturnValueOnce({ sort: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(rows) })) });
     const summary = await getManagerIncidentReviewQueueSummary({ restaurantId: "r1", includeResolved: true }, { id: "m1" });
