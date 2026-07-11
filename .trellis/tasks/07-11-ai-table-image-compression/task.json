@@ -1,0 +1,23 @@
+{
+  "id": "07-11-ai-table-image-compression",
+  "title": "Compress AI table photos",
+  "status": "in_progress",
+  "type": "frontend-bugfix",
+  "scope": [
+    "src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.jsx",
+    "src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx"
+  ],
+  "rootCause": "Original phone photos are checked against the 5 MB limit before client-side optimization.",
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx",
+      "npm run build",
+      "manual mobile capture above 5 MB"
+    ],
+    "completed": [
+      "traced camera input to validation and upload",
+      "inspected existing compressImageForUpload helper"
+    ],
+    "notRun": []
+  }
+}
