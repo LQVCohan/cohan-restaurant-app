@@ -18,6 +18,7 @@ import { withTablePaymentRequestLifecycle } from "./tablePaymentRequestLifecycle
 import { withOrderConflictHardening } from "./orderConflictHardening.js";
 import { withCheckoutIdempotency } from "./checkoutIdempotency.js";
 import { withCheckoutContactGuard } from "./checkoutContactGuard.js";
+import { withDeferredOnlineCheckout } from "./deferredOnlineCheckout.js";
 import publicTableSessionQuery from "./publicTableSessionQuery.js";
 import publicTableOrderMutation from "./publicTableOrderMutation.js";
 import {
@@ -44,8 +45,11 @@ const CanonicalCheckoutOrderMutation = {
   // ponytail: the canonical checkout resolver owns cart-hold validation and release.
   createCheckoutOrders: LifecycleOrderMutation.createCheckoutOrders,
 };
-const ContactGuardedOrderMutation = withCheckoutContactGuard(
+const DeferredOnlineOrderMutation = withDeferredOnlineCheckout(
   CanonicalCheckoutOrderMutation,
+);
+const ContactGuardedOrderMutation = withCheckoutContactGuard(
+  DeferredOnlineOrderMutation,
 );
 const CheckoutSafeOrderMutation = withCheckoutIdempotency(
   ContactGuardedOrderMutation,
