@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import { Shift, Staff, SchedulePublication } from "../../../models/index.js";
 import { validateShiftAssignment } from "./shiftAssignmentValidation.service.js";
 import { resolveScheduleLifecycleStatus } from "./scheduleLifecycle.service.js";
+import { getSchedulingPolicy } from "./schedulingPolicy.service.js";
+import { getStaffMembershipRestaurantFilter } from "../auth/restaurantScope.service.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const AUTO_SCHEDULE_PARTIAL_APPLY_ERROR =
@@ -11,6 +13,7 @@ const INVALID_SELECTED_SHIFT_KEYS_ERROR =
 const NO_SELECTED_ASSIGNMENTS_ERROR =
   "Không có ca hợp lệ nào được chọn để áp dụng auto schedule.";
 const MIN_OVERRIDE_REASON_LENGTH = 5;
+const DEFAULT_SCHEDULING_TIMEZONE = "Asia/Ho_Chi_Minh";
 
 const ROLE_BY_DEPARTMENT = {
   management: "host",
@@ -34,16 +37,75 @@ function toDate(value, fieldName) {
   return date;
 }
 
-function startOfDay(value) {
-  const d = toDate(value, "Ngày");
-  d.setHours(0, 0, 0, 0);
-  return d;
+function safeTimeZone(value) {
+  const candidate = String(value || "").trim();
+  if (!candidate) return DEFAULT_SCHEDULING_TIMEZONE;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: candidate }).format();
+    return candidate;
+  } catch {
+    return DEFAULT_SCHEDULING_TIMEZONE;
+  }
 }
 
-function endOfDay(value) {
-  const d = toDate(value, "Ngày");
-  d.setHours(23, 59, 59, 999);
-  return d;
+function calendarDate(value, timezone = DEFAULT_SCHEDULING_TIMEZONE) {
+  const raw = String(value || "");
+  if (/^\d{4}-\d{2}-\d{2}(?:$|T)/.test(raw) && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw)) {
+    return raw.slice(0, 10);
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) throw new Error("Ngày không hợp lệ.");
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: safeTimeZone(timezone),
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
+function zonedDateTimeToUtc(datePart, timePart, timezone = DEFAULT_SCHEDULING_TIMEZONE) {
+  const [year, month, day] = String(datePart).split("-").map(Number);
+  const [hour = 0, minute = 0, second = 0] = String(timePart || "00:00:00")
+    .split(":")
+    .map(Number);
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, second, 0));
+  const rendered = new Intl.DateTimeFormat("en-US", {
+    timeZone: safeTimeZone(timezone),
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(utcGuess);
+  const map = Object.fromEntries(rendered.map((part) => [part.type, part.value]));
+  const renderedAsUtc = Date.UTC(
+    Number(map.year),
+    Number(map.month) - 1,
+    Number(map.day),
+    Number(map.hour),
+    Number(map.minute),
+    Number(map.second),
+    0,
+  );
+  return new Date(utcGuess.getTime() - (renderedAsUtc - utcGuess.getTime()));
+}
+
+function addCalendarDays(value, amount) {
+  const [year, month, day] = String(value).split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + amount));
+  return date.toISOString().slice(0, 10);
+}
+
+function startOfDay(value, timezone = DEFAULT_SCHEDULING_TIMEZONE) {
+  return zonedDateTimeToUtc(calendarDate(value, timezone), "00:00:00", timezone);
+}
+
+function endOfDay(value, timezone = DEFAULT_SCHEDULING_TIMEZONE) {
+  return zonedDateTimeToUtc(calendarDate(value, timezone), "23:59:59", timezone);
 }
 
 function hoursBetween(start, end) {
@@ -94,14 +156,16 @@ function getRequiredRolesForShift(requiredRolesByShift, shiftType) {
   return requiredRolesByShift[normalizeShiftType(shiftType)] || requiredRolesByShift.default || [];
 }
 
-function parseTimeOnDay(day, timeValue, fallbackHour) {
+function parseTimeOnDay(day, timeValue, fallbackHour, timezone) {
   if (timeValue instanceof Date) return new Date(timeValue);
   const raw = String(timeValue || "").trim();
   if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return new Date(raw);
-  const [hour = fallbackHour, minute = 0] = raw.split(":").map(Number);
-  const date = new Date(day);
-  date.setHours(Number.isFinite(hour) ? hour : fallbackHour, Number.isFinite(minute) ? minute : 0, 0, 0);
-  return date;
+  const [hour = fallbackHour, minute = 0, second = 0] = raw.split(":").map(Number);
+  return zonedDateTimeToUtc(
+    day,
+    `${String(Number.isFinite(hour) ? hour : fallbackHour).padStart(2, "0")}:${String(Number.isFinite(minute) ? minute : 0).padStart(2, "0")}:${String(Number.isFinite(second) ? second : 0).padStart(2, "0")}`,
+    timezone,
+  );
 }
 
 function normalizeTemplates(input) {
@@ -111,17 +175,28 @@ function normalizeTemplates(input) {
 }
 
 function buildDemandItems(input) {
-  const periodStart = startOfDay(input.periodStart);
-  const periodEnd = endOfDay(input.periodEnd);
+  const timezone = safeTimeZone(input.timezone);
+  const periodStart = calendarDate(input.periodStart, timezone);
+  const periodEnd = calendarDate(input.periodEnd, timezone);
   const requiredRolesByShift = normalizeRequiredRoles(input);
   const templates = normalizeTemplates(input);
   const items = [];
 
   const buildFromTemplate = (day, template) => {
     const shiftType = normalizeShiftType(template.shiftType || template.type || template.key || template.id);
-    const startTime = parseTimeOnDay(day, template.startTime || template.start || template.from, shiftType === "evening" ? 17 : 8);
-    const endTime = parseTimeOnDay(day, template.endTime || template.end || template.to, shiftType === "evening" ? 22 : 16);
-    if (endTime <= startTime) endTime.setDate(endTime.getDate() + 1);
+    const startTime = parseTimeOnDay(
+      day,
+      template.startTime || template.start || template.from,
+      shiftType === "evening" ? 17 : 8,
+      timezone,
+    );
+    const endTime = parseTimeOnDay(
+      day,
+      template.endTime || template.end || template.to,
+      shiftType === "evening" ? 22 : 16,
+      timezone,
+    );
+    if (endTime <= startTime) endTime.setUTCDate(endTime.getUTCDate() + 1);
 
     const hasDateAwareTemplate = Boolean(template?.date);
     const hasExplicitRequiredRoles = Array.isArray(template.requiredRoles);
@@ -147,12 +222,16 @@ function buildDemandItems(input) {
 
   for (const template of templates) {
     if (template?.date) {
-      const day = startOfDay(template.date);
+      const day = calendarDate(template.date, timezone);
       if (day >= periodStart && day <= periodEnd) buildFromTemplate(day, template);
       continue;
     }
 
-    for (let cursor = new Date(periodStart); cursor <= periodEnd; cursor = new Date(cursor.getTime() + DAY_MS)) {
+    for (
+      let cursor = periodStart;
+      cursor <= periodEnd;
+      cursor = addCalendarDays(cursor, 1)
+    ) {
       buildFromTemplate(cursor, template);
     }
   }
