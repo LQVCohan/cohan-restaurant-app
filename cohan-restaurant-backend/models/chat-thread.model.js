@@ -22,6 +22,11 @@ const ChatThreadSchema = new Schema(
     restaurantId: { type: Types.ObjectId, ref: "Restaurant" },
     participants: [{ type: Types.ObjectId, ref: "User" }],
     customerProfileId: { type: Types.ObjectId, ref: "CustomerProfile" },
+    sourceConversationId: {
+      type: Types.ObjectId,
+      ref: "AiChatConversation",
+      default: null,
+    },
     channel: {
       type: String,
       enum: ["support", "order", "reservation", "other"],
@@ -46,5 +51,15 @@ const ChatThreadSchema = new Schema(
 ChatThreadSchema.index({ restaurantId: 1, status: 1, updatedAt: -1 });
 ChatThreadSchema.index({ restaurantId: 1, kind: 1, status: 1, updatedAt: -1 });
 ChatThreadSchema.index({ participants: 1, updatedAt: -1 });
+ChatThreadSchema.index(
+  { sourceConversationId: 1 },
+  {
+    unique: true,
+    sparse: true,
+    partialFilterExpression: {
+      sourceConversationId: { $exists: true, $ne: null },
+    },
+  },
+);
 
 export default mongoose.model("ChatThread", ChatThreadSchema);
