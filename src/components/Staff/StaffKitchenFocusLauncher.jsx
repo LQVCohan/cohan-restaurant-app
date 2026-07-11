@@ -39,6 +39,13 @@ export default function StaffKitchenFocusLauncher() {
     document.body.style.overflow = "hidden";
 
     const handleKeyDown = (event) => {
+      const tagName = String(event.target?.tagName || "").toLowerCase();
+      if (
+        ["input", "textarea", "select"].includes(tagName) ||
+        event.target?.isContentEditable
+      ) {
+        return;
+      }
       if (event.key === "Escape") setFocusMode(false);
     };
 
@@ -62,7 +69,11 @@ export default function StaffKitchenFocusLauncher() {
       aria-label={label}
       aria-pressed={focusMode}
       aria-keyshortcuts={focusMode ? "Escape" : undefined}
-      title={focusMode ? "Thoát màn hình tập trung (Esc)" : "Mở màn hình Bếp / Bar toàn màn hình"}
+      title={
+        focusMode
+          ? "Thoát màn hình tập trung (Esc)"
+          : "Mở màn hình Bếp / Bar toàn màn hình"
+      }
     >
       {focusMode ? (
         <Minimize2 size={18} aria-hidden="true" />
