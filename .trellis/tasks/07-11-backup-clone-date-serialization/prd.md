@@ -22,7 +22,7 @@
   - serialize `Date` values as ISO strings at the shared snapshot boundary;
   - remove source-only table QR, view-lock, and active merge runtime fields before clone upserts;
   - preserve existing target runtime state when a clone conflict is merged.
-- `cohan-restaurant-backend/tests/services/restaurant-config-backup.service.test.js`
+- `cohan-restaurant-backend/tests/services/restaurant-config-backup-date.service.test.js`
   - cover ISO date serialization;
   - cover cloning an older snapshot containing `{}` runtime date placeholders without forwarding them to Mongoose.
 
@@ -35,7 +35,7 @@
 
 ## Validation plan
 
-- `npm --prefix cohan-restaurant-backend test -- tests/services/restaurant-config-backup.service.test.js`
+- `npm --prefix cohan-restaurant-backend test -- tests/services/restaurant-config-backup-date.service.test.js tests/services/restaurant-config-backup.service.test.js`
 - `npm --prefix cohan-restaurant-backend test -- tests/resolvers/backup-config.resolver.test.js`
 - `npm run check:graphql`
 
