@@ -4,6 +4,7 @@ import {
   InMemoryCache,
   HttpLink,
   ApolloLink,
+  Observable,
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
@@ -108,20 +109,30 @@ function storeCheckoutKey(storageKey, key) {
   }
 }
 
+function removeStoredCheckoutKey(storageKey, key) {
+  if (checkoutIdempotencyMemory.get(storageKey) === key) {
+    checkoutIdempotencyMemory.delete(storageKey);
+  }
+  if (typeof window === "undefined") return;
+
+  try {
+    if (window.sessionStorage.getItem(storageKey) === key) {
+      window.sessionStorage.removeItem(storageKey);
+    }
+  } catch {
+    // The in-memory entry was already cleared.
+  }
+}
+
 function getStableCheckoutIdempotencyKey(input) {
-  const checkoutAttempt = String(
-    input?.idempotencyKey || input?.clientMeta?.idempotencyKey || "",
-  ).trim();
-  const storageIdentity = checkoutAttempt
-    ? `attempt:${checkoutAttempt}`
-    : `payload:${hashIdempotencyPayload(input)}`;
-  const storageKey = `${CHECKOUT_IDEMPOTENCY_STORAGE_PREFIX}${storageIdentity}`;
+  const fingerprint = hashIdempotencyPayload(input);
+  const storageKey = `${CHECKOUT_IDEMPOTENCY_STORAGE_PREFIX}${fingerprint}`;
   const stored = readStoredCheckoutKey(storageKey);
-  if (stored) return stored;
+  if (stored) return { key: stored, storageKey };
 
   const key = makeClientIdempotencyKey("CreateCheckoutOrders");
   storeCheckoutKey(storageKey, key);
-  return key;
+  return { key, storageKey };
 }
 
 export function normalizeScheduleGraphqlVariables(
@@ -148,6 +159,7 @@ const scheduleEnumLink = new ApolloLink((operation, forward) => {
 const idempotencyLink = new ApolloLink((operation, forward) => {
   const operationName = operation?.operationName || "";
   const input = operation?.variables?.input;
+  let checkoutKeyState = null;
 
   if (shouldAttachIdempotency(operationName) && input && typeof input === "object") {
     const isCustomerCheckout = operationName === "CreateCheckoutOrders";
@@ -155,9 +167,10 @@ const idempotencyLink = new ApolloLink((operation, forward) => {
     const hasClientMetaKey = Boolean(input.clientMeta?.idempotencyKey);
 
     if (isCustomerCheckout || (!hasTopLevelKey && !hasClientMetaKey)) {
-      const key = isCustomerCheckout
+      checkoutKeyState = isCustomerCheckout
         ? getStableCheckoutIdempotencyKey(input)
-        : makeClientIdempotencyKey(operationName);
+        : null;
+      const key = checkoutKeyState?.key || makeClientIdempotencyKey(operationName);
       const nextInput = {
         ...input,
         ...(isCustomerCheckout ? { idempotencyKey: key } : {}),
@@ -182,7 +195,33 @@ const idempotencyLink = new ApolloLink((operation, forward) => {
     }
   }
 
-  return forward(operation);
+  const observable = forward(operation);
+  if (!checkoutKeyState) return observable;
+
+  return new Observable((observer) => {
+    const subscription = observable.subscribe({
+      next(result) {
+        if (
+          !result?.errors?.length &&
+          result?.data?.createCheckoutOrders
+        ) {
+          removeStoredCheckoutKey(
+            checkoutKeyState.storageKey,
+            checkoutKeyState.key,
+          );
+        }
+        observer.next(result);
+      },
+      error(error) {
+        observer.error(error);
+      },
+      complete() {
+        observer.complete();
+      },
+    });
+
+    return () => subscription.unsubscribe();
+  });
 });
 
 const removeTypenameLink = removeTypenameFromVariables();
