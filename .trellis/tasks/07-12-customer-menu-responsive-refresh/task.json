@@ -1,0 +1,28 @@
+{
+  "id": "07-12-customer-menu-responsive-refresh",
+  "title": "Nâng cấp giao diện menu khách hàng và sửa khóa khung giờ",
+  "status": "in_progress",
+  "type": "frontend-redesign-bugfix",
+  "scope": [
+    "src/components/Customer/RestaurantMenu/RestaurantMenu.jsx",
+    "src/components/Customer/RestaurantMenu/RestaurantMenu.scss",
+    "src/components/Customer/RestaurantMenu/components/MenuDetailView.jsx",
+    "src/components/Customer/RestaurantMenu/styles/MenuDetailView.scss",
+    "src/components/Customer/RestaurantMenu/styles/MenuDetailViewPolish.scss",
+    "src/components/Customer/RestaurantMenu/components/MenuItemCard.jsx",
+    "src/components/Customer/RestaurantMenu/styles/MenuItemCard.scss",
+    "src/components/Customer/RestaurantMenu/components/MenuDetailView.test.jsx",
+    "src/components/Customer/RestaurantMenu/components/MenuItemCard.test.jsx"
+  ],
+  "rootCause": "Customer menu controls have inconsistent iconography and touch sizing, the sort control has no dedicated styling, mobile cards remain vertically long, restaurant discovery has no search, and initialTimeSlot is incorrectly reused as the booking-locked slot for normal remote ordering.",
+  "flow": "publicRestaurants -> RestaurantMenu discovery -> customerMenuCategories/menuItemsConnection -> MenuDetailView filters -> MenuItemCard -> FoodDetail -> cart hold",
+  "validation": {
+    "planned": [
+      "targeted MenuDetailView and MenuItemCard Vitest",
+      "npm run check:conflicts",
+      "npm run build",
+      "manual review at 390x844, 430x932, 768, 1024 and 1440"
+    ],
+    "completed": []
+  }
+}
