@@ -183,10 +183,21 @@ const RestaurantMenu = () => {
   const restaurantParam = searchParams.get("restaurantId");
   const returnTo = searchParams.get("returnTo");
   const serviceAt = searchParams.get("serviceAt");
+  const requestedTimeSlot = searchParams.get("timeSlot");
+  const normalTimeSlot = [
+    "breakfast",
+    "lunch",
+    "dinner",
+    "late_night",
+  ].includes(requestedTimeSlot)
+    ? requestedTimeSlot
+    : null;
   const bookingAddonMode = returnTo === "booking" && Boolean(restaurantParam);
   const bookingTimeSlot = bookingAddonMode
     ? resolveMenuTimeSlotAt(serviceAt)
     : null;
+  const initialTimeSlot =
+    bookingTimeSlot || normalTimeSlot || resolveMenuTimeSlotAt(new Date());
   const { user, isAuthenticated } = useContext(AuthContext) || {};
   const roleName = String(
     user?.roleName || user?.role?.slug || user?.role?.name || "",
@@ -632,7 +643,7 @@ const RestaurantMenu = () => {
         <MenuDetailView
           restaurant={selectedRes}
           canOrder={Boolean(selectedRes?.canOrder)}
-          initialTimeSlot={bookingTimeSlot}
+          initialTimeSlot={initialTimeSlot}
           serviceAt={serviceAt}
           onBack={handleMenuBack}
           onOpenFoodDetail={handleOpenFoodDetail}
