@@ -129,7 +129,7 @@ export const buildPerformanceReportHtml = (reportData) => `
       <p>Delta hoàn từ appeal: ${formatDelta(reportData.appealReversalDelta)}</p>
       <p>Điều chỉnh incident/appeal: ${reportData.hasAdjustment ? `${formatDelta(reportData.adjustmentDelta)} điểm` : "Không có điều chỉnh"}</p>
       <p>Điểm cuối: ${scoreText(reportData.finalPerformanceScore)}</p>
-      <p><em>Điểm trừ incident chỉ áp dụng sau khi quản lý xác nhận trách nhiệm và duyệt; delta dương từ appeal là hoàn điểm, không phải thưởng.</em></p>
+      <p><em>Điểm trừ incident ngoài chấm công chỉ áp dụng sau khi quản lý xác nhận trách nhiệm và duyệt; đi trễ/về sớm/vắng mặt đã nằm trong thành phần Đúng giờ; delta dương từ appeal là hoàn điểm, không phải thưởng.</em></p>
       <h3>So sánh kỳ trước</h3>
       ${reportData.hasPreviousSnapshot ? `
       <p>Điểm kỳ này: ${scoreText(reportData.finalPerformanceScore)}</p>
