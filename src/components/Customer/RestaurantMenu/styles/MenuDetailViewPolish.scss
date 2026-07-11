@@ -64,7 +64,7 @@
 
 .menu-detail-view .back-btn,
 .menu-detail-view .search-box input {
-  min-height: 2.55rem !important;
+  min-height: 2.75rem !important;
 }
 
 .menu-detail-view .back-btn {
@@ -123,7 +123,8 @@
 }
 
 .menu-detail-view .tabs-row .tab {
-  padding: 0.68rem 0.85rem !important;
+  min-height: 2.75rem;
+  padding: 0.62rem 0.85rem !important;
   font-size: 0.9rem !important;
   font-weight: 700 !important;
   line-height: 1.25;
@@ -156,7 +157,8 @@
 }
 
 .menu-detail-view .category-filter .pills button {
-  padding: 0.58rem 0.9rem !important;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.9rem !important;
   font-size: 0.88rem !important;
   font-weight: 700 !important;
   line-height: 1.2;
@@ -301,15 +303,88 @@
   }
 
   .menu-detail-view .header-actions {
-    flex-direction: column;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.55rem !important;
     align-items: stretch !important;
+  }
+
+  .menu-detail-view .search-box {
+    grid-column: 1 / -1;
+  }
+
+  .menu-detail-view .menu-sort-control {
+    width: 100%;
+    min-width: 0;
   }
 
   .menu-detail-view .view-toggle {
     width: fit-content;
+    justify-self: end;
   }
 
-  .menu-detail-view .item-card {
-    min-height: 0 !important;
+  .menu-detail-view .menu-grid,
+  .menu-detail-view .menu-grid.list-view {
+    grid-template-columns: 1fr !important;
+  }
+
+  .menu-detail-view .item-card,
+  .menu-detail-view .menu-grid.list-view .item-card {
+    display: grid !important;
+    grid-template-columns: 118px minmax(0, 1fr) !important;
+    min-height: 164px !important;
+  }
+
+  .menu-detail-view .item-card .thumb,
+  .menu-detail-view .menu-grid.list-view .item-card .thumb {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 164px !important;
+  }
+
+  .menu-detail-view .item-card .details {
+    padding: 0.82rem !important;
+  }
+
+  .menu-detail-view .item-card .details h4 {
+    margin-bottom: 0.32rem !important;
+    font-size: 0.94rem !important;
+    line-height: 1.28 !important;
+  }
+
+  .menu-detail-view .item-card .details p {
+    margin-bottom: 0.55rem !important;
+    font-size: 0.78rem !important;
+    line-height: 1.42 !important;
+    -webkit-line-clamp: 2 !important;
+  }
+
+  .menu-detail-view .item-card .menu-item-card__meta {
+    gap: 0.28rem 0.5rem;
+    font-size: 0.7rem;
+  }
+
+  .menu-detail-view .item-card .details .bottom {
+    padding-top: 0.55rem !important;
+    gap: 0.45rem !important;
+  }
+
+  .menu-detail-view .item-card .details .bottom .price {
+    font-size: 0.96rem !important;
+  }
+
+  .menu-detail-view .item-card .details .bottom .add-btn {
+    min-width: 0 !important;
+    height: 2.1rem !important;
+    padding: 0 0.62rem !important;
+    font-size: 0.72rem !important;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 390px) {
+  .menu-detail-view .item-card,
+  .menu-detail-view .menu-grid.list-view .item-card {
+    grid-template-columns: 104px minmax(0, 1fr) !important;
   }
 }
