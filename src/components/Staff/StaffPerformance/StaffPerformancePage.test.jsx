@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
@@ -85,7 +85,9 @@ describe("StaffPerformancePage", () => {
 
     renderPerformance();
 
-    expect(screen.getByText("Đang tải phản hồi hiệu suất của bạn...")).toBeInTheDocument();
+    expect(
+      screen.getByText("Đang tải phản hồi hiệu suất của bạn..."),
+    ).toBeInTheDocument();
   });
 
   it("renders missing identity state", () => {
@@ -93,17 +95,85 @@ describe("StaffPerformancePage", () => {
 
     renderPerformance();
 
-    expect(screen.getByRole("heading", { name: "Chưa xác định được hồ sơ nhân viên" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "Chưa xác định được hồ sơ nhân viên",
+      }),
+    ).toBeInTheDocument();
   });
 
-  it("renders normal empty data state and appeal form", () => {
+  it("keeps the empty page compact without duplicated heading or unusable form", () => {
     const { container } = renderPerformance();
 
-    expect(screen.getByRole("heading", { name: "Hiệu suất của tôi" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Gửi phản hồi" })).toBeInTheDocument();
-    expect(screen.getByText("Chưa có thay đổi điểm trong kỳ này")).toBeInTheDocument();
-    expect(screen.getByText("Chưa có dữ liệu hiệu suất trong kỳ này.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Hiệu suất cá nhân" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Hiệu suất của tôi" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Gửi phản hồi" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Chưa có thay đổi điểm trong kỳ này"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Chưa có dữ liệu hiệu suất trong kỳ này."),
+    ).toBeInTheDocument();
     expect(container.querySelectorAll("main")).toHaveLength(1);
     expect(container.querySelector("main#staff-main-content")).toBeInTheDocument();
+  });
+
+  it("opens secondary history and appeal content only when requested", () => {
+    setViewState({
+      adjustments: [
+        {
+          id: "adjustment-1",
+          reason: "Điều chỉnh phục vụ",
+          scoreDelta: -2,
+          previousScore: 82,
+          newScore: 80,
+          note: "Đã xác nhận",
+          appliedAt: "2026-07-10T08:00:00.000Z",
+        },
+      ],
+      incidents: [
+        {
+          id: "incident-1",
+          eventType: "SERVICE_QUALITY",
+          severity: "warning",
+          responsibilityStatus: "pending_review",
+          scoreImpactStatus: "eligible",
+          proposedScoreDelta: -2,
+          scoreDelta: 0,
+          occurredAt: "2026-07-10T08:00:00.000Z",
+          note: "Cần bổ sung bối cảnh",
+        },
+      ],
+    });
+
+    renderPerformance();
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Lịch sử điều chỉnh" }),
+    );
+    expect(screen.getByRole("dialog")).toHaveAccessibleName(
+      "Lịch sử điều chỉnh",
+    );
+    expect(screen.getByText("Điều chỉnh phục vụ")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Đóng lịch sử điều chỉnh" }),
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Phản hồi sự kiện này" }),
+    );
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Gửi phản hồi");
+    expect(screen.getByRole("combobox")).toHaveValue("incident-1");
   });
 });
