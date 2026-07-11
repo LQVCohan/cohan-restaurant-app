@@ -76,8 +76,8 @@ const InvoiceSchema = BaseSchemaModel(
     // Tien te hien thi tren hoa don
     currency: { type: String, default: "VND" },
 
-    // Tham chieu giao dich thanh toan moi nhat (PaymentTransaction._id)
-    refTransactionId: { type: Types.ObjectId, ref: "PaymentTransaction" },
+    // Tham chieu giao dich thanh toan moi nhat (Transaction._id)
+    refTransactionId: { type: Types.ObjectId, ref: "Transaction" },
     meta: { type: Schema.Types.Mixed },
 
     // (tuy chon) ma/QR hien thi cho khach, neu ban van can
