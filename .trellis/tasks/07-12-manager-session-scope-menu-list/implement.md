@@ -8,6 +8,19 @@
 4. Add a manager menu catalog modal and expose it only on the menu page.
 5. Review the final diff for duplicated state, GraphQL contract drift, permission gaps and unintended files.
 
+## CI follow-up
+
+The changed-component run exposed two existing Payroll test failures:
+
+- the payroll page and readiness panel both expose a button named `Làm mới`, so the page test cannot target the intended action accessibly;
+- the readiness test expects runtime-preview copy while its fixture already contains an official payroll period.
+
+Files changed for the follow-up:
+
+- `src/components/Dashboard_Manager/PayrollPage/PayrollManagement.jsx` — give the page-level refresh action a specific accessible name;
+- `src/components/Dashboard_Manager/PayrollPage/PayrollManagement.test.jsx` — select that page-level action explicitly;
+- `src/components/Dashboard_Manager/PayrollPage/PayrollManagement.readiness.test.jsx` — keep the test focused on readiness instead of contradictory runtime-mode copy.
+
 ## Validation
 
 ```bash
@@ -15,10 +28,12 @@ npx vitest run \
   src/components/Dashboard_Manager/Header.account-switch.test.jsx \
   src/hooks/useManagerRestaurantSelection.test.jsx \
   src/components/Dashboard_Manager/Sidebar.test.jsx \
-  src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.test.jsx
+  src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.test.jsx \
+  src/components/Dashboard_Manager/PayrollPage/PayrollManagement.test.jsx \
+  src/components/Dashboard_Manager/PayrollPage/PayrollManagement.readiness.test.jsx
 npm run check:graphql
 npm run check:conflicts
 npm run build
 ```
 
-If a runnable checkout is unavailable, leave the pull request as draft and record every check that was not run.
+If a runnable checkout is unavailable, use the pull-request CI run and record every skipped check.
