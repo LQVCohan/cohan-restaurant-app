@@ -2,15 +2,15 @@
 
 ## Direction
 
-Keep the existing manager shell and sage UI. Remount account-scoped state at the route boundary, reuse the live brand query already refreshed by branch creation, persist navigation in the click action, and add one focused menu catalog modal.
+Keep the existing manager shell and sage UI. Reset account-scoped local state where it lives, reuse the live brand query already refreshed by branch creation, persist navigation in the click action, and add one focused menu catalog modal.
 
-## Account-scoped manager shell
+## Account-scoped manager UI
 
-The authentication boundary already prevents stale session callbacks and clears Apollo on logout. The remaining stateful descendants—Header, Sidebar, image failure flags, dropdown state and account-center queries—must not survive a user-ID change. `AppRouter` renders `ManagerLayout` through a small account-scoped component keyed by the authenticated user ID. A new account therefore receives fresh manager component and Apollo hook instances without duplicating auth logic.
+The authentication boundary already prevents stale session callbacks and clears Apollo on logout. The remaining stateful descendants—Header and Sidebar image failure flags, dropdown state and the account-center overlay—must not survive a user-ID change. Header observes the authenticated account ID, closes account-specific overlays, resets its avatar state and keys account-center content by account and tab. Sidebar also resets avatar-local state from the account ID. This avoids duplicating or weakening AuthProvider logic.
 
 ## Live branch selector
 
-`useManagerRestaurantSelection` currently requests `loadFullBrands: false`, causing the header to consume the AuthContext business snapshot. It will instead use `loadFullBrands: true`. `BrandManagement` already refetches the exact `MY_BRANDS_QUERY` after `createRestaurant`, so every selector watcher receives the new branch immediately. No new event or store is added.
+`useManagerRestaurantSelection` currently requests `loadFullBrands: false`, causing the header to consume the AuthContext business snapshot. It now uses `loadFullBrands: true`. `BrandManagement` already refetches the exact `MY_BRANDS_QUERY` after `createRestaurant`, so every selector watcher receives the new branch immediately. No new event or store is added.
 
 ## Manager destination persistence
 
@@ -28,13 +28,12 @@ The manager Header shows a “Danh sách thực đơn” action only on the menu
 
 ## Files changing
 
-- `src/routes/AppRouter.jsx` — account-keyed manager route.
-- `src/routes/AppRouter.account-scope.test.jsx` — remount regression.
+- `src/components/Dashboard_Manager/Header.jsx` — reset account-local state and add the menu-page catalog launcher.
+- `src/components/Dashboard_Manager/Header.account-switch.test.jsx` — identity-reset and catalog-launch regressions.
 - `src/hooks/useManagerRestaurantSelection.js` — subscribe to live `MyBrands` data.
-- `src/hooks/useManagerRestaurantSelection.test.jsx` — assert the full-brand mode.
-- `src/components/Dashboard_Manager/Sidebar.jsx` — persist destination in the user action.
+- `src/hooks/useManagerRestaurantSelection.test.jsx` — assert the full-brand query and shared selection behavior.
+- `src/components/Dashboard_Manager/Sidebar.jsx` — reset avatar-local state and persist destination in the user action.
 - `src/components/Dashboard_Manager/Sidebar.test.jsx` — reload-state regression.
-- `src/components/Dashboard_Manager/Header.jsx` — menu-page catalog launcher.
 - `src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.jsx` — grouped menu/dish query and UI.
 - `src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.scss` — responsive catalog styles.
-- `src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.test.jsx` — grouping, empty, error and close behavior.
+- `src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.test.jsx` — grouping, empty and error behavior.
