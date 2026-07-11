@@ -87,12 +87,26 @@ export default function ContactsView({
     if (!threadId || handledFocusRef.current === threadId) return;
     handledFocusRef.current = threadId;
     setActiveThreadId(threadId);
-    void loadThread({ variables: { id: threadId } }).catch((error) => {
-      showNotification(error?.message || "Không thể mở hội thoại.", "error");
-      setActiveThreadId(null);
-    });
+
+    void (async () => {
+      try {
+        await loadThread({ variables: { id: threadId } });
+        await markThreadRead({ variables: { threadId } });
+        await refetchThreads?.();
+      } catch (error) {
+        showNotification(error?.message || "Không thể mở hội thoại.", "error");
+        setActiveThreadId(null);
+      }
+    })();
     onFocusHandled?.();
-  }, [focusThreadId, loadThread, onFocusHandled, showNotification]);
+  }, [
+    focusThreadId,
+    loadThread,
+    markThreadRead,
+    onFocusHandled,
+    refetchThreads,
+    showNotification,
+  ]);
 
   const contacts = useMemo(
     () =>
