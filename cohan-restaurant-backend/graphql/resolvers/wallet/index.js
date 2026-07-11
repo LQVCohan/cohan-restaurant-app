@@ -3,12 +3,12 @@ import {
   requireRestaurantPermission,
 } from "../../../src/services/auth/authorization.service.js";
 import { emitPaymentRealtime } from "../../../src/services/payment/paymentRealtime.service.js";
+import { payOrdersWithWallet } from "../../../src/services/wallet/idempotentWalletPayment.service.js";
 import {
   adjustWalletBalance,
   createWalletTopup,
   getWalletSummary,
   listWalletTransactions,
-  payOrdersWithWallet,
   refundToWallet,
   requireWalletUser,
 } from "../../../src/services/wallet/wallet.service.js";
