@@ -15,6 +15,7 @@ import {
   toEndOfDay,
 } from "./payrollRuntime.service.js";
 import { AttendanceCorrectionRequest } from "../../../models/index.js";
+import { getStaffMembershipRestaurantFilter } from "../auth/restaurantScope.service.js";
 const VALID_ADJUSTMENT_TYPES = new Set([
   "allowance",
   "bonus",
@@ -194,6 +195,9 @@ export async function validatePayrollPeriod(periodId, options = {}) {
   const end = toEndOfDay(period.endDate);
   const restaurantId = oid(period.restaurantId);
   const strictMinimumWage = Boolean(options.strictMinimumWage);
+  const staffScopeFilter = await getStaffMembershipRestaurantFilter(restaurantId, {
+    roles: ["staff", "manager"],
+  });
 
   const [settings, items, staffs, shifts, timesheets, leaves, adjustments] =
     await Promise.all([
@@ -201,7 +205,7 @@ export async function validatePayrollPeriod(periodId, options = {}) {
       PayrollItem.find({ periodId: period._id }).lean(),
       Staff.find({
         userType: "STAFF",
-        restaurantForStaff: restaurantId,
+        ...staffScopeFilter,
       })
         .select({
           _id: 1,
@@ -211,7 +215,6 @@ export async function validatePayrollPeriod(periodId, options = {}) {
           employmentStatus: 1,
           department: 1,
           positionTitle: 1,
-          restaurantForStaff: 1,
         })
         .lean(),
       Shift.find({
@@ -447,7 +450,7 @@ export async function validatePayrollPeriod(periodId, options = {}) {
   });
 
   const staffRestaurantMap = new Map(
-    staffs.map((s) => [String(s._id), String(s.restaurantForStaff || "")]),
+    staffs.map((s) => [String(s._id), String(period.restaurantId)]),
   );
   items.forEach((item) => {
     const netSalary = Number(item?.breakdown?.netSalary || 0);
@@ -474,9 +477,19 @@ export async function validatePayrollPeriod(periodId, options = {}) {
       });
     }
 
-    const employeeRestaurant = staffRestaurantMap.get(String(item.employeeId));
-    if (
-      employeeRestaurant &&
+    const employeeId = String(item.employeeId);
+    const employeeRestaurant = staffRestaurantMap.get(employeeId);
+    if (!employeeRestaurant) {
+      pushIssue(issues, {
+        code: "STAFF_NOT_IN_RESTAURANT",
+        severity: "error",
+        message: "Phiếu lương có nhân viên không thuộc nhà hàng của kỳ lương.",
+        employeeId,
+        sourceType: "PayrollItem",
+        sourceId: String(item._id),
+        suggestedAction: "Kiểm tra lại BrandMembership và tính lại kỳ lương.",
+      });
+    } else if (
       String(employeeRestaurant) !== String(period.restaurantId)
     ) {
       pushIssue(issues, {
