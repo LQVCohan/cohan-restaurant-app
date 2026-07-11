@@ -24,6 +24,11 @@ type StaffPayrollItem {
   actualWorkDays: Float
   totalHours: Float
   hourlyRate: Float
+  salaryType: String
+  commissionRate: Float
+  regularHours: Float
+  commissionableAmount: Float
+  salaryConfigurationIssue: String
   allowance: Float
   bonus: Float
   otherAddition: Float
