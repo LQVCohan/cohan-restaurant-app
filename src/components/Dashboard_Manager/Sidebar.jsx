@@ -84,7 +84,7 @@ const NAVIGATION_SECTIONS = [
       { id: "settings", permissions: ["system.manage"], icon: "⚙️", label: "Cài đặt hệ thống", page: "Cài đặt hệ thống" },
       { id: "system-users", roles: ["admin"], icon: "👤", label: "Người dùng hệ thống", page: "Người dùng hệ thống" },
       { id: "logs", permissions: LOG_PERMISSIONS, icon: "🧾", label: "Check log", page: "Check log" },
-      { id: "print-management", permissions: ["print.read", "report.read"], icon: "🖨️", label: "In ấn", page: "In ấn" },
+      { id: "print-management", permissions: ["print.read"], icon: "🖨️", label: "In ấn", page: "In ấn" },
       { id: "backup", permissions: BACKUP_PERMISSIONS, icon: "💾", label: "Sao lưu & khôi phục", page: "Sao lưu & khôi phục" },
     ],
   },
