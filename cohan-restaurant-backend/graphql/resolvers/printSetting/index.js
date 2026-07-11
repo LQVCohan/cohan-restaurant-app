@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { PrintSetting, Restaurant } from "../../../models/index.js";
-import { requireRole } from "../../../utils/authz.js";
-import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 const DEFAULT_TEMPLATES = [
   {
@@ -25,6 +25,16 @@ const DEFAULT_TEMPLATES = [
   },
 ];
 
+const PRINT_JOB_LIMIT = 300;
+const SUPPORTED_JOB_STATUSES = new Set([
+  "pending",
+  "printing",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+const SUPPORTED_PRINTER_STATUSES = new Set(["offline", "configured", "online"]);
+
 function badInput(message) {
   return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
 }
@@ -42,19 +52,20 @@ function normalizeTemplates(inputTemplates) {
   const byKey = new Map();
 
   for (const row of safeInput) {
-    if (!row?.key) continue;
-    byKey.set(String(row.key), {
-      key: String(row.key),
-      name: String(row.name || row.key),
+    const key = String(row?.key || "").trim();
+    if (!key) continue;
+    byKey.set(key, {
+      key,
+      name: String(row.name || key).trim() || key,
       enabled: Boolean(row.enabled),
       content: row.content != null ? String(row.content) : "",
       updatedAt: row.updatedAt || toIsoNow(),
     });
   }
 
-  for (const t of DEFAULT_TEMPLATES) {
-    if (!byKey.has(t.key)) {
-      byKey.set(t.key, { ...t, updatedAt: toIsoNow() });
+  for (const template of DEFAULT_TEMPLATES) {
+    if (!byKey.has(template.key)) {
+      byKey.set(template.key, { ...template, updatedAt: toIsoNow() });
     }
   }
 
@@ -63,47 +74,63 @@ function normalizeTemplates(inputTemplates) {
 
 function normalizePrinters(printers) {
   const list = Array.isArray(printers) ? printers : [];
-  return list
-    .filter((p) => p?.id && p?.name)
-    .map((p) => ({
-      id: String(p.id),
-      name: String(p.name),
-      ip: p.ip ? String(p.ip) : "",
-      type: p.type ? String(p.type) : "thermal",
-      location: p.location ? String(p.location) : "kitchen",
-      status: p.status ? String(p.status) : "offline",
-      lastError: p.lastError ? String(p.lastError) : "",
-      updatedAt: p.updatedAt || toIsoNow(),
-    }));
+  const byId = new Map();
+
+  for (const printer of list) {
+    const id = String(printer?.id || "").trim();
+    const name = String(printer?.name || "").trim();
+    if (!id || !name) continue;
+    const candidateStatus = String(printer?.status || "offline").toLowerCase();
+    byId.set(id, {
+      id,
+      name,
+      ip: printer.ip ? String(printer.ip).trim() : "",
+      type: printer.type ? String(printer.type) : "thermal",
+      location: printer.location ? String(printer.location) : "kitchen",
+      status: SUPPORTED_PRINTER_STATUSES.has(candidateStatus)
+        ? candidateStatus
+        : "offline",
+      lastError: printer.lastError ? String(printer.lastError) : "",
+      updatedAt: printer.updatedAt || toIsoNow(),
+    });
+  }
+
+  return Array.from(byId.values());
 }
 
 function normalizeJobs(jobs) {
   const list = Array.isArray(jobs) ? jobs : [];
   return list
-    .filter((j) => j?.id && j?.printType)
-    .map((j) => ({
-      id: String(j.id),
-      printerId: j.printerId ? String(j.printerId) : null,
-      printerName: j.printerName ? String(j.printerName) : null,
-      stationId: j.stationId ? String(j.stationId) : null,
-      printType: String(j.printType),
-      templateKey: j.templateKey ? String(j.templateKey) : null,
-      status: j.status ? String(j.status) : "pending",
-      error: j.error ? String(j.error) : null,
-      retryCount: Number(j.retryCount || 0),
-      payload: j.payload || null,
-      createdAt: j.createdAt || toIsoNow(),
-      updatedAt: j.updatedAt || toIsoNow(),
+    .filter((job) => job?.id && job?.printType)
+    .map((job) => ({
+      id: String(job.id),
+      orderId: job.orderId ? String(job.orderId) : null,
+      printerId: job.printerId ? String(job.printerId) : null,
+      printerName: job.printerName ? String(job.printerName) : null,
+      stationId: job.stationId ? String(job.stationId) : null,
+      stationType: job.stationType ? String(job.stationType) : null,
+      printType: String(job.printType),
+      templateKey: job.templateKey ? String(job.templateKey) : null,
+      status: job.status ? String(job.status).toLowerCase() : "pending",
+      error: job.error ? String(job.error) : null,
+      retryCount: Number(job.retryCount || 0),
+      items: Array.isArray(job.items) ? job.items : [],
+      payload: job.payload || null,
+      printedAt: job.printedAt || null,
+      createdAt: job.createdAt || toIsoNow(),
+      updatedAt: job.updatedAt || toIsoNow(),
     }))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
 function normalizeStations(stations, printers = []) {
   if (!stations || typeof stations !== "object" || Array.isArray(stations)) return {};
-  const printerIds = new Set(normalizePrinters(printers).map((p) => p.id));
+  const printerIds = new Set(normalizePrinters(printers).map((printer) => printer.id));
   return Object.entries(stations).reduce((acc, [stationId, value]) => {
     const ids = Array.isArray(value) ? value : [];
-    acc[String(stationId)] = Array.from(new Set(ids.map((id) => String(id)).filter((id) => printerIds.has(id))));
+    acc[String(stationId)] = Array.from(
+      new Set(ids.map((id) => String(id)).filter((id) => printerIds.has(id))),
+    );
     return acc;
   }, {});
 }
@@ -122,13 +149,11 @@ function toPrintSettingView(doc) {
   };
 }
 
-async function assertRestaurantAccess(ctx, restaurantId) {
-  const user = ctx?.user;
-  requireRole(user, ["admin", "manager"]);
+async function assertRestaurantPermission(ctx, restaurantId, permissionCode) {
   if (!mongoose.isValidObjectId(restaurantId)) {
     throw badInput("Invalid restaurantId");
   }
-  await requireRestaurantAccess(ctx, restaurantId);
+  await requireRestaurantPermission(ctx, restaurantId, permissionCode);
   const restaurant = await Restaurant.findById(restaurantId).lean();
   if (!restaurant) throw notFound("Restaurant not found");
   return restaurant;
@@ -149,9 +174,36 @@ async function findOrCreatePrintSetting(restaurantId) {
   return doc;
 }
 
+function findJob(doc, jobId) {
+  const id = String(jobId || "");
+  return (Array.isArray(doc?.jobs) ? doc.jobs : []).find(
+    (job) => String(job?.id || "") === id,
+  ) || null;
+}
+
+function getNormalizedJob(doc, jobId) {
+  return normalizeJobs(doc?.jobs).find((job) => job.id === String(jobId)) || null;
+}
+
+async function appendJob(printSettingId, job) {
+  await PrintSetting.updateOne(
+    { _id: printSettingId },
+    {
+      $push: {
+        jobs: {
+          $each: [job],
+          $position: 0,
+          $slice: PRINT_JOB_LIMIT,
+        },
+      },
+      $set: { updatedAt: new Date() },
+    },
+  );
+}
+
 export const Query = {
   async printSettings(_, { restaurantId }, ctx) {
-    await assertRestaurantAccess(ctx, restaurantId);
+    await assertRestaurantPermission(ctx, restaurantId, PERMISSIONS.PRINT_READ);
     const doc = await findOrCreatePrintSetting(restaurantId);
     return toPrintSettingView(doc);
   },
@@ -160,7 +212,7 @@ export const Query = {
 export const Mutation = {
   async upsertPrintSettings(_, { input }, ctx) {
     const { restaurantId } = input || {};
-    await assertRestaurantAccess(ctx, restaurantId);
+    await assertRestaurantPermission(ctx, restaurantId, PERMISSIONS.PRINT_WRITE);
     const doc = await findOrCreatePrintSetting(restaurantId);
     const hasPrinters = Object.prototype.hasOwnProperty.call(input || {}, "printers");
     const hasStations = Object.prototype.hasOwnProperty.call(input || {}, "stations");
@@ -192,142 +244,164 @@ export const Mutation = {
           createdAt: now,
         },
       },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      { new: true, upsert: true, setDefaultsOnInsert: true },
     ).lean();
 
     return toPrintSettingView(updated);
   },
 
   async enqueuePrintJob(_, { input }, ctx) {
-    const { restaurantId, printerId, stationId, printType, templateKey, payload } = input || {};
-    if (!printType) throw badInput("printType is required");
-    await assertRestaurantAccess(ctx, restaurantId);
+    const {
+      restaurantId,
+      printerId,
+      stationId,
+      printType,
+      templateKey,
+      payload,
+    } = input || {};
+    const normalizedPrintType = String(printType || "").trim();
+    if (!normalizedPrintType) throw badInput("printType is required");
+    await assertRestaurantPermission(ctx, restaurantId, PERMISSIONS.PRINT_WRITE);
 
     const doc = await findOrCreatePrintSetting(restaurantId);
     const printers = normalizePrinters(doc.printers);
-    const targetPrinter = printers.find((p) => p.id === printerId) || null;
+    const stations = normalizeStations(doc.stations, printers);
+    const requestedStationId = stationId ? String(stationId) : null;
+    const requestedPrinterId = printerId
+      ? String(printerId)
+      : requestedStationId
+        ? stations[requestedStationId]?.[0]
+        : null;
+    const targetPrinter = printers.find((printer) => printer.id === requestedPrinterId);
+    if (!targetPrinter) throw badInput("Configured printer not found");
 
-    const id = `job_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+    const normalizedTemplateKey = templateKey ? String(templateKey) : null;
+    if (normalizedTemplateKey) {
+      const template = normalizeTemplates(doc.templates).find(
+        (item) => item.key === normalizedTemplateKey,
+      );
+      if (!template) throw badInput("Print template not found");
+      if (!template.enabled) throw badInput("Print template is disabled");
+    }
+
+    if (
+      requestedStationId
+      && normalizedPrintType !== "manual_test"
+      && !(stations[requestedStationId] || []).includes(targetPrinter.id)
+    ) {
+      throw badInput("Printer is not assigned to this station");
+    }
+
     const createdAt = toIsoNow();
-    const isOffline = targetPrinter && targetPrinter.status === "offline";
-
+    const unavailable = targetPrinter.status === "offline";
     const job = {
-      id,
-      printerId: targetPrinter?.id || printerId || null,
-      printerName: targetPrinter?.name || null,
-      stationId: stationId || null,
-      printType: String(printType),
-      templateKey: templateKey || null,
-      status: isOffline ? "failed" : "pending",
-      error: isOffline ? "Printer offline" : null,
+      id: `job_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+      printerId: targetPrinter.id,
+      printerName: targetPrinter.name,
+      stationId: requestedStationId || targetPrinter.location || null,
+      printType: normalizedPrintType,
+      templateKey: normalizedTemplateKey,
+      status: unavailable ? "failed" : "pending",
+      error: unavailable ? "Printer is not configured or available" : null,
       retryCount: 0,
       payload: payload || null,
       createdAt,
       updatedAt: createdAt,
     };
 
-    const nextJobs = [job, ...normalizeJobs(doc.jobs)].slice(0, 200);
-
-    await PrintSetting.updateOne(
-      { _id: doc._id },
-      {
-        $set: {
-          jobs: nextJobs,
-          updatedAt: new Date(),
-        },
-      }
-    );
-
+    await appendJob(doc._id, job);
     return job;
   },
 
   async retryPrintJob(_, { input }, ctx) {
     const { restaurantId, jobId } = input || {};
-    await assertRestaurantAccess(ctx, restaurantId);
+    await assertRestaurantPermission(ctx, restaurantId, PERMISSIONS.PRINT_WRITE);
     const doc = await findOrCreatePrintSetting(restaurantId);
-    const jobs = normalizeJobs(doc.jobs);
-    const index = jobs.findIndex((j) => j.id === String(jobId));
-    if (index < 0) throw notFound("Print job not found");
+    const current = findJob(doc, jobId);
+    if (!current) throw notFound("Print job not found");
+    if (String(current.status || "").toLowerCase() !== "failed") {
+      throw badInput("Only failed print jobs can be retried");
+    }
 
-    const current = jobs[index];
-    const updated = {
-      ...current,
-      status: "pending",
-      error: null,
-      retryCount: Number(current.retryCount || 0) + 1,
-      updatedAt: toIsoNow(),
-    };
-
-    jobs[index] = updated;
-    await PrintSetting.updateOne(
-      { _id: doc._id },
+    const updatedAt = toIsoNow();
+    const updatedDoc = await PrintSetting.findOneAndUpdate(
+      {
+        _id: doc._id,
+        jobs: { $elemMatch: { id: String(jobId), status: "failed" } },
+      },
       {
         $set: {
-          jobs,
+          "jobs.$.status": "pending",
+          "jobs.$.error": null,
+          "jobs.$.printedAt": null,
+          "jobs.$.updatedAt": updatedAt,
           updatedAt: new Date(),
         },
-      }
-    );
+        $inc: { "jobs.$.retryCount": 1 },
+      },
+      { new: true },
+    ).lean();
+    if (!updatedDoc) throw badInput("Print job is no longer failed");
 
-    return updated;
+    return getNormalizedJob(updatedDoc, jobId);
   },
 
   async updatePrintJobStatus(_, { input }, ctx) {
     const { restaurantId, jobId, status, error } = input || {};
-    await assertRestaurantAccess(ctx, restaurantId);
-    if (!status) throw badInput("status is required");
+    await assertRestaurantPermission(ctx, restaurantId, PERMISSIONS.PRINT_WRITE);
+    const normalizedStatus = String(status || "").trim().toLowerCase();
+    if (!SUPPORTED_JOB_STATUSES.has(normalizedStatus)) {
+      throw badInput("Unsupported print job status");
+    }
 
     const doc = await findOrCreatePrintSetting(restaurantId);
-    const jobs = normalizeJobs(doc.jobs);
-    const index = jobs.findIndex((j) => j.id === String(jobId));
-    if (index < 0) throw notFound("Print job not found");
-
-    const updated = {
-      ...jobs[index],
-      status: String(status),
-      error: error ? String(error) : null,
-      updatedAt: toIsoNow(),
+    if (!findJob(doc, jobId)) throw notFound("Print job not found");
+    const updatedAt = toIsoNow();
+    const setPayload = {
+      "jobs.$.status": normalizedStatus,
+      "jobs.$.error": normalizedStatus === "failed" && error ? String(error) : null,
+      "jobs.$.updatedAt": updatedAt,
+      updatedAt: new Date(),
     };
-    jobs[index] = updated;
+    if (normalizedStatus === "completed") setPayload["jobs.$.printedAt"] = updatedAt;
+    if (["pending", "printing"].includes(normalizedStatus)) {
+      setPayload["jobs.$.printedAt"] = null;
+    }
 
-    await PrintSetting.updateOne(
-      { _id: doc._id },
-      {
-        $set: {
-          jobs,
-          updatedAt: new Date(),
-        },
-      }
-    );
+    const updatedDoc = await PrintSetting.findOneAndUpdate(
+      { _id: doc._id, "jobs.id": String(jobId) },
+      { $set: setPayload },
+      { new: true },
+    ).lean();
+    if (!updatedDoc) throw notFound("Print job not found");
 
-    return updated;
+    return getNormalizedJob(updatedDoc, jobId);
   },
 
   async testPrint(_, { input }, ctx) {
-    const { restaurantId, printerId, draftName, draftIp, draftType, draftLocation } = input || {};
-    await assertRestaurantAccess(ctx, restaurantId);
+    const {
+      restaurantId,
+      printerId,
+      draftName,
+      draftIp,
+      draftType,
+      draftLocation,
+    } = input || {};
+    await assertRestaurantPermission(ctx, restaurantId, PERMISSIONS.PRINT_WRITE);
 
     const doc = await findOrCreatePrintSetting(restaurantId);
     const printers = normalizePrinters(doc.printers);
-    const targetIndex = printers.findIndex((p) => p.id === String(printerId));
-    if (targetIndex < 0) throw notFound("Printer not found");
+    const target = printers.find((printer) => printer.id === String(printerId));
+    if (!target) throw notFound("Printer not found");
 
-    const target = printers[targetIndex];
     const effectivePrinter = {
       ...target,
-      name: draftName != null ? String(draftName) : target.name,
-      ip: draftIp != null ? String(draftIp) : target.ip,
+      name: draftName != null ? String(draftName).trim() : target.name,
+      ip: draftIp != null ? String(draftIp).trim() : target.ip,
       type: draftType != null ? String(draftType) : target.type,
       location: draftLocation != null ? String(draftLocation) : target.location,
     };
-    const online = Boolean(String(effectivePrinter.ip || "").trim());
-    printers[targetIndex] = {
-      ...target,
-      status: online ? "online" : "offline",
-      lastError: online ? "" : "Missing printer IP",
-      updatedAt: toIsoNow(),
-    };
-
+    const configured = Boolean(effectivePrinter.name && effectivePrinter.ip);
     const createdAt = toIsoNow();
     const job = {
       id: `job_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
@@ -336,13 +410,13 @@ export const Mutation = {
       stationId: effectivePrinter.location || null,
       printType: "test",
       templateKey: "receipt",
-      status: online ? "completed" : "failed",
-      error: online ? null : "Simulated check failed: missing printer IP",
+      status: configured ? "completed" : "failed",
+      error: configured ? null : "Simulated configuration check failed: missing name or IP",
       retryCount: 0,
       payload: {
-        label: "Test print",
+        label: "Configuration check",
         simulated: true,
-        checkMode: "ip_presence_only_draft_aware",
+        checkMode: "required_fields_only_draft_aware",
         source: draftIp != null || draftName != null || draftType != null || draftLocation != null
           ? "draft_payload"
           : "persisted_printer",
@@ -352,19 +426,33 @@ export const Mutation = {
       updatedAt: createdAt,
     };
 
-    const jobs = [job, ...normalizeJobs(doc.jobs)].slice(0, 200);
-
-    await PrintSetting.updateOne(
-      { _id: doc._id },
+    const updated = await PrintSetting.findOneAndUpdate(
+      { _id: doc._id, "printers.id": effectivePrinter.id },
       {
         $set: {
-          printers,
-          jobs,
+          "printers.$.status": configured ? "configured" : "offline",
+          "printers.$.lastError": configured ? "" : "Missing printer name or IP",
+          "printers.$.updatedAt": createdAt,
           updatedAt: new Date(),
         },
-      }
-    );
+        $push: {
+          jobs: {
+            $each: [job],
+            $position: 0,
+            $slice: PRINT_JOB_LIMIT,
+          },
+        },
+      },
+      { new: true },
+    ).lean();
+    if (!updated) throw notFound("Printer not found");
 
     return job;
   },
+};
+
+export const __testables = {
+  normalizeJobs,
+  normalizePrinters,
+  normalizeStations,
 };
