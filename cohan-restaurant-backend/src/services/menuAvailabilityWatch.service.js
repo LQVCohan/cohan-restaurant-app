@@ -370,25 +370,16 @@ export async function notifyAvailabilityWatchersForMenuItem({ io, restaurantId, 
       source,
       message: "Món bạn quan tâm hiện đã có thể đặt lại. Hệ thống không tự giữ món, vui lòng đặt lại nếu vẫn muốn dùng.",
     };
+    const notificationPayload = buildMenuAvailabilityNotificationPayload({
+      watch: updated,
+      menuItem,
+      restaurantId: rid,
+      menuItemId: mid,
+      servingKey: normalizedServingKey,
+    });
 
     try {
-      await persistAvailabilityNotification({
-        io,
-        watch: updated,
-        menuItem,
-        restaurantId: rid,
-        menuItemId: mid,
-        servingKey: normalizedServingKey,
-      });
-
       const contactEmail = await resolveWatchEmail(updated);
-      const notificationPayload = buildMenuAvailabilityNotificationPayload({
-        watch: updated,
-        menuItem,
-        restaurantId: rid,
-        menuItemId: mid,
-        servingKey: normalizedServingKey,
-      });
       const emailResult = await sendAvailabilityEmail({
         to: contactEmail,
         subject: `${menuItem?.name || "Món bạn quan tâm"} đã có lại tại Cohan`,
@@ -406,11 +397,27 @@ export async function notifyAvailabilityWatchersForMenuItem({ io, restaurantId, 
         { $set: { status: "watching", notifiedAt: null } },
       );
       console.warn(
-        "[MenuAvailabilityWatch] Notification delivery failed",
+        "[MenuAvailabilityWatch] Email delivery failed",
         error?.message || error,
       );
       skipped += 1;
       continue;
+    }
+
+    try {
+      await persistAvailabilityNotification({
+        io,
+        watch: updated,
+        menuItem,
+        restaurantId: rid,
+        menuItemId: mid,
+        servingKey: normalizedServingKey,
+      });
+    } catch (error) {
+      console.warn(
+        "[MenuAvailabilityWatch] In-app notification failed",
+        error?.message || error,
+      );
     }
 
     emitAvailabilityNotification(io, updated, payload);
