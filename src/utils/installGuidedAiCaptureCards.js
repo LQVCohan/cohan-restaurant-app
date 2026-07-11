@@ -1,3 +1,5 @@
+import { compressImageForUpload } from "./compressAvatar";
+
 const INSTALL_KEY = "__cohanGuidedAiCaptureCardsCleanup";
 const CARD_SELECTOR =
   ".custom-table-builder-modal .custom-table-builder__image-chip";
@@ -5,6 +7,9 @@ const INPUT_SELECTOR = 'input[type="file"][capture="environment"]';
 const AI_SECTION_SELECTOR =
   ".custom-table-builder-modal .custom-table-builder__section";
 const HIDDEN_AI_FIELD_LABELS = new Set(["prompt", "khu vuc", "scale", "tag"]);
+const AI_IMAGE_MAX_DIMENSION = 1920;
+const AI_IMAGE_TARGET_BYTES = 4 * 1024 * 1024;
+const OPTIMIZED_CHANGE_FLAG = "cohanAiOptimizedChange";
 const TABLE_TYPE_LABELS = {
   "round-table": "Bàn tròn",
   "rect-2-seat": "Bàn chữ nhật 2 chỗ",
@@ -37,6 +42,26 @@ const createElement = (tagName, className, text) => {
   element.className = className;
   if (text) element.textContent = text;
   return element;
+};
+
+const replaceInputFile = (input, file) => {
+  if (typeof DataTransfer === "function") {
+    const transfer = new DataTransfer();
+    if (file) transfer.items.add(file);
+    input.files = transfer.files;
+    return;
+  }
+
+  Object.defineProperty(input, "files", {
+    configurable: true,
+    value: file ? [file] : [],
+  });
+};
+
+const dispatchOptimizedChange = (input, file) => {
+  replaceInputFile(input, file);
+  input.dataset[OPTIMIZED_CHANGE_FLAG] = "true";
+  input.dispatchEvent(new Event("change", { bubbles: true }));
 };
 
 const isAiSection = (section) =>
@@ -100,7 +125,7 @@ const prepareAiMetadataSection = (section) => {
   const noteText = createElement(
     "p",
     "cohan-ai-metadata-note__text",
-    "Hi3D không nhận prompt và không trả loại bàn hoặc số chỗ ngồi. Chỉ cần chọn hai thông tin này để COHAN lưu mẫu đúng; khu vực, scale và tag được hệ thống giữ mặc định.",
+    "Ảnh lớn sẽ tự giảm còn tối đa 1920px và được nén trước khi gửi. Hi3D không nhận prompt và không trả loại bàn hoặc số chỗ ngồi; COHAN chỉ giữ hai thông tin này để lưu mẫu đúng.",
   );
   note.append(noteTitle, noteText);
   grid.insertAdjacentElement("beforebegin", note);
@@ -245,8 +270,22 @@ export const installGuidedAiCaptureCards = () => {
     preview.alt = `${title}: ${file.name}`;
     card.classList.add("is-complete");
     button.textContent = "Chụp lại";
-    status.textContent = "Đã chụp";
-    fileName.textContent = file.name;
+    status.textContent = "Đã tối ưu";
+    fileName.textContent = `${file.name} · ${(file.size / (1024 * 1024)).toFixed(2)} MB`;
+    fileName.hidden = false;
+  };
+
+  const showCompressionState = (card, message, isError = false) => {
+    const shell = card?.querySelector(":scope > .cohan-guided-capture__shell");
+    const button = shell?.querySelector(".cohan-guided-capture__button");
+    const status = shell?.querySelector(".cohan-guided-capture__status");
+    const fileName = shell?.querySelector(".cohan-guided-capture__filename");
+    if (!button || !status || !fileName) return;
+
+    button.disabled = !isError;
+    button.textContent = isError ? "Chụp lại" : "Đang tối ưu...";
+    status.textContent = message;
+    fileName.textContent = isError ? message : "Giảm độ phân giải và dung lượng trước khi gửi";
     fileName.hidden = false;
   };
 
@@ -262,6 +301,47 @@ export const installGuidedAiCaptureCards = () => {
     input.click();
   };
 
+  const handleCompressionChange = async (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || !input.matches(INPUT_SELECTOR)) {
+      return;
+    }
+
+    if (input.dataset[OPTIMIZED_CHANGE_FLAG] === "true") {
+      delete input.dataset[OPTIMIZED_CHANGE_FLAG];
+      return;
+    }
+
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const card = input.closest(CARD_SELECTOR);
+    if (!card) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+
+    dispatchOptimizedChange(input, null);
+    showCompressionState(card, "Đang tối ưu ảnh");
+
+    try {
+      const optimizedFile = await compressImageForUpload(file, {
+        maxDimension: AI_IMAGE_MAX_DIMENSION,
+        targetMaxBytes: AI_IMAGE_TARGET_BYTES,
+        quality: 0.82,
+        keepSmallOriginal: true,
+      });
+      dispatchOptimizedChange(input, optimizedFile);
+    } catch (error) {
+      showCompressionState(
+        card,
+        error?.message || "Không thể tối ưu ảnh này. Vui lòng chụp lại.",
+        true,
+      );
+    }
+  };
+
   const handleChange = (event) => {
     const input = event.target;
     if (!(input instanceof HTMLInputElement) || !input.matches(INPUT_SELECTOR)) {
@@ -271,6 +351,8 @@ export const installGuidedAiCaptureCards = () => {
     const card = input.closest(CARD_SELECTOR);
     if (!card) return;
     updatePreview(card, input.files?.[0] || null);
+    const button = card.querySelector(".cohan-guided-capture__button");
+    if (button) button.disabled = false;
   };
 
   const observer = new MutationObserver((mutations) => {
@@ -287,6 +369,7 @@ export const installGuidedAiCaptureCards = () => {
   });
 
   document.addEventListener("click", handleClick);
+  document.addEventListener("change", handleCompressionChange, true);
   document.addEventListener("change", handleChange);
   observer.observe(document.body, { childList: true, subtree: true });
   prepareAll();
@@ -294,6 +377,7 @@ export const installGuidedAiCaptureCards = () => {
   const cleanup = () => {
     observer.disconnect();
     document.removeEventListener("click", handleClick);
+    document.removeEventListener("change", handleCompressionChange, true);
     document.removeEventListener("change", handleChange);
     objectUrls.forEach((url) => URL.revokeObjectURL?.(url));
     objectUrls.clear();
