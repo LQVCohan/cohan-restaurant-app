@@ -113,10 +113,14 @@ describe("Cohan wallet payment parity", () => {
     );
   });
 
-  it("generates the actual checkout key only from Web Crypto per checkout attempt", () => {
+  it("keeps an ambiguous checkout retry key until a success response arrives", () => {
     expect(apolloClientSource).toContain("cryptoApi.randomUUID");
     expect(apolloClientSource).toContain("cryptoApi.getRandomValues");
-    expect(apolloClientSource).toContain("attempt:${checkoutAttempt}");
+    expect(apolloClientSource).toContain("hashIdempotencyPayload(input)");
+    expect(apolloClientSource).toContain("removeStoredCheckoutKey");
+    expect(apolloClientSource).toContain(
+      "result?.data?.createCheckoutOrders",
+    );
     expect(apolloClientSource).toContain(":v1:${randomPart}");
     expect(apolloClientSource).not.toContain("Math.random()");
   });
