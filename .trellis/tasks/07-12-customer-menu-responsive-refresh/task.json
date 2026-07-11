@@ -1,7 +1,7 @@
 {
   "id": "07-12-customer-menu-responsive-refresh",
   "title": "Nâng cấp giao diện menu khách hàng và sửa khóa khung giờ",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "type": "frontend-redesign-bugfix",
   "scope": [
     "src/components/Customer/RestaurantMenu/RestaurantMenu.jsx",
@@ -23,6 +23,17 @@
       "npm run build",
       "manual review at 390x844, 430x932, 768, 1024 and 1440"
     ],
-    "completed": []
+    "completed": [
+      "Traced publicRestaurants, customerMenuCategories, menuItemsConnection, menu availability and food-detail navigation without changing their contracts.",
+      "Separated initialTimeSlot from lockedTimeSlot and added regression coverage for normal versus booking menu switching.",
+      "Added restaurant discovery search, styled menu controls, result context, low-stock metadata and compact phone cards.",
+      "Parsed all changed JSX and tests successfully with esbuild.",
+      "Compiled RestaurantMenu, MenuDetailView, MenuDetailViewPolish and MenuItemCard SCSS successfully with Sass.",
+      "Re-fetched changed files from main and confirmed no conflict markers."
+    ],
+    "notRun": [
+      "Vitest and the full Vite build were not run because this workspace has no repository checkout or installed project dependencies.",
+      "Interactive browser review at 390x844, 430x932, 768, 1024 and 1440 remains pending."
+    ]
   }
 }
