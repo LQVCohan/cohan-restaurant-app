@@ -3,7 +3,7 @@
   "name": "backup-legacy-date-restore",
   "title": "Handle legacy date placeholders during config restore",
   "description": "Prevent old restaurant configuration snapshots containing empty-object date placeholders from failing table restore operations.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "bugfix",
   "scope": "manager-backup",
   "package": null,
@@ -11,18 +11,18 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-11",
-  "completedAt": null,
+  "completedAt": "2026-07-11",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "68eefc58e16ad138932d290c389346042d07b680",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": "backup-clone-date-serialization",
   "relatedFiles": [
-    "cohan-restaurant-backend/src/services/restaurantConfigBackup.service.js",
-    "cohan-restaurant-backend/tests/services/restaurant-config-backup-date.service.test.js"
+    "cohan-restaurant-backend/models/table.model.js",
+    "cohan-restaurant-backend/tests/models/table-legacy-date.model.test.js"
   ],
-  "notes": "The earlier fix covered new exports and clone mode. This follow-up adds backward-compatible handling for legacy empty-object table date placeholders during restore modes."
+  "notes": "Implemented a schema-level compatibility setter so legacy empty-object placeholders become null before Mongoose Date casting, while valid ISO dates remain supported. Focused tests were added but could not be executed through the GitHub connector because it provides no checkout or installed dependencies; no workflow run was created for the direct main commit."
 }
