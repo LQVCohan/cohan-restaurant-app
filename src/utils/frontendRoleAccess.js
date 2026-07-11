@@ -46,6 +46,26 @@ export const STAFF_KITCHEN_ROLES = [
 ];
 export const CUSTOMER_ROLES = new Set(["customer"]);
 
+const KNOWN_ROLE_NAMES = new Set([
+  ...ADMIN_ROLES,
+  ...MANAGER_ROLES,
+  ...HR_ROLES,
+  ...ACCOUNTANT_ROLES,
+  ...STAFF_OPERATIONAL_ROLES,
+  ...CUSTOMER_ROLES,
+  "pending_verification",
+]);
+
+const STAFF_DEPARTMENT_ROLE = Object.freeze({
+  kitchen: "chef",
+  cashier: "cashier",
+  cleaning: "cleaner",
+  delivery: "shipper",
+  inventory: "storekeeper",
+  bar: "bartender",
+  management: "supervisor",
+});
+
 export const normalizeRoleName = (input) => {
   if (typeof input === "string") {
     const normalized = input.trim().toLowerCase();
@@ -54,27 +74,70 @@ export const normalizeRoleName = (input) => {
   return null;
 };
 
+const firstNormalized = (values = []) => {
+  for (const value of values) {
+    const normalized = normalizeRoleName(value);
+    if (normalized) return normalized;
+  }
+  return null;
+};
+
+const resolveServiceDepartmentRole = (user) => {
+  if (
+    hasPermission(user, "reservation.read") &&
+    !hasPermission(user, "order.update")
+  ) {
+    return "host";
+  }
+  if (
+    hasAnyPermission(user, ["order.cancel", "staff.read", "shift.read"]) &&
+    hasPermission(user, "order.read")
+  ) {
+    return "supervisor";
+  }
+  if (hasAnyPermission(user, ["order.read", "order.create", "order.update"])) {
+    return "server";
+  }
+  return "staff";
+};
+
+const resolveCustomStaffRole = (user) => {
+  const department = firstNormalized([
+    user?.department,
+    user?.role?.department,
+  ]);
+  if (department === "service") return resolveServiceDepartmentRole(user);
+  return STAFF_DEPARTMENT_ROLE[department] || "staff";
+};
+
 export const resolveUserRoleName = (userOrRole) => {
   if (!userOrRole) return null;
   if (typeof userOrRole === "string") return normalizeRoleName(userOrRole);
   if (typeof userOrRole !== "object") return null;
 
-  const candidates = [
+  const directRole = firstNormalized([
     userOrRole.roleName,
     userOrRole.roleSlug,
-    userOrRole.userType,
     userOrRole.role?.slug,
     userOrRole.role?.name,
+  ]);
+  if (KNOWN_ROLE_NAMES.has(directRole)) return directRole;
+
+  const parentRole = firstNormalized([
     userOrRole.role?.parentRole?.slug,
     userOrRole.role?.parentRole?.name,
-  ];
-
-  for (const candidate of candidates) {
-    const normalized = normalizeRoleName(candidate);
-    if (normalized) return normalized;
+  ]);
+  if (parentRole && parentRole !== "staff" && KNOWN_ROLE_NAMES.has(parentRole)) {
+    return parentRole;
   }
 
-  return null;
+  const userType = normalizeRoleName(userOrRole.userType);
+  if (parentRole === "staff" || userType === "staff") {
+    return resolveCustomStaffRole(userOrRole);
+  }
+  if (KNOWN_ROLE_NAMES.has(userType)) return userType;
+
+  return directRole || userType || parentRole;
 };
 
 export const resolveAccessRoleName = (userOrRole) => {
