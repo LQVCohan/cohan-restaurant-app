@@ -92,7 +92,7 @@ const StaffPerformancePage = () => {
     drawerCloseRef.current?.focus();
 
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") closeDrawer();
+      if (event.key === "Escape") setActiveDrawer("");
     };
     window.addEventListener("keydown", handleKeyDown);
 
