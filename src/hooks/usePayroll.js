@@ -45,6 +45,7 @@ export const QUERY_PAYROLL_PERIOD_DETAIL = gql`
       settings {
         restaurantId
         currentPayrollPeriodId
+        timezone
         standardWorkDaysPerMonth
         standardHoursPerDay
         overtimeMultiplierWeekday
@@ -87,6 +88,11 @@ export const QUERY_PAYROLL_PERIOD_DETAIL = gql`
         actualWorkDays
         totalHours
         hourlyRate
+        salaryType
+        commissionRate
+        regularHours
+        commissionableAmount
+        salaryConfigurationIssue
         allowance
         bonus
         otherAddition
@@ -143,6 +149,7 @@ export const QUERY_PAYROLL_SETTINGS = gql`
     payrollSettings(restaurantId: $restaurantId) {
       restaurantId
       currentPayrollPeriodId
+      timezone
       standardWorkDaysPerMonth
       standardHoursPerDay
       overtimeMultiplierWeekday
