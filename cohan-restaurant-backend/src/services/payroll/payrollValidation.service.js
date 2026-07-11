@@ -8,13 +8,16 @@ import {
   PayrollItem,
   PayrollAdjustment,
   OvertimeRequest,
+  AttendanceCorrectionRequest,
 } from "../../../models/index.js";
 import {
   getPayrollSettings,
   toStartOfDay,
   toEndOfDay,
 } from "./payrollRuntime.service.js";
-import { AttendanceCorrectionRequest } from "../../../models/index.js";
+import { normalizeSalaryType } from "./payrollCalculator.service.js";
+import { getStaffMembershipRestaurantFilter } from "../auth/restaurantScope.service.js";
+
 const VALID_ADJUSTMENT_TYPES = new Set([
   "allowance",
   "bonus",
@@ -35,34 +38,136 @@ function pushIssue(issues, payload) {
 
 export function groupPayrollIssuesBySeverity(issues = []) {
   return {
-    error: issues.filter((i) => i.severity === "error"),
-    warning: issues.filter((i) => i.severity === "warning"),
+    error: issues.filter((issue) => issue.severity === "error"),
+    warning: issues.filter((issue) => issue.severity === "warning"),
   };
 }
 
 export function hasBlockingPayrollIssues(issues = []) {
-  return issues.some((i) => i.severity === "error");
+  return issues.some((issue) => issue.severity === "error");
+}
+
+function employeeFields(record) {
+  return {
+    employeeId: record?._id ? String(record._id) : null,
+    employeeName: record?.fullName || null,
+    employeeCode: record?.employeeCode || null,
+  };
+}
+
+function addCompensationProfileIssue(issues, staff) {
+  const salaryType = normalizeSalaryType(staff.salaryType);
+  const baseSalary = Number(staff.baseSalary || 0);
+  const hourlyRate = Number(staff.hourlyRate || 0);
+  let invalid = false;
+  let message = "";
+  let suggestedAction = "";
+
+  if (salaryType === "hourly" && !(hourlyRate > 0)) {
+    invalid = true;
+    message = "Nhân viên tính lương theo giờ nhưng chưa có đơn giá giờ hợp lệ.";
+    suggestedAction = "Cập nhật đơn giá lương theo giờ trước khi chốt kỳ.";
+  } else if (salaryType === "shift" && !(baseSalary > 0)) {
+    invalid = true;
+    message = "Nhân viên tính lương theo ca nhưng chưa có đơn giá ca hợp lệ.";
+    suggestedAction = "Cập nhật đơn giá lương theo ca trước khi chốt kỳ.";
+  } else if (salaryType === "monthly" && !(baseSalary > 0)) {
+    invalid = true;
+    message = "Nhân viên tính lương tháng nhưng chưa có mức lương hợp lệ.";
+    suggestedAction = "Cập nhật mức lương tháng trước khi chốt kỳ.";
+  }
+
+  if (!invalid) return;
+  pushIssue(issues, {
+    code: "STAFF_MISSING_COMPENSATION_RATE",
+    severity: "error",
+    message,
+    ...employeeFields(staff),
+    sourceType: "Staff",
+    sourceId: String(staff._id),
+    suggestedAction,
+  });
 }
 
 export async function validatePayrollPeriod(periodId, options = {}) {
   const period = await PayrollPeriod.findById(periodId).lean();
   if (!period) throw new Error("Không tìm thấy kỳ lương.");
+
   const issues = [];
-  const pendingOvertimeRequests = await OvertimeRequest.find({
-    restaurantId: period.restaurantId,
-    workDate: {
-      $gte: period.startDate,
-      $lte: period.endDate,
-    },
-    status: {
-      $in: ["pending_employee_confirmation", "pending_approval", "approved"],
-    },
-  })
-    .populate("employeeId", "fullName employeeCode")
-    .lean();
+  const start = toStartOfDay(period.startDate);
+  const end = toEndOfDay(period.endDate);
+  const restaurantId = oid(period.restaurantId);
+  const strictMinimumWage = Boolean(options.strictMinimumWage);
+
+  const [
+    pendingOvertimeRequests,
+    unapprovedOvertimeTimesheets,
+    pendingOffScheduleTimesheets,
+    pendingAttendanceCorrections,
+  ] = await Promise.all([
+    OvertimeRequest.find({
+      restaurantId: period.restaurantId,
+      workDate: { $gte: start, $lte: end },
+      status: {
+        $in: [
+          "pending_employee_confirmation",
+          "pending_approval",
+          "approved",
+        ],
+      },
+    })
+      .populate("employeeId", "fullName employeeCode")
+      .lean(),
+    Timesheet.find({
+      restaurantId: period.restaurantId,
+      workDate: { $gte: start, $lte: end },
+      overtimeMinutes: { $gt: 0 },
+      $or: [
+        { approvedOvertimeMinutes: { $exists: false } },
+        { approvedOvertimeMinutes: { $lte: 0 } },
+        { overtimeApprovalStatus: { $ne: "approved" } },
+      ],
+    })
+      .populate("employeeId", "fullName employeeCode")
+      .lean(),
+    Timesheet.find({
+      restaurantId: period.restaurantId,
+      workDate: { $gte: start, $lte: end },
+      isOffSchedule: true,
+      approved: { $ne: true },
+      $and: [
+        {
+          $or: [
+            { offScheduleApprovalStatus: { $exists: false } },
+            { offScheduleApprovalStatus: "not_required" },
+            { offScheduleApprovalStatus: "pending" },
+            { offScheduleApprovalStatus: null },
+          ],
+        },
+        {
+          $or: [
+            { workedMinutes: { $gt: 0 } },
+            { hours: { $gt: 0 } },
+            { amount: { $gt: 0 } },
+            { actualCheckInAt: { $exists: true } },
+            { actualCheckOutAt: { $exists: true } },
+          ],
+        },
+      ],
+    })
+      .populate("employeeId", "fullName employeeCode")
+      .lean(),
+    AttendanceCorrectionRequest.find({
+      restaurantId: period.restaurantId,
+      status: "pending",
+      workDate: { $gte: start, $lte: end },
+    })
+      .populate("employeeId", "fullName employeeCode")
+      .lean(),
+  ]);
 
   pendingOvertimeRequests.forEach((request) => {
-    issues.push({
+    pushIssue(issues, {
       code: "OVERTIME_REQUEST_NOT_COMPLETED",
       severity: "error",
       message: "Còn yêu cầu tăng ca chưa hoàn tất trong kỳ lương.",
@@ -80,24 +185,8 @@ export async function validatePayrollPeriod(periodId, options = {}) {
     });
   });
 
-  const unapprovedOvertimeTimesheets = await Timesheet.find({
-    restaurantId: period.restaurantId,
-    workDate: {
-      $gte: period.startDate,
-      $lte: period.endDate,
-    },
-    overtimeMinutes: { $gt: 0 },
-    $or: [
-      { approvedOvertimeMinutes: { $exists: false } },
-      { approvedOvertimeMinutes: { $lte: 0 } },
-      { overtimeApprovalStatus: { $ne: "approved" } },
-    ],
-  })
-    .populate("employeeId", "fullName employeeCode")
-    .lean();
-
   unapprovedOvertimeTimesheets.forEach((timesheet) => {
-    issues.push({
+    pushIssue(issues, {
       code: "UNAPPROVED_OVERTIME",
       severity: "error",
       message: "Có giờ tăng ca thực tế nhưng chưa được duyệt để tính lương.",
@@ -114,38 +203,9 @@ export async function validatePayrollPeriod(periodId, options = {}) {
         "Tạo hoặc hoàn tất yêu cầu tăng ca, hoặc xác nhận không tính lương tăng ca cho bản ghi này.",
     });
   });
-  const pendingOffScheduleTimesheets = await Timesheet.find({
-    restaurantId: period.restaurantId,
-    workDate: {
-      $gte: period.startDate,
-      $lte: period.endDate,
-    },
-    isOffSchedule: true,
-    approved: { $ne: true },
-    $and: [
-      {
-        $or: [
-          { offScheduleApprovalStatus: { $exists: false } },
-          { offScheduleApprovalStatus: "not_required" },
-          { offScheduleApprovalStatus: "pending" },
-        ],
-      },
-      {
-        $or: [
-          { workedMinutes: { $gt: 0 } },
-          { hours: { $gt: 0 } },
-          { amount: { $gt: 0 } },
-          { actualCheckInAt: { $exists: true } },
-          { actualCheckOutAt: { $exists: true } },
-        ],
-      },
-    ],
-  })
-    .populate("employeeId", "fullName employeeCode")
-    .lean();
 
   pendingOffScheduleTimesheets.forEach((timesheet) => {
-    issues.push({
+    pushIssue(issues, {
       code: "OFF_SCHEDULE_ATTENDANCE_PENDING_APPROVAL",
       severity: "error",
       message: "Có công ngoài lịch chưa được duyệt.",
@@ -161,19 +221,9 @@ export async function validatePayrollPeriod(periodId, options = {}) {
       suggestedAction: "Duyệt hoặc từ chối công ngoài lịch trước khi chốt kỳ.",
     });
   });
-  const pendingAttendanceCorrections = await AttendanceCorrectionRequest.find({
-    restaurantId: period.restaurantId,
-    status: "pending",
-    workDate: {
-      $gte: period.startDate,
-      $lte: period.endDate,
-    },
-  })
-    .populate("employeeId", "fullName employeeCode")
-    .lean();
 
   pendingAttendanceCorrections.forEach((request) => {
-    issues.push({
+    pushIssue(issues, {
       code: "ATTENDANCE_CORRECTION_PENDING",
       severity: "error",
       message: "Còn yêu cầu chỉnh công chưa xử lý trong kỳ lương.",
@@ -190,34 +240,35 @@ export async function validatePayrollPeriod(periodId, options = {}) {
         "Duyệt, từ chối hoặc hủy yêu cầu chỉnh công trước khi chốt kỳ lương.",
     });
   });
-  const start = toStartOfDay(period.startDate);
-  const end = toEndOfDay(period.endDate);
-  const restaurantId = oid(period.restaurantId);
-  const strictMinimumWage = Boolean(options.strictMinimumWage);
 
+  const staffMembershipFilter =
+    await getStaffMembershipRestaurantFilter(restaurantId);
   const [settings, items, staffs, shifts, timesheets, leaves, adjustments] =
     await Promise.all([
       getPayrollSettings(period.restaurantId),
       PayrollItem.find({ periodId: period._id }).lean(),
       Staff.find({
         userType: "STAFF",
-        restaurantForStaff: restaurantId,
+        deletedAt: null,
+        ...staffMembershipFilter,
       })
         .select({
           _id: 1,
           fullName: 1,
           employeeCode: 1,
           baseSalary: 1,
+          salaryType: 1,
+          hourlyRate: 1,
           employmentStatus: 1,
           department: 1,
           positionTitle: 1,
-          restaurantForStaff: 1,
         })
         .lean(),
       Shift.find({
         restaurantId,
         startTime: { $lte: end },
         endTime: { $gte: start },
+        status: { $ne: "cancelled" },
       }).lean(),
       Timesheet.find({
         restaurantId,
@@ -256,80 +307,78 @@ export async function validatePayrollPeriod(periodId, options = {}) {
   }
 
   const shiftByStaff = new Map();
-  shifts.forEach((s) => {
-    const sid = String(s.employeeId);
+  shifts.forEach((shift) => {
+    const sid = String(shift.employeeId);
     shiftByStaff.set(sid, (shiftByStaff.get(sid) || 0) + 1);
   });
   const timesheetByStaff = new Map();
-  timesheets.forEach((t) => {
-    const sid = String(t.employeeId);
+  timesheets.forEach((timesheet) => {
+    const sid = String(timesheet.employeeId);
     timesheetByStaff.set(sid, (timesheetByStaff.get(sid) || 0) + 1);
   });
   const timesheetByShift = new Set(
-    timesheets.filter((t) => t.shiftId).map((t) => String(t.shiftId)),
+    timesheets
+      .filter((timesheet) => timesheet.shiftId)
+      .map((timesheet) => String(timesheet.shiftId)),
   );
+  const itemEmployeeIds = new Set(
+    items.map((item) => String(item.employeeId)),
+  );
+  const scopedStaffIds = new Set(staffs.map((staff) => String(staff._id)));
 
   staffs.forEach((staff) => {
     const sid = String(staff._id);
     const working =
       String(staff.employmentStatus || "").toLowerCase() === "working";
-    if (!working) return;
-
-    if (!Number(staff.baseSalary || 0)) {
-      pushIssue(issues, {
-        code: "STAFF_MISSING_BASE_SALARY",
-        severity: "error",
-        message: "Nhân viên đang làm việc nhưng chưa có lương cơ bản hợp lệ.",
-        employeeId: sid,
-        employeeName: staff.fullName,
-        employeeCode: staff.employeeCode,
-        sourceType: "Staff",
-        sourceId: sid,
-        suggestedAction:
-          "Cập nhật lương cơ bản cho nhân viên trước khi chốt kỳ.",
-      });
-    }
+    if (working) addCompensationProfileIssue(issues, staff);
 
     if (!staff.department) {
       pushIssue(issues, {
         code: "STAFF_MISSING_DEPARTMENT",
         severity: "warning",
         message: "Nhân viên chưa có bộ phận.",
-        employeeId: sid,
-        employeeName: staff.fullName,
-        employeeCode: staff.employeeCode,
+        ...employeeFields(staff),
         sourceType: "Staff",
         sourceId: sid,
         suggestedAction: "Cập nhật bộ phận để chuẩn hóa báo cáo.",
       });
     }
-
     if (!staff.positionTitle) {
       pushIssue(issues, {
         code: "STAFF_MISSING_POSITION_TITLE",
         severity: "warning",
         message: "Nhân viên chưa có chức danh.",
-        employeeId: sid,
-        employeeName: staff.fullName,
-        employeeCode: staff.employeeCode,
+        ...employeeFields(staff),
         sourceType: "Staff",
         sourceId: sid,
         suggestedAction: "Bổ sung chức danh cho nhân viên.",
       });
     }
 
-    const hasTimesheet = Number(timesheetByStaff.get(sid) || 0) > 0;
-    const hasShift = Number(shiftByStaff.get(sid) || 0) > 0;
-    if (!hasTimesheet) {
+    if (working) {
+      const hasTimesheet = Number(timesheetByStaff.get(sid) || 0) > 0;
+      const hasShift = Number(shiftByStaff.get(sid) || 0) > 0;
+      if (!hasTimesheet) {
+        pushIssue(issues, {
+          code: "STAFF_WITHOUT_TIMESHEET",
+          severity: hasShift ? "error" : "warning",
+          message: "Nhân viên không có chấm công trong kỳ.",
+          ...employeeFields(staff),
+          sourceType: "Timesheet",
+          suggestedAction:
+            "Bổ sung/chỉnh công cho nhân viên trước khi chốt kỳ.",
+        });
+      }
+    }
+
+    if (!itemEmployeeIds.has(sid)) {
       pushIssue(issues, {
-        code: "STAFF_WITHOUT_TIMESHEET",
-        severity: hasShift ? "error" : "warning",
-        message: "Nhân viên không có chấm công trong kỳ.",
-        employeeId: sid,
-        employeeName: staff.fullName,
-        employeeCode: staff.employeeCode,
-        sourceType: "Timesheet",
-        suggestedAction: "Bổ sung/chỉnh công cho nhân viên trước khi chốt kỳ.",
+        code: "PAYROLL_ITEM_MISSING_FOR_STAFF",
+        severity: "error",
+        message: "Nhân viên thuộc nhà hàng nhưng chưa có phiếu lương trong kỳ.",
+        ...employeeFields(staff),
+        sourceType: "PayrollItem",
+        suggestedAction: "Tính lại kỳ lương để đồng bộ danh sách nhân viên.",
       });
     }
   });
@@ -348,36 +397,41 @@ export async function validatePayrollPeriod(periodId, options = {}) {
     }
   });
 
-  timesheets.forEach((ts) => {
-    const sid = String(ts.employeeId);
-    if (ts.actualCheckInAt && !ts.actualCheckOutAt) {
+  timesheets.forEach((timesheet) => {
+    const sid = String(timesheet.employeeId);
+    if (timesheet.actualCheckInAt && !timesheet.actualCheckOutAt) {
       pushIssue(issues, {
         code: "TIMESHEET_OPEN_CHECKIN",
         severity: "error",
         message: "Có bản ghi check-in chưa check-out.",
         employeeId: sid,
         sourceType: "Timesheet",
-        sourceId: String(ts._id),
+        sourceId: String(timesheet._id),
         suggestedAction: "Hoàn tất check-out hoặc chỉnh công cho bản ghi này.",
       });
     }
-    if (String(ts.source || "") === "manual" && ts.approved !== true) {
+    if (
+      String(timesheet.source || "") === "manual" &&
+      timesheet.approved !== true
+    ) {
       pushIssue(issues, {
         code: "TIMESHEET_MANUAL_NOT_APPROVED",
         severity: "error",
         message: "Bản ghi chấm công thủ công chưa được duyệt.",
         employeeId: sid,
         sourceType: "Timesheet",
-        sourceId: String(ts._id),
-        suggestedAction: "Duyệt bản ghi chấm công thủ công trước khi chốt kỳ.",
+        sourceId: String(timesheet._id),
+        suggestedAction:
+          "Duyệt bản ghi chấm công thủ công trước khi chốt kỳ.",
       });
     }
     const invalidHours =
-      Number(ts.workedMinutes || 0) < 0 ||
-      Number(ts.hours || 0) < 0 ||
-      (ts.actualCheckInAt &&
-        ts.actualCheckOutAt &&
-        new Date(ts.actualCheckOutAt) < new Date(ts.actualCheckInAt));
+      Number(timesheet.workedMinutes || 0) < 0 ||
+      Number(timesheet.hours || 0) < 0 ||
+      (timesheet.actualCheckInAt &&
+        timesheet.actualCheckOutAt &&
+        new Date(timesheet.actualCheckOutAt) <
+          new Date(timesheet.actualCheckInAt));
     if (invalidHours) {
       pushIssue(issues, {
         code: "TIMESHEET_NEGATIVE_OR_INVALID_HOURS",
@@ -385,7 +439,7 @@ export async function validatePayrollPeriod(periodId, options = {}) {
         message: "Bản ghi chấm công có số giờ không hợp lệ.",
         employeeId: sid,
         sourceType: "Timesheet",
-        sourceId: String(ts._id),
+        sourceId: String(timesheet._id),
         suggestedAction: "Kiểm tra lại giờ vào/ra và tổng giờ làm.",
       });
     }
@@ -401,8 +455,7 @@ export async function validatePayrollPeriod(periodId, options = {}) {
         employeeId: String(leave.employeeId),
         sourceType: "LeaveRequest",
         sourceId: String(leave._id),
-        suggestedAction:
-          "Duyệt hoặc từ chối đơn nghỉ phép trước khi chốt lương.",
+        suggestedAction: "Duyệt hoặc từ chối đơn nghỉ phép trước khi chốt lương.",
       });
     }
     if (status === "approved" && !leave.payrollFlags) {
@@ -418,37 +471,43 @@ export async function validatePayrollPeriod(periodId, options = {}) {
     }
   });
 
-  adjustments.forEach((adj) => {
-    const amount = Number(adj.amount || 0);
+  adjustments.forEach((adjustment) => {
+    const amount = Number(adjustment.amount || 0);
     if (!(amount > 0)) {
       pushIssue(issues, {
         code: "PAYROLL_ADJUSTMENT_INVALID_AMOUNT",
         severity: "error",
         message: "Điều chỉnh lương có số tiền không hợp lệ.",
-        employeeId: String(adj.employeeId),
+        employeeId: String(adjustment.employeeId),
         sourceType: "PayrollAdjustment",
-        sourceId: String(adj._id),
-        suggestedAction:
-          "Kiểm tra lại phụ cấp/khấu trừ có số tiền không hợp lệ.",
+        sourceId: String(adjustment._id),
+        suggestedAction: "Kiểm tra lại số tiền điều chỉnh lương.",
       });
     }
-    if (!VALID_ADJUSTMENT_TYPES.has(String(adj.type || ""))) {
+    if (!VALID_ADJUSTMENT_TYPES.has(String(adjustment.type || ""))) {
       pushIssue(issues, {
         code: "PAYROLL_ADJUSTMENT_INVALID_TYPE",
         severity: "error",
         message: "Điều chỉnh lương có loại không hợp lệ.",
-        employeeId: String(adj.employeeId),
+        employeeId: String(adjustment.employeeId),
         sourceType: "PayrollAdjustment",
-        sourceId: String(adj._id),
-        suggestedAction:
-          "Chuyển loại điều chỉnh về danh mục hợp lệ trước khi chốt.",
+        sourceId: String(adjustment._id),
+        suggestedAction: "Chuyển loại điều chỉnh về danh mục hợp lệ.",
+      });
+    }
+    if (!scopedStaffIds.has(String(adjustment.employeeId))) {
+      pushIssue(issues, {
+        code: "PAYROLL_ADJUSTMENT_WRONG_RESTAURANT",
+        severity: "error",
+        message: "Điều chỉnh lương thuộc nhân viên ngoài phạm vi nhà hàng.",
+        employeeId: String(adjustment.employeeId),
+        sourceType: "PayrollAdjustment",
+        sourceId: String(adjustment._id),
+        suggestedAction: "Xóa hoặc chuyển điều chỉnh sang đúng kỳ lương.",
       });
     }
   });
 
-  const staffRestaurantMap = new Map(
-    staffs.map((s) => [String(s._id), String(s.restaurantForStaff || "")]),
-  );
   items.forEach((item) => {
     const netSalary = Number(item?.breakdown?.netSalary || 0);
     if (netSalary < 0) {
@@ -462,32 +521,37 @@ export async function validatePayrollPeriod(periodId, options = {}) {
         suggestedAction: "Rà soát khấu trừ và điều chỉnh trước khi chốt kỳ.",
       });
     }
+    if (item?.breakdown?.missingCompensationRate) {
+      pushIssue(issues, {
+        code: "PAYROLL_ITEM_MISSING_COMPENSATION_RATE",
+        severity: "error",
+        message: "Phiếu lương thiếu đơn giá hoặc dữ liệu thu nhập theo loại lương.",
+        employeeId: String(item.employeeId),
+        sourceType: "PayrollItem",
+        sourceId: String(item._id),
+        suggestedAction: "Cập nhật hồ sơ lương hoặc dữ liệu nguồn rồi tính lại kỳ.",
+      });
+    }
     if (item?.breakdown?.minimumWageViolation) {
       pushIssue(issues, {
         code: "PAYROLL_ITEM_MINIMUM_WAGE_VIOLATION",
         severity: strictMinimumWage ? "error" : "warning",
-        message: "Lương cơ bản thấp hơn mức lương tối thiểu vùng.",
+        message: "Mức lương thấp hơn mức lương tối thiểu vùng.",
         employeeId: String(item.employeeId),
         sourceType: "PayrollItem",
         sourceId: String(item._id),
-        suggestedAction: "Rà soát mức lương cơ bản và chính sách áp dụng.",
+        suggestedAction: "Rà soát mức lương và chính sách áp dụng.",
       });
     }
-
-    const employeeRestaurant = staffRestaurantMap.get(String(item.employeeId));
-    if (
-      employeeRestaurant &&
-      String(employeeRestaurant) !== String(period.restaurantId)
-    ) {
+    if (!scopedStaffIds.has(String(item.employeeId))) {
       pushIssue(issues, {
         code: "PAYROLL_ITEM_WRONG_RESTAURANT",
         severity: "error",
-        message: "Nhân viên không thuộc nhà hàng của kỳ lương.",
+        message: "Phiếu lương thuộc nhân viên ngoài phạm vi nhà hàng.",
         employeeId: String(item.employeeId),
         sourceType: "PayrollItem",
         sourceId: String(item._id),
-        suggestedAction:
-          "Kiểm tra phân quyền nhà hàng hoặc nhân viên trước khi chốt.",
+        suggestedAction: "Tính lại kỳ lương để đồng bộ phạm vi nhân viên.",
       });
     }
   });
