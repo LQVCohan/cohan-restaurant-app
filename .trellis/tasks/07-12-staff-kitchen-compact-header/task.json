@@ -1,0 +1,25 @@
+{
+  "id": "07-12-staff-kitchen-compact-header",
+  "title": "Compact staff kitchen header",
+  "status": "in_progress",
+  "type": "frontend-ui",
+  "scope": [
+    "src/components/Staff/StaffKitchenPage.jsx",
+    "src/components/Staff/StaffKitchenPage.scss",
+    "src/components/Staff/StaffKitchenPage.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Staff/StaffKitchenPage.test.jsx",
+      "npm run check:staff-theme",
+      "npm run build",
+      "manual responsive review at 390x844, 430x932, 768px, 1024px and 1440px"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
+      "traced StaffKitchenPage route, order hook, station filter, item-status action and component tests",
+      "confirmed the reported issue is presentation-only: oversized title, padding, spacing and venue card"
+    ],
+    "notRun": []
+  }
+}
