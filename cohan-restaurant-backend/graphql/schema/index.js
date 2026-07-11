@@ -148,7 +148,10 @@ const readSchemaFile = (fileName) => {
   }
 
   if (fileName === "customerRankSettings.graphql") {
-    return source.replace("customerRankSettings(restaurantId: ID!):", "customerRankSettings(restaurantId: ID):");
+    return source.replace(
+      "customerRankSettings(restaurantId: ID!):",
+      "customerRankSettings(restaurantId: ID):",
+    );
   }
 
   if (fileName === "frontendCompatibility.graphql") {
@@ -159,7 +162,9 @@ const readSchemaFile = (fileName) => {
   }
 
   if (fileName === "staffResolverCompatibility.graphql") {
-    return `${staffResolverCompatibilityPrelude}\n${stripDomainOwnedStaffCompatibilityFields(source)
+    return `${staffResolverCompatibilityPrelude}\n${stripDomainOwnedStaffCompatibilityFields(
+      source,
+    )
       .replace(
         "createMyWallet(input: CreateWalletInput!): Wallet",
         "createMyWallet(input: CreateWalletInput!): User",
@@ -174,9 +179,12 @@ const readSchemaFile = (fileName) => {
 
   const firstWalletField = source.indexOf("\n  wallet: Wallet");
   const lastWalletField = source.lastIndexOf("\n  wallet: Wallet");
-  const withoutDuplicateWallet = firstWalletField === -1 || firstWalletField === lastWalletField
-    ? source
-    : `${source.slice(0, lastWalletField)}${source.slice(lastWalletField + "\n  wallet: Wallet".length)}`;
+  const withoutDuplicateWallet =
+    firstWalletField === -1 || firstWalletField === lastWalletField
+      ? source
+      : `${source.slice(0, lastWalletField)}${source.slice(
+          lastWalletField + "\n  wallet: Wallet".length,
+        )}`;
 
   return withoutDuplicateWallet
     .replace(
@@ -234,6 +242,7 @@ const files = [
   "inventory.graphql",
   "inventoryCount.graphql",
   "order.graphql",
+  "customerPromotionPreview.graphql",
   "reservation.graphql",
   "supply.graphql",
   "event_log.graphql",
