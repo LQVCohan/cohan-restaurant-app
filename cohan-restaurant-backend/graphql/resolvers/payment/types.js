@@ -15,7 +15,7 @@ export const PaymentResolvers = {
     },
     method(parent) {
       const value = String(parent.method || "cash").toLowerCase();
-      return ["cash", "card", "transfer", "bank_transfer", "e_wallet", "momo", "vnpay", "other"].includes(value)
+      return ["cash", "card", "transfer", "bank_transfer", "e_wallet", "provider", "momo", "vnpay", "other"].includes(value)
         ? value
         : "other";
     },
