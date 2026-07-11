@@ -77,6 +77,40 @@ const normalizeComboLine = (source) => {
   };
 };
 
+export function buildReservationFoodPricingSnapshot(
+  breakdown = {},
+  menuDepositPercent = 50,
+) {
+  const subtotal = roundVnd(breakdown.subtotal);
+  const promotionDiscount = Math.min(
+    subtotal,
+    roundVnd(breakdown.promotionDiscount),
+  );
+  const total = roundVnd(
+    breakdown.grandTotal ??
+      breakdown.finalTotal ??
+      subtotal - promotionDiscount,
+  );
+  const normalizedPercent = Math.max(
+    0,
+    Math.min(100, toNumber(menuDepositPercent, 50)),
+  );
+
+  return {
+    subtotal,
+    promotionDiscount,
+    total,
+    promotionIds: [
+      ...new Set(
+        (breakdown.appliedPromotions || [])
+          .map((id) => String(id || "").trim())
+          .filter(Boolean),
+      ),
+    ],
+    deposit: roundVnd((total * normalizedPercent) / 100),
+  };
+}
+
 export async function buildCustomerPromotionPricingItems({
   restaurantId,
   items = [],
