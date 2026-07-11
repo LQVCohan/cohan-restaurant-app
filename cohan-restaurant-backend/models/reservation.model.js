@@ -44,7 +44,7 @@ const ReservationSchema = BaseSchemaModel(
 
     linkedMenuSubtotal: { type: Number, default: 0, min: 0 },
     depositAmount: { type: Number, default: 0, min: 0 },
-    depositTxnId: { type: Types.ObjectId, ref: "PaymentTransaction" },
+    depositTxnId: { type: Types.ObjectId, ref: "Transaction" },
     depositStatus: {
       type: String,
       enum: ["unpaid", "pending", "paid", "failed", "refunded", "cancelled"],
