@@ -120,6 +120,16 @@ CashflowSchema.index(
     },
   },
 );
+CashflowSchema.index(
+  { "ref.paymentTransactionId": 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      "ref.paymentTransactionId": { $type: "objectId" },
+      source: "reservation",
+    },
+  },
+);
 
 export default mongoose.models.Cashflow ||
   mongoose.model("Cashflow", CashflowSchema);
