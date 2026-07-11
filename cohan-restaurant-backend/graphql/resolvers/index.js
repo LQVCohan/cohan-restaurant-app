@@ -22,6 +22,7 @@ import supply from "./supply/index.js";
 import eventLogResolvers from "./event_log/index.js";
 import payment from "./payment/index.js";
 import staff from "./staff/index.js";
+import payrollOverviewScope from "./staff/payrollOverviewScope.query.js";
 import { withStaffInvitationFlow } from "./staff/invitationFlow.js";
 import attendanceOvertime from "./attendance_overtime/index.js";
 import review from "./review/index.js";
@@ -80,6 +81,7 @@ export default {
     ...(eventLogResolvers.Query || {}),
     ...(payment.Query || {}),
     ...(staff.Query || {}),
+    ...payrollOverviewScope,
     ...(review.Query || {}),
     ...(reviewComment.Query || {}),
     ...(cart.Query || {}),
