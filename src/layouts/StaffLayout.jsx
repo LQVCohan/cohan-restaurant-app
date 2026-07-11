@@ -93,7 +93,6 @@ const navGroups = [
       "/staff/orders",
       "/staff/reservation-changes",
       "/staff/kitchen",
-      "/staff/contacts",
     ],
   },
   {
@@ -302,7 +301,6 @@ export default function StaffLayout({ children }) {
       { label: "Hiệu suất", to: "/staff/performance" },
       { label: "Hồ sơ", to: "/staff/profile" },
       { label: "Thông báo", to: "/staff/notifications" },
-      { label: "Liên lạc", to: "/staff/contacts", action: "messenger" },
       {
         label: "Bàn giao hỗ trợ",
         to: "/staff/ai-handoff",
@@ -371,6 +369,19 @@ export default function StaffLayout({ children }) {
                   onOpenThread={openMessenger}
                 />
               ) : null}
+              <button
+                type="button"
+                className={`staff-shell__messenger-button ${
+                  messengerOpen ? "is-active" : ""
+                }`}
+                onClick={() => openMessenger()}
+                aria-label="Mở tin nhắn nhân viên"
+                aria-expanded={messengerOpen}
+                aria-haspopup="dialog"
+                title="Tin nhắn"
+              >
+                <MessageCircle size={22} aria-hidden="true" />
+              </button>
               <div className="staff-shell__identity">
                 <div
                   className="staff-shell__identity-avatar"
@@ -416,30 +427,12 @@ export default function StaffLayout({ children }) {
                 <div className="staff-shell__nav-group" key={group.label}>
                   <span>{group.label}</span>
                   {groupItems.map((item) => {
-                    const active =
-                      item.action === "messenger"
-                        ? messengerOpen
-                        : isActivePath(location, item.to);
+                    const active = isActivePath(location, item.to);
                     const className = `staff-shell__nav-link ${
                       active ? "is-active" : ""
                     } ${
                       item.to === primaryWorkspacePath ? "is-primary" : ""
                     }`;
-
-                    if (item.action === "messenger") {
-                      return (
-                        <button
-                          key={item.to}
-                          type="button"
-                          className={className}
-                          onClick={() => openMessenger()}
-                          aria-expanded={messengerOpen}
-                          aria-haspopup="dialog"
-                        >
-                          {item.label}
-                        </button>
-                      );
-                    }
 
                     return (
                       <Link
@@ -480,18 +473,6 @@ export default function StaffLayout({ children }) {
           {scopedChildren}
         </div>
       </main>
-
-      <button
-        type="button"
-        className="staff-shell__messenger-launcher"
-        onClick={() => openMessenger()}
-        aria-label="Mở tin nhắn nhân viên"
-        aria-expanded={messengerOpen}
-        aria-haspopup="dialog"
-        hidden={messengerOpen}
-      >
-        <MessageCircle size={25} aria-hidden="true" />
-      </button>
 
       {messengerOpen ? (
         <ContactsView
