@@ -3,13 +3,29 @@ import {
   MENU_MANAGEMENT_ACTIONS,
   canAccessMenuManagementAction,
   canAccessRoute,
+  getDefaultPathForRole,
+  hasStaffKitchenAccess,
+  hasStaffOrderAccess,
   isRestaurantScopedRole,
   isStaffOperationalRole,
+  resolveUserRoleName,
 } from "./frontendRoleAccess";
 
 const userWith = (...codes) => ({
   roleName: "staff",
   effectivePermissionCodes: codes,
+});
+
+const customStaff = ({ slug, department, permissions = [] }) => ({
+  roleName: slug,
+  userType: "STAFF",
+  department,
+  effectivePermissionCodes: permissions,
+  role: {
+    slug,
+    department,
+    parentRole: { slug: "staff" },
+  },
 });
 
 describe("restaurant-scoped frontend roles", () => {
@@ -24,6 +40,56 @@ describe("restaurant-scoped frontend roles", () => {
     expect(isRestaurantScopedRole("server")).toBe(true);
     expect(isRestaurantScopedRole("manager")).toBe(false);
     expect(isRestaurantScopedRole("customer")).toBe(false);
+  });
+
+  it("maps custom staff roles to the existing workspace for their department", () => {
+    const customBar = customStaff({
+      slug: "bar-lead",
+      department: "bar",
+      permissions: ["order.read", "order.update"],
+    });
+    const customKitchen = customStaff({
+      slug: "grill-specialist",
+      department: "kitchen",
+      permissions: ["order.read", "order.update"],
+    });
+    const customStorekeeper = customStaff({
+      slug: "stock-controller",
+      department: "inventory",
+      permissions: ["inventory.read"],
+    });
+
+    expect(resolveUserRoleName(customBar)).toBe("bartender");
+    expect(resolveUserRoleName(customKitchen)).toBe("chef");
+    expect(resolveUserRoleName(customStorekeeper)).toBe("storekeeper");
+    expect(hasStaffKitchenAccess(customBar)).toBe(true);
+    expect(hasStaffKitchenAccess(customKitchen)).toBe(true);
+    expect(getDefaultPathForRole(customStorekeeper)).toBe("/staff/dashboard");
+  });
+
+  it("uses permissions to distinguish custom service roles", () => {
+    const customHost = customStaff({
+      slug: "guest-welcome",
+      department: "service",
+      permissions: ["reservation.read", "reservation.update", "table.read"],
+    });
+    const customServer = customStaff({
+      slug: "table-attendant",
+      department: "service",
+      permissions: ["order.read", "order.create", "order.update"],
+    });
+    const customSupervisor = customStaff({
+      slug: "service-lead",
+      department: "service",
+      permissions: ["order.read", "order.update", "order.cancel", "staff.read"],
+    });
+
+    expect(resolveUserRoleName(customHost)).toBe("host");
+    expect(resolveUserRoleName(customServer)).toBe("server");
+    expect(resolveUserRoleName(customSupervisor)).toBe("supervisor");
+    expect(hasStaffOrderAccess(customHost)).toBe(true);
+    expect(hasStaffOrderAccess(customServer)).toBe(true);
+    expect(hasStaffOrderAccess(customSupervisor)).toBe(true);
   });
 });
 
