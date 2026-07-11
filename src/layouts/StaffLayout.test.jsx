@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
@@ -11,6 +11,21 @@ const { useCommunicationMock } = vi.hoisted(() => ({
 
 vi.mock("@/hooks/useCommunication", () => ({
   default: (...args) => useCommunicationMock(...args),
+}));
+
+vi.mock("@/components/Staff/components/ContactsView", () => ({
+  default: ({ restaurantId, focusThreadId, onClose }) => (
+    <div
+      role="dialog"
+      aria-label="Tin nhắn nhân viên"
+      data-restaurant-id={restaurantId || ""}
+      data-thread-id={focusThreadId || ""}
+    >
+      <button type="button" onClick={onClose}>
+        Đóng messenger test
+      </button>
+    </div>
+  ),
 }));
 
 const baseUser = {
@@ -62,6 +77,44 @@ describe("StaffLayout", () => {
     );
     expect(screen.getByRole("link", { name: "Hồ sơ" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Thông báo" })).toBeInTheDocument();
+  });
+
+  it("opens the same messenger from navigation and the floating launcher", () => {
+    renderStaffLayout();
+
+    fireEvent.click(screen.getByRole("button", { name: "Liên lạc" }));
+    expect(
+      screen.getByRole("dialog", { name: "Tin nhắn nhân viên" }),
+    ).toHaveAttribute("data-restaurant-id", "r1");
+    expect(
+      screen.queryByRole("button", { name: "Mở tin nhắn nhân viên" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Đóng messenger test" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Mở tin nhắn nhân viên" }),
+    );
+
+    expect(
+      screen.getByRole("dialog", { name: "Tin nhắn nhân viên" }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens a notification thread from legacy router state without changing workspace", async () => {
+    renderStaffLayout({
+      route: {
+        pathname: "/staff/dashboard",
+        state: { openStaffMessenger: true, threadId: "thread-9" },
+      },
+    });
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Tin nhắn nhân viên",
+    });
+    expect(dialog).toHaveAttribute("data-thread-id", "thread-9");
+    expect(
+      screen.getByRole("heading", { name: "Trung tâm ca làm" }),
+    ).toBeInTheDocument();
   });
 
   it("puts the role workspace first in the visible navigation", () => {
