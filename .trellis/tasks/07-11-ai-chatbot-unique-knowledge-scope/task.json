@@ -1,13 +1,29 @@
 {
   "id": "07-11-ai-chatbot-unique-knowledge-scope",
   "title": "Resolve chatbot scope from unique restaurant knowledge",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "createdAt": "2026-07-11",
+  "updatedAt": "2026-07-11",
   "scope": [
-    "Search enabled chatbot knowledge across eligible restaurants for global questions",
+    "Search enabled chatbot knowledge across eligible restaurants for truly global questions",
     "When relevant knowledge belongs to exactly one restaurant, resolve the chatbot scope to that restaurant before loading menu data",
-    "Preserve existing restaurant-specific behavior and response contracts"
+    "Preserve explicit, page, selected-item, named-restaurant and ambiguous scope behavior",
+    "Keep existing GraphQL and frontend contracts unchanged"
   ],
-  "validation": [],
-  "notRun": []
+  "files": [
+    "cohan-restaurant-backend/src/services/ai/restaurantChatbotKnowledgeScope.service.js",
+    "cohan-restaurant-backend/graphql/resolvers/aiChatbot/index.js",
+    "cohan-restaurant-backend/tests/services/restaurantChatbotKnowledgeScope.service.test.js"
+  ],
+  "validation": [
+    "Static review: unique owner is selected only from active, published, chatbot-enabled restaurants",
+    "Static review: existing scope resolver runs first and prevents knowledge matching from overriding explicit or inferred restaurant scope",
+    "Static review: once restaurantId is supplied, the existing core loads that restaurant's knowledge and menu only",
+    "Added focused Vitest coverage for unique owner, multiple owners, existing scope precedence and ineligible restaurants"
+  ],
+  "notRun": [
+    "npx vitest run tests/services/restaurantChatbotKnowledgeScope.service.test.js",
+    "npm run check:graphql",
+    "npm run build"
+  ]
 }
