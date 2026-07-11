@@ -2,20 +2,20 @@
 
 ## Steps
 
-1. Harden `AuthProvider` identity merge and explicit-login cache reset; add account-switch tests.
-2. Reuse the business-context query refetch after branch creation; update Brand Management test.
-3. Persist manager destinations synchronously and cover the helper with a focused test.
-4. Add a lazy grouped menu-item overview query, connect it to the existing menu modal, and render compact dish lists by time slot.
-5. Review the final diff for duplicated state, permission drift and unintended backend changes.
+1. Key the manager route by authenticated account ID and add a remount regression.
+2. Switch the shared manager restaurant selector to the live full-brand query already refetched by branch creation.
+3. Persist sidebar destinations synchronously and cover hash/local-storage behavior.
+4. Add a manager menu catalog modal and expose it only on the menu page.
+5. Review the final diff for duplicated state, GraphQL contract drift, permission gaps and unintended files.
 
 ## Validation
 
 ```bash
 npx vitest run \
-  src/context/__tests__/AuthProvider.login-race.test.jsx \
-  src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx \
-  src/layouts/ManagerLayout.navigation.test.js \
-  src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx
+  src/routes/AppRouter.account-scope.test.jsx \
+  src/hooks/useManagerRestaurantSelection.test.jsx \
+  src/components/Dashboard_Manager/Sidebar.test.jsx \
+  src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.test.jsx
 npm run check:graphql
 npm run check:conflicts
 npm run build
