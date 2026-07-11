@@ -55,9 +55,8 @@ ChatThreadSchema.index(
   { sourceConversationId: 1 },
   {
     unique: true,
-    sparse: true,
     partialFilterExpression: {
-      sourceConversationId: { $exists: true, $ne: null },
+      sourceConversationId: { $type: "objectId" },
     },
   },
 );
