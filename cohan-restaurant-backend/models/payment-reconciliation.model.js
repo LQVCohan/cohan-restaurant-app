@@ -17,7 +17,7 @@ const paymentReconciliationSchema = new mongoose.Schema({
   matchConfidence: { type: Number, default: 0 },
   matchReason: { type: String },
   candidatePaymentSessionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "payment_session" }],
-  candidatePaymentTransactionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "PaymentTransaction" }],
+  candidatePaymentTransactionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Transaction" }],
   candidateMatches: { type: [mongoose.Schema.Types.Mixed], default: [] },
   resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   resolvedAt: { type: Date },
