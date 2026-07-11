@@ -1,0 +1,29 @@
+{
+  "id": "07-11-payment-mode-unintended-change",
+  "name": "payment-mode-unintended-change",
+  "title": "Ngăn VNPAY tự đổi loại tài khoản",
+  "description": "Chỉ cho phép thay đổi sandbox/production khi lưu kết nối rõ ràng và ngăn backup/restore ghi đè paymentSettings.",
+  "status": "in_progress",
+  "dev_type": "fullstack-bugfix",
+  "scope": "payment-settings-mode-persistence",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "parent": "07-11-vnpay-local-sandbox-guard",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/PaymentSettings/PaymentProviderSettingsPage.jsx",
+    "src/components/Dashboard_Manager/PaymentSettings/PaymentProviderSettingsPage.test.jsx",
+    "cohan-restaurant-backend/src/services/restaurantConfigBackup.service.js",
+    "cohan-restaurant-backend/tests/services/restaurant-config-backup.service.test.js"
+  ],
+  "notes": "Restaurant schema defaults to sandbox. Two unintended write paths exist: the payment visibility toggle persists the current unsaved radio mode, and restaurant profile backup/restore includes paymentSettings while excluding only secrets.",
+  "meta": {
+    "skills": ["ponytail", "frontend-design"]
+  }
+}
