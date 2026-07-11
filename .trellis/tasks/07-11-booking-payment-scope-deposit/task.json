@@ -1,0 +1,32 @@
+{
+  "id": "07-11-booking-payment-scope-deposit",
+  "name": "booking-payment-scope-deposit",
+  "title": "Sửa quyền tạo order món kèm, cọc 1 đồng và bước thanh toán đặt bàn",
+  "description": "Cho phép khách hàng hoàn tất order món gắn với reservation của chính mình, loại bỏ cọc mặc định 1 đồng và thay thông báo kỹ thuật bằng nội dung dễ hiểu.",
+  "status": "in_progress",
+  "dev_type": "cross-layer-bugfix",
+  "scope": "customer-booking-payment",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "parent": "07-11-booking-addon-food-detail-flow",
+  "relatedFiles": [
+    "cohan-restaurant-backend/models/table.model.js",
+    "cohan-restaurant-backend/graphql/resolvers/table/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/reservation/mutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/order/accessGuard.js",
+    "cohan-restaurant-backend/tests/resolvers/order-restaurant-access-guard.test.js",
+    "cohan-restaurant-backend/tests/resolvers/capability-gating.mutations.test.js",
+    "src/components/Customer/TableBooking/BookingSummary/BookingSummary.jsx",
+    "src/components/Customer/TableBooking/TableBooking.jsx",
+    "src/components/Customer/BookingTableModal/BookingModal.jsx",
+    "src/components/Customer/QRPaymentModal/QRPaymentModal.jsx"
+  ],
+  "notes": "The canonical createOrderForTable resolver already authenticates reservation_cart_addon customers, checks reservation ownership and validates cart holds. The outer restaurant access guard incorrectly rejects the customer first. Table.deposit also uses legacy default 1 while customer summary reads unrelated fields."
+}
