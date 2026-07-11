@@ -8,13 +8,21 @@ import {
 } from "../../graphql/resolvers/dashboard/index.js";
 
 describe("manager dashboard GraphQL contract", () => {
-  it("registers the managerDashboard query and resolver", () => {
+  it("registers the managerDashboard query and analytics field resolvers", () => {
     const schemaSource = print(typeDefs);
 
     expect(schemaSource).toContain(
       "managerDashboard(restaurantId: ID!, range: String): ManagerDashboard",
     );
     expect(typeof resolvers.Query.managerDashboard).toBe("function");
+    expect(resolvers.ManagerDashboard).toEqual(
+      expect.objectContaining({
+        feedbackSummary: expect.any(Function),
+        feedbackItems: expect.any(Function),
+        occupancyHeatmap: expect.any(Function),
+        staffPerformance: expect.any(Function),
+      }),
+    );
   });
 
   it("creates complete seven-day and thirty-day ranges", () => {
