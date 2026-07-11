@@ -22,6 +22,7 @@ describe("useActiveDiscountPromotions", () => {
       name: "Giảm 10%",
       code: "PROMO10",
       type: "percentage",
+      promotionType: "PERCENTAGE",
       scope: "order",
       discountType: "percent",
       discountValue: 10,
@@ -45,5 +46,26 @@ describe("useActiveDiscountPromotions", () => {
     expect(promotion.type).toBe("fixed");
     expect(promotion.discountType).toBe("fixed");
     expect(promotion.discountValue).toBe(20000);
+  });
+
+  it.each([
+    ["COMBO", "combo"],
+    ["FREESHIP", "freeship"],
+  ])("preserves %s order promotions for POS selectors", (promotionType, type) => {
+    const promotion = __testables.normalizeDiscountPromotion({
+      id: `promo-${type}`,
+      name: type,
+      promotionType,
+      scope: "ORDER",
+      discountType: "AMOUNT",
+      discountValue: 0,
+    });
+
+    expect(promotion).toMatchObject({
+      id: `promo-${type}`,
+      promotionType,
+      scope: "order",
+      type,
+    });
   });
 });
