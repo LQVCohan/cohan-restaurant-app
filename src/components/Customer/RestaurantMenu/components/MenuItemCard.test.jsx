@@ -54,6 +54,27 @@ describe("customer MenuItemCard", () => {
     );
   });
 
+  it("shows a real low-stock quantity without hiding the dish", () => {
+    renderCard({
+      item: {
+        id: "food-low-stock",
+        restaurantId: "restaurant-1",
+        name: "Bò nướng",
+        description: "Bò nướng sốt tiêu",
+        basePrice: 120000,
+        status: "available",
+        inventoryStatus: "IN_STOCK",
+        maxAvailable: 3,
+        servingVariants: [
+          { key: "portion", name: "Phần", price: 120000 },
+        ],
+      },
+    });
+
+    expect(screen.getByText("Chỉ còn 3 suất")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /xem chi tiết bò nướng/i })).toBeInTheDocument();
+  });
+
   it("keeps a sold-out dish visible as a native keyboard link", () => {
     renderCard({
       item: {
