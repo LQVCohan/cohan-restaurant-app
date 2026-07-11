@@ -330,6 +330,35 @@ describe("Payroll runtime correctness", () => {
       },
     });
   });
+  it("uses the configured payroll timezone for day boundaries", async () => {
+    modelMocks.PayrollSetting.findOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        timezone: "Asia/Tokyo",
+        standardWorkDaysPerMonth: 26,
+        standardHoursPerDay: 8,
+      }),
+    });
+    modelMocks.Timesheet.aggregate.mockResolvedValue([]);
+
+    const { buildPayrollItemsForRange } =
+      await import("../../src/services/payroll/payrollRuntime.service.js");
+    await buildPayrollItemsForRange({
+      start: new Date("2026-04-01T00:00:00.000Z"),
+      end: new Date("2026-04-01T00:00:00.000Z"),
+      restaurantId: "507f1f77bcf86cd799439011",
+    });
+
+    expect(modelMocks.Shift.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startTime: { $lte: new Date("2026-04-01T14:59:59.000Z") },
+        endTime: { $gte: new Date("2026-03-31T15:00:00.000Z") },
+      }),
+    );
+    expect(JSON.stringify(modelMocks.Timesheet.aggregate.mock.calls[0][0])).toContain(
+      "Asia/Tokyo",
+    );
+  });
+
   it("calculates hourly, shift, and commission payroll using configured rates", async () => {
     const { buildPayrollItemsForRange } =
       await import("../../src/services/payroll/payrollRuntime.service.js");
