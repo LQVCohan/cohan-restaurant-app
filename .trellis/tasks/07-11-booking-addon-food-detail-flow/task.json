@@ -3,7 +3,7 @@
   "name": "booking-addon-food-detail-flow",
   "title": "Giữ đúng luồng đặt bàn khi chọn món từ trang chi tiết",
   "description": "Ngăn trang chi tiết món gọi thêm giỏ lần hai và ngăn giỏ món đi nhầm sang checkout giao hàng trong luồng order kèm đặt bàn.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "bugfix",
   "scope": "customer-booking-addon",
   "package": null,
@@ -11,20 +11,24 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-11",
-  "completedAt": null,
+  "completedAt": "2026-07-11",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "570b50bf194bfc63dfd4aebf6b563ff0a1c22950",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": "07-11-booking-addon-service-time",
   "relatedFiles": [
     "src/utils/customerFoodNavigation.js",
-    "src/components/Customer/RestaurantMenu/RestaurantMenu.jsx",
     "src/components/Customer/Food/FoodDetailV2.jsx",
-    "src/utils/customerFoodNavigation.test.js"
+    "src/components/Customer/Food/FoodDetailV2Core.jsx",
+    "src/components/Customer/Homepage_Client/components/Cart.jsx",
+    "src/components/Customer/Homepage_Client/components/CartCore.jsx",
+    "src/utils/customerFoodNavigation.test.js",
+    "src/components/Customer/Food/FoodDetailV2.helpers.test.jsx",
+    "src/components/Customer/Homepage_Client/components/Cart.booking-context.test.jsx"
   ],
-  "notes": "Root cause is lost returnTo=booking context between RestaurantMenu and FoodDetailV2. Backend addCartItem correctly increments an existing line when called again; the booking UI must not invoke it from its continue action."
+  "notes": "Root cause was lost booking context between RestaurantMenu and FoodDetailV2. Backend addCartItem correctly increments an existing line when called again, so booking mode now exposes only the single add action and the shared cart infers the booking return path instead of opening delivery checkout. Focused tests were added but were not run locally because the execution container could not resolve github.com; no GitHub Actions run was created for the direct main commit."
 }
