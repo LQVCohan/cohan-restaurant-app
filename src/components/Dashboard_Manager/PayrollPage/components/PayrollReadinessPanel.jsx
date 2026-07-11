@@ -147,7 +147,12 @@ const PayrollReadinessPanel = ({ readiness, loading = false, error = null, onRef
             {ready ? "Đủ điều kiện" : `${blockingCount} lỗi chặn`}
           </span>
           {onRefresh && (
-            <button type="button" className="payroll-readiness-panel__refresh" onClick={onRefresh}>
+            <button
+              type="button"
+              className="payroll-readiness-panel__refresh"
+              aria-label="Làm mới kiểm tra điều kiện chốt lương"
+              onClick={onRefresh}
+            >
               Làm mới
             </button>
           )}
