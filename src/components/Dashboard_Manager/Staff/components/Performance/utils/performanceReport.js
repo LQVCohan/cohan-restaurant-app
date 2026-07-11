@@ -118,6 +118,8 @@ export const buildPerformanceReportHtml = (reportData) => `
       <p><strong>Xếp loại:</strong> ${escapeHtml(reportData.performanceLevel)}</p>
       <h3>Công thức tính điểm</h3>
       <p>Năng suất 25% · Đúng giờ 25% · Chất lượng 20% · Đánh giá quản lý 20% · Tuân thủ 10%</p>
+      <p>Điểm công thức = tổng (điểm thành phần × trọng số) + điều chỉnh incident hợp lệ; appeal dương chỉ là hoàn điểm. Đi trễ/về sớm/vắng mặt đã nằm trong Đúng giờ nên không trừ thêm qua incident.</p>
+      <p>Chất lượng theo role: phục vụ/host dùng phản hồi khách đủ mẫu; thu ngân dùng lỗi nghiệp vụ; bếp/bar dùng work item; role khác dùng kỹ năng quản lý.</p>
       <p>Năng suất = thời lượng làm thực tế / thời lượng ca được phân công × 100; order chỉ là dữ liệu tham khảo.</p>
       <p><em>${reportData.hasCustomWeight ? "Dùng weight thực tế từ snapshot." : "Dùng weight mặc định."}</em></p>
       <table border="1" cellspacing="0" cellpadding="6"><tr><th>Thành phần</th><th>Điểm</th><th>Trọng số</th><th>Đóng góp</th></tr>
@@ -129,7 +131,7 @@ export const buildPerformanceReportHtml = (reportData) => `
       <p>Delta hoàn từ appeal: ${formatDelta(reportData.appealReversalDelta)}</p>
       <p>Điều chỉnh incident/appeal: ${reportData.hasAdjustment ? `${formatDelta(reportData.adjustmentDelta)} điểm` : "Không có điều chỉnh"}</p>
       <p>Điểm cuối: ${scoreText(reportData.finalPerformanceScore)}</p>
-      <p><em>Điểm trừ incident chỉ áp dụng sau khi quản lý xác nhận trách nhiệm và duyệt; delta dương từ appeal là hoàn điểm, không phải thưởng.</em></p>
+      <p><em>Điểm trừ incident ngoài chấm công chỉ áp dụng sau khi quản lý xác nhận trách nhiệm và duyệt; đi trễ/về sớm/vắng mặt đã nằm trong thành phần Đúng giờ; delta dương từ appeal là hoàn điểm, không phải thưởng.</em></p>
       <h3>So sánh kỳ trước</h3>
       ${reportData.hasPreviousSnapshot ? `
       <p>Điểm kỳ này: ${scoreText(reportData.finalPerformanceScore)}</p>

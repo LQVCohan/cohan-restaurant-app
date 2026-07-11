@@ -189,6 +189,8 @@ function resolveCompensation({
   const salaryType = normalizeSalaryType(staff?.salaryType);
   const baseSalary = toNonNegativeNumber(staff?.baseSalary);
   const configuredHourlyRate = toNonNegativeNumber(staff?.hourlyRate);
+  const commissionRate = toNonNegativeNumber(staff?.commissionRate);
+  const commissionableAmount = toNonNegativeNumber(aggregate?.totalAmount);
   const actualWorkDays = toNonNegativeNumber(aggregate?.workedDateCount);
   const workedShiftCount = toNonNegativeNumber(
     aggregate?.workedShiftCount ?? actualWorkDays,
@@ -213,6 +215,9 @@ function resolveCompensation({
       hourlyRate,
       regularHours,
       workedShiftCount,
+      commissionRate,
+      commissionableAmount,
+      salaryConfigurationIssue: null,
       baseWorkIncome: regularHours * hourlyRate,
       missingCompensationRate: hourlyRate <= 0,
       coefficient:
@@ -231,6 +236,9 @@ function resolveCompensation({
       hourlyRate,
       regularHours: normalWorkedHours + paidLeaveHours,
       workedShiftCount,
+      commissionRate,
+      commissionableAmount,
+      salaryConfigurationIssue: null,
       baseWorkIncome: payableShifts * baseSalary,
       missingCompensationRate: baseSalary <= 0,
       coefficient: workDays > 0 ? payableShifts / workDays : 0,
@@ -238,19 +246,22 @@ function resolveCompensation({
   }
 
   if (salaryType === "commission") {
-    const commissionIncome = Math.max(
-      toNonNegativeNumber(aggregate?.totalAmount),
-      toNonNegativeNumber(aggregate?.totalWage),
-    );
     const hourlyRate = configuredHourlyRate || monthlyHourlyRate;
+    const salaryConfigurationIssue =
+      commissionRate > 0 ? null : "COMMISSION_RATE_REQUIRED";
     return {
       salaryType,
       hourlyRate,
       regularHours: normalWorkedHours,
       workedShiftCount,
-      baseWorkIncome: commissionIncome,
-      missingCompensationRate: commissionIncome <= 0,
-      coefficient: totalHours > 0 ? 1 : 0,
+      commissionRate,
+      commissionableAmount,
+      salaryConfigurationIssue,
+      baseWorkIncome: salaryConfigurationIssue
+        ? 0
+        : commissionableAmount * (commissionRate / 100),
+      missingCompensationRate: commissionRate <= 0,
+      coefficient: commissionableAmount > 0 ? 1 : 0,
     };
   }
 
@@ -259,6 +270,9 @@ function resolveCompensation({
     hourlyRate: monthlyHourlyRate,
     regularHours: normalWorkedHours + paidLeaveHours,
     workedShiftCount,
+    commissionRate,
+    commissionableAmount,
+    salaryConfigurationIssue: null,
     baseWorkIncome: actualWorkDays * monthlyDailyRate,
     missingCompensationRate: baseSalary <= 0,
     coefficient: workDays > 0 ? actualWorkDays / workDays : 0,
@@ -354,6 +368,9 @@ export function buildPayrollItem({
     salaryType: compensation.salaryType,
     baseSalary,
     baseWorkIncome: compensation.baseWorkIncome,
+    commissionRate: compensation.commissionRate,
+    commissionableAmount: compensation.commissionableAmount,
+    salaryConfigurationIssue: compensation.salaryConfigurationIssue,
     workDays,
     actualWorkDays,
     workedShiftCount: compensation.workedShiftCount,

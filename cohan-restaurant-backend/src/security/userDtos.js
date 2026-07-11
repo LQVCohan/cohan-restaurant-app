@@ -255,6 +255,7 @@ function buildStaffPrivateProfile(source) {
     terminationReason: source.terminationReason,
     salaryType: source.salaryType,
     hourlyRate: source.hourlyRate,
+    commissionRate: source.commissionRate,
     allowanceAmount: source.allowanceAmount,
     bankName: source.bankName,
     bankAccountNumber: source.bankAccountNumber,

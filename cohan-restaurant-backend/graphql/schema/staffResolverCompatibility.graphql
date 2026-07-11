@@ -73,6 +73,13 @@ type CompatibilityNode {
   department: String
   positionTitle: String
   shiftType: String
+  salaryType: String
+  hourlyRate: Float
+  commissionRate: Float
+  regularHours: Float
+  commissionableAmount: Float
+  salaryConfigurationIssue: String
+  timezone: String
   source: String
   category: String
   verificationStatus: String
@@ -670,6 +677,7 @@ input RestaurantPayoutAccountInput {
 
 input PayrollSettingsInput {
   restaurantId: ID
+  timezone: String
   currentPayrollPeriodId: ID
   standardWorkDaysPerMonth: Float
   standardHoursPerDay: Float

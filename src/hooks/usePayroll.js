@@ -45,6 +45,7 @@ export const QUERY_PAYROLL_PERIOD_DETAIL = gql`
       settings {
         restaurantId
         currentPayrollPeriodId
+        timezone
         standardWorkDaysPerMonth
         standardHoursPerDay
         overtimeMultiplierWeekday
@@ -87,6 +88,11 @@ export const QUERY_PAYROLL_PERIOD_DETAIL = gql`
         actualWorkDays
         totalHours
         hourlyRate
+        salaryType
+        commissionRate
+        regularHours
+        commissionableAmount
+        salaryConfigurationIssue
         allowance
         bonus
         otherAddition
@@ -143,6 +149,7 @@ export const QUERY_PAYROLL_SETTINGS = gql`
     payrollSettings(restaurantId: $restaurantId) {
       restaurantId
       currentPayrollPeriodId
+      timezone
       standardWorkDaysPerMonth
       standardHoursPerDay
       overtimeMultiplierWeekday
@@ -510,6 +517,7 @@ export const MUT_UPDATE_SETTINGS = gql`
     updatePayrollSettings(input: $input) {
       restaurantId
       currentPayrollPeriodId
+      timezone
       standardWorkDaysPerMonth
       standardHoursPerDay
       overtimeMultiplierWeekday
@@ -553,7 +561,7 @@ export const QUERY_STAFF_PAYROLL_OVERVIEW = gql`
     staffPayrollOverview(startDate: $startDate, endDate: $endDate, restaurantId: $restaurantId, periodId: $periodId) {
       stats { totalPayroll paidAmount remaining progress }
       items {
-        id payrollItemId name code role department avatar baseSalary workDays actualWorkDays totalHours hourlyRate allowance bonus otherAddition overtime overtimeNormal overtimeWeekend overtimeHoliday nightShiftExtra overtimeHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours overtimeNightHours deduction otherDeduction advance insuranceSocial insuranceHealth insuranceUnemployment insuranceTotal insuranceEmployerTotal personalIncomeTax grossIncome coefficient totalIncome totalDeduction netSalary policyCode policyEffectiveFrom regionCode minimumWageMonthly minimumWageHourly minimumWageViolation insuranceEligible warningMessages status paidAmount remainingAmount paidAt lateMinutes earlyLeaveMinutes unpaidLeaveDays paidLeaveDays scheduleShiftCount manualAdjustmentTotal
+        id payrollItemId name code role department avatar baseSalary workDays actualWorkDays totalHours hourlyRate salaryType commissionRate regularHours commissionableAmount salaryConfigurationIssue allowance bonus otherAddition overtime overtimeNormal overtimeWeekend overtimeHoliday nightShiftExtra overtimeHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours overtimeNightHours deduction otherDeduction advance insuranceSocial insuranceHealth insuranceUnemployment insuranceTotal insuranceEmployerTotal personalIncomeTax grossIncome coefficient totalIncome totalDeduction netSalary policyCode policyEffectiveFrom regionCode minimumWageMonthly minimumWageHourly minimumWageViolation insuranceEligible warningMessages status paidAmount remainingAmount paidAt lateMinutes earlyLeaveMinutes unpaidLeaveDays paidLeaveDays scheduleShiftCount manualAdjustmentTotal
       }
     }
   }

@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import { Shift, Staff, SchedulePublication } from "../../../models/index.js";
 import { validateShiftAssignment } from "./shiftAssignmentValidation.service.js";
 import { resolveScheduleLifecycleStatus } from "./scheduleLifecycle.service.js";
+import { getSchedulingPolicy } from "./schedulingPolicy.service.js";
+import { getStaffMembershipRestaurantFilter } from "../auth/restaurantScope.service.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const AUTO_SCHEDULE_PARTIAL_APPLY_ERROR =
@@ -11,6 +13,7 @@ const INVALID_SELECTED_SHIFT_KEYS_ERROR =
 const NO_SELECTED_ASSIGNMENTS_ERROR =
   "Không có ca hợp lệ nào được chọn để áp dụng auto schedule.";
 const MIN_OVERRIDE_REASON_LENGTH = 5;
+const DEFAULT_SCHEDULING_TIMEZONE = "Asia/Ho_Chi_Minh";
 
 const ROLE_BY_DEPARTMENT = {
   management: "host",
@@ -34,16 +37,75 @@ function toDate(value, fieldName) {
   return date;
 }
 
-function startOfDay(value) {
-  const d = toDate(value, "Ngày");
-  d.setHours(0, 0, 0, 0);
-  return d;
+function safeTimeZone(value) {
+  const candidate = String(value || "").trim();
+  if (!candidate) return DEFAULT_SCHEDULING_TIMEZONE;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: candidate }).format();
+    return candidate;
+  } catch {
+    return DEFAULT_SCHEDULING_TIMEZONE;
+  }
 }
 
-function endOfDay(value) {
-  const d = toDate(value, "Ngày");
-  d.setHours(23, 59, 59, 999);
-  return d;
+function calendarDate(value, timezone = DEFAULT_SCHEDULING_TIMEZONE) {
+  const raw = String(value || "");
+  if (/^\d{4}-\d{2}-\d{2}(?:$|T)/.test(raw) && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw)) {
+    return raw.slice(0, 10);
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) throw new Error("Ngày không hợp lệ.");
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: safeTimeZone(timezone),
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
+function zonedDateTimeToUtc(datePart, timePart, timezone = DEFAULT_SCHEDULING_TIMEZONE) {
+  const [year, month, day] = String(datePart).split("-").map(Number);
+  const [hour = 0, minute = 0, second = 0] = String(timePart || "00:00:00")
+    .split(":")
+    .map(Number);
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, second, 0));
+  const rendered = new Intl.DateTimeFormat("en-US", {
+    timeZone: safeTimeZone(timezone),
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(utcGuess);
+  const map = Object.fromEntries(rendered.map((part) => [part.type, part.value]));
+  const renderedAsUtc = Date.UTC(
+    Number(map.year),
+    Number(map.month) - 1,
+    Number(map.day),
+    Number(map.hour),
+    Number(map.minute),
+    Number(map.second),
+    0,
+  );
+  return new Date(utcGuess.getTime() - (renderedAsUtc - utcGuess.getTime()));
+}
+
+function addCalendarDays(value, amount) {
+  const [year, month, day] = String(value).split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + amount));
+  return date.toISOString().slice(0, 10);
+}
+
+function startOfDay(value, timezone = DEFAULT_SCHEDULING_TIMEZONE) {
+  return zonedDateTimeToUtc(calendarDate(value, timezone), "00:00:00", timezone);
+}
+
+function endOfDay(value, timezone = DEFAULT_SCHEDULING_TIMEZONE) {
+  return zonedDateTimeToUtc(calendarDate(value, timezone), "23:59:59", timezone);
 }
 
 function hoursBetween(start, end) {
@@ -94,14 +156,16 @@ function getRequiredRolesForShift(requiredRolesByShift, shiftType) {
   return requiredRolesByShift[normalizeShiftType(shiftType)] || requiredRolesByShift.default || [];
 }
 
-function parseTimeOnDay(day, timeValue, fallbackHour) {
+function parseTimeOnDay(day, timeValue, fallbackHour, timezone) {
   if (timeValue instanceof Date) return new Date(timeValue);
   const raw = String(timeValue || "").trim();
   if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return new Date(raw);
-  const [hour = fallbackHour, minute = 0] = raw.split(":").map(Number);
-  const date = new Date(day);
-  date.setHours(Number.isFinite(hour) ? hour : fallbackHour, Number.isFinite(minute) ? minute : 0, 0, 0);
-  return date;
+  const [hour = fallbackHour, minute = 0, second = 0] = raw.split(":").map(Number);
+  return zonedDateTimeToUtc(
+    day,
+    `${String(Number.isFinite(hour) ? hour : fallbackHour).padStart(2, "0")}:${String(Number.isFinite(minute) ? minute : 0).padStart(2, "0")}:${String(Number.isFinite(second) ? second : 0).padStart(2, "0")}`,
+    timezone,
+  );
 }
 
 function normalizeTemplates(input) {
@@ -111,17 +175,28 @@ function normalizeTemplates(input) {
 }
 
 function buildDemandItems(input) {
-  const periodStart = startOfDay(input.periodStart);
-  const periodEnd = endOfDay(input.periodEnd);
+  const timezone = safeTimeZone(input.timezone);
+  const periodStart = calendarDate(input.periodStart, timezone);
+  const periodEnd = calendarDate(input.periodEnd, timezone);
   const requiredRolesByShift = normalizeRequiredRoles(input);
   const templates = normalizeTemplates(input);
   const items = [];
 
   const buildFromTemplate = (day, template) => {
     const shiftType = normalizeShiftType(template.shiftType || template.type || template.key || template.id);
-    const startTime = parseTimeOnDay(day, template.startTime || template.start || template.from, shiftType === "evening" ? 17 : 8);
-    const endTime = parseTimeOnDay(day, template.endTime || template.end || template.to, shiftType === "evening" ? 22 : 16);
-    if (endTime <= startTime) endTime.setDate(endTime.getDate() + 1);
+    const startTime = parseTimeOnDay(
+      day,
+      template.startTime || template.start || template.from,
+      shiftType === "evening" ? 17 : 8,
+      timezone,
+    );
+    const endTime = parseTimeOnDay(
+      day,
+      template.endTime || template.end || template.to,
+      shiftType === "evening" ? 22 : 16,
+      timezone,
+    );
+    if (endTime <= startTime) endTime.setUTCDate(endTime.getUTCDate() + 1);
 
     const hasDateAwareTemplate = Boolean(template?.date);
     const hasExplicitRequiredRoles = Array.isArray(template.requiredRoles);
@@ -147,12 +222,16 @@ function buildDemandItems(input) {
 
   for (const template of templates) {
     if (template?.date) {
-      const day = startOfDay(template.date);
+      const day = calendarDate(template.date, timezone);
       if (day >= periodStart && day <= periodEnd) buildFromTemplate(day, template);
       continue;
     }
 
-    for (let cursor = new Date(periodStart); cursor <= periodEnd; cursor = new Date(cursor.getTime() + DAY_MS)) {
+    for (
+      let cursor = periodStart;
+      cursor <= periodEnd;
+      cursor = addCalendarDays(cursor, 1)
+    ) {
       buildFromTemplate(cursor, template);
     }
   }
@@ -260,15 +339,44 @@ export async function assertAutoSchedulePeriodCanEdit({ restaurantId, periodStar
 export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
   const restaurantId = toObjectId(input.restaurantId);
   if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
-  const periodStart = startOfDay(input.periodStart);
-  const periodEnd = endOfDay(input.periodEnd);
+  const timezone = safeTimeZone(input.timezone);
+  const periodStart = startOfDay(input.periodStart, timezone);
+  const periodEnd = endOfDay(input.periodEnd, timezone);
   const avoidOvertime = input.avoidOvertime !== false;
   const respectAvailability = input.respectAvailability !== false;
   const weeklyHoursCap = Number(input.weeklyHoursCap || 0);
+  const policy = await getSchedulingPolicy({ restaurantId });
+  const fairnessWeight = Math.max(0, Number(policy?.scoringWeights?.fairness || 0));
+  const staffScopeFilter = await getStaffMembershipRestaurantFilter(restaurantId, {
+    roles: ["staff", "manager"],
+  });
 
-  const staffRows = await Staff.find({ userType: "STAFF", restaurantForStaff: restaurantId, $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }] }).lean();
-  const existingShifts = await Shift.find({ restaurantId, status: { $ne: "cancelled" }, startTime: { $lte: periodEnd }, endTime: { $gte: periodStart } }).lean();
-  const demandItems = buildDemandItems(input);
+  const staffRows = await Staff.find({
+    userType: { $in: ["STAFF", "MANAGER"] },
+    ...staffScopeFilter,
+    $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+  }).lean();
+  const existingShifts = await Shift.find({
+    restaurantId,
+    status: { $ne: "cancelled" },
+    startTime: { $lte: periodEnd },
+    endTime: { $gte: periodStart },
+  }).lean();
+  const demandItems = buildDemandItems({ ...input, timezone });
+  const rotationHoursByEmployee = new Map();
+  existingShifts.forEach((shift) => {
+    if (!shift.employeeId) return;
+    const employeeKey = String(shift.employeeId?._id || shift.employeeId);
+    rotationHoursByEmployee.set(
+      employeeKey,
+      Number(
+        (
+          Number(rotationHoursByEmployee.get(employeeKey) || 0) +
+          hoursBetween(shift.startTime, shift.endTime)
+        ).toFixed(2),
+      ),
+    );
+  });
   const plannedHoursByEmployee = new Map();
   const plannedWindowsByEmployee = new Map();
   const plannedAssignments = [];
@@ -301,10 +409,34 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
         blockedCandidates.push({ shiftKey: demand.shiftKey, employeeId: String(staff._id), requiredRole: demand.requiredRole, issues: normalizeIssueList(blocking) });
         continue;
       }
-      candidates.push({ staff, validation, afterPlanned });
+      candidates.push({
+        staff,
+        validation,
+        afterPlanned,
+        rotationHours: Number(rotationHoursByEmployee.get(String(staff._id)) || 0),
+      });
     }
 
-    candidates.sort((a, b) => Number(b.validation.score || 0) - Number(a.validation.score || 0));
+    const maxRotationHours = candidates.reduce(
+      (max, candidate) => Math.max(max, candidate.rotationHours),
+      0,
+    );
+    candidates.forEach((candidate) => {
+      const fairnessContribution =
+        maxRotationHours > 0
+          ? fairnessWeight * (1 - candidate.rotationHours / maxRotationHours)
+          : 0;
+      candidate.fairnessContribution = Number(fairnessContribution.toFixed(2));
+      candidate.rankScore = Number(
+        (Number(candidate.validation.score || 0) + candidate.fairnessContribution).toFixed(2),
+      );
+    });
+    candidates.sort(
+      (a, b) =>
+        Number(b.rankScore || 0) - Number(a.rankScore || 0) ||
+        Number(b.validation.score || 0) - Number(a.validation.score || 0) ||
+        String(a.staff._id).localeCompare(String(b.staff._id)),
+    );
     const selected = candidates[0] || null;
     if (!selected) {
       const validationIssues = [mapIssue({ code: "NO_ELIGIBLE_CANDIDATE", severity: "error", message: "Không có nhân viên đủ điều kiện." })];
@@ -320,7 +452,15 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
       continue;
     }
     const employeeId = String(selected.staff._id);
-    plannedHoursByEmployee.set(employeeId, Number((Number(plannedHoursByEmployee.get(employeeId) || 0) + hoursBetween(demand.startTime, demand.endTime)).toFixed(2)));
+    const assignedHours = hoursBetween(demand.startTime, demand.endTime);
+    plannedHoursByEmployee.set(
+      employeeId,
+      Number((Number(plannedHoursByEmployee.get(employeeId) || 0) + assignedHours).toFixed(2)),
+    );
+    rotationHoursByEmployee.set(
+      employeeId,
+      Number((Number(rotationHoursByEmployee.get(employeeId) || 0) + assignedHours).toFixed(2)),
+    );
     plannedWindowsByEmployee.set(employeeId, [
       ...(plannedWindowsByEmployee.get(employeeId) || []),
       { startTime: demand.startTime, endTime: demand.endTime },
@@ -332,6 +472,8 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
       employeeId,
       employeeName: selected.staff.fullName || null,
       score: selected.validation.score || 0,
+      selectionScore: selected.rankScore || selected.validation.score || 0,
+      fairnessContribution: selected.fairnessContribution || 0,
       warnings,
       validationIssues: warnings,
     });

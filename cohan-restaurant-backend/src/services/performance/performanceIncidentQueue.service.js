@@ -1,6 +1,10 @@
 import { PerformanceIncident } from "../../../models/index.js";
 import { resolveUserRoles, userCanAccessRestaurant } from "../scheduling/schedulingPermission.service.js";
-import { PERFORMANCE_READ_ROLES, PERFORMANCE_REVIEW_ROLES } from "./performanceIncident.service.js";
+import {
+  isAttendancePerformanceIncident,
+  PERFORMANCE_READ_ROLES,
+  PERFORMANCE_REVIEW_ROLES,
+} from "./performanceIncident.service.js";
 
 const ACCOUNTANT_ROLES = ["ACCOUNTANT"];
 const MS_HOUR = 60 * 60 * 1000;
@@ -46,6 +50,12 @@ export function computeIncidentPriority(incident, now = new Date()) {
 }
 
 function recommendedAction(incident) {
+  if (
+    isAttendancePerformanceIncident(incident) &&
+    !["waived", "applied", "not_applicable"].includes(incident?.scoreImpactStatus)
+  ) {
+    return "already_in_punctuality";
+  }
   if (incident?.scoreImpactStatus === "eligible") return "apply_or_waive";
   if (incident?.responsibilityStatus === "pending_review" || incident?.scoreImpactStatus === "pending") return "review";
   if (["waived", "applied", "not_applicable"].includes(incident?.scoreImpactStatus)) return "already_resolved";
@@ -104,8 +114,14 @@ export async function listManagerIncidentReviewQueue(input, actor) {
       recommendedAction: recommendedAction(incident),
       canReview: canMutate && incident.responsibilityStatus === "pending_review",
       canWaive: canMutate && ["pending", "eligible"].includes(incident.scoreImpactStatus),
-      canMarkEligible: canMutate && incident.scoreImpactStatus === "pending",
-      canApplyScore: canMutate && incident.scoreImpactStatus === "eligible",
+      canMarkEligible:
+        canMutate &&
+        !isAttendancePerformanceIncident(incident) &&
+        incident.scoreImpactStatus === "pending",
+      canApplyScore:
+        canMutate &&
+        !isAttendancePerformanceIncident(incident) &&
+        incident.scoreImpactStatus === "eligible",
     };
   });
   if (normalized.search) {
