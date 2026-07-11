@@ -10,10 +10,12 @@ const ids = {
 const modelMocks = vi.hoisted(() => ({
   EventLog: { log: vi.fn() },
   Order: { find: vi.fn(), updateMany: vi.fn(), countDocuments: vi.fn() },
-  PaymentSession: { findById: vi.fn() },
+  PaymentSession: { findById: vi.fn(), findOne: vi.fn() },
+  PaymentTransaction: { findOne: vi.fn() },
 }));
 const authMocks = vi.hoisted(() => ({ requireRestaurantPermission: vi.fn() }));
 const paymentSessionMocks = vi.hoisted(() => ({
+  TRANSFER_PAYMENT_TTL_MS: 600000,
   createOrderPayment: vi.fn(),
   sanitizePaymentSessionForClient: vi.fn((value) => value),
   settlePaidOrderPaymentSession: vi.fn(),
