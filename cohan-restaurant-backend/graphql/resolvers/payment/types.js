@@ -15,12 +15,9 @@ export const PaymentResolvers = {
     },
     method(parent) {
       const value = String(parent.method || "cash").toLowerCase();
-      if (value === "bank_transfer") return "bank_transfer";
-      if (value === "e_wallet") return "e_wallet";
-      if (value === "transfer") return "transfer";
-      if (value === "other") return "other";
-      if (value === "card") return "card";
-      return "cash";
+      return ["cash", "card", "transfer", "bank_transfer", "e_wallet", "momo", "vnpay", "other"].includes(value)
+        ? value
+        : "other";
     },
     refundIds(parent) { return (parent.refundIds || []).map(String); },
   },
