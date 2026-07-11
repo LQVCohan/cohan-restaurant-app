@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   refetch: vi.fn(),
   mergeMutation: vi.fn(),
   splitMutation: vi.fn(),
+  mutationOptions: new Map(),
 }));
 
 vi.mock("@apollo/client", async (importOriginal) => {
@@ -31,6 +32,7 @@ const getOperationName = (document) =>
 describe("useTableManagement merge, split and realtime refresh", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.mutationOptions.clear();
     mocks.refetch.mockImplementation(() => {
       throw new Error("refetch must stay caller-owned");
     });
@@ -41,12 +43,25 @@ describe("useTableManagement merge, split and realtime refresh", () => {
       error: null,
       refetch: mocks.refetch,
     });
-    useMutation.mockImplementation((document) => {
+    useMutation.mockImplementation((document, options) => {
       const operationName = getOperationName(document);
+      mocks.mutationOptions.set(operationName, options);
       if (operationName === "MergeTables") return [mocks.mergeMutation];
       if (operationName === "SplitTables") return [mocks.splitMutation];
       return [vi.fn()];
     });
+  });
+
+  it("keeps update and move cache writes authoritative instead of optimistic", () => {
+    renderHook(() => useTableManagement({ restaurantId: "restaurant-1" }));
+
+    const updateOptions = mocks.mutationOptions.get("UpdateTable");
+    const moveOptions = mocks.mutationOptions.get("MoveTable");
+
+    expect(updateOptions?.optimisticResponse).toBeUndefined();
+    expect(moveOptions?.optimisticResponse).toBeUndefined();
+    expect(updateOptions?.update).toEqual(expect.any(Function));
+    expect(moveOptions?.update).toEqual(expect.any(Function));
   });
 
   it("returns successful merge and split results without invoking refetch", async () => {
