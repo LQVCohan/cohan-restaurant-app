@@ -37,6 +37,8 @@ const normalizePromotionType = (value, discountType) => {
 
   if (normalized === "FIXED") return "fixed";
   if (normalized === "PERCENTAGE") return "percentage";
+  if (normalized === "COMBO") return "combo";
+  if (normalized === "FREESHIP") return "freeship";
 
   return String(discountType || "PERCENT")
     .trim()
@@ -50,6 +52,7 @@ const normalizeDiscountPromotion = (row) => ({
   name: row?.name || row?.code || "Khuyến mãi",
   code: row?.code || "",
   type: normalizePromotionType(row?.promotionType, row?.discountType),
+  promotionType: String(row?.promotionType || "").trim().toUpperCase(),
   scope: String(row?.scope || "ORDER").toLowerCase(),
   discountType:
     String(row?.discountType || "PERCENT").toUpperCase() === "AMOUNT"
@@ -89,7 +92,9 @@ export function useActiveDiscountPromotions(
           (promotion) =>
             promotion.id &&
             promotion.scope === "order" &&
-            ["percentage", "fixed"].includes(promotion.type),
+            ["percentage", "fixed", "combo", "freeship"].includes(
+              promotion.type,
+            ),
         ),
     [data?.promotionsByRestaurant],
   );
