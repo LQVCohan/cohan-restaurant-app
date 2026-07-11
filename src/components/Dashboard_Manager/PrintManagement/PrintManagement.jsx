@@ -8,6 +8,8 @@ import React, {
 } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
+import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
+import { hasPermission } from "@/utils/frontendPermissionAccess";
 import { PRINT_STATIONS } from "@/utils/printStations";
 import { getPrintSettingActionErrorMessage } from "@/utils/inventorySupplySupplierPrintErrorMessages";
 import { PrinterSettingsModal } from "@/components/Dashboard_Manager/POS/components/modals/PrinterSettingsModal";
@@ -51,7 +53,7 @@ const DEFAULT_TEMPLATES = [
 
 const PRINT_OPERATION_STEPS = [
   "Thêm máy in",
-  "Kiểm tra cấu hình",
+  "Kiểm tra cấu hình mô phỏng",
   "Gán trạm bếp/bar/thu ngân",
   "Theo dõi và gửi lại lệnh lỗi",
 ];
@@ -115,6 +117,7 @@ const M_TEST_PRINT = gql`
       printerId
       status
       error
+      payload
       createdAt
     }
   }
@@ -158,13 +161,18 @@ const makePrinterId = () =>
 
 const normalizeTemplates = (templates) => {
   const list = Array.isArray(templates) ? templates : [];
-  const byKey = new Map(list.map((t) => [t.key, t]));
-  return DEFAULT_TEMPLATES.map((t) => ({ ...t, ...(byKey.get(t.key) || {}) }));
+  const byKey = new Map(list.map((template) => [template.key, template]));
+  return DEFAULT_TEMPLATES.map((template) => ({
+    ...template,
+    ...(byKey.get(template.key) || {}),
+  }));
 };
 
 const sanitizeStationsByPrinters = (stations, printers) => {
   const printerIds = new Set(
-    (Array.isArray(printers) ? printers : []).map((p) => p?.id).filter(Boolean),
+    (Array.isArray(printers) ? printers : [])
+      .map((printer) => printer?.id)
+      .filter(Boolean),
   );
   const next = { ...buildStationDefaults() };
   Object.entries(stations || {}).forEach(([stationId, ids]) => {
@@ -177,22 +185,33 @@ const sanitizeStationsByPrinters = (stations, printers) => {
   return next;
 };
 
-const printerStatusLabel = (status) => (status === "online" ? "Sẵn sàng" : "Chưa sẵn sàng");
-const printTypeLabel = (type) => {
+export const printerStatusLabel = (status) => {
+  if (status === "online") return "Đã kết nối";
+  if (status === "configured") return "Đã kiểm tra cấu hình";
+  return "Chưa sẵn sàng";
+};
+
+export const printTypeLabel = (type) => {
   if (type === "test" || type === "manual_test") return "Lệnh kiểm tra";
-  if (type === "receipt") return "Hóa đơn";
+  if (type === "receipt" || type === "temporary_bill") return "Hóa đơn";
+  if (type === "order_confirmed") return "Phiếu chế biến";
   if (type === "kitchen") return "Phiếu bếp";
   if (type === "bar") return "Phiếu bar";
   return type || "Lệnh in";
 };
 
+const READ_ONLY_NOTICE = {
+  type: "warning",
+  message: "Bạn đang ở chế độ chỉ xem. Cần quyền quản lý cấu hình in để thay đổi hoặc gửi lệnh.",
+};
+
 export default function PrintManagement() {
-  const { restaurants } = useContext(AuthContext);
-  const restaurantList = useMemo(
-    () => (Array.isArray(restaurants) ? restaurants : []),
-    [restaurants],
-  );
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
+  const { user } = useContext(AuthContext) || {};
+  const restaurantScope = useManagerRestaurantSelection();
+  const restaurantList = restaurantScope.restaurantOptions || [];
+  const selectedRestaurantId = restaurantScope.selectedRestaurantId || "";
+  const setSelectedRestaurantId = restaurantScope.setSelectedRestaurantId;
+  const canWrite = hasPermission(user, "print.write");
   const [printers, setPrinters] = useState([]);
   const [stationMap, setStationMap] = useState(buildStationDefaults);
   const [templates, setTemplates] = useState(DEFAULT_TEMPLATES);
@@ -224,13 +243,12 @@ export default function PrintManagement() {
   const hasPrinters = printers.length > 0;
 
   useEffect(() => {
-    if (!selectedRestaurantId && headerRestaurantList.length) {
-      setSelectedRestaurantId(headerRestaurantList[0].id);
-    }
-  }, [headerRestaurantList, selectedRestaurantId]);
-
-  useEffect(() => {
+    hydrateRef.current = true;
     setEditingPrinter(null);
+    setSettingsModalOpen(false);
+    setPendingDeletePrinterId("");
+    setNotice(null);
+    setSaveError("");
   }, [selectedRestaurantId]);
 
   const { data, loading, error, refetch } = useQuery(Q_PRINT_SETTINGS, {
@@ -249,7 +267,7 @@ export default function PrintManagement() {
   const jobs = useMemo(() => {
     const list = data?.printSettings?.jobs || [];
     return [...list].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+      (left, right) => new Date(right.createdAt) - new Date(left.createdAt),
     );
   }, [data]);
 
@@ -260,27 +278,35 @@ export default function PrintManagement() {
       setPrinters([]);
       setStationMap(buildStationDefaults());
       setTemplates(DEFAULT_TEMPLATES);
+      hydrateRef.current = false;
       return;
     }
 
-    hydrateRef.current = true;
-    const safePrinters = Array.isArray(settings?.printers)
+    const safePrinters = Array.isArray(settings.printers)
       ? settings.printers
       : [];
     setPrinters(safePrinters);
     setStationMap(
-      sanitizeStationsByPrinters(settings?.stations || {}, safePrinters),
+      sanitizeStationsByPrinters(settings.stations || {}, safePrinters),
     );
-    setTemplates(normalizeTemplates(settings?.templates));
-    setTimeout(() => {
+    setTemplates(normalizeTemplates(settings.templates));
+    window.setTimeout(() => {
       hydrateRef.current = false;
     }, 0);
   }, [data, loading, selectedRestaurantId]);
 
   useEffect(() => {
-    if (!selectedRestaurantId || loading || error || hydrateRef.current) return;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
+    if (
+      !canWrite ||
+      !selectedRestaurantId ||
+      loading ||
+      error ||
+      hydrateRef.current
+    ) {
+      return undefined;
+    }
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
       upsertPrintSettings({
         variables: {
           input: {
@@ -292,16 +318,21 @@ export default function PrintManagement() {
         },
       })
         .then(() => setSaveError(""))
-        .catch((err) =>
+        .catch((mutationError) =>
           setSaveError(
             getPrintSettingActionErrorMessage(
-              err,
+              mutationError,
               "Không thể lưu cấu hình in. Vui lòng kiểm tra kết nối và thử lại.",
             ),
           ),
         );
     }, 400);
+
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
   }, [
+    canWrite,
     error,
     loading,
     selectedRestaurantId,
@@ -311,18 +342,34 @@ export default function PrintManagement() {
     upsertPrintSettings,
   ]);
 
+  const requireWrite = useCallback(() => {
+    if (canWrite) return true;
+    setNotice(READ_ONLY_NOTICE);
+    return false;
+  }, [canWrite]);
+
   const openAddPrinter = () => {
+    if (!requireWrite()) return;
     setEditingPrinter(null);
     setSettingsModalOpen(true);
   };
 
   const openEditPrinter = (printer) => {
+    if (!requireWrite()) return;
     setEditingPrinter(printer);
     setSettingsModalOpen(true);
   };
 
   const handleTestConfig = useCallback(
     async (formPrinter) => {
+      if (!canWrite) {
+        setNotice(READ_ONLY_NOTICE);
+        return {
+          ok: false,
+          mode: "permission",
+          message: READ_ONLY_NOTICE.message,
+        };
+      }
       if (!selectedRestaurantId) {
         return {
           ok: false,
@@ -343,8 +390,8 @@ export default function PrintManagement() {
       if (!draft.id) {
         return {
           ok: true,
-          mode: "validation",
-          message: "Cấu hình hợp lệ. Lưu máy in trước khi gửi lệnh kiểm tra.",
+          mode: "mô phỏng",
+          message: "Thông số hợp lệ. Lưu máy in trước khi kiểm tra cấu hình đã lưu.",
         };
       }
 
@@ -362,12 +409,12 @@ export default function PrintManagement() {
             },
           },
         });
-      } catch (err) {
+      } catch (mutationError) {
         return {
           ok: false,
-          mode: "check",
+          mode: "mô phỏng",
           message: getPrintSettingActionErrorMessage(
-            err,
+            mutationError,
             "Không thể kiểm tra cấu hình máy in.",
           ),
         };
@@ -376,35 +423,35 @@ export default function PrintManagement() {
       const job = result?.data?.testPrint;
       return {
         ok: job?.status === "completed",
-        mode: "check",
+        mode: "mô phỏng",
         message:
           job?.status === "completed"
-            ? "Đã kiểm tra cấu hình và cập nhật trạng thái máy in."
+            ? "Thông số cấu hình hợp lệ. Chưa thực hiện kết nối phần cứng thật."
             : `Kiểm tra cấu hình thất bại: ${job?.error || "chưa xác định nguyên nhân"}`,
       };
     },
-    [editingPrinter, refetch, selectedRestaurantId, testPrint],
+    [canWrite, editingPrinter, refetch, selectedRestaurantId, testPrint],
   );
 
   const handleSavePrinter = (payload) => {
-    if (!payload?.name || !payload?.ip) return;
+    if (!requireWrite() || !payload?.name || !payload?.ip) return;
     if (editingPrinter?.id) {
-      setPrinters((prev) =>
-        prev.map((p) =>
-          p.id === editingPrinter.id
+      setPrinters((current) =>
+        current.map((printer) =>
+          printer.id === editingPrinter.id
             ? {
-                ...p,
+                ...printer,
                 ...payload,
-                status: p.status || "offline",
+                status: printer.status || "offline",
                 updatedAt: new Date().toISOString(),
               }
-            : p,
+            : printer,
         ),
       );
     } else {
       const newId = makePrinterId();
-      setPrinters((prev) => [
-        ...prev,
+      setPrinters((current) => [
+        ...current,
         {
           ...payload,
           id: newId,
@@ -417,12 +464,13 @@ export default function PrintManagement() {
   };
 
   const handleRemovePrinter = (printerId) => {
-    setPrinters((prev) => prev.filter((p) => p.id !== printerId));
-    setStationMap((prev) => {
-      const next = { ...prev };
-      Object.keys(next).forEach(
-        (k) => (next[k] = (next[k] || []).filter((id) => id !== printerId)),
-      );
+    if (!requireWrite()) return;
+    setPrinters((current) => current.filter((printer) => printer.id !== printerId));
+    setStationMap((current) => {
+      const next = { ...current };
+      Object.keys(next).forEach((key) => {
+        next[key] = (next[key] || []).filter((id) => id !== printerId);
+      });
       return next;
     });
     setPendingDeletePrinterId("");
@@ -433,16 +481,17 @@ export default function PrintManagement() {
   };
 
   const toggleStationPrinter = (stationId, printerId) => {
-    setStationMap((prev) => {
-      const current = new Set(prev[stationId] || []);
-      if (current.has(printerId)) current.delete(printerId);
-      else current.add(printerId);
-      return { ...prev, [stationId]: Array.from(current) };
+    if (!requireWrite()) return;
+    setStationMap((current) => {
+      const assigned = new Set(current[stationId] || []);
+      if (assigned.has(printerId)) assigned.delete(printerId);
+      else assigned.add(printerId);
+      return { ...current, [stationId]: Array.from(assigned) };
     });
   };
 
   const handleRetryJob = async (jobId) => {
-    if (!selectedRestaurantId) return;
+    if (!requireWrite() || !selectedRestaurantId) return;
     try {
       await retryPrintJob({
         variables: {
@@ -457,11 +506,11 @@ export default function PrintManagement() {
         type: "success",
         message: "Đã gửi lại lệnh in vào hàng đợi xử lý.",
       });
-    } catch (err) {
+    } catch (mutationError) {
       setNotice({
         type: "error",
         message: getPrintSettingActionErrorMessage(
-          err,
+          mutationError,
           "Không thể gửi lại lệnh in. Vui lòng thử lại.",
         ),
       });
@@ -469,26 +518,33 @@ export default function PrintManagement() {
   };
 
   const handleTemplateToggle = (key) => {
-    setTemplates((prev) =>
-      prev.map((t) =>
-        t.key === key
-          ? { ...t, enabled: !t.enabled, updatedAt: new Date().toISOString() }
-          : t,
+    if (!requireWrite()) return;
+    setTemplates((current) =>
+      current.map((template) =>
+        template.key === key
+          ? {
+              ...template,
+              enabled: !template.enabled,
+              updatedAt: new Date().toISOString(),
+            }
+          : template,
       ),
     );
   };
 
   const handleTemplateContent = (key, content) => {
-    setTemplates((prev) =>
-      prev.map((t) =>
-        t.key === key
-          ? { ...t, content, updatedAt: new Date().toISOString() }
-          : t,
+    if (!canWrite) return;
+    setTemplates((current) =>
+      current.map((template) =>
+        template.key === key
+          ? { ...template, content, updatedAt: new Date().toISOString() }
+          : template,
       ),
     );
   };
 
   const handleSendTemplateTest = async (templateKey) => {
+    if (!requireWrite()) return;
     const template = templates.find((item) => item.key === templateKey);
     if (template && !template.enabled) {
       setNotice({
@@ -499,7 +555,8 @@ export default function PrintManagement() {
     }
 
     const targetPrinter =
-      printers.find((p) => p.status === "online") || printers[0];
+      printers.find((printer) => ["configured", "online"].includes(printer.status))
+      || printers[0];
     if (!targetPrinter || !selectedRestaurantId) {
       setNotice({
         type: "warning",
@@ -516,20 +573,20 @@ export default function PrintManagement() {
             stationId: targetPrinter.location,
             printType: "manual_test",
             templateKey,
-            payload: { source: "print_management" },
+            payload: { source: "print_management", simulated: true },
           },
         },
       });
       await refetch();
       setNotice({
         type: "success",
-        message: "Đã gửi lệnh kiểm tra vào hàng đợi in.",
+        message: "Đã đưa lệnh kiểm tra mô phỏng vào hàng đợi in.",
       });
-    } catch (err) {
+    } catch (mutationError) {
       setNotice({
         type: "error",
         message: getPrintSettingActionErrorMessage(
-          err,
+          mutationError,
           "Không thể gửi lệnh kiểm tra. Vui lòng thử lại.",
         ),
       });
@@ -539,11 +596,12 @@ export default function PrintManagement() {
   const printerStats = useMemo(
     () => ({
       total: printers.length,
-      online: printers.filter((printer) => printer.status === "online").length,
-      offline: printers.filter((printer) => printer.status !== "online").length,
+      configured: printers.filter((printer) =>
+        ["configured", "online"].includes(printer.status),
+      ).length,
       failed: jobs.filter((job) => job.status === "failed").length,
       pending: jobs.filter(
-        (job) => !["completed", "failed"].includes(job.status),
+        (job) => !["completed", "failed", "cancelled"].includes(job.status),
       ).length,
       completed: jobs.filter((job) => job.status === "completed").length,
     }),
@@ -559,12 +617,13 @@ export default function PrintManagement() {
     if (status === "completed") return "Hoàn tất";
     if (status === "failed") return "Thất bại";
     if (status === "printing") return "Đang in";
+    if (status === "cancelled") return "Đã hủy";
     return "Đang chờ";
   };
 
   return (
     <main className="print-ui print-ui--polished">
-      <div className="print-ui__bg-circle" aria-hidden="true"></div>
+      <div className="print-ui__bg-circle" aria-hidden="true" />
 
       <ManagementPageHeader
         eyebrow="In ấn & vận hành"
@@ -580,10 +639,10 @@ export default function PrintManagement() {
             value: printerStats.total,
           },
           {
-            id: "online",
+            id: "configured",
             icon: "📡",
-            label: "Sẵn sàng",
-            value: printerStats.online,
+            label: "Đã cấu hình",
+            value: printerStats.configured,
           },
           {
             id: "failed",
@@ -599,10 +658,12 @@ export default function PrintManagement() {
           icon: "➕",
           label: "Thêm máy in",
           onClick: openAddPrinter,
-          disabled: !hasRestaurantSelection,
-          title: hasRestaurantSelection
-            ? "Thêm máy in"
-            : "Chọn nhà hàng để thêm máy in",
+          disabled: !hasRestaurantSelection || !canWrite,
+          title: !hasRestaurantSelection
+            ? "Chọn nhà hàng để thêm máy in"
+            : canWrite
+              ? "Thêm máy in"
+              : READ_ONLY_NOTICE.message,
         }}
       />
 
@@ -621,6 +682,12 @@ export default function PrintManagement() {
         </ol>
       </section>
 
+      {!canWrite && hasRestaurantSelection ? (
+        <section className="print-ui__notice is-warning" role="status">
+          <span>{READ_ONLY_NOTICE.message}</span>
+        </section>
+      ) : null}
+
       {notice ? (
         <section
           className={`print-ui__notice is-${notice.type}`}
@@ -636,6 +703,7 @@ export default function PrintManagement() {
           </button>
         </section>
       ) : null}
+
       {!hasRestaurantSelection ? (
         <section className="ui-card print-ui__empty-panel" role="status">
           <div className="empty-icon">
@@ -647,11 +715,13 @@ export default function PrintManagement() {
           </p>
         </section>
       ) : null}
+
       {hasRestaurantSelection && loading && (
         <div className="ui-card print-ui__skeleton" role="status">
           Đang tải cấu hình in...
         </div>
       )}
+
       {hasRestaurantSelection && error && (
         <section className="ui-card print-ui__notice is-error" role="alert">
           <span>Không thể tải cấu hình in ấn. Kiểm tra kết nối hoặc thử tải lại dữ liệu.</span>
@@ -687,7 +757,7 @@ export default function PrintManagement() {
                     </div>
                     <h4>Chưa có máy in</h4>
                     <p>Thêm máy in để gán trạm và gửi lệnh kiểm tra.</p>
-                    <button type="button" onClick={openAddPrinter}>
+                    <button type="button" onClick={openAddPrinter} disabled={!canWrite}>
                       Thêm máy in
                     </button>
                   </div>
@@ -697,8 +767,8 @@ export default function PrintManagement() {
                       <div
                         className={`status-indicator ${printer.status === "online" ? "online" : "offline"}`}
                       >
-                        <div className="dot"></div>
-                        <div className="pulse"></div>
+                        <div className="dot" />
+                        <div className="pulse" />
                       </div>
 
                       <div className="device-info">
@@ -708,9 +778,7 @@ export default function PrintManagement() {
                           <span className="type">
                             {printer.type === "thermal" ? "Máy in nhiệt" : "Máy in khác"}
                           </span>
-                          <span
-                            className={`type status-${printer.status || "offline"}`}
-                          >
+                          <span className={`type status-${printer.status || "offline"}`}>
                             {printerStatusLabel(printer.status)}
                           </span>
                         </div>
@@ -726,29 +794,33 @@ export default function PrintManagement() {
                               message: result.message,
                             });
                           }}
+                          disabled={!canWrite}
                           aria-label={`Kiểm tra cấu hình ${printer.name}`}
-                          title="Kiểm tra cấu hình"
+                          title={canWrite ? "Kiểm tra cấu hình mô phỏng" : READ_ONLY_NOTICE.message}
                         >
                           <Send size={16} />
                         </button>
                         <button
                           type="button"
                           onClick={() => openEditPrinter(printer)}
+                          disabled={!canWrite}
                           aria-label={`Cấu hình ${printer.name}`}
-                          title="Cấu hình"
+                          title={canWrite ? "Cấu hình" : READ_ONLY_NOTICE.message}
                         >
                           <Settings size={16} />
                         </button>
                         <button
                           type="button"
                           onClick={() => setPendingDeletePrinterId(printer.id)}
+                          disabled={!canWrite}
                           className="danger"
                           aria-label={`Xóa ${printer.name}`}
-                          title="Xóa"
+                          title={canWrite ? "Xóa" : READ_ONLY_NOTICE.message}
                         >
                           <Trash2 size={16} />
                         </button>
                       </div>
+
                       {pendingDeletePrinterId === printer.id ? (
                         <div className="device-confirm" role="alert">
                           <span>Xóa máy in này?</span>
@@ -800,23 +872,20 @@ export default function PrintManagement() {
                     </div>
 
                     <div className="printer-toggles">
-                      {hasPrinters &&
-                        !(stationMap[station.id] || []).length && (
-                          <span className="station-unassigned">Chưa gán</span>
-                        )}
+                      {hasPrinters && !(stationMap[station.id] || []).length && (
+                        <span className="station-unassigned">Chưa gán</span>
+                      )}
                       {printers.map((printer) => {
-                        const isActive = (
-                          stationMap[station.id] || []
-                        ).includes(printer.id);
+                        const isActive = (stationMap[station.id] || []).includes(printer.id);
                         return (
                           <button
                             type="button"
                             key={`${station.id}-${printer.id}`}
                             className={`toggle-pill ${isActive ? "active" : ""}`}
-                            onClick={() =>
-                              toggleStationPrinter(station.id, printer.id)
-                            }
+                            onClick={() => toggleStationPrinter(station.id, printer.id)}
+                            disabled={!canWrite}
                             aria-pressed={isActive}
+                            title={canWrite ? undefined : READ_ONLY_NOTICE.message}
                           >
                             <div className="check-icon">
                               {isActive ? (
@@ -858,9 +927,7 @@ export default function PrintManagement() {
                     <div className="template-head">
                       <div>
                         <strong>{template.name}</strong>
-                        <span
-                          className={`template-status ${template.enabled ? "is-on" : "is-off"}`}
-                        >
+                        <span className={`template-status ${template.enabled ? "is-on" : "is-off"}`}>
                           {template.enabled ? "Đang bật" : "Đang tắt"}
                         </span>
                       </div>
@@ -868,6 +935,8 @@ export default function PrintManagement() {
                         type="button"
                         className="template-toggle"
                         onClick={() => handleTemplateToggle(template.key)}
+                        disabled={!canWrite}
+                        title={canWrite ? undefined : READ_ONLY_NOTICE.message}
                       >
                         {template.enabled ? "Tắt mẫu" : "Bật mẫu"}
                       </button>
@@ -875,25 +944,29 @@ export default function PrintManagement() {
                     <textarea
                       aria-label={`Nội dung mẫu ${template.name}`}
                       value={template.content || ""}
-                      onChange={(e) =>
-                        handleTemplateContent(template.key, e.target.value)
+                      onChange={(event) =>
+                        handleTemplateContent(template.key, event.target.value)
                       }
+                      disabled={!canWrite}
                     />
                     <button
                       type="button"
                       className="template-test"
                       onClick={() => handleSendTemplateTest(template.key)}
                       disabled={
+                        !canWrite ||
                         !hasRestaurantSelection ||
                         !hasPrinters ||
                         !template.enabled
                       }
                       title={
-                        !hasPrinters
-                          ? "Thêm máy in trước khi gửi lệnh kiểm tra"
-                          : !template.enabled
-                            ? "Bật mẫu trước khi gửi lệnh kiểm tra"
-                            : "Gửi lệnh kiểm tra"
+                        !canWrite
+                          ? READ_ONLY_NOTICE.message
+                          : !hasPrinters
+                            ? "Thêm máy in trước khi gửi lệnh kiểm tra"
+                            : !template.enabled
+                              ? "Bật mẫu trước khi gửi lệnh kiểm tra"
+                              : "Gửi lệnh kiểm tra mô phỏng"
                       }
                     >
                       Gửi lệnh kiểm tra
@@ -934,11 +1007,13 @@ export default function PrintManagement() {
                     <button
                       type="button"
                       onClick={() => handleSendTemplateTest("receipt")}
-                      disabled={!receiptTemplate?.enabled}
+                      disabled={!canWrite || !receiptTemplate?.enabled}
                       title={
-                        receiptTemplate?.enabled
-                          ? "Gửi lệnh từ mẫu hóa đơn"
-                          : "Bật mẫu hóa đơn trước khi gửi lệnh"
+                        !canWrite
+                          ? READ_ONLY_NOTICE.message
+                          : receiptTemplate?.enabled
+                            ? "Gửi lệnh từ mẫu hóa đơn"
+                            : "Bật mẫu hóa đơn trước khi gửi lệnh"
                       }
                     >
                       Gửi lệnh từ mẫu hóa đơn
@@ -950,11 +1025,11 @@ export default function PrintManagement() {
                   {jobs.slice(0, 20).map((job) => (
                     <div key={job.id} className={`job-item job-${job.status}`}>
                       <div>
-                        <strong>{printTypeLabel(job.printType)}</strong> • {job.printerName || job.printerId || "Chưa xác định"}
+                        <strong>{printTypeLabel(job.printType)}</strong>
+                        {" • "}
+                        {job.printerName || job.printerId || "Chưa xác định"}
                         <div className="job-meta">
-                          <span
-                            className={`job-status job-status--${job.status || "pending"}`}
-                          >
+                          <span className={`job-status job-status--${job.status || "pending"}`}>
                             {statusText(job.status)}
                           </span>
                           <span>
@@ -971,6 +1046,8 @@ export default function PrintManagement() {
                           type="button"
                           className="retry-btn"
                           onClick={() => handleRetryJob(job.id)}
+                          disabled={!canWrite}
+                          title={canWrite ? "Gửi lại lệnh lỗi" : READ_ONLY_NOTICE.message}
                         >
                           <RotateCcw size={14} /> Gửi lại lệnh lỗi
                         </button>
@@ -982,7 +1059,7 @@ export default function PrintManagement() {
             </section>
           </div>
 
-          {saving && <div className="save-hint">Đang lưu cấu hình...</div>}
+          {canWrite && saving && <div className="save-hint">Đang lưu cấu hình...</div>}
           {saveError && (
             <div className="save-hint save-hint--error">{saveError}</div>
           )}
@@ -990,7 +1067,7 @@ export default function PrintManagement() {
       )}
 
       <PrinterSettingsModal
-        isOpen={settingsModalOpen}
+        isOpen={canWrite && settingsModalOpen}
         printer={editingPrinter}
         onSave={handleSavePrinter}
         onClose={() => setSettingsModalOpen(false)}
