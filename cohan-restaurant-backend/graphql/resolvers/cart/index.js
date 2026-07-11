@@ -6,6 +6,10 @@ import { CustomerCartMutation } from "./customerMutation.js";
 import { CartAvailabilityWatchMutation } from "./availabilityWatchMutation.js";
 import { resolveCustomerServingVariantKey } from "./servingVariantResolution.js";
 import {
+  createSupplyAwareAddCartItem,
+  createSupplyAwareLiveState,
+} from "./orderableSupplyCart.js";
+import {
   CartFieldResolvers,
   CartItemFieldResolvers,
   MenuAvailabilityWatchFieldResolvers,
@@ -46,21 +50,25 @@ const withResolvedServingVariantKey =
     );
   };
 
+const menuItemLiveState = createSupplyAwareLiveState(
+  withResolvedServingVariantKey(CustomerCartQuery.menuItemLiveState, {
+    respectItemType: true,
+  }),
+);
+const addCartItem = createSupplyAwareAddCartItem(
+  withResolvedServingVariantKey(CustomerCartMutation.addCartItem),
+);
+
 export default {
   Query: {
     ...CartQuery,
     ...CustomerCartQuery,
-    menuItemLiveState: withResolvedServingVariantKey(
-      CustomerCartQuery.menuItemLiveState,
-      { respectItemType: true },
-    ),
+    menuItemLiveState,
   },
   Mutation: {
     ...CartMutation,
     ...CustomerCartMutation,
-    addCartItem: withResolvedServingVariantKey(
-      CustomerCartMutation.addCartItem,
-    ),
+    addCartItem,
     ...CartAvailabilityWatchMutation,
   },
   Cart: {
