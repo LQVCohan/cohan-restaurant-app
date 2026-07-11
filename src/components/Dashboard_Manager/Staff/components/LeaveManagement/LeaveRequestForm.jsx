@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AuthContext } from "@/context/AuthContext";
 import { matchesEmployeeSearch } from "../../../../../utils/employeeSearch";
 import { isForbiddenError, isUnauthenticatedError } from "@/utils/graphqlErrorUtils";
@@ -14,6 +14,18 @@ const leaveTypes = [
   { value: "HOLIDAY", label: "Nghỉ lễ/tết", icon: "🎉" },
   { value: "HALF_DAY", label: "Nghỉ nửa ngày", icon: "🌗" },
 ];
+
+const wizardSteps = [
+  { id: 1, label: "Loại nghỉ" },
+  { id: 2, label: "Thời gian" },
+  { id: 3, label: "Kiểm tra & gửi" },
+];
+
+const sessionLabels = {
+  FULL: "Cả ngày",
+  MORNING: "Buổi sáng",
+  AFTERNOON: "Buổi chiều",
+};
 
 const initialFormData = {
   employee: "",
@@ -33,6 +45,11 @@ const resolveRoleCandidate = (user) => {
   return user.roleName || user.role || user.userType || "";
 };
 
+const formatDate = (value) => {
+  const [year, month, day] = String(value || "").split("-");
+  return year && month && day ? `${day}/${month}/${year}` : "Chưa chọn";
+};
+
 const LeaveRequestForm = ({
   onSubmit,
   staffList = [],
@@ -42,6 +59,7 @@ const LeaveRequestForm = ({
   error = null,
   selfServiceEmployeeId = "",
   compact = false,
+  stepByStep = false,
   title = "📝 Tạo Đơn Xin Nghỉ Phép",
   subtitle = "",
   submitLabel = "Gửi Đơn",
@@ -57,13 +75,22 @@ const LeaveRequestForm = ({
     String(user?.userType || "").toUpperCase() === "STAFF" ||
     normalizedRole === "staff";
   const currentUserId = selfServiceEmployeeId || user?.id || user?._id || user?.userId || "";
-  const [formData, setFormData] = useState(initialFormData);
+  const [formData, setFormData] = useState(() => ({
+    ...initialFormData,
+    employee: isStaffSelfService ? currentUserId : "",
+  }));
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [errors, setErrors] = useState({});
+  const [currentStep, setCurrentStep] = useState(1);
+  const stepHeadingRef = useRef(null);
 
   const selectedEmployee = useMemo(
     () => staffList.find((item) => String(item.id) === String(formData.employee)),
-    [formData.employee, staffList]
+    [formData.employee, staffList],
+  );
+  const selectedLeaveType = useMemo(
+    () => leaveTypes.find((item) => item.value === formData.leaveType),
+    [formData.leaveType],
   );
 
   useEffect(() => {
@@ -73,6 +100,10 @@ const LeaveRequestForm = ({
       setFormData((prev) => ({ ...prev, employee: selfInList.id }));
     }
   }, [currentUserId, formData.employee, isStaffSelfService, staffList]);
+
+  useEffect(() => {
+    if (stepByStep) stepHeadingRef.current?.focus();
+  }, [currentStep, stepByStep]);
 
   const filteredStaffList = useMemo(() => {
     const matched = staffList.filter((item) => matchesEmployeeSearch(item, employeeSearch));
@@ -112,28 +143,55 @@ const LeaveRequestForm = ({
     }
   };
 
-  const validateForm = () => {
+  const validateIdentityAndType = () => {
     const next = {};
     if (!formData.employee) next.employee = "Vui lòng chọn nhân viên";
     if (!formData.leaveType) next.leaveType = "Chọn loại nghỉ";
-    if (!formData.startDate) next.startDate = "Chọn ngày bắt đầu";
-    if (!formData.endDate) next.endDate = "Chọn ngày kết thúc";
-    if (!formData.reason.trim()) next.reason = "Nhập lý do nghỉ";
-    if (new Date(formData.endDate) < new Date(formData.startDate)) {
-      next.endDate = "Ngày kết thúc không hợp lệ";
-    }
-
-    if (formData.leaveType === "HALF_DAY" && formData.startDate !== formData.endDate) {
-      next.endDate = "Nghỉ nửa ngày chỉ áp dụng trong 1 ngày";
-    }
-
     return next;
   };
 
+  const validateDates = () => {
+    const next = {};
+    if (!formData.startDate) next.startDate = "Chọn ngày bắt đầu";
+    if (!formData.endDate) next.endDate = "Chọn ngày kết thúc";
+    if (
+      formData.startDate &&
+      formData.endDate &&
+      new Date(formData.endDate) < new Date(formData.startDate)
+    ) {
+      next.endDate = "Ngày kết thúc không hợp lệ";
+    }
+    if (
+      formData.leaveType === "HALF_DAY" &&
+      formData.startDate &&
+      formData.endDate &&
+      formData.startDate !== formData.endDate
+    ) {
+      next.endDate = "Nghỉ nửa ngày chỉ áp dụng trong 1 ngày";
+    }
+    return next;
+  };
+
+  const validateReason = () => {
+    const next = {};
+    if (!formData.reason.trim()) next.reason = "Nhập lý do nghỉ";
+    return next;
+  };
+
+  const validateForm = () => ({
+    ...validateIdentityAndType(),
+    ...validateDates(),
+    ...validateReason(),
+  });
+
   const resetForm = () => {
-    setFormData(initialFormData);
+    setFormData({
+      ...initialFormData,
+      employee: isStaffSelfService ? currentUserId : "",
+    });
     setEmployeeSearch("");
     setErrors({});
+    setCurrentStep(1);
   };
 
   const handleCancel = () => {
@@ -141,11 +199,31 @@ const LeaveRequestForm = ({
     onCancel?.();
   };
 
+  const handleNextStep = () => {
+    const stepErrors = currentStep === 1 ? validateIdentityAndType() : validateDates();
+    if (Object.keys(stepErrors).length) {
+      setErrors(stepErrors);
+      return;
+    }
+    setErrors({});
+    setCurrentStep((step) => Math.min(step + 1, wizardSteps.length));
+  };
+
+  const handlePreviousStep = () => {
+    setErrors({});
+    setCurrentStep((step) => Math.max(step - 1, 1));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formErrors = validateForm();
     if (Object.keys(formErrors).length > 0) {
       setErrors(formErrors);
+      if (stepByStep) {
+        if (formErrors.employee || formErrors.leaveType) setCurrentStep(1);
+        else if (formErrors.startDate || formErrors.endDate) setCurrentStep(2);
+        else setCurrentStep(3);
+      }
       return;
     }
 
@@ -183,8 +261,142 @@ const LeaveRequestForm = ({
     }
   };
 
+  const employeeFields = (
+    <div className="form-row two-col">
+      <div className="form-group">
+        <label>Người làm đơn *</label>
+        <input
+          type="search"
+          value={employeeSearch}
+          onChange={handleEmployeeSearchChange}
+          placeholder={isStaffSelfService ? "Tự động chọn tài khoản của bạn" : "Tìm theo tên hoặc mã nhân viên"}
+          className="employee-search-input"
+          aria-label="Tìm nhân viên"
+          data-testid="leave-employee-search"
+          disabled={disabled || isStaffSelfService || (!hasStaffList && loading)}
+        />
+        <select
+          name="employee"
+          value={formData.employee}
+          onChange={handleChange}
+          aria-label="Người làm đơn"
+          data-testid="leave-employee-select"
+          disabled={disabled || !hasStaffList || isStaffSelfService}
+        >
+          <option value="">-- Chọn nhân viên --</option>
+          {filteredStaffList.map((employee) => (
+            <option key={employee.id} value={employee.id}>
+              [{employee.employeeCode || "--"}] {employee.fullName}
+            </option>
+          ))}
+        </select>
+        {loading && !hasStaffList && (
+          <span className="hint state-msg">Đang tải danh sách nhân viên từ dữ liệu thật...</span>
+        )}
+        {error && !hasStaffList && (
+          <span className="err-msg state-msg">
+            Không tải được danh sách nhân viên: {error.message}
+          </span>
+        )}
+        {!loading && !error && !hasStaffList && (
+          <span className="hint state-msg">Chưa có nhân viên nào trong danh sách.</span>
+        )}
+        {hasStaffList && employeeSearch && !hasEmployeeMatches && (
+          <span className="hint state-msg">
+            Không tìm thấy nhân viên phù hợp với từ khóa đã nhập.
+          </span>
+        )}
+        {errors.employee && <span className="err-msg">{errors.employee}</span>}
+      </div>
+    </div>
+  );
+
+  const leaveTypeFields = (
+    <>
+      <div className="leave-types-grid">
+        {leaveTypes.map((type) => (
+          <label
+            key={type.value}
+            className={`radio-card ${formData.leaveType === type.value ? "selected" : ""}`}
+          >
+            <input
+              type="radio"
+              name="leaveType"
+              value={type.value}
+              checked={formData.leaveType === type.value}
+              onChange={handleChange}
+            />
+            <span className="icon" aria-hidden="true">{type.icon}</span>
+            <span className="label">{type.label}</span>
+          </label>
+        ))}
+      </div>
+      {errors.leaveType && <span className="err-msg">{errors.leaveType}</span>}
+    </>
+  );
+
+  const dateFields = (
+    <>
+      <div className="form-row two-col date-row">
+        <div className="form-group">
+          <label>Từ ngày *</label>
+          <div className="date-input-group">
+            <input type="date" name="startDate" value={formData.startDate} onChange={handleChange} />
+            <select name="startSession" value={formData.startSession} onChange={handleChange}>
+              <option value="FULL">Cả ngày</option>
+              <option value="MORNING">Sáng</option>
+              <option value="AFTERNOON">Chiều</option>
+            </select>
+          </div>
+          {errors.startDate && <span className="err-msg">{errors.startDate}</span>}
+        </div>
+
+        <div className="form-group">
+          <label>Đến ngày *</label>
+          <div className="date-input-group">
+            <input
+              type="date"
+              name="endDate"
+              value={formData.endDate}
+              onChange={handleChange}
+              min={formData.startDate}
+            />
+            <select name="endSession" value={formData.endSession} onChange={handleChange}>
+              <option value="FULL">Cả ngày</option>
+              <option value="MORNING">Sáng</option>
+              <option value="AFTERNOON">Chiều</option>
+            </select>
+          </div>
+          {errors.endDate && <span className="err-msg">{errors.endDate}</span>}
+        </div>
+      </div>
+
+      <div className="total-days-bar">
+        <span>Tổng số ngày nghỉ dự kiến</span>
+        <span className="days-count">{totalDays} ngày</span>
+      </div>
+    </>
+  );
+
+  const reasonFields = (
+    <div className="form-group">
+      <label htmlFor="leave-reason">Lý do nghỉ *</label>
+      <textarea
+        id="leave-reason"
+        name="reason"
+        rows="3"
+        placeholder="Viết ngắn gọn để quản lý dễ xem xét..."
+        value={formData.reason}
+        onChange={handleChange}
+      />
+      {errors.reason && <span className="err-msg">{errors.reason}</span>}
+    </div>
+  );
+
   return (
-    <div className={`leave-form-container ${compact ? "leave-form-container--compact" : ""}`}>
+    <div
+      className={`leave-form-container ${compact ? "leave-form-container--compact" : ""} ${stepByStep ? "leave-form-container--wizard" : ""}`.trim()}
+    >
       {title && (
         <div className="form-header-section">
           <h3 className="title">{title}</h3>
@@ -193,141 +405,149 @@ const LeaveRequestForm = ({
       )}
 
       <form onSubmit={handleSubmit} className="main-form">
-        <div className="form-section">
-          <h4 className="section-title">1. Thông tin nhân sự</h4>
-          <div className="form-row two-col">
-            <div className="form-group">
-              <label>Người làm đơn *</label>
-              <input
-                type="search"
-                value={employeeSearch}
-                onChange={handleEmployeeSearchChange}
-                placeholder={isStaffSelfService ? "Tự động chọn tài khoản của bạn" : "Tìm theo tên hoặc mã nhân viên"}
-                className="employee-search-input"
-                aria-label="Tìm nhân viên"
-                data-testid="leave-employee-search"
-                disabled={disabled || isStaffSelfService || (!hasStaffList && loading)}
-              />
-              <select
-                name="employee"
-                value={formData.employee}
-                onChange={handleChange}
-                aria-label="Người làm đơn"
-                data-testid="leave-employee-select"
-                disabled={disabled || !hasStaffList || isStaffSelfService}
-              >
-                <option value="">-- Chọn nhân viên --</option>
-                {filteredStaffList.map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    [{employee.employeeCode || "--"}] {employee.fullName}
-                  </option>
-                ))}
-              </select>
-              {loading && !hasStaffList && (
-                <span className="hint state-msg">Đang tải danh sách nhân viên từ dữ liệu thật...</span>
-              )}
-              {error && !hasStaffList && (
-                <span className="err-msg state-msg">
-                  Không tải được danh sách nhân viên: {error.message}
-                </span>
-              )}
-              {!loading && !error && !hasStaffList && (
-                <span className="hint state-msg">Chưa có nhân viên nào trong danh sách.</span>
-              )}
-              {hasStaffList && employeeSearch && !hasEmployeeMatches && (
-                <span className="hint state-msg">
-                  Không tìm thấy nhân viên phù hợp với từ khóa đã nhập.
-                </span>
-              )}
-              {errors.employee && <span className="err-msg">{errors.employee}</span>}
-            </div>
-          </div>
-        </div>
+        {stepByStep ? (
+          <>
+            <nav className="leave-wizard-progress" aria-label="Tiến trình tạo đơn nghỉ phép">
+              <ol>
+                {wizardSteps.map((step) => {
+                  const isComplete = currentStep > step.id;
+                  const isActive = currentStep === step.id;
+                  return (
+                    <li
+                      key={step.id}
+                      className={`${isComplete ? "is-complete" : ""} ${isActive ? "is-active" : ""}`.trim()}
+                      aria-current={isActive ? "step" : undefined}
+                    >
+                      <span className="leave-wizard-progress__number" aria-hidden="true">
+                        {isComplete ? "✓" : step.id}
+                      </span>
+                      <span>{step.label}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </nav>
 
-        <div className="form-section">
-          <h4 className="section-title">2. Chi tiết nghỉ phép</h4>
-          <div className="leave-types-grid">
-            {leaveTypes.map((type) => (
-              <label
-                key={type.value}
-                className={`radio-card ${formData.leaveType === type.value ? "selected" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="leaveType"
-                  value={type.value}
-                  checked={formData.leaveType === type.value}
-                  onChange={handleChange}
-                />
-                <span className="icon">{type.icon}</span>
-                <span className="label">{type.label}</span>
-              </label>
-            ))}
-          </div>
-          {errors.leaveType && <span className="err-msg">{errors.leaveType}</span>}
-
-          <div className="form-row two-col date-row">
-            <div className="form-group">
-              <label>Từ ngày *</label>
-              <div className="date-input-group">
-                <input type="date" name="startDate" value={formData.startDate} onChange={handleChange} />
-                <select name="startSession" value={formData.startSession} onChange={handleChange}>
-                  <option value="FULL">Cả ngày</option>
-                  <option value="MORNING">Sáng</option>
-                  <option value="AFTERNOON">Chiều</option>
-                </select>
+            {isStaffSelfService && (
+              <div className="leave-wizard-self" role="status">
+                <span>Người làm đơn</span>
+                <strong>{selectedEmployee?.fullName || user?.fullName || "Tài khoản hiện tại"}</strong>
               </div>
-              {errors.startDate && <span className="err-msg">{errors.startDate}</span>}
+            )}
+
+            {currentStep === 1 && (
+              <section className="form-section leave-wizard-step" aria-labelledby="leave-step-1-title">
+                <div className="leave-wizard-step__heading">
+                  <span>Bước 1/3</span>
+                  <h4 id="leave-step-1-title" ref={stepHeadingRef} tabIndex="-1">
+                    Chọn loại nghỉ phù hợp
+                  </h4>
+                  <p>Chọn một loại để hệ thống áp dụng đúng quy tắc ngày công và lương.</p>
+                </div>
+                {!isStaffSelfService && employeeFields}
+                {leaveTypeFields}
+              </section>
+            )}
+
+            {currentStep === 2 && (
+              <section className="form-section leave-wizard-step" aria-labelledby="leave-step-2-title">
+                <div className="leave-wizard-step__heading">
+                  <span>Bước 2/3</span>
+                  <h4 id="leave-step-2-title" ref={stepHeadingRef} tabIndex="-1">
+                    Chọn thời gian nghỉ
+                  </h4>
+                  <p>Chọn ngày và buổi nghỉ. Tổng thời gian được tính tự động bên dưới.</p>
+                </div>
+                {dateFields}
+              </section>
+            )}
+
+            {currentStep === 3 && (
+              <section className="form-section leave-wizard-step" aria-labelledby="leave-step-3-title">
+                <div className="leave-wizard-step__heading">
+                  <span>Bước 3/3</span>
+                  <h4 id="leave-step-3-title" ref={stepHeadingRef} tabIndex="-1">
+                    Kiểm tra và gửi đơn
+                  </h4>
+                  <p>Ghi lý do ngắn gọn, sau đó kiểm tra lại thông tin trước khi gửi.</p>
+                </div>
+
+                {reasonFields}
+
+                <div className="leave-wizard-review" aria-label="Tóm tắt đơn nghỉ phép">
+                  <div>
+                    <span>Loại nghỉ</span>
+                    <strong>{selectedLeaveType?.label || "Chưa chọn"}</strong>
+                  </div>
+                  <div>
+                    <span>Thời gian</span>
+                    <strong>{formatDate(formData.startDate)} – {formatDate(formData.endDate)}</strong>
+                    <small>
+                      {sessionLabels[formData.startSession]} đến {sessionLabels[formData.endSession]}
+                    </small>
+                  </div>
+                  <div>
+                    <span>Dự kiến</span>
+                    <strong>{totalDays} ngày</strong>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            <div className="form-footer leave-wizard-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={currentStep === 1 ? handleCancel : handlePreviousStep}
+                disabled={disabled}
+              >
+                {currentStep === 1 ? "Hủy" : "Quay lại"}
+              </button>
+              {currentStep < wizardSteps.length ? (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleNextStep}
+                  disabled={disabled || !hasStaffList}
+                  aria-label={`Tiếp tục đến bước ${currentStep + 1}`}
+                >
+                  Tiếp tục
+                </button>
+              ) : (
+                <button type="submit" className="btn btn-primary" disabled={disabled || !hasStaffList}>
+                  {disabled ? "Đang gửi..." : submitLabel}
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="form-section">
+              <h4 className="section-title">1. Thông tin nhân sự</h4>
+              {employeeFields}
             </div>
 
-            <div className="form-group">
-              <label>Đến ngày *</label>
-              <div className="date-input-group">
-                <input
-                  type="date"
-                  name="endDate"
-                  value={formData.endDate}
-                  onChange={handleChange}
-                  min={formData.startDate}
-                />
-                <select name="endSession" value={formData.endSession} onChange={handleChange}>
-                  <option value="FULL">Cả ngày</option>
-                  <option value="MORNING">Sáng</option>
-                  <option value="AFTERNOON">Chiều</option>
-                </select>
-              </div>
-              {errors.endDate && <span className="err-msg">{errors.endDate}</span>}
+            <div className="form-section">
+              <h4 className="section-title">2. Chi tiết nghỉ phép</h4>
+              {leaveTypeFields}
+              {dateFields}
             </div>
-          </div>
 
-          <div className="total-days-bar">
-            <span>📆 Tổng số ngày nghỉ dự kiến:</span>
-            <span className="days-count">{totalDays} ngày</span>
-          </div>
-        </div>
+            <div className="form-section">
+              <h4 className="section-title">3. Lý do</h4>
+              {reasonFields}
+            </div>
 
-        <div className="form-section">
-          <h4 className="section-title">3. Lý do</h4>
-          <div className="form-group">
-            <textarea
-              name="reason"
-              rows="3"
-              placeholder="Nhập lý do nghỉ..."
-              value={formData.reason}
-              onChange={handleChange}
-            />
-            {errors.reason && <span className="err-msg">{errors.reason}</span>}
-          </div>
-        </div>
-
-        <div className="form-footer">
-          <button type="button" className="btn btn-secondary" onClick={handleCancel} disabled={disabled}>
-            Hủy
-          </button>
-          <button type="submit" className="btn btn-primary" disabled={disabled || !hasStaffList}>
-            {submitLabel}
-          </button>
-        </div>
+            <div className="form-footer">
+              <button type="button" className="btn btn-secondary" onClick={handleCancel} disabled={disabled}>
+                Hủy
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={disabled || !hasStaffList}>
+                {submitLabel}
+              </button>
+            </div>
+          </>
+        )}
       </form>
     </div>
   );
