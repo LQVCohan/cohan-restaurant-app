@@ -1,0 +1,30 @@
+{
+  "id": "07-12-business-analytics-data-loading",
+  "title": "Repair business analytics data loading",
+  "status": "in_progress",
+  "type": "cross-layer-bugfix",
+  "scope": [
+    "cohan-restaurant-backend/graphql/resolvers/index.js",
+    "cohan-restaurant-backend/tests/dashboard/manager-dashboard-contract.test.js",
+    "src/hooks/useAnalyst.js",
+    "src/hooks/useAnalyst.test.js"
+  ],
+  "validation": {
+    "planned": [
+      "npm --prefix cohan-restaurant-backend test -- tests/dashboard/manager-dashboard-contract.test.js tests/resolvers/manager-dashboard-analytics.test.js",
+      "npx vitest run src/hooks/useAnalyst.test.js src/components/Dashboard_Manager/Analyst/ManagerAnalyst.test.jsx",
+      "npm run check:graphql",
+      "npm run build",
+      "manual manager analytics review while switching restaurants and with one optional resolver failing"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, cross-layer guide and relevant UI guidance",
+      "traced ManagerLayout -> ManagerAnalyst -> useAnalyst -> GraphQL schema/resolvers/services -> models and tests",
+      "confirmed analytics.ManagerDashboard field resolvers are implemented but omitted from the root resolver map",
+      "confirmed useAnalyst bypasses the shared manager restaurant selection and cannot reject stale branch data",
+      "confirmed the combined Apollo query discards all data when one optional analytics branch errors",
+      "confirmed the operations request query runs without checking order.read and is not refreshed by the page refresh action"
+    ],
+    "notRun": []
+  }
+}
