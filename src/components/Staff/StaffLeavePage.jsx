@@ -6,8 +6,8 @@ import LeaveRequestsList from "@/components/Dashboard_Manager/Staff/components/L
 import { useLeaveManagement } from "@/hooks/useLeaveManagement";
 import "@/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveManagement.scss";
 import "./StaffLeavePage.scss";
-import "./StaffLeaveWizard.scss";
 import "@/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveModal.scss";
+import "./StaffLeaveWizard.scss";
 
 const resolveId = (value) => {
   if (!value) return "";
