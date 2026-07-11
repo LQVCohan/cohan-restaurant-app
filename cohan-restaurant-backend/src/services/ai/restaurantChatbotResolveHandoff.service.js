@@ -11,32 +11,67 @@ const toObjectId = (id) => {
   return new mongoose.Types.ObjectId(id);
 };
 
-const roleSlug = (user) => String(user?.roleName || user?.role?.slug || user?.role?.name || "").toLowerCase();
+const sanitizeNote = (value) =>
+  String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 300);
+const preview = (text, max = 140) =>
+  String(text || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
 
-const getUserRestaurantIds = (user) => {
-  const ids = [];
-  if (user?.restaurantForStaff) ids.push(String(user.restaurantForStaff));
-  return [...new Set(ids.filter(Boolean))];
-};
+const isAiHandoffThread = (thread) =>
+  String(thread?.kind || "").toLowerCase() === "ai_chatbot_handoff" ||
+  String(thread?.subject || "")
+    .trim()
+    .toLowerCase()
+    .startsWith("ai handoff") ||
+  String(thread?.messages?.[0]?.content || "").includes("[AI HANDOFF]");
 
-const canAccessThread = (thread, user) => {
-  const uid = String(user?.id || user?._id || "");
-  if (!uid || !thread) return false;
-  if (["admin"].includes(roleSlug(user))) return true;
-  if ((thread.participants || []).some((p) => String(p) === uid)) return true;
+const invalidResult = (message = "Không thể xử lý yêu cầu.") => ({
+  ok: false,
+  conversationId: null,
+  chatThreadId: null,
+  status: null,
+  alreadyClosed: false,
+  message,
+});
 
-  const myRole = roleSlug(user);
-  if (thread.targetRole && myRole && myRole === String(thread.targetRole).toLowerCase()) {
-    const myRestaurantIds = getUserRestaurantIds(user);
-    return !thread.restaurantId || myRestaurantIds.includes(String(thread.restaurantId));
+const withSession = (query, session) => {
+  if (session && query && typeof query.session === "function") {
+    return query.session(session);
   }
-  return false;
+  return query;
 };
 
-const sanitizeNote = (value) => String(value || "").replace(/\s+/g, " ").trim().slice(0, 300);
-const preview = (text, max = 140) => String(text || "").replace(/\s+/g, " ").trim().slice(0, max);
+async function loadConversation({ conversationObjectId, threadObjectId, session }) {
+  if (conversationObjectId) {
+    const conversation = await withSession(
+      AiChatConversation.findById(conversationObjectId),
+      session,
+    );
+    if (conversation) return conversation;
+  }
+  if (!threadObjectId) return null;
+  return withSession(
+    AiChatConversation.findOne({ chatThreadId: threadObjectId }),
+    session,
+  );
+}
 
-export async function resolveRestaurantChatbotHandoff({ input, user, ctx, io } = {}) {
+async function loadThread(threadId, session) {
+  if (!threadId) return null;
+  return withSession(ChatThread.findById(threadId), session);
+}
+
+export async function resolveRestaurantChatbotHandoff({
+  input,
+  user,
+  ctx,
+  io,
+} = {}) {
   if (!(user?.id || user?._id)) {
     const err = new Error("Unauthorized");
     err.code = "UNAUTHORIZED";
@@ -49,15 +84,23 @@ export async function resolveRestaurantChatbotHandoff({ input, user, ctx, io } =
   const threadObjectId = toObjectId(chatThreadId);
 
   if (!conversationObjectId && !threadObjectId) {
-    return { ok: false, conversationId: null, chatThreadId: null, status: null, alreadyClosed: false, message: "Yêu cầu không hợp lệ." };
+    return invalidResult("Yêu cầu không hợp lệ.");
   }
 
-  let conversation = null;
-  if (conversationObjectId) conversation = await AiChatConversation.findById(conversationObjectId);
-  if (!conversation && threadObjectId) conversation = await AiChatConversation.findOne({ chatThreadId: threadObjectId });
+  const conversation = await loadConversation({
+    conversationObjectId,
+    threadObjectId,
+    session: null,
+  });
+  if (!conversation) return invalidResult();
 
-  if (!conversation) {
-    return { ok: false, conversationId: null, chatThreadId: null, status: null, alreadyClosed: false, message: "Không thể xử lý yêu cầu." };
+  if (
+    threadObjectId &&
+    String(conversation.chatThreadId || "") !== String(threadObjectId)
+  ) {
+    return invalidResult(
+      "Hội thoại và phiên hỗ trợ không khớp. Vui lòng tải lại dữ liệu.",
+    );
   }
 
   await requireRestaurantPermission(
@@ -68,66 +111,116 @@ export async function resolveRestaurantChatbotHandoff({ input, user, ctx, io } =
 
   const isClosed = conversation.status === "closed";
   const isHandoffRequested = conversation.status === "handoff_requested";
-  if (!isClosed && !isHandoffRequested) {
-    return { ok: false, conversationId: null, chatThreadId: null, status: null, alreadyClosed: false, message: "Không thể xử lý yêu cầu." };
-  }
-
-  let thread = null;
-  if (conversation.chatThreadId) thread = await ChatThread.findById(conversation.chatThreadId);
-
+  if (!isClosed && !isHandoffRequested) return invalidResult();
   if (isHandoffRequested && !conversation.chatThreadId) {
-    return { ok: false, conversationId: null, chatThreadId: null, status: null, alreadyClosed: false, message: "Không thể xử lý yêu cầu." };
-  }
-  if (isHandoffRequested && conversation.chatThreadId && !thread) {
-    return { ok: false, conversationId: null, chatThreadId: null, status: null, alreadyClosed: false, message: "Không thể xử lý yêu cầu." };
+    return invalidResult();
   }
 
-  if (thread && !canAccessThread(thread.toObject ? thread.toObject() : thread, user)) {
-    const err = new Error("Forbidden");
-    err.code = "FORBIDDEN";
-    throw err;
+  const thread = await loadThread(conversation.chatThreadId, null);
+  if (isHandoffRequested && !thread) return invalidResult();
+  if (
+    thread &&
+    (String(thread.restaurantId || "") !==
+      String(conversation.restaurantId || "") ||
+      !isAiHandoffThread(thread))
+  ) {
+    return invalidResult(
+      "Phiên hỗ trợ không thuộc hội thoại hoặc nhà hàng hiện tại.",
+    );
   }
 
-  const note = sanitizeNote(input?.resolutionNote);
   const convoClosed = conversation.status === "closed";
   const threadClosed = !thread || thread.status === "closed";
-
   if (convoClosed && threadClosed) {
     return {
       ok: true,
       conversationId: String(conversation._id),
-      chatThreadId: conversation.chatThreadId ? String(conversation.chatThreadId) : null,
+      chatThreadId: conversation.chatThreadId
+        ? String(conversation.chatThreadId)
+        : null,
       status: "closed",
       alreadyClosed: true,
       message: "Phiên hỗ trợ đã ở trạng thái đã xử lý.",
     };
   }
 
+  const note = sanitizeNote(input?.resolutionNote);
   const now = new Date();
-  conversation.status = "closed";
-  conversation.metadata = {
-    ...(conversation.metadata || {}),
-    handoffResolvedAt: now.toISOString(),
-    handoffResolvedBy: String(user.id || user._id),
-    ...(note ? { handoffResolutionNote: note } : {}),
+  const content = note
+    ? `${CLOSURE_MESSAGE}\nGhi chú: ${note}`
+    : CLOSURE_MESSAGE;
+  const closureMessage = {
+    senderRole: "system",
+    senderName: "Hệ thống",
+    messageType: "text",
+    content,
+    createdAt: now,
   };
-  await conversation.save();
 
-  let closureMessage = null;
-  if (thread && thread.status !== "closed") {
-    const content = note ? `${CLOSURE_MESSAGE}\nGhi chú: ${note}` : CLOSURE_MESSAGE;
-    closureMessage = {
-      senderRole: "system",
-      senderName: "Hệ thống",
-      messageType: "text",
-      content,
-      createdAt: now,
-    };
-    thread.messages.push(closureMessage);
-    thread.status = "closed";
-    thread.lastMessageAt = now;
-    thread.lastMessagePreview = preview(content, 140);
-    await thread.save();
+  const session = await mongoose.startSession();
+  let threadWasClosed = threadClosed;
+  try {
+    await session.withTransaction(async () => {
+      const currentConversation = await loadConversation({
+        conversationObjectId: conversation._id,
+        threadObjectId: null,
+        session,
+      });
+      if (
+        !currentConversation ||
+        !["handoff_requested", "closed"].includes(
+          String(currentConversation.status || ""),
+        ) ||
+        String(currentConversation.chatThreadId || "") !==
+          String(conversation.chatThreadId || "")
+      ) {
+        const err = new Error("HANDOFF_STATE_CHANGED");
+        err.code = "HANDOFF_STATE_CHANGED";
+        throw err;
+      }
+
+      if (thread) {
+        const threadUpdate = await ChatThread.updateOne(
+          {
+            _id: thread._id,
+            restaurantId: conversation.restaurantId,
+            status: { $ne: "closed" },
+          },
+          {
+            $set: {
+              status: "closed",
+              lastMessageAt: now,
+              lastMessagePreview: preview(content, 140),
+            },
+            $push: { messages: closureMessage },
+          },
+          { session },
+        );
+        threadWasClosed = Number(threadUpdate?.modifiedCount || 0) === 0;
+      }
+
+      await AiChatConversation.updateOne(
+        {
+          _id: conversation._id,
+          status: { $in: ["handoff_requested", "closed"] },
+          chatThreadId: conversation.chatThreadId || null,
+        },
+        {
+          $set: {
+            status: "closed",
+            metadata: {
+              ...(currentConversation.metadata || {}),
+              handoffResolvedAt: now.toISOString(),
+              handoffResolvedBy: String(user.id || user._id),
+              ...(note ? { handoffResolutionNote: note } : {}),
+            },
+          },
+        },
+        { session },
+      );
+    });
+  } finally {
+    await session.endSession();
   }
 
   if (io) {
@@ -139,7 +232,7 @@ export async function resolveRestaurantChatbotHandoff({ input, user, ctx, io } =
       });
 
       if (thread) {
-        if (closureMessage) {
+        if (!threadWasClosed) {
           io.to(`chat_thread_${thread._id}`).emit("chatMessageCreated", {
             threadId: String(thread._id),
             restaurantId: String(thread.restaurantId || ""),
@@ -148,22 +241,24 @@ export async function resolveRestaurantChatbotHandoff({ input, user, ctx, io } =
         }
         io.to(`restaurant_${thread.restaurantId}`).emit("threadUpdated", {
           threadId: String(thread._id),
-          lastMessagePreview: thread.lastMessagePreview,
-          lastMessageAt: thread.lastMessageAt,
+          lastMessagePreview: preview(content, 140),
+          lastMessageAt: now,
           status: "closed",
         });
       }
     } catch {
-      // best effort realtime
+      // Persisted state is authoritative; realtime delivery is best effort.
     }
   }
 
   return {
     ok: true,
     conversationId: String(conversation._id),
-    chatThreadId: conversation.chatThreadId ? String(conversation.chatThreadId) : null,
+    chatThreadId: conversation.chatThreadId
+      ? String(conversation.chatThreadId)
+      : null,
     status: "closed",
-    alreadyClosed: false,
+    alreadyClosed: convoClosed && threadWasClosed,
     message: "Đã đánh dấu phiên hỗ trợ là đã xử lý.",
   };
 }
