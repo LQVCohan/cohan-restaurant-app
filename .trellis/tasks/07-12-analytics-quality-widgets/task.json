@@ -1,7 +1,7 @@
 {
   "id": "07-12-analytics-quality-widgets",
   "title": "Polish analytics occupancy and staff widgets",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-ui-fix",
   "scope": [
     "src/components/Dashboard_Manager/Analyst/components/SmartOccupancyHeatmap.jsx",
@@ -11,8 +11,25 @@
     "src/components/Dashboard_Manager/Analyst/components/AnalystQualityWidgets.test.jsx"
   ],
   "createdAt": "2026-07-12",
-  "completedAt": null,
+  "completedAt": "2026-07-12",
   "branch": "main",
   "base_branch": "main",
-  "notes": "Preserve managerDashboard schema, analytics resolver output, useAnalyst restaurant scoping and performance formulas. Fix only widget layout, accessibility and empty/filter states without dependencies."
+  "implementationCommit": "921a4ca6275e573ae56133f99154ce41714b7ba4",
+  "validation": {
+    "completed": [
+      "traced analytics ManagerDashboard schema/resolvers through useAnalyst to both widgets",
+      "re-fetched and reviewed every changed runtime and test file on main",
+      "removed hard-coded seven-hour heatmap columns and legacy unused widget styles",
+      "added focused regression coverage for one-hour grids, compact empty states, filter emptiness and efficiency clamping"
+    ],
+    "notRun": [
+      "npx vitest run src/components/Dashboard_Manager/Analyst/components/AnalystQualityWidgets.test.jsx",
+      "npm run build",
+      "browser review at 375, 768, 1024 and 1440 px"
+    ],
+    "notes": [
+      "GitHub connector does not provide a runnable repository checkout in this session.",
+      "No GraphQL schema, resolver, permission, restaurant-scope or analytics formula was changed."
+    ]
+  }
 }
