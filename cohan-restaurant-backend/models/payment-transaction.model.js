@@ -24,6 +24,8 @@ const TransactionSchema = BaseSchemaModel(
     },
     txnRef: { type: String }, // Mã giao dịch từ bên thứ 3 (VD: VNPay)
     externalRef: { type: String },
+    note: String,
+    createdBy: { type: Types.ObjectId, ref: "User" },
     refundedAmount: { type: Number, default: 0 },
     refundStatus: { type: String, enum: ["none", "partial_refunded", "refunded"], default: "none" },
     refundIds: [{ type: Types.ObjectId, ref: "PaymentRefund" }],
