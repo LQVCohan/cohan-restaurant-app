@@ -7,25 +7,40 @@ afterEach(() => {
 });
 
 describe("apiBaseUrl", () => {
-  it("derives from graphql url cases", async () => {
+  it("derives GraphQL and Fastify REST URLs from configured backends", async () => {
     vi.stubEnv("VITE_API_URL", "http://localhost:4000/graphql");
     let mod = await import("./apiBaseUrl");
-    expect(mod.getRefreshUrl()).toBe("http://localhost:4000/api/auth/refresh");
+    expect(mod.getRefreshUrl()).toBe(
+      "http://localhost:4000/api/auth/refresh",
+    );
+    expect(mod.toBackendRootUrl("/table-3d-ai/generate")).toBe(
+      "http://localhost:4000/api/table-3d-ai/generate",
+    );
 
     vi.resetModules();
     vi.stubEnv("VITE_API_URL", "https://api.example.com/graphql");
     mod = await import("./apiBaseUrl");
-    expect(mod.getRefreshUrl()).toBe("https://api.example.com/api/auth/refresh");
+    expect(mod.getRefreshUrl()).toBe(
+      "https://api.example.com/api/auth/refresh",
+    );
+    expect(mod.toBackendRootUrl("/table-3d-assets/upload")).toBe(
+      "https://api.example.com/api/table-3d-assets/upload",
+    );
 
     vi.resetModules();
     vi.stubEnv("VITE_API_URL", "/graphql");
     mod = await import("./apiBaseUrl");
     expect(mod.getRefreshUrl()).toBe("/api/auth/refresh");
+    expect(mod.toBackendRootUrl("/table-3d-ai/generate")).toBe(
+      "/api/table-3d-ai/generate",
+    );
 
     vi.resetModules();
     vi.unstubAllEnvs();
     mod = await import("./apiBaseUrl");
-    expect(mod.getRefreshUrl()).toBe("http://localhost:4000/api/auth/refresh");
+    expect(mod.getRefreshUrl()).toBe(
+      "http://localhost:4000/api/auth/refresh",
+    );
   });
 
   it("uses the same-origin proxy when local browser and API hostnames differ", async () => {
@@ -36,6 +51,9 @@ describe("apiBaseUrl", () => {
 
     expect(mod.getGraphqlUrl()).toBe("/graphql");
     expect(mod.getRefreshUrl()).toBe("/api/auth/refresh");
+    expect(mod.toBackendRootUrl("/table-3d-ai/generate")).toBe(
+      "/api/table-3d-ai/generate",
+    );
     expect(
       mod.normalizeLocalDevGraphqlUrl(
         "https://api.example.com/graphql",
