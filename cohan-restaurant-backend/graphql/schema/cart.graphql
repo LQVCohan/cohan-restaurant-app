@@ -69,6 +69,7 @@ type MenuAvailabilityWatch {
   servingKey: String
   desiredQuantity: Int
   userId: ID
+  contactEmail: String
   tableId: ID
   tableCode: String
   source: String
@@ -91,6 +92,26 @@ type RegisterMenuAvailabilityWatchPayload {
 type CancelMenuAvailabilityWatchPayload {
   ok: Boolean!
   watch: MenuAvailabilityWatch
+}
+
+type TableAvailabilityWatch {
+  id: ID!
+  restaurantId: ID!
+  tableId: ID!
+  tableCode: String!
+  userId: ID
+  contactEmail: String!
+  status: String!
+  notifiedAt: DateTime
+  expiresAt: DateTime!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type RegisterTableAvailabilityWatchPayload {
+  watch: TableAvailabilityWatch
+  alreadyAvailable: Boolean!
+  message: String!
 }
 
 # --------------------------
@@ -140,6 +161,7 @@ input RegisterMenuAvailabilityWatchInput {
   servingKey: String
   desiredQuantity: Int
   userId: ID
+  contactEmail: String
   tableId: ID
   tableCode: String
   source: String
@@ -151,6 +173,13 @@ input RegisterMenuAvailabilityWatchInput {
 
 input CancelMenuAvailabilityWatchInput {
   watchId: ID!
+}
+
+input RegisterTableAvailabilityWatchInput {
+  restaurantId: ID!
+  tableId: ID!
+  contactEmail: String!
+  expiresAt: DateTime
 }
 
 # --------------------------
@@ -175,6 +204,7 @@ extend type Mutation {
   releaseMyCartHolds(input: ReleaseMyCartHoldsInput): Boolean!
   registerMenuAvailabilityWatch(input: RegisterMenuAvailabilityWatchInput!): RegisterMenuAvailabilityWatchPayload!
   cancelMenuAvailabilityWatch(input: CancelMenuAvailabilityWatchInput!): CancelMenuAvailabilityWatchPayload!
+  registerTableAvailabilityWatch(input: RegisterTableAvailabilityWatchInput!): RegisterTableAvailabilityWatchPayload!
 }
 
 type MenuItemLiveState {
