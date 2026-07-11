@@ -20,11 +20,12 @@ The capture capability exists, but the presentation layer exposes the raw browse
 
 A compact guided camera checklist using the existing warm-neutral table-builder palette: each step has a camera frame, short angle instruction over the frame, one clear camera button, preview confirmation, and a completed state.
 
-## Files changing
+## Files changed
 
-- `src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.jsx`: render reusable guided capture cards around the existing native rear-camera inputs and show object-URL previews.
-- `src/styles/CustomTableBuilderResponsiveFix.css`: style camera frames, overlays, capture actions, completion states and mobile layout.
-- `src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx`: verify five real camera controls, guidance text, capture attributes and unchanged submission order.
+- `src/utils/installGuidedAiCaptureCards.js`: enhance the five existing rear-camera inputs with real camera buttons, in-frame instructions, preview URLs, retake wording and completion status while preserving React state and events.
+- `src/styles/GuidedAiCaptureCards.css`: style the camera frames, composition target, overlays, mobile actions and responsive one-column layout.
+- `src/utils/installGuidedAiCaptureCards.test.js`: verify five frames, visible guidance, camera activation and captured preview state.
+- `src/main.jsx`: install the enhancement through the repository's existing global enhancement layer and load its scoped stylesheet after the table-builder repair.
 
 ## Acceptance criteria
 
@@ -32,7 +33,7 @@ A compact guided camera checklist using the existing warm-neutral table-builder 
 - Each card shows its angle name and a concise direction inside the image frame before capture.
 - Each card has an explicit `Mở camera` action that triggers its native input with `capture="environment"`.
 - After selecting or taking an image, the frame shows a preview and the action changes to `Chụp lại`.
-- The completed state is communicated by text/icon, not color alone.
+- The completed state is communicated by text and a marker, not color alone.
 - The final AI request still sends exactly five images in `front`, `left`, `right`, `rear`, `top` order.
 - Mobile controls remain at least 44 px and do not overflow at 390x844 or 430x932.
 - No new dependency, backend, GraphQL, provider or storage change is introduced.
@@ -46,9 +47,9 @@ A compact guided camera checklist using the existing warm-neutral table-builder 
 ## Validation plan
 
 ```bash
-npx vitest run src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx
+npx vitest run src/utils/installGuidedAiCaptureCards.test.js src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx
 npm run check:conflicts
 npm run build
 ```
 
-Manual responsive checks remain required at 390x844 and 430x932 when a browser/device session is available.
+The focused test, build, conflict check and manual 390x844/430x932 phone validation were not run because the GitHub connector does not provide a checkout, installed dependencies or a browser/device session.
