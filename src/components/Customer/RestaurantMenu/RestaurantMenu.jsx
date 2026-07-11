@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Search, X } from "lucide-react";
+import { CircleAlert, Search, ShoppingCart, UtensilsCrossed, X } from "lucide-react";
 import "./RestaurantMenu.scss";
 import Cart from "../../Customer/Homepage_Client/components/Cart";
 import { useCart } from "../../../context/CartProvider";
@@ -672,10 +672,11 @@ const RestaurantMenu = () => {
                   : `${filteredRestaurants.length} nhà hàng phù hợp`}
               </strong>
             </div>
-            <label className="restaurant-discovery-search">
+            <div className="restaurant-discovery-search" role="search">
               <Search size={19} aria-hidden="true" />
               <input
                 type="search"
+                aria-label="Tìm nhà hàng theo tên, phong cách hoặc khu vực"
                 value={restaurantSearch}
                 onChange={(event) => setRestaurantSearch(event.target.value)}
                 placeholder="Tìm tên, phong cách hoặc khu vực…"
@@ -690,21 +691,21 @@ const RestaurantMenu = () => {
                   <X size={18} aria-hidden="true" />
                 </button>
               ) : null}
-            </label>
+            </div>
           </section>
 
           <section
-          className="grid-container res-grid"
-          aria-busy={restaurantsLoading}
-          aria-live="polite"
-          aria-label="Danh sách nhà hàng để đặt món"
-        >
+            className="grid-container res-grid"
+            aria-busy={restaurantsLoading}
+            aria-live="polite"
+            aria-label="Danh sách nhà hàng để đặt món"
+          >
           {restaurantsLoading ? (
             renderRestaurantSkeletons()
           ) : restaurantsError ? (
             <div className="restaurant-state restaurant-state--error" role="alert">
               <span className="restaurant-state__icon" aria-hidden="true">
-                !
+                <CircleAlert size={22} />
               </span>
               <h2>Không thể tải danh sách nhà hàng</h2>
               <p>Vui lòng kiểm tra kết nối rồi thử lại.</p>
@@ -715,7 +716,7 @@ const RestaurantMenu = () => {
           ) : normalizedRestaurants.length === 0 ? (
             <div className="restaurant-state" role="status">
               <span className="restaurant-state__icon" aria-hidden="true">
-                🍽️
+                <UtensilsCrossed size={22} />
               </span>
               <h2>Chưa có nhà hàng công khai</h2>
               <p>Hãy quay lại sau để xem thực đơn mới.</p>
@@ -770,7 +771,7 @@ const RestaurantMenu = () => {
           )}`}
         >
           <span className="cart-icon" aria-hidden="true">
-            🛒
+            <ShoppingCart size={21} />
           </span>
           <span className="cart-count">{displayCartCount}</span>
           <span className="cart-total">
