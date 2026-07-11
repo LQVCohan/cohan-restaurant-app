@@ -1,5 +1,10 @@
 import mongoose from "mongoose";
 import { MenuItem } from "../../models/index.js";
+import "./orderableSupplyOrderModelSupport.js";
+import {
+  getOrderableSupplyCatalogItem,
+  isSupplyCatalogItem,
+} from "./orderableSupplyCatalog.service.js";
 import {
   OrderItemHydrationError,
   hydrateCheckoutOrderItems as hydrateCoreCheckoutOrderItems,
@@ -16,6 +21,12 @@ const toObjectId = (value) =>
 
 const resolveMenuItemId = (item = {}) =>
   item.dishId || item.menuItemId || item.menuId || item.id || item._id || null;
+
+const resolveSupplyId = (item = {}) =>
+  item.supplyId ||
+  (String(item.itemType || "").toUpperCase() === "SUPPLY"
+    ? item.dishId || item.menuItemId || item.id || item._id
+    : null);
 
 const invalidItems = (message) => {
   throw new OrderItemHydrationError(message, "INVALID_ITEMS");
@@ -102,6 +113,75 @@ function assertTrustedHydrationResult(inputItems, hydratedItems) {
   });
 }
 
+async function hydrateSupplyOrderItem({ restaurantId, item, session }) {
+  const supplyId = resolveSupplyId(item);
+  if (!toObjectId(supplyId)) invalidItems("Invalid supply id");
+
+  if (Array.isArray(item?.selectedModifiers) && item.selectedModifiers.length) {
+    invalidItems("Supply items do not support modifiers");
+  }
+
+  const catalogItem = await getOrderableSupplyCatalogItem({
+    restaurantId,
+    supplyId,
+    includeOutOfStock: true,
+    session,
+  });
+  if (!catalogItem) invalidItems("Supply is not available for this restaurant");
+  if (catalogItem.status !== "available") {
+    throw new OrderItemHydrationError(
+      `${catalogItem.name || "Supply"} đã hết hàng.`,
+      "OUT_OF_STOCK",
+    );
+  }
+
+  const quantity = Number(item?.quantity || 0);
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    invalidItems("Supply quantity must be greater than zero");
+  }
+  if (quantity > Number(catalogItem.maxAvailable || 0)) {
+    throw new OrderItemHydrationError(
+      `${catalogItem.name || "Supply"} không đủ tồn kho.`,
+      "OUT_OF_STOCK",
+    );
+  }
+
+  const variant = catalogItem.servingVariants[0];
+  const unitPrice = Number(variant.price || catalogItem.basePrice || 0);
+  return {
+    ...item,
+    itemType: "SUPPLY",
+    supplyId: toObjectId(catalogItem.supplyId),
+    dishId: null,
+    menuId: null,
+    categoryId: null,
+    prepStation: "bar",
+    name: catalogItem.name,
+    unit: variant.sellUnit || "unit",
+    image: catalogItem.thumbImage || null,
+    servingKey: variant.key || "unit",
+    servingVariant: {
+      key: variant.key || "unit",
+      name: variant.name || catalogItem.servingUnit || "Đơn vị",
+      mode: "PORTION",
+      price: unitPrice,
+      sellQty: 1,
+      sellUnit: variant.sellUnit || "unit",
+    },
+    quantity,
+    weightGrams: null,
+    modifiers: [],
+    selectedModifiers: [],
+    ingredientsSnapshot: [],
+    baseUnitPrice: unitPrice,
+    unitPrice,
+    modifiersPricePerUnit: 0,
+    modifiersPrice: 0,
+    lineSubtotal: Math.round(unitPrice * quantity),
+    status: String(item?.status || "pending"),
+  };
+}
+
 export async function hydrateCheckoutOrderItems({
   restaurantId,
   items = [],
@@ -111,21 +191,42 @@ export async function hydrateCheckoutOrderItems({
     invalidItems("No checkout items to hydrate");
   }
 
-  const menuItemById = await loadAvailableMenuItems({
-    restaurantId,
-    items,
-    session,
-  });
+  const indexedItems = items.map((item, index) => ({ item, index }));
+  const supplyEntries = indexedItems.filter(({ item }) => isSupplyCatalogItem(item));
+  const menuEntries = indexedItems.filter(({ item }) => !isSupplyCatalogItem(item));
+  const result = new Array(items.length);
 
-  const hydratedItems = await hydrateCoreCheckoutOrderItems({
-    restaurantId,
-    items,
-    session,
-  });
+  if (menuEntries.length) {
+    const menuInputItems = menuEntries.map(({ item }) => item);
+    const menuItemById = await loadAvailableMenuItems({
+      restaurantId,
+      items: menuInputItems,
+      session,
+    });
+    const hydratedMenuItems = await hydrateCoreCheckoutOrderItems({
+      restaurantId,
+      items: menuInputItems,
+      session,
+    });
+    applyPrepStationSnapshots(hydratedMenuItems, menuItemById);
+    menuEntries.forEach(({ index }, entryIndex) => {
+      result[index] = hydratedMenuItems[entryIndex];
+    });
+  }
 
-  applyPrepStationSnapshots(hydratedItems, menuItemById);
-  assertTrustedHydrationResult(items, hydratedItems);
-  return hydratedItems;
+  if (supplyEntries.length) {
+    const hydratedSupplies = await Promise.all(
+      supplyEntries.map(({ item }) =>
+        hydrateSupplyOrderItem({ restaurantId, item, session }),
+      ),
+    );
+    supplyEntries.forEach(({ index }, entryIndex) => {
+      result[index] = hydratedSupplies[entryIndex];
+    });
+  }
+
+  assertTrustedHydrationResult(items, result);
+  return result;
 }
 
 export async function hydrateOrderItems(args = {}) {
