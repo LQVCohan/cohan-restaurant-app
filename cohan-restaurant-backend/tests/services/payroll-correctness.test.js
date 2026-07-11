@@ -13,6 +13,9 @@ const modelMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", () => ({
+  getStaffMembershipRestaurantFilter: vi.fn(async () => ({})),
+}));
 
 describe("Payroll runtime correctness", () => {
   beforeEach(() => {
@@ -326,6 +329,99 @@ describe("Payroll runtime correctness", () => {
         $cond: ["$includeInPayroll", { $ifNull: ["$earlyLeaveMinutes", 0] }, 0],
       },
     });
+  });
+  it("calculates hourly, shift, and commission payroll using configured rates", async () => {
+    const { buildPayrollItemsForRange } =
+      await import("../../src/services/payroll/payrollRuntime.service.js");
+    const range = {
+      start: new Date("2026-04-01"),
+      end: new Date("2026-04-30"),
+      restaurantId: "507f1f77bcf86cd799439011",
+    };
+    const staffQuery = (staff) => ({
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([staff]),
+    });
+    const aggregate = (overrides = {}) => ({
+      _id: "s1",
+      totalHours: 8,
+      totalWage: 0,
+      totalAmount: 0,
+      workedDateKeys: ["2026-04-01"],
+      ...overrides,
+    });
+
+    modelMocks.Staff.find.mockReturnValue(
+      staffQuery({
+        _id: "s1",
+        fullName: "Hourly",
+        employeeCode: "H1",
+        baseSalary: 0,
+        salaryType: "hourly",
+        hourlyRate: 50000,
+      }),
+    );
+    modelMocks.Timesheet.aggregate.mockResolvedValue([aggregate()]);
+    let [item] = await buildPayrollItemsForRange(range);
+    expect(item.breakdown.salaryType).toBe("hourly");
+    expect(item.breakdown.regularHours).toBe(8);
+    expect(item.breakdown.grossIncome).toBe(400000);
+
+    modelMocks.Staff.find.mockReturnValue(
+      staffQuery({
+        _id: "s1",
+        fullName: "Shift",
+        employeeCode: "S1",
+        baseSalary: 0,
+        salaryType: "shift",
+        hourlyRate: 250000,
+      }),
+    );
+    modelMocks.Shift.find.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([
+        { employeeId: "s1", startTime: new Date("2026-04-01T01:00:00Z") },
+        { employeeId: "s1", startTime: new Date("2026-04-02T01:00:00Z") },
+      ]),
+    });
+    modelMocks.Timesheet.aggregate.mockResolvedValue([aggregate({ totalHours: 0 })]);
+    [item] = await buildPayrollItemsForRange(range);
+    expect(item.breakdown.salaryType).toBe("shift");
+    expect(item.breakdown.scheduleShiftCount).toBe(2);
+    expect(item.breakdown.grossIncome).toBe(500000);
+
+    modelMocks.Staff.find.mockReturnValue(
+      staffQuery({
+        _id: "s1",
+        fullName: "Commission",
+        employeeCode: "C1",
+        baseSalary: 0,
+        salaryType: "commission",
+        commissionRate: 5,
+      }),
+    );
+    modelMocks.Timesheet.aggregate.mockResolvedValue([
+      aggregate({ totalHours: 0, totalAmount: 10000000 }),
+    ]);
+    [item] = await buildPayrollItemsForRange(range);
+    expect(item.breakdown.salaryType).toBe("commission");
+    expect(item.breakdown.commissionableAmount).toBe(10000000);
+    expect(item.breakdown.grossIncome).toBe(500000);
+
+    modelMocks.Staff.find.mockReturnValue(
+      staffQuery({
+        _id: "s1",
+        fullName: "Missing commission rate",
+        employeeCode: "C2",
+        baseSalary: 0,
+        salaryType: "commission",
+      }),
+    );
+    [item] = await buildPayrollItemsForRange(range);
+    expect(item.breakdown.salaryConfigurationIssue).toBe(
+      "COMMISSION_RATE_REQUIRED",
+    );
+    expect(item.breakdown.grossIncome).toBe(0);
   });
 });
 
