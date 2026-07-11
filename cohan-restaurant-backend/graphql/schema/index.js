@@ -124,6 +124,22 @@ const stripDomainOwnedStaffCompatibilityFields = (source) => {
 const readSchemaFile = (fileName) => {
   const source = fs.readFileSync(path.join(schemaDir, fileName), "utf8");
 
+  if (fileName === "payments.graphql") {
+    return source
+      .replace(
+        "  e_wallet\n  other",
+        "  e_wallet\n  momo\n  vnpay\n  other",
+      )
+      .replace(
+        "  orderId: ID!\n  customerId:",
+        "  orderId: ID\n  customerId:",
+      )
+      .replace(
+        "type PaymentTransaction {\n  id: ID!\n  orderId: ID!",
+        "type PaymentTransaction {\n  id: ID!\n  orderId: ID",
+      );
+  }
+
   if (fileName === "wallet.graphql") {
     return source.replace(
       "myWalletTransactions(input: WalletTransactionFilterInput): [WalletTransaction!]!",
