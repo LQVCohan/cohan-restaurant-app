@@ -53,9 +53,17 @@ async function requireTableListAccess(ctx, restaurantId) {
     ) &&
     typeof authorizationService.requireAnyRestaurantPermission === "function"
   ) {
-    return authorizationService.requireAnyRestaurantPermission(ctx, restaurantId, TABLE_LIST_READ_PERMISSIONS);
+    return authorizationService.requireAnyRestaurantPermission(
+      ctx,
+      restaurantId,
+      TABLE_LIST_READ_PERMISSIONS,
+    );
   }
-  return authorizationService.requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.TABLE_READ);
+  return authorizationService.requireRestaurantPermission(
+    ctx,
+    restaurantId,
+    PERMISSIONS.TABLE_READ,
+  );
 }
 
 async function cleanupTableLegacyState(restaurantId) {
@@ -78,7 +86,9 @@ async function cleanupTableLegacyState(restaurantId) {
 
 async function requirePublicRestaurant(restaurantId) {
   if (!mongoose.isValidObjectId(restaurantId)) {
-    throw new GraphQLError("Invalid restaurantId", { extensions: { code: "BAD_USER_INPUT" } });
+    throw new GraphQLError("Invalid restaurantId", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
   }
   const Restaurant = await getRestaurantModel();
   const restaurant = await Restaurant.findOne({
@@ -87,7 +97,9 @@ async function requirePublicRestaurant(restaurantId) {
     publicationStatus: "published",
   }).lean();
   if (!restaurant) {
-    throw new GraphQLError("Restaurant is not available", { extensions: { code: "NOT_FOUND" } });
+    throw new GraphQLError("Restaurant is not available", {
+      extensions: { code: "NOT_FOUND" },
+    });
   }
   const availability = computeRestaurantAvailability(restaurant || {});
   if (availability.canView === false) {
@@ -98,7 +110,16 @@ async function requirePublicRestaurant(restaurantId) {
   return restaurant;
 }
 
-function buildTableFilter({ restaurantId, floorId, status, type, search }) {
+const escapeRegex = (value) =>
+  String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+export const normalizeTableLimit = (limit, fallback = 200) => {
+  const parsed = Number(limit);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(Math.max(Math.trunc(parsed), 1), 500);
+};
+
+export function buildTableFilter({ restaurantId, floorId, status, type, search }) {
   // Bàn vật lý đang nằm trong một bàn ghép được giữ trong DB để có thể tách lại,
   // nhưng không hiển thị đồng thời với bàn ghép.
   const q = { restaurantId, mergedIntoTableId: null };
@@ -106,11 +127,11 @@ function buildTableFilter({ restaurantId, floorId, status, type, search }) {
   if (status) q.status = status;
   if (type) q.type = type;
   if (search?.trim()) {
-    const keyword = search.trim();
+    const literalSearch = new RegExp(escapeRegex(search.trim()), "i");
     q.$or = [
-      { code: new RegExp(keyword, "i") },
-      { notes: new RegExp(keyword, "i") },
-      { tags: { $in: [new RegExp(keyword, "i")] } },
+      { code: literalSearch },
+      { notes: literalSearch },
+      { tags: { $in: [literalSearch] } },
     ];
   }
   return q;
@@ -130,7 +151,7 @@ export default {
     return Table.find(q)
       .select(TABLE_SELECT)
       .sort({ floorLevel: 1, code: 1 })
-      .limit(Math.min(limit ?? 200, 500))
+      .limit(normalizeTableLimit(limit))
       .lean({ virtuals: true });
   },
 
@@ -146,7 +167,7 @@ export default {
     return Table.find(q)
       .select(TABLE_SELECT)
       .sort({ floorLevel: 1, code: 1 })
-      .limit(Math.min(limit ?? 200, 500))
+      .limit(normalizeTableLimit(limit))
       .lean({ virtuals: true });
   },
 
@@ -154,7 +175,8 @@ export default {
     if (
       !mongoose.isValidObjectId(restaurantId) ||
       !mongoose.isValidObjectId(floorId)
-    ) return null;
+    )
+      return null;
     await requireTableListAccess(ctx, restaurantId);
     await cleanupTableLegacyState(restaurantId);
     return Table.findOne({
