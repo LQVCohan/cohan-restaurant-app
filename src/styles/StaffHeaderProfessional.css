@@ -1,0 +1,257 @@
+.staff-shell.staff-shell .staff-shell__header {
+  border-bottom-color: rgba(76, 96, 80, 0.16);
+  background: rgba(248, 250, 246, 0.97);
+  box-shadow: 0 8px 24px rgba(38, 54, 39, 0.065);
+}
+
+.staff-shell.staff-shell .staff-shell__inner {
+  gap: 10px;
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+
+.staff-shell.staff-shell .staff-shell__topbar {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 350px);
+  gap: 24px;
+}
+
+.staff-shell.staff-shell .staff-shell__heading {
+  max-width: 760px;
+  padding-left: 2px;
+}
+
+.staff-shell.staff-shell .staff-shell__eyebrow {
+  margin-bottom: 2px;
+  font-size: 0.68rem;
+  letter-spacing: 0.075em;
+}
+
+.staff-shell.staff-shell .staff-shell__title {
+  font-size: clamp(1.24rem, 1.65vw, 1.48rem);
+  line-height: 1.08;
+}
+
+.staff-shell.staff-shell .staff-shell__subtitle {
+  margin-top: 3px;
+  font-size: 0.8rem;
+  line-height: 1.38;
+}
+
+.staff-shell.staff-shell .staff-shell__account-actions {
+  gap: 8px;
+}
+
+.staff-shell.staff-shell .staff-shell__identity {
+  flex: 0 1 320px;
+  padding: 8px 10px;
+  border-color: rgba(103, 119, 92, 0.17);
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(38, 54, 39, 0.055);
+}
+
+.staff-shell.staff-shell .staff-shell__identity-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+.staff-shell.staff-shell .staff-shell__nav {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 18px;
+  padding: 9px 10px;
+  border: 1px solid rgba(103, 119, 92, 0.16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.staff-shell.staff-shell .staff-shell__nav-group {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.staff-shell.staff-shell .staff-shell__nav-group:first-child {
+  grid-column: 1 / -1;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(103, 119, 92, 0.12);
+}
+
+.staff-shell.staff-shell .staff-shell__nav-group:nth-child(3) {
+  justify-self: end;
+  padding-left: 18px;
+  border-left: 1px solid rgba(103, 119, 92, 0.14);
+}
+
+.staff-shell.staff-shell .staff-shell__nav-group > span {
+  flex: 0 0 auto;
+  min-width: 76px;
+  padding: 0 10px 0 4px;
+  border-right: 1px solid rgba(103, 119, 92, 0.14);
+  color: #718077;
+  font-size: 0.64rem;
+  font-weight: 850;
+  line-height: 34px;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.staff-shell.staff-shell .staff-shell__nav-link {
+  min-height: 34px;
+  padding: 0 11px;
+  border-color: transparent;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+.staff-shell.staff-shell .staff-shell__nav-link:hover {
+  border-color: rgba(31, 111, 74, 0.18);
+  background: #edf5ef;
+  box-shadow: none;
+  transform: none;
+}
+
+.staff-shell.staff-shell .staff-shell__nav-link.is-active {
+  border-color: #1f6f4a;
+  background: #1f6f4a;
+  color: #fff;
+  box-shadow: 0 7px 16px rgba(31, 111, 74, 0.18);
+}
+
+.staff-shell.staff-shell .staff-shell__nav-link.is-primary:not(.is-active) {
+  border-color: transparent;
+  background: transparent;
+  color: #364339;
+  box-shadow: none;
+}
+
+.staff-shell.staff-shell .staff-shell__nav-link.is-primary:not(.is-active):hover {
+  border-color: rgba(31, 111, 74, 0.18);
+  background: #edf5ef;
+  color: #165c3c;
+}
+
+@media (min-width: 761px) and (max-width: 1020px) {
+  .staff-shell.staff-shell .staff-shell__topbar {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+    gap: 16px;
+  }
+
+  .staff-shell.staff-shell .staff-shell__nav {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .staff-shell.staff-shell .staff-shell__nav-group {
+    width: 100%;
+  }
+
+  .staff-shell.staff-shell .staff-shell__nav-group:first-child,
+  .staff-shell.staff-shell .staff-shell__nav-group:nth-child(2) {
+    grid-column: 1;
+    padding-bottom: 7px;
+    border-bottom: 1px solid rgba(103, 119, 92, 0.12);
+  }
+
+  .staff-shell.staff-shell .staff-shell__nav-group:nth-child(3) {
+    justify-self: stretch;
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .staff-shell.staff-shell .staff-shell__inner {
+    gap: 9px;
+  }
+
+  .staff-shell.staff-shell .staff-shell__topbar {
+    grid-template-columns: minmax(0, 1fr) 44px;
+    gap: 9px;
+  }
+
+  .staff-shell.staff-shell .staff-shell__title {
+    font-size: 1.2rem;
+  }
+
+  .staff-shell.staff-shell .staff-shell__subtitle {
+    font-size: 0.78rem;
+  }
+
+  .staff-shell.staff-shell .staff-shell__identity {
+    flex: 1;
+  }
+
+  .staff-shell.staff-shell .staff-shell__nav {
+    display: none;
+    max-height: min(62dvh, 500px);
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 11px;
+    overflow-y: auto;
+    border-radius: 17px;
+    background: rgba(255, 255, 255, 0.99);
+    box-shadow: 0 18px 42px rgba(31, 42, 36, 0.15);
+  }
+
+  .staff-shell.staff-shell .staff-shell__nav.is-open {
+    display: grid;
+  }
+
+  .staff-shell.staff-shell .staff-shell__nav-group,
+  .staff-shell.staff-shell .staff-shell__nav-group:nth-child(3) {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    justify-self: stretch;
+    padding: 0;
+    border-left: 0;
+  }
+
+  .staff-shell.staff-shell .staff-shell__nav-group:first-child,
+  .staff-shell.staff-shell .staff-shell__nav-group:nth-child(2) {
+    grid-column: 1;
+    padding-bottom: 11px;
+    border-bottom: 1px solid rgba(103, 119, 92, 0.13);
+  }
+
+  .staff-shell.staff-shell .staff-shell__nav-group > span {
+    grid-column: 1 / -1;
+    min-width: 0;
+    padding: 0 2px 2px;
+    border-right: 0;
+    line-height: 1.2;
+  }
+
+  .staff-shell.staff-shell .staff-shell__nav-link,
+  .staff-shell.staff-shell .staff-shell__nav-link.is-primary:not(.is-active) {
+    width: 100%;
+    min-height: 44px;
+    justify-content: space-between;
+    padding: 0 12px;
+    border-color: rgba(103, 119, 92, 0.18);
+    border-radius: 12px;
+    background: #fff;
+    text-align: left;
+  }
+
+  .staff-shell.staff-shell .staff-shell__nav-link.is-active {
+    border-color: #1f6f4a;
+    background: #1f6f4a;
+    color: #fff;
+  }
+}
+
+@media (max-width: 430px) {
+  .staff-shell.staff-shell .staff-shell__nav-group,
+  .staff-shell.staff-shell .staff-shell__nav-group:nth-child(3) {
+    grid-template-columns: 1fr;
+  }
+}
