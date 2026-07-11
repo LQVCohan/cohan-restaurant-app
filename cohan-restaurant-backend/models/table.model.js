@@ -108,7 +108,7 @@ const TableSchema = BaseSchemaModel({
     ref: "Table",
     default: null,
   },
-  deposit: { type: Number, default: 1 },
+  deposit: { type: Number, default: 0 },
 
   viewLock: {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
