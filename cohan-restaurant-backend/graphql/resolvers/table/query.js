@@ -58,11 +58,22 @@ async function requireTableListAccess(ctx, restaurantId) {
   return authorizationService.requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.TABLE_READ);
 }
 
-async function cleanupExpiredViewLocks(restaurantId) {
-  const now = new Date();
-  const q = { "viewLock.expiresAt": { $lte: now } };
-  if (restaurantId && mongoose.isValidObjectId(restaurantId)) q.restaurantId = restaurantId;
-  await Table.updateMany(q, { $unset: { viewLock: 1 } }).catch(() => {});
+async function cleanupTableLegacyState(restaurantId) {
+  const scoped =
+    restaurantId && mongoose.isValidObjectId(restaurantId)
+      ? { restaurantId }
+      : {};
+  await Promise.all([
+    Table.updateMany(
+      { ...scoped, "viewLock.expiresAt": { $lte: new Date() } },
+      { $unset: { viewLock: 1 } },
+    ).catch(() => {}),
+    // ponytail: 1đ was the old "not configured" sentinel, never a real deposit.
+    Table.updateMany(
+      { ...scoped, deposit: 1 },
+      { $set: { deposit: 0 } },
+    ).catch(() => {}),
+  ]);
 }
 
 async function requirePublicRestaurant(restaurantId) {
@@ -113,7 +124,7 @@ export default {
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
     await requireTableListAccess(ctx, restaurantId);
-    await cleanupExpiredViewLocks(restaurantId);
+    await cleanupTableLegacyState(restaurantId);
     const q = buildTableFilter({ restaurantId, floorId, status, type, search });
 
     return Table.find(q)
@@ -128,7 +139,7 @@ export default {
     { restaurantId, floorId, status, type, limit },
   ) => {
     await requirePublicRestaurant(restaurantId);
-    await cleanupExpiredViewLocks(restaurantId);
+    await cleanupTableLegacyState(restaurantId);
     const q = buildTableFilter({ restaurantId, floorId, status, type });
     if (!status) q.status = { $ne: "offline" };
 
@@ -145,7 +156,7 @@ export default {
       !mongoose.isValidObjectId(floorId)
     ) return null;
     await requireTableListAccess(ctx, restaurantId);
-    await cleanupExpiredViewLocks(restaurantId);
+    await cleanupTableLegacyState(restaurantId);
     return Table.findOne({
       restaurantId,
       floorId,
