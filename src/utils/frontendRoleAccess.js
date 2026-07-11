@@ -82,6 +82,9 @@ const firstNormalized = (values = []) => {
   return null;
 };
 
+const getStaffDepartment = (user) =>
+  firstNormalized([user?.department, user?.role?.department]);
+
 const resolveServiceDepartmentRole = (user) => {
   if (
     hasPermission(user, "reservation.read") &&
@@ -102,10 +105,7 @@ const resolveServiceDepartmentRole = (user) => {
 };
 
 const resolveCustomStaffRole = (user) => {
-  const department = firstNormalized([
-    user?.department,
-    user?.role?.department,
-  ]);
+  const department = getStaffDepartment(user);
   if (department === "service") return resolveServiceDepartmentRole(user);
   return STAFF_DEPARTMENT_ROLE[department] || "staff";
 };
@@ -132,7 +132,10 @@ export const resolveUserRoleName = (userOrRole) => {
   }
 
   const userType = normalizeRoleName(userOrRole.userType);
-  if (parentRole === "staff" || userType === "staff") {
+  const department = getStaffDepartment(userOrRole);
+  const hasStaffDepartment =
+    department === "service" || Boolean(STAFF_DEPARTMENT_ROLE[department]);
+  if (parentRole === "staff" || userType === "staff" || hasStaffDepartment) {
     return resolveCustomStaffRole(userOrRole);
   }
   if (KNOWN_ROLE_NAMES.has(userType)) return userType;
