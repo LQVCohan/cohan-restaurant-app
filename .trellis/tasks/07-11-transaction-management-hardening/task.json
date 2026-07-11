@@ -1,0 +1,28 @@
+{
+  "id": "transaction-management-hardening",
+  "name": "transaction-management-hardening",
+  "title": "Audit and harden transaction management flows",
+  "description": "Trace and repair transaction journal, cashflow, refund, reconciliation, bank transaction, supplier payable, receivable and date-filter flows across persistence, GraphQL, Apollo and manager UI.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "manager-transactions",
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "cohan-restaurant-backend/models/cashflow.model.js",
+    "cohan-restaurant-backend/graphql/schema/payments.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/payment/types.js",
+    "cohan-restaurant-backend/graphql/resolvers/payment/mutation.js",
+    "src/hooks/useTransactions.js",
+    "src/components/Dashboard_Manager/Transactions/TransactionManagement.jsx",
+    "src/hooks/useTransactions.test.js",
+    "src/components/Dashboard_Manager/Transactions/TransactionManagement.test.jsx",
+    "cohan-restaurant-backend/tests/finance/refund-lifecycle.test.js",
+    "cohan-restaurant-backend/tests/finance/supplier-payable.test.js",
+    "cohan-restaurant-backend/tests/finance/reconciliation.test.js"
+  ]
+}
