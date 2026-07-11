@@ -1,0 +1,37 @@
+{
+  "id": "07-11-ai-chatbot-menu-selection-polish",
+  "name": "ai-chatbot-menu-selection-polish",
+  "title": "Nâng cấp giao diện chọn món trong AI chatbot",
+  "description": "Làm rõ luồng tùy chỉnh món trong chatbot, giảm nhiễu hội thoại và tối ưu responsive mà không thay đổi hợp đồng GraphQL hay nghiệp vụ giỏ hàng.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "ai-chatbot-customer-ui",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "src/styles/AiChatbotMenuSelectionPolish.css",
+    "src/main.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "Static review of selected menu item states and existing AiChatbotWidget tests",
+      "npm run build",
+      "Targeted AiChatbotWidget component tests",
+      "Responsive browser check at 390x844, 430x932 and desktop"
+    ],
+    "completed": [],
+    "notRun": []
+  },
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "taste-ui-redesign",
+      "ui-ux-pro-max"
+    ]
+  }
+}
