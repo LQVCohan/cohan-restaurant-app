@@ -2,7 +2,7 @@
 
 ## Current behavior and root cause
 
-`StaffLayout` renders a route title/description and `StaffPerformancePage` renders a second oversized hero for the same page. The first viewport then contains five tall KPI cards, timeline/incidents, full adjustment history, and the complete appeal form. Secondary actions occupy permanent space even when there are no incidents or adjustments.
+`StaffLayout` already renders the route title and description, while `StaffPerformancePage` rendered a second oversized hero for the same page. The first viewport then contained five tall KPI cards, timeline/incidents, full adjustment history, and the complete appeal form. Secondary actions occupied permanent space even when there were no incidents or adjustments.
 
 The data contract is not the cause. `useStaffPerformanceView` reads summary, timeline, adjustments and incidents through the existing staff performance operations. `usePerformanceIncidentAppeals` and `createPerformanceIncidentAppeal` preserve employee/restaurant scope and validation in the service.
 
@@ -16,14 +16,15 @@ The data contract is not the cause. `useStaffPerformanceView` reads summary, tim
 
 ## Direction
 
-Compact operational dashboard using the existing sage palette: one page title, shorter KPI group, timeline and related events visible, adjustment history and appeal form disclosed in an accessible right drawer.
+Compact operational dashboard using the existing sage palette: one shared page title, shorter KPI group, timeline and related events visible, adjustment history and appeal form disclosed in an accessible right drawer.
 
-## Files to change
+## Implemented files
 
-- `src/layouts/StaffLayout.jsx`: add a route class so the duplicate shell heading can be suppressed only on `/staff/performance`.
-- `src/components/Staff/StaffPerformance/StaffPerformancePage.jsx`: add contextual actions and one reusable drawer; keep mutations and form payload unchanged.
-- `src/components/Staff/StaffPerformance/StaffPerformance.scss`: compact page rhythm, route-specific shell treatment and responsive drawer.
-- `src/components/Staff/StaffPerformance/StaffPerformancePage.test.jsx`: cover default compact state and drawer opening.
+- `src/components/Staff/StaffPerformance/StaffPerformancePage.jsx`: removed the duplicated inner hero, added contextual actions and one reusable drawer while keeping the mutation payload unchanged.
+- `src/components/Staff/StaffPerformance/StaffPerformance.scss`: compacted page rhythm, KPI surfaces and panels; added responsive drawer, focus states and reduced-motion handling.
+- `src/components/Staff/StaffPerformance/StaffPerformancePage.test.jsx`: covers the compact empty state and progressive disclosure for history and appeals.
+
+`src/layouts/StaffLayout.jsx` was inspected but intentionally left unchanged: retaining its existing route heading and deleting the duplicate page hero is the smaller correct fix.
 
 ## Acceptance criteria
 
@@ -42,8 +43,8 @@ Compact operational dashboard using the existing sage palette: one page title, s
 - Manager performance screens.
 - New component libraries or dependencies.
 
-## Validation plan
+## Validation
 
-- Targeted `StaffPerformancePage.test.jsx`.
-- Frontend conflict check and build when a runnable checkout is available.
-- Manual browser review at desktop and mobile widths when available.
+- Static end-to-end review completed against schema, service, Apollo hooks, page and tests.
+- Targeted test, conflict check, build and browser smoke were not executed because this connector session has no runnable repository checkout.
+- No GitHub workflow or combined status was attached to implementation commit `ad4e33cabe9dfe64edf465b548ca34341ad58af7` at completion time.
