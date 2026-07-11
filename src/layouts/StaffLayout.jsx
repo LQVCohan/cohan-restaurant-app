@@ -1,9 +1,17 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { MessageCircle } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 import useCommunication from "@/hooks/useCommunication";
 import StaffQrOrderRealtimeNotice from "@/components/Staff/StaffQrOrderRealtimeNotice";
 import NotificationBell from "@/components/Staff/NotificationBell";
+import ContactsView from "@/components/Staff/components/ContactsView";
 import PosIncomingTableOrderQueue from "@/components/Dashboard_Manager/POS/components/pos/PosIncomingTableOrderQueue";
 import CustomerRequestQueuePanel from "@/components/Dashboard_Manager/POS/components/pos/CustomerRequestQueuePanel";
 import "./StaffLayout.scss";
@@ -212,6 +220,8 @@ export default function StaffLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [messengerOpen, setMessengerOpen] = useState(false);
+  const [messengerFocusThreadId, setMessengerFocusThreadId] = useState(null);
   const normalizedRole = useMemo(() => resolveUserRoleName(user), [user]);
   const displayName = getDisplayName(user);
   const roleLabel = getRoleLabel(user, normalizedRole);
@@ -248,9 +258,40 @@ export default function StaffLayout({ children }) {
     });
   }, [children, location.pathname, orderNoticeRestaurantId]);
 
+  const openMessenger = useCallback((threadId = null) => {
+    setMessengerFocusThreadId(threadId ? String(threadId) : null);
+    setMessengerOpen(true);
+    setMenuOpen(false);
+  }, []);
+
+  const closeMessenger = useCallback(() => {
+    setMessengerOpen(false);
+    setMessengerFocusThreadId(null);
+  }, []);
+
+  const handleMessengerFocusHandled = useCallback(() => {
+    setMessengerFocusThreadId(null);
+  }, []);
+
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!location.state?.openStaffMessenger) return;
+    openMessenger(location.state.threadId || null);
+    navigate(`${location.pathname}${location.search}`, {
+      replace: true,
+      state: null,
+    });
+  }, [
+    location.pathname,
+    location.search,
+    location.state?.openStaffMessenger,
+    location.state?.threadId,
+    navigate,
+    openMessenger,
+  ]);
 
   const navItems = useMemo(
     () => [
@@ -261,7 +302,7 @@ export default function StaffLayout({ children }) {
       { label: "Hiệu suất", to: "/staff/performance" },
       { label: "Hồ sơ", to: "/staff/profile" },
       { label: "Thông báo", to: "/staff/notifications" },
-      { label: "Liên lạc", to: "/staff/contacts" },
+      { label: "Liên lạc", to: "/staff/contacts", action: "messenger" },
       {
         label: "Bàn giao hỗ trợ",
         to: "/staff/ai-handoff",
@@ -327,11 +368,7 @@ export default function StaffLayout({ children }) {
                 <NotificationBell
                   restaurantId={orderNoticeRestaurantId}
                   onViewAll={() => navigate("/staff/notifications")}
-                  onOpenThread={(threadId) =>
-                    navigate(
-                      `/staff/contacts?threadId=${encodeURIComponent(threadId)}`,
-                    )
-                  }
+                  onOpenThread={openMessenger}
                 />
               ) : null}
               <div className="staff-shell__identity">
@@ -379,15 +416,35 @@ export default function StaffLayout({ children }) {
                 <div className="staff-shell__nav-group" key={group.label}>
                   <span>{group.label}</span>
                   {groupItems.map((item) => {
-                    const active = isActivePath(location, item.to);
+                    const active =
+                      item.action === "messenger"
+                        ? messengerOpen
+                        : isActivePath(location, item.to);
+                    const className = `staff-shell__nav-link ${
+                      active ? "is-active" : ""
+                    } ${
+                      item.to === primaryWorkspacePath ? "is-primary" : ""
+                    }`;
+
+                    if (item.action === "messenger") {
+                      return (
+                        <button
+                          key={item.to}
+                          type="button"
+                          className={className}
+                          onClick={() => openMessenger()}
+                          aria-expanded={messengerOpen}
+                          aria-haspopup="dialog"
+                        >
+                          {item.label}
+                        </button>
+                      );
+                    }
+
                     return (
                       <Link
                         key={item.to}
-                        className={`staff-shell__nav-link ${
-                          active ? "is-active" : ""
-                        } ${
-                          item.to === primaryWorkspacePath ? "is-primary" : ""
-                        }`}
+                        className={className}
                         to={item.to}
                         onClick={() => setMenuOpen(false)}
                         aria-current={active ? "page" : undefined}
@@ -423,6 +480,28 @@ export default function StaffLayout({ children }) {
           {scopedChildren}
         </div>
       </main>
+
+      <button
+        type="button"
+        className="staff-shell__messenger-launcher"
+        onClick={() => openMessenger()}
+        aria-label="Mở tin nhắn nhân viên"
+        aria-expanded={messengerOpen}
+        aria-haspopup="dialog"
+        hidden={messengerOpen}
+      >
+        <MessageCircle size={25} aria-hidden="true" />
+      </button>
+
+      {messengerOpen ? (
+        <ContactsView
+          key={orderNoticeRestaurantId || "staff-messenger-no-restaurant"}
+          restaurantId={orderNoticeRestaurantId}
+          focusThreadId={messengerFocusThreadId}
+          onFocusHandled={handleMessengerFocusHandled}
+          onClose={closeMessenger}
+        />
+      ) : null}
     </div>
   );
 }

@@ -28,16 +28,12 @@
 
   header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
     padding: 15px 16px;
     border-bottom: 1px solid #dce8df;
     background: linear-gradient(135deg, #fff, #f5fbf7);
-
-    > div {
-      min-width: 0;
-    }
 
     h4 {
       overflow: hidden;
@@ -50,9 +46,12 @@
     }
 
     p {
+      overflow: hidden;
       margin: 4px 0 0;
       color: #64746a;
       font-size: 0.78rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     button {
@@ -67,7 +66,29 @@
       color: #64746a;
       background: #fff;
       cursor: pointer;
+      transition: border-color 180ms ease, background 180ms ease, color 180ms ease, transform 180ms ease;
+
+      &:hover {
+        border-color: rgba(31, 111, 74, 0.28);
+        color: #1f6f4a;
+        background: #eaf5ee;
+      }
+
+      &:active {
+        transform: scale(0.96);
+      }
     }
+  }
+
+  .chat-thread-heading {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .chat-thread-heading__copy {
+    min-width: 0;
   }
 
   button:focus-visible,
@@ -85,7 +106,11 @@
     -webkit-overflow-scrolling: touch;
 
     .empty {
+      display: grid;
+      min-height: 100%;
+      place-items: center;
       color: #64746a;
+      text-align: center;
     }
 
     .error {
@@ -180,6 +205,16 @@
       }
     }
   }
+
+  &--embedded {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    border: 0;
+    border-radius: inherit;
+    box-shadow: none;
+  }
 }
 
 @media (max-width: 640px) {
@@ -196,6 +231,12 @@
     border-bottom: 0;
     border-left: 0;
     border-radius: 0;
+
+    &--embedded {
+      height: 100%;
+      min-height: 0;
+      max-height: none;
+    }
 
     header {
       padding:

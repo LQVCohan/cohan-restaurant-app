@@ -1,18 +1,126 @@
 $primary: #1f6f4a;
 $primary-strong: #165c3c;
 $primary-soft: #eaf5ee;
-$success: #2f7d57;
 $danger: #b42318;
 $text: #1f2a24;
 $muted: #64746a;
 $border: #dce8df;
 
-.staff-pos-contacts {
+.staff-messenger-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1250;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 24px;
+  background: rgba(20, 31, 25, 0.16);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+.staff-messenger {
+  width: min(420px, calc(100vw - 48px));
+  height: min(690px, calc(100dvh - 48px));
+  min-height: 480px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgba(103, 119, 92, 0.24);
+  border-radius: 24px;
+  color: $text;
+  background: #fff;
+  box-shadow: 0 28px 74px rgba(20, 31, 25, 0.24);
+
+  &.is-thread-open {
+    grid-template-rows: minmax(0, 1fr);
+  }
+}
+
+.staff-messenger__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 14px 12px 16px;
+  border-bottom: 1px solid $border;
+  background: linear-gradient(135deg, #fff, #f5fbf7);
+}
+
+.staff-messenger__title-wrap {
   display: flex;
   min-width: 0;
-  flex-direction: column;
-  gap: 12px;
-  height: 100%;
+  align-items: center;
+  gap: 11px;
+
+  > div:last-child {
+    min-width: 0;
+  }
+
+  h2 {
+    margin: 0;
+    color: $text;
+    font-size: 1.02rem;
+    font-weight: 850;
+    letter-spacing: -0.02em;
+  }
+
+  p {
+    overflow: hidden;
+    margin: 3px 0 0;
+    color: $muted;
+    font-size: 0.76rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.staff-messenger__mark,
+.staff-messenger__close {
+  display: grid;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 14px;
+}
+
+.staff-messenger__mark {
+  color: $primary;
+  background: $primary-soft;
+}
+
+.staff-messenger__close {
+  padding: 0;
+  border: 1px solid $border;
+  color: $muted;
+  background: #fff;
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, color 180ms ease, background 180ms ease;
+
+  &:hover {
+    border-color: rgba($primary, 0.3);
+    color: $primary;
+    background: $primary-soft;
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba($primary, 0.24);
+    outline-offset: 2px;
+  }
+}
+
+.staff-pos-contacts {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px 12px 0;
   color: $text;
 
   .sr-only {
@@ -24,10 +132,6 @@ $border: #dce8df;
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
-  }
-
-  .search-section {
-    padding: 0;
   }
 
   .search-bar {
@@ -47,14 +151,14 @@ $border: #dce8df;
       width: 100%;
       min-width: 0;
       min-height: 46px;
-      padding: 0 14px 0 44px;
+      padding: 0 14px 0 43px;
       border: 1px solid $border;
       border-radius: 14px;
       outline: none;
-      background: #f8faf6;
       color: $text;
+      background: #f8faf6;
       font: inherit;
-      font-size: 0.94rem;
+      font-size: 0.9rem;
       transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
 
       &:focus {
@@ -71,10 +175,10 @@ $border: #dce8df;
 
   .filter-scroll {
     display: flex;
-    gap: 8px;
+    gap: 7px;
     min-width: 0;
     overflow-x: auto;
-    padding: 1px 1px 4px;
+    padding: 1px 1px 3px;
     scrollbar-width: none;
     overscroll-behavior-x: contain;
 
@@ -86,13 +190,13 @@ $border: #dce8df;
   .filter-chip {
     flex: 0 0 auto;
     min-height: 40px;
-    padding: 0 13px;
+    padding: 0 12px;
     border: 1px solid $border;
-    border-radius: 999px;
-    background: #fff;
+    border-radius: 13px;
     color: $muted;
+    background: #fff;
     font: inherit;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 800;
     white-space: nowrap;
     cursor: pointer;
@@ -106,9 +210,9 @@ $border: #dce8df;
 
     &.active {
       border-color: $primary;
-      background: $primary;
       color: #fff;
-      box-shadow: 0 8px 18px rgba($primary, 0.18);
+      background: $primary;
+      box-shadow: 0 8px 18px rgba($primary, 0.17);
     }
 
     &:active {
@@ -118,23 +222,28 @@ $border: #dce8df;
 
   :is(button, input):focus-visible {
     outline: 3px solid rgba($primary, 0.24);
-    outline-offset: 3px;
+    outline-offset: 2px;
   }
 
   .contact-list {
     display: grid;
-    gap: 10px;
+    align-content: start;
+    gap: 8px;
     min-width: 0;
-    padding-bottom: 12px;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1px 2px 14px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .empty-state {
     padding: 28px 16px;
     border: 1px dashed $border;
-    border-radius: 16px;
-    background: #f8faf6;
+    border-radius: 15px;
     color: $muted;
-    font-size: 0.88rem;
+    background: #f8faf6;
+    font-size: 0.84rem;
     text-align: center;
   }
 
@@ -142,32 +251,41 @@ $border: #dce8df;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     min-width: 0;
-    padding: 12px;
+    padding: 10px;
     border: 1px solid $border;
-    border-radius: 17px;
+    border-radius: 16px;
+    color: $primary;
     background: #fff;
-    box-shadow: 0 8px 20px rgba(31, 111, 74, 0.05);
-    transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+    transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
 
     &:hover {
-      border-color: rgba($primary, 0.26);
-      box-shadow: 0 12px 26px rgba(31, 111, 74, 0.08);
+      border-color: rgba($primary, 0.28);
+      background: #fbfdfb;
       transform: translateY(-1px);
     }
 
     &--management {
-      background: linear-gradient(135deg, #fff, #f5fbf7);
+      border-color: rgba($primary, 0.22);
+      background: linear-gradient(135deg, #fff, #f3faf5);
+    }
+
+    > svg,
+    .contact-actions > svg {
+      flex: 0 0 auto;
+      margin-right: 4px;
+      color: $primary;
     }
   }
 
   .contact-card__open {
+    width: 100%;
     min-width: 0;
     padding: 0;
     border: 0;
-    background: transparent;
     color: inherit;
+    background: transparent;
     font: inherit;
     text-align: left;
     cursor: pointer;
@@ -176,39 +294,21 @@ $border: #dce8df;
   .contact-info-wrap {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     min-width: 0;
-  }
-
-  .avatar-wrapper {
-    position: relative;
-    flex: 0 0 auto;
   }
 
   .avatar {
     display: grid;
-    width: 46px;
-    height: 46px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
     place-items: center;
-    border-radius: 14px;
-    background: $primary-soft;
+    border-radius: 13px;
     color: $primary;
-    font-size: 1rem;
+    background: $primary-soft;
+    font-size: 0.9rem;
     font-weight: 900;
-  }
-
-  .status-indicator {
-    position: absolute;
-    right: -2px;
-    bottom: -2px;
-    width: 13px;
-    height: 13px;
-    border: 2px solid #fff;
-    border-radius: 50%;
-
-    &.online { background: $success; }
-    &.busy { background: $danger; }
-    &.offline { background: #9aa7a0; }
   }
 
   .info-text {
@@ -220,17 +320,19 @@ $border: #dce8df;
       overflow: hidden;
       margin: 0;
       color: $text;
-      font-size: 0.96rem;
+      font-size: 0.91rem;
       font-weight: 850;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     .role {
+      overflow: hidden;
       color: $primary;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: 760;
-      text-transform: capitalize;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .last-msg {
@@ -238,7 +340,7 @@ $border: #dce8df;
       overflow: hidden;
       margin: 1px 0 0;
       color: $muted;
-      font-size: 0.8rem;
+      font-size: 0.77rem;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
@@ -248,7 +350,7 @@ $border: #dce8df;
     display: flex;
     flex: 0 0 auto;
     align-items: center;
-    gap: 7px;
+    gap: 6px;
   }
 
   .unread-pill {
@@ -259,87 +361,68 @@ $border: #dce8df;
     justify-content: center;
     padding: 0 7px;
     border-radius: 999px;
-    background: $danger;
     color: #fff;
-    font-size: 0.72rem;
+    background: $danger;
+    font-size: 0.7rem;
     font-weight: 850;
-  }
-
-  .action-btn {
-    display: grid;
-    width: 44px;
-    min-width: 44px;
-    height: 44px;
-    padding: 0;
-    place-items: center;
-    border: 1px solid transparent;
-    border-radius: 13px;
-    cursor: pointer;
-    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
-
-    &.btn-chat {
-      border-color: rgba($primary, 0.16);
-      background: $primary-soft;
-      color: $primary;
-    }
-
-    &.btn-call {
-      border-color: rgba($success, 0.16);
-      background: rgba($success, 0.1);
-      color: $success;
-    }
-
-    &:active {
-      transform: scale(0.96);
-    }
   }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 640px) {
+  .staff-messenger-overlay {
+    padding: 0;
+    background: rgba(20, 31, 25, 0.32);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .staff-messenger {
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .staff-messenger__header {
+    padding:
+      calc(10px + env(safe-area-inset-top))
+      max(12px, env(safe-area-inset-right))
+      10px
+      max(12px, env(safe-area-inset-left));
+  }
+
   .staff-pos-contacts {
-    gap: 10px;
+    gap: 9px;
+    padding:
+      10px
+      max(12px, env(safe-area-inset-right))
+      0
+      max(12px, env(safe-area-inset-left));
 
     .search-bar input {
       font-size: 16px;
     }
 
+    .filter-chip {
+      min-height: 44px;
+    }
+
+    .contact-list {
+      padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    }
+
     .contact-card {
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 8px;
-      padding: 10px;
-      border-radius: 15px;
-    }
-
-    .avatar {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-    }
-
-    .contact-info-wrap {
-      gap: 9px;
-    }
-
-    .contact-card--management {
-      grid-template-columns: 1fr;
-    }
-
-    .contact-card--management .contact-actions {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      width: 100%;
-    }
-
-    .contact-card--management .action-btn {
-      width: 100%;
+      min-height: 64px;
     }
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .staff-pos-contacts *,
-  .staff-pos-contacts *::before,
-  .staff-pos-contacts *::after {
+  .staff-messenger *,
+  .staff-messenger *::before,
+  .staff-messenger *::after {
     transition-duration: 0.01ms !important;
   }
 }
