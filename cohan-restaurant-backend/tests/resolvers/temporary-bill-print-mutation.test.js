@@ -4,7 +4,7 @@ const modelMocks = vi.hoisted(() => ({
   Order: { findById: vi.fn() },
   PrintSetting: { findOne: vi.fn(), updateOne: vi.fn() },
 }));
-const authMocks = vi.hoisted(() => ({ requireRestaurantPermission: vi.fn() }));
+const authMocks = vi.hoisted(() => ({ requireAnyRestaurantPermission: vi.fn() }));
 const eventMocks = vi.hoisted(() => ({ emitOrderEvent: vi.fn() }));
 
 vi.mock("../../models/index.js", () => modelMocks);
@@ -43,7 +43,7 @@ describe("temporary bill print mutation", () => {
     modelMocks.Order.findById.mockReturnValue(queryResult(order));
     modelMocks.PrintSetting.findOne.mockReturnValue(queryResult(printSetting()));
     modelMocks.PrintSetting.updateOne.mockResolvedValue({ modifiedCount: 1 });
-    authMocks.requireRestaurantPermission.mockResolvedValue(true);
+    authMocks.requireAnyRestaurantPermission.mockResolvedValue(true);
     eventMocks.emitOrderEvent.mockResolvedValue(undefined);
   });
 
@@ -51,7 +51,7 @@ describe("temporary bill print mutation", () => {
     const { createTemporaryBillPrintJob } = await import(
       "../../graphql/resolvers/order/temporaryBillPrintMutation.js"
     );
-    const ctx = { user: { id: "manager-1" } };
+    const ctx = { user: { id: "cashier-1" } };
 
     const result = await createTemporaryBillPrintJob(
       null,
@@ -59,10 +59,10 @@ describe("temporary bill print mutation", () => {
       ctx,
     );
 
-    expect(authMocks.requireRestaurantPermission).toHaveBeenCalledWith(
+    expect(authMocks.requireAnyRestaurantPermission).toHaveBeenCalledWith(
       ctx,
       "restaurant-1",
-      "order.update",
+      ["order.update", "payment.write", "print.write"],
     );
     expect(result).toEqual({ ok: true, message: "Đã tạo 2 lệnh in tạm tính." });
     const jobs = modelMocks.PrintSetting.updateOne.mock.calls[0][1].$push.jobs.$each;
@@ -139,7 +139,7 @@ describe("temporary bill print mutation", () => {
       ),
     ).rejects.toThrow("Order not found");
 
-    expect(authMocks.requireRestaurantPermission).not.toHaveBeenCalled();
+    expect(authMocks.requireAnyRestaurantPermission).not.toHaveBeenCalled();
     expect(modelMocks.PrintSetting.updateOne).not.toHaveBeenCalled();
   });
 });
