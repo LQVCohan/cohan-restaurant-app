@@ -2,7 +2,10 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { PrintSetting, Restaurant } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
-import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import {
+  requireAnyRestaurantPermission,
+  requireRestaurantPermission,
+} from "../../../src/services/auth/authorization.service.js";
 
 const DEFAULT_TEMPLATES = [
   {
@@ -34,6 +37,16 @@ const SUPPORTED_JOB_STATUSES = new Set([
   "cancelled",
 ]);
 const SUPPORTED_PRINTER_STATUSES = new Set(["offline", "configured", "online"]);
+const POS_PRINT_PERMISSIONS = [
+  PERMISSIONS.PRINT_WRITE,
+  PERMISSIONS.ORDER_UPDATE,
+  PERMISSIONS.PAYMENT_WRITE,
+];
+const POS_PRINT_READ_PERMISSIONS = [
+  PERMISSIONS.PRINT_READ,
+  PERMISSIONS.ORDER_UPDATE,
+  PERMISSIONS.PAYMENT_WRITE,
+];
 
 function badInput(message) {
   return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
@@ -162,11 +175,16 @@ function buildDefaultPrintSettingView(restaurantId) {
   });
 }
 
-async function assertRestaurantPermission(ctx, restaurantId, permissionCode) {
+async function assertRestaurantPermissions(ctx, restaurantId, permissionCodes) {
   if (!mongoose.isValidObjectId(restaurantId)) {
     throw badInput("Invalid restaurantId");
   }
-  await requireRestaurantPermission(ctx, restaurantId, permissionCode);
+  const codes = Array.isArray(permissionCodes) ? permissionCodes : [permissionCodes];
+  if (codes.length === 1) {
+    await requireRestaurantPermission(ctx, restaurantId, codes[0]);
+  } else {
+    await requireAnyRestaurantPermission(ctx, restaurantId, codes);
+  }
   const restaurant = await Restaurant.findById(restaurantId).lean();
   if (!restaurant) throw notFound("Restaurant not found");
   return restaurant;
@@ -198,6 +216,14 @@ function getNormalizedJob(doc, jobId) {
   return normalizeJobs(doc?.jobs).find((job) => job.id === String(jobId)) || null;
 }
 
+function wouldClearUnhydratedPosConfig({ doc, hasPrinters, hasStations, hasTemplates, printers, stations }) {
+  if (!hasPrinters || !hasStations || hasTemplates) return false;
+  if (!normalizePrinters(doc?.printers).length || printers.length) return false;
+  return Object.values(stations || {}).every(
+    (printerIds) => !Array.isArray(printerIds) || printerIds.length === 0,
+  );
+}
+
 async function appendJob(printSettingId, job) {
   await PrintSetting.updateOne(
     { _id: printSettingId },
@@ -216,7 +242,7 @@ async function appendJob(printSettingId, job) {
 
 export const Query = {
   async printSettings(_, { restaurantId }, ctx) {
-    await assertRestaurantPermission(ctx, restaurantId, PERMISSIONS.PRINT_READ);
+    await assertRestaurantPermissions(ctx, restaurantId, POS_PRINT_READ_PERMISSIONS);
     const doc = await PrintSetting.findOne({ restaurantId }).lean();
     return doc ? toPrintSettingView(doc) : buildDefaultPrintSettingView(restaurantId);
   },
@@ -225,7 +251,7 @@ export const Query = {
 export const Mutation = {
   async upsertPrintSettings(_, { input }, ctx) {
     const { restaurantId } = input || {};
-    await assertRestaurantPermission(ctx, restaurantId, PERMISSIONS.PRINT_WRITE);
+    await assertRestaurantPermissions(ctx, restaurantId, PERMISSIONS.PRINT_WRITE);
     const doc = await findOrCreatePrintSetting(restaurantId);
     const hasPrinters = Object.prototype.hasOwnProperty.call(input || {}, "printers");
     const hasStations = Object.prototype.hasOwnProperty.call(input || {}, "stations");
@@ -240,6 +266,17 @@ export const Mutation = {
     const normalizedTemplates = hasTemplates
       ? normalizeTemplates(input?.templates)
       : normalizeTemplates(doc.templates);
+
+    if (wouldClearUnhydratedPosConfig({
+      doc,
+      hasPrinters,
+      hasStations,
+      hasTemplates,
+      printers: normalizedPrinters,
+      stations: normalizedStations,
+    })) {
+      return toPrintSettingView(doc);
+    }
 
     const now = new Date();
     const updated = await PrintSetting.findOneAndUpdate(
@@ -274,7 +311,7 @@ export const Mutation = {
     } = input || {};
     const normalizedPrintType = String(printType || "").trim();
     if (!normalizedPrintType) throw badInput("printType is required");
-    await assertRestaurantPermission(ctx, restaurantId, PERMISSIONS.PRINT_WRITE);
+    await assertRestaurantPermissions(ctx, restaurantId, POS_PRINT_PERMISSIONS);
 
     const doc = await findOrCreatePrintSetting(restaurantId);
     const printers = normalizePrinters(doc.printers);
@@ -328,7 +365,7 @@ export const Mutation = {
 
   async retryPrintJob(_, { input }, ctx) {
     const { restaurantId, jobId } = input || {};
-    await assertRestaurantPermission(ctx, restaurantId, PERMISSIONS.PRINT_WRITE);
+    await assertRestaurantPermissions(ctx, restaurantId, PERMISSIONS.PRINT_WRITE);
     const doc = await findOrCreatePrintSetting(restaurantId);
     const current = findJob(doc, jobId);
     if (!current) throw notFound("Print job not found");
@@ -361,7 +398,7 @@ export const Mutation = {
 
   async updatePrintJobStatus(_, { input }, ctx) {
     const { restaurantId, jobId, status, error } = input || {};
-    await assertRestaurantPermission(ctx, restaurantId, PERMISSIONS.PRINT_WRITE);
+    await assertRestaurantPermissions(ctx, restaurantId, PERMISSIONS.PRINT_WRITE);
     const normalizedStatus = String(status || "").trim().toLowerCase();
     if (!SUPPORTED_JOB_STATUSES.has(normalizedStatus)) {
       throw badInput("Unsupported print job status");
@@ -400,7 +437,7 @@ export const Mutation = {
       draftType,
       draftLocation,
     } = input || {};
-    await assertRestaurantPermission(ctx, restaurantId, PERMISSIONS.PRINT_WRITE);
+    await assertRestaurantPermissions(ctx, restaurantId, PERMISSIONS.PRINT_WRITE);
 
     const doc = await findOrCreatePrintSetting(restaurantId);
     const printers = normalizePrinters(doc.printers);
@@ -468,4 +505,5 @@ export const __testables = {
   normalizeJobs,
   normalizePrinters,
   normalizeStations,
+  wouldClearUnhydratedPosConfig,
 };
