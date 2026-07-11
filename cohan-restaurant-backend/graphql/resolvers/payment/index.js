@@ -1,6 +1,7 @@
 import { PaymentReconciliation } from "../../../models/index.js";
 import { PaymentQuery } from "./query.js";
 import { BankTransferPaymentQuery } from "./bankTransferQuery.js";
+import TransactionManagementQuery from "./transactionManagementQuery.js";
 import PaymentMutation from "./mutation.js";
 import ReconciliationPaymentConfirmationMutation from "./reconciliationPaymentConfirmationMutation.js";
 import FinanceOperationGuardMutation from "./financeOperationGuardMutation.js";
@@ -47,6 +48,7 @@ export default {
     ...BankTransferPaymentQuery,
     ...(wallet.Query || {}),
     ...PaymentCredentialQuery,
+    ...TransactionManagementQuery,
     financeDashboard,
   },
   Mutation: {
