@@ -3,8 +3,8 @@
 ## Hiện trạng và nguyên nhân gốc
 
 - `PaymentSession` đã resolve credential riêng của nhà hàng hoặc fallback về credential nền tảng trong pre-save hook.
-- Credential nền tảng hiện không có mode thực tế riêng; cùng một `VNPAY_TMN_CODE`/`VNPAY_HASH_SECRET` bị xem là dùng được cho cả sandbox và production.
-- Sau khi tạo session, `createReservationPayment` và `createOrderPayment` vẫn tạo URL theo `Restaurant.paymentSettings.mode`, không theo `PaymentSession.providerCredentialMode` đã resolve.
+- Credential nền tảng trước đây không có mode thực tế riêng; cùng một `VNPAY_TMN_CODE`/`VNPAY_HASH_SECRET` bị xem là dùng được cho cả sandbox và production.
+- Sau khi tạo session, provider nhận `Restaurant.paymentSettings.mode` dù `PaymentSession.providerCredentialMode` đã chứa mode của credential thực tế.
 - Khi nhà hàng đang để production nhưng credential nền tảng là sandbox, hệ thống tạo URL `pay.vnpay.vn` với TmnCode sandbox và VNPAY trả “Không tìm thấy website”.
 
 ## Luồng thật
@@ -14,13 +14,13 @@
 ## Phạm vi thay đổi
 
 - `paymentCredential.service.js`: thêm mode thực tế cho credential nền tảng, mặc định sandbox; trạng thái configured chỉ đúng ở mode nền tảng thực tế.
-- `paymentSession.service.js`: dùng `payment.providerCredentialMode` để chọn endpoint MoMo/VNPAY.
+- `providers.js`: tại shared provider boundary, ưu tiên `payment.providerCredentialMode` khi chọn endpoint MoMo/VNPAY.
 - `.env.example`: tài liệu hóa `MOMO_PLATFORM_MODE` và `VNPAY_PLATFORM_MODE`.
-- Test hồi quy: khi restaurant yêu cầu production nhưng chỉ có platform VNPAY sandbox, resolver trả mode sandbox và production status không bị đánh dấu configured.
+- Test hồi quy: restaurant yêu cầu production nhưng platform credential là sandbox vẫn tạo URL sandbox; production status không bị đánh dấu configured.
 
 ## Tiêu chí nghiệm thu
 
-- Không bao giờ ghép platform sandbox TmnCode/Hash Secret với URL VNPAY production.
+- Không ghép platform sandbox TmnCode/Hash Secret với URL VNPAY production.
 - Credential riêng của nhà hàng vẫn dùng đúng mode đã lưu.
 - Platform credential mặc định là sandbox nếu chưa khai báo mode.
 - Có thể đặt `VNPAY_PLATFORM_MODE=production` khi bộ biến môi trường thực sự là production.
@@ -33,8 +33,10 @@
 npx vitest run cohan-restaurant-backend/tests/services/payment-platform-mode.service.test.js
 npx vitest run cohan-restaurant-backend/tests/services/payment-credential.security.test.js
 node --check cohan-restaurant-backend/src/services/payment/paymentCredential.service.js
-node --check cohan-restaurant-backend/src/services/payment/paymentSession.service.js
+node --check cohan-restaurant-backend/src/services/payment/providers.js
 ```
+
+GitHub connector không cung cấp repository checkout/dependencies nên các lệnh trên chưa được chạy trong phiên này. Commit cũng chưa tạo workflow run.
 
 ## Ngoài phạm vi
 
