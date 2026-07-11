@@ -4,6 +4,7 @@ import {
   calculateModifierPricing,
   getModifierSelectionError,
   findAddedCartLine,
+  isBookingAddonFoodDetail,
   shareFoodDetail,
 } from "./FoodDetailV2";
 
@@ -101,6 +102,23 @@ describe("FoodDetailV2 helpers", () => {
         modifiers: [],
       }),
     ).toBeUndefined();
+  });
+
+  it("recognizes booking addon context from URL or restored draft", () => {
+    expect(
+      isBookingAddonFoodDetail({
+        search: "?restaurantId=restaurant-1&returnTo=booking",
+      }),
+    ).toBe(true);
+    expect(
+      isBookingAddonFoodDetail({
+        search: "?restaurantId=restaurant-1&serviceAt=2026-07-11T01%3A00%3A00.000Z",
+        state: { bookingDraft: { tableId: "table-1" } },
+      }),
+    ).toBe(true);
+    expect(isBookingAddonFoodDetail({ search: "?restaurantId=restaurant-1" })).toBe(
+      false,
+    );
   });
 
   it("uses clipboard when native sharing is unavailable", async () => {
