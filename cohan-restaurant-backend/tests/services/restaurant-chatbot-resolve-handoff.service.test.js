@@ -52,23 +52,34 @@ const session = {
   endSession: vi.fn().mockResolvedValue(),
 };
 
-const mockLifecycle = ({ conversation = makeConversation(), thread = makeThread() } = {}) => {
-  vi.spyOn(AiChatConversation, "findById").mockImplementation(async () => conversation);
-  vi.spyOn(AiChatConversation, "findOne").mockImplementation(async () => conversation);
+const mockLifecycle = ({
+  conversation = makeConversation(),
+  thread = makeThread(),
+} = {}) => {
+  vi.spyOn(AiChatConversation, "findById").mockImplementation(
+    async () => conversation,
+  );
+  vi.spyOn(AiChatConversation, "findOne").mockImplementation(
+    async () => conversation,
+  );
   vi.spyOn(ChatThread, "findById").mockImplementation(async () => thread);
-  vi.spyOn(ChatThread, "updateOne").mockImplementation(async (_filter, update) => {
-    if (!thread || thread.status === "closed") return { modifiedCount: 0 };
-    thread.status = update.$set.status;
-    thread.lastMessageAt = update.$set.lastMessageAt;
-    thread.lastMessagePreview = update.$set.lastMessagePreview;
-    thread.messages.push(update.$push.messages);
-    return { modifiedCount: 1 };
-  });
-  vi.spyOn(AiChatConversation, "updateOne").mockImplementation(async (_filter, update) => {
-    conversation.status = update.$set.status;
-    conversation.metadata = update.$set.metadata;
-    return { modifiedCount: 1 };
-  });
+  vi.spyOn(ChatThread, "updateOne").mockImplementation(
+    async (_filter, update) => {
+      if (!thread || thread.status === "closed") return { modifiedCount: 0 };
+      thread.status = update.$set.status;
+      thread.lastMessageAt = update.$set.lastMessageAt;
+      thread.lastMessagePreview = update.$set.lastMessagePreview;
+      thread.messages.push(update.$push.messages);
+      return { modifiedCount: 1 };
+    },
+  );
+  vi.spyOn(AiChatConversation, "updateOne").mockImplementation(
+    async (_filter, update) => {
+      conversation.status = update.$set.status;
+      conversation.metadata = update.$set.metadata;
+      return { matchedCount: 1, modifiedCount: 1 };
+    },
+  );
   return { conversation, thread };
 };
 
@@ -187,6 +198,25 @@ describe("resolveRestaurantChatbotHandoff", () => {
       status: "closed",
     });
     expect(session.withTransaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a concurrent conversation state change", async () => {
+    mockLifecycle();
+    AiChatConversation.updateOne.mockResolvedValueOnce({
+      matchedCount: 0,
+      modifiedCount: 0,
+    });
+
+    await expect(
+      resolveRestaurantChatbotHandoff({
+        input: { conversationId: IDS.conversation },
+        user,
+      }),
+    ).rejects.toMatchObject({
+      message: "HANDOFF_STATE_CHANGED",
+      code: "HANDOFF_STATE_CHANGED",
+    });
+    expect(session.endSession).toHaveBeenCalledTimes(1);
   });
 
   it("rejects open non-handoff conversations and missing linked threads", async () => {
