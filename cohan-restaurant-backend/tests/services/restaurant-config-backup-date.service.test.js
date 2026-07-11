@@ -158,6 +158,6 @@ describe("restaurant config backup date handling", () => {
     ]) {
       expect(update.$set[field]).toBeUndefined();
     }
-    expect(update.$unset).toBeUndefined();
+    expect(update.$unset).toEqual({ viewLock: "" });
   });
 });

@@ -636,7 +636,6 @@ export async function previewRestaurantConfigImport({ targetRestaurantId, snapsh
   };
 }
 
-
 function normalizeResolutionMap(conflictResolutions = []) {
   const map = new Map();
   for (const item of conflictResolutions || []) {
@@ -886,12 +885,14 @@ async function importFloorTable(targetRestaurantId, data, mode, context) {
     }
     const sourceTable = mode === "clone" ? { ...table } : table;
     const extra = { floorId: nextFloorId };
+    const options = {};
     if (mode === "clone") {
       for (const field of TABLE_CLONE_RUNTIME_FIELDS) delete sourceTable[field];
       extra.status = "available";
+      options.unset = { viewLock: "" };
     }
     const conflict = conflictFor(context, "floorTableLayout", "Table", sourceTable, sourceTable.code || sourceTable.name);
-    await upsertWithConflict(Table, targetRestaurantId, sourceTable, ["code", "name"], extra, context, conflict, "Table", null);
+    await upsertWithConflict(Table, targetRestaurantId, sourceTable, ["code", "name"], extra, context, conflict, "Table", null, options);
   }
 }
 
