@@ -3,7 +3,14 @@ import { Order, Table, User } from "../../../models/index.js";
 import TableCustomer from "../../../models/tableCustomer.model.js";
 import { toId } from "../order/helper/orderUtils.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
-import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import {
+  requireAnyRestaurantPermission,
+  requireRestaurantPermission,
+} from "../../../src/services/auth/authorization.service.js";
+import {
+  scopeOrdersForPreparationStation,
+  withPreparationStationOrderFilter,
+} from "./accessGuard.js";
 import {
   ACTIVE_SESSION_STATUSES,
   ORDER_KIND,
@@ -14,12 +21,25 @@ import {
 
 const INACTIVE_STATUSES = ["draft", "cancelled", "completed", "failed"];
 
-async function requireQueryRestaurantAccess(ctx, restaurantId) {
+function parseRestaurantId(restaurantId) {
   if (!restaurantId || !mongoose.isValidObjectId(restaurantId)) {
     throw new Error("Invalid restaurantId");
   }
-  const rid = toId(restaurantId);
+  return toId(restaurantId);
+}
+
+async function requireQueryRestaurantAccess(ctx, restaurantId) {
+  const rid = parseRestaurantId(restaurantId);
   await requireRestaurantPermission(ctx, rid, PERMISSIONS.ORDER_READ);
+  return rid;
+}
+
+async function requireTableOrderReadAccess(ctx, restaurantId) {
+  const rid = parseRestaurantId(restaurantId);
+  await requireAnyRestaurantPermission(ctx, rid, [
+    PERMISSIONS.ORDER_READ,
+    PERMISSIONS.RESERVATION_READ,
+  ]);
   return rid;
 }
 
@@ -155,9 +175,10 @@ async function attachUsers(orders = []) {
   }));
 }
 
-async function buildCursorConnection({ baseFilter, limit = 20, cursor, rid }) {
+async function buildCursorConnection({ baseFilter, limit = 20, cursor, rid, user }) {
   const safeLimit = Math.max(1, Math.min(200, Number(limit) || 20));
-  const query = Order.find(baseFilter).sort({ _id: 1 });
+  const scopedFilter = withPreparationStationOrderFilter(baseFilter, user);
+  const query = Order.find(scopedFilter).sort({ _id: 1 });
   if (cursor) query.where("_id").gt(cursor);
   query.limit(safeLimit + 1);
 
@@ -165,9 +186,10 @@ async function buildCursorConnection({ baseFilter, limit = 20, cursor, rid }) {
   const hasNextPage = rows.length > safeLimit;
   const slice = hasNextPage ? rows.slice(0, safeLimit) : rows;
   const withCustomer = await attachCustomerInfoToOrders({ rid, orders: slice });
+  const scopedOrders = scopeOrdersForPreparationStation(withCustomer, user);
 
   return {
-    edges: withCustomer.map((order) => ({
+    edges: scopedOrders.map((order) => ({
       cursor: String(order._id),
       node: {
         id: String(order._id),
@@ -209,15 +231,20 @@ function groupOrdersByRootCode(orders = []) {
   });
 }
 
-async function loadActiveOrderBatches({ rid, tableIds }) {
-  return Order.find({
-    restaurantId: rid,
-    tableId: { $in: tableIds },
-    ...orderBatchOrLegacyFilter(),
-    currentStatus: { $nin: INACTIVE_STATUSES },
-  })
+async function loadActiveOrderBatches({ rid, tableIds, user }) {
+  const filter = withPreparationStationOrderFilter(
+    {
+      restaurantId: rid,
+      tableId: { $in: tableIds },
+      ...orderBatchOrLegacyFilter(),
+      currentStatus: { $nin: INACTIVE_STATUSES },
+    },
+    user,
+  );
+  const orders = await Order.find(filter)
     .sort({ createdAt: 1, _id: 1 })
     .lean({ virtuals: true });
+  return scopeOrdersForPreparationStation(orders, user);
 }
 
 export const OrderCoreRecoveryQuery = {
@@ -227,26 +254,29 @@ export const OrderCoreRecoveryQuery = {
       restaurantId: rid,
       currentStatus: { $nin: INACTIVE_STATUSES },
     });
-    return buildCursorConnection({ baseFilter, limit, cursor, rid });
+    return buildCursorConnection({ baseFilter, limit, cursor, rid, user: ctx?.user });
   },
 
   async ordersByRestaurant(_, { restaurantId, limit = 20, cursor }, ctx) {
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     const baseFilter = withOrderBatchOrLegacyFilter({ restaurantId: rid });
-    return buildCursorConnection({ baseFilter, limit, cursor, rid });
+    return buildCursorConnection({ baseFilter, limit, cursor, rid, user: ctx?.user });
   },
 
   async ordersByTableCode(_, { restaurantId, tableCode, limit = 50, offset = 0 }, ctx) {
-    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
+    const rid = await requireTableOrderReadAccess(ctx, restaurantId);
     const scope = await resolveTableScope({ rid, tableCode });
     const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
     const safeOffset = Math.max(0, Number(offset) || 0);
     if (!scope) return { items: [], totalCount: 0 };
 
-    const query = withOrderBatchOrLegacyFilter({
-      restaurantId: rid,
-      tableId: { $in: scope.tableIds },
-    });
+    const query = withPreparationStationOrderFilter(
+      withOrderBatchOrLegacyFilter({
+        restaurantId: rid,
+        tableId: { $in: scope.tableIds },
+      }),
+      ctx?.user,
+    );
     const [itemsRaw, totalCount] = await Promise.all([
       Order.find(query)
         .sort({ createdAt: -1, _id: -1 })
@@ -255,23 +285,21 @@ export const OrderCoreRecoveryQuery = {
         .lean({ virtuals: true }),
       Order.countDocuments(query),
     ]);
-    const items = await attachCustomerInfoToOrders({ rid, orders: itemsRaw });
+    const withCustomer = await attachCustomerInfoToOrders({ rid, orders: itemsRaw });
+    const items = scopeOrdersForPreparationStation(withCustomer, ctx?.user);
     return { items, totalCount };
   },
 
   async ordersGroupedByTable(_, { restaurantId, tableId, tableCode }, ctx) {
-    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
+    const rid = await requireTableOrderReadAccess(ctx, restaurantId);
     const scope = await resolveTableScope({ rid, tableId, tableCode });
     if (!scope) return [];
 
-    const docs = await loadActiveOrderBatches({ rid, tableIds: scope.tableIds });
+    const docs = await loadActiveOrderBatches({ rid, tableIds: scope.tableIds, user: ctx?.user });
     if (!docs.length) return [];
 
     const docsWithUser = await attachUsers(docs);
-    const docsWithCustomer = await attachCustomerInfoToOrders({
-      rid,
-      orders: docsWithUser,
-    });
+    const docsWithCustomer = await attachCustomerInfoToOrders({ rid, orders: docsWithUser });
     return groupOrdersByRootCode(docsWithCustomer);
   },
 
@@ -294,10 +322,7 @@ export const OrderCoreRecoveryQuery = {
       .sort({ openedAt: 1, createdAt: 1, _id: 1 })
       .lean({ virtuals: true });
 
-    const orders = await loadActiveOrderBatches({
-      rid,
-      tableIds: scope.tableIds,
-    });
+    const orders = await loadActiveOrderBatches({ rid, tableIds: scope.tableIds, user: ctx?.user });
     const docsWithCustomer = await attachCustomerInfoToOrders({ rid, orders });
 
     return {
