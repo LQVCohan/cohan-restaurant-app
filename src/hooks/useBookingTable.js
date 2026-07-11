@@ -14,13 +14,16 @@ const CREATE_RESERVATION = gql`
       timeTo
       durationMinutes
       isUnlimitedTime
-      orderCode
       paymentMethod
       customerName
       customerPhone
       customerEmail
       partySize
       note
+      linkedMenuSubtotal
+      linkedMenuDiscount
+      linkedMenuTotal
+      linkedMenuPromotionIds
       depositAmount
       depositStatus
       status
@@ -38,7 +41,6 @@ export function useBookingTable() {
 
   const createBooking = async (input) => {
     const { data } = await mutate({ variables: { input } });
-    // đảm bảo trả về đúng object reservation
     return data?.createReservation || null;
   };
 
