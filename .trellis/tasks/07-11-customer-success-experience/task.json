@@ -7,14 +7,12 @@
     "src/components/Customer/SuccessModal/SuccessModal.jsx",
     "src/components/Customer/SuccessModal/SuccessModal.scss",
     "src/components/Customer/SuccessModal/SuccessModal.test.jsx",
-    "src/components/Customer/BookingDishesModal/OrderSummaryCheckoutModal.jsx",
-    "src/components/Customer/BookingDishesModal/OrderSummaryCheckoutUpgrade.scss",
-    "src/components/Customer/BookingDishesModal/OrderSummaryCheckoutModal.test.jsx"
+    "src/components/Customer/BookingDishesModal/OrderSummaryCheckoutUpgrade.scss"
   ],
-  "rootCause": "The booking and checkout flows already return confirmation codes, totals, payment method and linked order data, but their success states use separate minimal layouts that do not surface the most useful confirmation details or provide a consistent mobile hierarchy.",
+  "rootCause": "The booking and checkout flows already return confirmation codes, totals and linked order data, but their success states used separate minimal layouts that did not surface the most useful confirmation details or provide a consistent mobile hierarchy.",
   "validation": {
     "planned": [
-      "npx vitest run src/components/Customer/SuccessModal/SuccessModal.test.jsx src/components/Customer/BookingDishesModal/OrderSummaryCheckoutModal.test.jsx",
+      "npx vitest run src/components/Customer/SuccessModal/SuccessModal.test.jsx",
       "npm run build",
       "manual mobile check at 390x844 and 430x932"
     ],
@@ -22,8 +20,15 @@
       "read AGENTS.md, Trellis workflow, ponytail, ui-ux-pro-max, taste-ui-redesign and redesign-existing-projects skills",
       "traced reservation schema and resolver through useBookingTable, TableBooking and SuccessModal",
       "traced createCheckoutOrders through OrderSummaryCheckoutModal receipt and success view",
-      "confirmed no backend contract change is required"
+      "confirmed no backend contract change is required",
+      "replaced emoji booking confirmation with Lucide icons and a responsive confirmation hierarchy",
+      "surfaced linked dish count, subtotal, order codes and reservation deposit when available",
+      "restyled the existing checkout success view and removed its duplicate secondary footer action"
     ],
-    "notRun": []
+    "notRun": [
+      "Targeted Vitest was not run because the GitHub connector has no checked-out dependency environment",
+      "Production build was not run for the same reason",
+      "Mobile visual checks at 390x844 and 430x932 were not available"
+    ]
   }
 }
