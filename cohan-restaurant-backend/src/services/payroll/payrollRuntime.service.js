@@ -17,22 +17,77 @@ import {
 } from "./payrollCalculator.service.js";
 import { getPayrollPolicyForDate } from "../../config/payrollPolicy.vn.js";
 import { assertPayrollPeriodEditable } from "./payrollLockGuard.service.js";
+import { getStaffMembershipRestaurantFilter } from "../auth/restaurantScope.service.js";
 
-function toObjectId(id) {
-  if (!id || !mongoose.isValidObjectId(id)) return null;
-  return new mongoose.Types.ObjectId(id);
+const DEFAULT_PAYROLL_TIMEZONE = "Asia/Ho_Chi_Minh";
+
+function safeTimeZone(value) {
+  const candidate = String(value || "").trim();
+  if (!candidate) return DEFAULT_PAYROLL_TIMEZONE;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: candidate }).format();
+    return candidate;
+  } catch {
+    return DEFAULT_PAYROLL_TIMEZONE;
+  }
+}
+
+function formatDateInTimeZone(value, timezone = DEFAULT_PAYROLL_TIMEZONE) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: safeTimeZone(timezone),
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
+function zonedDateTimeToUtc(datePart, timePart, timezone = DEFAULT_PAYROLL_TIMEZONE) {
+  const [year, month, day] = String(datePart).split("-").map(Number);
+  const [hour = 0, minute = 0, second = 0] = String(timePart || "00:00:00")
+    .split(":")
+    .map(Number);
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, second, 0));
+  const rendered = new Intl.DateTimeFormat("en-US", {
+    timeZone: safeTimeZone(timezone),
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(utcGuess);
+  const map = Object.fromEntries(rendered.map((part) => [part.type, part.value]));
+  const renderedAsUtc = Date.UTC(
+    Number(map.year),
+    Number(map.month) - 1,
+    Number(map.day),
+    Number(map.hour),
+    Number(map.minute),
+    Number(map.second),
+    0,
+  );
+  return new Date(utcGuess.getTime() - (renderedAsUtc - utcGuess.getTime()));
 }
 
 export function toStartOfDay(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  return zonedDateTimeToUtc(
+    formatDateInTimeZone(date),
+    "00:00:00",
+    DEFAULT_PAYROLL_TIMEZONE,
+  );
 }
 
 export function toEndOfDay(date) {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
+  return zonedDateTimeToUtc(
+    formatDateInTimeZone(date),
+    "23:59:59",
+    DEFAULT_PAYROLL_TIMEZONE,
+  );
 }
 
 function mapDepartmentLabel(department) {
@@ -46,17 +101,18 @@ function mapDepartmentLabel(department) {
   };
   return map[String(department || "").toLowerCase()] || "Other";
 }
-function normalizeYmd(dateValue) {
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 10);
+function normalizeYmd(dateValue, timezone = DEFAULT_PAYROLL_TIMEZONE) {
+  return formatDateInTimeZone(dateValue, timezone);
 }
-function getWeekdayCode(dateValue) {
+
+function getWeekdayCode(dateValue, timezone = DEFAULT_PAYROLL_TIMEZONE) {
   const date = new Date(dateValue);
   if (Number.isNaN(date.getTime())) return "";
-
-  const day = date.getDay();
-  return ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][day];
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    timeZone: safeTimeZone(timezone),
+    weekday: "short",
+  }).format(date).toUpperCase();
+  return ({ SUN: "SUN", MON: "MON", TUE: "TUE", WED: "WED", THU: "THU", FRI: "FRI", SAT: "SAT" })[weekday] || "";
 }
 
 function isTimesheetIncludedInPayroll(row) {
@@ -69,9 +125,9 @@ function isTimesheetIncludedInPayroll(row) {
 
 function isHolidayWorkDate(row, settings) {
   const holidaySet = new Set(
-    (settings?.holidayDates || []).map((value) => normalizeYmd(value)),
+    (settings?.holidayDates || []).map((value) => normalizeYmd(value, settings?.timezone)),
   );
-  return holidaySet.has(normalizeYmd(row.workDate));
+  return holidaySet.has(normalizeYmd(row.workDate, settings?.timezone));
 }
 function isWeekendWorkDate(row, settings) {
   const weekendSet = new Set(
@@ -80,7 +136,7 @@ function isWeekendWorkDate(row, settings) {
     ),
   );
 
-  return weekendSet.has(getWeekdayCode(row.workDate));
+  return weekendSet.has(getWeekdayCode(row.workDate, settings?.timezone));
 }
 const MINUTE_MS = 60 * 1000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
@@ -174,6 +230,7 @@ export async function getPayrollSettings(restaurantId) {
     return {
       ...doc,
       restaurantId: String(doc.restaurantId),
+      timezone: safeTimeZone(doc.timezone || DEFAULT_PAYROLL_TIMEZONE),
       currentPayrollPeriodId: doc.currentPayrollPeriodId
         ? String(doc.currentPayrollPeriodId)
         : null,
@@ -182,6 +239,7 @@ export async function getPayrollSettings(restaurantId) {
 
   return {
     restaurantId: String(rid),
+    timezone: DEFAULT_PAYROLL_TIMEZONE,
     currentPayrollPeriodId: null,
     standardWorkDaysPerMonth: 26,
     standardHoursPerDay: 8,
@@ -404,10 +462,13 @@ export async function buildPayrollItemsForRange({
   if (!rid) return [];
 
   const settings = await getPayrollSettings(rid);
+  const staffScopeFilter = await getStaffMembershipRestaurantFilter(rid, {
+    roles: ["staff", "manager"],
+  });
 
   const staffFilter = {
     userType: "STAFF",
-    restaurantForStaff: rid,
+    ...staffScopeFilter,
   };
   const staffs = await Staff.find(staffFilter)
     .select({
@@ -420,6 +481,11 @@ export async function buildPayrollItemsForRange({
       avatarUrl: 1,
       avatar: 1,
       baseSalary: 1,
+      salaryType: 1,
+      hourlyRate: 1,
+      commissionRate: 1,
+      shiftType: 1,
+      workingDays: 1,
       employmentType: 1,
       employmentStatus: 1,
     })
@@ -432,7 +498,8 @@ export async function buildPayrollItemsForRange({
   const shifts = await Shift.find({
     employeeId: { $in: staffIds },
     restaurantId: rid,
-    startTime: { $gte: start, $lte: end },
+    startTime: { $lte: end },
+    endTime: { $gte: start },
   })
     .select({ _id: 1, employeeId: 1, startTime: 1 })
     .lean();
@@ -590,7 +657,11 @@ export async function buildPayrollItemsForRange({
           $addToSet: {
             $cond: [
               "$includeInPayroll",
-              { $dateToString: { format: "%Y-%m-%d", date: "$workDate" } },
+              { $dateToString: {
+                format: "%Y-%m-%d",
+                date: "$workDate",
+                timezone: settings?.timezone || DEFAULT_PAYROLL_TIMEZONE,
+              } },
               null,
             ],
           },
@@ -774,6 +845,7 @@ export async function buildPayrollItemsForRange({
         ...leave,
         ...adjustmentsForStaff,
         scheduleShiftCount: shiftCountByStaff.get(sid) || 0,
+        salaryType: staff.salaryType || "monthly",
       },
       settings,
     );
