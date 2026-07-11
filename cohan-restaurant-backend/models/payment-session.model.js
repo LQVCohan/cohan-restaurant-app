@@ -4,6 +4,23 @@ import BaseSchemaModel from "./baseSchemaModel.js";
 const { Schema, Types } = mongoose;
 const EXTERNAL_PROVIDERS = new Set(["momo", "vnpay"]);
 
+export function resolvePaymentRuntimeMode(mode, env = process.env) {
+  const requestedMode =
+    String(mode || "sandbox").trim().toLowerCase() === "production"
+      ? "production"
+      : "sandbox";
+  const productionAllowed =
+    String(env.NODE_ENV || "development").trim().toLowerCase() === "production" ||
+    String(env.PAYMENT_ALLOW_PRODUCTION_IN_DEVELOPMENT || "")
+      .trim()
+      .toLowerCase() === "true";
+
+  // ponytail: local development must not reach a real payment gateway by accident.
+  return requestedMode === "production" && !productionAllowed
+    ? "sandbox"
+    : requestedMode;
+}
+
 const PaymentEventSchema = new Schema(
   {
     type: { type: String, required: true },
@@ -117,12 +134,19 @@ PaymentSessionSchema.pre("save", async function attachRestaurantCredential() {
     getRestaurantProviderMode,
     resolvePaymentProviderCredential,
   } = await import("../src/services/payment/paymentCredential.service.js");
-  const mode = await getRestaurantProviderMode(this.restaurantId, this.provider);
+  const configuredMode = await getRestaurantProviderMode(
+    this.restaurantId,
+    this.provider,
+  );
+  const mode = resolvePaymentRuntimeMode(configuredMode);
   const resolved = await resolvePaymentProviderCredential({
     restaurantId: this.restaurantId,
     provider: this.provider,
     mode,
   });
+  if (resolvePaymentRuntimeMode(resolved.mode) !== resolved.mode) {
+    throw new Error("PAYMENT_PRODUCTION_DISABLED_IN_DEVELOPMENT");
+  }
   this.providerCredentialId = resolved.credentialId || undefined;
   this.providerCredentialSource = resolved.source;
   this.providerCredentialMode = resolved.mode;
