@@ -74,19 +74,27 @@ function zonedDateTimeToUtc(datePart, timePart, timezone = DEFAULT_PAYROLL_TIMEZ
   return new Date(utcGuess.getTime() - (renderedAsUtc - utcGuess.getTime()));
 }
 
-export function toStartOfDay(date) {
+export function toStartOfDay(
+  date,
+  timezone = DEFAULT_PAYROLL_TIMEZONE,
+) {
+  const safeTimezone = safeTimeZone(timezone);
   return zonedDateTimeToUtc(
-    formatDateInTimeZone(date),
+    formatDateInTimeZone(date, safeTimezone),
     "00:00:00",
-    DEFAULT_PAYROLL_TIMEZONE,
+    safeTimezone,
   );
 }
 
-export function toEndOfDay(date) {
+export function toEndOfDay(
+  date,
+  timezone = DEFAULT_PAYROLL_TIMEZONE,
+) {
+  const safeTimezone = safeTimeZone(timezone);
   return zonedDateTimeToUtc(
-    formatDateInTimeZone(date),
+    formatDateInTimeZone(date, safeTimezone),
     "23:59:59",
-    DEFAULT_PAYROLL_TIMEZONE,
+    safeTimezone,
   );
 }
 
@@ -467,6 +475,8 @@ export async function buildPayrollItemsForRange({
   if (!rid) return [];
 
   const settings = await getPayrollSettings(rid);
+  const rangeStart = toStartOfDay(start, settings?.timezone);
+  const rangeEnd = toEndOfDay(end, settings?.timezone);
   const staffScopeFilter = await getStaffMembershipRestaurantFilter(rid, {
     roles: ["staff", "manager"],
   });
@@ -503,8 +513,8 @@ export async function buildPayrollItemsForRange({
   const shifts = await Shift.find({
     employeeId: { $in: staffIds },
     restaurantId: rid,
-    startTime: { $lte: end },
-    endTime: { $gte: start },
+    startTime: { $lte: rangeEnd },
+    endTime: { $gte: rangeStart },
   })
     .select({ _id: 1, employeeId: 1, startTime: 1 })
     .lean();
@@ -512,7 +522,7 @@ export async function buildPayrollItemsForRange({
   const timesheetRows = await Timesheet.find({
     employeeId: { $in: staffIds },
     restaurantId: rid,
-    workDate: { $gte: start, $lte: end },
+    workDate: { $gte: rangeStart, $lte: rangeEnd },
   })
     .select({
       employeeId: 1,
@@ -572,7 +582,7 @@ export async function buildPayrollItemsForRange({
       $match: {
         employeeId: { $in: staffIds },
         restaurantId: rid,
-        workDate: { $gte: start, $lte: end },
+        workDate: { $gte: rangeStart, $lte: rangeEnd },
       },
     },
     {
@@ -646,7 +656,7 @@ export async function buildPayrollItemsForRange({
               {
                 $and: [
                   "$includeInPayroll",
-                  { $eq: [{ $dayOfWeek: "$workDate" }, 1] },
+                  { $eq: [{ $dayOfWeek: { date: "$workDate", timezone: settings?.timezone || DEFAULT_PAYROLL_TIMEZONE } }, 1] },
                   { $gt: ["$approvedOvertimePayableMinutes", 0] },
                 ],
               },
@@ -681,8 +691,8 @@ export async function buildPayrollItemsForRange({
         employeeId: { $in: staffIds },
         restaurantId: rid,
         status: "approved",
-        startDate: { $lte: end },
-        endDate: { $gte: start },
+        startDate: { $lte: rangeEnd },
+        endDate: { $gte: rangeStart },
       },
     },
     {
@@ -785,7 +795,7 @@ export async function buildPayrollItemsForRange({
     shiftCountByStaff.set(sid, (shiftCountByStaff.get(sid) || 0) + 1);
   });
 
-  const workDays = calculatePeriodCalendarDays(start, end);
+  const workDays = calculatePeriodCalendarDays(rangeStart, rangeEnd);
   const restaurant = await Restaurant.findById(rid)
     .select({ address: 1, payrollRegionCode: 1 })
     .lean();
@@ -826,7 +836,7 @@ export async function buildPayrollItemsForRange({
 
     const payroll = buildPayrollItem({
       staff,
-      period: { start, end, calendarDays: workDays },
+      period: { start: rangeStart, end: rangeEnd, calendarDays: workDays },
       aggregate: {
         workedDateCount: paidWorkDateCount,
         totalHours: ts.totalHours,
