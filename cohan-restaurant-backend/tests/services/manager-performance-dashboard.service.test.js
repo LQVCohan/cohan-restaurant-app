@@ -36,6 +36,12 @@ import { getManagerPerformanceDashboard } from "../../src/services/performance/m
 describe("managerPerformanceDashboard.service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.incidentFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([]),
+    });
+    mocks.adjustmentFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([]),
+    });
     mocks.resolveUserRoles.mockReturnValue(["MANAGER"]);
     mocks.userCanAccessRestaurant.mockResolvedValue(true);
     mocks.getMembershipFilter.mockResolvedValue({ _id: { $in: ["e1", "e2"] } });
