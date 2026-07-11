@@ -139,7 +139,7 @@ describe("PaymentProviderSettingsPage", () => {
   it("does not persist an unsaved mode when only toggling provider visibility", async () => {
     render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
 
-    fireEvent.click(screen.getAllByLabelText("Tài khoản chính thức")[1]);
+    fireEvent.click(screen.getAllByLabelText(/Tài khoản chính thức/)[1]);
     fireEvent.click(screen.getAllByRole("checkbox")[1]);
 
     await waitFor(() => expect(updateSettingsMock).toHaveBeenCalledTimes(1));
