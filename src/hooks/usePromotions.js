@@ -82,6 +82,16 @@ const M_UPDATE_PROMOTION = gql`
   }
 `;
 
+const M_TOGGLE_PROMOTION = gql`
+  mutation TogglePromotion($id: ID!, $isActive: Boolean!) {
+    togglePromotion(id: $id, isActive: $isActive) {
+      id
+      restaurantId
+      isActive
+    }
+  }
+`;
+
 const M_DELETE_PROMOTION = gql`
   mutation DeletePromotion($id: ID!) {
     deletePromotion(id: $id)
@@ -117,11 +127,11 @@ const getApolloErrorMessage = (error) => {
     error.graphQLErrors?.[0]?.message ||
     error.networkError?.message ||
     error.message ||
-    "Không tải được dữ liệu khuyến mãi."
+    "Không thể xử lý dữ liệu khuyến mãi."
   );
 };
 
-const mountPromotionErrorBanner = ({ error, refetch }) => {
+const mountPromotionErrorBanner = ({ error, refetch, title }) => {
   if (typeof document === "undefined") return undefined;
 
   const bannerId = "promotion-query-error-banner";
@@ -151,18 +161,18 @@ const mountPromotionErrorBanner = ({ error, refetch }) => {
 
   const text = document.createElement("div");
   text.style.cssText = "display:grid;gap:3px;min-width:0";
-  const title = document.createElement("strong");
-  title.textContent = "Không tải được dữ liệu khuyến mãi";
-  title.style.cssText = "font-size:.92rem;font-weight:820;color:#9a413d";
+  const heading = document.createElement("strong");
+  heading.textContent = title || "Không tải được dữ liệu khuyến mãi";
+  heading.style.cssText = "font-size:.92rem;font-weight:820;color:#9a413d";
   const detail = document.createElement("span");
   detail.textContent = message;
   detail.style.cssText = "font-size:.82rem;line-height:1.45;color:#9a413d;word-break:break-word";
-  text.append(title, detail);
+  text.append(heading, detail);
 
-  const retryButton = document.createElement("button");
-  retryButton.type = "button";
-  retryButton.textContent = "Thử tải lại";
-  retryButton.style.cssText = [
+  const actionButton = document.createElement("button");
+  actionButton.type = "button";
+  actionButton.textContent = refetch ? "Thử tải lại" : "Đóng";
+  actionButton.style.cssText = [
     "min-height:36px",
     "border:1px solid rgba(154,65,61,.22)",
     "border-radius:12px",
@@ -173,15 +183,17 @@ const mountPromotionErrorBanner = ({ error, refetch }) => {
     "padding:0 12px",
     "white-space:nowrap",
   ].join(";");
-  retryButton.addEventListener("click", () => {
-    refetch?.();
-  });
+  const handleAction = () => {
+    if (refetch) refetch();
+    else banner.remove();
+  };
+  actionButton.addEventListener("click", handleAction);
 
-  banner.append(text, retryButton);
+  banner.append(text, actionButton);
   container.prepend(banner);
 
   return () => {
-    retryButton.removeEventListener("click", () => refetch?.());
+    actionButton.removeEventListener("click", handleAction);
     banner.remove();
   };
 };
@@ -247,9 +259,10 @@ const buildPromotionInput = (data, restaurantId) => {
 
   return {
     name: String(data?.name || "").trim(),
-    code: String(data?.code || "")
-      .trim()
-      .toUpperCase() || null,
+    code:
+      String(data?.code || "")
+        .trim()
+        .toUpperCase() || null,
     description: String(data?.description || "").trim(),
     promotionType:
       type === "fixed"
@@ -292,8 +305,41 @@ const buildPromotionInput = (data, restaurantId) => {
   };
 };
 
+const omitActivation = ({ isActive, ...input }) => input;
+
+const isStatusOnlyPromotionUpdate = (currentPromotion, nextPromotion, restaurantId) => {
+  if (!currentPromotion || !nextPromotion || !nextPromotion.status) return false;
+  const currentInput = buildPromotionInput(currentPromotion, restaurantId);
+  const nextInput = buildPromotionInput(nextPromotion, restaurantId);
+  return (
+    currentInput.isActive !== nextInput.isActive &&
+    JSON.stringify(omitActivation(currentInput)) ===
+      JSON.stringify(omitActivation(nextInput))
+  );
+};
+
+const buildDuplicatePromotionCode = (code, promotions = []) => {
+  const raw = String(code || "PROMO").trim().toUpperCase() || "PROMO";
+  const root = raw.replace(/_COPY(?:_\d+)?$/, "");
+  const usedCodes = new Set(
+    (promotions || []).map((promotion) =>
+      String(promotion?.code || "").trim().toUpperCase(),
+    ),
+  );
+
+  let candidate = `${root}_COPY`;
+  let index = 2;
+  while (usedCodes.has(candidate)) {
+    candidate = `${root}_COPY_${index}`;
+    index += 1;
+  }
+  return candidate;
+};
+
 export const __testables = {
+  buildDuplicatePromotionCode,
   buildPromotionInput,
+  isStatusOnlyPromotionUpdate,
   normalizePromotion,
   resolvePromotionStatus,
 };
@@ -318,6 +364,7 @@ export const usePromotions = ({
     status: "all",
     restaurant: "",
   });
+  const [operationError, setOperationError] = useState(null);
 
   useEffect(() => {
     if (scopedRestaurantId || !restaurantOptions.length) return;
@@ -349,8 +396,17 @@ export const usePromotions = ({
   });
 
   useEffect(
-    () => (showErrorBanner ? mountPromotionErrorBanner({ error, refetch }) : undefined),
-    [error, refetch, showErrorBanner],
+    () =>
+      showErrorBanner
+        ? mountPromotionErrorBanner({
+            error: operationError || error,
+            refetch: operationError ? null : refetch,
+            title: operationError
+              ? "Không thể xử lý khuyến mãi"
+              : "Không tải được dữ liệu khuyến mãi",
+          })
+        : undefined,
+    [error, operationError, refetch, showErrorBanner],
   );
 
   const { data: formData } = useQuery(Q_PROMOTION_FORM_DATA, {
@@ -361,6 +417,7 @@ export const usePromotions = ({
 
   const [createPromotion] = useMutation(M_CREATE_PROMOTION);
   const [updatePromotionMu] = useMutation(M_UPDATE_PROMOTION);
+  const [togglePromotionMu] = useMutation(M_TOGGLE_PROMOTION);
   const [deletePromotionMu] = useMutation(M_DELETE_PROMOTION);
 
   const menuItems = useMemo(
@@ -403,11 +460,11 @@ export const usePromotions = ({
   const promotions = useMemo(
     () =>
       allPromotions.filter((promotion) => {
-        const q = filters.search.toLowerCase();
+        const query = filters.search.toLowerCase();
         const matchesSearch =
-          promotion.name.toLowerCase().includes(q) ||
-          promotion.code.toLowerCase().includes(q) ||
-          (promotion.description || "").toLowerCase().includes(q);
+          promotion.name.toLowerCase().includes(query) ||
+          promotion.code.toLowerCase().includes(query) ||
+          (promotion.description || "").toLowerCase().includes(query);
         const matchesStatus =
           filters.status === "all" || promotion.status === filters.status;
         return matchesSearch && matchesStatus;
@@ -415,73 +472,133 @@ export const usePromotions = ({
     [allPromotions, filters],
   );
 
+  const runOperation = async (operation) => {
+    setOperationError(null);
+    try {
+      return await operation();
+    } catch (caught) {
+      setOperationError(caught);
+      throw caught;
+    }
+  };
+
+  const refetchRestaurant = async (restaurantId) => {
+    if (String(selectedRestaurantId) !== String(restaurantId)) return;
+    await refetch({
+      restaurantId,
+      activeOnly,
+      limit: 500,
+      offset: 0,
+    });
+  };
+
   const addPromotion = async (promotionData) => {
     const targetRestaurantId = String(
       promotionData?.restaurantId || selectedRestaurantId || "",
     );
     if (!targetRestaurantId) return null;
 
-    await createPromotion({
-      variables: {
-        input: buildPromotionInput(promotionData, targetRestaurantId),
-      },
-    });
+    const result = await runOperation(() =>
+      createPromotion({
+        variables: {
+          input: buildPromotionInput(promotionData, targetRestaurantId),
+        },
+      }),
+    );
+    const authoritativeRestaurantId = String(
+      result?.data?.createPromotion?.restaurantId || targetRestaurantId,
+    );
+    await refetchRestaurant(authoritativeRestaurantId);
+    return authoritativeRestaurantId;
+  };
 
-    if (String(selectedRestaurantId) === targetRestaurantId) {
-      await refetch({
-        restaurantId: targetRestaurantId,
-        activeOnly: false,
-        limit: 500,
-        offset: 0,
-      });
-    }
-
-    return targetRestaurantId;
+  const togglePromotion = async (id, isActive) => {
+    const result = await runOperation(() =>
+      togglePromotionMu({ variables: { id, isActive: Boolean(isActive) } }),
+    );
+    const restaurantId = String(
+      result?.data?.togglePromotion?.restaurantId || selectedRestaurantId || "",
+    );
+    await refetchRestaurant(restaurantId);
+    return restaurantId;
   };
 
   const updatePromotion = async (id, promotionData) => {
-    const targetRestaurantId = String(
-      promotionData?.restaurantId || selectedRestaurantId || "",
+    const currentPromotion = allPromotions.find(
+      (promotion) => String(promotion.id) === String(id),
     );
-    if (!targetRestaurantId) return null;
+    const currentRestaurantId = String(
+      currentPromotion?.restaurantId || selectedRestaurantId || "",
+    );
+    if (!currentRestaurantId) return null;
 
-    await updatePromotionMu({
-      variables: {
-        id,
-        input: buildPromotionInput(promotionData, targetRestaurantId),
-      },
-    });
-
-    if (String(selectedRestaurantId) === targetRestaurantId) {
-      await refetch({
-        restaurantId: targetRestaurantId,
-        activeOnly: false,
-        limit: 500,
-        offset: 0,
-      });
+    const requestedRestaurantId = String(
+      promotionData?.restaurantId || currentRestaurantId,
+    );
+    if (requestedRestaurantId !== currentRestaurantId) {
+      const moveError = new Error(
+        "Không thể chuyển khuyến mãi sang nhà hàng khác. Hãy tạo bản sao tại nhà hàng cần dùng.",
+      );
+      setOperationError(moveError);
+      throw moveError;
     }
 
-    return targetRestaurantId;
+    if (
+      isStatusOnlyPromotionUpdate(
+        currentPromotion,
+        promotionData,
+        currentRestaurantId,
+      )
+    ) {
+      return togglePromotion(id, promotionData.status !== "draft");
+    }
+
+    const result = await runOperation(() =>
+      updatePromotionMu({
+        variables: {
+          id,
+          input: buildPromotionInput(promotionData, currentRestaurantId),
+        },
+      }),
+    );
+    const authoritativeRestaurantId = String(
+      result?.data?.updatePromotion?.restaurantId || currentRestaurantId,
+    );
+    await refetchRestaurant(authoritativeRestaurantId);
+    return authoritativeRestaurantId;
   };
 
   const deletePromotion = async (id) => {
-    await deletePromotionMu({ variables: { id } });
-    await refetch();
+    try {
+      await runOperation(() => deletePromotionMu({ variables: { id } }));
+      await refetch();
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const duplicatePromotion = async (id) => {
-    const promotion = allPromotions.find((item) => item.id === id);
-    if (!promotion) return;
-    await addPromotion({
-      ...promotion,
-      name: `${promotion.name} (Sao chép)`,
-      code: `${promotion.code || "PROMO"}_COPY`,
-      status: "draft",
-      usageCount: 0,
-    });
+    const promotion = allPromotions.find(
+      (item) => String(item.id) === String(id),
+    );
+    if (!promotion) return null;
+
+    try {
+      return await addPromotion({
+        ...promotion,
+        name: `${promotion.name} (Sao chép)`,
+        code: buildDuplicatePromotionCode(promotion.code, allPromotions),
+        status: "draft",
+        usageCount: 0,
+      });
+    } catch {
+      return null;
+    }
   };
 
   const updateFilters = (newFilters) => {
+    setOperationError(null);
     setFilters((prev) => ({ ...prev, ...newFilters }));
   };
 
@@ -495,11 +612,12 @@ export const usePromotions = ({
     menuItems,
     addPromotion,
     updatePromotion,
+    togglePromotion,
     deletePromotion,
     duplicatePromotion,
     updateFilters,
     loading,
-    error,
+    error: operationError || error,
     refetchPromotions: refetch,
   };
 };
