@@ -10,6 +10,22 @@ export const PERFORMANCE_READ_ROLES = ["ADMIN", "MANAGER", "HR", "ACCOUNTANT"];
 export const PERFORMANCE_REVIEW_ROLES = ["ADMIN", "MANAGER", "HR"];
 export const PERFORMANCE_SELF_ROLES = ["STAFF"];
 
+export const ATTENDANCE_SCORE_OWNED_BY_PUNCTUALITY =
+  "ATTENDANCE_SCORE_OWNED_BY_PUNCTUALITY";
+const ATTENDANCE_EVENT_TYPES = new Set([
+  "ATTENDANCE_LATE",
+  "ATTENDANCE_EARLY_LEAVE",
+  "ATTENDANCE_MISSING_CHECKOUT",
+  "ATTENDANCE_ABSENT",
+]);
+
+export function isAttendancePerformanceIncident(incident) {
+  return (
+    String(incident?.sourceType || "").toLowerCase() === "timesheet" &&
+    ATTENDANCE_EVENT_TYPES.has(String(incident?.eventType || "").toUpperCase())
+  );
+}
+
 export function buildIncidentUniqueKey(sourceType, sourceId, eventType) {
   return `${String(sourceType || "")}:${String(sourceId || "")}:${String(eventType || "")}`;
 }
@@ -85,8 +101,13 @@ export async function reviewPerformanceIncident({ input, ctx }) {
   await assertCanReviewIncident(user, incident.restaurantId);
 
   const nextResponsibility = input.responsibilityStatus || incident.responsibilityStatus;
-  const nextImpact = input.scoreImpactStatus || incident.scoreImpactStatus;
+  const attendanceIncident = isAttendancePerformanceIncident(incident);
+  let nextImpact = input.scoreImpactStatus || incident.scoreImpactStatus;
   if (nextImpact === "applied") throw new Error("SCORE_IMPACT_APPLIED_NOT_ALLOWED");
+  if (attendanceIncident && nextImpact === "eligible") {
+    throw new Error(ATTENDANCE_SCORE_OWNED_BY_PUNCTUALITY);
+  }
+  if (attendanceIncident) nextImpact = "not_applicable";
   if (Number(input.proposedScoreDelta) > 0) throw new Error("INVALID_PROPOSED_SCORE_DELTA");
   if (
     nextImpact === "eligible" &&
@@ -99,8 +120,16 @@ export async function reviewPerformanceIncident({ input, ctx }) {
   if (typeof input.reviewNote === "string") incident.reviewNote = input.reviewNote.trim();
   if (typeof input.responsibilityNote === "string") incident.responsibilityNote = input.responsibilityNote.trim();
   if (input.responsibilityStatus) incident.responsibilityStatus = input.responsibilityStatus;
-  if (input.scoreImpactStatus) incident.scoreImpactStatus = input.scoreImpactStatus;
-  if (typeof input.proposedScoreDelta !== "undefined") incident.proposedScoreDelta = Number(input.proposedScoreDelta || 0);
+  incident.scoreImpactStatus = nextImpact;
+  if (attendanceIncident) {
+    incident.proposedScoreDelta = 0;
+    incident.metadata = {
+      ...(incident.metadata || {}),
+      scoreRule: "punctuality_component",
+    };
+  } else if (typeof input.proposedScoreDelta !== "undefined") {
+    incident.proposedScoreDelta = Number(input.proposedScoreDelta || 0);
+  }
   incident.resolvedAt = terminalStatuses.includes(incident.scoreImpactStatus) ? new Date() : incident.resolvedAt;
   return incident.save();
 }
@@ -132,6 +161,9 @@ export async function markPerformanceIncidentEligible({ input, ctx }) {
   if (!user) throw new Error("UNAUTHENTICATED");
   const incident = await getPerformanceIncidentById(input.incidentId);
   await assertCanReviewIncident(user, incident.restaurantId);
+  if (isAttendancePerformanceIncident(incident)) {
+    throw new Error(ATTENDANCE_SCORE_OWNED_BY_PUNCTUALITY);
+  }
   if (["applied", "waived"].includes(incident.scoreImpactStatus)) throw new Error("INVALID_INCIDENT_STATE");
   if (!["staff_responsible", "manager_responsible", "shared"].includes(input.responsibilityStatus)) throw new Error("INVALID_RESPONSIBILITY_STATUS");
   const proposed = Number(input.proposedScoreDelta);
@@ -170,6 +202,9 @@ export async function applyPerformanceIncidentScore({ incidentId, actor, note })
       if (!incident) throw new Error("PERFORMANCE_INCIDENT_NOT_FOUND");
       await assertCanApplyIncident(actor, incident.restaurantId);
 
+      if (isAttendancePerformanceIncident(incident)) {
+        throw new Error(ATTENDANCE_SCORE_OWNED_BY_PUNCTUALITY);
+      }
       if (incident.scoreImpactStatus === "waived") throw new Error("PERFORMANCE_INCIDENT_WAIVED");
       if (incident.scoreImpactStatus === "applied") throw new Error("PERFORMANCE_INCIDENT_ALREADY_APPLIED");
       if (incident.scoreImpactStatus !== "eligible") throw new Error("PERFORMANCE_INCIDENT_NOT_ELIGIBLE");
