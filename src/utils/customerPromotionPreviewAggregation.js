@@ -5,11 +5,25 @@ const toNumber = (value, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+export const resolveCheckoutGroupShippingFee = ({
+  orderType,
+  shippingFee,
+  groupCount,
+}) => {
+  const normalizedFee = Math.max(0, toNumber(shippingFee));
+  const normalizedCount = Math.max(1, Math.floor(toNumber(groupCount, 1)));
+  return orderType === "delivery" && normalizedCount > 1
+    ? Math.round(normalizedFee / normalizedCount)
+    : normalizedFee;
+};
+
 export const buildCustomerPromotionPreviewInput = ({
   group,
   orderType,
   paymentMethod,
   couponCode,
+  shippingFee = 0,
+  groupCount = 1,
 }) => ({
   restaurantId: group.restaurantId,
   orderType,
@@ -20,16 +34,17 @@ export const buildCustomerPromotionPreviewInput = ({
   pricing: {
     taxRate: 0.1,
     serviceRate: 0,
-    shippingFee: 0,
+    shippingFee: resolveCheckoutGroupShippingFee({
+      orderType,
+      shippingFee,
+      groupCount,
+    }),
     voucherCode: couponCode || null,
   },
   promotionIds: [],
 });
 
-export const aggregateCustomerPromotionBreakdowns = (
-  breakdowns = [],
-  shippingFee = 0,
-) => {
+export const aggregateCustomerPromotionBreakdowns = (breakdowns = []) => {
   const aggregate = breakdowns.reduce(
     (total, breakdown) => ({
       subtotal: total.subtotal + toNumber(breakdown?.subtotal),
@@ -42,6 +57,8 @@ export const aggregateCustomerPromotionBreakdowns = (
         ),
       service: total.service + toNumber(breakdown?.service),
       tax: total.tax + toNumber(breakdown?.tax),
+      shippingFee:
+        total.shippingFee + toNumber(breakdown?.shippingFee),
       total:
         total.total +
         toNumber(breakdown?.grandTotal ?? breakdown?.finalTotal),
@@ -56,16 +73,15 @@ export const aggregateCustomerPromotionBreakdowns = (
       couponDiscount: 0,
       service: 0,
       tax: 0,
+      shippingFee: 0,
       total: 0,
       appliedPromotions: [],
     },
   );
 
-  const normalizedShippingFee = Math.max(0, toNumber(shippingFee));
   return {
     ...aggregate,
-    shippingFee: normalizedShippingFee,
-    total: Math.max(0, aggregate.total + normalizedShippingFee),
+    total: Math.max(0, aggregate.total),
     appliedPromotions: [...new Set(aggregate.appliedPromotions.map(String))],
   };
 };
