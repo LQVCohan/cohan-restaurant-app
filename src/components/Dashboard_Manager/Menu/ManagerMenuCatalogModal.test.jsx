@@ -78,7 +78,7 @@ describe("ManagerMenuCatalogModal", () => {
     expect(within(breakfastCard).getByText("Hết món")).toBeInTheDocument();
 
     const dinnerCard = screen.getByText("Thực đơn tối").closest("article");
-    expect(within(dinnerCard).getByText("Đang ẩn")).toBeInTheDocument();
+    expect(within(dinnerCard).getAllByText("Đang ẩn")).toHaveLength(2);
     expect(within(dinnerCard).getByText("Cơm gà")).toBeInTheDocument();
     expect(within(dinnerCard).getByText(/200 món đầu tiên/)).toBeInTheDocument();
 
