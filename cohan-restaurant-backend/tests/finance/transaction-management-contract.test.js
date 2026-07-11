@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import mongoose from "mongoose";
 import { print } from "graphql";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -25,9 +25,8 @@ const selectLeanQuery = (value) => ({
 });
 
 const walletServiceSource = readFileSync(
-  join(
-    process.cwd(),
-    "cohan-restaurant-backend/src/services/wallet/wallet.service.js",
+  fileURLToPath(
+    new URL("../../src/services/wallet/wallet.service.js", import.meta.url),
   ),
   "utf8",
 );
@@ -220,11 +219,18 @@ describe("transaction management persistence and GraphQL contracts", () => {
   });
 
   it("uses transactional idempotent wallet cashflow writes without swallowing errors", () => {
+    const writesOrderCashflowDirectly = walletServiceSource.includes(
+      'source: "order"',
+    );
+    const delegatesOrderSettlement = walletServiceSource.includes(
+      "settlePaidOrderPaymentSession({",
+    );
+
+    expect(writesOrderCashflowDirectly || delegatesOrderSettlement).toBe(true);
     expect(walletServiceSource).toContain("Cashflow.findOneAndUpdate(");
-    expect(walletServiceSource).toContain('source: "order"');
     expect(walletServiceSource).toContain('source: "refund"');
     expect(walletServiceSource).toContain(
-      '{ upsert: true, new: true, setDefaultsOnInsert: true, session }',
+      "{ upsert: true, new: true, setDefaultsOnInsert: true, session }",
     );
     expect(walletServiceSource).not.toMatch(/Cashflow\.create\([\s\S]*?\.catch\(/);
   });

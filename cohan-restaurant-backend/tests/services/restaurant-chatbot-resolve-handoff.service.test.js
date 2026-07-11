@@ -119,7 +119,6 @@ describe("resolveRestaurantChatbotHandoff", () => {
 
   it("resolves by chatThreadId", async () => {
     mockLifecycle();
-    vi.spyOn(AiChatConversation, "findById").mockResolvedValue(null);
 
     const result = await resolveRestaurantChatbotHandoff({
       input: { chatThreadId: IDS.thread },

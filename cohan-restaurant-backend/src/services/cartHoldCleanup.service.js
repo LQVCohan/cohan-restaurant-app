@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import { Cart, Warehouse } from "../../models/index.js";
 import { cancelReservationForOrderTx } from "./inventory.service.js";
 import { notifyAvailabilityWatchersForMenuItem } from "./menuAvailabilityWatch.service.js";
+import { notifyAvailableMenuWatchers } from "./menuAvailabilitySweep.service.js";
+import { notifyAvailableTableWatchers } from "./tableAvailabilityWatch.service.js";
 
 const ABUSE_WARN_THRESHOLD = 3;
 const ABUSE_BLOCK_THRESHOLD = 8;
@@ -96,6 +98,11 @@ export async function cleanupExpiredCartHolds(io, logger = console) {
     cartsTouched: 0,
     released: 0,
     releasedQuantity: 0,
+    menuWatchGroupsScanned: 0,
+    menuWatchNotified: 0,
+    menuWatchSkipped: 0,
+    tableWatchNotified: 0,
+    tableWatchSkipped: 0,
     failed: 0,
     errors: [],
   };
@@ -195,6 +202,31 @@ export async function cleanupExpiredCartHolds(io, logger = console) {
       logCleanupError(logger, { err, ...errorInfo });
     } finally {
       await session.endSession();
+    }
+  }
+
+  try {
+    const menuWatchResult = await notifyAvailableMenuWatchers({ io });
+    summary.menuWatchGroupsScanned = Number(menuWatchResult?.groupsScanned || 0);
+    summary.menuWatchNotified = Number(menuWatchResult?.notified || 0);
+    summary.menuWatchSkipped = Number(menuWatchResult?.skipped || 0);
+  } catch (err) {
+    if (logger?.warn) {
+      logger.warn({ err }, "[CartHold Cleanup] Failed to sweep menu availability watchers");
+    } else {
+      console.warn("[CartHold Cleanup] Failed to sweep menu availability watchers", err?.message || err);
+    }
+  }
+
+  try {
+    const tableWatchResult = await notifyAvailableTableWatchers({ io });
+    summary.tableWatchNotified = Number(tableWatchResult?.notified || 0);
+    summary.tableWatchSkipped = Number(tableWatchResult?.skipped || 0);
+  } catch (err) {
+    if (logger?.warn) {
+      logger.warn({ err }, "[CartHold Cleanup] Failed to notify table availability watchers");
+    } else {
+      console.warn("[CartHold Cleanup] Failed to notify table availability watchers", err?.message || err);
     }
   }
 

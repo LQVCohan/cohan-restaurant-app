@@ -18,6 +18,9 @@ const summaryRow = (label, value, marker) => `
   </div>
 `;
 
+const getSaveButton = () =>
+  document.querySelector(".talite-footer .btn.primary");
+
 const renderModal = () => {
   document.body.innerHTML = `
     <div class="talite-modal">
@@ -72,9 +75,8 @@ describe("table detail modal tabs", () => {
     expect(screen.getByTestId("summary")).not.toHaveAttribute("hidden");
     expect(screen.getByTestId("status")).not.toHaveAttribute("hidden");
     expect(screen.getByTestId("configuration")).toHaveAttribute("hidden");
-    expect(screen.getByRole("button", { name: "Lưu cấu hình", hidden: true })).toHaveAttribute(
-      "hidden",
-    );
+    expect(getSaveButton()).toHaveTextContent("Lưu cấu hình");
+    expect(getSaveButton()).toHaveAttribute("hidden");
 
     fireEvent.click(screen.getByRole("tab", { name: "Cấu hình" }));
 
@@ -88,9 +90,7 @@ describe("table detail modal tabs", () => {
     expect(screen.getByTestId("status")).not.toHaveAttribute("hidden");
     expect(screen.getByTestId("move")).not.toHaveAttribute("hidden");
     expect(screen.getByTestId("configuration")).toHaveAttribute("hidden");
-    expect(screen.getByRole("button", { name: "Lưu cấu hình", hidden: true })).toHaveAttribute(
-      "hidden",
-    );
+    expect(getSaveButton()).toHaveAttribute("hidden");
   });
 
   it("adds stable summary and section hooks for the visual system", () => {

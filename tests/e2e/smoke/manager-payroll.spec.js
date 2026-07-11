@@ -56,10 +56,34 @@ const PAYROLL_READINESS = {
   blockingCount: 0,
   warningCount: 0,
   sections: {
-    schedule: { status: "ready", blockingCount: 0, warningCount: 0, metrics: {}, issues: [] },
-    attendance: { status: "ready", blockingCount: 0, warningCount: 0, metrics: {}, issues: [] },
-    approvals: { status: "ready", blockingCount: 0, warningCount: 0, metrics: {}, issues: [] },
-    payroll: { status: "ready", blockingCount: 0, warningCount: 0, metrics: {}, issues: [] },
+    schedule: {
+      status: "ready",
+      blockingCount: 0,
+      warningCount: 0,
+      metrics: {},
+      issues: [],
+    },
+    attendance: {
+      status: "ready",
+      blockingCount: 0,
+      warningCount: 0,
+      metrics: {},
+      issues: [],
+    },
+    approvals: {
+      status: "ready",
+      blockingCount: 0,
+      warningCount: 0,
+      metrics: {},
+      issues: [],
+    },
+    payroll: {
+      status: "ready",
+      blockingCount: 0,
+      warningCount: 0,
+      metrics: {},
+      issues: [],
+    },
   },
   issues: [],
 };
@@ -72,7 +96,8 @@ const PAYROLL_ITEMS = Array.from({ length: 14 }, (_, index) => {
     name: `Demo Staff ${String(number).padStart(2, "0")}`,
     code: `DS-${String(number).padStart(2, "0")}`,
     role: number % 2 ? "Server" : "Cashier",
-    department: number % 3 === 0 ? "Kitchen" : number % 3 === 1 ? "Service" : "Cashier",
+    department:
+      number % 3 === 0 ? "Kitchen" : number % 3 === 1 ? "Service" : "Cashier",
     avatar: null,
     baseSalary: 0,
     workDays: 0,
@@ -129,11 +154,20 @@ const PAYROLL_ITEMS = Array.from({ length: 14 }, (_, index) => {
   };
 });
 
-const buildPayrollOverviewPage = ({ offset = 0, limit = 8, search, status } = {}) => {
-  const keyword = String(search || "").trim().toLowerCase();
+const buildPayrollOverviewPage = ({
+  offset = 0,
+  limit = 8,
+  search,
+  status,
+} = {}) => {
+  const keyword = String(search || "")
+    .trim()
+    .toLowerCase();
   const filtered = PAYROLL_ITEMS.filter((item) => {
     const matchesStatus = !status || item.status === status;
-    const haystack = [item.name, item.code, item.department, item.role].join(" ").toLowerCase();
+    const haystack = [item.name, item.code, item.department, item.role]
+      .join(" ")
+      .toLowerCase();
     const matchesSearch = !keyword || haystack.includes(keyword);
     return matchesStatus && matchesSearch;
   });
@@ -158,13 +192,19 @@ const buildPayrollOverviewPage = ({ offset = 0, limit = 8, search, status } = {}
 };
 
 const installPayrollMocks = async (page) => {
-  const authUser = { ...TEST_USERS.manager, restaurantForStaff: TEST_RESTAURANT.id };
+  const authUser = {
+    ...TEST_USERS.manager,
+    restaurantForStaff: TEST_RESTAURANT.id,
+  };
 
   await page.route("**/api/auth/refresh", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ token: jwtLikeToken(authUser.roleName), user: authUser }),
+      body: JSON.stringify({
+        token: jwtLikeToken(authUser.roleName),
+        user: authUser,
+      }),
     });
   });
 
@@ -190,7 +230,10 @@ const installPayrollMocks = async (page) => {
           refRestaurants: [],
           scopedRestaurants: {
             edges: [{ cursor: TEST_RESTAURANT.id, node: TEST_RESTAURANT }],
-            pageInfo: { endCursor: TEST_RESTAURANT.id, hasNextPage: false },
+            pageInfo: {
+              endCursor: TEST_RESTAURANT.id,
+              hasNextPage: false,
+            },
           },
         };
         break;
@@ -222,7 +265,12 @@ const installPayrollMocks = async (page) => {
         };
         break;
       case "PayrollReadiness":
-        data = { payrollReadiness: { ...PAYROLL_READINESS, periodId: variables.periodId || PAYROLL_PERIOD.id } };
+        data = {
+          payrollReadiness: {
+            ...PAYROLL_READINESS,
+            periodId: variables.periodId || PAYROLL_PERIOD.id,
+          },
+        };
         break;
       case "PayrollPayments":
         data = { payrollPayments: [] };
@@ -233,33 +281,57 @@ const installPayrollMocks = async (page) => {
       case "StaffPayrollOverview":
         data = {
           staffPayrollOverview: {
-            stats: { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
+            stats: {
+              totalPayroll: 0,
+              paidAmount: 0,
+              remaining: 0,
+              progress: 0,
+            },
             items: PAYROLL_ITEMS,
           },
         };
         break;
       case "PayrollOverviewPage":
-        data = { staffPayrollOverview: buildPayrollOverviewPage(variables) };
+        data = {
+          staffPayrollOverview: buildPayrollOverviewPage(variables),
+        };
         break;
       case "CreatePayrollPeriod":
         data = {
           createPayrollPeriod: {
             id: "payroll-period-created",
             status: "draft",
-            startDate: variables.input?.startDate || PAYROLL_PERIOD.startDate,
+            startDate:
+              variables.input?.startDate || PAYROLL_PERIOD.startDate,
             endDate: variables.input?.endDate || PAYROLL_PERIOD.endDate,
             name: variables.input?.name || "Kỳ lương smoke test",
           },
         };
         break;
       case "RecalculatePayrollPeriod":
-        data = { recalculatePayrollPeriod: { period: { id: variables.periodId, status: "draft" } } };
+        data = {
+          recalculatePayrollPeriod: {
+            period: { id: variables.periodId, status: "draft" },
+          },
+        };
         break;
       case "FinalizePayrollPeriod":
-        data = { finalizePayrollPeriod: { id: variables.periodId, status: "finalized", finalizedAt: "2026-06-24T10:00:00.000Z" } };
+        data = {
+          finalizePayrollPeriod: {
+            id: variables.periodId,
+            status: "finalized",
+            finalizedAt: "2026-06-24T10:00:00.000Z",
+          },
+        };
         break;
       case "LockPayrollPeriod":
-        data = { lockPayrollPeriod: { id: variables.periodId, status: "locked", lockedAt: "2026-06-24T10:05:00.000Z" } };
+        data = {
+          lockPayrollPeriod: {
+            id: variables.periodId,
+            status: "locked",
+            lockedAt: "2026-06-24T10:05:00.000Z",
+          },
+        };
         break;
       default:
         data = {};
@@ -280,14 +352,18 @@ const collectPageErrors = (page) => {
 };
 
 test.describe("manager payroll page", () => {
-  test("shows runtime payroll data, backend pagination and create-period success", async ({ page }) => {
+  test("shows runtime payroll data, backend pagination and create-period success", async ({
+    page,
+  }) => {
     const pageErrors = collectPageErrors(page);
     await installPayrollMocks(page);
 
     await page.goto("/manager#payroll");
     await expect(page.locator(".payroll-page-compact")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Quản lý lương" })).toBeVisible();
-    await expect(page.getByText("Dữ liệu tạm tính")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Quản lý lương" }),
+    ).toBeVisible();
+    await expect(page.getByText("Kỳ lương chính thức")).toBeVisible();
     await expect(page.getByText("14 nhân viên phù hợp")).toBeVisible();
     await expect(page.getByText(/Hiển thị 1-8/)).toBeVisible();
     await expect(page.getByText(/Trang 1\/2/)).toBeVisible();
@@ -304,7 +380,9 @@ test.describe("manager payroll page", () => {
     expect(pageErrors).toEqual([]);
   });
 
-  test("sends payroll search and status filters through the backend page query", async ({ page }) => {
+  test("sends payroll search and status filters through the backend page query", async ({
+    page,
+  }) => {
     const pageErrors = collectPageErrors(page);
     const payrollPageRequests = [];
     await installPayrollMocks(page);
@@ -319,12 +397,19 @@ test.describe("manager payroll page", () => {
     await page.goto("/manager#payroll");
     await expect(page.getByText("Demo Staff 01")).toBeVisible();
 
-    await page.getByPlaceholder("Tìm nhân viên, mã, bộ phận...").fill("cashier");
+    await page
+      .getByPlaceholder("Tìm nhân viên, mã, bộ phận...")
+      .fill("cashier");
     await page.getByRole("button", { name: "Nháp" }).click();
 
     await expect
       .poll(() => payrollPageRequests.at(-1))
-      .toMatchObject({ search: "cashier", status: "draft", limit: 8, offset: 0 });
+      .toMatchObject({
+        search: "cashier",
+        status: "draft",
+        limit: 8,
+        offset: 0,
+      });
 
     expect(pageErrors).toEqual([]);
   });

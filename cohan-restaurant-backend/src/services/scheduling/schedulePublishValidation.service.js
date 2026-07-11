@@ -42,7 +42,7 @@ export function hasBlockingSchedulePublishIssues(result) {
 export async function validateScheduleBeforePublish({ restaurantId, periodStart, periodEnd, mandatoryShiftRoles }) {
   const rid = toObjectId(restaurantId);
   if (!rid) throw new Error("restaurantId không hợp lệ.");
-  const trustedMandatoryShiftRoles = Array.isArray(mandatoryShiftRoles)
+  const trustedMandatoryShiftRoles = mandatoryShiftRoles != null
     ? mandatoryShiftRoles
     : (await getSchedulingPolicy({ restaurantId: rid }))?.mandatoryShiftRoles;
   const requiredRoles = normalizeMandatoryShiftRoles(trustedMandatoryShiftRoles);

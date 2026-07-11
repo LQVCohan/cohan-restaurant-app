@@ -1,7 +1,11 @@
 import mongoose from "mongoose";
-import { MenuAvailabilityWatch, MenuItem, Warehouse } from "../../models/index.js";
+import { MenuAvailabilityWatch, MenuItem, User, Warehouse } from "../../models/index.js";
 import { checkAvailabilityForLinesTx } from "./inventory.service.js";
 import { createNotificationOnce } from "./notification/notificationWorkflow.service.js";
+import {
+  normalizeAvailabilityEmail,
+  sendAvailabilityEmail,
+} from "./availabilityEmail.service.js";
 
 const DEFAULT_WATCH_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -48,6 +52,29 @@ function resolveExpiresAt(value) {
 
 function buildFoodDetailUrl(menuItemId, restaurantId) {
   return `/food/${encodeURIComponent(String(menuItemId))}?restaurantId=${encodeURIComponent(String(restaurantId))}`;
+}
+
+async function resolveContactEmail(input, ctx, userId) {
+  const requestedEmail = normalizeAvailabilityEmail(input?.contactEmail);
+  if (input?.contactEmail && !requestedEmail) {
+    throw new Error("Email nhận thông báo không hợp lệ.");
+  }
+  if (requestedEmail) return requestedEmail;
+
+  const contextEmail = normalizeAvailabilityEmail(ctx?.user?.email);
+  if (contextEmail) return contextEmail;
+  if (!userId) return null;
+
+  const user = await User.findById(userId).select({ email: 1 }).lean();
+  return normalizeAvailabilityEmail(user?.email);
+}
+
+async function resolveWatchEmail(watch) {
+  const storedEmail = normalizeAvailabilityEmail(watch?.contactEmail);
+  if (storedEmail) return storedEmail;
+  if (!watch?.userId) return null;
+  const user = await User.findById(watch.userId).select({ email: 1 }).lean();
+  return normalizeAvailabilityEmail(user?.email);
 }
 
 export function buildMenuAvailabilityNotificationPayload({
@@ -159,12 +186,13 @@ export async function registerMenuAvailabilityWatch(input = {}, ctx = {}) {
   }
 
   const userId = contextUserId;
-  const tableId = toId(input.tableId);
-  const tableCode = normalizeTableCode(input.tableCode);
-  if (!userId && !tableId && !tableCode) {
-    throw new Error("Cần đăng nhập hoặc có tableId/tableCode để gửi nhắc khi món có lại.");
+  const contactEmail = await resolveContactEmail(input, ctx, userId);
+  if (!contactEmail) {
+    throw new Error("Vui lòng đăng nhập bằng tài khoản có email hoặc nhập email nhận thông báo.");
   }
 
+  const tableId = toId(input.tableId);
+  const tableCode = normalizeTableCode(input.tableCode);
   const servingKey = normalizeServingKey(input.servingKey);
   const desiredQuantity = Math.max(1, Number(input.desiredQuantity || 1));
   const availableNow = await isMenuItemActuallyAvailable({
@@ -190,7 +218,7 @@ export async function registerMenuAvailabilityWatch(input = {}, ctx = {}) {
   const source = ["online", "dine_in", "pos", "staff_remote", "other"].includes(String(input.source || ""))
     ? String(input.source)
     : "other";
-  const identity = userId ? { userId } : tableId ? { tableId } : { tableCode };
+  const identity = userId ? { userId } : { contactEmail };
 
   const watch = await MenuAvailabilityWatch.findOneAndUpdate(
     {
@@ -204,6 +232,7 @@ export async function registerMenuAvailabilityWatch(input = {}, ctx = {}) {
     {
       $set: {
         desiredQuantity,
+        contactEmail,
         source,
         reason: String(input.reason || "out_of_stock"),
         note: String(input.note || ""),
@@ -236,7 +265,11 @@ export async function registerMenuAvailabilityWatch(input = {}, ctx = {}) {
     source,
   });
 
-  return { watch, alreadyAvailable: false, message: "Đã đăng ký nhắc khi món có lại." };
+  return {
+    watch,
+    alreadyAvailable: false,
+    message: `Đã đăng ký. Cohan sẽ gửi email đến ${contactEmail} khi món có lại.`,
+  };
 }
 
 export async function cancelMenuAvailabilityWatch(input = {}, ctx = {}) {
@@ -337,6 +370,39 @@ export async function notifyAvailabilityWatchersForMenuItem({ io, restaurantId, 
       source,
       message: "Món bạn quan tâm hiện đã có thể đặt lại. Hệ thống không tự giữ món, vui lòng đặt lại nếu vẫn muốn dùng.",
     };
+    const notificationPayload = buildMenuAvailabilityNotificationPayload({
+      watch: updated,
+      menuItem,
+      restaurantId: rid,
+      menuItemId: mid,
+      servingKey: normalizedServingKey,
+    });
+
+    try {
+      const contactEmail = await resolveWatchEmail(updated);
+      const emailResult = await sendAvailabilityEmail({
+        to: contactEmail,
+        subject: `${menuItem?.name || "Món bạn quan tâm"} đã có lại tại Cohan`,
+        title: "Món bạn quan tâm đã có lại",
+        message: notificationPayload.message,
+        actionLabel: "Đặt món ngay",
+        actionPath: notificationPayload.actionUrl,
+      });
+      if (!emailResult.delivered) {
+        throw new Error(emailResult.error || "EMAIL_NOT_DELIVERED");
+      }
+    } catch (error) {
+      await MenuAvailabilityWatch.updateOne(
+        { _id: updated._id, status: "notified" },
+        { $set: { status: "watching", notifiedAt: null } },
+      );
+      console.warn(
+        "[MenuAvailabilityWatch] Email delivery failed",
+        error?.message || error,
+      );
+      skipped += 1;
+      continue;
+    }
 
     try {
       await persistAvailabilityNotification({
@@ -348,16 +414,10 @@ export async function notifyAvailabilityWatchersForMenuItem({ io, restaurantId, 
         servingKey: normalizedServingKey,
       });
     } catch (error) {
-      await MenuAvailabilityWatch.updateOne(
-        { _id: updated._id, status: "notified" },
-        { $set: { status: "watching", notifiedAt: null } },
-      );
       console.warn(
-        "[MenuAvailabilityWatch] Failed to persist customer notification",
+        "[MenuAvailabilityWatch] In-app notification failed",
         error?.message || error,
       );
-      skipped += 1;
-      continue;
     }
 
     emitAvailabilityNotification(io, updated, payload);

@@ -32,6 +32,13 @@ const MenuAvailabilityWatchSchema = BaseSchemaModel({
     default: null,
     index: true,
   },
+  contactEmail: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    default: null,
+    index: true,
+  },
   tableId: {
     type: Types.ObjectId,
     ref: "Table",
@@ -95,6 +102,12 @@ MenuAvailabilityWatchSchema.index({
 
 MenuAvailabilityWatchSchema.index({
   userId: 1,
+  status: 1,
+  expiresAt: 1,
+});
+
+MenuAvailabilityWatchSchema.index({
+  contactEmail: 1,
   status: 1,
   expiresAt: 1,
 });

@@ -38,11 +38,12 @@ vi.mock("@/lib/authStorage", () => ({
   getToken: vi.fn(() => null),
 }));
 
-const wrapper = ({ children }) => (
-  <AuthContext.Provider value={{ user: { id: "staff-1" } }}>
-    {children}
-  </AuthContext.Provider>
-);
+const wrapper = ({ children }) =>
+  React.createElement(
+    AuthContext.Provider,
+    { value: { user: { id: "staff-1" } } },
+    children,
+  );
 
 describe("useCommunication selected thread refresh", () => {
   beforeEach(() => {

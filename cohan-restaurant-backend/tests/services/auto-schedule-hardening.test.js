@@ -544,14 +544,8 @@ describe("auto schedule backend hardening", () => {
         },
       ]),
     );
-    modelMocks.SchedulingPolicy.findOne.mockResolvedValueOnce({
-      _id: "policy1",
-      restaurantId: "r1",
+    policyMocks.getSchedulingPolicy.mockResolvedValueOnce({
       mandatoryShiftRoles: ["kitchen"],
-      shiftTemplates: [],
-      laborRules: {},
-      scoringWeights: {},
-      availabilityRegistrationPolicy: {},
     });
     validationMocks.validateShiftAssignment.mockResolvedValueOnce(
       validResult(),
