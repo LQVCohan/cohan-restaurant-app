@@ -47,11 +47,11 @@ const toDateInput = (date) => {
 
 const getDefaultRange = () => {
   const today = new Date();
-  const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 25);
-  const thisMonth = new Date(today.getFullYear(), today.getMonth(), 24);
   return {
-    start: toDateInput(prevMonth),
-    end: toDateInput(thisMonth),
+    start: toDateInput(
+      new Date(today.getFullYear(), today.getMonth() - 1, 25),
+    ),
+    end: toDateInput(new Date(today.getFullYear(), today.getMonth(), 24)),
   };
 };
 
@@ -73,13 +73,13 @@ export function escapeCsvValue(value) {
 export function downloadCsv(filename, rows, columns) {
   const header = columns.map((column) => escapeCsvValue(column.label)).join(",");
   const body = rows
-    .map((row) => columns.map((column) => escapeCsvValue(row[column.key])).join(","))
+    .map((row) =>
+      columns.map((column) => escapeCsvValue(row[column.key])).join(","),
+    )
     .join("\n");
-
   const blob = new Blob([`\uFEFF${header}\n${body}`], {
     type: "text/csv;charset=utf-8;",
   });
-
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -98,9 +98,7 @@ const STATUS_LABELS = {
   paid: "Đã trả",
   locked: "Đã khóa",
 };
-
 const STATUS_TABS = ["all", ...Object.keys(STATUS_LABELS)];
-
 const EXPORT_COLUMNS = [
   { key: "code", label: "Mã NV" },
   { key: "name", label: "Nhân viên" },
@@ -122,10 +120,10 @@ const formatMoney = (value) =>
     currency: "VND",
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
-
 const formatNumber = (value) =>
-  new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(Number(value || 0));
-
+  new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(
+    Number(value || 0),
+  );
 const formatDate = (value) => {
   if (!value) return "--";
   const date = new Date(value);
@@ -136,37 +134,73 @@ const formatDate = (value) => {
     year: "numeric",
   });
 };
-
 const statusLabel = (status) => STATUS_LABELS[status] || status || "Nháp";
-
 const statusClass = (status) => {
-  if (["paid"].includes(status)) return "success";
-  if (["payment_failed"].includes(status)) return "danger";
-  if (["locked"].includes(status)) return "locked";
-  if (["finalized", "paying", "pending_payment", "processing_payment"].includes(status)) return "info";
+  if (status === "paid") return "success";
+  if (status === "payment_failed") return "danger";
+  if (status === "locked") return "locked";
+  if (
+    ["finalized", "paying", "pending_payment", "processing_payment"].includes(
+      status,
+    )
+  ) {
+    return "info";
+  }
   return "warning";
 };
-
 const getEmployeeInitials = (name = "") => {
-  const parts = String(name || "NV").trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "NV";
-  return parts.slice(-2).map((part) => part[0]).join("").toUpperCase();
+  const parts = String(name || "NV")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return (parts.length ? parts.slice(-2) : ["N", "V"])
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 };
-
-const getPayrollErrorMessage = (error, fallback = "Thao tác bảng lương không thành công.") =>
+const getPayrollErrorMessage = (
+  error,
+  fallback = "Thao tác bảng lương không thành công.",
+) =>
   error?.graphQLErrors?.[0]?.message ||
   error?.networkError?.result?.errors?.[0]?.message ||
   error?.networkError?.message ||
   error?.message ||
   fallback;
-
 const getMutationResultError = (result) =>
   result?.errors?.[0]?.message ||
   result?.error?.message ||
   result?.data?.errors?.[0]?.message ||
   null;
+const hasMutationPayload = (result) =>
+  Boolean(
+    result?.data &&
+      Object.values(result.data).some((value) => value !== null && value !== false),
+  );
 
-const PayrollManagement = () => {
+const mapOfficialExportRow = (row) => ({
+  code: row.employeeCode || "",
+  name: row.employeeName || "Nhân viên",
+  department: row.department || "",
+  role: row.role || "",
+  actualWorkDays: row.actualWorkDays || 0,
+  totalHours: row.totalHours || 0,
+  grossIncome: row.grossIncome || 0,
+  totalDeduction:
+    Number(row.deduction || 0) +
+    Number(row.insuranceTotal || 0) +
+    Number(row.personalIncomeTax || 0),
+  netSalary: row.netSalary || 0,
+  paidAmount: row.paidAmount || 0,
+  remainingAmount: row.remainingAmount || 0,
+  status: statusLabel(row.status),
+});
+
+function PayrollWorkspace({
+  restaurantOptions,
+  selectedRestaurantId,
+  setSelectedRestaurantId,
+}) {
   const defaultRange = useMemo(() => getDefaultRange(), []);
   const [range, setRange] = useState(defaultRange);
   const [activeStatus, setActiveStatus] = useState("all");
@@ -183,44 +217,54 @@ const PayrollManagement = () => {
     [range.end, range.start],
   );
 
-  const {
-    restaurantOptions,
-    selectedRestaurantId,
-    setSelectedRestaurantId,
-    restaurantsLoading,
-  } = useManagerRestaurantSelection();
-
   const payroll = usePayroll({
     periodId: selectedPeriodId || undefined,
-    restaurantId: selectedRestaurantId || undefined,
+    restaurantId: selectedRestaurantId,
     startDate: apiRange.startDate,
     endDate: apiRange.endDate,
   });
-
   const periods = payroll.periods || [];
-  const currentPeriod = payroll.periodDetail?.period || periods.find((period) => period.id === (selectedPeriodId || payroll.currentPeriodId)) || null;
-  const effectivePeriodId = selectedPeriodId || currentPeriod?.id || payroll.currentPeriodId || periods[0]?.id || "";
-  const actionDisabled = !effectivePeriodId;
-  const overviewOffset = Math.max(0, (page - 1) * PAYROLL_PAGE_SIZE);
+  const requestedPeriodId =
+    selectedPeriodId || payroll.currentPeriodId || periods[0]?.id || "";
+  const detailPeriod = payroll.periodDetail?.period || null;
+  const detailMatches = Boolean(
+    detailPeriod?.id &&
+      String(detailPeriod.restaurantId || "") ===
+        String(selectedRestaurantId || "") &&
+      (!requestedPeriodId || String(detailPeriod.id) === String(requestedPeriodId)),
+  );
+  const currentPeriod =
+    (detailMatches ? detailPeriod : null) ||
+    periods.find(
+      (period) =>
+        String(period.id) === String(requestedPeriodId) &&
+        String(period.restaurantId || "") === String(selectedRestaurantId || ""),
+    ) ||
+    null;
+  const effectivePeriodId = currentPeriod?.id || requestedPeriodId;
+  const hasOfficialPeriod = Boolean(currentPeriod?.id);
+  const periodStatus = hasOfficialPeriod ? currentPeriod.status || "draft" : "draft";
   const overviewStatus = activeStatus === "all" ? undefined : activeStatus;
   const overviewSearch = search.trim() || undefined;
+  const overviewOffset = Math.max(0, (page - 1) * PAYROLL_PAGE_SIZE);
 
   useEffect(() => {
     setPage(1);
-  }, [activeStatus, range.end, range.start, search, selectedPeriodId, selectedRestaurantId]);
+  }, [activeStatus, range.end, range.start, search, selectedPeriodId]);
 
   const overviewQuery = useQuery(PAYROLL_OVERVIEW_PAGE_QUERY, {
     variables: {
       startDate: apiRange.startDate,
       endDate: apiRange.endDate,
-      restaurantId: selectedRestaurantId || undefined,
-      periodId: effectivePeriodId || undefined,
+      restaurantId: selectedRestaurantId,
+      periodId: hasOfficialPeriod ? effectivePeriodId : undefined,
       search: overviewSearch,
       status: overviewStatus,
       limit: PAYROLL_PAGE_SIZE,
       offset: overviewOffset,
     },
-    skip: !selectedRestaurantId || !apiRange.startDate || !apiRange.endDate,
+    skip:
+      !selectedRestaurantId || !apiRange.startDate || !apiRange.endDate,
     fetchPolicy: "cache-and-network",
   }) || {};
 
@@ -236,55 +280,63 @@ const PayrollManagement = () => {
     hasMore: false,
   };
   const stats = overview?.stats || payroll.payrollStats || currentPeriod?.stats || {};
-  const readiness = payroll.payrollReadiness || null;
-  const hasSnapshotItems = items.some((item) => item.periodId || item.payrollItemId);
-  const tableLoading = payroll.loading || overviewQuery.loading;
+  const tableLoading = Boolean(payroll.loading || overviewQuery.loading);
   const totalPages = Math.max(1, Number(pageInfo.totalPages || 1));
   const totalCount = Number(pageInfo.totalCount || 0);
   const currentPage = Math.min(Math.max(1, page), totalPages);
   const firstRow = totalCount > 0 ? Number(pageInfo.offset || 0) + 1 : 0;
-  const lastRow = totalCount > 0 ? Math.min(Number(pageInfo.offset || 0) + items.length, totalCount) : 0;
-  const payrollModeLabel = hasSnapshotItems ? "Kỳ lương chính thức" : "Dữ liệu tạm tính";
-  const canCreatePeriod = Boolean(selectedRestaurantId && apiRange.startDate && apiRange.endDate && !tableLoading);
+  const lastRow =
+    totalCount > 0
+      ? Math.min(Number(pageInfo.offset || 0) + items.length, totalCount)
+      : 0;
+  const canCreatePeriod = Boolean(
+    selectedRestaurantId &&
+      apiRange.startDate &&
+      apiRange.endDate &&
+      !tableLoading,
+  );
+  const canEditDraft = hasOfficialPeriod && periodStatus === "draft";
+  const canLockPeriod = hasOfficialPeriod && periodStatus === "paid";
 
   const totals = useMemo(() => {
-    const totalPayroll = Number(stats.totalPayroll ?? items.reduce((sum, item) => sum + Number(item.netSalary || 0), 0));
-    const paidAmount = Number(stats.paidAmount ?? items.reduce((sum, item) => sum + Number(item.paidAmount || 0), 0));
-    const remaining = Number(stats.remaining ?? Math.max(totalPayroll - paidAmount, 0));
-    const progress = Number(stats.progress ?? (totalPayroll > 0 ? Math.round((paidAmount / totalPayroll) * 100) : 0));
+    const totalPayroll = Number(
+      stats.totalPayroll ??
+        items.reduce((sum, item) => sum + Number(item.netSalary || 0), 0),
+    );
+    const paidAmount = Number(
+      stats.paidAmount ??
+        items.reduce((sum, item) => sum + Number(item.paidAmount || 0), 0),
+    );
+    const remaining = Number(
+      stats.remaining ?? Math.max(totalPayroll - paidAmount, 0),
+    );
+    const progress = Number(
+      stats.progress ??
+        (totalPayroll > 0
+          ? Math.round((paidAmount / totalPayroll) * 100)
+          : 0),
+    );
     return { totalPayroll, paidAmount, remaining, progress };
   }, [items, stats]);
 
-  const resetFilters = () => {
-    setSearch("");
-    setActiveStatus("all");
-    setRange(defaultRange);
-    setPage(1);
-  };
-
-  const handlePeriodChange = (event) => {
-    const nextPeriodId = event.target.value;
-    setSelectedPeriodId(nextPeriodId);
-  };
-
-  const handleExportCsv = () => {
-    const rows = items.map((item) => ({
-      ...item,
-      status: statusLabel(item.status),
-    }));
-    downloadCsv(`payroll-page-${currentPage}-${range.start}-${range.end}.csv`, rows, EXPORT_COLUMNS);
-  };
-
-  const refreshPayrollData = async (periodIdOverride = effectivePeriodId) => {
+  const refreshPayrollData = async (periodIdOverride) => {
+    const targetPeriodId =
+      typeof periodIdOverride === "string" && periodIdOverride
+        ? periodIdOverride
+        : effectivePeriodId;
     await Promise.allSettled([
       payroll.refetchPeriods?.(),
-      periodIdOverride ? payroll.refetchDetail?.({ periodId: periodIdOverride }) : null,
-      periodIdOverride ? payroll.refetchPayrollReadiness?.({ periodId: periodIdOverride }) : null,
+      targetPeriodId
+        ? payroll.refetchDetail?.({ periodId: targetPeriodId })
+        : null,
+      targetPeriodId
+        ? payroll.refetchPayrollReadiness?.({ periodId: targetPeriodId })
+        : null,
       overviewQuery.refetch?.({
         startDate: apiRange.startDate,
         endDate: apiRange.endDate,
-        restaurantId: selectedRestaurantId || undefined,
-        periodId: periodIdOverride || undefined,
+        restaurantId: selectedRestaurantId,
+        periodId: hasOfficialPeriod ? targetPeriodId : undefined,
         search: overviewSearch,
         status: overviewStatus,
         limit: PAYROLL_PAGE_SIZE,
@@ -298,7 +350,6 @@ const PayrollManagement = () => {
       setActionMessage("Chọn nhà hàng và khoảng ngày trước khi tạo kỳ lương.");
       return;
     }
-
     try {
       setActionMessage("Đang tạo kỳ lương chính thức...");
       const result = await payroll.createPeriod?.({
@@ -313,17 +364,19 @@ const PayrollManagement = () => {
       });
       const resultError = getMutationResultError(result);
       if (resultError) throw new Error(resultError);
-
       const newPeriodId = result?.data?.createPayrollPeriod?.id;
       if (!newPeriodId) {
-        throw new Error("Tạo kỳ lương không thành công. Vui lòng kiểm tra quyền quản lý bảng lương.");
+        throw new Error(
+          "Tạo kỳ lương không thành công. Vui lòng kiểm tra quyền quản lý bảng lương.",
+        );
       }
-
       setSelectedPeriodId(newPeriodId);
       await refreshPayrollData(newPeriodId);
       setActionMessage("Đã tạo kỳ lương chính thức.");
     } catch (error) {
-      setActionMessage(getPayrollErrorMessage(error, "Tạo kỳ lương không thành công."));
+      setActionMessage(
+        getPayrollErrorMessage(error, "Tạo kỳ lương không thành công."),
+      );
     }
   };
 
@@ -334,19 +387,66 @@ const PayrollManagement = () => {
     }
     try {
       setActionMessage(`Đang ${label.toLowerCase()}...`);
-      const result = await action({ variables: { periodId: effectivePeriodId } });
+      const result = await action({
+        variables: { periodId: effectivePeriodId },
+      });
       const resultError = getMutationResultError(result);
       if (resultError) throw new Error(resultError);
-      await refreshPayrollData();
+      if (!hasMutationPayload(result)) {
+        throw new Error(`${label} không trả về kết quả hợp lệ.`);
+      }
+      await refreshPayrollData(effectivePeriodId);
       setActionMessage(`${label} thành công.`);
     } catch (error) {
-      setActionMessage(getPayrollErrorMessage(error, `${label} không thành công.`));
+      setActionMessage(
+        getPayrollErrorMessage(error, `${label} không thành công.`),
+      );
     }
   };
 
-  const goToPage = (nextPage) => {
-    setPage(Math.min(Math.max(1, nextPage), totalPages));
+  const handleExportCsv = async () => {
+    try {
+      setActionMessage("Đang chuẩn bị dữ liệu xuất...");
+      let rows;
+      if (hasOfficialPeriod && effectivePeriodId) {
+        const result = await payroll.refetchPayrollExportRows?.({
+          periodId: effectivePeriodId,
+        });
+        const officialRows =
+          result?.data?.payrollExportRows || payroll.payrollExportRows || [];
+        rows = officialRows.map(mapOfficialExportRow);
+      } else {
+        rows = items.map((item) => ({
+          ...item,
+          status: statusLabel(item.status),
+        }));
+      }
+      if (!rows.length) {
+        setActionMessage("Không có dữ liệu phù hợp để xuất CSV.");
+        return;
+      }
+      const prefix = hasOfficialPeriod ? "payroll-period" : "payroll-preview";
+      downloadCsv(
+        `${prefix}-${effectivePeriodId || currentPage}-${range.start}-${range.end}.csv`,
+        rows,
+        EXPORT_COLUMNS,
+      );
+      setActionMessage(`Đã xuất ${rows.length} dòng dữ liệu lương.`);
+    } catch (error) {
+      setActionMessage(
+        getPayrollErrorMessage(error, "Không thể xuất dữ liệu bảng lương."),
+      );
+    }
   };
+
+  const resetFilters = () => {
+    setSearch("");
+    setActiveStatus("all");
+    setRange(defaultRange);
+    setPage(1);
+  };
+  const goToPage = (nextPage) =>
+    setPage(Math.min(Math.max(1, nextPage), totalPages));
 
   return (
     <div className="payroll-page-compact">
@@ -358,12 +458,18 @@ const PayrollManagement = () => {
             Theo dõi kỳ lương, tổng chi phí, trạng thái chi trả và bảng lương nhân viên theo từng nhà hàng.
           </p>
           <div className="quick-stats payroll-summary-line">
-            <span className="status-dot info">{statusLabel(hasSnapshotItems ? currentPeriod?.status || "draft" : "draft")}</span>
-            <span className={`payroll-data-mode ${hasSnapshotItems ? "is-official" : "is-runtime"}`}>{payrollModeLabel}</span>
+            <span className="status-dot info">{statusLabel(periodStatus)}</span>
+            <span
+              className={`payroll-data-mode ${hasOfficialPeriod ? "is-official" : "is-runtime"}`}
+            >
+              {hasOfficialPeriod ? "Kỳ lương chính thức" : "Dữ liệu tạm tính"}
+            </span>
             <span className="payroll-date-range">
               {formatDate(currentPeriod?.startDate || range.start)} - {formatDate(currentPeriod?.endDate || range.end)}
             </span>
-            <span className="payroll-employee-count">{totalCount} nhân viên phù hợp</span>
+            <span className="payroll-employee-count">
+              {totalCount} nhân viên phù hợp
+            </span>
           </div>
         </div>
 
@@ -372,32 +478,45 @@ const PayrollManagement = () => {
             <span className="label">Nhà hàng</span>
             <select
               className="filter-select"
-              value={selectedRestaurantId || ""}
+              value={selectedRestaurantId}
               onChange={(event) => setSelectedRestaurantId(event.target.value)}
-              disabled={restaurantsLoading}
             >
-              {!restaurantOptions.length && <option value="">Chưa có nhà hàng</option>}
               {restaurantOptions.map((restaurant) => (
-                <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>
+                <option key={restaurant.id} value={restaurant.id}>
+                  {restaurant.name}
+                </option>
               ))}
             </select>
           </label>
-
           <label className="cycle-picker-compact">
             <span className="label">Kỳ lương</span>
-            <select className="filter-select" value={selectedPeriodId} onChange={handlePeriodChange}>
+            <select
+              className="filter-select"
+              value={selectedPeriodId}
+              onChange={(event) => setSelectedPeriodId(event.target.value)}
+            >
               <option value="">Kỳ hiện tại / gần nhất</option>
               {periods.map((period) => (
-                <option key={period.id} value={period.id}>{period.name || `${formatDate(period.startDate)} - ${formatDate(period.endDate)}`}</option>
+                <option key={period.id} value={period.id}>
+                  {period.name || `${formatDate(period.startDate)} - ${formatDate(period.endDate)}`}
+                </option>
               ))}
             </select>
           </label>
-
           <div className="actions-row">
-            <button className="btn btn-white" type="button" onClick={refreshPayrollData}>
+            <button
+              className="btn btn-white"
+              type="button"
+              onClick={() => refreshPayrollData()}
+            >
               Làm mới
             </button>
-            <button className="btn btn-primary" type="button" onClick={handleExportCsv} disabled={!items.length}>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={handleExportCsv}
+              disabled={!hasOfficialPeriod && !items.length}
+            >
               Xuất CSV
             </button>
           </div>
@@ -428,9 +547,16 @@ const PayrollManagement = () => {
             <strong>{formatNumber(totals.progress)}%</strong>
           </div>
           <div className="progress-track">
-            <div className="progress-fill" style={{ width: `${Math.max(0, Math.min(100, totals.progress))}%` }} />
+            <div
+              className="progress-fill"
+              style={{ width: `${Math.max(0, Math.min(100, totals.progress))}%` }}
+            />
           </div>
-          <small>{readiness?.readyToFinalize ? "Kỳ lương sẵn sàng chốt" : "Kiểm tra dữ liệu trước khi chốt"}</small>
+          <small>
+            {payroll.payrollReadiness?.readyToFinalize
+              ? "Kỳ lương sẵn sàng chốt"
+              : "Kiểm tra dữ liệu trước khi chốt"}
+          </small>
         </aside>
       </section>
 
@@ -470,34 +596,66 @@ const PayrollManagement = () => {
               className="filter-select payroll-date-input"
               type="date"
               value={range.start}
-              onChange={(event) => setRange((current) => ({ ...current, start: event.target.value }))}
+              onChange={(event) =>
+                setRange((current) => ({ ...current, start: event.target.value }))
+              }
             />
             <input
               className="filter-select payroll-date-input"
               type="date"
               value={range.end}
-              onChange={(event) => setRange((current) => ({ ...current, end: event.target.value }))}
+              onChange={(event) =>
+                setRange((current) => ({ ...current, end: event.target.value }))
+              }
             />
           </div>
         </div>
 
         <div className="table-controls table-controls--secondary payroll-action-row">
           <div className="right-controls payroll-action-buttons">
-            <button className="btn btn-create-period" type="button" onClick={handleCreatePeriod} disabled={!canCreatePeriod}>
+            <button
+              className="btn btn-create-period"
+              type="button"
+              onClick={handleCreatePeriod}
+              disabled={!canCreatePeriod}
+            >
               + Tạo kỳ lương
             </button>
-            <button className="btn btn-white" type="button" onClick={() => runAction("Tính lại lương", payroll.recalculatePeriod)} disabled={actionDisabled}>
+            <button
+              className="btn btn-white"
+              type="button"
+              onClick={() => runAction("Tính lại lương", payroll.recalculatePeriod)}
+              disabled={!canEditDraft}
+              title={!canEditDraft ? "Chỉ kỳ lương nháp mới được tính lại." : ""}
+            >
               Tính lại
             </button>
-            <button className="btn btn-success" type="button" onClick={() => runAction("Chốt kỳ lương", payroll.finalizePeriod)} disabled={actionDisabled}>
+            <button
+              className="btn btn-success"
+              type="button"
+              onClick={() => runAction("Chốt kỳ lương", payroll.finalizePeriod)}
+              disabled={!canEditDraft}
+              title={!canEditDraft ? "Chỉ kỳ lương nháp mới được chốt." : ""}
+            >
               Chốt kỳ
             </button>
-            <button className="btn btn-primary" type="button" onClick={() => runAction("Khóa kỳ lương", payroll.lockPeriod)} disabled={actionDisabled}>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={() => runAction("Khóa kỳ lương", payroll.lockPeriod)}
+              disabled={!canLockPeriod}
+              title={!canLockPeriod ? "Chỉ khóa sau khi kỳ lương đã chi trả đầy đủ." : ""}
+            >
               Khóa kỳ
             </button>
           </div>
-          <span className={`payroll-inline-message ${actionDisabled ? "is-muted" : ""}`}>
-            {actionMessage || (actionDisabled ? "Tạo kỳ lương để tính lại, chốt hoặc khóa kỳ." : hasSnapshotItems ? "Kỳ lương chính thức đã sẵn sàng xử lý." : "Đang xem dữ liệu lương tạm tính từ nhân viên.")}
+          <span className={`payroll-inline-message ${!hasOfficialPeriod ? "is-muted" : ""}`}>
+            {actionMessage ||
+              (!hasOfficialPeriod
+                ? "Tạo kỳ lương để tính lại, chốt hoặc khóa kỳ."
+                : periodStatus === "draft"
+                  ? "Kỳ lương nháp đang sẵn sàng kiểm tra và chốt."
+                  : `Kỳ lương hiện ở trạng thái ${statusLabel(periodStatus)}.`)}
           </span>
         </div>
 
@@ -521,12 +679,14 @@ const PayrollManagement = () => {
               {tableLoading && !items.length ? (
                 Array.from({ length: 5 }).map((_, index) => (
                   <tr key={`loading-${index}`}>
-                    <td className="sticky-left" colSpan={10}>Đang tải dữ liệu lương...</td>
+                    <td className="sticky-left" colSpan={10}>
+                      Đang tải dữ liệu lương...
+                    </td>
                   </tr>
                 ))
               ) : items.length ? (
                 items.map((item) => (
-                  <tr key={item.id || item.payrollItemId || item.code || item.name}>
+                  <tr key={item.payrollItemId || item.id || item.code || item.name}>
                     <td className="sticky-left">
                       <div className="emp-cell">
                         <span className="avatar">{getEmployeeInitials(item.name)}</span>
@@ -537,14 +697,22 @@ const PayrollManagement = () => {
                       </div>
                     </td>
                     <td>{item.department || item.role || "--"}</td>
-                    <td className="numeric-cell"><span className="work-tag">{formatNumber(item.actualWorkDays ?? item.workDays)} ngày</span></td>
+                    <td className="numeric-cell">
+                      <span className="work-tag">
+                        {formatNumber(item.actualWorkDays ?? item.workDays)} ngày
+                      </span>
+                    </td>
                     <td className="numeric-cell">{formatNumber(item.totalHours)} giờ</td>
                     <td className="money-cell">{formatMoney(item.grossIncome ?? item.totalIncome)}</td>
                     <td className="money-cell text-danger">{formatMoney(item.totalDeduction ?? item.deduction)}</td>
                     <td className="money-cell net-cell">{formatMoney(item.netSalary)}</td>
                     <td className="money-cell text-success">{formatMoney(item.paidAmount)}</td>
                     <td className="money-cell">{formatMoney(item.remainingAmount)}</td>
-                    <td><span className={`status-dot ${statusClass(item.status)}`}>{statusLabel(item.status)}</span></td>
+                    <td>
+                      <span className={`status-dot ${statusClass(item.status)}`}>
+                        {statusLabel(item.status)}
+                      </span>
+                    </td>
                   </tr>
                 ))
               ) : (
@@ -556,8 +724,16 @@ const PayrollManagement = () => {
                         <strong>Chưa có dữ liệu lương phù hợp</strong>
                         <span>Chọn kỳ lương, nhà hàng hoặc khoảng thời gian khác để xem bảng lương.</span>
                         <div className="payroll-empty-actions">
-                          <button className="btn btn-white" type="button" onClick={resetFilters}>Bỏ lọc</button>
-                          <button className="btn btn-primary" type="button" onClick={refreshPayrollData}>Làm mới dữ liệu</button>
+                          <button className="btn btn-white" type="button" onClick={resetFilters}>
+                            Bỏ lọc
+                          </button>
+                          <button
+                            className="btn btn-primary"
+                            type="button"
+                            onClick={() => refreshPayrollData()}
+                          >
+                            Làm mới dữ liệu
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -590,6 +766,42 @@ const PayrollManagement = () => {
         </div>
       </section>
     </div>
+  );
+}
+
+const PayrollManagement = () => {
+  const {
+    restaurantOptions,
+    selectedRestaurantId,
+    setSelectedRestaurantId,
+    restaurantsLoading,
+  } = useManagerRestaurantSelection();
+
+  if (!selectedRestaurantId) {
+    return (
+      <div className="payroll-page-compact">
+        <section className="header-toolbar">
+          <div className="title-zone">
+            <span className="eyebrow">Trung tâm lương thưởng</span>
+            <h1 className="page-title">Quản lý lương</h1>
+            <p className="page-subtitle">
+              {restaurantsLoading
+                ? "Đang tải phạm vi nhà hàng..."
+                : "Chưa có nhà hàng phù hợp để quản lý bảng lương."}
+            </p>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  return (
+    <PayrollWorkspace
+      key={selectedRestaurantId}
+      restaurantOptions={restaurantOptions}
+      selectedRestaurantId={selectedRestaurantId}
+      setSelectedRestaurantId={setSelectedRestaurantId}
+    />
   );
 };
 
