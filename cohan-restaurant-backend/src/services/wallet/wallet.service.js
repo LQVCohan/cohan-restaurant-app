@@ -297,7 +297,7 @@ export async function payOrdersWithWallet({ userId, restaurantId, orderIds = [],
         },
         { upsert: true, new: true, setDefaultsOnInsert: true, session },
       );
-      await EventLog.log({ restaurantId: rid, actorUserId: uid, verb: "order.pay", object: { kind: "PaymentTransaction", id: paymentTransaction._id }, source: "api", status: "success", meta: { method: "cohan_balance", amount, orderIds: uniqueOrderIds } }, { session }).catch(() => {});
+      await EventLog.log({ restaurantId: rid, actorUserId: uid, verb: "order.pay", object: { kind: "PaymentTransaction", id: paymentTransaction._id }, source: "api", status: "success", meta: { method: "cohan_balance", amount, orderIds: uniqueOrderIds } }, { session });
       result = { ok: true, message: "Thanh toán bằng ví thành công.", wallet: serializeWallet(user.wallet), transaction: serializeWalletTransaction(walletTransaction), paymentTransactionId: String(paymentTransaction._id), orderIds: uniqueOrderIds, amount };
     });
     } catch (err) {
@@ -332,7 +332,11 @@ export async function refundToWallet({ userId, restaurantId, orderIds = [], amou
           if (String(order.userId || "") !== String(uid)) throw new Error("Refund target does not match order customer");
           return sum + Math.max(0, roundMoney(order?.payment?.paidAmount || order?.totals?.grandTotal || 0));
         }, 0);
-        const previousRefunds = await PaymentRefund.find({ restaurantId: rid, orderId: { $in: orderObjectIds }, status: { $in: ["success", "processed"] } }).session(session).lean();
+        const previousRefunds = await PaymentRefund.find({
+          restaurantId: rid,
+          orderId: { $in: orderObjectIds },
+          status: { $in: ["pending", "approved", "processing", "failed", "success"] },
+        }).session(session).lean();
         const refundedTotal = previousRefunds.reduce((sum, refund) => sum + roundMoney(refund.amount || 0), 0);
         const refundableAmount = Math.max(0, paidTotal - refundedTotal);
         if (normalizedAmount > refundableAmount) {
