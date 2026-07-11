@@ -1,45 +1,49 @@
-$print-bg: #f5efe5;
-$print-border: rgba(133, 108, 74, 0.2);
-$print-text: #1f2d2a;
-$print-muted: #68766f;
+$print-bg: #f4efe6;
+$print-surface: #fffdf8;
+$print-surface-soft: #f8f3ea;
+$print-border: rgba(82, 99, 91, 0.16);
+$print-text: #1d2b27;
+$print-muted: #68756f;
 $print-primary: #2f756c;
 $print-primary-dark: #1f5d55;
-$print-primary-soft: #e9f5f1;
-$print-amber: #a87824;
+$print-primary-soft: #e8f3ef;
+$print-amber: #9b6a1f;
+$print-amber-soft: #fff4dd;
 $print-danger: #a84545;
-$print-shadow: 0 22px 54px rgba(62, 47, 26, 0.1);
-$print-shadow-soft: 0 12px 28px rgba(62, 47, 26, 0.065);
+$print-danger-soft: #fff1ef;
+$print-shadow: 0 20px 50px rgba(57, 70, 64, 0.1);
+$print-shadow-soft: 0 10px 28px rgba(57, 70, 64, 0.075);
 
 .print-ui--polished {
   --print-scroll-thumb: rgba(47, 117, 108, 0.38);
-  --print-scroll-track: rgba(233, 245, 241, 0.56);
+  --print-scroll-track: rgba(232, 243, 239, 0.58);
 
-  width: min(100%, 1280px);
-  min-height: calc(100vh - 118px);
-  padding: clamp(18px, 2.2vw, 28px);
+  width: min(100%, 1320px);
+  min-height: calc(100dvh - 118px);
+  padding: clamp(16px, 2vw, 28px);
   overflow: clip;
   color: $print-text;
-  background:
-    radial-gradient(circle at 8% -12%, rgba(47, 117, 108, 0.13), transparent 28rem),
-    radial-gradient(circle at 92% 4%, rgba(168, 120, 36, 0.13), transparent 25rem),
-    linear-gradient(180deg, #fffbf4 0%, $print-bg 58%, #f8f3ea 100%);
-  border: 1px solid rgba(229, 217, 200, 0.72);
-  border-radius: 28px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
   font-variant-numeric: tabular-nums;
+  background:
+    radial-gradient(circle at 8% -8%, rgba(47, 117, 108, 0.13), transparent 28rem),
+    radial-gradient(circle at 96% 2%, rgba(155, 106, 31, 0.11), transparent 24rem),
+    linear-gradient(180deg, #fffcf6 0%, $print-bg 62%, #f8f4ec 100%);
+  border: 1px solid rgba(219, 210, 196, 0.72);
+  border-radius: 28px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 
   &::before {
     content: "";
     position: absolute;
     inset: 0;
     pointer-events: none;
-    opacity: 0.42;
+    opacity: 0.32;
     background-image:
-      linear-gradient(rgba(31, 45, 42, 0.035) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(31, 45, 42, 0.035) 1px, transparent 1px);
-    background-size: 34px 34px;
-    -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.62) 42%, transparent 92%);
-    mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.62) 42%, transparent 92%);
+      linear-gradient(rgba(31, 45, 42, 0.032) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31, 45, 42, 0.032) 1px, transparent 1px);
+    background-size: 36px 36px;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.48) 42%, transparent 88%);
+    mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.48) 42%, transparent 88%);
   }
 
   *,
@@ -49,6 +53,7 @@ $print-shadow-soft: 0 12px 28px rgba(62, 47, 26, 0.065);
     min-width: 0;
   }
 
+  .management-page-header,
   .print-ui__demo-flow,
   .ui-card,
   .print-ui__notice,
@@ -58,70 +63,213 @@ $print-shadow-soft: 0 12px 28px rgba(62, 47, 26, 0.065);
     z-index: 1;
   }
 
-  .print-ui__bg-circle {
-    background: radial-gradient(circle, rgba(47, 117, 108, 0.14), transparent 68%);
-  }
-
-  .print-ui__demo-flow {
-    margin: 14px 0 16px;
-    border-color: $print-border;
-    border-radius: 22px;
+  .management-page-header {
+    border: 1px solid rgba(47, 117, 108, 0.14);
     background: rgba(255, 253, 248, 0.78);
     box-shadow: $print-shadow-soft;
 
-    .demo-flow__intro strong {
+    .mph-title__icon,
+    .mph-stat-card__icon {
+      display: none;
+    }
+
+    .mph-title {
       color: $print-text;
-      font-weight: 920;
-      letter-spacing: -0.026em;
+      letter-spacing: -0.035em;
+      text-wrap: balance;
     }
 
-    .demo-flow__intro span {
+    .mph-subtitle {
+      max-width: 66ch;
       color: $print-muted;
+      text-wrap: pretty;
     }
 
-    .demo-flow__steps li {
+    .mph-stat-card {
       border-color: rgba(47, 117, 108, 0.12);
-      background: rgba(255, 255, 255, 0.7);
+      background: rgba(232, 243, 239, 0.66);
     }
 
-    .demo-flow__steps span {
-      background: $print-primary-dark;
+    .mph-stat-card__value {
+      color: $print-primary-dark;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mph-btn--primary {
+      min-height: 44px;
+      border-color: $print-primary;
+      background: linear-gradient(180deg, $print-primary, $print-primary-dark);
+      color: #fff;
+      font-size: 0;
+      box-shadow: 0 10px 24px rgba(47, 117, 108, 0.18);
+
+      span {
+        font-size: 0.875rem;
+      }
+    }
+
+    .mph-select,
+    .mph-search input {
+      min-height: 44px;
+      border-color: rgba(47, 117, 108, 0.18);
+      background: rgba(255, 255, 255, 0.9);
     }
   }
 
-  .ui-card {
-    border: 1px solid $print-border;
-    border-radius: 22px;
-    background: linear-gradient(180deg, rgba(255, 253, 248, 0.95), rgba(250, 244, 234, 0.82));
+  .print-ui__bg-circle {
+    background: radial-gradient(circle, rgba(47, 117, 108, 0.13), transparent 68%);
+  }
+
+  .print-ui__demo-flow {
+    grid-template-columns: minmax(180px, 0.24fr) minmax(0, 1fr);
+    gap: 14px;
+    margin: 14px 0 16px;
+    padding: 12px 14px;
+    border-color: rgba(47, 117, 108, 0.16);
+    border-radius: 20px;
+    background: rgba(255, 253, 248, 0.82);
     box-shadow: $print-shadow-soft;
 
-    .card-header h3 {
-      color: $print-text;
-      font-weight: 920;
+    .demo-flow__intro {
+      gap: 4px;
+
+      strong {
+        color: $print-text;
+        font-size: 0.92rem;
+        font-weight: 900;
+        letter-spacing: -0.025em;
+      }
+
+      span {
+        color: $print-muted;
+        font-size: 0.78rem;
+        line-height: 1.45;
+      }
     }
 
-    .card-header p {
-      color: $print-muted;
-      font-size: 0.86rem;
-      line-height: 1.45;
-    }
+    .demo-flow__steps {
+      gap: 8px;
 
-    .card-header .badge {
-      background: rgba(233, 245, 241, 0.78);
+      li {
+        position: relative;
+        min-height: 46px;
+        padding: 8px 10px;
+        border: 1px solid rgba(47, 117, 108, 0.12);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.76);
+        transition:
+          transform 180ms ease,
+          border-color 180ms ease,
+          box-shadow 180ms ease;
+
+        &:hover {
+          transform: translateY(-1px);
+          border-color: rgba(47, 117, 108, 0.28);
+          box-shadow: 0 10px 22px rgba(47, 117, 108, 0.08);
+        }
+      }
+
+      span {
+        width: 26px;
+        height: 26px;
+        flex-basis: 26px;
+        border-radius: 9px;
+        background: $print-primary-dark;
+        font-size: 0.74rem;
+      }
+
+      p {
+        color: $print-text;
+        font-size: 0.77rem;
+        font-weight: 800;
+        line-height: 1.35;
+      }
+    }
+  }
+
+  .print-ui__notice {
+    border-color: $print-border;
+    background: rgba(255, 253, 248, 0.92);
+    color: $print-text;
+    box-shadow: $print-shadow-soft;
+
+    &.is-success {
+      border-color: rgba(47, 117, 108, 0.24);
+      background: $print-primary-soft;
       color: $print-primary-dark;
-      border: 1px solid rgba(47, 117, 108, 0.14);
+    }
+
+    &.is-warning {
+      border-color: rgba(155, 106, 31, 0.25);
+      background: $print-amber-soft;
+      color: #7d5315;
+    }
+
+    &.is-error {
+      border-color: rgba(168, 69, 69, 0.24);
+      background: $print-danger-soft;
+      color: $print-danger;
     }
   }
 
   .print-ui__grid {
-    grid-template-columns: minmax(300px, 0.72fr) minmax(0, 1.28fr);
+    grid-template-columns: minmax(300px, 0.82fr) minmax(0, 1.18fr);
     gap: 14px;
   }
 
   .print-ui__stack {
-    grid-template-columns: minmax(0, 0.98fr) minmax(320px, 0.72fr);
+    grid-template-columns: minmax(0, 1.08fr) minmax(330px, 0.92fr);
     gap: 14px;
     margin-top: 14px;
+  }
+
+  .ui-card {
+    overflow: hidden;
+    border: 1px solid $print-border;
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(248, 243, 234, 0.86));
+    box-shadow: $print-shadow-soft;
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 3px;
+      pointer-events: none;
+      background: linear-gradient(90deg, rgba(47, 117, 108, 0.72), rgba(47, 117, 108, 0.08));
+    }
+
+    .card-header {
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(82, 99, 91, 0.1);
+
+      h3 {
+        color: $print-text;
+        font-size: 1rem;
+        font-weight: 900;
+        letter-spacing: -0.025em;
+      }
+
+      h3 svg {
+        color: $print-primary-dark;
+      }
+
+      p {
+        color: $print-muted;
+        font-size: 0.82rem;
+        line-height: 1.45;
+        text-wrap: pretty;
+      }
+
+      .badge {
+        flex: 0 0 auto;
+        border: 1px solid rgba(47, 117, 108, 0.14);
+        background: rgba(232, 243, 239, 0.78);
+        color: $print-primary-dark;
+        font-weight: 900;
+      }
+    }
   }
 
   .device-list,
@@ -136,157 +284,411 @@ $print-shadow-soft: 0 12px 28px rgba(62, 47, 26, 0.065);
     padding-right: 4px;
   }
 
-  .device-list {
-    max-height: clamp(300px, 42vh, 520px);
-  }
-
+  .device-list,
   .routing-matrix {
-    max-height: clamp(300px, 42vh, 520px);
+    max-height: clamp(310px, 43vh, 540px);
   }
 
-  .template-grid {
-    grid-template-columns: repeat(3, minmax(260px, 1fr));
-    max-height: clamp(340px, 50vh, 600px);
-  }
-
+  .template-grid,
   .jobs-list {
-    max-height: clamp(340px, 50vh, 600px);
+    max-height: clamp(360px, 52vh, 640px);
+  }
+
+  .device-list,
+  .routing-matrix,
+  .jobs-list {
+    gap: 9px;
   }
 
   .device-item,
   .routing-row,
   .template-card,
   .job-item {
-    border-color: rgba(133, 108, 74, 0.15);
-    background: rgba(255, 255, 255, 0.68);
+    border-color: rgba(82, 99, 91, 0.13);
+    background: rgba(255, 255, 255, 0.76);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
+    transition:
+      transform 180ms ease,
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      background 180ms ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      border-color: rgba(47, 117, 108, 0.26);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 14px 30px rgba(47, 117, 108, 0.085);
+    }
   }
 
-  .device-item:hover,
-  .routing-row:hover,
-  .template-card:hover,
-  .job-item:hover {
-    transform: translateY(-1px);
-    border-color: rgba(47, 117, 108, 0.24);
-    box-shadow: 0 14px 30px rgba(47, 117, 108, 0.08);
-  }
+  .device-item {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 18px;
 
-  .device-item .tag-ip,
-  .device-item .type,
-  .station-unassigned,
-  .job-item .job-meta span {
-    background: rgba(245, 239, 229, 0.88);
-    color: $print-muted;
-  }
+    .status-indicator {
+      width: 14px;
+      height: 14px;
+    }
 
-  .status-indicator.online .dot {
-    background: $print-primary;
-    box-shadow: 0 0 0 4px rgba(47, 117, 108, 0.14);
-  }
+    .status-indicator.online .dot {
+      background: $print-primary;
+      box-shadow: 0 0 0 4px rgba(47, 117, 108, 0.14);
+    }
 
-  .status-indicator.online .pulse {
-    border-color: $print-primary;
-  }
+    .status-indicator.online .pulse {
+      border-color: $print-primary;
+    }
 
-  .device-item .status-online,
-  .template-status.is-on,
-  .job-status--completed,
-  .toggle-pill.active {
-    background: $print-primary-soft !important;
-    color: $print-primary-dark !important;
-    border-color: rgba(47, 117, 108, 0.22) !important;
-  }
+    &:has(.status-configured) .status-indicator .dot {
+      background: $print-amber;
+      box-shadow: 0 0 0 4px rgba(155, 106, 31, 0.13);
+    }
 
-  .device-item .status-offline,
-  .job-status--failed {
-    background: #fff3f1 !important;
-    color: $print-danger !important;
-  }
+    .device-info h4 {
+      color: $print-text;
+      font-size: 0.95rem;
+      font-weight: 850;
+      letter-spacing: -0.015em;
+    }
 
-  .routing-empty-hint {
-    border-color: rgba(168, 120, 36, 0.24);
-    background: #fff5dc;
-    color: #80550f;
-  }
+    .tag-ip,
+    .type {
+      border: 1px solid rgba(82, 99, 91, 0.08);
+      background: rgba(244, 239, 230, 0.9);
+      color: $print-muted;
+    }
 
-  .station-icon {
-    background: rgba(233, 245, 241, 0.78);
-    color: $print-primary-dark;
-  }
-
-  .toggle-pill,
-  .template-toggle,
-  .job-header-actions button,
-  .device-actions button {
-    background: rgba(255, 255, 255, 0.88) !important;
-    color: $print-text !important;
-    border-color: rgba(47, 117, 108, 0.16) !important;
-  }
-
-  .print-ui button:not(:disabled):hover {
-    border-color: rgba(47, 117, 108, 0.36);
-    box-shadow: 0 12px 22px rgba(47, 117, 108, 0.12);
-  }
-
-  .template-card textarea {
-    border-color: rgba(47, 117, 108, 0.18);
-    background: rgba(255, 255, 255, 0.82);
-    color: $print-text;
-  }
-
-  .template-test,
-  .empty-state button,
-  .no-data button,
-  .retry-btn,
-  .device-confirm button:first-of-type {
-    border-color: $print-primary !important;
-    background: linear-gradient(180deg, $print-primary, $print-primary-dark) !important;
-    color: #fff !important;
-  }
-
-  .print-ui__notice {
-    border-color: $print-border;
-    background: rgba(255, 253, 248, 0.9);
-    color: $print-text;
-    box-shadow: $print-shadow-soft;
-
-    &.is-success {
-      border-color: rgba(47, 117, 108, 0.24);
+    .status-online {
+      border-color: rgba(47, 117, 108, 0.18);
       background: $print-primary-soft;
       color: $print-primary-dark;
     }
 
-    &.is-warning {
-      border-color: rgba(168, 120, 36, 0.25);
-      background: #fff5dc;
-      color: #80550f;
+    .status-configured {
+      border-color: rgba(155, 106, 31, 0.2);
+      background: $print-amber-soft;
+      color: #7d5315;
     }
 
-    &.is-error {
-      border-color: rgba(168, 69, 69, 0.22);
-      background: #fff3f1;
+    .status-offline {
+      border-color: rgba(168, 69, 69, 0.18);
+      background: $print-danger-soft;
+      color: $print-danger;
+    }
+
+    .device-actions {
+      gap: 8px;
+    }
+
+    .device-actions button {
+      width: 44px;
+      height: 44px;
+      border-color: rgba(47, 117, 108, 0.16);
+      background: rgba(255, 255, 255, 0.92);
+      color: $print-text;
+    }
+
+    .device-actions .danger {
+      border-color: rgba(168, 69, 69, 0.18);
       color: $print-danger;
     }
   }
 
+  .device-confirm {
+    padding-top: 10px;
+    border-top-color: rgba(168, 69, 69, 0.18);
+
+    button {
+      min-height: 40px;
+    }
+
+    button:first-of-type {
+      border-color: $print-danger;
+      background: $print-danger;
+    }
+  }
+
+  .routing-empty-hint {
+    border-color: rgba(155, 106, 31, 0.22);
+    background: $print-amber-soft;
+    color: #7d5315;
+  }
+
+  .routing-row {
+    grid-template-columns: minmax(190px, 0.58fr) minmax(0, 1fr);
+    gap: 14px;
+    padding: 12px;
+    border-radius: 17px;
+
+    .station-info h4 {
+      color: $print-text;
+      font-size: 0.9rem;
+      font-weight: 850;
+    }
+
+    .station-info span {
+      color: $print-muted;
+      font-size: 0.78rem;
+    }
+  }
+
+  .station-icon {
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(47, 117, 108, 0.14);
+    border-radius: 14px;
+    background: $print-primary-soft;
+    color: $print-primary-dark;
+  }
+
+  .printer-toggles {
+    gap: 8px;
+  }
+
+  .toggle-pill {
+    min-height: 40px;
+    border-color: rgba(47, 117, 108, 0.15) !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: $print-text !important;
+
+    &.active {
+      border-color: rgba(47, 117, 108, 0.3) !important;
+      background: $print-primary-soft !important;
+      color: $print-primary-dark !important;
+      box-shadow: inset 0 0 0 1px rgba(47, 117, 108, 0.06);
+    }
+  }
+
+  .station-unassigned {
+    min-height: 40px;
+    border: 1px dashed rgba(155, 106, 31, 0.24);
+    background: $print-amber-soft;
+    color: #7d5315;
+  }
+
+  .template-grid {
+    grid-template-columns: repeat(3, minmax(250px, 1fr));
+    gap: 10px;
+  }
+
+  .template-card {
+    align-content: start;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 18px;
+
+    &.active {
+      border-color: rgba(47, 117, 108, 0.22);
+      box-shadow: inset 0 3px 0 rgba(47, 117, 108, 0.65);
+    }
+
+    .template-head strong {
+      color: $print-text;
+      font-size: 0.93rem;
+      font-weight: 880;
+    }
+
+    .template-status {
+      border: 1px solid transparent;
+    }
+
+    .template-status.is-on {
+      border-color: rgba(47, 117, 108, 0.16);
+      background: $print-primary-soft;
+      color: $print-primary-dark;
+    }
+
+    .template-status.is-off {
+      border-color: rgba(82, 99, 91, 0.12);
+      background: $print-surface-soft;
+      color: $print-muted;
+    }
+
+    .template-toggle {
+      min-height: 40px;
+      border-color: rgba(47, 117, 108, 0.15);
+      background: rgba(255, 255, 255, 0.92);
+      color: $print-text;
+    }
+
+    textarea {
+      min-height: 132px;
+      border-color: rgba(47, 117, 108, 0.17);
+      background: rgba(255, 255, 255, 0.9);
+      color: $print-text;
+      font-size: 0.84rem;
+      line-height: 1.6;
+      box-shadow: inset 0 1px 2px rgba(31, 45, 42, 0.04);
+    }
+
+    .template-test {
+      min-height: 44px;
+      border-color: $print-primary;
+      background: linear-gradient(180deg, $print-primary, $print-primary-dark);
+      color: #fff;
+    }
+
+    .template-test:disabled {
+      border-color: rgba(82, 99, 91, 0.12);
+      background: $print-surface-soft;
+      color: #8a948f;
+    }
+
+    .template-card__hint {
+      color: $print-muted;
+    }
+  }
+
+  .job-header-actions {
+    gap: 8px;
+
+    button {
+      min-height: 40px;
+      border-color: rgba(47, 117, 108, 0.15);
+      background: rgba(255, 255, 255, 0.92);
+      color: $print-text;
+    }
+  }
+
+  .job-item {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 14px 14px 14px 17px;
+    border-radius: 17px;
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 10px auto 10px 0;
+      width: 4px;
+      border-radius: 0 8px 8px 0;
+      background: #aeb8b3;
+    }
+
+    &.job-completed::before {
+      background: $print-primary;
+    }
+
+    &.job-failed {
+      border-color: rgba(168, 69, 69, 0.24);
+      background: #fff7f5;
+    }
+
+    &.job-failed::before {
+      background: $print-danger;
+    }
+
+    &.job-printing::before,
+    &.job-pending::before {
+      background: $print-amber;
+    }
+
+    strong {
+      color: $print-text;
+      font-weight: 880;
+    }
+
+    .job-meta {
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .job-meta span {
+      border: 1px solid rgba(82, 99, 91, 0.08);
+      background: rgba(244, 239, 230, 0.86);
+      color: $print-muted;
+    }
+
+    .job-status--completed {
+      border-color: rgba(47, 117, 108, 0.16);
+      background: $print-primary-soft;
+      color: $print-primary-dark;
+    }
+
+    .job-status--failed {
+      border-color: rgba(168, 69, 69, 0.18);
+      background: $print-danger-soft;
+      color: $print-danger;
+    }
+
+    .job-status--printing,
+    .job-status--pending {
+      border-color: rgba(155, 106, 31, 0.18);
+      background: $print-amber-soft;
+      color: #7d5315;
+    }
+
+    .job-error {
+      padding: 8px 10px;
+      border-left: 3px solid rgba(168, 69, 69, 0.45);
+      border-radius: 8px;
+      background: rgba(255, 241, 239, 0.78);
+      color: $print-danger;
+      line-height: 1.45;
+    }
+  }
+
+  .retry-btn {
+    min-height: 44px;
+    border-color: $print-danger;
+    background: $print-danger;
+    color: #fff;
+  }
+
   .empty-state,
-  .no-data {
-    background: rgba(255, 255, 255, 0.58);
+  .no-data,
+  .print-ui__empty-panel {
     border-color: rgba(47, 117, 108, 0.18);
+    background: rgba(255, 255, 255, 0.62);
   }
 
   .empty-icon {
     color: $print-primary-dark;
   }
 
+  .empty-state button,
+  .no-data button {
+    min-height: 44px;
+    border-color: $print-primary;
+    background: linear-gradient(180deg, $print-primary, $print-primary-dark);
+    color: #fff;
+  }
+
+  .print-ui__skeleton {
+    color: $print-muted;
+    background:
+      linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.72) 40%, transparent 60%),
+      linear-gradient(180deg, rgba(255, 253, 248, 0.86), rgba(232, 243, 239, 0.72));
+    background-size: 220% 100%, 100% 100%;
+  }
+
   .save-hint {
+    bottom: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     background: $print-primary-dark;
-    box-shadow: 0 14px 32px rgba(47, 117, 108, 0.18);
+    box-shadow: 0 14px 32px rgba(47, 117, 108, 0.2);
   }
 
   .save-hint--error {
-    background: #fff3f1;
+    border-color: rgba(168, 69, 69, 0.24);
+    background: $print-danger-soft;
     color: $print-danger;
-    border: 1px solid rgba(168, 69, 69, 0.22);
+  }
+
+  button:not(:disabled):hover {
+    border-color: rgba(47, 117, 108, 0.36);
+    box-shadow: 0 10px 22px rgba(47, 117, 108, 0.12);
+  }
+
+  button:focus-visible,
+  select:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: 3px solid rgba(47, 117, 108, 0.24);
+    outline-offset: 2px;
   }
 
   .device-list::-webkit-scrollbar,
@@ -312,14 +714,6 @@ $print-shadow-soft: 0 12px 28px rgba(62, 47, 26, 0.065);
     border-radius: 999px;
     background: var(--print-scroll-thumb);
   }
-
-  button:focus-visible,
-  select:focus-visible,
-  input:focus-visible,
-  textarea:focus-visible {
-    outline: 3px solid rgba(47, 117, 108, 0.2);
-    outline-offset: 2px;
-  }
 }
 
 @media (max-width: 1180px) {
@@ -332,19 +726,43 @@ $print-shadow-soft: 0 12px 28px rgba(62, 47, 26, 0.065);
     .template-grid {
       grid-template-columns: repeat(2, minmax(240px, 1fr));
     }
-  }
-}
-
-@media (max-width: 760px) {
-  .print-ui--polished {
-    padding: 14px;
-    border-radius: 20px;
 
     .device-list,
     .routing-matrix,
     .template-grid,
     .jobs-list {
       max-height: none;
+    }
+  }
+}
+
+@media (max-width: 820px) {
+  .print-ui--polished {
+    padding: 14px;
+    border-radius: 20px;
+
+    .management-page-header .mph-controls-row,
+    .management-page-header .mph-select,
+    .management-page-header .mph-btn--primary {
+      width: 100%;
+    }
+
+    .management-page-header .mph-btn--primary {
+      justify-content: center;
+    }
+
+    .print-ui__demo-flow {
+      grid-template-columns: 1fr;
+    }
+
+    .demo-flow__steps {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .device-list,
+    .routing-matrix,
+    .template-grid,
+    .jobs-list {
       overflow: visible;
       scrollbar-gutter: auto;
       padding-right: 0;
@@ -352,6 +770,117 @@ $print-shadow-soft: 0 12px 28px rgba(62, 47, 26, 0.065);
 
     .template-grid {
       grid-template-columns: 1fr;
+    }
+
+    .routing-row {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+@media (max-width: 560px) {
+  .print-ui--polished {
+    padding: 10px;
+    border-radius: 16px;
+
+    .print-ui__demo-flow,
+    .ui-card,
+    .print-ui__notice {
+      border-radius: 16px;
+    }
+
+    .demo-flow__steps {
+      grid-template-columns: 1fr;
+    }
+
+    .ui-card {
+      padding: 14px;
+
+      .card-header {
+        align-items: flex-start;
+      }
+    }
+
+    .device-item,
+    .job-item {
+      grid-template-columns: 1fr;
+    }
+
+    .device-item {
+      padding-left: 18px;
+    }
+
+    .device-item .status-indicator {
+      position: absolute;
+      top: 18px;
+      left: 8px;
+    }
+
+    .device-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      width: 100%;
+    }
+
+    .device-item .device-actions button {
+      width: 100%;
+      height: 44px;
+    }
+
+    .device-confirm {
+      align-items: stretch;
+      flex-wrap: wrap;
+    }
+
+    .device-confirm span {
+      width: 100%;
+      margin-right: 0;
+    }
+
+    .device-confirm button {
+      flex: 1;
+    }
+
+    .routing-row,
+    .template-card,
+    .job-item {
+      padding: 12px;
+      border-radius: 15px;
+    }
+
+    .printer-toggles,
+    .toggle-pill {
+      width: 100%;
+    }
+
+    .toggle-pill {
+      justify-content: flex-start;
+    }
+
+    .template-card textarea {
+      min-height: 118px;
+      font-size: 16px;
+    }
+
+    .job-header-actions {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      width: 100%;
+    }
+
+    .job-header-actions button,
+    .retry-btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .print-ui__notice {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .print-ui__notice button {
+      min-height: 42px;
     }
   }
 }
