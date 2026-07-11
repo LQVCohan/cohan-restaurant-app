@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { describe, expect, it } from "vitest";
 import {
   buildCashflowFilter,
@@ -5,8 +6,9 @@ import {
 } from "../../graphql/resolvers/payment/transactionManagementQuery.js";
 
 const restaurantId = "64b000000000000000000001";
+const referenceId = "64b000000000000000000002";
 
-describe("transaction management date boundaries", () => {
+describe("transaction management query contracts", () => {
   it("preserves explicit ISO timestamps instead of normalizing them again", () => {
     const dateFrom = "2026-05-30T17:00:00.000Z";
     const dateTo = "2026-06-29T16:59:59.999Z";
@@ -38,5 +40,44 @@ describe("transaction management date boundaries", () => {
     expect(() => resolveBoundary("not-a-date")).toThrow(
       /Invalid transaction date boundary/,
     );
+  });
+
+  it("matches reference ids across every cashflow reference field", () => {
+    const { filter } = buildCashflowFilter({ restaurantId, referenceId });
+    const expectedId = new mongoose.Types.ObjectId(referenceId);
+    const referenceCondition = filter.$and[0].$or;
+
+    expect(referenceCondition).toEqual(
+      expect.arrayContaining([
+        { "ref.id": expectedId },
+        { "ref.orderId": expectedId },
+        { "ref.orderIds": expectedId },
+        { "ref.invoiceId": expectedId },
+        { "ref.paymentTransactionId": expectedId },
+        { "ref.refundId": expectedId },
+      ]),
+    );
+  });
+
+  it("keeps reference and text search conditions together", () => {
+    const { filter } = buildCashflowFilter({
+      restaurantId,
+      referenceId,
+      search: "PAYREF(123)",
+    });
+
+    expect(filter.$and).toHaveLength(2);
+    expect(filter.$and[0].$or).toBeDefined();
+    expect(filter.$and[1].$or[0].note).toBeInstanceOf(RegExp);
+    expect(filter.$and[1].$or[0].note.test("PAYREF(123)")).toBe(true);
+  });
+
+  it("treats MoMo and VNPAY as wallet methods in the shared filter", () => {
+    const { filter } = buildCashflowFilter({
+      restaurantId,
+      method: "e_wallet",
+    });
+
+    expect(filter.method).toEqual({ $in: ["e_wallet", "momo", "vnpay"] });
   });
 });
