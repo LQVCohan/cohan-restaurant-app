@@ -3,7 +3,7 @@
   "name": "manager-session-scope-menu-list",
   "title": "Fix manager account switching, branch scope, navigation persistence and menu overview",
   "description": "Reset account-scoped manager UI, use the live brand query for the shared restaurant selector, persist manager destinations synchronously, and add a grouped menu-and-dish overview.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend-root-cause-fix",
   "scope": "manager-session-scope-navigation-menu",
   "package": null,
@@ -11,12 +11,12 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-12",
-  "completedAt": null,
+  "completedAt": "2026-07-12",
   "branch": "agent/fix-manager-session-scope-menu-list",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": null,
+  "commit": "7f4ab4f717c84498a0d30e7854a954ef62c3dad9",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1358",
   "subtasks": [],
   "children": [],
   "parent": null,
@@ -31,5 +31,5 @@
     "src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.scss",
     "src/components/Dashboard_Manager/Menu/ManagerMenuCatalogModal.test.jsx"
   ],
-  "notes": "AuthProvider already contains session-epoch, account-ID and Apollo-clear protections. The remaining visible leak was local manager Header/Sidebar/account-center state surviving an identity change; those states now reset from the authenticated account ID."
+  "notes": "AuthProvider already contained session-epoch, account-ID and Apollo-clear protections, so the fix resets the remaining Header/Sidebar/account-center local state by account ID. CI run 29171662231 passed backend lint/test/Menu RBAC/build and frontend conflict/lint/unit/Menu RBAC. All tests for this task passed; the broad changed-component step remains red only on two unrelated PayrollManagement baseline assertions, so frontend build/smoke were skipped by workflow policy."
 }
