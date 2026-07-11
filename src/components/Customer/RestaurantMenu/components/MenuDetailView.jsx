@@ -345,34 +345,53 @@ const MenuDetailView = ({
         <div className="header-content">
           <div className="top-row">
             <button type="button" onClick={onBack} className="back-btn">
-              <span aria-hidden="true">←</span> Quay lại
+              <ArrowLeft size={18} aria-hidden="true" />
+              Quay lại
             </button>
 
             <div className="restaurant-title-block">
               <p className="restaurant-kicker">Thực đơn theo khung giờ</p>
               <h2>{restaurant?.name || "Thực đơn"}</h2>
               <div className="restaurant-meta">
-                {restaurant?.rating ? <span>★ {restaurant.rating}</span> : null}
-                <span>{canOrder ? "Đang nhận đơn" : "Đang tạm ngưng nhận đơn"}</span>
-                {restaurant?.address ? <span>{restaurant.address}</span> : null}
+                {restaurant?.rating ? (
+                  <span><Star size={14} aria-hidden="true" /> {restaurant.rating}</span>
+                ) : null}
+                <span>
+                  <ShoppingBag size={14} aria-hidden="true" />
+                  {canOrder ? "Đang nhận đơn" : "Đang tạm ngưng nhận đơn"}
+                </span>
+                {restaurant?.address ? (
+                  <span><MapPin size={14} aria-hidden="true" /> {restaurant.address}</span>
+                ) : null}
               </div>
             </div>
 
             <div className="header-actions">
-              <label className="search-box">
-                <span aria-hidden="true">⌕</span>
+              <div className="search-box" role="search">
+                <Search size={19} aria-hidden="true" />
                 <input
                   type="search"
                   name="menuSearch"
                   autoComplete="off"
+                  aria-label="Tìm món theo tên hoặc mô tả"
                   placeholder="Tìm theo tên hoặc mô tả món…"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                 />
-              </label>
+                {search ? (
+                  <button
+                    type="button"
+                    className="search-box__clear"
+                    onClick={() => setSearch("")}
+                    aria-label="Xóa từ khóa tìm món"
+                  >
+                    <X size={17} aria-hidden="true" />
+                  </button>
+                ) : null}
+              </div>
 
               <label className="menu-sort-control">
-                <span>Sắp xếp</span>
+                <span className="menu-sort-control__label">Sắp xếp</span>
                 <select
                   name="menuSort"
                   value={sort}
@@ -394,7 +413,7 @@ const MenuDetailView = ({
                   aria-pressed={viewMode === "grid"}
                   onClick={() => setViewMode("grid")}
                 >
-                  ⊞
+                  <LayoutGrid size={19} aria-hidden="true" />
                 </button>
                 <button
                   type="button"
@@ -403,25 +422,28 @@ const MenuDetailView = ({
                   aria-pressed={viewMode === "list"}
                   onClick={() => setViewMode("list")}
                 >
-                  ☰
+                  <List size={20} aria-hidden="true" />
                 </button>
               </div>
             </div>
           </div>
 
           <nav className="tabs-row" aria-label="Chọn bữa ăn">
-            {TIME_SLOTS.map((slot) => (
-              <button
-                type="button"
-                key={slot.id}
-                className={`tab ${timeSlot === slot.id ? "active" : ""}`}
-                aria-pressed={timeSlot === slot.id}
-                onClick={() => setTimeSlot(slot.id)}
-              >
-                <span aria-hidden="true">{slot.icon}</span>
-                {slot.label}
-              </button>
-            ))}
+            {TIME_SLOTS.map((slot) => {
+              const SlotIcon = slot.icon;
+              return (
+                <button
+                  type="button"
+                  key={slot.id}
+                  className={`tab ${timeSlot === slot.id ? "active" : ""}`}
+                  aria-pressed={timeSlot === slot.id}
+                  onClick={() => setTimeSlot(slot.id)}
+                >
+                  <SlotIcon size={18} aria-hidden="true" />
+                  {slot.label}
+                </button>
+              );
+            })}
           </nav>
 
           {isAuthenticated && hasFoodPreferences ? (
