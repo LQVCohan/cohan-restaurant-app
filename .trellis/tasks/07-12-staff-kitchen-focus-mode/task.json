@@ -1,0 +1,28 @@
+{
+  "id": "07-12-staff-kitchen-focus-mode",
+  "title": "Staff kitchen focus mode",
+  "status": "in_progress",
+  "type": "frontend-ui",
+  "scope": [
+    "src/components/Staff/StaffKitchenFocusPage.jsx",
+    "src/components/Staff/StaffKitchenFocusPage.scss",
+    "src/components/Staff/StaffKitchenFocusPage.test.jsx",
+    "src/routes/AppRouter.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Staff/StaffKitchenFocusPage.test.jsx src/components/Staff/StaffKitchenPage.test.jsx",
+      "npm run check:staff-theme",
+      "npm run build",
+      "manual responsive review at 390x844, 430x932, 768px, 1024px and 1440px"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, frontend-design, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
+      "traced OrderItem.station through ordersByRestaurantNow, useOrderManagement, StaffKitchenPage filters/actions and updateOrderItemStatus",
+      "inspected OrderManagement focusMode, Escape handling, body scroll lock and fixed full-screen layout",
+      "inspected StaffLayout and confirmed a fixed route-level frame can cover navigation without changing permissions or data flow",
+      "confirmed the missing behavior is a focus presentation boundary, not a schema/resolver/hook issue"
+    ],
+    "notRun": []
+  }
+}
