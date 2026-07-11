@@ -75,11 +75,13 @@ const activeCapacityFilter = {
   },
 };
 
-function enforceActiveCapacity(next) {
-  const filter = this.getFilter();
-  if (filter?.isActive !== true) return next();
+export const withActivePromotionCapacity = (filter = {}) =>
+  filter?.isActive === true
+    ? { $and: [filter, activeCapacityFilter] }
+    : filter;
 
-  this.setQuery({ $and: [filter, activeCapacityFilter] });
+function enforceActiveCapacity(next) {
+  this.setQuery(withActivePromotionCapacity(this.getFilter()));
   return next();
 }
 
