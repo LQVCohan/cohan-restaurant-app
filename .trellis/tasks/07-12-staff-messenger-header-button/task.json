@@ -1,11 +1,11 @@
 {
   "id": "07-12-staff-messenger-header-button",
   "title": "Move staff messenger launcher into header",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-ui",
   "scope": [
     "src/layouts/StaffLayout.jsx",
-    "src/layouts/StaffLayout.scss",
+    "src/styles/StaffHeaderProfessional.css",
     "src/layouts/StaffLayout.test.jsx"
   ],
   "validation": {
@@ -18,9 +18,18 @@
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
       "traced ChatThread -> communication resolver -> useCommunication -> StaffLayout -> ContactsView -> ChatThreadPanel",
-      "confirmed the Liên lạc nav action and fixed floating launcher open the same StaffLayout-owned messenger modal",
-      "confirmed /staff/contacts remains a compatibility redirect and notification thread actions already call the shared openMessenger handler"
+      "confirmed the Liên lạc nav action and fixed floating launcher opened the same StaffLayout-owned messenger modal",
+      "confirmed /staff/contacts remains a compatibility redirect and notification thread actions already call the shared openMessenger handler",
+      "removed Liên lạc from visible staff navigation and deleted the fixed launcher markup",
+      "added one accessible 44x44 messenger button beside the notification bell while preserving modal and focused-thread state",
+      "reclaimed bottom content padding previously reserved for the floating launcher",
+      "updated StaffLayout regression coverage for the header action, duplicate removal and existing deep-link behavior"
     ],
-    "notRun": []
+    "notRun": [
+      "focused StaffLayout Vitest was not run because the GitHub connector does not provide a repository runtime",
+      "conflict check was not run",
+      "frontend build was not run",
+      "manual checks at 390x844, 430x932, 768px and 1440px were not run"
+    ]
   }
 }
