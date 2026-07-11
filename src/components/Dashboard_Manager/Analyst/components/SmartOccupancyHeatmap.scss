@@ -1,329 +1,249 @@
-$gold: #c5a47e;
-$charcoal: #1e293b;
-$bg-cell: #c5a47e;
-$danger: #ef4444;
-
 .smart-heatmap-widget {
   width: 100%;
-  height: 100%;
+  min-height: 286px;
   display: flex;
   flex-direction: column;
-  background: white;
-  padding: 20px;
-  box-sizing: border-box;
-  overflow: hidden; // Không cho widget phá vỡ layout cha
+  gap: 14px;
+  overflow: hidden;
+  color: var(--ana-text, #1f2a2b);
+  background: transparent !important;
 
-  // --- HEADER ---
   .widget-header {
     display: flex;
+    align-items: flex-start;
     justify-content: space-between;
-    align-items: flex-end;
-    margin-bottom: 16px;
-    flex-shrink: 0;
+    gap: 14px;
+    margin: 0;
+  }
 
-    .header-info {
-      h4 {
-        margin: 0 0 8px 0;
-        font-size: 1.1rem;
-        color: $charcoal;
-      }
+  .header-info {
+    min-width: 0;
 
-      .mode-switch {
-        display: flex;
-        background: #f1f5f9;
-        border-radius: 6px;
-        padding: 3px;
-        gap: 2px;
-
-        button {
-          border: none;
-          background: transparent;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          padding: 4px 10px;
-          border-radius: 4px;
-          font-size: 0.75rem;
-          color: #64748b;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-
-          span {
-            display: inline-block;
-          }
-          @media (max-width: 1200px) {
-            span {
-              display: none;
-            }
-          } // Ẩn chữ trên màn nhỏ
-
-          &.active {
-            background: white;
-            color: $gold;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          }
-        }
-      }
+    h4 {
+      margin: 0;
+      color: var(--ana-text, #1f2a2b);
+      font-size: 1rem;
+      font-weight: 900;
+      letter-spacing: -0.025em;
     }
 
-    .heatmap-legend {
-      .legend-track {
-        width: 80px;
-        height: 6px;
-        border-radius: 3px;
-        background: linear-gradient(to right, rgba($gold, 0.1), $gold);
-        margin-bottom: 4px;
-      }
-      .legend-labels {
-        display: flex;
-        justify-content: space-between;
-        font-size: 0.6rem;
-        color: #94a3b8;
-        text-transform: uppercase;
-      }
+    .subtitle {
+      display: block;
+      margin-top: 4px;
+      color: var(--ana-text-sub, #63706d);
+      font-size: 0.76rem;
+      line-height: 1.4;
     }
   }
 
-  // --- BODY (SCROLLABLE WRAPPER) ---
+  .heatmap-peak {
+    display: grid;
+    justify-items: end;
+    flex: 0 0 auto;
+    gap: 1px;
+    padding: 6px 9px;
+    border: 1px solid rgb(var(--ana-accent-rgb, 111 127 122) / 0.18);
+    border-radius: 12px;
+    background: var(--ana-accent-soft, #edf1ee);
+
+    span {
+      color: var(--ana-text-sub, #63706d);
+      font-size: 0.66rem;
+      font-weight: 760;
+    }
+
+    strong {
+      color: var(--ana-accent-strong, #55655f);
+      font-size: 0.9rem;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
   .heatmap-scroll-wrapper {
     flex: 1;
-    overflow-x: auto; // Cho phép cuộn ngang nếu màn hình quá bé
+    min-height: 0;
+    overflow-x: auto;
     overflow-y: hidden;
-    position: relative;
+    padding-bottom: 3px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ana-border, #d9d2c4) transparent;
 
-    /* Custom Scrollbar cho đẹp */
     &::-webkit-scrollbar {
-      height: 6px;
+      height: 5px;
     }
+
     &::-webkit-scrollbar-track {
       background: transparent;
     }
+
     &::-webkit-scrollbar-thumb {
-      background: #e2e8f0;
-      border-radius: 10px;
-    }
-
-    .heatmap-grid {
-      display: grid;
-      /* QUAN TRỌNG: 60px cho cột Ngày, còn lại chia đều 7 cột Giờ */
-      grid-template-columns: 50px repeat(7, minmax(60px, 1fr));
-      gap: 6px;
-      padding-bottom: 4px; // Chừa chỗ cho scrollbar
-
-      // Class chung cho các ô
-      .grid-cell {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.75rem;
-      }
-
-      // 1. Header Cells
-      .header-hour {
-        font-weight: 600;
-        color: #64748b;
-        margin-bottom: 4px;
-      }
-
-      // 2. Row Labels (Cột ngày)
-      .row-label {
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: center;
-        border-right: 1px solid #f1f5f9;
-        padding-right: 8px;
-
-        .lbl-day {
-          font-weight: 700;
-          color: $charcoal;
-        }
-        .lbl-date {
-          font-size: 0.65rem;
-          color: #94a3b8;
-        }
-      }
-
-      // 3. Data Cells (Các ô nhiệt)
-      .data-cell {
-        position: relative;
-        background: #f8fafc; // Màu nền gốc
-        border-radius: 6px;
-        height: 40px; // Chiều cao cố định cho ô đẹp
-        cursor: pointer;
-        transition: transform 0.2s;
-
-        // Layer màu opacity
-        .cell-bg {
-          position: absolute;
-          inset: 0;
-          background-color: $gold;
-          opacity: var(--bg-opacity);
-          border-radius: 6px;
-          z-index: 0;
-        }
-
-        // Icons & Badges
-        .icon-weather {
-          position: relative;
-          z-index: 1;
-          color: white;
-          filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-        }
-        .badge-event {
-          position: absolute;
-          top: -3px;
-          right: -3px;
-          z-index: 2;
-          background: $danger;
-          color: white;
-          font-size: 0.5rem;
-          padding: 1px 4px;
-          border-radius: 4px;
-          font-weight: bold;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        // High Load Border
-        &.high-load {
-          border: 1px solid rgba($danger, 0.3);
-        }
-
-        // Hover Effect & Tooltip
-        &:hover {
-          transform: scale(1.05);
-          z-index: 10;
-          border: 1px solid $gold;
-
-          .cell-tooltip {
-            visibility: visible;
-            opacity: 1;
-            transform: translate(-50%, -100%);
-            top: -8px;
-          }
-        }
-
-        .cell-tooltip {
-          position: absolute;
-          left: 50%;
-          top: 0;
-          width: 120px;
-          background: $charcoal;
-          color: white;
-          padding: 8px;
-          border-radius: 6px;
-          font-size: 0.7rem;
-          visibility: hidden;
-          opacity: 0;
-          pointer-events: none;
-          transition: all 0.2s;
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-          z-index: 100;
-
-          .tt-head {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 4px;
-            padding-bottom: 2px;
-          }
-          .tt-stat {
-            margin-bottom: 2px;
-          }
-          .tt-warn {
-            color: #fca5a5;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            margin-top: 4px;
-            font-weight: bold;
-          }
-
-          // Mũi tên
-          &::after {
-            content: "";
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            margin-left: -4px;
-            border-width: 4px;
-            border-style: solid;
-            border-color: $charcoal transparent transparent transparent;
-          }
-        }
-      }
-    }
-
-    .empty-state.compact {
-      height: 100%;
-      min-height: 180px;
-      border: 1px dashed #cbd5e1;
-      border-radius: 10px;
-      background: #f8fafc;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      color: #64748b;
-      padding: 14px;
-      gap: 4px;
-      p { margin: 0; color: #334155; font-weight: 600; }
-      span { font-size: 0.82rem; }
+      border-radius: 999px;
+      background: var(--ana-border, #d9d2c4);
     }
   }
 
-  // --- FOOTER ---
-  .forecast-insight {
-    margin-top: 12px;
-    padding: 8px 12px;
-    background: #fffbeb;
-    border: 1px solid #fde68a;
-    border-radius: 6px;
+  .heatmap-grid {
+    width: 100%;
+    min-width: max-content;
+    display: grid;
+    grid-template-columns: 54px repeat(var(--heatmap-columns), minmax(78px, 1fr));
+    gap: 7px;
+    align-items: stretch;
+  }
+
+  .grid-cell {
+    min-width: 0;
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.8rem;
-    color: #92400e;
+    justify-content: center;
+  }
 
-    .icon {
-      color: #d97706;
+  .header-corner,
+  .header-hour {
+    min-height: 26px;
+    color: var(--ana-text-sub, #63706d);
+    font-size: 0.68rem;
+    font-weight: 820;
+  }
+
+  .header-corner {
+    justify-content: flex-start;
+  }
+
+  .header-hour {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .row-label {
+    justify-content: flex-start;
+    min-height: 54px;
+    padding-right: 8px;
+    border-right: 1px solid var(--ana-border, #d9d2c4);
+
+    .lbl-day {
+      color: var(--ana-text, #1f2a2b);
+      font-size: 0.76rem;
+      font-weight: 880;
     }
+  }
+
+  .data-cell {
+    position: relative;
+    isolation: isolate;
+    min-height: 54px;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+    padding: 7px 8px;
+    border: 1px solid rgb(var(--ana-accent-rgb, 111 127 122) / 0.16);
+    border-radius: 12px;
+    background: rgba(255, 253, 248, 0.72);
+    outline: none;
+    transition:
+      transform 160ms ease,
+      border-color 160ms ease,
+      box-shadow 160ms ease;
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: var(--ana-accent, #6f7f7a);
+      opacity: calc(0.08 + var(--heat-level) * 0.3);
+    }
+
+    &.is-empty {
+      border-style: dashed;
+
+      &::before {
+        opacity: 0.04;
+      }
+    }
+
+    &:hover,
+    &:focus-visible {
+      z-index: 1;
+      transform: translateY(-1px);
+      border-color: rgb(var(--ana-accent-rgb, 111 127 122) / 0.42);
+      box-shadow: 0 8px 18px rgba(70, 62, 50, 0.08);
+    }
+
+    &:focus-visible {
+      outline: 3px solid rgb(var(--ana-accent-rgb, 111 127 122) / 0.25);
+      outline-offset: 2px;
+    }
+  }
+
+  .cell-rate {
+    color: var(--ana-text, #1f2a2b);
+    font-size: 0.86rem;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cell-staff {
+    color: var(--ana-text-sub, #63706d);
+    font-size: 0.65rem;
+    font-weight: 720;
+    white-space: nowrap;
+  }
+
+  .empty-state.compact {
+    min-height: 168px !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 18px !important;
+    border: 1px solid var(--ana-border, #d9d2c4) !important;
+    border-radius: 16px !important;
+    color: var(--ana-text-sub, #63706d) !important;
+    background: rgba(255, 253, 248, 0.72) !important;
+    text-align: center;
+
     strong {
-      font-weight: 700;
+      color: var(--ana-text, #1f2a2b);
+      font-size: 0.9rem;
+    }
+
+    p {
+      max-width: 34ch;
+      margin: 0;
+      color: var(--ana-text-sub, #63706d);
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+  }
+
+  .heatmap-loading {
+    border-style: dashed !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .smart-heatmap-widget {
+    min-height: 250px;
+
+    .widget-header {
+      align-items: center;
+    }
+
+    .heatmap-grid {
+      grid-template-columns: 46px repeat(var(--heatmap-columns), minmax(68px, 1fr));
+      gap: 6px;
+    }
+
+    .row-label,
+    .data-cell {
+      min-height: 50px;
     }
   }
 }
 
-.smart-heatmap-widget {
-  padding: 18px !important;
-
-  .widget-header h4 {
-    margin: 0;
-    color: #1f160f;
-    font-size: 1rem;
-    font-weight: 900;
-    letter-spacing: -0.02em;
-  }
-
-  .heatmap-scroll-wrapper {
-    min-height: 0 !important;
-    overflow-x: auto;
-    scrollbar-width: thin;
-  }
-
-  .heatmap-grid {
-    min-width: min(100%, 620px);
-  }
-
-  .empty-state,
-  .empty-state.compact {
-    min-height: 160px !important;
-    border: 1px solid rgba(214, 196, 170, 0.72) !important;
-    border-radius: 16px !important;
-    background: rgba(255, 247, 237, 0.52) !important;
-    color: #7a6b5b !important;
-  }
-
-  .data-cell .cell-bg {
-    background: rgba(249, 115, 22, var(--bg-opacity)) !important;
+@media (prefers-reduced-motion: reduce) {
+  .smart-heatmap-widget .data-cell {
+    transition: none;
   }
 }
