@@ -248,18 +248,20 @@ const Header = ({
       {accountTab && <ManagerAccountCenter key={`${accountId}:${accountTab}`} initialTab={accountTab} onClose={() => setAccountTab(null)} />}
       {showCuisineOnboarding && (
         <RestaurantCuisineOnboarding
-          key={`${accountId}:${selectedRestaurant.id || selectedRestaurant._id}`}
+          key={`onboarding:${accountId}:${selectedRestaurant.id || selectedRestaurant._id}`}
           restaurant={selectedRestaurant}
           openRequest={cuisineOnboardingRequest}
         />
       )}
-      <ManagerMenuCatalogModal
-        key={`${accountId}:${selectedRestaurantId || "no-restaurant"}`}
-        isOpen={showMenuCatalog}
-        onClose={() => setShowMenuCatalog(false)}
-        restaurantId={selectedRestaurantId}
-        restaurantName={selectedRestaurant?.name || ""}
-      />
+      {showMenuCatalog ? (
+        <ManagerMenuCatalogModal
+          key={`menu-catalog:${accountId}:${selectedRestaurantId || "no-restaurant"}`}
+          isOpen
+          onClose={() => setShowMenuCatalog(false)}
+          restaurantId={selectedRestaurantId}
+          restaurantName={selectedRestaurant?.name || ""}
+        />
+      ) : null}
     </>
   );
 };
