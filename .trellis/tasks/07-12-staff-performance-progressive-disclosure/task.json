@@ -1,0 +1,29 @@
+{
+  "id": "07-12-staff-performance-progressive-disclosure",
+  "name": "staff-performance-progressive-disclosure",
+  "title": "Compact staff performance page",
+  "description": "Remove duplicated performance headings and move secondary adjustment/appeal content into an accessible drawer.",
+  "status": "in_progress",
+  "dev_type": "frontend-fix",
+  "scope": "staff-performance-ui",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-12",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/schema/staffResolverCompatibility.graphql",
+    "cohan-restaurant-backend/src/services/performance/performanceAppeal.service.js",
+    "src/hooks/useStaffPerformanceView.js",
+    "src/hooks/usePerformanceIncidentAppeals.js",
+    "src/layouts/StaffLayout.jsx",
+    "src/components/Staff/StaffPerformance/StaffPerformancePage.jsx",
+    "src/components/Staff/StaffPerformance/StaffPerformance.scss",
+    "src/components/Staff/StaffPerformance/StaffPerformancePage.test.jsx"
+  ],
+  "notes": "Preserve GraphQL contracts, employee/restaurant scoping, appeal validation and notification side effects."
+}
