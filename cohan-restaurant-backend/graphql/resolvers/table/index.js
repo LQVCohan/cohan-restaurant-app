@@ -1,5 +1,6 @@
 import tableQueries from "./query.js";
 import tableMutations from "./mutation.js";
+import tableIntegrityMutations from "./integrityMutations.js";
 import mergeTableMutations from "./mergeTables.js";
 import { resolveTableMergeDetails } from "./mergeDetails.js";
 import moveTable from "./moveTable.js";
@@ -17,6 +18,7 @@ export default {
   },
   Mutation: {
     ...tableMutations,
+    ...tableIntegrityMutations,
     ...mergeTableMutations,
     moveTable,
     ...TableAccessQrMutation,
