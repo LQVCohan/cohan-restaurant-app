@@ -19,12 +19,24 @@ const defaultUser = {
   permissionCodes: ["ai.chatbot.handoff", "ai.chatbot.moderate"],
 };
 
-const renderWithUser = (ui, user = defaultUser) =>
+const renderWithContext = (
+  ui,
+  {
+    user = defaultUser,
+    route = "/staff/ai-handoff",
+    contextValue = {},
+  } = {},
+) =>
   render(
-    <MemoryRouter initialEntries={["/staff/ai-handoff"]}>
-      <AuthContext.Provider value={{ user }}>{ui}</AuthContext.Provider>
+    <MemoryRouter initialEntries={[route]}>
+      <AuthContext.Provider value={{ user, ...contextValue }}>
+        {ui}
+      </AuthContext.Provider>
     </MemoryRouter>,
   );
+
+const renderWithUser = (ui, user = defaultUser) =>
+  renderWithContext(ui, { user });
 
 const baseHook = {
   threads: [],
@@ -64,8 +76,12 @@ describe("AiHandoffInbox", () => {
     mockDualHook();
     renderWithUser(<AiHandoffInbox />);
 
-    expect(screen.getByRole("button", { name: "Đang xử lý" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Đã xử lý" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Đang xử lý" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Đã xử lý" }),
+    ).toBeInTheDocument();
   });
 
   it("renders missing restaurant state", () => {
@@ -78,7 +94,43 @@ describe("AiHandoffInbox", () => {
     });
 
     expect(screen.getByText("Chưa xác định được nhà hàng")).toBeInTheDocument();
-    expect(screen.getByText(/được gán nhà hàng để tải yêu cầu hỗ trợ/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/được gán nhà hàng để tải yêu cầu hỗ trợ/i),
+    ).toBeInTheDocument();
+  });
+
+  it("uses activeRestaurantId before the legacy staff restaurant", () => {
+    mockDualHook();
+
+    renderWithContext(<AiHandoffInbox />, {
+      user: { ...defaultUser, restaurantForStaff: "legacy-r1" },
+      contextValue: {
+        activeRestaurantId: "active-r2",
+        activeRestaurant: { id: "active-r2", name: "Cohan Active" },
+        restaurants: [
+          { id: "legacy-r1", name: "Legacy" },
+          { id: "active-r2", name: "Cohan Active" },
+        ],
+      },
+    });
+
+    expect(useCommunicationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: "active-r2",
+        status: "open",
+        notificationsEnabled: true,
+      }),
+    );
+    expect(useCommunicationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: "active-r2",
+        status: "closed",
+        notificationsEnabled: false,
+      }),
+    );
+    expect(screen.getByRole("combobox", { name: /Nhà hàng/i })).toHaveValue(
+      "active-r2",
+    );
   });
 
   it("active tab renders notification item and handles missing threadId warning", async () => {
@@ -95,9 +147,13 @@ describe("AiHandoffInbox", () => {
 
     renderWithUser(<AiHandoffInbox />);
 
-    fireEvent.click(screen.getByRole("button", { name: /yêu cầu cần hỗ trợ/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /yêu cầu cần hỗ trợ/i }),
+    );
 
-    expect(await screen.findByText(/thiếu thông tin hội thoại/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/thiếu thông tin hội thoại/i),
+    ).toBeInTheDocument();
   });
 
   it("resolved tab shows closed handoffs and disables actions", async () => {
@@ -150,9 +206,87 @@ describe("AiHandoffInbox", () => {
 
     await waitFor(() => expect(loadResolvedThread).toHaveBeenCalled());
 
-    expect(screen.getByRole("button", { name: "Gửi phản hồi" })).toBeDisabled();
-    expect(screen.getAllByRole("button", { name: "Đã xử lý" }).at(-1)).toBeDisabled();
-    expect(screen.getByText("Phiên hỗ trợ này đã được đóng.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Gửi phản hồi" }),
+    ).toBeDisabled();
+    expect(
+      screen.getAllByRole("button", { name: "Đã xử lý" }).at(-1),
+    ).toBeDisabled();
+    expect(
+      screen.getByText("Phiên hỗ trợ này đã được đóng."),
+    ).toBeInTheDocument();
+  });
+
+  it("opens a resolved deep link in the resolved tab", async () => {
+    const loadResolvedThread = vi.fn().mockResolvedValue({
+      data: {
+        chatThread: {
+          id: "closed-1",
+          status: "closed",
+          kind: "ai_chatbot_handoff",
+          messages: [
+            {
+              senderRole: "staff",
+              senderName: "Nhân viên A",
+              content: "Phiên này đã được hỗ trợ xong.",
+              createdAt: "2026-07-11T03:05:00.000Z",
+            },
+          ],
+        },
+      },
+    });
+
+    mockDualHook(
+      {},
+      {
+        threads: [
+          {
+            id: "closed-1",
+            restaurantId: "active-r2",
+            kind: "ai_chatbot_handoff",
+            subject: "AI handoff - Khách cần hỗ trợ",
+            status: "closed",
+            lastMessagePreview: "Đã hỗ trợ xong",
+            updatedAt: "2026-07-11T03:05:00.000Z",
+          },
+        ],
+        thread: {
+          id: "closed-1",
+          status: "closed",
+          kind: "ai_chatbot_handoff",
+          messages: [
+            {
+              senderRole: "staff",
+              senderName: "Nhân viên A",
+              content: "Phiên này đã được hỗ trợ xong.",
+              createdAt: "2026-07-11T03:05:00.000Z",
+            },
+          ],
+        },
+        loadThread: loadResolvedThread,
+      },
+    );
+
+    renderWithContext(<AiHandoffInbox />, {
+      route: "/staff/ai-handoff?threadId=closed-1",
+      contextValue: {
+        activeRestaurantId: "active-r2",
+        activeRestaurant: { id: "active-r2", name: "Cohan Active" },
+        restaurants: [{ id: "active-r2", name: "Cohan Active" }],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Đã xử lý" })).toHaveClass(
+        "active",
+      );
+      expect(loadResolvedThread).toHaveBeenCalledWith({
+        variables: { id: "closed-1" },
+      });
+    });
+    expect(
+      screen.getByText("Phiên này đã được hỗ trợ xong."),
+    ).toBeInTheDocument();
   });
 
   it("active resolve flow still works", async () => {
@@ -198,7 +332,9 @@ describe("AiHandoffInbox", () => {
     renderWithUser(<AiHandoffInbox />);
 
     fireEvent.click(screen.getByRole("button", { name: /preview/i }));
-    fireEvent.click(screen.getByRole("button", { name: /đánh dấu đã xử lý/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /đánh dấu đã xử lý/i }),
+    );
 
     await waitFor(() => expect(resolveMutationSpy).toHaveBeenCalled());
   });
