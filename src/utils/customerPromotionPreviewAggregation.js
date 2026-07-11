@@ -44,7 +44,10 @@ export const buildCustomerPromotionPreviewInput = ({
   promotionIds: [],
 });
 
-export const aggregateCustomerPromotionBreakdowns = (breakdowns = []) => {
+export const aggregateCustomerPromotionBreakdowns = (
+  breakdowns = [],
+  checkoutShippingFee = 0,
+) => {
   const aggregate = breakdowns.reduce(
     (total, breakdown) => ({
       subtotal: total.subtotal + toNumber(breakdown?.subtotal),
@@ -79,9 +82,21 @@ export const aggregateCustomerPromotionBreakdowns = (breakdowns = []) => {
     },
   );
 
+  const previewAlreadyIncludesShipping = aggregate.shippingFee > 0;
+  const groupCount = Math.max(1, breakdowns.length);
+  const fallbackGroupShipping = resolveCheckoutGroupShippingFee({
+    orderType: "delivery",
+    shippingFee: checkoutShippingFee,
+    groupCount,
+  });
+  const fallbackShipping = previewAlreadyIncludesShipping
+    ? 0
+    : fallbackGroupShipping * groupCount;
+
   return {
     ...aggregate,
-    total: Math.max(0, aggregate.total),
+    shippingFee: aggregate.shippingFee + fallbackShipping,
+    total: Math.max(0, aggregate.total + fallbackShipping),
     appliedPromotions: [...new Set(aggregate.appliedPromotions.map(String))],
   };
 };
