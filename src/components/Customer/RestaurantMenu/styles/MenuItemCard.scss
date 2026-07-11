@@ -31,10 +31,9 @@
 
   &.inactive {
     cursor: pointer;
-    opacity: 0.84;
 
-    .thumb img { filter: grayscale(48%) saturate(0.82); }
-    .add-btn { opacity: 0.78; }
+    .thumb img { filter: grayscale(38%) saturate(0.82); }
+    .add-btn { background: rm.$surface-muted; color: rm.$text-sub; }
   }
 
   .thumb {
@@ -129,6 +128,27 @@
       overflow: hidden;
     }
 
+    .menu-item-card__meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.42rem 0.7rem;
+      margin: 0 0 0.8rem;
+      color: rm.$text-muted;
+      font-size: 0.78rem;
+      font-weight: 700;
+
+      span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+      }
+
+      .menu-item-card__low-stock {
+        color: rm.$warning;
+      }
+    }
+
     .variants {
       display: flex;
       gap: 0.5rem;
@@ -172,6 +192,7 @@
         background: rm.$text-main;
         color: rm.$surface;
         @include rm.flex-center;
+        gap: 0.28rem;
         padding: 0 1rem;
         font: inherit;
         font-size: 0.92rem;
@@ -194,6 +215,7 @@
   display: inline-flex;
   align-items: center;
   align-self: flex-start;
+  gap: 0.32rem;
   margin: 0 0 0.55rem;
   padding: 0.34rem 0.65rem;
   border-radius: rm.$radius-pill;
