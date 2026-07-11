@@ -53,10 +53,12 @@ vi.mock("@/components/common/Modal", () => {
 });
 
 describe("StaffLeavePage", () => {
-  it("passes the authenticated staff restaurant to the leave request form", () => {
+  it("passes the authenticated staff scope and guided mode to the leave form", () => {
     render(<StaffLeavePage />);
 
     expect(captures.formProps.restaurantId).toBe("restaurant-active");
     expect(captures.formProps.selfServiceEmployeeId).toBe("staff-1");
+    expect(captures.formProps.stepByStep).toBe(true);
+    expect(captures.formProps.compact).toBe(true);
   });
 });
