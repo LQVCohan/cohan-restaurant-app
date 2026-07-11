@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Order, Table, User } from "../../../models/index.js";
+import { KitchenOrderWorkItem, Order, Table, User } from "../../../models/index.js";
 import TableCustomer from "../../../models/tableCustomer.model.js";
 import { toId } from "../order/helper/orderUtils.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
@@ -45,6 +45,83 @@ async function requireTableOrderReadAccess(ctx, restaurantId) {
 
 function getRootCode(order) {
   return order.parentOrderCode || order.orderCode || "unknown";
+}
+
+function sameId(left, right) {
+  return Boolean(left && right && String(left) === String(right));
+}
+
+function buildWorkItemKey(orderId, orderItemId) {
+  if (!orderId || !orderItemId) return null;
+  return `${String(orderId)}:${String(orderItemId)}`;
+}
+
+async function attachKitchenWorkItemInfoToOrders({ rid, orders }) {
+  const slice = orders || [];
+  if (!rid || !slice.length) return slice;
+
+  const orderIds = slice.map((order) => order?._id).filter(Boolean);
+  if (!orderIds.length) return slice;
+
+  const workItems = await KitchenOrderWorkItem.find({
+    restaurantId: rid,
+    orderId: { $in: orderIds },
+  })
+    .select({
+      restaurantId: 1,
+      orderId: 1,
+      orderItemId: 1,
+      station: 1,
+      kitchenEnteredAt: 1,
+      preparingAt: 1,
+      readyAt: 1,
+      actualPrepMinutes: 1,
+      targetPrepMinutes: 1,
+      timeLevel: 1,
+      unaccepted: 1,
+      unacceptedAfterMinutes: 1,
+      unacceptedReason: 1,
+    })
+    .lean();
+
+  const byOrderItem = new Map(
+    workItems
+      .filter((workItem) => sameId(workItem?.restaurantId, rid))
+      .map((workItem) => [
+        buildWorkItemKey(workItem.orderId, workItem.orderItemId),
+        workItem,
+      ])
+      .filter(([key]) => Boolean(key)),
+  );
+
+  return slice.map((order) => ({
+    ...order,
+    items: (order.items || []).map((item) => {
+      const snapshotStation = item?.station || item?.prepStation || null;
+      const workItem = byOrderItem.get(
+        buildWorkItemKey(order._id, item?._id),
+      );
+      if (!workItem) {
+        return {
+          ...item,
+          station: snapshotStation,
+        };
+      }
+      return {
+        ...item,
+        station: workItem.station || snapshotStation,
+        kitchenEnteredAt: workItem.kitchenEnteredAt || null,
+        preparingAt: workItem.preparingAt || null,
+        readyAt: workItem.readyAt || null,
+        actualPrepMinutes: workItem.actualPrepMinutes ?? null,
+        targetPrepMinutes: workItem.targetPrepMinutes ?? null,
+        timeLevel: workItem.timeLevel || null,
+        unaccepted: workItem.unaccepted === true,
+        unacceptedAfterMinutes: workItem.unacceptedAfterMinutes ?? null,
+        unacceptedReason: workItem.unacceptedReason || null,
+      };
+    }),
+  }));
 }
 
 async function resolveTableScope({ rid, tableId, tableCode }) {
@@ -185,7 +262,14 @@ async function buildCursorConnection({ baseFilter, limit = 20, cursor, rid, user
   const rows = await query.lean({ virtuals: true });
   const hasNextPage = rows.length > safeLimit;
   const slice = hasNextPage ? rows.slice(0, safeLimit) : rows;
-  const withCustomer = await attachCustomerInfoToOrders({ rid, orders: slice });
+  const withKitchenWorkItems = await attachKitchenWorkItemInfoToOrders({
+    rid,
+    orders: slice,
+  });
+  const withCustomer = await attachCustomerInfoToOrders({
+    rid,
+    orders: withKitchenWorkItems,
+  });
   const scopedOrders = scopeOrdersForPreparationStation(withCustomer, user);
 
   return {
@@ -244,7 +328,8 @@ async function loadActiveOrderBatches({ rid, tableIds, user }) {
   const orders = await Order.find(filter)
     .sort({ createdAt: 1, _id: 1 })
     .lean({ virtuals: true });
-  return scopeOrdersForPreparationStation(orders, user);
+  const enrichedOrders = await attachKitchenWorkItemInfoToOrders({ rid, orders });
+  return scopeOrdersForPreparationStation(enrichedOrders, user);
 }
 
 export const OrderCoreRecoveryQuery = {
@@ -285,7 +370,14 @@ export const OrderCoreRecoveryQuery = {
         .lean({ virtuals: true }),
       Order.countDocuments(query),
     ]);
-    const withCustomer = await attachCustomerInfoToOrders({ rid, orders: itemsRaw });
+    const withKitchenWorkItems = await attachKitchenWorkItemInfoToOrders({
+      rid,
+      orders: itemsRaw,
+    });
+    const withCustomer = await attachCustomerInfoToOrders({
+      rid,
+      orders: withKitchenWorkItems,
+    });
     const items = scopeOrdersForPreparationStation(withCustomer, ctx?.user);
     return { items, totalCount };
   },
