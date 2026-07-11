@@ -20,6 +20,18 @@ const menuItemSchema = BaseSchemaModel({
     required: true,
     index: true,
   },
+  sourceType: {
+    type: String,
+    enum: ["menu", "supply"],
+    default: "menu",
+    index: true,
+  },
+  supplyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Supply",
+    default: null,
+    index: true,
+  },
 
   code: { type: String, trim: true, uppercase: true },
 
@@ -136,10 +148,18 @@ menuItemSchema.index(
   }
 );
 
+menuItemSchema.index(
+  { restaurantId: 1, menuId: 1, supplyId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      sourceType: "supply",
+      supplyId: { $type: "objectId" },
+    },
+  },
+);
 menuItemSchema.index({ restaurantId: 1, status: 1, sortOrder: 1 });
-
 menuItemSchema.index({ rate: -1, orderCounter: -1, _id: 1 });
-
 menuItemSchema.index({
   name: "text",
   code: "text",
