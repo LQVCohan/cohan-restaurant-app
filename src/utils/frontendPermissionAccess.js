@@ -51,6 +51,8 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
     "table.read",
     "table.write",
     "report.read",
+    "print.read",
+    "print.write",
     "inventory.read",
     "inventory.write",
     "stock.read",
