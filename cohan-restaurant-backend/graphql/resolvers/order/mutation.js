@@ -1868,10 +1868,14 @@ export const OrderMutation = {
     }
 
     if (idempotencyKey) {
-      const existing = await CheckoutSession.findOne({ idempotencyKey }).lean();
+      const existing = await CheckoutSession.findOne({
+        idempotencyKey,
+        userId: toId(authUserId),
+      }).lean();
       if (existing?.orderIds?.length) {
         const existingOrders = await Order.find({
           _id: { $in: existing.orderIds },
+          userId: toId(authUserId),
         }).lean({ virtuals: true });
         return {
           checkout: {
