@@ -3560,6 +3560,7 @@ const mutationResolvers = {
 
     const update = {
       currentPayrollPeriodId: nextCurrentPeriodId,
+      timezone: input.timezone,
       standardWorkDaysPerMonth: input.standardWorkDaysPerMonth,
       standardHoursPerDay: input.standardHoursPerDay,
       overtimeMultiplierWeekday: input.overtimeMultiplierWeekday,
