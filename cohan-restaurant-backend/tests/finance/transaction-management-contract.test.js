@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import mongoose from "mongoose";
 import { print } from "graphql";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -18,6 +20,14 @@ const selectLeanQuery = (value) => ({
     lean: vi.fn().mockResolvedValue(value),
   }),
 });
+
+const walletServiceSource = readFileSync(
+  join(
+    process.cwd(),
+    "cohan-restaurant-backend/src/services/wallet/wallet.service.js",
+  ),
+  "utf8",
+);
 
 describe("transaction management persistence and GraphQL contracts", () => {
   afterEach(() => {
@@ -106,7 +116,7 @@ describe("transaction management persistence and GraphQL contracts", () => {
     );
   });
 
-  it("creates one auditable cashflow for reservation deposits and wallet payments", async () => {
+  it("creates one auditable cashflow for a reservation deposit only", async () => {
     const cashflowId = objectId();
     const findOneAndUpdate = vi
       .spyOn(Cashflow, "findOneAndUpdate")
@@ -141,34 +151,27 @@ describe("transaction management persistence and GraphQL contracts", () => {
     );
 
     findOneAndUpdate.mockClear();
-    const walletTransactionId = objectId();
-    const orderId = objectId();
     await ensurePaymentTransactionCashflow({
-      _id: walletTransactionId,
+      _id: objectId(),
       restaurantId: objectId(),
-      orderId,
-      orderIds: [orderId],
+      orderId: objectId(),
+      orderIds: [objectId()],
       method: "e_wallet",
       paidAmount: 700,
-      currency: "VND",
       status: "SUCCESS",
-      paidAt: new Date(),
       $session: () => null,
     });
-    expect(findOneAndUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        source: "order",
-        "ref.paymentTransactionId": walletTransactionId,
-      }),
-      expect.objectContaining({
-        $setOnInsert: expect.objectContaining({
-          category: "sale",
-          method: "e_wallet",
-          source: "order",
-        }),
-      }),
-      expect.objectContaining({ upsert: true }),
+    expect(findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("uses transactional idempotent wallet cashflow writes without swallowing errors", () => {
+    expect(walletServiceSource).toContain("Cashflow.findOneAndUpdate(");
+    expect(walletServiceSource).toContain('source: "order"');
+    expect(walletServiceSource).toContain('source: "refund"');
+    expect(walletServiceSource).toContain(
+      '{ upsert: true, new: true, setDefaultsOnInsert: true, session }',
     );
+    expect(walletServiceSource).not.toMatch(/Cashflow\.create\([\s\S]*?\.catch\(/);
   });
 
   it("creates and links a missing cashflow for a successful direct refund", async () => {
