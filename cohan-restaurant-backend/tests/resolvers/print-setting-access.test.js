@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const permissionMocks = vi.hoisted(() => ({
+  requireAnyRestaurantPermission: vi.fn(),
   requireRestaurantPermission: vi.fn(),
 }));
 
@@ -54,6 +55,7 @@ describe("printSetting permission and queue integrity", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    permissionMocks.requireAnyRestaurantPermission.mockResolvedValue(true);
     permissionMocks.requireRestaurantPermission.mockResolvedValue(true);
     modelMocks.Restaurant.findById.mockReturnValue(queryResult({ _id: "valid-r1" }));
     modelMocks.PrintSetting.findOne.mockReturnValue(queryResult(baseSetting()));
@@ -64,9 +66,9 @@ describe("printSetting permission and queue integrity", () => {
     modelMocks.PrintSetting.updateOne.mockResolvedValue({ acknowledged: true, modifiedCount: 1 });
   });
 
-  it("requires print.read for the scoped settings query", async () => {
+  it("allows scoped settings reads through print or POS operational permissions", async () => {
     const resolver = await import("../../graphql/resolvers/printSetting/index.js");
-    const ctx = { user: { id: "manager-1" } };
+    const ctx = { user: { id: "cashier-1" } };
 
     const result = await resolver.Query.printSettings(
       null,
@@ -74,12 +76,30 @@ describe("printSetting permission and queue integrity", () => {
       ctx,
     );
 
-    expect(permissionMocks.requireRestaurantPermission).toHaveBeenCalledWith(
+    expect(permissionMocks.requireAnyRestaurantPermission).toHaveBeenCalledWith(
       ctx,
       "valid-r1",
-      "print.read",
+      ["print.read", "order.update", "payment.write"],
     );
     expect(result).toEqual(expect.objectContaining({ restaurantId: "valid-r1" }));
+  });
+
+  it("returns defaults without creating configuration during a read", async () => {
+    modelMocks.PrintSetting.findOne.mockReturnValue(queryResult(null));
+    const resolver = await import("../../graphql/resolvers/printSetting/index.js");
+
+    const result = await resolver.Query.printSettings(
+      null,
+      { restaurantId: "valid-r1" },
+      { user: { id: "viewer-1" } },
+    );
+
+    expect(result).toEqual(expect.objectContaining({
+      restaurantId: "valid-r1",
+      printers: [],
+      jobs: [],
+    }));
+    expect(modelMocks.PrintSetting.create).not.toHaveBeenCalled();
   });
 
   it("rejects an invalid restaurant id before permission and database calls", async () => {
@@ -89,11 +109,12 @@ describe("printSetting permission and queue integrity", () => {
       resolver.Query.printSettings(null, { restaurantId: "bad-id" }, { user: { id: "m1" } }),
     ).rejects.toThrow("Invalid restaurantId");
 
+    expect(permissionMocks.requireAnyRestaurantPermission).not.toHaveBeenCalled();
     expect(permissionMocks.requireRestaurantPermission).not.toHaveBeenCalled();
     expect(modelMocks.Restaurant.findById).not.toHaveBeenCalled();
   });
 
-  it("requires print.write for configuration and queue mutations", async () => {
+  it("requires print.write for configuration, retry, status and test mutations", async () => {
     permissionMocks.requireRestaurantPermission.mockRejectedValue(new Error("FORBIDDEN_PRINT_WRITE"));
     const resolver = await import("../../graphql/resolvers/printSetting/index.js");
     const ctx = { user: { id: "viewer-1" } };
@@ -102,19 +123,6 @@ describe("printSetting permission and queue integrity", () => {
       resolver.Mutation.upsertPrintSettings(
         null,
         { input: { restaurantId: "valid-r1", printers: [] } },
-        ctx,
-      ),
-    ).rejects.toThrow("FORBIDDEN_PRINT_WRITE");
-    await expect(
-      resolver.Mutation.enqueuePrintJob(
-        null,
-        {
-          input: {
-            restaurantId: "valid-r1",
-            printerId: "p1",
-            printType: "manual_test",
-          },
-        },
         ctx,
       ),
     ).rejects.toThrow("FORBIDDEN_PRINT_WRITE");
@@ -149,6 +157,32 @@ describe("printSetting permission and queue integrity", () => {
     expect(modelMocks.PrintSetting.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
+  it("allows POS enqueue through print.write, order.update or payment.write", async () => {
+    const resolver = await import("../../graphql/resolvers/printSetting/index.js");
+    const ctx = { user: { id: "cashier-1" } };
+
+    const job = await resolver.Mutation.enqueuePrintJob(
+      null,
+      {
+        input: {
+          restaurantId: "valid-r1",
+          printerId: "p1",
+          stationId: "kitchen",
+          printType: "manual_test",
+          templateKey: "kitchen",
+        },
+      },
+      ctx,
+    );
+
+    expect(permissionMocks.requireAnyRestaurantPermission).toHaveBeenCalledWith(
+      ctx,
+      "valid-r1",
+      ["print.write", "order.update", "payment.write"],
+    );
+    expect(job).toEqual(expect.objectContaining({ printerId: "p1", status: "pending" }));
+  });
+
   it("sanitizes station assignments during settings upsert", async () => {
     modelMocks.PrintSetting.findOneAndUpdate.mockReturnValue(
       queryResult(baseSetting({ stations: { kitchen: ["p1"] } })),
@@ -174,6 +208,27 @@ describe("printSetting permission and queue integrity", () => {
     expect(payload.stations.kitchen).toEqual(["p1"]);
   });
 
+  it("does not let an unhydrated partial POS autosave erase configured printers", async () => {
+    const resolver = await import("../../graphql/resolvers/printSetting/index.js");
+
+    const result = await resolver.Mutation.upsertPrintSettings(
+      null,
+      {
+        input: {
+          restaurantId: "valid-r1",
+          printers: [],
+          stations: {},
+        },
+      },
+      { user: { id: "manager-1" } },
+    );
+
+    expect(result.printers).toEqual([
+      expect.objectContaining({ id: "p1", name: "Máy bếp" }),
+    ]);
+    expect(modelMocks.PrintSetting.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
   it("rejects a manual job for a printer outside the restaurant configuration", async () => {
     const resolver = await import("../../graphql/resolvers/printSetting/index.js");
 
@@ -197,7 +252,7 @@ describe("printSetting permission and queue integrity", () => {
   it("appends a validated print job atomically without rewriting the queue", async () => {
     const resolver = await import("../../graphql/resolvers/printSetting/index.js");
 
-    const job = await resolver.Mutation.enqueuePrintJob(
+    await resolver.Mutation.enqueuePrintJob(
       null,
       {
         input: {
@@ -211,7 +266,6 @@ describe("printSetting permission and queue integrity", () => {
       { user: { id: "manager-1" } },
     );
 
-    expect(job).toEqual(expect.objectContaining({ printerId: "p1", status: "pending" }));
     const update = modelMocks.PrintSetting.updateOne.mock.calls[0][1];
     expect(update.$push.jobs).toEqual(expect.objectContaining({
       $position: 0,
