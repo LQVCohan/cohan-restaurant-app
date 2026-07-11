@@ -1,0 +1,12 @@
+input CustomerPromotionPreviewInput {
+  restaurantId: ID!
+  orderType: OrderType = dine_in
+  paymentMethod: String
+  items: [CheckoutCartItemInput!]!
+  pricing: CheckoutPricingInput
+  promotionIds: [ID!]
+}
+
+extend type Query {
+  customerPromotionPreview(input: CustomerPromotionPreviewInput!): DiscountBreakdown!
+}
