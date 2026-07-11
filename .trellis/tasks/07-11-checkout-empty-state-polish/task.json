@@ -1,12 +1,13 @@
 {
   "id": "07-11-checkout-empty-state-polish",
   "title": "Làm đẹp trạng thái checkout khi giỏ hàng trống",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-ui-polish",
   "scope": [
-    "src/pages/CheckoutPage.polish.css"
+    "src/pages/CheckoutPage.jsx",
+    "src/pages/CheckoutPage.empty-state.css"
   ],
-  "rootCause": "CheckoutPage already renders a structured CheckoutBlockedState with card, icon, eyebrow, actions and primary/secondary button classes, but the stylesheet only styles the outer page and applies the same orange treatment to every button. The missing component-level styles leave the content floating in a large empty background and remove the intended action hierarchy.",
+  "rootCause": "CheckoutPage already renders a structured CheckoutBlockedState with card, icon, eyebrow, actions and primary/secondary button classes, but the existing stylesheet only styles the outer page and applies the same orange treatment to every button. The missing component-level styles leave the content floating in a large empty background and remove the intended action hierarchy.",
   "validation": {
     "planned": [
       "npm run check:conflicts",
@@ -17,8 +18,14 @@
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail, ui-ux-pro-max, taste-ui-redesign and redesign-existing-projects skills",
       "traced /checkout route through MainLayout, CheckoutPage, CartProvider state and CheckoutBlockedState",
-      "confirmed no schema, resolver, GraphQL operation or backend service change is required"
+      "confirmed no schema, resolver, GraphQL operation or backend service change is required",
+      "added a scoped checkout empty-state stylesheet without changing checkout conditions or navigation",
+      "separated primary and secondary actions and added keyboard focus, pressed, responsive and reduced-motion states",
+      "reviewed the final JSX diff and fetched the committed stylesheet for syntax and selector-scope review"
     ],
-    "notRun": []
+    "notRun": [
+      "npm run check:conflicts and npm run build were not run because the GitHub connector does not provide a repository checkout with installed dependencies.",
+      "Desktop and 390x844 / 430x932 browser verification remains for the local Vite environment."
+    ]
   }
 }
