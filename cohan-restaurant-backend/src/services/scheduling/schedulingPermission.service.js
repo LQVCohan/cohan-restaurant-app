@@ -18,10 +18,14 @@ export function normalizeRole(value) {
 }
 
 export function resolveUserRoles(user = {}) {
+  const role = user?.role;
   const rawRoles = [
     user?.userType,
     user?.roleName,
-    user?.role?.slug,
+    user?.roleSlug,
+    role?.slug,
+    role?.name,
+    typeof role === "string" ? role : null,
     ...(Array.isArray(user?.roles) ? user.roles : []),
   ];
 
