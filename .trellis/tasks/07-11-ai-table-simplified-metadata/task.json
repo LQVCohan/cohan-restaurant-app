@@ -1,0 +1,28 @@
+{
+  "id": "07-11-ai-table-simplified-metadata",
+  "title": "Đơn giản hóa thông tin tạo bàn AI",
+  "status": "in_progress",
+  "type": "frontend-feature",
+  "scope": [
+    "src/utils/installGuidedAiCaptureCards.js",
+    "src/styles/GuidedAiCaptureCards.css",
+    "src/utils/installGuidedAiCaptureCards.test.js"
+  ],
+  "rootCause": "Hi3D returns task state plus model and cover URLs, not restaurant-specific table type or seat capacity. The current AI screen still exposes prompt, area, scale and tags even though Hi3D does not accept prompt and the hidden technical/default metadata can be supplied by the existing application defaults.",
+  "validation": {
+    "planned": [
+      "npx vitest run src/utils/installGuidedAiCaptureCards.test.js",
+      "npx vitest run src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx",
+      "npm run check:conflicts",
+      "npm run build",
+      "manual mobile check at 390x844 and 430x932"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, UI redesign skills and cross-layer guide",
+      "traced CustomTableModelBuilderModal -> upload.route.js -> table3dAiGeneration.service.js -> Hi3D submit/query response -> catalog item",
+      "confirmed Hi3D submit does not accept prompt and query results do not contain table type or capacity",
+      "identified name, table type and capacity as the only user-facing metadata still needed by COHAN"
+    ],
+    "notRun": []
+  }
+}
