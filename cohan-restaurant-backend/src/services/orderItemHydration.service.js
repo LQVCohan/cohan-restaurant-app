@@ -77,6 +77,56 @@ async function loadAvailableMenuItems({ restaurantId, items, session }) {
   return new Map((docs || []).map((item) => [String(item._id), item]));
 }
 
+async function classifyCheckoutEntries({ restaurantId, items, session }) {
+  const indexedItems = items.map((item, index) => ({ item, index }));
+  const explicitSupplies = indexedItems.filter(({ item }) =>
+    isSupplyCatalogItem(item),
+  );
+  const unresolved = indexedItems.filter(
+    ({ item }) => !isSupplyCatalogItem(item),
+  );
+  if (!unresolved.length) {
+    return { menuEntries: [], supplyEntries: explicitSupplies };
+  }
+
+  const candidateIds = unresolved
+    .map(({ item }) => resolveMenuItemId(item))
+    .map(toObjectId)
+    .filter(Boolean);
+  let query = MenuItem.find({
+    restaurantId: toObjectId(restaurantId),
+    _id: { $in: candidateIds },
+  }).select({ _id: 1 });
+  if (session) query = query.session(session);
+  const knownMenuItems = await query.lean();
+  const knownMenuItemIds = new Set(
+    knownMenuItems.map((item) => String(item._id)),
+  );
+
+  const menuEntries = [];
+  const inferredSupplies = [];
+  for (const entry of unresolved) {
+    const candidateId = resolveMenuItemId(entry.item);
+    if (candidateId && knownMenuItemIds.has(String(candidateId))) {
+      menuEntries.push(entry);
+      continue;
+    }
+    inferredSupplies.push({
+      ...entry,
+      item: {
+        ...entry.item,
+        itemType: "SUPPLY",
+        supplyId: candidateId,
+      },
+    });
+  }
+
+  return {
+    menuEntries,
+    supplyEntries: [...explicitSupplies, ...inferredSupplies],
+  };
+}
+
 function applyPrepStationSnapshots(hydratedItems, menuItemById) {
   for (const item of hydratedItems || []) {
     const menuItemId = resolveMenuItemId(item);
@@ -191,9 +241,11 @@ export async function hydrateCheckoutOrderItems({
     invalidItems("No checkout items to hydrate");
   }
 
-  const indexedItems = items.map((item, index) => ({ item, index }));
-  const supplyEntries = indexedItems.filter(({ item }) => isSupplyCatalogItem(item));
-  const menuEntries = indexedItems.filter(({ item }) => !isSupplyCatalogItem(item));
+  const { menuEntries, supplyEntries } = await classifyCheckoutEntries({
+    restaurantId,
+    items,
+    session,
+  });
   const result = new Array(items.length);
 
   if (menuEntries.length) {
