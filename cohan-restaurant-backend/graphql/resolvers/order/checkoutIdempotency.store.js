@@ -9,13 +9,16 @@ import {
   delay,
 } from "./checkoutIdempotency.utils.js";
 
-export async function loadCheckoutResult({ key, claim }) {
+export async function loadCheckoutResult({ key, claim, userId = null }) {
+  const ownerId = claim?.userId || userId || null;
   let checkoutCode = claim?.checkoutCode || null;
   let orderIds = Array.isArray(claim?.orderIds) ? claim.orderIds : [];
   let grandTotal = null;
 
   if (!orderIds.length) {
-    const checkout = await CheckoutSession.findOne({ idempotencyKey: key }).lean();
+    const checkoutFilter = { idempotencyKey: key };
+    if (ownerId) checkoutFilter.userId = ownerId;
+    const checkout = await CheckoutSession.findOne(checkoutFilter).lean();
     if (checkout?.orderIds?.length) {
       checkoutCode = checkout.checkoutCode;
       orderIds = checkout.orderIds;
@@ -25,7 +28,9 @@ export async function loadCheckoutResult({ key, claim }) {
 
   if (!orderIds.length) return null;
 
-  const orders = await Order.find({ _id: { $in: orderIds } }).lean({
+  const orderFilter = { _id: { $in: orderIds } };
+  if (ownerId) orderFilter.userId = ownerId;
+  const orders = await Order.find(orderFilter).lean({
     virtuals: true,
   });
   const byId = new Map(orders.map((order) => [String(order._id), order]));
