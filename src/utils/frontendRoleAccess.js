@@ -176,6 +176,13 @@ export const hasStaffOrderAccess = (role) =>
 export const hasStaffKitchenAccess = (role) =>
   STAFF_KITCHEN_ROLES.includes(resolveUserRoleName(role));
 
+export const getStaffWorkspacePath = (userOrRole) => {
+  const normalized = resolveUserRoleName(userOrRole);
+  if (STAFF_ORDER_ROLES.includes(normalized)) return "/staff/orders";
+  if (STAFF_KITCHEN_ROLES.includes(normalized)) return "/staff/kitchen";
+  return "/staff/dashboard";
+};
+
 export const getDefaultPathForRole = (userOrRole) => {
   const normalized = resolveUserRoleName(userOrRole);
   if (normalized === "pending_verification") return "/verify-email";
@@ -183,7 +190,9 @@ export const getDefaultPathForRole = (userOrRole) => {
   if (isManagerRole(normalized)) return "/manager";
   if (isHrRole(normalized)) return "/manager";
   if (isAccountantRole(normalized)) return "/manager";
-  if (isStaffOperationalRole(normalized)) return "/staff/dashboard";
+  if (isStaffOperationalRole(normalized)) {
+    return getStaffWorkspacePath(userOrRole);
+  }
   return "/";
 };
 
