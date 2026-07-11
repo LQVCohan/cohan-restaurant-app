@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   aggregateCustomerPromotionBreakdowns,
   buildCustomerPromotionPreviewInput,
+  resolveCheckoutGroupShippingFee,
 } from "./customerPromotionPreviewAggregation";
 
 describe("customerPromotionPreviewAggregation", () => {
@@ -23,6 +24,8 @@ describe("customerPromotionPreviewAggregation", () => {
       orderType: "delivery",
       paymentMethod: "wallet",
       couponCode: "SAVE10",
+      shippingFee: 10000,
+      groupCount: 3,
     });
 
     expect(input).toEqual(
@@ -34,7 +37,7 @@ describe("customerPromotionPreviewAggregation", () => {
         pricing: expect.objectContaining({
           taxRate: 0.1,
           serviceRate: 0,
-          shippingFee: 0,
+          shippingFee: 3333,
           voucherCode: "SAVE10",
         }),
       }),
@@ -47,6 +50,23 @@ describe("customerPromotionPreviewAggregation", () => {
         selectedModifiers: [{ groupId: "g1", optionId: "o1" }],
       }),
     );
+  });
+
+  it("mirrors backend shipping allocation rounding", () => {
+    expect(
+      resolveCheckoutGroupShippingFee({
+        orderType: "delivery",
+        shippingFee: 10000,
+        groupCount: 3,
+      }),
+    ).toBe(3333);
+    expect(
+      resolveCheckoutGroupShippingFee({
+        orderType: "takeaway",
+        shippingFee: 10000,
+        groupCount: 3,
+      }),
+    ).toBe(10000);
   });
 
   it("aggregates restaurant pricing without duplicating shipping fee", () => {
@@ -82,6 +102,16 @@ describe("customerPromotionPreviewAggregation", () => {
       total: 196500,
       appliedPromotions: ["promo-1", "promo-2"],
     });
+  });
+
+  it("uses the same rounded multi-restaurant shipping total as checkout", () => {
+    const result = aggregateCustomerPromotionBreakdowns(
+      [{ grandTotal: 1000 }, { grandTotal: 2000 }, { grandTotal: 3000 }],
+      10000,
+    );
+
+    expect(result.shippingFee).toBe(9999);
+    expect(result.total).toBe(15999);
   });
 
   it("normalizes invalid numeric values and never returns a negative total", () => {
