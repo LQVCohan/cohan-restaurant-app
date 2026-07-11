@@ -134,7 +134,10 @@ const transferStatusTone = {
 
 const formatCurrency = (value, currency = "VND") => {
   try {
-    return Number(value || 0).toLocaleString("vi-VN", { style: "currency", currency: currency || "VND" });
+    return Number(value || 0).toLocaleString("vi-VN", {
+      style: "currency",
+      currency: currency || "VND",
+    });
   } catch {
     return `${Number(value || 0).toLocaleString("vi-VN")} ${currency || "VND"}`;
   }
@@ -154,25 +157,55 @@ const formatTime = (value) => {
     : date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
 };
 
-const getRestaurantId = (restaurant) => String(restaurant?.id ?? restaurant?._id ?? restaurant?.restaurantId ?? "");
-const resolveStatus = (payment = {}) => String(payment?.transfer?.status || payment?.status || "SUBMITTED").toUpperCase();
+const getRestaurantId = (restaurant) => String(
+  restaurant?.id ?? restaurant?._id ?? restaurant?.restaurantId ?? "",
+);
+const resolveStatus = (payment = {}) => String(
+  payment?.transfer?.status || payment?.status || "SUBMITTED",
+).toUpperCase();
 const getOrderCodesText = (payment = {}) => {
   const codes = payment?.metadata?.orderCodes;
   return Array.isArray(codes) ? codes.filter(Boolean).join(", ") : "";
 };
-const getCustomerName = (payment = {}) => payment?.metadata?.customerName || payment?.metadata?.customer?.name || "Khách hàng";
+const getCustomerName = (payment = {}) => (
+  payment?.metadata?.customerName
+  || payment?.metadata?.customer?.name
+  || "Khách hàng"
+);
 const getRestaurantName = (payment = {}, restaurants = []) => {
   const fromMeta = payment?.metadata?.restaurantName;
   if (fromMeta) return fromMeta;
-  return restaurants.find((restaurant) => getRestaurantId(restaurant) === String(payment.restaurantId))?.name || "Nhà hàng";
+  return restaurants.find(
+    (restaurant) => getRestaurantId(restaurant) === String(payment.restaurantId),
+  )?.name || "Nhà hàng";
 };
 
-function TransferDecisionModal({ mode, payment, submitting, onClose, onSubmit }) {
+export const isMatchingTransferAmount = (receivedAmount, expectedAmount) => {
+  const received = Number(receivedAmount);
+  const expected = Number(expectedAmount);
+  return Number.isFinite(received)
+    && Number.isFinite(expected)
+    && received > 0
+    && expected > 0
+    && Math.round(received) === Math.round(expected);
+};
+
+function TransferDecisionModal({
+  mode,
+  payment,
+  submitting,
+  errorMessage,
+  onClose,
+  onSubmit,
+}) {
   const [reason, setReason] = useState("");
   const [receivedAmount, setReceivedAmount] = useState(payment?.amount || "");
-  const [providerTransactionId, setProviderTransactionId] = useState(payment?.providerTransactionId || "");
+  const [providerTransactionId, setProviderTransactionId] = useState(
+    payment?.providerTransactionId || "",
+  );
   const isVerify = mode === "verify";
-  const valid = isVerify ? Number(receivedAmount) > 0 : reason.trim().length >= 3;
+  const amountMatches = isMatchingTransferAmount(receivedAmount, payment?.amount);
+  const valid = isVerify ? amountMatches : reason.trim().length >= 3;
   const titleId = `transfer-review-${mode}-title`;
 
   useEffect(() => {
@@ -205,11 +238,21 @@ function TransferDecisionModal({ mode, payment, submitting, onClose, onSubmit })
         aria-labelledby={titleId}
         onSubmit={handleSubmit}
       >
-        <button className="transfer-review-modal-close" type="button" onClick={onClose} disabled={submitting} aria-label="Đóng">
+        <button
+          className="transfer-review-modal-close"
+          type="button"
+          onClick={onClose}
+          disabled={submitting}
+          aria-label="Đóng"
+        >
           <X size={18} />
         </button>
-        <span className="transfer-review-modal-eyebrow">{isVerify ? "Xác minh thanh toán" : "Yêu cầu gửi lại"}</span>
-        <h3 id={titleId}>{isVerify ? "Đối chiếu chuyển khoản" : "Từ chối bằng chứng"}</h3>
+        <span className="transfer-review-modal-eyebrow">
+          {isVerify ? "Xác minh thanh toán" : "Yêu cầu gửi lại"}
+        </span>
+        <h3 id={titleId}>
+          {isVerify ? "Đối chiếu chuyển khoản" : "Từ chối bằng chứng"}
+        </h3>
         <div className="transfer-review-modal-summary">
           <span>{payment?.reference}</span>
           <strong>{formatCurrency(payment?.amount, payment?.currency || "VND")}</strong>
@@ -222,12 +265,19 @@ function TransferDecisionModal({ mode, payment, submitting, onClose, onSubmit })
               <input
                 type="number"
                 min="1"
-                inputMode="decimal"
+                step="1"
+                inputMode="numeric"
                 value={receivedAmount}
                 onChange={(event) => setReceivedAmount(event.target.value)}
+                aria-invalid={!amountMatches}
                 autoFocus
               />
             </label>
+            {!amountMatches && (
+              <p className="transfer-review-helper" role="alert">
+                Số tiền thực nhận phải khớp {formatCurrency(payment?.amount, payment?.currency || "VND")}.
+              </p>
+            )}
             <label className="transfer-review-field">
               <span>Mã giao dịch ngân hàng</span>
               <input
@@ -258,8 +308,17 @@ function TransferDecisionModal({ mode, payment, submitting, onClose, onSubmit })
                 minLength={3}
               />
             </label>
-            <p className="transfer-review-helper">Khách sẽ thấy nội dung này trước khi gửi lại bằng chứng.</p>
+            <p className="transfer-review-helper">
+              Khách sẽ thấy nội dung này trước khi gửi lại bằng chứng.
+            </p>
           </>
+        )}
+
+        {errorMessage && (
+          <div className="transfer-review-notice error" role="alert">
+            <AlertTriangle size={18} />
+            <span>{errorMessage}</span>
+          </div>
         )}
 
         <button
@@ -267,7 +326,11 @@ function TransferDecisionModal({ mode, payment, submitting, onClose, onSubmit })
           className={isVerify ? "transfer-review-primary" : "transfer-review-danger-soft"}
           disabled={!valid || submitting}
         >
-          {submitting ? "Đang xử lý..." : isVerify ? "Xác minh và mở đơn" : "Từ chối bằng chứng"}
+          {submitting
+            ? "Đang xử lý..."
+            : isVerify
+              ? "Xác minh và mở đơn"
+              : "Từ chối bằng chứng"}
         </button>
       </form>
     </div>
@@ -284,8 +347,16 @@ function TransferProofLightbox({ imageUrl, onClose }) {
   }, [onClose]);
 
   return (
-    <div className="transfer-proof-lightbox" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div className="transfer-proof-lightbox__content" role="dialog" aria-modal="true" aria-label="Bằng chứng chuyển khoản">
+    <div
+      className="transfer-proof-lightbox"
+      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+    >
+      <div
+        className="transfer-proof-lightbox__content"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Bằng chứng chuyển khoản"
+      >
         <button type="button" onClick={onClose} aria-label="Đóng ảnh bằng chứng">
           <X size={18} />
         </button>
@@ -304,22 +375,43 @@ function DetailRow({ label, value }) {
   );
 }
 
-function TransferPaymentCard({ payment, canWrite, restaurants, onVerify, onReject, onPreview }) {
+function TransferPaymentCard({
+  payment,
+  canWrite,
+  restaurants,
+  onVerify,
+  onReject,
+  onPreview,
+}) {
   const bank = payment?.metadata?.bankTransfer || {};
   const transfer = payment?.transfer || {};
-  const proofImages = Array.isArray(transfer.proofImages) ? transfer.proofImages.filter(Boolean) : [];
+  const proofImages = Array.isArray(transfer.proofImages)
+    ? transfer.proofImages.filter(Boolean)
+    : [];
   const status = resolveStatus(payment);
   const orderCodesText = getOrderCodesText(payment);
-  const submittedAtText = formatDate(transfer.submittedAt || payment.updatedAt, "Chưa có thời gian gửi");
-  const canDecide = canWrite && ["SUBMITTED", "VERIFYING"].includes(status);
-  const receivedAmount = transfer.receivedAmount == null ? null : Number(transfer.receivedAmount || 0);
-  const varianceAmount = transfer.varianceAmount == null ? null : Number(transfer.varianceAmount || 0);
+  const submittedAtText = formatDate(
+    transfer.submittedAt || payment.updatedAt,
+    "Chưa có thời gian gửi",
+  );
+  const canDecide = canWrite
+    && proofImages.length > 0
+    && ["SUBMITTED", "VERIFYING"].includes(status);
+  const receivedAmount = transfer.receivedAmount == null
+    ? null
+    : Number(transfer.receivedAmount || 0);
+  const varianceAmount = transfer.varianceAmount == null
+    ? null
+    : Number(transfer.varianceAmount || 0);
   const rejectedCount = Number(transfer.rejectedCount || 0);
   const maxRejectedCount = Number(transfer.maxRejectedCount || 0);
   const bankLabel = bank.bankName || bank.bankCode || "";
 
   return (
-    <article className={`transfer-review-card transfer-review-card--${status.toLowerCase()}`} aria-label={`Giao dịch ${payment.reference}`}>
+    <article
+      className={`transfer-review-card transfer-review-card--${status.toLowerCase()}`}
+      aria-label={`Giao dịch ${payment.reference}`}
+    >
       <header className="transfer-review-card-header">
         <div>
           <p className="transfer-review-reference">{payment.reference}</p>
@@ -340,13 +432,36 @@ function TransferPaymentCard({ payment, canWrite, restaurants, onVerify, onRejec
           <DetailRow label="Khách hàng" value={getCustomerName(payment)} />
           <DetailRow label="Nhà hàng" value={getRestaurantName(payment, restaurants)} />
           {bankLabel && <DetailRow label="Ngân hàng" value={bankLabel} />}
-          <DetailRow label="Nội dung chuyển khoản" value={bank.transferContent || payment.reference} />
-          <DetailRow label="Ghi chú khách gửi" value={transfer.proofNote || "Không có ghi chú"} />
-          <DetailRow label="Mã giao dịch" value={transfer.providerTransactionId || payment.providerTransactionId || "Chưa có"} />
-          {transfer.rejectReason && <DetailRow label="Lý do từ chối" value={transfer.rejectReason} />}
-          {maxRejectedCount > 0 && rejectedCount > 0 && <DetailRow label="Số lần từ chối" value={`${rejectedCount}/${maxRejectedCount}`} />}
-          {receivedAmount != null && <DetailRow label="Tiền thực nhận" value={formatCurrency(receivedAmount, payment.currency || "VND")} />}
-          {varianceAmount != null && <DetailRow label="Chênh lệch" value={formatCurrency(varianceAmount, payment.currency || "VND")} />}
+          <DetailRow
+            label="Nội dung chuyển khoản"
+            value={bank.transferContent || payment.reference}
+          />
+          <DetailRow
+            label="Ghi chú khách gửi"
+            value={transfer.proofNote || "Không có ghi chú"}
+          />
+          <DetailRow
+            label="Mã giao dịch"
+            value={transfer.providerTransactionId || payment.providerTransactionId || "Chưa có"}
+          />
+          {transfer.rejectReason && (
+            <DetailRow label="Lý do từ chối" value={transfer.rejectReason} />
+          )}
+          {maxRejectedCount > 0 && rejectedCount > 0 && (
+            <DetailRow label="Số lần từ chối" value={`${rejectedCount}/${maxRejectedCount}`} />
+          )}
+          {receivedAmount != null && (
+            <DetailRow
+              label="Tiền thực nhận"
+              value={formatCurrency(receivedAmount, payment.currency || "VND")}
+            />
+          )}
+          {varianceAmount != null && (
+            <DetailRow
+              label="Chênh lệch"
+              value={formatCurrency(varianceAmount, payment.currency || "VND")}
+            />
+          )}
         </dl>
 
         <section className="transfer-review-proof-panel" aria-label="Ảnh bằng chứng">
@@ -363,7 +478,11 @@ function TransferPaymentCard({ payment, canWrite, restaurants, onVerify, onRejec
                 key={`${url}-${index}`}
                 aria-label={`Xem ảnh bằng chứng ${index + 1}`}
               >
-                <img src={url} alt={`Bằng chứng chuyển khoản ${index + 1}`} loading="lazy" />
+                <img
+                  src={url}
+                  alt={`Bằng chứng chuyển khoản ${index + 1}`}
+                  loading="lazy"
+                />
               </button>
             )) : (
               <div className="transfer-review-empty-proof">
@@ -378,10 +497,18 @@ function TransferPaymentCard({ payment, canWrite, restaurants, onVerify, onRejec
       <footer className="transfer-review-card-actions">
         {canDecide && (
           <>
-            <button type="button" className="transfer-review-primary" onClick={() => onVerify(payment)}>
+            <button
+              type="button"
+              className="transfer-review-primary"
+              onClick={() => onVerify(payment)}
+            >
               <CheckCircle2 size={17} /> Xác minh thanh toán
             </button>
-            <button type="button" className="transfer-review-danger-soft" onClick={() => onReject(payment)}>
+            <button
+              type="button"
+              className="transfer-review-danger-soft"
+              onClick={() => onReject(payment)}
+            >
               <XCircle size={17} /> Từ chối bằng chứng
             </button>
           </>
@@ -430,7 +557,9 @@ export default function TransferPaymentReviewPage() {
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const canWrite = hasPermission(user, "payment.write");
 
-  const selectedFilter = REVIEW_FILTERS.find((filter) => filter.value === activeFilter) || REVIEW_FILTERS[0];
+  const selectedFilter = REVIEW_FILTERS.find(
+    (filter) => filter.value === activeFilter,
+  ) || REVIEW_FILTERS[0];
   const queryStatus = selectedFilter.statuses ? null : selectedFilter.value;
   const queryStatuses = selectedFilter.statuses || null;
   const variables = useMemo(
@@ -471,12 +600,37 @@ export default function TransferPaymentReviewPage() {
       await refetch();
       setLastRefreshedAt(new Date());
     } catch (refreshError) {
-      setNotice({ type: "error", text: refreshError?.message || "Không thể làm mới danh sách chuyển khoản." });
+      setNotice({
+        type: "error",
+        text: refreshError?.message || "Không thể làm mới danh sách chuyển khoản.",
+      });
     }
+  };
+
+  const openDecision = (mode, payment) => {
+    setNotice(null);
+    setDecision({ mode, payment });
+  };
+
+  const closeDecision = () => {
+    if (submitting) return;
+    setDecision(null);
+    setNotice(null);
   };
 
   const submitDecision = async ({ receivedAmount, providerTransactionId, reason }) => {
     if (!decision?.payment?.id) return;
+    if (
+      decision.mode === "verify"
+      && !isMatchingTransferAmount(receivedAmount, decision.payment.amount)
+    ) {
+      setNotice({
+        type: "error",
+        text: "Số tiền thực nhận phải khớp số tiền cần thanh toán.",
+      });
+      return;
+    }
+
     setSubmitting(true);
     setNotice(null);
     try {
@@ -491,12 +645,20 @@ export default function TransferPaymentReviewPage() {
             },
           },
         });
-        setNotice({ type: "success", text: "Đã xác minh chuyển khoản và mở đơn cho nhà hàng." });
+        setNotice({
+          type: "success",
+          text: "Đã xác minh chuyển khoản và mở đơn cho nhà hàng.",
+        });
       } else {
         await rejectTransferPayment({
-          variables: { input: { paymentSessionId: decision.payment.id, reason } },
+          variables: {
+            input: { paymentSessionId: decision.payment.id, reason },
+          },
         });
-        setNotice({ type: "success", text: "Đã từ chối bằng chứng và gửi lý do cho khách." });
+        setNotice({
+          type: "success",
+          text: "Đã từ chối bằng chứng và gửi lý do cho khách.",
+        });
       }
       setDecision(null);
       try {
@@ -508,7 +670,10 @@ export default function TransferPaymentReviewPage() {
         });
       }
     } catch (mutationError) {
-      setNotice({ type: "error", text: mutationError?.message || "Không thể cập nhật giao dịch chuyển khoản." });
+      setNotice({
+        type: "error",
+        text: mutationError?.message || "Không thể cập nhật giao dịch chuyển khoản.",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -522,16 +687,25 @@ export default function TransferPaymentReviewPage() {
   ];
 
   return (
-    <section className="transfer-review-page transfer-review-page--polished" aria-busy={initialLoading || refreshing}>
+    <section
+      className="transfer-review-page transfer-review-page--polished"
+      aria-busy={initialLoading || refreshing}
+    >
       <header className="transfer-review-header">
         <div className="transfer-review-header-copy">
           <p className="transfer-review-eyebrow">Thanh toán và đối soát</p>
           <h2>Duyệt chuyển khoản</h2>
           <p>Kiểm tra bằng chứng, đối chiếu số tiền và mở đơn ngay khi thanh toán khớp.</p>
           <div className="transfer-review-context" aria-live="polite">
-            <strong>{selectedRestaurant?.name || (scopeLoading ? "Đang xác định nhà hàng" : "Chưa chọn nhà hàng")}</strong>
+            <strong>
+              {selectedRestaurant?.name
+                || (scopeLoading ? "Đang xác định nhà hàng" : "Chưa chọn nhà hàng")}
+            </strong>
             <span>Tự làm mới mỗi 15 giây</span>
-            <span>Cập nhật {formatTime(lastRefreshedAt)}{refreshing ? " · đang đồng bộ" : ""}</span>
+            <span>
+              Cập nhật {formatTime(lastRefreshedAt)}
+              {refreshing ? " · đang đồng bộ" : ""}
+            </span>
           </div>
         </div>
         <button
@@ -572,12 +746,14 @@ export default function TransferPaymentReviewPage() {
         ))}
       </nav>
 
-      {notice && (
+      {notice && !decision && (
         <div
           className={`transfer-review-notice ${notice.type}`}
           role={notice.type === "error" ? "alert" : "status"}
         >
-          {notice.type === "error" || notice.type === "warning" ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
+          {notice.type === "error" || notice.type === "warning"
+            ? <AlertTriangle size={18} />
+            : <CheckCircle2 size={18} />}
           <span>{notice.text}</span>
         </div>
       )}
@@ -644,21 +820,27 @@ export default function TransferPaymentReviewPage() {
               payment={payment}
               canWrite={canWrite}
               restaurants={restaurants}
-              onVerify={(item) => setDecision({ mode: "verify", payment: item })}
-              onReject={(item) => setDecision({ mode: "reject", payment: item })}
+              onVerify={(item) => openDecision("verify", item)}
+              onReject={(item) => openDecision("reject", item)}
               onPreview={setPreviewImage}
             />
           ))}
         </div>
       )}
 
-      {previewImage && <TransferProofLightbox imageUrl={previewImage} onClose={() => setPreviewImage("")} />}
+      {previewImage && (
+        <TransferProofLightbox
+          imageUrl={previewImage}
+          onClose={() => setPreviewImage("")}
+        />
+      )}
       {decision && (
         <TransferDecisionModal
           mode={decision.mode}
           payment={decision.payment}
           submitting={submitting}
-          onClose={() => !submitting && setDecision(null)}
+          errorMessage={notice?.type === "error" ? notice.text : ""}
+          onClose={closeDecision}
           onSubmit={submitDecision}
         />
       )}
