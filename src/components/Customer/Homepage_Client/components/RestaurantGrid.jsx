@@ -357,7 +357,19 @@ const RestaurantGrid = ({ addressFilter = undefined, restaurantFilter = undefine
   const displayRestaurants = nearbyMode ? restaurants : restaurantsBySelectedCategory;
   const goDetail = (id) => navigate(`/restaurant/${id}`);
   const goLayout = (e, id) => { e.stopPropagation(); navigate(`/restaurant/${id}/layout`); };
-  const goOrder = (e, id) => { e.stopPropagation(); navigate(`/restaurant/${id}`); };
+  const goOrder = (e, id) => {
+    e.stopPropagation();
+    const params = new URLSearchParams();
+    params.set("restaurantId", String(id));
+
+    const timeSlot =
+      typeof effectiveFilter?.timeSlot === "string"
+        ? effectiveFilter.timeSlot.trim()
+        : "";
+    if (timeSlot) params.set("timeSlot", timeSlot);
+
+    navigate(`/cus-menu?${params.toString()}`);
+  };
   const viewAll = () => navigate("/restaurants");
   const handleCardKeyDown = (event, id) => {
     if (event.key === "Enter" || event.key === " ") {
