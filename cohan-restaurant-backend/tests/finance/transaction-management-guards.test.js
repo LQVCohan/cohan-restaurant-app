@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const modelMocks = vi.hoisted(() => ({
   Invoice: { findOne: vi.fn() },
-  PaymentTransaction: { findOne: vi.fn() },
+  PaymentTransaction: { findOne: vi.fn(), find: vi.fn() },
+  PaymentRefund: { find: vi.fn() },
   SupplierPayable: { findById: vi.fn() },
   BankTransaction: { findById: vi.fn() },
   PaymentReconciliation: { findOne: vi.fn() },
@@ -72,6 +73,8 @@ describe("transaction management production mutation guards", () => {
     permissionMocks.requireFinanceWrite.mockResolvedValue(true);
     permissionMocks.requireReconciliationWrite.mockResolvedValue(true);
     permissionMocks.requireRefundWrite.mockResolvedValue(true);
+    modelMocks.PaymentTransaction.find.mockReturnValue(leanResult([]));
+    modelMocks.PaymentRefund.find.mockReturnValue(leanResult([]));
     baseMutationMocks.createRefundRequest.mockResolvedValue({ id: "refund" });
     baseMutationMocks.createSupplierPayable.mockResolvedValue({ id: payableId });
     baseMutationMocks.updateSupplierPayable.mockResolvedValue({ id: payableId });
@@ -97,7 +100,12 @@ describe("transaction management production mutation guards", () => {
       }),
     );
     modelMocks.PaymentTransaction.findOne.mockReturnValue(
-      leanResult({ _id: transactionId, restaurantId, status: "SUCCESS" }),
+      leanResult({
+        _id: transactionId,
+        restaurantId,
+        status: "SUCCESS",
+        paidAmount: 500,
+      }),
     );
     const guards = (
       await import("../../graphql/resolvers/payment/transactionManagementGuards.js")
@@ -145,6 +153,45 @@ describe("transaction management production mutation guards", () => {
         { user: { id: "user-1" } },
       ),
     ).rejects.toThrow(/restaurant scope/i);
+    expect(baseMutationMocks.createRefundRequest).not.toHaveBeenCalled();
+  });
+
+  it("reserves failed refunds because they can still be retried", async () => {
+    modelMocks.PaymentTransaction.findOne.mockReturnValue(
+      leanResult({
+        _id: transactionId,
+        restaurantId,
+        status: "SUCCESS",
+        paidAmount: 500,
+      }),
+    );
+    modelMocks.PaymentRefund.find.mockReturnValue(
+      leanResult([
+        {
+          paymentTransactionId: transactionId,
+          status: "failed",
+          amount: 400,
+        },
+      ]),
+    );
+    const guards = (
+      await import("../../graphql/resolvers/payment/transactionManagementGuards.js")
+    ).default;
+
+    await expect(
+      guards.createRefundRequest(
+        null,
+        {
+          input: {
+            restaurantId,
+            paymentTransactionId: transactionId,
+            amount: 200,
+            reason: "Yêu cầu mới",
+          },
+        },
+        { user: { id: "user-1" } },
+      ),
+    ).rejects.toThrow(/remaining paid amount/i);
     expect(baseMutationMocks.createRefundRequest).not.toHaveBeenCalled();
   });
 
