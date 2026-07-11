@@ -53,7 +53,7 @@ input PayOrdersWithWalletInput {
 input RefundToWalletInput {
   restaurantId: ID!
   userId: ID!
-  orderIds: [ID!]
+  orderIds: [ID!]!
   amount: Float!
   reason: String!
   referenceType: String
@@ -61,6 +61,7 @@ input RefundToWalletInput {
 }
 
 input AdjustWalletBalanceInput {
+  restaurantId: ID!
   userId: ID!
   amount: Float!
   reason: String!
