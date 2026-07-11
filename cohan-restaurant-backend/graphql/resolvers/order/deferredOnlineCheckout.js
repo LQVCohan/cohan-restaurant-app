@@ -1,6 +1,6 @@
 import { CheckoutSession, Order } from "../../../models/index.js";
 import { emitPaymentRealtime } from "../../../src/services/payment/paymentRealtime.service.js";
-import { payOrdersWithWallet } from "../../../src/services/wallet/wallet.service.js";
+import { payOrdersWithWallet } from "../../../src/services/wallet/idempotentWalletPayment.service.js";
 
 const ONLINE_CHECKOUT_METHODS = new Set(["card", "wallet"]);
 
