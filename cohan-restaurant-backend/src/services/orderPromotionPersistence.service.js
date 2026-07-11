@@ -23,7 +23,8 @@ const resolveCreateOptions = (args = []) => {
 };
 
 const hasItems = (doc = {}) =>
-  Array.isArray(doc.items) && doc.items.some((item) => toNumber(item?.quantity) > 0);
+  Array.isArray(doc.items) &&
+  doc.items.some((item) => toNumber(item?.quantity) > 0);
 
 const hasAuthoritativeBreakdown = (doc = {}) =>
   Array.isArray(doc?.totals?.appliedPromotions) ||
@@ -76,6 +77,19 @@ const captureExistingPricingMetadata = (doc = {}) => {
   );
 };
 
+const throwReservationPriceChanged = (expectedTotal, currentTotal) => {
+  throw new GraphQLError(
+    "Ưu đãi hoặc giá món đã thay đổi. Vui lòng kiểm tra lại món trước khi hoàn tất đặt bàn.",
+    {
+      extensions: {
+        code: "RESERVATION_ADDON_PRICE_CHANGED",
+        expectedTotal,
+        currentTotal,
+      },
+    },
+  );
+};
+
 const applyBreakdownToOrderInput = (doc, breakdown) => {
   const metadata = buildPromotionMetadata(breakdown, "dine_in_auto");
   const firstPromotionId = metadata.appliedPromotions[0] || null;
@@ -99,29 +113,45 @@ const applyBreakdownToOrderInput = (doc, breakdown) => {
     promotionPricing: metadata,
   };
 
-  const expectedLinkedMenuTotal = Number(
+  const clientExpectedTotal = Number(
     doc?.clientMeta?.expectedLinkedMenuTotal ??
       doc?.clientMeta?.linkedMenuTotal,
   );
   if (
-    Number.isFinite(expectedLinkedMenuTotal) &&
-    expectedLinkedMenuTotal >= 0 &&
-    Math.abs(expectedLinkedMenuTotal - metadata.grandTotal) > 1
+    Number.isFinite(clientExpectedTotal) &&
+    clientExpectedTotal >= 0 &&
+    Math.abs(clientExpectedTotal - metadata.grandTotal) > 1
   ) {
-    throw new GraphQLError(
-      "Ưu đãi hoặc giá món đã thay đổi. Vui lòng kiểm tra lại món trước khi hoàn tất đặt bàn.",
-      {
-        extensions: {
-          code: "RESERVATION_ADDON_PRICE_CHANGED",
-          expectedTotal: expectedLinkedMenuTotal,
-          currentTotal: metadata.grandTotal,
-        },
-      },
-    );
+    throwReservationPriceChanged(clientExpectedTotal, metadata.grandTotal);
   }
 
   return metadata;
 };
+
+async function assertReservationPricingMatches({ doc, metadata, session }) {
+  if (!doc?.reservationId || !metadata?.calculated) return;
+
+  const mongoose = (await import("mongoose")).default;
+  const Reservation = mongoose.models.Reservation;
+  if (!Reservation) return;
+
+  const query = Reservation.findOne({
+    _id: doc.reservationId,
+    restaurantId: doc.restaurantId,
+  }).select("linkedMenuSubtotal linkedMenuDiscount linkedMenuTotal");
+  const reservation = await (session ? query.session(session) : query).lean();
+  if (!reservation) return;
+
+  const hasPricingSnapshot =
+    reservation.linkedMenuTotal !== undefined &&
+    reservation.linkedMenuTotal !== null;
+  if (!hasPricingSnapshot) return;
+
+  const expectedTotal = toNumber(reservation.linkedMenuTotal);
+  if (Math.abs(expectedTotal - metadata.grandTotal) > 1) {
+    throwReservationPriceChanged(expectedTotal, metadata.grandTotal);
+  }
+}
 
 async function calculateDineInBreakdown(doc, session) {
   const { calculateDiscountBreakdown } = await import(
@@ -207,6 +237,7 @@ export function installOrderPromotionPersistence(Order) {
       if (!metadata && shouldCalculateDineInPricing(doc)) {
         const breakdown = await calculateDineInBreakdown(doc, session);
         metadata = applyBreakdownToOrderInput(doc, breakdown);
+        await assertReservationPricingMatches({ doc, metadata, session });
       } else if (metadata) {
         doc.clientMeta = {
           ...(doc.clientMeta || {}),
