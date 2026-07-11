@@ -123,4 +123,57 @@ describe("LeaveRequestForm", () => {
     });
     expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("replacementManagerId");
   });
+
+  it("guides self-service staff through three steps and preserves previous values", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const { container } = render(
+      <LeaveRequestForm
+        onSubmit={onSubmit}
+        staffList={[staffList[0]]}
+        restaurantId="restaurant-1"
+        selfServiceEmployeeId="staff-1"
+        stepByStep
+        submitLabel="Gửi đơn"
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Chọn loại nghỉ phù hợp" })).toBeInTheDocument();
+    expect(screen.queryByTestId("leave-employee-select")).not.toBeInTheDocument();
+    expect(container.querySelector('input[name="startDate"]')).not.toBeInTheDocument();
+
+    fireEvent.click(container.querySelector('input[name="leaveType"][value="ANNUAL"]'));
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục đến bước 2" }));
+
+    const startDate = container.querySelector('input[name="startDate"]');
+    const endDate = container.querySelector('input[name="endDate"]');
+    fireEvent.change(startDate, { target: { value: "2026-04-24" } });
+    fireEvent.change(endDate, { target: { value: "2026-04-25" } });
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục đến bước 3" }));
+
+    expect(screen.getByText("Nghỉ năm")).toBeInTheDocument();
+    expect(screen.getByText("24/04/2026 – 25/04/2026")).toBeInTheDocument();
+    expect(screen.getByText("2 ngày")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quay lại" }));
+    expect(container.querySelector('input[name="startDate"]')).toHaveValue("2026-04-24");
+    expect(container.querySelector('input[name="endDate"]')).toHaveValue("2026-04-25");
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục đến bước 3" }));
+
+    fireEvent.change(container.querySelector('textarea[name="reason"]'), {
+      target: { value: "Need planned leave" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Gửi đơn" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenCalledWith({
+      employeeId: "staff-1",
+      restaurantId: "restaurant-1",
+      leaveType: "ANNUAL",
+      startDate: "2026-04-24",
+      endDate: "2026-04-25",
+      startSession: "FULL",
+      endSession: "FULL",
+      reason: "Need planned leave",
+    });
+  });
 });
