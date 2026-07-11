@@ -266,7 +266,37 @@ export async function payOrdersWithWallet({ userId, restaurantId, orderIds = [],
         order.statusTimeline.push({ status: order.currentStatus, at: new Date(), byUserId: uid, note: "Paid by Cohan Wallet" });
         await order.save({ session });
       }
-      await Cashflow.create([{ restaurantId: rid, type: "INFLOW", amount, currency: user.wallet.currency, category: "sale", method: "e_wallet", status: "completed", source: "order", occurredAt: new Date(), ref: { kind: "PaymentTransaction", paymentTransactionId: paymentTransaction._id, orderIds: orderObjectIds }, note: "Customer paid by Cohan Wallet", createdBy: uid }], { session }).catch(() => {});
+      await Cashflow.findOneAndUpdate(
+        {
+          restaurantId: rid,
+          source: "order",
+          "ref.paymentTransactionId": paymentTransaction._id,
+        },
+        {
+          $setOnInsert: {
+            restaurantId: rid,
+            type: "INFLOW",
+            amount,
+            currency: user.wallet.currency,
+            category: "sale",
+            subcategory: "other",
+            method: "e_wallet",
+            status: "completed",
+            source: "order",
+            occurredAt: new Date(),
+            ref: {
+              kind: "PaymentTransaction",
+              id: paymentTransaction._id,
+              orderId: orderObjectIds[0],
+              orderIds: orderObjectIds,
+              paymentTransactionId: paymentTransaction._id,
+            },
+            note: "Customer paid by Cohan Wallet",
+            createdBy: uid,
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true, session },
+      );
       await EventLog.log({ restaurantId: rid, actorUserId: uid, verb: "order.pay", object: { kind: "PaymentTransaction", id: paymentTransaction._id }, source: "api", status: "success", meta: { method: "cohan_balance", amount, orderIds: uniqueOrderIds } }, { session }).catch(() => {});
       result = { ok: true, message: "Thanh toán bằng ví thành công.", wallet: serializeWallet(user.wallet), transaction: serializeWalletTransaction(walletTransaction), paymentTransactionId: String(paymentTransaction._id), orderIds: uniqueOrderIds, amount };
     });
@@ -325,7 +355,41 @@ export async function refundToWallet({ userId, restaurantId, orderIds = [], amou
       if (orderObjectIds.length) {
         await Order.updateMany({ _id: { $in: orderObjectIds }, restaurantId: rid }, { $set: { "payment.status": "refunded", orderPaymentStatus: "refunded" } }, { session });
       }
-      await Cashflow.create([{ restaurantId: rid, type: "OUTFLOW", amount: normalizedAmount, currency: user.wallet.currency, category: "refund", method: "e_wallet", status: "completed", source: "refund", occurredAt: new Date(), ref: { kind: "PaymentRefund", refundId: refund._id, orderIds: orderObjectIds }, note: reason, createdBy: actorId }], { session }).catch(() => {});
+      const refundCashflow = await Cashflow.findOneAndUpdate(
+        {
+          restaurantId: rid,
+          source: "refund",
+          "ref.refundId": refund._id,
+        },
+        {
+          $setOnInsert: {
+            restaurantId: rid,
+            type: "OUTFLOW",
+            amount: normalizedAmount,
+            currency: user.wallet.currency,
+            category: "refund",
+            subcategory: "other",
+            method: "e_wallet",
+            status: "completed",
+            source: "refund",
+            occurredAt: new Date(),
+            ref: {
+              kind: "PaymentRefund",
+              id: refund._id,
+              orderId: orderObjectIds[0] || null,
+              orderIds: orderObjectIds,
+              refundId: refund._id,
+            },
+            note: reason,
+            createdBy: actorId,
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true, session },
+      );
+      if (refundCashflow?._id && String(refund.cashflowId || "") !== String(refundCashflow._id)) {
+        refund.cashflowId = refundCashflow._id;
+        await refund.save({ session });
+      }
       result = { ok: true, message: "Đã hoàn tiền vào ví khách hàng.", wallet: serializeWallet(user.wallet), transaction: serializeWalletTransaction(walletTransaction), refundId: String(refund._id), amount: normalizedAmount };
     });
     return result;
