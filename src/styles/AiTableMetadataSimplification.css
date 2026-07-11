@@ -1,0 +1,58 @@
+.modal-container.custom-table-builder-modal .cohan-ai-metadata-note {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(184, 147, 101, 0.42);
+  border-radius: 15px;
+  background:
+    linear-gradient(135deg, rgba(246, 239, 229, 0.94), rgba(255, 253, 249, 0.96));
+  color: #6f4a2f;
+  box-shadow: 0 8px 20px rgba(92, 62, 35, 0.06);
+}
+
+.modal-container.custom-table-builder-modal
+  .cohan-ai-metadata-note__title {
+  font-size: 0.86rem;
+  font-weight: 720;
+  letter-spacing: -0.01em;
+}
+
+.modal-container.custom-table-builder-modal
+  .cohan-ai-metadata-note__text {
+  max-width: 72ch;
+  margin: 0;
+  color: #715f50;
+  font-size: 0.79rem;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.modal-container.custom-table-builder-modal .cohan-ai-metadata-grid {
+  align-items: start;
+}
+
+.modal-container.custom-table-builder-modal
+  .cohan-ai-metadata-grid
+  > .custom-table-builder__field[hidden] {
+  display: none !important;
+}
+
+.modal-container.custom-table-builder-modal
+  .cohan-ai-metadata-grid
+  > .custom-table-builder__field:not(.span-2) {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .modal-container.custom-table-builder-modal .cohan-ai-metadata-note {
+    margin-bottom: 12px;
+    padding: 11px 12px;
+    border-radius: 13px;
+  }
+
+  .modal-container.custom-table-builder-modal
+    .cohan-ai-metadata-note__text {
+    font-size: 0.78rem;
+  }
+}
