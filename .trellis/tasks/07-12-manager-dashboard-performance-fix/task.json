@@ -1,0 +1,20 @@
+{
+  "id": "07-12-manager-dashboard-performance-fix",
+  "title": "Fix manager dashboard performance and hierarchy",
+  "status": "in_progress",
+  "type": "full-stack-bugfix",
+  "scope": [
+    "cohan-restaurant-backend/src/services/scheduling/schedulingPermission.service.js",
+    "cohan-restaurant-backend/src/services/performance/staffPerformanceReporting.service.js",
+    "cohan-restaurant-backend/tests/services/scheduling-permission-role-normalization.test.js",
+    "cohan-restaurant-backend/tests/services/staff-performance-reporting-membership.test.js",
+    "src/components/Dashboard_Manager/Dashboard/Dashboard.jsx",
+    "src/components/Dashboard_Manager/Dashboard/Dashboard.scss",
+    "src/components/Dashboard_Manager/Dashboard/Dashboard.test.jsx"
+  ],
+  "createdAt": "2026-07-12",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "notes": "Fix the shared role and staff-scope boundaries; preserve performance formulas, GraphQL operations, permissions and dashboard actions. Reorder existing dashboard sections without adding dependencies or duplicated data fetching."
+}
