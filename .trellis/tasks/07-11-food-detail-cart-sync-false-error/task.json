@@ -5,21 +5,22 @@
   "type": "cross-layer-bugfix",
   "scope": [
     "cohan-restaurant-backend/graphql/resolvers/index.js",
-    "src/components/Customer/Food/FoodDetailV2.jsx",
-    "src/components/Customer/Food/FoodDetailV2.helpers.test.jsx",
     "cohan-restaurant-backend/tests/resolvers/cart-resolver-composition.test.js"
   ],
   "validation": {
     "planned": [
       "focused backend resolver composition test",
-      "focused frontend FoodDetailV2 helper/source regression test",
-      "frontend and backend lint/build if CI permits"
+      "backend lint and build",
+      "frontend regression gates through CI because the GraphQL contract is shared"
     ],
     "completed": [
       "read AGENTS.md, .trellis/workflow.md and ponytail skill",
       "traced CartItem schema/model through cart resolver composition, Apollo mutation, CartProvider and FoodDetailV2 action",
-      "confirmed CartItem resolver is exported by cart module but omitted by the root resolver map"
+      "confirmed CartItem resolver is exported by cart module but omitted by the root resolver map",
+      "kept the implementation at the shared resolver boundary instead of adding a frontend workaround"
     ],
-    "notRun": []
+    "notRun": [
+      "local tests because the execution container cannot resolve github.com"
+    ]
   }
 }
