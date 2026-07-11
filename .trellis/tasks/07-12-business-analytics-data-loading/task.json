@@ -1,7 +1,7 @@
 {
   "id": "07-12-business-analytics-data-loading",
   "title": "Repair business analytics data loading",
-  "status": "in_progress",
+  "status": "completed",
   "type": "cross-layer-bugfix",
   "scope": [
     "cohan-restaurant-backend/graphql/resolvers/index.js",
@@ -20,11 +20,19 @@
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail, cross-layer guide and relevant UI guidance",
       "traced ManagerLayout -> ManagerAnalyst -> useAnalyst -> GraphQL schema/resolvers/services -> models and tests",
-      "confirmed analytics.ManagerDashboard field resolvers are implemented but omitted from the root resolver map",
-      "confirmed useAnalyst bypasses the shared manager restaurant selection and cannot reject stale branch data",
-      "confirmed the combined Apollo query discards all data when one optional analytics branch errors",
-      "confirmed the operations request query runs without checking order.read and is not refreshed by the page refresh action"
+      "registered the existing feedback, occupancy and staff-performance ManagerDashboard field resolvers in the root resolver map",
+      "migrated useAnalyst to the shared manager restaurant selection and rejected stale restaurant responses",
+      "enabled Apollo partial-data handling so an optional assistant failure does not erase the core dashboard",
+      "conditioned staff scheduling and customer request queries on their matching frontend permissions",
+      "made the page refresh action update both the main analytics query and the authorized operations request queue",
+      "added backend resolver-registration and frontend scoped/partial-loading regression tests"
     ],
-    "notRun": []
+    "notRun": [
+      "focused backend Vitest files were not run because the GitHub connector does not provide a repository runtime",
+      "focused frontend Vitest files were not run",
+      "GraphQL schema and operation checks were not run",
+      "frontend build was not run",
+      "manual restaurant-switch and optional-resolver-failure review was not run"
+    ]
   }
 }
