@@ -1,0 +1,29 @@
+{
+  "id": "07-11-customer-success-experience",
+  "title": "Nâng cấp giao diện xác nhận đặt bàn và đặt món",
+  "status": "in_progress",
+  "type": "frontend-feature",
+  "scope": [
+    "src/components/Customer/SuccessModal/SuccessModal.jsx",
+    "src/components/Customer/SuccessModal/SuccessModal.scss",
+    "src/components/Customer/SuccessModal/SuccessModal.test.jsx",
+    "src/components/Customer/BookingDishesModal/OrderSummaryCheckoutModal.jsx",
+    "src/components/Customer/BookingDishesModal/OrderSummaryCheckoutUpgrade.scss",
+    "src/components/Customer/BookingDishesModal/OrderSummaryCheckoutModal.test.jsx"
+  ],
+  "rootCause": "The booking and checkout flows already return confirmation codes, totals, payment method and linked order data, but their success states use separate minimal layouts that do not surface the most useful confirmation details or provide a consistent mobile hierarchy.",
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Customer/SuccessModal/SuccessModal.test.jsx src/components/Customer/BookingDishesModal/OrderSummaryCheckoutModal.test.jsx",
+      "npm run build",
+      "manual mobile check at 390x844 and 430x932"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, ui-ux-pro-max, taste-ui-redesign and redesign-existing-projects skills",
+      "traced reservation schema and resolver through useBookingTable, TableBooking and SuccessModal",
+      "traced createCheckoutOrders through OrderSummaryCheckoutModal receipt and success view",
+      "confirmed no backend contract change is required"
+    ],
+    "notRun": []
+  }
+}
