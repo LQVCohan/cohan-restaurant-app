@@ -13,6 +13,9 @@ import PaymentTransaction, {
 import {
   ensureSuccessfulRefundCashflow,
 } from "../../models/payment-refund.model.js";
+import {
+  ensureNewCashReservationDeposit,
+} from "../../models/reservation.model.js";
 
 const objectId = () => new mongoose.Types.ObjectId();
 const selectLeanQuery = (value) => ({
@@ -162,6 +165,58 @@ describe("transaction management persistence and GraphQL contracts", () => {
       $session: () => null,
     });
     expect(findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("creates a payment transaction for a newly paid cash reservation only", async () => {
+    const transactionId = objectId();
+    const create = vi
+      .spyOn(PaymentTransaction, "create")
+      .mockResolvedValue([{ _id: transactionId }]);
+    const updateOne = vi.fn().mockResolvedValue({ matchedCount: 1 });
+    const reservation = {
+      _id: objectId(),
+      restaurantId: objectId(),
+      userId: objectId(),
+      orderCode: "RSV-001",
+      paymentMethod: "cash",
+      depositStatus: "paid",
+      depositAmount: 250000,
+      depositTxnId: null,
+      $locals: { wasNewReservation: true },
+      $session: () => null,
+      constructor: { updateOne },
+    };
+
+    await ensureNewCashReservationDeposit(reservation);
+
+    expect(create).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          restaurantId: reservation.restaurantId,
+          userId: reservation.userId,
+          method: "cash",
+          paidAmount: 250000,
+          status: "SUCCESS",
+          externalRef: `reservation:${String(reservation._id)}:deposit`,
+          note: "Reservation deposit RSV-001",
+        }),
+      ],
+      undefined,
+    );
+    expect(updateOne).toHaveBeenCalledWith(
+      { _id: reservation._id, depositTxnId: { $exists: false } },
+      { $set: { depositTxnId: transactionId } },
+      undefined,
+    );
+    expect(reservation.depositTxnId).toBe(transactionId);
+
+    create.mockClear();
+    await ensureNewCashReservationDeposit({
+      ...reservation,
+      depositTxnId: null,
+      $locals: { wasNewReservation: false },
+    });
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("uses transactional idempotent wallet cashflow writes without swallowing errors", () => {
