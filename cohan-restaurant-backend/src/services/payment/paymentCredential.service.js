@@ -23,6 +23,13 @@ export function normalizePaymentMode(value) {
     : "sandbox";
 }
 
+export function getPlatformPaymentCredentialMode(providerValue) {
+  const provider = normalizePaymentProvider(providerValue);
+  const providerMode = process.env[`${provider.toUpperCase()}_PLATFORM_MODE`];
+  // ponytail: generic platform credentials are sandbox unless explicitly marked otherwise.
+  return normalizePaymentMode(providerMode || process.env.PAYMENT_PLATFORM_MODE || "sandbox");
+}
+
 function resolveEncryptionSecret() {
   const secret = String(process.env.PAYMENT_CREDENTIAL_ENCRYPTION_KEY || "").trim();
   if (secret) return secret;
@@ -224,7 +231,10 @@ function serializeStatus({ restaurantId, provider, mode, restaurantCredential })
     };
   }
   const platformCredentials = getPlatformPaymentCredentials(provider);
-  const configured = hasCompletePaymentCredentials(provider, platformCredentials);
+  const platformMode = getPlatformPaymentCredentialMode(provider);
+  const configured =
+    mode === platformMode &&
+    hasCompletePaymentCredentials(provider, platformCredentials);
   return {
     restaurantId: String(restaurantId),
     provider,
@@ -309,7 +319,7 @@ export async function resolvePaymentProviderCredential({
     credentials,
     source: "platform",
     credentialId: null,
-    mode,
+    mode: getPlatformPaymentCredentialMode(provider),
     maskedIdentifier: maskCredentialIdentifier(provider, credentials),
   };
 }
