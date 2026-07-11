@@ -134,13 +134,12 @@ describe("deferred online checkout", () => {
     });
     expect(mocks.checkoutUpdateOne).toHaveBeenLastCalledWith(
       { checkoutCode: "CHK-WALLET" },
-      expect.objectContaining({
-        $set: expect.objectContaining({
+      {
+        $set: {
           "payment.method": "wallet",
           "payment.status": "paid",
-          "payment.transactionId": "payment-transaction-1",
-        }),
-      }),
+        },
+      },
     );
     expect(result.orders[0]).toMatchObject({
       currentStatus: "pending",
