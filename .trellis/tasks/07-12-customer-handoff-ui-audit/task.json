@@ -3,17 +3,17 @@
   "name": "customer-handoff-ui-audit",
   "title": "Audit customer handoff interface",
   "description": "Review and polish the customer-facing call-staff experience in AiChatbotWidget without changing the public GraphQL handoff contract.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend-fix",
   "scope": "customer-ai-handoff-ui",
   "priority": "P1",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-12",
-  "completedAt": null,
+  "completedAt": "2026-07-12",
   "branch": "main",
   "base_branch": "main",
-  "commit": null,
+  "commit": "6e1972b44aef027276f911c896f61e7dee09c022",
   "pr_url": null,
   "relatedFiles": [
     "cohan-restaurant-backend/graphql/schema/aiChatbot.graphql",
@@ -21,8 +21,8 @@
     "cohan-restaurant-backend/src/services/ai/restaurantChatbotHandoff.service.js",
     "src/App.jsx",
     "src/components/common/AiChatbotWidget.jsx",
-    "src/components/common/AiChatbotWidget.scss",
+    "src/components/common/AiChatbotHandoffPolish.scss",
     "src/components/common/AiChatbotWidget.handoff.test.jsx"
   ],
-  "notes": "Keep restaurant scope, guest ownership, notification delivery, staff replies, Socket.IO events and public GraphQL fields unchanged."
+  "notes": "Completed with direct staff request, one handoff CTA, distinct human-support states and staff bubbles, resolved-session cleanup, mobile-safe sizing and customer-widget exclusion from staff routes. Restaurant scope, guest ownership, notifications, Socket.IO and public GraphQL fields remain unchanged. Tests/build were not executed because this session did not have a runnable repository checkout."
 }
