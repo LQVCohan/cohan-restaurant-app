@@ -172,6 +172,7 @@ export default {
   ...(menu.MenuItem ? { MenuItem: menu.MenuItem } : {}),
   ...(menu.Menu ? { Menu: menu.Menu } : {}),
   ...(cart.Cart ? { Cart: cart.Cart } : {}),
+  ...(cart.CartItem ? { CartItem: cart.CartItem } : {}),
   ...(customerFavorite.CustomerFavorite
     ? { CustomerFavorite: customerFavorite.CustomerFavorite }
     : {}),
