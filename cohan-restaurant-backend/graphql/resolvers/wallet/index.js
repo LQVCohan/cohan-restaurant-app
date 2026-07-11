@@ -1,6 +1,5 @@
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import {
-  requirePermission,
   requireRestaurantPermission,
 } from "../../../src/services/auth/authorization.service.js";
 import { emitPaymentRealtime } from "../../../src/services/payment/paymentRealtime.service.js";
@@ -84,7 +83,7 @@ export default {
       await requireRestaurantPermission(
         ctx,
         input.restaurantId,
-        PERMISSIONS.PAYMENT_WRITE,
+        PERMISSIONS.REFUND_WRITE,
       );
       const actorId = requireWalletUser(ctx);
       return refundToWallet({
@@ -99,9 +98,14 @@ export default {
       });
     },
     adjustWalletBalance: async (_, { input }, ctx) => {
-      await requirePermission(ctx, PERMISSIONS.PAYMENT_WRITE);
+      await requireRestaurantPermission(
+        ctx,
+        input.restaurantId,
+        PERMISSIONS.PAYMENT_WRITE,
+      );
       const actorId = requireWalletUser(ctx);
       return adjustWalletBalance({
+        restaurantId: input.restaurantId,
         userId: input.userId,
         amount: input.amount,
         reason: input.reason,
