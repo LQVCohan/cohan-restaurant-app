@@ -1,0 +1,22 @@
+{
+  "id": "07-12-print-management-ui-refresh",
+  "title": "Refresh print management UI",
+  "status": "in_progress",
+  "type": "frontend-ui",
+  "scope": [
+    "src/components/Dashboard_Manager/PrintManagement/PrintManagementPolish.scss"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Dashboard_Manager/PrintManagement/PrintManagement.test.jsx",
+      "npm run build",
+      "manual responsive review at 390x844, 430x932, 768px, 1024px and 1440px"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
+      "reviewed the current PrintManagement JSX, base SCSS, polish SCSS, component test and ManagerLayout caller",
+      "confirmed the GraphQL, permission and print queue behavior should remain unchanged"
+    ],
+    "notRun": []
+  }
+}
