@@ -117,7 +117,7 @@ describe("Cohan wallet payment parity", () => {
     expect(apolloClientSource).toContain("cryptoApi.randomUUID");
     expect(apolloClientSource).toContain("cryptoApi.getRandomValues");
     expect(apolloClientSource).toContain("attempt:${checkoutAttempt}");
-    expect(apolloClientSource).toContain("CreateCheckoutOrders:v1:");
+    expect(apolloClientSource).toContain(":v1:${randomPart}");
     expect(apolloClientSource).not.toContain("Math.random()");
   });
 
