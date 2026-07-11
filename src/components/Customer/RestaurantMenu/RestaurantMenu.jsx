@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { useLocation, useNavigate } from "react-router-dom";
+import { Search, X } from "lucide-react";
 import "./RestaurantMenu.scss";
 import Cart from "../../Customer/Homepage_Client/components/Cart";
 import { useCart } from "../../../context/CartProvider";
@@ -177,6 +178,7 @@ const RestaurantMenu = () => {
   const navigate = useNavigate();
   const { search, state: locationState } = useLocation();
   const [selectedRes, setSelectedRes] = useState(null);
+  const [restaurantSearch, setRestaurantSearch] = useState("");
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [syncingReorder, setSyncingReorder] = useState(false);
   const searchParams = useMemo(() => new URLSearchParams(search), [search]);
@@ -273,6 +275,16 @@ const RestaurantMenu = () => {
       ),
     [restaurantsData?.publicRestaurants?.edges],
   );
+  const filteredRestaurants = useMemo(() => {
+    const normalizedSearch = restaurantSearch.trim().toLocaleLowerCase("vi");
+    if (!normalizedSearch) return normalizedRestaurants;
+
+    return normalizedRestaurants.filter((restaurant) =>
+      [restaurant.name, restaurant.cuisine, restaurant.address].some((value) =>
+        String(value || "").toLocaleLowerCase("vi").includes(normalizedSearch),
+      ),
+    );
+  }, [normalizedRestaurants, restaurantSearch]);
 
   const {
     cart,
@@ -644,12 +656,44 @@ const RestaurantMenu = () => {
           restaurant={selectedRes}
           canOrder={Boolean(selectedRes?.canOrder)}
           initialTimeSlot={initialTimeSlot}
+          lockedTimeSlot={bookingTimeSlot}
           serviceAt={serviceAt}
           onBack={handleMenuBack}
           onOpenFoodDetail={handleOpenFoodDetail}
         />
       ) : (
-        <section
+        <>
+          <section className="restaurant-discovery-toolbar" aria-label="Tìm nhà hàng">
+            <div className="restaurant-discovery-toolbar__copy">
+              <span>Khám phá thực đơn</span>
+              <strong>
+                {restaurantsLoading
+                  ? "Đang tải nhà hàng…"
+                  : `${filteredRestaurants.length} nhà hàng phù hợp`}
+              </strong>
+            </div>
+            <label className="restaurant-discovery-search">
+              <Search size={19} aria-hidden="true" />
+              <input
+                type="search"
+                value={restaurantSearch}
+                onChange={(event) => setRestaurantSearch(event.target.value)}
+                placeholder="Tìm tên, phong cách hoặc khu vực…"
+                autoComplete="off"
+              />
+              {restaurantSearch ? (
+                <button
+                  type="button"
+                  onClick={() => setRestaurantSearch("")}
+                  aria-label="Xóa tìm kiếm nhà hàng"
+                >
+                  <X size={18} aria-hidden="true" />
+                </button>
+              ) : null}
+            </label>
+          </section>
+
+          <section
           className="grid-container res-grid"
           aria-busy={restaurantsLoading}
           aria-live="polite"
@@ -676,8 +720,23 @@ const RestaurantMenu = () => {
               <h2>Chưa có nhà hàng công khai</h2>
               <p>Hãy quay lại sau để xem thực đơn mới.</p>
             </div>
+          ) : filteredRestaurants.length === 0 ? (
+            <div className="restaurant-state" role="status">
+              <span className="restaurant-state__icon" aria-hidden="true">
+                <Search size={22} />
+              </span>
+              <h2>Không tìm thấy nhà hàng phù hợp</h2>
+              <p>Thử tên ngắn hơn hoặc tìm theo phong cách và khu vực.</p>
+              <button
+                type="button"
+                className="restaurant-state__action"
+                onClick={() => setRestaurantSearch("")}
+              >
+                Xóa tìm kiếm
+              </button>
+            </div>
           ) : (
-            normalizedRestaurants.map((restaurant) => (
+            filteredRestaurants.map((restaurant) => (
               <RestaurantCard
                 key={restaurant.id}
                 data={restaurant}
@@ -697,7 +756,8 @@ const RestaurantMenu = () => {
               Không tìm thấy nhà hàng trong liên kết này.
             </div>
           ) : null}
-        </section>
+          </section>
+        </>
       )}
 
       {cart.length > 0 ? (
