@@ -1,13 +1,25 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { gql } from "@apollo/client";
 import { useLazyQuery, useMutation, useQuery } from "@apollo/client/react";
-import { Bot, MessageCircle, Send, Sparkles, X } from "lucide-react";
+import {
+  Bot,
+  CheckCircle2,
+  Clock3,
+  Headphones,
+  MessageCircle,
+  Send,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { io } from "socket.io-client";
 import { useCart } from "@/context/CartProvider";
 import { AuthContext } from "@/context/AuthContext";
 import { OPEN_AI_CHATBOT_EVENT } from "@/utils/aiChatbotEvents";
-import { getAiChatbotFeatureMatches, getAiChatbotUserRole } from "@/utils/aiChatbotFeatureMap";
+import {
+  getAiChatbotFeatureMatches,
+  getAiChatbotUserRole,
+} from "@/utils/aiChatbotFeatureMap";
 import { openCustomerCart } from "@/utils/cartEvents";
 import {
   buildCustomerCartPayload,
@@ -138,6 +150,7 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
 
 const RATE_LIMIT_MESSAGE =
   "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.";
+const DIRECT_HANDOFF_MESSAGE = "Tôi cần gặp nhân viên hỗ trợ";
 
 const STARTER_MESSAGES = [
   "Gợi ý món bán chạy cho tôi",
@@ -314,7 +327,11 @@ export const buildMenuSourceCards = (response) => {
   return cards;
 };
 
-export const getSafeVisibleAiActions = ({ actions = [], handoffEnabled = true, limit = 6 } = {}) => {
+export const getSafeVisibleAiActions = ({
+  actions = [],
+  handoffEnabled = true,
+  limit = 6,
+} = {}) => {
   const allowedTypes = new Set(["link", "openCart", "handoff", "search"]);
   const seen = new Set();
   return (handoffEnabled
@@ -325,12 +342,19 @@ export const getSafeVisibleAiActions = ({ actions = [], handoffEnabled = true, l
     .filter((action) => action?.type !== "add_to_cart_candidate")
     .filter((action) => {
       const href = String(action?.href || "").trim();
-      if (/^(?:javascript|data|mailto|tel):/i.test(href) || href.startsWith("//")) return false;
+      if (/^(?:javascript|data|mailto|tel):/i.test(href) || href.startsWith("//"))
+        return false;
       if (["openCart", "handoff", "search"].includes(action?.type)) return true;
-      return (href.startsWith("/") && !href.startsWith("//")) || /^https?:\/\//i.test(href);
+      return (
+        (href.startsWith("/") && !href.startsWith("//")) ||
+        /^https?:\/\//i.test(href)
+      );
     })
     .filter((action) => {
-      const key = action?.type === "openCart" || action?.href ? `${action?.type}:${action?.href || ""}` : `${action?.type}:${String(action?.label || "").toLowerCase()}`;
+      const key =
+        action?.type === "openCart" || action?.href
+          ? `${action?.type}:${action?.href || ""}`
+          : `${action?.type}:${String(action?.label || "").toLowerCase()}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -433,6 +457,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const [conversationId, setConversationId] = useState("");
   const [handoffRequested, setHandoffRequested] = useState(false);
   const [handoffClosed, setHandoffClosed] = useState(false);
+  const [handoffConnecting, setHandoffConnecting] = useState(false);
   const [latestStaffReplyAt, setLatestStaffReplyAt] = useState("");
   const [isSendInFlight, setIsSendInFlight] = useState(false);
   const sendInFlightRef = useRef(false);
@@ -451,27 +476,44 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const selectedRouteMenuItem = useMemo(() => {
     const query = new URLSearchParams(location.search || "");
     const id = params?.foodId || query.get("menuItemId") || "";
-    return id ? { id, restaurantId: restaurantId || query.get("restaurantId") || null } : null;
+    return id
+      ? {
+          id,
+          restaurantId: restaurantId || query.get("restaurantId") || null,
+        }
+      : null;
   }, [params?.foodId, location.search, restaurantId]);
-  const buildAiPageContext = useCallback((messageText = "", restaurantIdOverride = "") => {
-    const userRole = getAiChatbotUserRole(user);
-    const selectedMenuItem = selectedMenuItemSource || selectedRouteMenuItem;
-    const effectiveRestaurantId = restaurantIdOverride || selectedMenuItem?.restaurantId || restaurantId || "";
-    return {
-      pathname: location.pathname,
-      restaurantId: effectiveRestaurantId || null,
-      selectedMenuItem: selectedMenuItem || null,
-      userRole,
-      featureMatches: getAiChatbotFeatureMatches({
+  const buildAiPageContext = useCallback(
+    (messageText = "", restaurantIdOverride = "") => {
+      const userRole = getAiChatbotUserRole(user);
+      const selectedMenuItem = selectedMenuItemSource || selectedRouteMenuItem;
+      const effectiveRestaurantId =
+        restaurantIdOverride ||
+        selectedMenuItem?.restaurantId ||
+        restaurantId ||
+        "";
+      return {
         pathname: location.pathname,
-        restaurantId: effectiveRestaurantId,
-        selectedMenuItem,
+        restaurantId: effectiveRestaurantId || null,
+        selectedMenuItem: selectedMenuItem || null,
         userRole,
-        query: messageText,
-      }),
-    };
-  }, [location.pathname, restaurantId, selectedMenuItemSource, selectedRouteMenuItem, user]);
-
+        featureMatches: getAiChatbotFeatureMatches({
+          pathname: location.pathname,
+          restaurantId: effectiveRestaurantId,
+          selectedMenuItem,
+          userRole,
+          query: messageText,
+        }),
+      };
+    },
+    [
+      location.pathname,
+      restaurantId,
+      selectedMenuItemSource,
+      selectedRouteMenuItem,
+      user,
+    ],
+  );
 
   useEffect(() => {
     setEventRestaurantId("");
@@ -492,8 +534,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   } = useQuery(CUSTOMER_MENU_ITEM_FOR_AI, {
     variables: {
       id: selectedMenuItemSource?.id,
-      restaurantId:
-        selectedMenuItemSource?.restaurantId || null,
+      restaurantId: selectedMenuItemSource?.restaurantId || null,
     },
     skip: !selectedMenuItemSource?.id,
   });
@@ -569,9 +610,28 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     publicSettings?.handoffUnavailableMessage ||
     "Hiện nhà hàng chưa bật hỗ trợ nhân viên qua chatbot. Vui lòng thử lại sau hoặc liên hệ nhà hàng.";
   const visibleActions = useMemo(
-    () => getSafeVisibleAiActions({ actions: lastActions, handoffEnabled, limit: 6 }),
+    () =>
+      getSafeVisibleAiActions({
+        actions: lastActions,
+        handoffEnabled,
+        limit: 6,
+      }).filter((action) => action?.type !== "handoff"),
     [handoffEnabled, lastActions],
   );
+  const hasStaffReply = useMemo(
+    () => messages.some((item) => item?.role === "staff"),
+    [messages],
+  );
+  const supportState = handoffConnecting
+    ? "connecting"
+    : handoffRequested
+      ? hasStaffReply
+        ? "active"
+        : "waiting"
+      : handoffClosed
+        ? "closed"
+        : "idle";
+  const isHumanSupportActive = handoffRequested && !handoffClosed;
 
   useEffect(() => {
     if (!guestId || typeof window === "undefined") return;
@@ -622,7 +682,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     setLatestStaffReplyAt(latest || "");
   }, [messages]);
 
-  const appendGuestReplies = (replies = []) => {
+  const appendGuestReplies = useCallback((replies = []) => {
     if (!Array.isArray(replies) || replies.length === 0) return;
     setMessages((current) => {
       const existing = new Set(
@@ -654,57 +714,93 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
 
       return incoming.length ? [...current, ...incoming] : current;
     });
-  };
+  }, []);
 
-  const fetchGuestReplies = async ({ force = false } = {}) => {
-    if (
-      (!handoffRequested && !force) ||
-      !conversationId ||
-      !guestId ||
-      pollInFlightRef.current
-    )
-      return;
-    pollInFlightRef.current = true;
-    try {
-      const { data } = await loadGuestReplies({
-        variables: {
-          input: {
-            conversationId,
-            guestId,
-            after: latestStaffReplyAt || undefined,
-            limit: 30,
-          },
-        },
-      });
-      const guestReplies = data?.aiChatbotGuestReplies;
-      appendGuestReplies(guestReplies?.replies || []);
-      if (
-        guestReplies?.handoffClosed ||
-        guestReplies?.conversationStatus === "closed"
-      ) {
-        setHandoffRequested(false);
-        setHandoffClosed(true);
-        if (typeof window !== "undefined" && conversationId)
-          window.localStorage.removeItem(getHandoffStorageKey(conversationId));
-        setMessages((current) =>
-          current.some((m) => m?.meta?.type === "handoff_closed_notice")
-            ? current
-            : [
-                ...current,
-                {
-                  role: "assistant",
-                  content: "Nhân viên đã kết thúc phiên hỗ trợ.",
-                  meta: { type: "handoff_closed_notice" },
-                },
-              ],
+  const clearResolvedHandoff = useCallback(
+    (closedConversationId = conversationId) => {
+      setHandoffRequested(false);
+      setHandoffClosed(true);
+      setHandoffConnecting(false);
+      setConversationId("");
+      if (typeof window === "undefined") return;
+      if (closedConversationId) {
+        window.localStorage.removeItem(
+          getHandoffStorageKey(closedConversationId),
         );
       }
-    } catch {
-      // best effort polling only
-    } finally {
-      pollInFlightRef.current = false;
-    }
-  };
+      const storedConversationId = window.localStorage.getItem(
+        restaurantStorageKey,
+      );
+      if (
+        !closedConversationId ||
+        !storedConversationId ||
+        storedConversationId === String(closedConversationId)
+      ) {
+        window.localStorage.removeItem(restaurantStorageKey);
+      }
+    },
+    [conversationId, restaurantStorageKey],
+  );
+
+  const fetchGuestReplies = useCallback(
+    async ({ force = false } = {}) => {
+      if (
+        (!handoffRequested && !force) ||
+        !conversationId ||
+        !guestId ||
+        pollInFlightRef.current
+      )
+        return;
+      pollInFlightRef.current = true;
+      try {
+        const { data } = await loadGuestReplies({
+          variables: {
+            input: {
+              conversationId,
+              guestId,
+              after: latestStaffReplyAt || undefined,
+              limit: 30,
+            },
+          },
+        });
+        const guestReplies = data?.aiChatbotGuestReplies;
+        appendGuestReplies(guestReplies?.replies || []);
+        if (
+          guestReplies?.handoffClosed ||
+          guestReplies?.conversationStatus === "closed"
+        ) {
+          clearResolvedHandoff(
+            guestReplies?.conversationId || conversationId,
+          );
+          setMessages((current) =>
+            current.some((m) => m?.meta?.type === "handoff_closed_notice")
+              ? current
+              : [
+                  ...current,
+                  {
+                    role: "assistant",
+                    content: "Nhân viên đã kết thúc phiên hỗ trợ.",
+                    meta: { type: "handoff_closed_notice" },
+                  },
+                ],
+          );
+        }
+      } catch {
+        // best effort polling only
+      } finally {
+        pollInFlightRef.current = false;
+      }
+    },
+    [
+      appendGuestReplies,
+      clearResolvedHandoff,
+      conversationId,
+      guestId,
+      handoffRequested,
+      latestStaffReplyAt,
+      loadGuestReplies,
+    ],
+  );
 
   useEffect(() => {
     if (!open || !handoffRequested || !conversationId || !guestId)
@@ -725,10 +821,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
 
     const onHandoffResolved = (payload) => {
       if (String(payload?.status || "") !== "closed") return;
-      setHandoffRequested(false);
-      setHandoffClosed(true);
-      if (typeof window !== "undefined" && conversationId)
-        window.localStorage.removeItem(getHandoffStorageKey(conversationId));
+      clearResolvedHandoff(payload?.conversationId || conversationId);
       setMessages((current) =>
         current.some((m) => m?.meta?.type === "handoff_closed_notice")
           ? current
@@ -764,7 +857,15 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       socket.emit("leaveAiChatbotConversation", { conversationId, guestId });
       socket.disconnect();
     };
-  }, [open, handoffRequested, conversationId, guestId, testOverrides]);
+  }, [
+    appendGuestReplies,
+    clearResolvedHandoff,
+    conversationId,
+    guestId,
+    handoffRequested,
+    open,
+    testOverrides,
+  ]);
 
   useEffect(() => {
     if (!open || !handoffRequested || !conversationId || !guestId)
@@ -781,6 +882,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     guestId,
     latestStaffReplyAt,
     testOverrides,
+    fetchGuestReplies,
   ]);
 
   const sendMessage = async (rawMessage, { restaurantIdOverride } = {}) => {
@@ -790,6 +892,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       loading ||
       guestSendLoading ||
       handoffLoading ||
+      handoffConnecting ||
       sendInFlightRef.current
     )
       return;
@@ -801,8 +904,14 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       return;
     }
     const selectedMenuItem = selectedMenuItemSource || selectedRouteMenuItem;
-    const effectiveRestaurantId = restaurantIdOverride || selectedMenuItem?.restaurantId || restaurantId || "";
-    const effectiveConversationId = getStoredConversationId(effectiveRestaurantId);
+    const effectiveRestaurantId =
+      restaurantIdOverride ||
+      selectedMenuItem?.restaurantId ||
+      restaurantId ||
+      "";
+    const effectiveConversationId = getStoredConversationId(
+      effectiveRestaurantId,
+    );
     sendInFlightRef.current = true;
     setIsSendInFlight(true);
 
@@ -859,10 +968,18 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       });
       const response = data?.askAiChatbot;
       if (response?.conversationId && typeof window !== "undefined") {
-        const resolvedRestaurantId = response.resolvedRestaurantId || effectiveRestaurantId || "";
-        const resolvedStorageKey = getConversationStorageKey(resolvedRestaurantId);
-        window.localStorage.setItem(resolvedStorageKey, response.conversationId);
-        if (response.resolvedRestaurantId && response.resolvedRestaurantId !== restaurantId) {
+        const resolvedRestaurantId =
+          response.resolvedRestaurantId || effectiveRestaurantId || "";
+        const resolvedStorageKey =
+          getConversationStorageKey(resolvedRestaurantId);
+        window.localStorage.setItem(
+          resolvedStorageKey,
+          response.conversationId,
+        );
+        if (
+          response.resolvedRestaurantId &&
+          response.resolvedRestaurantId !== restaurantId
+        ) {
           setEventRestaurantId(response.resolvedRestaurantId);
         }
         setConversationId(response.conversationId);
@@ -885,7 +1002,11 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       setLastQuickReplies(
         response?.quickReplies?.length
           ? response.quickReplies
-          : buildStarterMessages({ restaurantId: response?.resolvedRestaurantId || effectiveRestaurantId, publicSettings }),
+          : buildStarterMessages({
+              restaurantId:
+                response?.resolvedRestaurantId || effectiveRestaurantId,
+              publicSettings,
+            }),
       );
       setLastContextSummary(response?.contextSummary || null);
       setLastIntent(response?.intent || "");
@@ -927,6 +1048,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
         !loading &&
         !guestSendLoading &&
         !handoffLoading &&
+        !handoffConnecting &&
         !sendInFlightRef.current
       ) {
         sendMessage(nextMessage, {
@@ -938,7 +1060,13 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     window.addEventListener(OPEN_AI_CHATBOT_EVENT, onOpenChatbot);
     return () =>
       window.removeEventListener(OPEN_AI_CHATBOT_EVENT, onOpenChatbot);
-  }, [loading, guestSendLoading, handoffLoading, sendMessage]);
+  }, [
+    loading,
+    guestSendLoading,
+    handoffLoading,
+    handoffConnecting,
+    sendMessage,
+  ]);
 
   const buildAiFoodDetailTarget = (source) => {
     const targetRestaurantId = source?.restaurantId || "";
@@ -988,8 +1116,16 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     }
     if (!action?.href) return;
     const safeHref = String(action.href || "").trim();
-    if (/^(?:javascript|data|mailto|tel):/i.test(safeHref) || safeHref.startsWith("//")) return;
-    if (!(safeHref.startsWith("/") && !safeHref.startsWith("//")) && !/^https?:\/\//i.test(safeHref)) return;
+    if (
+      /^(?:javascript|data|mailto|tel):/i.test(safeHref) ||
+      safeHref.startsWith("//")
+    )
+      return;
+    if (
+      !(safeHref.startsWith("/") && !safeHref.startsWith("//")) &&
+      !/^https?:\/\//i.test(safeHref)
+    )
+      return;
     if (/^https?:\/\//i.test(safeHref)) {
       window.open(safeHref, "_blank", "noopener,noreferrer");
       return;
@@ -997,6 +1133,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     navigate(safeHref);
     setOpen(false);
   };
+
   const handleRequestHandoff = async () => {
     if (!handoffEnabled) {
       setMessages((c) => [
@@ -1006,19 +1143,80 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       return;
     }
     if (!restaurantId) {
-      setMessages((c) => [...c, { role: "assistant", content: "Bạn hãy chọn nhà hàng trước khi gặp nhân viên hỗ trợ." }]);
+      setMessages((c) => [
+        ...c,
+        {
+          role: "assistant",
+          content: "Bạn hãy chọn nhà hàng trước khi gặp nhân viên hỗ trợ.",
+        },
+      ]);
       return;
     }
-    if (!conversationId || handoffRequested || handoffLoading) return;
+    if (handoffRequested || handoffLoading || handoffConnecting) return;
+
+    setHandoffConnecting(true);
+    setHandoffClosed(false);
     try {
+      let safeGuestId = guestId;
+      if (!safeGuestId && typeof window !== "undefined") {
+        safeGuestId =
+          window.localStorage.getItem(GUEST_ID_STORAGE_KEY) ||
+          generateGuestId();
+        window.localStorage.setItem(GUEST_ID_STORAGE_KEY, safeGuestId);
+        setGuestId(safeGuestId);
+      }
+
+      let activeConversationId =
+        conversationId || getStoredConversationId(restaurantId);
+      let activeRestaurantId = restaurantId;
+
+      if (!activeConversationId) {
+        const { data: conversationData } = await askAiChatbot({
+          variables: {
+            input: {
+              message: DIRECT_HANDOFF_MESSAGE,
+              restaurantId,
+              history: normalizeHistory(messages),
+              guestId: safeGuestId || undefined,
+              pageContext: buildAiPageContext(
+                DIRECT_HANDOFF_MESSAGE,
+                restaurantId,
+              ),
+            },
+          },
+        });
+        const response = conversationData?.askAiChatbot;
+        activeConversationId = String(response?.conversationId || "");
+        activeRestaurantId = response?.resolvedRestaurantId || restaurantId;
+        if (!activeConversationId) {
+          throw new Error(
+            "Chưa thể mở phiên hỗ trợ. Vui lòng thử lại sau ít phút.",
+          );
+        }
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(
+            getConversationStorageKey(activeRestaurantId),
+            activeConversationId,
+          );
+        }
+        if (
+          response?.resolvedRestaurantId &&
+          response.resolvedRestaurantId !== restaurantId
+        ) {
+          setEventRestaurantId(response.resolvedRestaurantId);
+        }
+        setConversationId(activeConversationId);
+      }
+
       const latestUserMessage =
-        [...messages].reverse().find((m) => m.role === "user")?.content || "";
+        [...messages].reverse().find((m) => m.role === "user")?.content ||
+        DIRECT_HANDOFF_MESSAGE;
       const { data } = await requestHandoff({
         variables: {
           input: {
-            conversationId,
-            guestId: guestId || undefined,
-            restaurantId: restaurantId || undefined,
+            conversationId: activeConversationId,
+            guestId: safeGuestId || undefined,
+            restaurantId: activeRestaurantId || undefined,
             reason: "user_click",
             latestUserMessage,
           },
@@ -1028,13 +1226,17 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       if (result?.ok && result?.handoffRequested) {
         if (typeof window !== "undefined") {
           window.localStorage.setItem(
-            getHandoffStorageKey(conversationId),
+            getHandoffStorageKey(activeConversationId),
             "1",
           );
         }
+        setConversationId(activeConversationId);
         setHandoffRequested(true);
         setHandoffClosed(false);
-        fetchGuestReplies({ force: true });
+        setLastActions([]);
+        setLastQuickReplies([]);
+        setMenuSourceCards([]);
+        setLastContextSummary(null);
       }
       setMessages((current) => [
         ...current,
@@ -1052,8 +1254,11 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
             err?.message || "Không thể gửi yêu cầu gặp nhân viên lúc này.",
         },
       ]);
+    } finally {
+      setHandoffConnecting(false);
     }
   };
+
   const onSelectMenuItem = (source) => {
     setSelectedMenuItemSource(source);
     setSelectedVariantKey("");
@@ -1139,31 +1344,69 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     }
   };
 
+  const supportStatusContent = {
+    connecting: {
+      icon: <Clock3 size={17} />,
+      title: "Đang mở phiên hỗ trợ",
+      detail: "Hệ thống đang chuyển yêu cầu của bạn đến nhân viên nhà hàng.",
+    },
+    waiting: {
+      icon: <Clock3 size={17} />,
+      title: "Đang chờ nhân viên tiếp nhận",
+      detail:
+        "Bạn có thể mô tả thêm vấn đề ngay bên dưới. Nhân viên sẽ xem toàn bộ nội dung.",
+    },
+    active: {
+      icon: <Headphones size={17} />,
+      title: "Nhân viên đang hỗ trợ",
+      detail: "Tin nhắn mới sẽ được gửi trực tiếp đến nhân viên nhà hàng.",
+    },
+    closed: {
+      icon: <CheckCircle2 size={17} />,
+      title: "Phiên hỗ trợ đã kết thúc",
+      detail: "Bạn có thể tiếp tục hỏi trợ lý hoặc gọi nhân viên cho vấn đề mới.",
+    },
+  }[supportState];
+
   return (
     <div className="ai-chatbot-widget" aria-live="polite">
       {open ? (
         <section
-          className={`ai-chatbot-panel ${selectedMenuItemSource ? "is-expanded" : ""}`}
-          aria-label="ChatBot A.I hỗ trợ nhà hàng"
+          className={`ai-chatbot-panel ${selectedMenuItemSource ? "is-expanded" : ""} ${isHumanSupportActive ? "is-human-support" : ""}`}
+          aria-label={
+            isHumanSupportActive
+              ? "Trò chuyện trực tiếp với nhân viên nhà hàng"
+              : "Trợ lý A.I hỗ trợ nhà hàng"
+          }
         >
           <header className="ai-chatbot-header">
             <div className="ai-chatbot-title">
               <span className="ai-chatbot-avatar">
-                <Bot size={20} />
+                {isHumanSupportActive ? (
+                  <Headphones size={20} />
+                ) : (
+                  <Bot size={20} />
+                )}
               </span>
               <div>
-                <strong>ChatBot A.I</strong>
+                <strong>
+                  {isHumanSupportActive ? "Hỗ trợ trực tiếp" : "Trợ lý Cohan"}
+                </strong>
                 <small>
-                  {restaurantId
-                    ? "Đang hiểu ngữ cảnh nhà hàng này"
-                    : "Hỗ trợ khách hàng & vận hành"}
+                  {isHumanSupportActive
+                    ? hasStaffReply
+                      ? "Đang trò chuyện với nhân viên nhà hàng"
+                      : "Đang chờ nhân viên tiếp nhận"
+                    : restaurantId
+                      ? "Hỗ trợ theo nhà hàng bạn đang xem"
+                      : "Hỗ trợ khách hàng"}
                 </small>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="Đóng chatbot"
+              aria-label="Đóng trợ lý hỗ trợ"
             >
               <X size={18} />
             </button>
@@ -1190,14 +1433,16 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                       item={item}
                       index={index}
                       messages={messages}
-                      restaurantId={item.meta?.resolvedRestaurantId || restaurantId}
+                      restaurantId={
+                        item.meta?.resolvedRestaurantId || restaurantId
+                      }
                       guestId={guestId}
                       submitFeedback={submitFeedback}
                     />
                   ) : null}
                 </div>
               ))}
-              {loading ? (
+              {loading && !handoffConnecting ? (
                 <div className="ai-chatbot-message assistant loading">
                   <span /> <span /> <span />
                 </div>
@@ -1352,7 +1597,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                   </button>
                 </div>
               </div>
-            ) : (
+            ) : !isHumanSupportActive ? (
               <>
                 {lastContextSummary ? (
                   <div className="ai-chatbot-context">
@@ -1408,11 +1653,16 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                   </div>
                 ) : null}
               </>
-            )}
+            ) : null}
           </div>
 
-          {!selectedMenuItemSource && visibleActions.length ? (
-            <div className="ai-chatbot-actions ai-chatbot-action-cards" aria-label="Hành động gợi ý">
+          {!selectedMenuItemSource &&
+          !isHumanSupportActive &&
+          visibleActions.length ? (
+            <div
+              className="ai-chatbot-actions ai-chatbot-action-cards"
+              aria-label="Hành động gợi ý"
+            >
               {visibleActions.map((action, index) => (
                 <button
                   key={`${action.type}-${action.href || action.label}-${index}`}
@@ -1420,17 +1670,28 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                   className={`ai-chatbot-action-card ${index === 0 ? "primary" : "secondary"}`}
                   onClick={() => handleAction(action)}
                 >
-                  {action.icon ? <span className="ai-chatbot-action-card__icon" aria-hidden="true">{action.icon}</span> : null}
+                  {action.icon ? (
+                    <span
+                      className="ai-chatbot-action-card__icon"
+                      aria-hidden="true"
+                    >
+                      {action.icon}
+                    </span>
+                  ) : null}
                   <span className="ai-chatbot-action-card__text">
                     <strong>{action.label}</strong>
-                    {action.description ? <small>{action.description}</small> : null}
+                    {action.description ? (
+                      <small>{action.description}</small>
+                    ) : null}
                   </span>
                 </button>
               ))}
             </div>
           ) : null}
 
-          {!selectedMenuItemSource && lastQuickReplies.length ? (
+          {!selectedMenuItemSource &&
+          !isHumanSupportActive &&
+          lastQuickReplies.length ? (
             <div className="ai-chatbot-quick-replies">
               {lastQuickReplies.map((reply) => (
                 <button
@@ -1442,6 +1703,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                     loading ||
                     guestSendLoading ||
                     handoffLoading ||
+                    handoffConnecting ||
                     isSendInFlight
                   }
                 >
@@ -1451,31 +1713,37 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
             </div>
           ) : null}
 
-          {!selectedMenuItemSource && handoffEnabled ? (
-            <div className="ai-chatbot-actions">
+          {!selectedMenuItemSource &&
+          handoffEnabled &&
+          !handoffRequested &&
+          !handoffConnecting ? (
+            <div className="ai-chatbot-handoff-action">
               <button
                 type="button"
                 onClick={handleRequestHandoff}
-                disabled={!conversationId || handoffRequested || handoffLoading}
+                disabled={!restaurantId || handoffLoading}
               >
-                {handoffRequested ? "Đã yêu cầu nhân viên" : "Gặp nhân viên"}
+                <Headphones size={17} aria-hidden="true" />
+                Gọi nhân viên hỗ trợ
               </button>
+              {!restaurantId ? (
+                <small>Chọn một nhà hàng để gửi đúng nơi hỗ trợ.</small>
+              ) : null}
             </div>
           ) : null}
 
-          {!selectedMenuItemSource && handoffRequested ? (
-            <div className="ai-chatbot-context">
-              <Sparkles size={14} />
-              <span>
-                Nhân viên đã được thông báo. Bạn có thể tiếp tục gửi tin nhắn,
-                nhân viên sẽ xem lịch sử trước đó.
+          {!selectedMenuItemSource && supportStatusContent ? (
+            <div
+              className={`ai-chatbot-support-status is-${supportState}`}
+              role="status"
+            >
+              <span className="ai-chatbot-support-status__icon" aria-hidden="true">
+                {supportStatusContent.icon}
               </span>
-            </div>
-          ) : null}
-          {!selectedMenuItemSource && handoffClosed ? (
-            <div className="ai-chatbot-context">
-              <Sparkles size={14} />
-              <span>Nhân viên đã kết thúc phiên hỗ trợ.</span>
+              <span className="ai-chatbot-support-status__copy">
+                <strong>{supportStatusContent.title}</strong>
+                <small>{supportStatusContent.detail}</small>
+              </span>
             </div>
           ) : null}
 
@@ -1491,8 +1759,17 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
               onChange={(event) => setInput(event.target.value)}
               placeholder={
                 chatbotEnabled
-                  ? getInputPlaceholder(restaurantId)
+                  ? isHumanSupportActive
+                    ? hasStaffReply
+                      ? "Nhắn tiếp cho nhân viên..."
+                      : "Mô tả thêm để nhân viên hỗ trợ..."
+                    : getInputPlaceholder(restaurantId)
                   : "Chatbot đang tạm tắt cho nhà hàng này"
+              }
+              aria-label={
+                isHumanSupportActive
+                  ? "Nội dung gửi cho nhân viên"
+                  : "Nội dung gửi cho trợ lý"
               }
               maxLength={500}
               disabled={
@@ -1500,6 +1777,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                 loading ||
                 guestSendLoading ||
                 handoffLoading ||
+                handoffConnecting ||
                 isSendInFlight
               }
             />
@@ -1510,10 +1788,15 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                 loading ||
                 guestSendLoading ||
                 handoffLoading ||
+                handoffConnecting ||
                 isSendInFlight ||
                 !input.trim()
               }
-              aria-label="Gửi tin nhắn"
+              aria-label={
+                isHumanSupportActive
+                  ? "Gửi tin nhắn cho nhân viên"
+                  : "Gửi tin nhắn"
+              }
             >
               <Send size={18} />
             </button>
@@ -1524,7 +1807,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
           className="ai-chatbot-toggle"
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Mở ChatBot A.I"
+          aria-label="Mở trợ lý hỗ trợ"
         >
           <MessageCircle size={24} />
           <span>AI</span>
