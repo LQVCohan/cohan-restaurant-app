@@ -141,8 +141,8 @@ const MenuEngineeringAssistantWidget = ({ assistant, loading, onNavigate }) => {
             </span>
           </div>
           <p>
-            Đơn hàng {meta.sampleDays ?? 30} ngày → giá vốn snapshot của món →
-            recipe và giá nguyên liệu → biên mặc định {fallbackMarginPct}% khi thiếu dữ liệu.
+            Đơn hàng {meta.sampleDays ?? 30} ngày → giá vốn lưu tại thời điểm bán →
+            công thức món và giá nguyên liệu → biên mặc định {fallbackMarginPct}% khi thiếu dữ liệu.
           </p>
           <small>
             Phân nhóm theo số lượng bán và lãi trên mỗi phần so với mức trung bình;
