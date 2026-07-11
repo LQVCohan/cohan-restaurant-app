@@ -64,6 +64,16 @@ const CashflowSchema = BaseSchemaModel(
   {},
 );
 
+CashflowSchema.pre("validate", function normalizeLegacyClassifications(next) {
+  if (!String(this.category || "").trim()) {
+    this.category = this.type === "INFLOW" ? "sale" : "other";
+  }
+  if (!String(this.subcategory || "").trim()) {
+    this.subcategory = "other";
+  }
+  next();
+});
+
 CashflowSchema.index({ restaurantId: 1, occurredAt: -1 });
 CashflowSchema.index({ restaurantId: 1, source: 1, status: 1 });
 CashflowSchema.index({ restaurantId: 1, category: 1, subcategory: 1, occurredAt: -1 });
