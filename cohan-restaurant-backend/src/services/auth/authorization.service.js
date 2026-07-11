@@ -83,7 +83,7 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
     "order.read", "order.create", "order.update", "order.cancel",
     "payment.read", "payment.write", "finance.read", "finance.write", "finance.export", "transaction.read", "transaction.write", "reconciliation.read", "reconciliation.write", "refund.read", "refund.write", "staff.read", "staff.write",
     "shift.read", "shift.manage", "table.read", "table.write",
-    "report.read", "dashboard.read", "inventory.read", "inventory.write",
+    "report.read", "dashboard.read", "print.read", "print.write", "inventory.read", "inventory.write",
     "stock.read", "stock.write", "reservation.read", "reservation.create",
     "reservation.update", "reservation.cancel", "promotion.read", "promotion.write",
     "coupon.read", "coupon.write", "customer.read", "customer.update", "role.read", "role.write", "permission.read",
