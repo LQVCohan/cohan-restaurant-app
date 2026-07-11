@@ -10,6 +10,7 @@ import { InventorySyncMenuMutation } from "./inventorySyncMutation.js";
 import { createMenuPriceHistoryMutations } from "./priceHistoryMutation.js";
 import { CategoryMenu, Recipe, MenuItem, Order } from "../../../models/index.js";
 import { getMenuItemInventoryAvailability } from "../../../src/services/menuItemInventoryAvailability.service.js";
+import { syncOrderableSuppliesToMenus } from "../../../src/services/orderableSupplyMenu.service.js";
 
 const BILLABLE_ORDER_STATUSES = ["served", "completed"];
 const BILLABLE_ITEM_STATUSES = ["served", "ready", "preparing", "pending"];
@@ -17,6 +18,43 @@ const MenuPriceHistoryMutations = createMenuPriceHistoryMutations(MenuMutation);
 
 const getMenuId = (parent) => parent?._id || parent?.id;
 const getMenuItemId = (parent) => parent?._id || parent?.id;
+
+const dedupeUnscopedSupplies = (items, hasTimeSlot) => {
+  if (hasTimeSlot || !Array.isArray(items)) return items;
+  const seenSupplyIds = new Set();
+  return items.filter((item) => {
+    if (item?.sourceType !== "supply" || !item?.supplyId) return true;
+    const key = String(item.supplyId);
+    if (seenSupplyIds.has(key)) return false;
+    seenSupplyIds.add(key);
+    return true;
+  });
+};
+
+const withOrderableSupplySync = (resolver, getRestaurantId, transform) =>
+  async (parent, args, ctx, info) => {
+    const restaurantId = getRestaurantId(args || {});
+    if (restaurantId) await syncOrderableSuppliesToMenus(restaurantId);
+    const result = await resolver(parent, args, ctx, info);
+    return transform ? transform(result, args || {}) : result;
+  };
+
+const MenuQueryWithSupplies = {
+  ...MenuQuery,
+  menuItems: withOrderableSupplySync(
+    MenuQuery.menuItems,
+    (args) => args.restaurantId,
+    (items, args) => dedupeUnscopedSupplies(items, Boolean(args.timeSlot)),
+  ),
+  menuItemsConnection: withOrderableSupplySync(
+    MenuQuery.menuItemsConnection,
+    (args) => args.filter?.restaurantId,
+  ),
+  topMenuItems: withOrderableSupplySync(
+    MenuQuery.topMenuItems,
+    (args) => args.restaurantId,
+  ),
+};
 
 async function getMenuOrderStats(parent) {
   if (parent?._menuOrderStats) return parent._menuOrderStats;
@@ -103,7 +141,7 @@ async function getItemAvailability(parent) {
 
 export default {
   Query: {
-    ...MenuQuery,
+    ...MenuQueryWithSupplies,
     ...CustomerMenuLocationQuery,
   },
 
