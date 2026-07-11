@@ -1,3 +1,3 @@
-import OrderSummaryTransferModalUpload from "./OrderSummaryTransferModalUpload";
+import OrderSummaryCheckoutModal from "./OrderSummaryCheckoutModal";
 
-export default OrderSummaryTransferModalUpload;
+export default OrderSummaryCheckoutModal;
