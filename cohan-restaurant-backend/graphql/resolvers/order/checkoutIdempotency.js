@@ -70,7 +70,7 @@ export function withCheckoutIdempotency(mutations = {}) {
         await markCheckoutCompleted({ key, result });
         return result;
       } catch (error) {
-        const recovered = await loadCheckoutResult({ key, claim: null });
+        const recovered = await loadCheckoutResult({ key, claim: null, userId });
         if (recovered) {
           await markCheckoutCompleted({ key, result: recovered });
           return recovered;
