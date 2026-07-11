@@ -1,15 +1,14 @@
 {
   "id": "07-11-transfer-review-integrity",
   "title": "Harden transfer payment review integrity",
-  "status": "in_progress",
+  "status": "completed",
   "type": "full-stack-bugfix",
   "scope": [
     "cohan-restaurant-backend/graphql/resolvers/payment/transferMutation.js",
-    "cohan-restaurant-backend/src/services/payment/paymentSession.service.js",
     "cohan-restaurant-backend/tests/resolvers/payment-transfer-review-integrity.test.js",
+    "cohan-restaurant-backend/tests/resolvers/payment-transfer-resubmit.test.js",
     "src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.jsx",
-    "src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.test.jsx",
-    "src/layouts/ManagerLayout.jsx"
+    "src/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage.test.jsx"
   ],
   "validation": {
     "planned": [
@@ -20,8 +19,18 @@
     ],
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail and ui-ux-pro-max",
-      "traced PaymentSession, transfer query/mutations, settlement, customer proof submission, manager route and review UI"
+      "traced PaymentSession, transfer query/mutations, settlement, customer proof submission, manager route and review UI",
+      "manual decisions now require SUBMITTED or VERIFYING with proof",
+      "manual verification requires an exact VND amount and rejects reused bank transaction codes",
+      "verification relies on the shared settlement writer without a duplicate order update",
+      "rejection payment and order changes are committed in one MongoDB transaction",
+      "decision errors and amount mismatch are visible inside the modal",
+      "added focused backend and frontend regression tests"
     ],
-    "notRun": []
+    "notRun": [
+      "Vitest was not run because the GitHub connector does not provide a repository runtime",
+      "GraphQL validation was not run",
+      "frontend build was not run"
+    ]
   }
 }
