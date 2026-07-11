@@ -8,7 +8,7 @@ const EMPTY_RESTAURANTS = [];
 
 const useManagerRestaurantSelection = (additionalRestaurants = EMPTY_RESTAURANTS) => {
   const brandState = useBrandManagement(additionalRestaurants, {
-    loadFullBrands: false,
+    loadFullBrands: true,
   });
   const brandOptions = useMemo(
     () => brandState.brands.map((brand) => ({ ...brand, id: String(brand.id), name: brand.name || "Chuỗi chưa đặt tên" })),
