@@ -115,6 +115,7 @@ input MenuItemFilter {
   minPrice: Float
   maxPrice: Float
   sort: MenuItemSort
+  includeSupplies: Boolean = false
 }
 
 type MenuItemEdge {
@@ -152,9 +153,11 @@ input MenuItemTasteProfileInput {
 
 type MenuItem {
   id: ID!
+  itemType: String!
+  supplyId: ID
   restaurantId: ID!
-  menuId: ID!
-  categoryId: ID!
+  menuId: ID
+  categoryId: ID
 
   code: String
   name: String!
@@ -385,6 +388,7 @@ extend type Query {
     search: String
     sort: MenuItemSort = default
     limit: Int = 50
+    includeSupplies: Boolean = true
   ): [MenuItem!]!
 
   menuItemsConnection(
@@ -417,8 +421,5 @@ extend type Mutation {
   createMenuItem(input: CreateMenuItemInput!): MenuItem!
   updateMenuItem(input: UpdateMenuItemInput!): MenuItem!
   deleteMenuItem(id: ID!): Boolean!
-
-  toggleMenuItemStatus(id: ID!, status: MenuItemStatus!): MenuItem!
-
   updateMenuItemBasic(input: UpdateMenuItemBasicInput!): MenuItem!
 }
