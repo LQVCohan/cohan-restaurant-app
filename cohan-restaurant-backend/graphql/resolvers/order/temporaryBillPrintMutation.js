@@ -1,12 +1,17 @@
 import { Order, PrintSetting } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
-import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import { requireAnyRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import { emitOrderEvent } from "./helper/emitOrderEvent.js";
 import { toId } from "./helper/orderUtils.js";
 
 const CASHIER_STATION = "cashier";
 const RECEIPT_TEMPLATE = "receipt";
 const PRINT_JOB_LIMIT = 300;
+const TEMPORARY_BILL_PERMISSIONS = [
+  PERMISSIONS.ORDER_UPDATE,
+  PERMISSIONS.PAYMENT_WRITE,
+  PERMISSIONS.PRINT_WRITE,
+];
 
 function uniqueConfiguredPrinterIds(printSetting = {}) {
   const printerById = new Map(
@@ -72,7 +77,11 @@ export async function createTemporaryBillPrintJob(_parent, { input }, ctx) {
   if (!order || String(order.restaurantId) !== String(rid)) {
     throw new Error("Order not found");
   }
-  await requireRestaurantPermission(ctx, order.restaurantId, PERMISSIONS.ORDER_UPDATE);
+  await requireAnyRestaurantPermission(
+    ctx,
+    order.restaurantId,
+    TEMPORARY_BILL_PERMISSIONS,
+  );
   if (order.currentStatus !== "confirmed") {
     throw new Error("Only confirmed orders can be printed");
   }
