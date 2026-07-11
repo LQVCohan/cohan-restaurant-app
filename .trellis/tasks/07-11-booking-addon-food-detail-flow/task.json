@@ -1,0 +1,30 @@
+{
+  "id": "07-11-booking-addon-food-detail-flow",
+  "name": "booking-addon-food-detail-flow",
+  "title": "Giữ đúng luồng đặt bàn khi chọn món từ trang chi tiết",
+  "description": "Ngăn trang chi tiết món gọi thêm giỏ lần hai và ngăn giỏ món đi nhầm sang checkout giao hàng trong luồng order kèm đặt bàn.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "customer-booking-addon",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-11",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "07-11-booking-addon-service-time",
+  "relatedFiles": [
+    "src/utils/customerFoodNavigation.js",
+    "src/components/Customer/RestaurantMenu/RestaurantMenu.jsx",
+    "src/components/Customer/Food/FoodDetailV2.jsx",
+    "src/utils/customerFoodNavigation.test.js"
+  ],
+  "notes": "Root cause is lost returnTo=booking context between RestaurantMenu and FoodDetailV2. Backend addCartItem correctly increments an existing line when called again; the booking UI must not invoke it from its continue action."
+}
