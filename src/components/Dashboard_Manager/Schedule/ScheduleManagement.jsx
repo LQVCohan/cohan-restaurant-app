@@ -4379,6 +4379,7 @@ const ScheduleManagement = ({ readOnly = false, restaurantId: scopedRestaurantId
             periodEnd:
               autoSchedulePreview.items?.[autoSchedulePreview.items.length - 1]
                 ?.endTime,
+            timezone: SCHEDULING_TIMEZONE,
             requiredRoles:
               autoScheduleSource === "ai" && aiPlannerPayload?.recommendedRoles
                 ? aiPlannerPayload.recommendedRoles
