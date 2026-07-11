@@ -1,10 +1,106 @@
 import mongoose from "mongoose";
+import { GraphQLError } from "graphql";
 import { Order } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { ConfirmedOrderPrintMutation } from "./confirmedOrderPrintMutation.js";
 import { emitOrderEvent } from "./helper/emitOrderEvent.js";
+
+const PREPARATION_STATION_BY_ROLE = Object.freeze({
+  bartender: "bar",
+  chef: "kitchen",
+  cook: "kitchen",
+  kitchen_helper: "kitchen",
+});
+
+const PREPARATION_STATION_BY_DEPARTMENT = Object.freeze({
+  bar: "bar",
+  kitchen: "kitchen",
+});
+
+function normalizeAccessValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+export function resolvePreparationStationScope(user = {}) {
+  const roleCandidates = [
+    user?.roleName,
+    user?.role?.slug,
+    user?.role?.name,
+  ]
+    .map(normalizeAccessValue)
+    .filter(Boolean);
+
+  for (const role of roleCandidates) {
+    if (PREPARATION_STATION_BY_ROLE[role]) {
+      return PREPARATION_STATION_BY_ROLE[role];
+    }
+  }
+
+  const parentRole = normalizeAccessValue(
+    user?.role?.parentRole?.slug || user?.role?.parentRole?.name,
+  );
+  const userType = normalizeAccessValue(user?.userType);
+  const department = normalizeAccessValue(
+    user?.role?.department || user?.department,
+  );
+
+  if (parentRole === "staff" || userType === "staff") {
+    return PREPARATION_STATION_BY_DEPARTMENT[department] || null;
+  }
+
+  return null;
+}
+
+export function getOrderItemPreparationStation(item = {}) {
+  const station = normalizeAccessValue(
+    item?.prepStation || item?.station || item?.workItemStation,
+  );
+  return ["kitchen", "bar"].includes(station) ? station : null;
+}
+
+function stationForbidden() {
+  return new GraphQLError("Bạn không có quyền xử lý món thuộc khu vực này.", {
+    extensions: { code: "FORBIDDEN" },
+  });
+}
+
+export function assertOrderItemPreparationStationAccess(user, item) {
+  const requiredStation = resolvePreparationStationScope(user);
+  if (!requiredStation) return true;
+
+  if (getOrderItemPreparationStation(item) !== requiredStation) {
+    throw stationForbidden();
+  }
+
+  return true;
+}
+
+export function scopeOrdersForPreparationStation(orders = [], user = {}) {
+  const requiredStation = resolvePreparationStationScope(user);
+  if (!requiredStation) return orders;
+
+  return (orders || [])
+    .map((order) => {
+      const plainOrder =
+        typeof order?.toObject === "function"
+          ? order.toObject({ virtuals: true })
+          : { ...order };
+      const items = (plainOrder.items || []).filter(
+        (item) => getOrderItemPreparationStation(item) === requiredStation,
+      );
+      return { ...plainOrder, items };
+    })
+    .filter((order) => order.items.length > 0);
+}
+
+export function withPreparationStationOrderFilter(filter = {}, user = {}) {
+  const requiredStation = resolvePreparationStationScope(user);
+  return requiredStation
+    ? { ...filter, "items.prepStation": requiredStation }
+    : filter;
+}
 
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -44,6 +140,15 @@ async function loadScopedOrder({ orderId, restaurantId, ctx, permissionCode }) {
   return order;
 }
 
+function findOrderItem(order, itemKey) {
+  return (order?.items || []).find(
+    (item, index) =>
+      String(item?._id) === String(itemKey) ||
+      String(item?.dishId) === String(itemKey) ||
+      String(index) === String(itemKey),
+  );
+}
+
 async function runPersistedOrderMutation({
   mutation,
   mutationName,
@@ -53,6 +158,8 @@ async function runPersistedOrderMutation({
   ctx,
   info,
 }) {
+  if (resolvePreparationStationScope(ctx?.user)) throw stationForbidden();
+
   const persistedOrder = await loadScopedOrder({
     orderId: args?.input?.orderId,
     ctx,
@@ -186,6 +293,39 @@ export function withOrderRestaurantAccessGuards(mutation = {}) {
         orderItemId: input.orderItemId,
       });
       return mutation.remindOrderItem.call(mutation, parent, args, ctx, info);
+    },
+
+    async updateOrderStatus(parent, args, ctx, info) {
+      if (resolvePreparationStationScope(ctx?.user)) throw stationForbidden();
+      return mutation.updateOrderStatus.call(mutation, parent, args, ctx, info);
+    },
+
+    async updateOrderItemStatus(parent, args, ctx, info) {
+      const input = args?.input || {};
+      const order = await loadScopedOrder({
+        orderId: input.orderId,
+        restaurantId: input.restaurantId,
+        ctx,
+        permissionCode: PERMISSIONS.ORDER_UPDATE,
+      });
+      const item = findOrderItem(order, input.itemKey);
+      if (!item) throw new Error("Item not found");
+      assertOrderItemPreparationStationAccess(ctx?.user, item);
+      return mutation.updateOrderItemStatus.call(mutation, parent, args, ctx, info);
+    },
+
+    async updateOrderItemPriority(parent, args, ctx, info) {
+      const input = args?.input || {};
+      const order = await loadScopedOrder({
+        orderId: input.orderId,
+        restaurantId: input.restaurantId,
+        ctx,
+        permissionCode: PERMISSIONS.ORDER_UPDATE,
+      });
+      const item = findOrderItem(order, input.itemKey);
+      if (!item) throw new Error("Item not found");
+      assertOrderItemPreparationStationAccess(ctx?.user, item);
+      return mutation.updateOrderItemPriority.call(mutation, parent, args, ctx, info);
     },
 
     async adjustOrderItemQuantity(parent, args, ctx, info) {
