@@ -12,7 +12,7 @@ vi.mock("../models/index.js", () => ({
   CheckoutSession: { updateOne: mocks.checkoutUpdateOne },
 }));
 
-vi.mock("../src/services/wallet/wallet.service.js", () => ({
+vi.mock("../src/services/wallet/idempotentWalletPayment.service.js", () => ({
   payOrdersWithWallet: mocks.payOrdersWithWallet,
 }));
 
