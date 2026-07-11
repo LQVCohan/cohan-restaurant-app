@@ -9,7 +9,7 @@ export const PERFORMANCE_FORMULA_ITEMS = [
     key: "punctuality",
     label: "Đúng giờ",
     weight: 25,
-    description: "Điểm nền 100, trừ lượt và phút đi trễ, về sớm, vắng mặt",
+    description: "Mọi role: nền 100, trừ theo lượt/phút đi trễ, về sớm, vắng mặt; đây là nơi duy nhất tính attendance.",
   },
   {
     key: "quality",
