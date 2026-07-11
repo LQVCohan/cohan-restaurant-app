@@ -63,6 +63,7 @@ export default function ChatThreadPanel({
               className="chat-thread-back"
               onClick={onBack}
               aria-label="Quay lại danh sách hội thoại"
+              autoFocus={embedded}
             >
               <ArrowLeft size={18} aria-hidden="true" />
             </button>
