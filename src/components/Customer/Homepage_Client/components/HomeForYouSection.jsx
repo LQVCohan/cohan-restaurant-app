@@ -142,17 +142,17 @@ export default function HomeForYouSection({ timeSlot = null }) {
                     onClick={() => handleItemClick(item)}
                     aria-label={`Xem món ${item.name} tại ${restaurantName}`}
                   >
-                    <span className="home-for-you-card__media">
+                    <div className="home-for-you-card__media">
                       <img
                         className="home-for-you-card__image"
                         src={item.thumbImage || fallbackImage}
                         alt={item.name}
-                        width="640"
-                        height="420"
+                        width={640}
+                        height={420}
                         loading="lazy"
                         decoding="async"
                       />
-                      <span className="home-for-you-card__badges">
+                      <div className="home-for-you-card__badges">
                         {item.foodPreferenceMeta?.isRecommended ? (
                           <span className="home-for-you-badge home-for-you-badge--match">
                             <Sparkles aria-hidden="true" />
@@ -170,11 +170,11 @@ export default function HomeForYouSection({ timeSlot = null }) {
                             Kiểm tra dị ứng
                           </span>
                         )}
-                      </span>
-                    </span>
+                      </div>
+                    </div>
 
-                    <span className="home-for-you-card__body">
-                      <span className="home-for-you-card__meta">
+                    <div className="home-for-you-card__body">
+                      <div className="home-for-you-card__meta">
                         <span className="home-for-you-card__restaurant">
                           <MapPin aria-hidden="true" />
                           <span>{restaurantName}</span>
@@ -185,11 +185,11 @@ export default function HomeForYouSection({ timeSlot = null }) {
                             {rate.toFixed(1)}
                           </span>
                         )}
-                      </span>
+                      </div>
 
                       <h4 className="home-for-you-card__name">{item.name}</h4>
 
-                      <span className="home-for-you-card__footer">
+                      <div className="home-for-you-card__footer">
                         <span className="home-for-you-card__price">
                           {formatPrice(item.basePrice)} <small>đ</small>
                         </span>
@@ -197,8 +197,8 @@ export default function HomeForYouSection({ timeSlot = null }) {
                           Xem món
                           <ArrowRight aria-hidden="true" />
                         </span>
-                      </span>
-                    </span>
+                      </div>
+                    </div>
                   </Link>
                 </article>
               );
