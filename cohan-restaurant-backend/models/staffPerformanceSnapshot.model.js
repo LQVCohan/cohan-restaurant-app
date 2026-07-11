@@ -42,7 +42,7 @@ const StaffPerformanceSnapshotSchema = new Schema(
       default: () => ({
         score: 75,
         weight: 25,
-        note: "Năng suất làm việc trong kỳ.",
+        note: "Tỷ lệ thời lượng làm thực tế trên thời lượng ca được phân công; order chỉ tham khảo.",
       }),
     },
 
@@ -51,7 +51,7 @@ const StaffPerformanceSnapshotSchema = new Schema(
       default: () => ({
         score: 75,
         weight: 25,
-        note: "Đúng giờ, ít đi trễ/về sớm/vắng.",
+        note: "Điểm nền 100, trừ lượt và phút đi trễ, về sớm, vắng mặt; có dữ liệu thì tối thiểu 75.",
       }),
     },
 
@@ -60,7 +60,7 @@ const StaffPerformanceSnapshotSchema = new Schema(
       default: () => ({
         score: 75,
         weight: 20,
-        note: "Chất lượng phục vụ/vận hành.",
+        note: "Điểm kỹ năng theo role; chỉ điều chỉnh khi có bằng chứng khách hàng, bếp/bar hoặc nghiệp vụ thu ngân phù hợp.",
       }),
     },
 
@@ -69,7 +69,7 @@ const StaffPerformanceSnapshotSchema = new Schema(
       default: () => ({
         score: 75,
         weight: 20,
-        note: "Đánh giá quản lý.",
+        note: "Điểm tổng quan do quản lý nhập; thái độ/phối hợp là ngữ cảnh review, chưa có trọng số riêng.",
       }),
     },
 
@@ -78,7 +78,7 @@ const StaffPerformanceSnapshotSchema = new Schema(
       default: () => ({
         score: 75,
         weight: 10,
-        note: "Tuân thủ quy trình, ít chỉnh công/vi phạm.",
+        note: "Mỗi yêu cầu chỉnh công hiện trừ 7 điểm; có dữ liệu thì tối thiểu 75.",
       }),
     },
 
