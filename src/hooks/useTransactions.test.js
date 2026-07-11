@@ -8,12 +8,13 @@ import {
   toLocalDateInputValue,
 } from "./useTransactions";
 
-describe("useTransactions bank account field safety", () => {
+const source = readFileSync(
+  join(process.cwd(), "src/hooks/useTransactions.js"),
+  "utf8",
+);
+
+describe("useTransactions safety contracts", () => {
   it("queries only masked/last4 bank account fields and not raw bankAccountNumber", () => {
-    const source = readFileSync(
-      join(process.cwd(), "src/hooks/useTransactions.js"),
-      "utf8",
-    );
     const bankFields = source.match(/const BANK_FIELDS = `([\s\S]*?)`;/)?.[1] || "";
 
     expect(bankFields).toContain("bankAccountNumberMasked");
@@ -21,14 +22,25 @@ describe("useTransactions bank account field safety", () => {
     expect(bankFields).not.toMatch(/^\s*bankAccountNumber\s*$/m);
   });
 
-  it("keeps input dates local and sends GraphQL DateTime strings", () => {
+  it("keeps input dates local before converting them to GraphQL DateTime", () => {
     expect(toLocalDateInputValue(new Date(2026, 5, 1))).toBe("2026-06-01");
     expect(toGraphqlDateTime("2026-05-31")).toBe(
-      "2026-05-31T00:00:00.000Z",
+      new Date(2026, 4, 31, 0, 0, 0, 0).toISOString(),
     );
     expect(toGraphqlDateTime("2026-06-29", { endOfDay: true })).toBe(
-      "2026-06-29T23:59:59.999Z",
+      new Date(2026, 5, 29, 23, 59, 59, 999).toISOString(),
     );
+  });
+
+  it("loads receivables from the finance invoice debt contract", () => {
+    expect(source).toContain("financeDashboard(input: $dashboardInput)");
+    expect(source).toContain("debts { id supplier amount dueDate status }");
+    expect(source).toContain("receivables: query.data?.financeDashboard?.debts || []");
+  });
+
+  it("never sends direct paidAmount edits for supplier payables", () => {
+    expect(source).toContain("paidAmount: 0");
+    expect(source).toContain("const { paidAmount: _ignoredPaidAmount, ...safeInput }");
   });
 
   it("reads the finance drill-down restaurant and rejects out-of-scope ids", () => {
