@@ -16,6 +16,15 @@ vi.mock("@apollo/client", () => ({
   useMutation: (...args) => useMutationMock(...args),
 }));
 
+const setup = {
+  publicBaseUrl: "https://api.cohan.vn",
+  publiclyReachable: true,
+  vnpayReturnUrl: "https://api.cohan.vn/api/payments/return/vnpay",
+  vnpayIpnUrl: "https://api.cohan.vn/api/payments/webhooks/vnpay",
+  momoReturnUrl: "https://api.cohan.vn/api/payments/return/momo",
+  momoIpnUrl: "https://api.cohan.vn/api/payments/webhooks/momo",
+};
+
 describe("PaymentProviderSettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -57,6 +66,7 @@ describe("PaymentProviderSettingsPage", () => {
             updatedAt: "2026-07-11T00:00:00.000Z",
           },
         ],
+        restaurantPaymentProviderSetup: setup,
         restaurantPaymentPublicConfig: {
           defaultProvider: "vnpay",
           providers: [
@@ -95,6 +105,14 @@ describe("PaymentProviderSettingsPage", () => {
     expect(screen.getByLabelText("Khóa bảo mật (Hash Secret)")).toHaveValue("");
   });
 
+  it("shows the exact VNPAY callback URLs managers must register", () => {
+    render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
+
+    expect(screen.getByRole("heading", { name: /Từ tài khoản merchant đến lúc khách thanh toán/i })).toBeInTheDocument();
+    expect(screen.getByText(setup.vnpayIpnUrl)).toBeInTheDocument();
+    expect(screen.getByText(setup.vnpayReturnUrl)).toBeInTheDocument();
+  });
+
   it("links managers to the official provider setup guides", () => {
     render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
 
@@ -108,7 +126,7 @@ describe("PaymentProviderSettingsPage", () => {
     );
   });
 
-  it("saves a complete MoMo credential payload for the selected restaurant", async () => {
+  it("saves and enables MoMo with one frontend mutation", async () => {
     render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
 
     fireEvent.change(screen.getByLabelText("Mã đối tác (Partner Code)"), { target: { value: "PARTNER_NEW" } });
@@ -132,7 +150,7 @@ describe("PaymentProviderSettingsPage", () => {
         },
       });
     });
-    expect(updateSettingsMock).toHaveBeenCalled();
+    expect(updateSettingsMock).not.toHaveBeenCalled();
     expect(refetchMock).toHaveBeenCalled();
   });
 
