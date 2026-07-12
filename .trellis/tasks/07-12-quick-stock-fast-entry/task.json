@@ -3,7 +3,7 @@
   "name": "quick-stock-fast-entry",
   "title": "Tối ưu modal nhập kho nhanh",
   "description": "Rút luồng nhập kho xuống các trường bắt buộc, dùng thông tin phiếu chung và hỗ trợ bàn phím để nhập liên tục.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-storage-quick-stock",
   "priority": "P1",
@@ -23,8 +23,16 @@
       "npm run build",
       "manual responsive audit at 1440, 768, 430 and 390 px"
     ],
-    "completed": [],
-    "notRun": []
+    "completed": [
+      "traced inventory schema, receiveStock resolver, Apollo mutation, useIngredients, StorageManagement, IngredientList and SupplyList callers",
+      "preserved the existing QuickStockModal payload contract and stock permission flow",
+      "added targeted regression coverage for unit conversion, Vietnam datetime and keyboard-first submission"
+    ],
+    "notRun": [
+      "targeted Vitest: GitHub connector does not provide an executable checkout",
+      "frontend build: GitHub connector does not provide an executable checkout",
+      "manual responsive browser audit: no rendered runtime available"
+    ]
   },
   "meta": {
     "skills": ["ponytail", "ui-ux-pro-max", "frontend-design", "taste-ui-redesign"]
