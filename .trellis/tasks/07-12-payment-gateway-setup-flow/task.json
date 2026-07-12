@@ -1,0 +1,30 @@
+{
+  "id": "07-12-payment-gateway-setup-flow",
+  "name": "payment-gateway-setup-flow",
+  "title": "Complete manager payment gateway setup flow",
+  "description": "Make the manager payment gateway page a complete self-service setup flow for MoMo and VNPAY, with authoritative callback URLs and consistent provider activation.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "manager-payment-gateway-onboarding",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-12",
+  "branch": "agent/payment-gateway-setup-flow",
+  "base_branch": "main",
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/schema/paymentCredentials.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/payment/paymentCredential.js",
+    "cohan-restaurant-backend/src/services/payment/paymentRequestContext.js",
+    "cohan-restaurant-backend/graphql/resolvers/payment/customerOrderPaymentMutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/payment/reservationPaymentMutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/payment/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/wallet/index.js",
+    "cohan-restaurant-backend/models/payment-session.model.js",
+    "src/components/Dashboard_Manager/PaymentSettings/PaymentProviderSettingsPage.jsx",
+    "src/components/Dashboard_Manager/PaymentSettings/PaymentProviderSettingsPage.scss"
+  ],
+  "meta": {
+    "skills": ["ponytail", "frontend-design", "taste-ui-redesign"]
+  }
+}
