@@ -275,6 +275,7 @@ const files = [
   "staffResolverCompatibility.graphql",
   "staffSelfServiceCompatibility.graphql",
   "staffPerformancePolicy.graphql",
+  "cashierShiftReconciliation.graphql",
   "operationCompatibilityExtras.graphql",
   "operationCompatibilityExtras2.graphql",
   "audit_log.graphql",
