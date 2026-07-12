@@ -1,0 +1,22 @@
+@use "./variables" as rm;
+
+.menu-item-card__price-group {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.menu-item-card__original-price {
+  color: rm.$text-muted;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.1;
+  text-decoration: line-through;
+  font-variant-numeric: tabular-nums;
+}
+
+.menu-item-card__price-group .price {
+  color: #9f3424;
+}
