@@ -6,12 +6,14 @@ export const CustomerCategoryQuery = {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
     const restaurantObjectId = new mongoose.Types.ObjectId(String(restaurantId));
 
-    const menu = await Menu.findOne({
+    const menus = await Menu.find({
       restaurantId,
       timeSlot,
       isActive: true,
-    }).lean();
-    if (!menu) return [];
+    })
+      .select({ _id: 1 })
+      .lean();
+    if (!menus.length) return [];
 
     const categories = await Category.find({
       restaurantId: restaurantObjectId,
@@ -25,7 +27,7 @@ export const CustomerCategoryQuery = {
       {
         $match: {
           restaurantId: restaurantObjectId,
-          menuId: menu._id,
+          menuId: { $in: menus.map((menu) => menu._id) },
           status: { $in: ["available", "out_of_stock"] },
         },
       },
