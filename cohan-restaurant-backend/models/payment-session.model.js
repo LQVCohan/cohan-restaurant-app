@@ -128,16 +128,16 @@ const PaymentSessionSchema = BaseSchemaModel({
   events: { type: [PaymentEventSchema], default: [] },
 });
 
-PaymentSessionSchema.pre("save", async function attachRestaurantCredential() {
-  if (!this.isNew || !this.restaurantId || !EXTERNAL_PROVIDERS.has(String(this.provider))) return;
+PaymentSessionSchema.pre("save", async function attachPaymentCredential() {
+  if (!this.isNew || !EXTERNAL_PROVIDERS.has(String(this.provider))) return;
   const {
+    getPlatformPaymentCredentialMode,
     getRestaurantProviderMode,
     resolvePaymentProviderCredential,
   } = await import("../src/services/payment/paymentCredential.service.js");
-  const configuredMode = await getRestaurantProviderMode(
-    this.restaurantId,
-    this.provider,
-  );
+  const configuredMode = this.restaurantId
+    ? await getRestaurantProviderMode(this.restaurantId, this.provider)
+    : getPlatformPaymentCredentialMode(this.provider);
   const mode = resolvePaymentRuntimeMode(configuredMode);
   const resolved = await resolvePaymentProviderCredential({
     restaurantId: this.restaurantId,
