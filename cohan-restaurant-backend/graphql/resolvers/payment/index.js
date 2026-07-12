@@ -9,6 +9,7 @@ import StrictOrderPaymentMutation from "./strictOrderPaymentMutation.js";
 import MergedTablePaymentMutation from "./mergedTablePaymentMutation.js";
 import TransferPaymentMutation from "./transferMutation.js";
 import CustomerOrderPaymentMutation from "./customerOrderPaymentMutation.js";
+import ReservationPaymentMutation from "./reservationPaymentMutation.js";
 import TransactionManagementGuardMutation from "./transactionManagementGuards.js";
 import { PaymentResolvers } from "./types.js";
 import publicTablePaymentMutation from "./publicTablePaymentMutation.js";
@@ -56,6 +57,7 @@ const paymentMutation = {
   ...MergedTablePaymentMutation,
   ...PaymentCredentialMutation,
   ...TransactionManagementGuardMutation,
+  ...ReservationPaymentMutation,
   // Keep this last so customer ownership is checked before the provider session is created.
   ...CustomerOrderPaymentMutation,
 };
