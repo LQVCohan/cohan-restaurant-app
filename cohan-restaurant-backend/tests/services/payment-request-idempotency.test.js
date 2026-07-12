@@ -17,6 +17,9 @@ const readBackendSource = (relativePath) =>
 const wrapperSource = readBackendSource(
   "graphql/resolvers/payment/paymentIdempotencyMutation.js",
 );
+const walletWrapperSource = readBackendSource(
+  "graphql/resolvers/payment/walletMoneyIdempotencyMutation.js",
+);
 const resolverIndexSource = readBackendSource(
   "graphql/resolvers/payment/index.js",
 );
@@ -67,10 +70,11 @@ describe("unified payment idempotency", () => {
   });
 
   it("uses one durable claim contract at the final payment resolver boundary", () => {
-    expect(modelSource).toContain('unique: true');
+    expect(modelSource).toContain("unique: true");
     expect(modelSource).toContain('enum: ["PROCESSING", "COMPLETED", "FAILED"]');
-    expect(modelSource).toContain('expireAfterSeconds: 0');
+    expect(modelSource).toContain("expireAfterSeconds: 0");
     expect(resolverIndexSource).toContain("withPaymentIdempotency(paymentMutation)");
+    expect(resolverIndexSource).toContain("withWalletMoneyIdempotency(");
     for (const operation of [
       "CreateReservationPayment",
       "CreateOrderPayment",
@@ -80,19 +84,25 @@ describe("unified payment idempotency", () => {
     ]) {
       expect(wrapperSource).toContain(`"${operation}"`);
     }
+    for (const operation of ["RefundToWallet", "AdjustWalletBalance"]) {
+      expect(walletWrapperSource).toContain(`"${operation}"`);
+    }
     expect(wrapperSource).toContain("recoverPaymentSession");
     expect(wrapperSource).toContain("recoverWalletTopup");
     expect(wrapperSource).toContain("recoverPosPayment");
-    expect(wrapperSource).toContain("externalRef");
+    expect(walletWrapperSource).toContain("findRefundResult");
+    expect(walletWrapperSource).toContain("findAdjustmentResult");
   });
 
-  it("requires a key on every active payment input", () => {
+  it("requires a key on every active money-command input", () => {
     for (const inputName of [
       "PayOrdersByTableIdInput",
       "PayOrdersByOrderIdsInput",
       "CreateOrderPaymentInput",
       "CreateReservationPaymentInput",
       "WalletTopupInput",
+      "RefundToWalletInput",
+      "AdjustWalletBalanceInput",
     ]) {
       expect(schemaSource).toMatch(
         new RegExp(`extend input ${inputName} \\{[\\s\\S]*idempotencyKey: String!`),
@@ -109,6 +119,8 @@ describe("unified payment idempotency", () => {
       "PayOrdersByTableId",
       "PayOrdersByOrderIds",
       "PayOrdersWithWallet",
+      "RefundToWallet",
+      "AdjustWalletBalance",
     ]) {
       expect(apolloSource).toContain(`${operation}:`);
     }
