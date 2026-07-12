@@ -7,6 +7,11 @@ import {
 } from "../../../models/index.js";
 import { assertNoLockedPayrollPeriodOverlap } from "../../../src/services/payroll/payrollLockGuard.service.js";
 import { withFinanceOperationLock } from "../../../src/services/finance/financeOperationLock.service.js";
+import {
+  ATTENDANCE_REVIEW_ROLES,
+  userCanAccessRestaurant,
+  userHasAnyRole,
+} from "../../../src/services/scheduling/schedulingPermission.service.js";
 
 function toId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -15,6 +20,20 @@ function toId(id) {
 
 function actorId(ctx) {
   return ctx?.user?.id || ctx?.user?._id || null;
+}
+
+function assertAuthenticated(ctx) {
+  if (!actorId(ctx)) throw new Error("UNAUTHENTICATED");
+}
+
+async function assertCanReviewRequest(ctx, restaurantId) {
+  assertAuthenticated(ctx);
+  if (!userHasAnyRole(ctx?.user, ATTENDANCE_REVIEW_ROLES)) {
+    throw new Error("FORBIDDEN");
+  }
+  if (!(await userCanAccessRestaurant(ctx?.user, restaurantId))) {
+    throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
+  }
 }
 
 function dayBounds(value) {
@@ -65,30 +84,35 @@ async function upsertStaffAttendance(parent, args, ctx, info) {
   return staffMutation.upsertStaffAttendance(parent, args, ctx, info);
 }
 
-async function findCompletionTimesheet(request) {
-  const baseFilter = {
+function buildTimesheetFilter(request) {
+  const filter = {
     employeeId: request.employeeId,
     restaurantId: request.restaurantId,
   };
   if (request.timesheetId) {
-    return Timesheet.findOne({
-      ...baseFilter,
-      _id: request.timesheetId,
-    }).lean();
+    filter._id = request.timesheetId;
+    return filter;
   }
 
   const { start, end } = dayBounds(request.workDate);
-  const filter = {
-    ...baseFilter,
-    workDate: { $gte: start, $lte: end },
-  };
+  filter.workDate = { $gte: start, $lte: end };
   if (request.shiftId) filter.shiftId = request.shiftId;
-  return Timesheet.findOne(filter).sort({ createdAt: -1 }).lean();
+  return filter;
 }
 
-async function completeOvertimeRequest(parent, args, ctx, info) {
-  const suppliedInput = args?.input || {};
-  const requestId = suppliedInput.requestId || args?.id;
+async function findCompletionTimesheet(request) {
+  const query = Timesheet.findOne(buildTimesheetFilter(request));
+  if (!request.timesheetId) query.sort({ createdAt: -1 });
+  return query.lean();
+}
+
+async function findCompletionTimesheetDocument(request) {
+  const query = Timesheet.findOne(buildTimesheetFilter(request));
+  if (!request.timesheetId) query.sort({ createdAt: -1 });
+  return query;
+}
+
+async function loadReviewRequest(requestId) {
   const request = await OvertimeRequest.findById(requestId)
     .select({
       _id: 1,
@@ -100,6 +124,15 @@ async function completeOvertimeRequest(parent, args, ctx, info) {
     })
     .lean();
   if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
+  return request;
+}
+
+async function completeOvertimeRequest(parent, args, ctx, info) {
+  assertAuthenticated(ctx);
+  const suppliedInput = args?.input || {};
+  const requestId = suppliedInput.requestId || args?.id;
+  const request = await loadReviewRequest(requestId);
+  await assertCanReviewRequest(ctx, request.restaurantId);
 
   const timesheet = await findCompletionTimesheet(request);
   if (!timesheet) throw new Error("TIMESHEET_NOT_FOUND_FOR_OVERTIME");
@@ -149,6 +182,49 @@ async function completeOvertimeRequest(parent, args, ctx, info) {
   );
 }
 
+async function rejectOvertimeRequest(parent, args, ctx, info) {
+  assertAuthenticated(ctx);
+  const suppliedInput = args?.input || {};
+  const requestId = suppliedInput.requestId || args?.id;
+  const request = await loadReviewRequest(requestId);
+  await assertCanReviewRequest(ctx, request.restaurantId);
+  await assertNoLockedPayrollPeriodOverlap({
+    restaurantId: request.restaurantId,
+    employeeId: request.employeeId,
+    startDate: request.workDate,
+    endDate: dayBounds(request.workDate).end,
+    action: "overtime_rejection",
+  });
+
+  const result = await staffMutation.rejectOvertimeRequest(
+    parent,
+    {
+      ...args,
+      input: {
+        ...suppliedInput,
+        requestId: String(request._id),
+      },
+    },
+    ctx,
+    info,
+  );
+
+  const timesheet = await findCompletionTimesheetDocument(request);
+  if (timesheet && Number(timesheet.overtimeMinutes || 0) > 0) {
+    timesheet.approvedOvertimeMinutes = 0;
+    timesheet.overtimeApprovalStatus = "rejected";
+    timesheet.overtimeReviewNote = String(
+      suppliedInput.reason || suppliedInput.note || "",
+    ).trim();
+    timesheet.overtimeReviewedBy = toId(actorId(ctx));
+    timesheet.overtimeReviewedAt = new Date();
+    timesheet.overtimeRequestId = request._id;
+    await timesheet.save();
+  }
+
+  return result;
+}
+
 async function markPayrollItemPaid(parent, args, ctx, info) {
   const key = `payroll-item:${String(args?.input?.periodId || "")}:${String(args?.input?.employeeId || "")}`;
   return withFinanceOperationLock(key, () =>
@@ -178,6 +254,7 @@ export default {
   checkOutShift,
   upsertStaffAttendance,
   completeOvertimeRequest,
+  rejectOvertimeRequest,
   markPayrollItemPaid,
   batchMarkPayrollPaid,
   markPayrollPeriodPaid,
