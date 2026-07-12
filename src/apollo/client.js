@@ -12,6 +12,7 @@ import { removeTypenameFromVariables } from "@apollo/client/link/remove-typename
 import { clearAuth, getToken, setAuth } from "@/lib/authStorage";
 import { getGraphqlUrl, toApiAssetUrl } from "@/lib/apiBaseUrl";
 import { refreshAccessTokenOnce } from "@/lib/authRefresh";
+import { managerMenuSelectionLink } from "./managerMenuSelectionLink";
 
 /* ---------------- HTTP link ---------------- */
 const httpLink = new HttpLink({
@@ -293,6 +294,7 @@ const errorLink = onError(({ graphQLErrors, operation, forward, networkError }) 
 const link = ApolloLink.from([
   errorLink,
   scheduleEnumLink,
+  managerMenuSelectionLink,
   idempotencyLink,
   removeTypenameLink,
   authLink,
