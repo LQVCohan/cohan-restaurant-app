@@ -23,6 +23,10 @@ export function buildAttendanceOvertimeState({
     previousOvertimeMinutes !== undefined &&
     normalizeMinutes(previousOvertimeMinutes) !== overtime;
 
+  if (!changed && status === "approved" && approved > overtime) {
+    throw new Error("OVERTIME_APPROVED_MINUTES_EXCEED_ACTUAL");
+  }
+
   if (overtime <= 0) {
     return {
       approvedOvertimeMinutes: 0,
