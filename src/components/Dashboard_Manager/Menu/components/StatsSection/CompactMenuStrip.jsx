@@ -174,8 +174,13 @@ const CompactMenuStrip = ({
   const missingSlotCount = SLOT_ORDER.filter(
     (slot) => !(menusBySlot.get(slot) || []).length,
   ).length;
+  const selectedMenu = useMemo(
+    () =>
+      menus.find((menu) => String(menu?.id) === String(selectedMenuId)) || null,
+    [menus, selectedMenuId],
+  );
 
-  const selectMenu = async (menu) => {
+  const selectMenu = (menu) => {
     if (!menu?.id) return;
     setSelectedMenuId(menu.id);
     setManagerMenuSelection({
@@ -186,7 +191,6 @@ const CompactMenuStrip = ({
     onSelectMenu?.(menu);
     onTimeSlotChange?.(menu.timeSlot);
     setActionError("");
-    await client.refetchQueries({ include: ["MenuItemsConnection"] });
   };
 
   useEffect(() => {
@@ -315,7 +319,7 @@ const CompactMenuStrip = ({
             : "Đã tạo thêm thực đơn trong khung giờ.",
       );
       await refreshMenusAndItems();
-      if (result?.id) await selectMenu(result);
+      if (result?.id) selectMenu(result);
     } catch (error) {
       setActionError(error?.message || "Không thể lưu thực đơn.");
     } finally {
@@ -511,7 +515,13 @@ const CompactMenuStrip = ({
             <div className="cms-title-box">
               <h3 id="cms-title">Danh sách thực đơn</h3>
               <p>
-                <strong>{menus.length}</strong> thực đơn trong 4 mốc giờ; mỗi mốc giờ có thể có nhiều menu.
+                {selectedMenu ? (
+                  <>
+                    Đang quản lý <strong>{selectedMenu.name}</strong> · {SLOT_CONFIG[selectedMenu.timeSlot]?.label}
+                  </>
+                ) : (
+                  <><strong>{menus.length}</strong> thực đơn trong 4 mốc giờ</>
+                )}
               </p>
             </div>
           </div>
