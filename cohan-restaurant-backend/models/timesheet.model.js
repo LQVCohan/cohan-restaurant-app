@@ -29,6 +29,54 @@ async function runAttendanceExceptionDetection() {
   }
 }
 
+async function syncAttendanceMetricsFromTimestamps() {
+  const timingFields = [
+    "plannedStartTime",
+    "plannedEndTime",
+    "actualCheckInAt",
+    "actualCheckOutAt",
+    "isOffSchedule",
+  ];
+  const timingChanged =
+    this.isNew || timingFields.some((field) => this.isModified(field));
+  const hasTimingValue = timingFields
+    .slice(0, 4)
+    .some((field) => Boolean(this[field]));
+
+  if (!timingChanged || !hasTimingValue) return;
+
+  try {
+    const { calculateAttendanceMetrics, deriveAttendanceStatus } = await import(
+      "../src/services/attendance/attendanceCalculation.service.js"
+    );
+    const metrics = calculateAttendanceMetrics({
+      plannedStartTime: this.plannedStartTime,
+      plannedEndTime: this.plannedEndTime,
+      actualCheckInAt: this.actualCheckInAt,
+      actualCheckOutAt: this.actualCheckOutAt,
+    });
+
+    this.workedMinutes = metrics.workedMinutes;
+    this.hours = metrics.hours;
+    this.latenessMinutes = metrics.latenessMinutes;
+    this.earlyLeaveMinutes = metrics.earlyLeaveMinutes;
+    this.overtimeMinutes = metrics.overtimeMinutes;
+    this.status = deriveAttendanceStatus({
+      actualCheckInAt: this.actualCheckInAt,
+      actualCheckOutAt: this.actualCheckOutAt,
+      isOffSchedule: this.isOffSchedule,
+      latenessMinutes: metrics.latenessMinutes,
+      earlyLeaveMinutes: metrics.earlyLeaveMinutes,
+    });
+  } catch (error) {
+    console.warn(
+      "Failed to sync attendance metrics from timestamps:",
+      error?.message || error,
+    );
+    throw error;
+  }
+}
+
 async function syncAttendanceOvertimeState() {
   try {
     const { applyAttendanceOvertimeState } = await import(
@@ -108,6 +156,7 @@ const TimesheetSchema = new Schema(
         "late",
         "early_leave",
         "late_early_leave",
+        "unscheduled_absent",
         "unscheduled_checkin",
         "unscheduled_completed",
       ],
@@ -145,7 +194,16 @@ const TimesheetSchema = new Schema(
   baseOptions,
 );
 
+TimesheetSchema.virtual("overtimeApprovalNote")
+  .get(function getLegacyOvertimeApprovalNote() {
+    return this.overtimeReviewNote;
+  })
+  .set(function setLegacyOvertimeApprovalNote(value) {
+    this.overtimeReviewNote = String(value || "").trim();
+  });
+
 TimesheetSchema.pre("find", runAttendanceExceptionDetection);
+TimesheetSchema.pre("save", syncAttendanceMetricsFromTimestamps);
 TimesheetSchema.pre("save", syncAttendanceOvertimeState);
 
 TimesheetSchema.index(
