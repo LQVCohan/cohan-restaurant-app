@@ -14,6 +14,9 @@ const backendRoot = join(repoRoot, "cohan-restaurant-backend");
 const readBackendSource = (relativePath) =>
   readFileSync(join(backendRoot, relativePath), "utf8");
 
+const idempotencyServiceSource = readBackendSource(
+  "src/services/payment/paymentRequestIdempotency.service.js",
+);
 const wrapperSource = readBackendSource(
   "graphql/resolvers/payment/paymentIdempotencyMutation.js",
 );
@@ -92,6 +95,14 @@ describe("unified payment idempotency", () => {
     expect(wrapperSource).toContain("recoverPosPayment");
     expect(walletWrapperSource).toContain("findRefundResult");
     expect(walletWrapperSource).toContain("findAdjustmentResult");
+  });
+
+  it("never reclaims an ambiguous processing money command", () => {
+    expect(idempotencyServiceSource).toContain('claim.status === "PROCESSING"');
+    expect(idempotencyServiceSource).toContain('"PAYMENT_IN_PROGRESS"');
+    expect(idempotencyServiceSource).not.toMatch(
+      /findOneAndUpdate\([\s\S]*status: "PROCESSING"[\s\S]*\$inc: \{ attempts: 1 \}/,
+    );
   });
 
   it("requires a key on every active money-command input", () => {
