@@ -98,11 +98,23 @@ describe("unified payment idempotency", () => {
   });
 
   it("never reclaims an ambiguous processing money command", () => {
-    expect(idempotencyServiceSource).toContain('claim.status === "PROCESSING"');
-    expect(idempotencyServiceSource).toContain('"PAYMENT_IN_PROGRESS"');
-    expect(idempotencyServiceSource).not.toMatch(
-      /findOneAndUpdate\([\s\S]*status: "PROCESSING"[\s\S]*\$inc: \{ attempts: 1 \}/,
+    const processingStart = idempotencyServiceSource.indexOf(
+      '  if (claim.status === "PROCESSING") {',
     );
+    const failedStart = idempotencyServiceSource.indexOf(
+      '  if (claim.status === "FAILED") {',
+      processingStart,
+    );
+    const processingBranch = idempotencyServiceSource.slice(
+      processingStart,
+      failedStart,
+    );
+
+    expect(processingStart).toBeGreaterThanOrEqual(0);
+    expect(failedStart).toBeGreaterThan(processingStart);
+    expect(processingBranch).toContain('claim.status === "PROCESSING"');
+    expect(processingBranch).toContain('"PAYMENT_IN_PROGRESS"');
+    expect(processingBranch).not.toContain("findOneAndUpdate(");
   });
 
   it("requires a key on every active money-command input", () => {
