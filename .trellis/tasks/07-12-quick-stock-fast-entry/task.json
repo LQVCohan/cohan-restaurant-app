@@ -1,0 +1,32 @@
+{
+  "id": "07-12-quick-stock-fast-entry",
+  "name": "quick-stock-fast-entry",
+  "title": "Tối ưu modal nhập kho nhanh",
+  "description": "Rút luồng nhập kho xuống các trường bắt buộc, dùng thông tin phiếu chung và hỗ trợ bàn phím để nhập liên tục.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-storage-quick-stock",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-12",
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Storage/components/ingredients/QuickStockModal.jsx",
+    "src/components/Dashboard_Manager/Storage/components/ingredients/QuickStockModal.scss",
+    "src/components/Dashboard_Manager/Storage/components/ingredients/QuickStockModal.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "vitest run src/components/Dashboard_Manager/Storage/components/ingredients/QuickStockModal.test.jsx",
+      "npm run build",
+      "manual responsive audit at 1440, 768, 430 and 390 px"
+    ],
+    "completed": [],
+    "notRun": []
+  },
+  "meta": {
+    "skills": ["ponytail", "ui-ux-pro-max", "frontend-design", "taste-ui-redesign"]
+  }
+}
