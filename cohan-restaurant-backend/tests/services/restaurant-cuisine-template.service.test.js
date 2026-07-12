@@ -6,7 +6,10 @@ import {
   getRestaurantCuisineTemplate,
   listRestaurantCuisineTemplateSummaries,
 } from "../../src/data/restaurantCuisineTemplates.js";
-import { listCuisineTemplates } from "../../src/services/restaurantCuisineTemplate.service.js";
+import {
+  buildMenuPreview,
+  listCuisineTemplates,
+} from "../../src/services/restaurantCuisineTemplate.service.js";
 
 function collectLegacyIds(items = []) {
   return new Set(items.map((item) => item.legacyId).filter(Boolean));
@@ -58,6 +61,44 @@ describe("restaurant cuisine starter templates", () => {
 
       expect(getRestaurantCuisineTemplate(template.key)?.key).toBe(template.key);
     }
+  });
+
+  it("keeps sibling menus separate when they share one service time", () => {
+    expect(
+      buildMenuPreview({
+        menus: [
+          {
+            legacyId: "menu:dinner:vip",
+            name: "Menu VIP",
+            timeSlot: "dinner",
+          },
+          {
+            legacyId: "menu:dinner:casual",
+            name: "Menu ăn chơi",
+            timeSlot: "dinner",
+          },
+        ],
+        menuItems: [
+          { menuId: "menu:dinner:vip", name: "Bò áp chảo" },
+          { menuId: "menu:dinner:casual", name: "Khoai tây chiên" },
+        ],
+      }),
+    ).toEqual([
+      {
+        key: "menu:dinner:vip",
+        name: "Menu VIP",
+        timeSlot: "dinner",
+        dishCount: 1,
+        dishNames: ["Bò áp chảo"],
+      },
+      {
+        key: "menu:dinner:casual",
+        name: "Menu ăn chơi",
+        timeSlot: "dinner",
+        dishCount: 1,
+        dishNames: ["Khoai tây chiên"],
+      },
+    ]);
   });
 
   it("keeps every menu item and recipe reference inside its package", () => {
