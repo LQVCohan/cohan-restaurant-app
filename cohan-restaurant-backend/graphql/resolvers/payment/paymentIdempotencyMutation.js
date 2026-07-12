@@ -58,21 +58,8 @@ function keyToken(key, length = 24) {
     .toUpperCase();
 }
 
-function providerReference({ field, provider, key, claim }) {
-  const token = keyToken(key);
-  if (field === "createOrderPayment" && String(provider).toLowerCase() === "bank_transfer") {
-    const date = new Date(claim?.startedAt || Date.now())
-      .toISOString()
-      .slice(0, 10)
-      .replace(/-/g, "");
-    return `ORD-${date}-${token.slice(0, 6)}`;
-  }
-  if (field === "createOrderPayment") return `ORD-${token}`;
-  if (field === "createReservationPayment") {
-    return `${String(provider || "PAY").toUpperCase()}-${token}`;
-  }
-  if (field === "createWalletTopup") return `TOPUP-${token}`;
-  return `PAY-${token}`;
+function topupReference(key) {
+  return `TOPUP-${keyToken(key)}`;
 }
 
 function idempotencyMetadata({ key, requestFingerprint, operation }) {
@@ -82,6 +69,12 @@ function idempotencyMetadata({ key, requestFingerprint, operation }) {
     requestFingerprint,
     paymentOperation: operation,
   };
+}
+
+function metadataSet(metadata, prefix = "metadata") {
+  return Object.fromEntries(
+    Object.entries(metadata).map(([name, value]) => [`${prefix}.${name}`, value]),
+  );
 }
 
 async function attachPaymentSessionMetadata({
@@ -96,27 +89,21 @@ async function attachPaymentSessionMetadata({
   await Promise.all([
     PaymentSession.updateOne(
       { _id: id },
-      {
-        $set: Object.fromEntries(
-          Object.entries(metadata).map(([name, value]) => [`metadata.${name}`, value]),
-        ),
-      },
+      { $set: metadataSet(metadata) },
     ),
     EventLog.updateOne(
       { "object.kind": "PaymentSession", "object.id": id },
       {
         $set: {
           correlationId: key,
-          "meta.idempotencyKey": key,
-          "meta.requestFingerprint": requestFingerprint,
-          "meta.paymentOperation": operation,
+          ...metadataSet(metadata, "meta"),
         },
       },
     ),
   ]).catch(() => {});
 }
 
-async function attachPosMetadata({
+async function attachWalletTransactionMetadata({
   transactionId,
   key,
   requestFingerprint,
@@ -124,31 +111,44 @@ async function attachPosMetadata({
 }) {
   const id = toId(transactionId);
   if (!id) return;
-  await Promise.all([
+  const metadata = idempotencyMetadata({ key, requestFingerprint, operation });
+  await WalletTransaction.updateOne(
+    { _id: id },
+    { $set: metadataSet(metadata) },
+  ).catch(() => {});
+}
+
+async function attachPosMetadata({
+  transactionId,
+  invoiceId,
+  key,
+  requestFingerprint,
+  operation,
+}) {
+  const transactionObjectId = toId(transactionId);
+  const invoiceObjectId = toId(invoiceId);
+  if (!transactionObjectId) return;
+  const metadata = idempotencyMetadata({ key, requestFingerprint, operation });
+  const writes = [
     PaymentTransaction.updateOne(
-      { _id: id },
-      {
-        $set: {
-          "meta.idempotencyKey": key,
-          "meta.correlationId": key,
-          "meta.requestFingerprint": requestFingerprint,
-          "meta.paymentOperation": operation,
-        },
-      },
+      { _id: transactionObjectId },
+      { $set: metadataSet(metadata, "meta") },
     ),
-    EventLog.updateOne(
-      { "target.kind": "Invoice", "meta.orders": { $exists: true } },
-      {
-        $set: {
-          correlationId: key,
-          "meta.idempotencyKey": key,
-          "meta.requestFingerprint": requestFingerprint,
-          "meta.paymentOperation": operation,
+  ];
+  if (invoiceObjectId) {
+    writes.push(
+      EventLog.updateOne(
+        { "target.kind": "Invoice", "target.id": invoiceObjectId },
+        {
+          $set: {
+            correlationId: key,
+            ...metadataSet(metadata, "meta"),
+          },
         },
-      },
-      { sort: { createdAt: -1 } },
-    ),
-  ]).catch(() => {});
+      ),
+    );
+  }
+  await Promise.all(writes).catch(() => {});
 }
 
 function paymentIdFromResult(field, result) {
@@ -163,10 +163,12 @@ function paymentIdFromResult(field, result) {
 
 async function recoverPaymentSession({ field, input, key, claim }) {
   const provider = String(input?.provider || "").toLowerCase();
-  const reference = providerReference({ field, provider, key, claim });
-  const query = { provider, reference };
-  const session = await PaymentSession.findOne(query).lean({ virtuals: true });
-  if (session) return session;
+  const byKey = await PaymentSession.findOne({
+    userId: claim.userId,
+    provider,
+    "metadata.idempotencyKey": key,
+  }).lean({ virtuals: true });
+  if (byKey) return byKey;
 
   const base = {
     userId: claim.userId,
@@ -221,12 +223,7 @@ function serializeWalletTransaction(transaction) {
 
 async function recoverWalletTopup({ input, key, claim }) {
   const provider = String(input?.provider || "momo").toLowerCase();
-  const reference = providerReference({
-    field: "createWalletTopup",
-    provider,
-    key,
-    claim,
-  });
+  const reference = topupReference(key);
   const paymentSession = await PaymentSession.findOne({ provider, reference }).lean({
     virtuals: true,
   });
@@ -297,30 +294,13 @@ async function resolveRestaurantId(field, input) {
   return reservation?.restaurantId || null;
 }
 
-function prepareInput({ field, input, key, claim, requestFingerprint, operation }) {
+function prepareInput({ field, input, key, requestFingerprint, operation }) {
   const metadata = idempotencyMetadata({ key, requestFingerprint, operation });
   if (field === "createWalletTopup") {
     return {
       ...input,
-      reference: providerReference({
-        field,
-        provider: input?.provider,
-        key,
-        claim,
-      }),
+      reference: topupReference(key),
       metadata: { ...(input?.metadata || {}), ...metadata },
-    };
-  }
-  if (["createOrderPayment", "createReservationPayment"].includes(field)) {
-    return {
-      ...input,
-      reference: providerReference({
-        field,
-        provider: input?.provider,
-        key,
-        claim,
-      }),
-      idempotencyMetadata: metadata,
     };
   }
   if (["payOrdersByTableId", "payOrdersByOrderIds"].includes(field)) {
@@ -359,12 +339,11 @@ function wrapPaymentMutation(field, resolver) {
         }
         return recoverPosPayment({ input: normalizedInput, externalRef });
       },
-      execute: async ({ claim, key, requestFingerprint }) => {
+      execute: async ({ key, requestFingerprint }) => {
         const preparedInput = prepareInput({
           field,
           input,
           key,
-          claim,
           requestFingerprint,
           operation,
         });
@@ -374,6 +353,7 @@ function wrapPaymentMutation(field, resolver) {
           ctx,
           info,
         );
+        const metadata = idempotencyMetadata({ key, requestFingerprint, operation });
         const paymentId = paymentIdFromResult(field, result);
         if (paymentId) {
           await attachPaymentSessionMetadata({
@@ -382,7 +362,6 @@ function wrapPaymentMutation(field, resolver) {
             requestFingerprint,
             operation,
           });
-          const metadata = idempotencyMetadata({ key, requestFingerprint, operation });
           if (field === "createWalletTopup" && result?.paymentSession) {
             result.paymentSession.metadata = {
               ...(result.paymentSession.metadata || {}),
@@ -392,9 +371,22 @@ function wrapPaymentMutation(field, resolver) {
             result.metadata = { ...(result.metadata || {}), ...metadata };
           }
         }
+        if (field === "createWalletTopup" && result?.transaction) {
+          await attachWalletTransactionMetadata({
+            transactionId: result.transaction.id || result.transaction._id,
+            key,
+            requestFingerprint,
+            operation,
+          });
+          result.transaction.metadata = {
+            ...(result.transaction.metadata || {}),
+            ...metadata,
+          };
+        }
         if (["payOrdersByTableId", "payOrdersByOrderIds"].includes(field)) {
           await attachPosMetadata({
             transactionId: result?.transaction?.id || result?.transaction?._id,
+            invoiceId: result?.invoice?.id || result?.invoice?._id,
             key,
             requestFingerprint,
             operation,
