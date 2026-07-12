@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+import { Staff } from "../../../models/index.js";
 import { requireAuth, requireRestaurantAccess } from "../../guards.js";
 import {
   addCashierShiftCashMovement,
@@ -9,6 +11,31 @@ import {
   submitCashierShiftReconciliation,
 } from "../../../src/services/staffPerformance/cashierShiftReconciliation.service.js";
 import { refreshCashierPerformanceSnapshotsForReconciliation } from "../../../src/services/staffPerformance/cashierPerformanceSnapshotRefresh.service.js";
+
+function normalizeRoleText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+}
+
+async function assertCashierRole(cashierId) {
+  if (!mongoose.isValidObjectId(cashierId)) return;
+  const staff = await Staff.findById(cashierId)
+    .select("department positionTitle roleName")
+    .lean();
+  if (!staff) return;
+  const roleText = normalizeRoleText(
+    [staff.department, staff.positionTitle, staff.roleName]
+      .filter(Boolean)
+      .join(" "),
+  );
+  if (!roleText.includes("cashier") && !roleText.includes("thu ngan")) {
+    throw new Error("Chỉ nhân viên có vai trò thu ngân mới được mở ca chốt quỹ.");
+  }
+}
 
 export function wrapCashierPerformanceRecalculation(resolver) {
   if (typeof resolver !== "function") {
@@ -38,6 +65,7 @@ export default {
     openCashierShiftReconciliation: async (_, { input }, ctx) => {
       requireAuth(ctx);
       await requireRestaurantAccess(ctx, input.restaurantId);
+      await assertCashierRole(input.cashierId);
       return openCashierShiftReconciliation({ input, ctx });
     },
     addCashierShiftCashMovement: async (_, { input }, ctx) => {
