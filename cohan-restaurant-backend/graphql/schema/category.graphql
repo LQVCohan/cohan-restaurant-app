@@ -46,7 +46,11 @@ extend type Query {
     timeSlot: TimeSlot!
     menuId: ID
   ): [Category!]!
-  customerMenuCategories(restaurantId: ID!, timeSlot: TimeSlot!): [Category!]!
+  customerMenuCategories(
+    restaurantId: ID!
+    timeSlot: TimeSlot!
+    menuId: ID
+  ): [Category!]!
 
   topCategoriesByMenuItemCount(
     restaurantId: ID!
