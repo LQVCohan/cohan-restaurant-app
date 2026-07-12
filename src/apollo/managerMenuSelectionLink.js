@@ -1,40 +1,59 @@
 import { ApolloLink } from "@apollo/client";
 import { getManagerMenuSelection } from "@/utils/managerMenuSelection";
 
-const isManagerMenuPage = () =>
-  typeof window !== "undefined" &&
-  window.location.pathname.startsWith("/manager") &&
-  ["#menu", "#menus"].includes(window.location.hash || "#menu");
+const isManagerMenuPage = () => {
+  if (typeof window === "undefined") return false;
+  if (!window.location.pathname.startsWith("/manager")) return false;
+  return (
+    window.location.hash === "#menu" ||
+    Boolean(document.querySelector(".mm-page-container"))
+  );
+};
 
 const matchesSelection = (selection, value) =>
   selection &&
   String(value?.restaurantId || "") === selection.restaurantId &&
   (!value?.timeSlot || String(value.timeSlot) === selection.timeSlot);
 
-export const managerMenuSelectionLink = new ApolloLink((operation, forward) => {
-  if (!isManagerMenuPage()) return forward(operation);
-
-  const selection = getManagerMenuSelection();
-  const operationName = operation?.operationName || "";
-  const variables = operation?.variables || {};
+export const applyManagerMenuSelection = (
+  operationName,
+  variables = {},
+  selection,
+) => {
+  if (!selection) return variables;
 
   if (
     operationName === "MenuItemsConnection" &&
     matchesSelection(selection, variables.filter)
   ) {
-    operation.variables = {
+    return {
       ...variables,
       filter: { ...variables.filter, menuId: selection.menuId },
     };
-  } else if (
-    ["CreateMenuItem", "SyncMenuItemInventoryStatuses"].includes(operationName) &&
+  }
+
+  if (
+    ["CreateMenuItem", "SyncMenuItemInventoryStatuses"].includes(
+      operationName,
+    ) &&
     matchesSelection(selection, variables.input)
   ) {
-    operation.variables = {
+    return {
       ...variables,
       input: { ...variables.input, menuId: selection.menuId },
     };
   }
 
+  return variables;
+};
+
+export const managerMenuSelectionLink = new ApolloLink((operation, forward) => {
+  if (!isManagerMenuPage()) return forward(operation);
+
+  operation.variables = applyManagerMenuSelection(
+    operation?.operationName || "",
+    operation?.variables || {},
+    getManagerMenuSelection(),
+  );
   return forward(operation);
 });
