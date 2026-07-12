@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import StaffPerformanceOperationsPage from "./StaffPerformanceOperationsPage";
 import useCashierShiftReconciliation from "@/hooks/useCashierShiftReconciliation";
@@ -100,6 +100,31 @@ describe("cashier shift reconciliation manager flow", () => {
     expect(
       screen.getByRole("button", { name: "Quản lý chốt quỹ" }),
     ).toBeDisabled();
+  });
+
+  it("prioritizes the cash comparison and exposes filter counts", () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Quản lý chốt quỹ" }));
+
+    const comparison = screen.getByRole("region", {
+      name: "So sánh tiền dự kiến, tiền thực đếm và chênh lệch",
+    });
+    expect(within(comparison).getByText("Tiền dự kiến")).toBeInTheDocument();
+    expect(within(comparison).getByText("Tiền thực đếm")).toBeInTheDocument();
+    expect(within(comparison).getByText("Chênh lệch")).toBeInTheDocument();
+    expect(screen.getByText("Nguồn hình thành tiền dự kiến")).toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: "Tất cả 1" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Chờ duyệt 1" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(
+      screen.getByRole("button", { name: /Nguyễn Thu Ngân/ }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("opens an accessible modal and creates a cashier shift", async () => {
