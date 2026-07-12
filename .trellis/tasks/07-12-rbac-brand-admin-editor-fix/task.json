@@ -1,7 +1,7 @@
 {
   "id": "07-12-rbac-brand-admin-editor-fix",
   "title": "Fix RBAC Brand Admin editor and permission layout",
-  "status": "in_progress",
+  "status": "completed",
   "createdAt": "2026-07-12",
   "updatedAt": "2026-07-12"
 }
