@@ -14,6 +14,7 @@ import { PaymentResolvers } from "./types.js";
 import publicTablePaymentMutation from "./publicTablePaymentMutation.js";
 import PublicTableAccessGuardMutation from "./publicTableAccessGuardMutation.js";
 import withPaymentIdempotency from "./paymentIdempotencyMutation.js";
+import withWalletMoneyIdempotency from "./walletMoneyIdempotencyMutation.js";
 import {
   PaymentCredentialMutation,
   PaymentCredentialQuery,
@@ -68,6 +69,8 @@ export default {
     ...TransactionManagementQuery,
     financeDashboard,
   },
-  Mutation: withPaymentIdempotency(paymentMutation),
+  Mutation: withWalletMoneyIdempotency(
+    withPaymentIdempotency(paymentMutation),
+  ),
   ...PaymentResolvers,
 };
