@@ -14,10 +14,10 @@
 3. `PermissionQuery.permissions`, `RoleQuery.role`, and `RoleQuery.parentRoles` use the shared authorization service.
 4. `useRbacManagement` loads roles/permissions and sends `createRole`/`updateRole` mutations.
 5. `AuthProvider` exposes `user` and active `brandMemberships` separately.
-6. `RbacManagement` currently checks only `user` when enabling the editor.
-7. Global `RbacCompactLayout.css` overrides the component SCSS and creates the broken nested-scroll layout.
+6. `RbacManagement` previously checked only `user` when enabling the editor.
+7. Global `RbacCompactLayout.css` overrides the component SCSS and created the broken nested-scroll layout.
 
-## Files changing and why
+## Files changed and why
 
 - `cohan-restaurant-backend/src/services/auth/authorization.service.js`: allow active Brand `owner/admin` memberships to use the narrow RBAC/staff permission set needed by this screen, without treating them as system admins.
 - `cohan-restaurant-backend/tests/services/authorization.service.test.js`: cover active/inactive Brand Admin membership behavior and preserve protected permission boundaries.
@@ -34,9 +34,20 @@
 5. Existing system Admin and Manager behavior remains unchanged.
 6. No GraphQL schema, database model, dependency, or unrelated page changes.
 
+## Implementation status
+
+- Backend and frontend now recognize an active Brand `owner/admin` membership for the limited RBAC actions used by this page.
+- `permission.write`, wildcard authority, and protected system-role mutation rules remain unchanged.
+- The permission checklist now uses a two-column responsive grid with normal document flow; mobile collapses to one column.
+- Focused backend and frontend regression tests were added.
+
 ## Validation plan
 
 - `npx vitest run cohan-restaurant-backend/tests/services/authorization.service.test.js`
 - `npx vitest run src/components/Dashboard_Manager/RBAC/RbacManagement.test.jsx`
 - `npm run check:graphql`
 - `npm run build` when a runnable checkout is available.
+
+## Validation status
+
+The GitHub connector environment did not provide a runnable repository checkout, so no Vitest command, GraphQL contract check, build, CI workflow, or browser runtime check was executed. The resulting GitHub commit diffs were reviewed to confirm that only the planned RBAC authorization, UI access, tests, and layout rules changed.
