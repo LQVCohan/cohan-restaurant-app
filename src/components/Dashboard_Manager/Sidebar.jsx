@@ -90,9 +90,20 @@ const NAVIGATION_SECTIONS = [
   },
 ];
 
+export const persistManagerPageDestination = (pageId) => {
+  const normalizedPage = String(pageId || "").trim();
+  if (!normalizedPage || typeof window === "undefined") return false;
+
+  localStorage.setItem("manager.currentPage", normalizedPage);
+  const nextUrl = `${window.location.pathname}${window.location.search}#${encodeURIComponent(normalizedPage)}`;
+  window.history.replaceState(null, "", nextUrl);
+  return true;
+};
+
 const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBrand = null }) => {
   const { user } = useContext(AuthContext);
   const [avatarImageFailed, setAvatarImageFailed] = useState(false);
+  const accountId = String(user?.id || user?._id || "anonymous");
   const sidebarUser = useMemo(() => getDisplayUser(user), [user]);
   const sidebarUserName = sidebarUser.fullName || "Quản lý";
   const activeMembership = activeBrand?.membership || (activeBrand?.membershipRole ? { role: activeBrand.membershipRole, restaurantIds: activeBrand.restaurantIds || [] } : null);
@@ -119,6 +130,7 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBr
   }, [canManageActiveBrand, user]);
 
   const handleItemClick = useCallback((item) => {
+    persistManagerPageDestination(item.id);
     onPageChange(item.id);
     const content = document.querySelector(".manager-layout__content");
     if (content) {
@@ -133,7 +145,7 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBr
 
   useEffect(() => {
     setAvatarImageFailed(false);
-  }, [sidebarAvatarSrc]);
+  }, [accountId, sidebarAvatarSrc]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {

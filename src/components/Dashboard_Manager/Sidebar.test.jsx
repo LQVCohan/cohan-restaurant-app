@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
 import Sidebar from "./Sidebar";
 
@@ -31,6 +31,11 @@ const renderSidebar = ({ user = managerUser, ...props } = {}) => {
 };
 
 describe("Manager Sidebar", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState(null, "", "/manager?restaurantId=r1#dashboard");
+  });
+
   it("renders the manager navigation and marks the active item", () => {
     renderSidebar();
 
@@ -85,11 +90,15 @@ describe("Manager Sidebar", () => {
     expect(screen.queryByRole("link", { name: "Chuyển đến khu nhân viên" })).not.toBeInTheDocument();
   });
 
-  it("keeps existing navigation callbacks when selecting an item", () => {
+  it("persists the selected manager page before invoking the navigation callback", () => {
     const { onPageChange } = renderSidebar();
 
     fireEvent.click(screen.getByRole("button", { name: "Đơn hàng" }));
 
+    expect(localStorage.getItem("manager.currentPage")).toBe("orders");
+    expect(window.location.pathname).toBe("/manager");
+    expect(window.location.search).toBe("?restaurantId=r1");
+    expect(window.location.hash).toBe("#orders");
     expect(onPageChange).toHaveBeenCalledWith("orders");
   });
 });
