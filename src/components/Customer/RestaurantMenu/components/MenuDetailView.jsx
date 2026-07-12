@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import {
   ArrowLeft,
+  Check,
   CircleAlert,
   LayoutGrid,
   List,
@@ -33,9 +34,31 @@ import { shouldShowMenuItemToCustomer } from "../../../../utils/menuItemAvailabi
 import MenuItemCard from "./MenuItemCard";
 import "../styles/MenuDetailView.scss";
 
+export const GET_CUSTOMER_MENUS = gql`
+  query GetCustomerMenusForMenuDetail($restaurantId: ID!) {
+    customerMenus(restaurantId: $restaurantId) {
+      id
+      restaurantId
+      timeSlot
+      name
+      description
+      coverImage
+      isActive
+    }
+  }
+`;
+
 export const GET_CATEGORIES = gql`
-  query GetCategoriesForCustomerMenu($restaurantId: ID!, $timeSlot: TimeSlot!) {
-    customerMenuCategories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
+  query GetCategoriesForCustomerMenu(
+    $restaurantId: ID!
+    $timeSlot: TimeSlot!
+    $menuId: ID
+  ) {
+    customerMenuCategories(
+      restaurantId: $restaurantId
+      timeSlot: $timeSlot
+      menuId: $menuId
+    ) {
       id
       name
       order
@@ -119,12 +142,15 @@ const MenuDetailView = ({
   restaurant,
   canOrder = true,
   initialTimeSlot = null,
+  initialMenuId = null,
   lockedTimeSlot = null,
   serviceAt = null,
   onBack,
   onOpenFoodDetail,
+  onMenuSelectionChange,
 }) => {
   const [timeSlot, setTimeSlot] = useState(initialTimeSlot || "lunch");
+  const [selectedMenuId, setSelectedMenuId] = useState(initialMenuId || null);
   const [activeCat, setActiveCat] = useState("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -152,20 +178,96 @@ const MenuDetailView = ({
   }, [search]);
 
   useEffect(() => {
-    setActiveCat("all");
-  }, [timeSlot]);
-
-  useEffect(() => {
     if (initialTimeSlot) setTimeSlot(initialTimeSlot);
   }, [initialTimeSlot]);
+
+  useEffect(() => {
+    if (initialMenuId) setSelectedMenuId(initialMenuId);
+  }, [initialMenuId]);
+
+  const {
+    data: menusData,
+    loading: menusLoading,
+    error: menusError,
+    refetch: refetchMenus,
+  } = useQuery(GET_CUSTOMER_MENUS, {
+    variables: { restaurantId },
+    skip: !restaurantId,
+    fetchPolicy: "cache-and-network",
+  });
+
+  const menus = useMemo(
+    () =>
+      (menusData?.customerMenus || []).filter(
+        (menu) => menu?.id && menu.isActive !== false,
+      ),
+    [menusData?.customerMenus],
+  );
+
+  const menusBySlot = useMemo(() => {
+    const grouped = new Map(TIME_SLOTS.map((slot) => [slot.id, []]));
+    for (const menu of menus) {
+      if (grouped.has(menu.timeSlot)) grouped.get(menu.timeSlot).push(menu);
+    }
+    return grouped;
+  }, [menus]);
+
+  const slotMenus = menusBySlot.get(timeSlot) || [];
+  const selectedMenu =
+    slotMenus.find((menu) => String(menu.id) === String(selectedMenuId)) || null;
+
+  useEffect(() => {
+    if (menusLoading || menusError || !menus.length || slotMenus.length) return;
+    if (lockedTimeSlot) return;
+    const fallbackSlot = TIME_SLOTS.find(
+      (slot) => (menusBySlot.get(slot.id) || []).length > 0,
+    );
+    if (fallbackSlot && fallbackSlot.id !== timeSlot) {
+      setTimeSlot(fallbackSlot.id);
+      setSelectedMenuId(null);
+    }
+  }, [lockedTimeSlot, menus, menusBySlot, menusError, menusLoading, slotMenus.length, timeSlot]);
+
+  useEffect(() => {
+    if (!slotMenus.length) {
+      if (selectedMenuId) setSelectedMenuId(null);
+      return;
+    }
+
+    const current = slotMenus.find(
+      (menu) => String(menu.id) === String(selectedMenuId),
+    );
+    const requested = slotMenus.find(
+      (menu) => String(menu.id) === String(initialMenuId),
+    );
+    const nextMenu = current || requested || slotMenus[0];
+    if (String(nextMenu.id) !== String(selectedMenuId)) {
+      setSelectedMenuId(nextMenu.id);
+    }
+  }, [initialMenuId, selectedMenuId, slotMenus]);
+
+  useEffect(() => {
+    setActiveCat("all");
+    setLoadMoreError("");
+  }, [timeSlot, selectedMenuId]);
+
+  useEffect(() => {
+    if (!selectedMenu?.id) return;
+    onMenuSelectionChange?.({
+      restaurantId,
+      timeSlot,
+      menuId: selectedMenu.id,
+      menu: selectedMenu,
+    });
+  }, [onMenuSelectionChange, restaurantId, selectedMenu, timeSlot]);
 
   const {
     data: categoriesData,
     loading: categoriesLoading,
     error: categoriesError,
   } = useQuery(GET_CATEGORIES, {
-    variables: { restaurantId, timeSlot },
-    skip: !restaurantId,
+    variables: { restaurantId, timeSlot, menuId: selectedMenuId },
+    skip: !restaurantId || !selectedMenuId,
     fetchPolicy: "cache-and-network",
   });
 
@@ -173,9 +275,10 @@ const MenuDetailView = ({
     () =>
       [...(categoriesData?.customerMenuCategories || [])]
         .filter((category) => category?.id && category.isActive !== false)
-        .sort((left, right) =>
-          (left.order || 0) - (right.order || 0) ||
-          String(left.name || "").localeCompare(String(right.name || ""), "vi"),
+        .sort(
+          (left, right) =>
+            (left.order || 0) - (right.order || 0) ||
+            String(left.name || "").localeCompare(String(right.name || ""), "vi"),
         ),
     [categoriesData?.customerMenuCategories],
   );
@@ -188,11 +291,12 @@ const MenuDetailView = ({
     () => ({
       restaurantId,
       timeSlot,
+      menuId: selectedMenuId,
       ...(activeCat !== "all" ? { categoryId: activeCat } : {}),
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       sort,
     }),
-    [activeCat, debouncedSearch, restaurantId, sort, timeSlot],
+    [activeCat, debouncedSearch, restaurantId, selectedMenuId, sort, timeSlot],
   );
 
   const {
@@ -203,7 +307,7 @@ const MenuDetailView = ({
     refetch,
   } = useQuery(GET_MENU_ITEMS_FOR_CUSTOMER_MENU, {
     variables: { filter: menuItemFilter, limit: 24, cursor: null },
-    skip: !restaurantId,
+    skip: !restaurantId || !selectedMenuId,
     fetchPolicy: "cache-and-network",
     notifyOnNetworkStatusChange: true,
   });
@@ -212,8 +316,11 @@ const MenuDetailView = ({
     () =>
       (menuData?.menuItemsConnection?.edges || [])
         .map((edge) => edge?.node)
-        .filter(Boolean),
-    [menuData?.menuItemsConnection?.edges],
+        .filter(
+          (item) =>
+            item && String(item.menuId) === String(selectedMenuId || ""),
+        ),
+    [menuData?.menuItemsConnection?.edges, selectedMenuId],
   );
   const pageInfo = menuData?.menuItemsConnection?.pageInfo;
 
@@ -263,6 +370,18 @@ const MenuDetailView = ({
     setSort("default");
   };
 
+  const handleTimeSlotChange = (slotId) => {
+    if (!menusLoading && !(menusBySlot.get(slotId) || []).length) return;
+    setTimeSlot(slotId);
+    setSelectedMenuId(null);
+  };
+
+  const handleMenuChange = (menuId) => {
+    setSelectedMenuId(menuId);
+    setActiveCat("all");
+    setLoadMoreError("");
+  };
+
   const handleLoadMore = async () => {
     if (!pageInfo?.hasNextPage || !pageInfo?.endCursor || isLoadingMore) return;
     setIsLoadingMore(true);
@@ -305,6 +424,7 @@ const MenuDetailView = ({
     const state = buildFoodDetailState(item, {
       restaurantId: item?.restaurantId || restaurantId,
       timeSlot,
+      menuId: selectedMenuId,
       categoryId: item?.categoryId || null,
       serviceAt,
       selectedVariantKey:
@@ -354,14 +474,18 @@ const MenuDetailView = ({
               <h2>{restaurant?.name || "Thực đơn"}</h2>
               <div className="restaurant-meta">
                 {restaurant?.rating ? (
-                  <span><Star size={14} aria-hidden="true" /> {restaurant.rating}</span>
+                  <span>
+                    <Star size={14} aria-hidden="true" /> {restaurant.rating}
+                  </span>
                 ) : null}
                 <span>
                   <ShoppingBag size={14} aria-hidden="true" />
                   {canOrder ? "Đang nhận đơn" : "Đang tạm ngưng nhận đơn"}
                 </span>
                 {restaurant?.address ? (
-                  <span><MapPin size={14} aria-hidden="true" /> {restaurant.address}</span>
+                  <span>
+                    <MapPin size={14} aria-hidden="true" /> {restaurant.address}
+                  </span>
                 ) : null}
               </div>
             </div>
@@ -434,20 +558,89 @@ const MenuDetailView = ({
           <nav className="tabs-row" aria-label="Chọn bữa ăn">
             {TIME_SLOTS.map((slot) => {
               const SlotIcon = slot.icon;
+              const hasMenus = (menusBySlot.get(slot.id) || []).length > 0;
+              const disabled = !menusLoading && !hasMenus;
               return (
                 <button
                   type="button"
                   key={slot.id}
                   className={`tab ${timeSlot === slot.id ? "active" : ""}`}
                   aria-pressed={timeSlot === slot.id}
-                  onClick={() => setTimeSlot(slot.id)}
+                  disabled={disabled}
+                  title={disabled ? `${slot.label} chưa có thực đơn` : undefined}
+                  onClick={() => handleTimeSlotChange(slot.id)}
                 >
                   <SlotIcon size={18} aria-hidden="true" />
                   {slot.label}
+                  {!menusLoading && hasMenus ? (
+                    <small>{menusBySlot.get(slot.id).length}</small>
+                  ) : null}
                 </button>
               );
             })}
           </nav>
+
+          <section className="named-menu-selector" aria-labelledby="named-menu-title">
+            <div className="named-menu-selector__heading">
+              <div>
+                <span>Bước 2</span>
+                <h3 id="named-menu-title">Chọn thực đơn</h3>
+              </div>
+              {slotMenus.length ? (
+                <small>
+                  {slotMenus.length} lựa chọn cho {activeSlot?.label?.toLowerCase()}
+                </small>
+              ) : null}
+            </div>
+
+            {menusLoading && !menus.length ? (
+              <div className="named-menu-selector__loading" aria-label="Đang tải thực đơn">
+                <span />
+                <span />
+              </div>
+            ) : menusError ? (
+              <div className="named-menu-selector__error" role="alert">
+                <div>
+                  <CircleAlert size={18} aria-hidden="true" />
+                  <span>Không thể tải danh sách thực đơn.</span>
+                </div>
+                <button type="button" onClick={() => refetchMenus?.()}>
+                  Tải lại
+                </button>
+              </div>
+            ) : slotMenus.length ? (
+              <div className="named-menu-selector__list">
+                {slotMenus.map((menu) => {
+                  const active = String(menu.id) === String(selectedMenuId);
+                  return (
+                    <button
+                      type="button"
+                      key={menu.id}
+                      className={active ? "active" : ""}
+                      aria-pressed={active}
+                      onClick={() => handleMenuChange(menu.id)}
+                    >
+                      <span className="named-menu-selector__check" aria-hidden="true">
+                        {active ? <Check size={16} /> : null}
+                      </span>
+                      <span className="named-menu-selector__copy">
+                        <strong>{menu.name || "Thực đơn"}</strong>
+                        <small>{menu.description || "Xem các món thuộc thực đơn này"}</small>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="named-menu-selector__empty" role="status">
+                <UtensilsCrossed size={20} aria-hidden="true" />
+                <div>
+                  <strong>Chưa có thực đơn cho {activeSlot?.label?.toLowerCase()}</strong>
+                  <span>Hãy chọn một khung giờ khác đang có thực đơn.</span>
+                </div>
+              </div>
+            )}
+          </section>
 
           {isAuthenticated && hasFoodPreferences ? (
             <label className="food-preference-toggle">
@@ -465,46 +658,56 @@ const MenuDetailView = ({
       </header>
 
       <section className="grid-container menu-detail-container">
-        <nav className="category-filter" aria-label="Danh mục món ăn">
-          <div className="pills">
-            {categoriesError ? (
-              <div className="category-warning" role="status">
-                Không tải được danh mục. Đang hiển thị tất cả món.
-              </div>
-            ) : null}
-            <button
-              type="button"
-              className={activeCat === "all" ? "active" : ""}
-              onClick={() => setActiveCat("all")}
-            >
-              Tất cả
-            </button>
-            {categories.map((category) => (
+        {selectedMenu ? (
+          <nav className="category-filter" aria-label="Danh mục món ăn">
+            <div className="pills">
+              {categoriesError ? (
+                <div className="category-warning" role="status">
+                  Không tải được danh mục. Đang hiển thị tất cả món.
+                </div>
+              ) : null}
               <button
                 type="button"
-                key={category.id}
-                className={activeCat === category.id ? "active" : ""}
-                onClick={() => setActiveCat(category.id)}
+                className={activeCat === "all" ? "active" : ""}
+                onClick={() => setActiveCat("all")}
               >
-                {category.name}
+                Tất cả
               </button>
-            ))}
-          </div>
-        </nav>
+              {categories.map((category) => (
+                <button
+                  type="button"
+                  key={category.id}
+                  className={activeCat === category.id ? "active" : ""}
+                  onClick={() => setActiveCat(category.id)}
+                >
+                  {category.name}
+                </button>
+              ))}
+            </div>
+          </nav>
+        ) : null}
 
-        <div className="menu-results-context" aria-live="polite">
-          <div className="menu-results-context__copy">
-            <span>{activeSlot?.label || "Thực đơn"}</span>
-            <strong>{menuLoading ? "Đang cập nhật…" : `${visibleItems.length} món`}</strong>
-            <small>{activeCategory?.name || "Tất cả danh mục"}</small>
+        {selectedMenu ? (
+          <div className="menu-results-context" aria-live="polite">
+            <div className="menu-results-context__copy">
+              <span>
+                {activeSlot?.label || "Thực đơn"} · {selectedMenu.name}
+              </span>
+              <strong>
+                {menuLoading
+                  ? "Đang cập nhật…"
+                  : `Đang hiển thị ${visibleItems.length} món`}
+              </strong>
+              <small>{activeCategory?.name || "Tất cả danh mục"}</small>
+            </div>
+            {hasActiveFilters ? (
+              <button type="button" onClick={resetFilters}>
+                <RotateCcw size={16} aria-hidden="true" />
+                Đặt lại bộ lọc
+              </button>
+            ) : null}
           </div>
-          {hasActiveFilters ? (
-            <button type="button" onClick={resetFilters}>
-              <RotateCcw size={16} aria-hidden="true" />
-              Đặt lại bộ lọc
-            </button>
-          ) : null}
-        </div>
+        ) : null}
 
         {!matchesBookingTimeSlot ? (
           <div className="menu-inline-note" role="alert">
@@ -518,29 +721,49 @@ const MenuDetailView = ({
           </div>
         ) : null}
 
-        {menuLoading && !rawItems.length ? (
+        {!selectedMenu && !menusLoading && !menusError ? (
+          <div className="menu-state" role="status">
+            <span>
+              <UtensilsCrossed size={22} aria-hidden="true" />
+            </span>
+            <h3>Chưa có thực đơn trong khung giờ này</h3>
+            <p>Chọn một bữa ăn khác để xem các thực đơn đang phục vụ.</p>
+          </div>
+        ) : menuLoading && !rawItems.length ? (
           renderSkeletons()
         ) : menuError ? (
           <div className="menu-state menu-state--error" role="alert">
-            <span><CircleAlert size={22} aria-hidden="true" /></span>
-            <h3>Không thể tải thực đơn</h3>
+            <span>
+              <CircleAlert size={22} aria-hidden="true" />
+            </span>
+            <h3>Không thể tải món của {selectedMenu?.name || "thực đơn"}</h3>
             <p>Vui lòng kiểm tra kết nối rồi thử lại.</p>
             <button type="button" onClick={() => refetch?.()}>
               Tải lại
             </button>
           </div>
-        ) : !visibleItems.length ? (
+        ) : selectedMenu && !visibleItems.length ? (
           <div className="menu-state" role="status">
-            <span>{debouncedSearch ? <Search size={22} aria-hidden="true" /> : <UtensilsCrossed size={22} aria-hidden="true" />}</span>
+            <span>
+              {debouncedSearch ? (
+                <Search size={22} aria-hidden="true" />
+              ) : (
+                <UtensilsCrossed size={22} aria-hidden="true" />
+              )}
+            </span>
             <h3>
               {debouncedSearch
                 ? "Chưa tìm thấy món phù hợp"
-                : "Chưa có món trong mục này"}
+                : activeCat !== "all"
+                  ? "Chưa có món trong danh mục này"
+                  : `${selectedMenu.name} chưa có món để hiển thị`}
             </h3>
             <p>
               {debouncedSearch
-                ? "Thử từ khóa ngắn hơn, đổi danh mục hoặc khung giờ."
-                : "Đổi bữa ăn hoặc danh mục khác để xem thêm món."}
+                ? "Thử từ khóa ngắn hơn hoặc đổi danh mục."
+                : activeCat !== "all"
+                  ? "Chọn danh mục khác hoặc xem tất cả món."
+                  : "Chọn một thực đơn khác trong cùng khung giờ."}
             </p>
             {hasActiveFilters ? (
               <button type="button" onClick={resetFilters}>
@@ -548,7 +771,7 @@ const MenuDetailView = ({
               </button>
             ) : null}
           </div>
-        ) : (
+        ) : selectedMenu ? (
           <>
             <div
               className={`menu-grid ${viewMode === "list" ? "list-view" : ""}`}
@@ -588,11 +811,11 @@ const MenuDetailView = ({
               </div>
             ) : null}
           </>
-        )}
+        ) : null}
 
-        {categoriesLoading && !categories.length ? (
+        {selectedMenu && categoriesLoading && !categories.length ? (
           <div className="menu-inline-note" aria-live="polite">
-            Đang tải danh mục món...
+            Đang tải danh mục của {selectedMenu.name}...
           </div>
         ) : null}
       </section>
