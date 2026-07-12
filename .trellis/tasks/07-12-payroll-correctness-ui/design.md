@@ -7,15 +7,15 @@ Bảng lương vận hành gọn, tương phản rõ, một nguồn dữ liệu 
 ## Quyết định nghiệp vụ
 
 - `insuranceEligible` mô tả nhân viên thuộc diện BH; nó không đồng nghĩa phải tạo khoản khấu trừ khi phiếu chưa phát sinh thu nhập.
-- Calculator chỉ truyền `isEligible=true` vào phép tính BH khi `totalIncome > 0`. Vì vậy không thay đổi chính sách, chỉ tránh tạo khoản nợ âm giả trong bản tính chưa có công.
-- Các khoản điều chỉnh thủ công vẫn có thể làm phiếu âm và tiếp tục bị validation chặn; không kẹp `netSalary` về 0 một cách che lỗi.
-- KPI tổng bảng lương cộng phần thực nhận không âm. Phiếu âm vẫn hiện trong bảng/cảnh báo để xử lý nhưng không làm tổng chi phí lương thành số sai lệch.
+- Calculator chỉ truyền `isEligible=true` vào phép tính BH khi `totalIncome > 0`. Vì vậy không thay đổi tỷ lệ/chính sách, chỉ tránh tạo khoản khấu trừ BH làm âm phiếu chưa có thu nhập.
+- Các khoản điều chỉnh thủ công vẫn có thể làm phiếu âm và tiếp tục bị validation chặn; không kẹp `netSalary` từng nhân viên về 0 để che lỗi.
+- KPI tổng bảng lương được chặn không hiển thị dưới 0. Phiếu âm vẫn hiện trong bảng, banner và chi tiết để quản lý xử lý.
 
 ## Trạng thái xem
 
-- Kỳ chính thức: query có `periodId`, ô ngày phản ánh kỳ và bị khóa.
-- Tạm tính theo khoảng ngày: query bỏ `periodId`, ô ngày có thể sửa.
-- Sửa một ô ngày tự chuyển về chế độ tạm tính để tránh hợp đồng UI/query mâu thuẫn.
+- Kỳ chính thức: query có `periodId` và các thao tác tính lại/chốt/khóa dùng snapshot của kỳ.
+- Tạm tính theo khoảng ngày: query bỏ `periodId` và tính trực tiếp từ dữ liệu vận hành.
+- Chọn kỳ chính thức đồng bộ ngày hiển thị; sửa một ô ngày tự chuyển sang tạm tính để tránh hợp đồng UI/query mâu thuẫn.
 
 ## Chi tiết dòng
 
