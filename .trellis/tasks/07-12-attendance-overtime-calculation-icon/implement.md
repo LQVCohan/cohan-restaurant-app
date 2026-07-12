@@ -1,10 +1,11 @@
-# Kế hoạch triển khai
+# Triển khai đã thực hiện
 
-1. Import calculator chấm công hiện có vào staff mutation resolver.
-2. Thay hai block tính thủ công ở `checkShiftAttendanceAction` và `upsertStaffAttendance` bằng calculator + status derivation.
-3. Bổ sung regression assertion cho metrics/status giữa check-in và check-out.
-4. Tính `overtimeNightExtra` từ `overtimeNightHours` và policy 20%, cộng vào `overtimeTotal`.
-5. Bổ sung test calculator cho OT ban đêm.
-6. Chuẩn hóa hoàn tất overtime request: không vượt actual, lưu đúng note/reviewer/time và bổ sung test.
-7. Đổi quick-action icon staff sang `Fingerprint`, kiểm tra accessible name trong component test.
-8. Fetch lại các file đã sửa, kiểm tra diff theo dòng và ghi rõ các test/build không thể chạy qua GitHub connector.
+1. Đặt shared attendance calculator tại `TimesheetSchema.pre("save")` để mọi đường ghi Timesheet đều chuẩn hóa metrics/status trước khi lưu.
+2. Bổ sung status `unscheduled_absent` đúng với output của `deriveAttendanceStatus`.
+3. Giữ state tăng ca chạy sau calculator để thay đổi `overtimeMinutes` có thể hủy approval cũ đúng quy trình.
+4. Thêm invariant không cho `approvedOvertimeMinutes` vượt `overtimeMinutes`; correction thay đổi actual OT vẫn được đưa về pending thay vì lỗi.
+5. Thêm virtual tương thích `overtimeApprovalNote` để ghi chú từ workflow request được lưu vào `overtimeReviewNote`.
+6. Tính `overtimeNightExtra` từ `overtimeNightHours` và policy 20%, cộng vào `overtimeTotal` và breakdown.
+7. Đổi quick-action icon staff sang `Fingerprint`, giữ accessible link name.
+8. Bổ sung test cho calculator chấm công, state tăng ca, model invariants, premium OT ban đêm và icon dashboard.
+9. Fetch lại file sau cập nhật; Vitest/build/browser smoke chưa chạy vì GitHub connector không có executable checkout.
