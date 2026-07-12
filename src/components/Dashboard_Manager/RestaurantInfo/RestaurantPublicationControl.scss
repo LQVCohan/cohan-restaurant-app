@@ -1,8 +1,14 @@
 $ri-line: var(--manager-border, rgba(83, 108, 97, 0.22));
+$ri-line-strong: var(--manager-border-strong, rgba(83, 108, 97, 0.34));
 $ri-surface: var(--manager-surface, rgba(249, 252, 250, 0.94));
 $ri-surface-soft: var(--manager-surface-soft, rgba(241, 247, 243, 0.94));
+$ri-paper: #fbfdfc;
 $ri-text: var(--manager-text, #24312c);
 $ri-muted: var(--manager-muted, #607069);
+$ri-primary: var(--manager-primary, #536c61);
+$ri-primary-hover: var(--manager-primary-hover, #40584e);
+$ri-accent: var(--manager-accent, #2f7d68);
+$ri-accent-soft: var(--manager-accent-soft, #e5f0eb);
 
 .manager-layout--restaurant-info-management .restaurant-publication-slot {
   width: min(100%, 1440px);
@@ -30,13 +36,21 @@ $ri-muted: var(--manager-muted, #607069);
   &.is-published {
     border-color: rgba(47, 125, 104, 0.34);
     border-bottom-color: transparent;
-    background: linear-gradient(135deg, var(--manager-success-soft, #e5f3ed), $ri-surface);
+    background: linear-gradient(
+      135deg,
+      var(--manager-success-soft, #e5f3ed),
+      $ri-surface
+    );
   }
 
   &.is-draft {
     border-color: rgba(166, 106, 24, 0.3);
     border-bottom-color: transparent;
-    background: linear-gradient(135deg, var(--manager-warning-soft, #fff3da), $ri-surface);
+    background: linear-gradient(
+      135deg,
+      var(--manager-warning-soft, #fff3da),
+      $ri-surface
+    );
   }
 
   &.is-error {
@@ -54,9 +68,17 @@ $ri-muted: var(--manager-muted, #607069);
     color: $ri-muted;
   }
 
-  &.is-published &__icon { color: var(--manager-success, #2f7d68); }
-  &.is-draft &__icon { color: var(--manager-warning, #a66a18); }
-  &.is-error &__icon { color: var(--manager-danger, #b54747); }
+  &.is-published &__icon {
+    color: var(--manager-success, #2f7d68);
+  }
+
+  &.is-draft &__icon {
+    color: var(--manager-warning, #a66a18);
+  }
+
+  &.is-error &__icon {
+    color: var(--manager-danger, #b54747);
+  }
 
   &__copy {
     min-width: 0;
@@ -146,7 +168,11 @@ $ri-muted: var(--manager-muted, #607069);
         border: 0;
         border-radius: 0;
         background:
-          radial-gradient(circle at 94% 10%, rgba(47, 125, 104, 0.1), transparent 15rem),
+          radial-gradient(
+            circle at 94% 10%,
+            rgba(47, 125, 104, 0.1),
+            transparent 15rem
+          ),
           transparent;
         box-shadow: none;
 
@@ -184,8 +210,13 @@ $ri-muted: var(--manager-muted, #607069);
           border-radius: 0;
           background: transparent;
 
-          &:first-child { padding-left: 0; }
-          &:last-child { border-right: 0; }
+          &:first-child {
+            padding-left: 0;
+          }
+
+          &:last-child {
+            border-right: 0;
+          }
         }
       }
     }
@@ -204,7 +235,9 @@ $ri-muted: var(--manager-muted, #607069);
         margin-top: 0.55rem;
       }
 
-      li { font-size: 0.69rem; }
+      li {
+        font-size: 0.69rem;
+      }
     }
 
     .quick-metrics-grid {
@@ -216,8 +249,13 @@ $ri-muted: var(--manager-muted, #607069);
         min-height: 58px;
         border-radius: 0 !important;
 
-        &:first-child { border-radius: 0 0 0 15px !important; }
-        &:last-child { border-radius: 0 0 15px 0 !important; }
+        &:first-child {
+          border-radius: 0 0 0 15px !important;
+        }
+
+        &:last-child {
+          border-radius: 0 0 15px 0 !important;
+        }
 
         .ant-card-body {
           min-height: 56px;
@@ -228,10 +266,15 @@ $ri-muted: var(--manager-muted, #607069);
           padding: 0.6rem 1rem;
         }
 
-        .ant-badge { display: none; }
+        .ant-badge {
+          display: none;
+        }
       }
 
-      .metric-subtitle { font-size: 0.72rem; }
+      .metric-subtitle {
+        font-size: 0.72rem;
+      }
+
       .metric-value {
         flex-shrink: 0;
         font-size: clamp(1.2rem, 1.8vw, 1.48rem);
@@ -239,53 +282,136 @@ $ri-muted: var(--manager-muted, #607069);
       }
     }
 
-    .main-layout { row-gap: 16px !important; }
+    /* Keep the identity block simple. The main polish sheet owns its layout. */
+    .hero-uploader-section .restaurant-title-preview {
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
 
-    .hero-uploader-section {
-      margin-bottom: 0;
-      padding-bottom: 0.8rem;
-      background: $ri-surface;
-
-      .cover-image-area { height: clamp(170px, 15vw, 220px); }
-
-      .avatar-image-area {
-        position: relative;
-        inset: auto;
-        z-index: 2;
-        align-items: flex-end;
-        margin: -38px 1.25rem 0;
+    /* A consistent segmented navigation is easier to scan than mixed loose tabs. */
+    .modern-form {
+      .ant-tabs-nav {
+        padding: 0.5rem 0.6rem;
+        border-bottom: 1px solid $ri-line;
       }
 
-      .avatar-wrapper {
-        width: 92px;
-        height: 92px;
-        border-radius: 22px;
+      .ant-tabs-nav::before {
+        display: none;
       }
 
-      .restaurant-title-preview {
+      .ant-tabs-nav-list {
+        width: 100%;
         min-width: 0;
-        margin-bottom: 0.2rem;
-        padding: 0.55rem 0.72rem;
-        border: 1px solid rgba(83, 108, 97, 0.2);
-        border-radius: 12px;
-        background: rgba(249, 252, 250, 0.94);
-        box-shadow: 0 8px 20px rgba(48, 72, 61, 0.1);
+        gap: 0.32rem;
+      }
 
-        :is(h4, span) {
-          color: $ri-text;
-          text-shadow: none;
-        }
+      .ant-tabs-tab {
+        flex: 1 1 0;
+        justify-content: center;
+        min-height: 44px;
+        margin: 0;
+        padding: 0.55rem 0.6rem;
+        border: 1px solid transparent;
+        border-radius: 10px;
+      }
 
-        h4 {
-          overflow: hidden;
-          max-width: 32ch;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
+      .ant-tabs-tab-active {
+        border-color: $ri-line-strong;
+        background: $ri-paper;
+        box-shadow:
+          0 6px 16px rgba(48, 72, 61, 0.08),
+          inset 0 1px rgba(255, 255, 255, 0.8);
+      }
+
+      .ant-tabs-ink-bar {
+        display: none;
+      }
+
+      .amenities-grid .amenity-card {
+        position: relative;
+        min-height: 44px;
+        justify-content: center;
+        padding-inline: 0.85rem 2rem;
+      }
+
+      .amenities-grid .amenity-card.active::after {
+        content: "✓";
+        position: absolute;
+        right: 0.72rem;
+        width: 18px;
+        height: 18px;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: $ri-accent;
+        color: #fff;
+        font-size: 0.68rem;
+        font-weight: 800;
       }
     }
 
-    .modern-tabs > .ant-tabs-nav { margin-bottom: 1rem; }
+    /* Provider settings are actions, not large content cards. */
+    .payment-provider-card.ant-card {
+      overflow: hidden;
+      margin-bottom: 0.6rem;
+      border-radius: 12px !important;
+      background: $ri-paper !important;
+
+      .ant-card-head {
+        min-height: 38px;
+        padding-inline: 0.9rem;
+        background: $ri-surface-soft;
+      }
+
+      .ant-card-head-title {
+        padding: 0.62rem 0 0.42rem;
+        font-size: 0.82rem;
+        font-weight: 760;
+      }
+
+      .ant-card-body {
+        padding: 0.68rem 0.9rem !important;
+      }
+
+      .ant-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0.85rem;
+      }
+
+      .ant-col {
+        min-width: 0;
+      }
+
+      .ant-form-item {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        margin: 0;
+      }
+
+      .ant-form-item-label {
+        padding: 0;
+      }
+
+      .ant-form-item-label label {
+        color: $ri-muted;
+        font-size: 0.7rem;
+        white-space: nowrap;
+      }
+    }
+
+    .category-card {
+      .ant-btn {
+        min-height: 40px;
+      }
+
+      .ant-tag {
+        padding: 0.2rem 0.5rem;
+      }
+    }
   }
 }
 
@@ -313,10 +439,14 @@ $ri-muted: var(--manager-muted, #607069);
       margin-block: 0.18rem 0.22rem;
       font-size: clamp(1.28rem, 1.8vw, 1.58rem);
 
-      &__icon { display: none; }
+      &__icon {
+        display: none;
+      }
     }
 
-    .mph-subtitle { max-width: 38ch; }
+    .mph-subtitle {
+      max-width: 38ch;
+    }
 
     .mph-controls-row {
       grid-column: 2;
@@ -349,12 +479,6 @@ $ri-muted: var(--manager-muted, #607069);
       min-width: 0;
       height: 40px;
     }
-
-    .mph-btn {
-      font-size: 0;
-
-      > span { font-size: 0.78rem; }
-    }
   }
 }
 
@@ -378,21 +502,18 @@ $ri-muted: var(--manager-muted, #607069);
 
 @media (max-width: 900px) {
   .manager-layout--restaurant-info-management .restaurant-management-container {
-    .profile-focus-panel { grid-template-columns: 1fr; }
+    .profile-focus-panel {
+      grid-template-columns: 1fr;
+    }
 
     .profile-completion-card {
       border-top: 1px solid $ri-line;
       border-left: 0;
     }
-
-    .modern-form .ant-row > .ant-col {
-      flex: 0 0 100% !important;
-      max-width: 100% !important;
-    }
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 760px) {
   .manager-layout--restaurant-info-management {
     .restaurant-publication-slot {
       margin-top: 8px;
@@ -412,7 +533,9 @@ $ri-muted: var(--manager-muted, #607069);
         border-radius: 10px;
       }
 
-      &__copy > small { display: none; }
+      &__copy > small {
+        display: none;
+      }
 
       &__action,
       > .ant-btn {
@@ -425,76 +548,46 @@ $ri-muted: var(--manager-muted, #607069);
         border-left: 1px solid $ri-line;
       }
 
-      &__action > span { display: none; }
+      &__action > span {
+        display: none;
+      }
     }
 
     .restaurant-management-container {
       .profile-focus-panel__copy,
-      .profile-completion-card { padding: 0.8rem; }
-
-      .profile-focus-panel__facts {
-        grid-template-columns: 1fr;
-        padding-top: 0.45rem;
-
-        span {
-          min-height: 34px;
-          padding: 0.35rem 0;
-          border-right: 0;
-          border-bottom: 1px solid rgba(83, 108, 97, 0.16);
-
-          &:last-child { border-bottom: 0; }
-        }
+      .profile-completion-card {
+        padding: 0.8rem;
       }
 
-      .quick-metrics-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+      .modern-form {
+        .ant-tabs-nav-wrap {
+          overflow-x: auto;
+          scrollbar-width: none;
 
-        .metric-card .ant-card-body {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 0.2rem;
-          padding: 0.58rem 0.65rem;
-        }
-
-        .metric-subtitle {
-          line-height: 1.2;
-          white-space: normal;
-        }
-      }
-
-      .hero-uploader-section {
-        .cover-image-area { height: 150px; }
-
-        .avatar-image-area {
-          display: grid;
-          grid-template-columns: auto minmax(0, 1fr);
-          margin: -30px 0.8rem 0;
-          padding: 0;
-        }
-
-        .avatar-wrapper {
-          width: 74px;
-          height: 74px;
-          border-radius: 18px;
-        }
-
-        .restaurant-title-preview {
-          width: 100%;
-          margin: 0;
-          padding: 0.48rem 0.58rem;
-
-          h4 {
-            max-width: 22ch;
-            font-size: 1rem;
+          &::-webkit-scrollbar {
+            display: none;
           }
         }
+
+        .ant-tabs-nav-list {
+          width: max-content;
+          min-width: max-content;
+        }
+
+        .ant-tabs-tab {
+          flex: 0 0 auto;
+          min-width: 170px;
+        }
       }
 
-      .modern-tabs > .ant-tabs-nav {
-        overflow-x: auto;
-        scrollbar-width: none;
+      .payment-provider-card.ant-card {
+        .ant-row {
+          grid-template-columns: minmax(0, 1fr) auto;
+        }
 
-        &::-webkit-scrollbar { display: none; }
+        .ant-form-item-label label {
+          display: none;
+        }
       }
     }
   }
@@ -502,15 +595,18 @@ $ri-muted: var(--manager-muted, #607069);
 
 @media (max-width: 430px) {
   .restaurant-publication-control__copy {
-    > span { display: none; }
-    > strong { font-size: 0.78rem; }
+    > span {
+      display: none;
+    }
+
+    > strong {
+      font-size: 0.78rem;
+    }
   }
 
   .manager-layout--restaurant-info-management .restaurant-management-container {
-    .profile-completion-card ul { grid-template-columns: 1fr; }
-    .quick-metrics-grid {
-      .metric-subtitle { font-size: 0.64rem; }
-      .metric-value { font-size: 1.08rem; }
+    .profile-completion-card ul {
+      grid-template-columns: 1fr;
     }
   }
 }
