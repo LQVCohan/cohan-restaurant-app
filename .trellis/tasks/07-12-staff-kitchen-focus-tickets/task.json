@@ -1,0 +1,34 @@
+{
+  "id": "07-12-staff-kitchen-focus-tickets",
+  "title": "Staff kitchen focus tickets",
+  "status": "completed",
+  "type": "frontend-ui",
+  "scope": [
+    "src/components/Staff/StaffKitchenFocusLauncher.jsx",
+    "src/components/Staff/StaffKitchenFocusTickets.scss"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Staff/StaffKitchenFocusLauncher.test.jsx src/components/Staff/StaffKitchenPage.test.jsx",
+      "npm run check:staff-theme",
+      "npm run build",
+      "manual responsive review at 390x844, 430x932, 768px, 1024px and 1440px"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, frontend-design, taste-ui-redesign, redesign-existing-projects and ui-ux-pro-max",
+      "traced OrderItem prepStation/status through accessGuard, ordersByRestaurantNow, useOrderManagement, StaffKitchenPage filtering and updateOrderItemStatus",
+      "inspected the current focus launcher, compact kitchen header overrides, base kitchen card styles and focus-mode overrides",
+      "confirmed the root cause is focus presentation: auto-fit 1fr stretches sparse orders and separates actions from item details",
+      "added a focus-only ticket board with constrained left-aligned columns and one-column mobile fallback",
+      "grouped each dish quantity, name, status, timing, notes and primary action into one operational block",
+      "preserved kitchen/bar/urgent signals, existing role restrictions, filters, realtime refresh and updateOrderItemStatus flow",
+      "GitHub Actions CI #8855 passed backend lint, tests, Menu RBAC and build",
+      "GitHub Actions CI #8855 passed frontend conflict check, lint, unit tests, Menu RBAC, changed component tests, build and Playwright smoke tests",
+      "GitHub Actions CI #8876 passed again after task metadata completion"
+    ],
+    "notRun": [
+      "manual responsive browser review at 390x844, 430x932, 768px, 1024px and 1440px was not available through the GitHub connector",
+      "real kitchen display and touch-device review was not run"
+    ]
+  }
+}
