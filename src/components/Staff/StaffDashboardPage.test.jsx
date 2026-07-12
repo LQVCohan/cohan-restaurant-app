@@ -45,9 +45,11 @@ describe("StaffDashboardPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Mở lịch cá nhân/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Xem ca và phản hồi lịch/i })).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /Chấm công & chỉnh công/i }),
-    ).toBeInTheDocument();
+    const attendanceLink = screen.getByRole("link", {
+      name: /Chấm công & chỉnh công/i,
+    });
+    expect(attendanceLink).toBeInTheDocument();
+    expect(attendanceLink.querySelector(".lucide-fingerprint")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Tạo và theo dõi đơn/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Xem nhắc việc mới/i })).toBeInTheDocument();
   });
