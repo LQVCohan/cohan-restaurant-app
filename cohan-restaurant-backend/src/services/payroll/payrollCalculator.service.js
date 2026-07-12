@@ -162,6 +162,10 @@ export function computeOvertimeComponents({
         policy.overtimeMultipliers.nightWorkExtra ??
         0,
     );
+  const overtimeNightExtra =
+    overtimeNightHours *
+    hourlyRate *
+    Number(policy.overtimeMultipliers.overtimeAtNightExtra ?? 0);
 
   return {
     overtimeHours,
@@ -174,9 +178,13 @@ export function computeOvertimeComponents({
     overtimeWeekend,
     overtimeHoliday,
     nightShiftExtra,
-    overtimeNightExtra: 0,
+    overtimeNightExtra,
     overtimeTotal:
-      overtimeNormal + overtimeWeekend + overtimeHoliday + nightShiftExtra,
+      overtimeNormal +
+      overtimeWeekend +
+      overtimeHoliday +
+      nightShiftExtra +
+      overtimeNightExtra,
   };
 }
 
@@ -386,6 +394,7 @@ export function buildPayrollItem({
     overtimeWeekend: overtimeBreakdown.overtimeWeekend,
     overtimeHoliday: overtimeBreakdown.overtimeHoliday,
     nightShiftExtra: overtimeBreakdown.nightShiftExtra,
+    overtimeNightExtra: overtimeBreakdown.overtimeNightExtra,
     overtimeHours: overtimeBreakdown.overtimeHours,
     overtimeNormalHours: overtimeBreakdown.overtimeNormalHours,
     overtimeWeekendHours: overtimeBreakdown.overtimeWeekendHours,
