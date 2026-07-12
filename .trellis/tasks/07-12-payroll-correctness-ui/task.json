@@ -1,0 +1,40 @@
+{
+  "id": "07-12-payroll-correctness-ui",
+  "title": "Sửa tính lương âm và cải thiện giao diện bảng lương",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "manager-payroll",
+  "priority": "P1",
+  "createdAt": "2026-07-12",
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/payroll/payrollCalculator.service.js",
+    "cohan-restaurant-backend/src/services/payroll/payrollRuntime.service.js",
+    "cohan-restaurant-backend/tests/services/payroll-correctness.test.js",
+    "src/components/Dashboard_Manager/PayrollPage/PayrollManagement.jsx",
+    "src/components/Dashboard_Manager/PayrollPage/PayrollManagement.scss",
+    "src/components/Dashboard_Manager/PayrollPage/PayrollManagement.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "targeted payroll correctness Vitest",
+      "targeted PayrollManagement component Vitest",
+      "frontend build",
+      "manual responsive audit at 1440, 768, 430 and 390 px"
+    ],
+    "completed": [],
+    "notRun": []
+  },
+  "meta": {
+    "skills": [
+      "ponytail",
+      "ui-ux-pro-max",
+      "frontend-design",
+      "taste-ui-redesign",
+      "redesign-existing-projects",
+      "wcag-ui-audit",
+      "web-design-guidelines"
+    ]
+  }
+}
