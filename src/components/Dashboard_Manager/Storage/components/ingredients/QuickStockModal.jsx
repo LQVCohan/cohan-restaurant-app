@@ -559,6 +559,7 @@ const QuickStockModal = ({
               const derived = getDerivedPricing(row);
               const suggestedPrices = getSuggestedPrices(row, hint, derived);
               const rowDatetimeHelpId = `${formId}-row-datetime-${idx}`;
+              const priceInputId = `${formId}-price-${idx}`;
               const optionalHasError = Boolean(
                 errors[idx]?.expiry || errors[idx]?.datetime,
               );
@@ -631,11 +632,12 @@ const QuickStockModal = ({
                       ) : null}
                     </label>
 
-                    <label className="qsm-field qsm-field--price">
-                      <span className="qsm-label">
+                    <div className="qsm-field qsm-field--price">
+                      <label className="qsm-label" htmlFor={priceInputId}>
                         Giá lô ({activeCurrency}) <span className="req">*</span>
-                      </span>
+                      </label>
                       <input
+                        id={priceInputId}
                         ref={(node) => setFieldRef(idx, "unitPrice", node)}
                         type="number"
                         min="0"
@@ -680,7 +682,7 @@ const QuickStockModal = ({
                           {errors[idx].unitPrice}
                         </small>
                       ) : null}
-                    </label>
+                    </div>
                   </div>
 
                   {derived ? (
