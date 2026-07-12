@@ -117,13 +117,16 @@ describe("Cohan wallet payment parity", () => {
     );
   });
 
-  it("keeps an ambiguous checkout retry key until a success response arrives", () => {
+  it("keeps an ambiguous checkout retry key until its mutation succeeds", () => {
     expect(apolloClientSource).toContain("cryptoApi.randomUUID");
     expect(apolloClientSource).toContain("cryptoApi.getRandomValues");
     expect(apolloClientSource).toContain("hashIdempotencyPayload(input)");
-    expect(apolloClientSource).toContain("removeStoredCheckoutKey");
     expect(apolloClientSource).toContain(
-      "result?.data?.createCheckoutOrders",
+      'CreateCheckoutOrders: "createCheckoutOrders"',
+    );
+    expect(apolloClientSource).toContain("removeStoredIdempotencyKey");
+    expect(apolloClientSource).toContain(
+      "result?.data?.[paymentResultField]",
     );
     expect(apolloClientSource).toContain(":v1:${randomPart}");
     expect(apolloClientSource).not.toContain("Math.random()");
