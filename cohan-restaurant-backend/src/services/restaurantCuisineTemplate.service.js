@@ -31,7 +31,7 @@ function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function buildMenuPreview(menuCatalog) {
+export function buildMenuPreview(menuCatalog) {
   const itemsByMenuId = new Map();
   for (const item of menuCatalog?.menuItems || []) {
     const menuId = String(item?.menuId || "");
