@@ -5,14 +5,13 @@ export const CustomerCategoryQuery = {
   customerMenuCategories: async (_, { restaurantId, timeSlot }) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
     const restaurantObjectId = new mongoose.Types.ObjectId(String(restaurantId));
+    const menuFilter = { restaurantId, timeSlot, isActive: true };
 
-    const menus = await Menu.find({
-      restaurantId,
-      timeSlot,
-      isActive: true,
-    })
-      .select({ _id: 1 })
-      .lean();
+    let menus = await Menu.find(menuFilter).lean();
+    if (!menus.length) {
+      const legacyMenu = await Menu.findOne(menuFilter).lean();
+      menus = legacyMenu ? [legacyMenu] : [];
+    }
     if (!menus.length) return [];
 
     const categories = await Category.find({
