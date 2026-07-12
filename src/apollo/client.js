@@ -64,6 +64,8 @@ const PAYMENT_RESULT_FIELD = Object.freeze({
   PayOrdersByTableId: "payOrdersByTableId",
   PayOrdersByOrderIds: "payOrdersByOrderIds",
   PayOrdersWithWallet: "payOrdersWithWallet",
+  RefundToWallet: "refundToWallet",
+  AdjustWalletBalance: "adjustWalletBalance",
 });
 
 const idempotencyMemory = new Map();
