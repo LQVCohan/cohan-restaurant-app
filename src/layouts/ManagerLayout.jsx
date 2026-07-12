@@ -29,7 +29,7 @@ const AiChatbotAnalyticsPage = lazy(() => import("../components/Dashboard_Manage
 const AiChatbotSettingsPage = lazy(() => import("../components/Dashboard_Manager/Customer/AiChatbotSettingsPage"));
 const AiChatbotKnowledgePage = lazy(() => import("../components/Dashboard_Manager/Customer/AiChatbotKnowledgePage"));
 const PromotionManagement = lazy(() => import("../components/Dashboard_Manager/Promotion/PromotionManagement"));
-const PayrollManagement = lazy(() => import("../components/Dashboard_Manager/PayrollPage/PayrollManagement"));
+const PayrollManagement = lazy(() => import("../components/Dashboard_Manager/PayrollPage/PayrollManagementWithSettings"));
 const StorageManagement = lazy(() => import("../components/Dashboard_Manager/Storage/StorageManagement"));
 const ReviewManagement = lazy(() => import("../components/Dashboard_Manager/Review/ReviewManagement"));
 const FinanceDashboard = lazy(() => import("@/components/Dashboard_Manager/Finance/FinanceDashboard"));
