@@ -2,8 +2,10 @@
 
 import mongoose from "mongoose";
 import { MenuQuery } from "./query.js";
+import { MenuMultiSlotQuery } from "./multiSlotQuery.js";
 import { CustomerMenuLocationQuery } from "./customerLocationQuery.js";
 import { MenuMutation } from "./mutation.js";
+import { MenuMultiSlotMutation } from "./multiSlotMutation.js";
 import { CopyMenuMutation } from "./copyMutation.js";
 import { DeleteMenuMutation } from "./deleteMutation.js";
 import { InventorySyncMenuMutation } from "./inventorySyncMutation.js";
@@ -105,6 +107,7 @@ export default {
   Query: {
     ...MenuQuery,
     ...CustomerMenuLocationQuery,
+    ...MenuMultiSlotQuery,
   },
 
   Mutation: {
@@ -113,6 +116,7 @@ export default {
     ...CopyMenuMutation,
     ...DeleteMenuMutation,
     ...InventorySyncMenuMutation,
+    ...MenuMultiSlotMutation,
   },
 
   MenuItem: {
