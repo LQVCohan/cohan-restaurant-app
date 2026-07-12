@@ -2,48 +2,47 @@
 
 ## Current behavior and root cause
 
-The backend already supports multiple menus in one service time slot and accepts an exact `menuId` for manager item queries and mutations. The manager page still relies on `managerMenuSelectionLink` to inject the selected menu from session storage after the Apollo operation is created. This leaves the hook cache variables scoped only by `timeSlot`, so sibling menus share one frontend query identity.
+The backend already supports multiple menus in one service time slot. `menuMultiSlot.graphql` accepts an exact `menuId`, resolver overrides target that menu, and the manager Apollo link injects the selected menu into item creation, stock sync and bulk-price mutations.
 
-The page also keeps two menu CRUD implementations: `MenuManagement.jsx` owns the full `MenuModal`, while `CompactMenuStrip.jsx` owns a second editor and its own GraphQL mutations. The parent implementation still contains one-menu-per-slot guards, so the two flows disagree.
+The remaining gap is the active Apollo query. `CompactMenuStrip` changes session selection and calls a generic named-query refetch. The observable query still owns its old time-slot-only variables, so sibling menus can briefly reuse the same cache identity and selection changes are harder to reason about. The compact page header also shows only the total menu count, not the exact menu whose dishes are currently displayed.
+
+A deeper caller check found that the inline `CompactMenuStrip` CRUD path already sends exact menu ids; the stale parent callbacks are not the selected-list execution path. Rewriting the large page is therefore unnecessary for this fix.
 
 ## End-to-end flow
 
-`Menu.id` -> selected menu state in `MenuManagement` -> `useMenuManagement(menuId)` -> explicit GraphQL filter/input -> multi-slot resolver -> `MenuItem.menuId`.
+`CompactMenuStrip select Menu.id` -> `manager:menu-selection` event -> `ManagerMenuSelectionSync` -> refetch active item/category queries with explicit `menuId` -> multi-slot resolver -> exact `MenuItem.menuId` list.
 
-Menu CRUD uses one path only:
+The existing mutation flow remains:
 
-`CompactMenuStrip action` -> parent callback -> `MenuModal` / confirmation -> `useMenuManagement` mutation.
+`managerMenuSelectionLink` -> exact `menuId` in create item, inventory sync and bulk price inputs.
 
 ## Scope
 
-1. Lift the exact selected menu id to the manager page and keep it valid when restaurant, slot or menu data changes.
-2. Pass `menuId` explicitly to item connection queries, item creation, inventory sync and bulk price updates.
-3. Pass the exact menu id into the item modal.
-4. Remove duplicate mutations and inline editor/delete confirmation from `CompactMenuStrip`; keep it as the grouped menu chooser and action launcher.
-5. Remove one-menu-per-slot create/copy guards and include `id` for edit/toggle operations.
-6. Preserve permissions, restaurant scope, audit behavior, customer time-slot aggregation and existing visual styling.
+1. Refetch active manager item and category observable queries with explicit `menuId` variables when selection changes.
+2. Skip unrelated restaurant/time-slot queries instead of refetching them.
+3. Remove the duplicate generic item refetch from `CompactMenuStrip`.
+4. Show the exact selected menu and service slot in the compact page summary.
+5. Preserve current menu CRUD, permissions, restaurant scope, loading/error states and responsive styling.
 
 ## Acceptance criteria
 
-1. Selecting two sibling menus in the same time slot produces distinct Apollo variables and distinct item lists.
-2. Creating a dish attaches it to the selected `menuId`.
-3. Inventory sync and bulk price operations include the selected `menuId`.
-4. Create and copy allow a target time slot that already contains another menu.
-5. Edit and visibility toggle update only the selected menu id.
-6. There is one menu create/edit/copy/delete UI flow.
-7. Grouped menu list, loading/error states, permissions and responsive layout remain intact.
+1. Selecting two sibling menus in one time slot refetches `MenuItemsConnection` with different explicit `filter.menuId` values.
+2. Category metrics refetch with the same selected `menuId`.
+3. Queries for another restaurant or time slot are not touched.
+4. The compact summary names the selected menu and its service slot.
+5. Existing grouped list, create/edit/copy/delete, inventory sync and audit actions remain available.
+6. No backend, dependency or unrelated page change is introduced.
 
 ## Out of scope
 
 - Customer-facing menu selection or VIP entitlement rules.
 - Moving existing dishes between menus.
-- Backend schema/resolver redesign; current multi-slot contract is retained.
-- New dependencies or a visual redesign.
+- Backend schema/resolver redesign.
+- Rewriting the full manager menu page or changing its visual system.
 
 ## Validation plan
 
-- `npx vitest run src/apollo/managerMenuSelectionLink.test.js src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx`
-- Add a focused hook/manager regression test if an existing test seam supports it without new scaffolding.
+- `npx vitest run src/apollo/ManagerMenuSelectionSync.test.jsx src/apollo/managerMenuSelectionLink.test.js src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx`
 - `npm run check:graphql`
 - `npm run build`
 - Manual review at 390x844, 768px and 1440px when a browser runtime is available.
