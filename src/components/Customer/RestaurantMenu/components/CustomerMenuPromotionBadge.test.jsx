@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useActiveMenuPromotions } from "../../../../hooks/useActiveMenuPromotions";
 import MenuDetailView, {
   GET_CATEGORIES,
+  GET_CUSTOMER_MENUS,
   GET_MENU_ITEMS_FOR_CUSTOMER_MENU,
 } from "./MenuDetailView";
 import MenuItemCard from "./MenuItemCard";
@@ -53,10 +54,33 @@ describe("Customer menu promotion badge wiring", () => {
     const apolloMocks = [
       {
         request: {
+          query: GET_CUSTOMER_MENUS,
+          variables: { restaurantId: "res_01" },
+        },
+        result: {
+          data: {
+            customerMenus: [
+              {
+                id: "menu_lunch_01",
+                restaurantId: "res_01",
+                timeSlot: "lunch",
+                name: "Menu trưa",
+                description: "Món trưa",
+                coverImage: null,
+                isActive: true,
+                __typename: "Menu",
+              },
+            ],
+          },
+        },
+      },
+      {
+        request: {
           query: GET_CATEGORIES,
           variables: {
             restaurantId: "res_01",
             timeSlot: "lunch",
+            menuId: "menu_lunch_01",
           },
         },
         result: {
@@ -80,6 +104,7 @@ describe("Customer menu promotion badge wiring", () => {
             filter: {
               restaurantId: "res_01",
               timeSlot: "lunch",
+              menuId: "menu_lunch_01",
               sort: "default",
             },
             limit: 24,
@@ -146,6 +171,7 @@ describe("Customer menu promotion badge wiring", () => {
           <MenuDetailView
             restaurant={{ id: "res_01", name: "Cơm Niêu Sài Gòn" }}
             canOrder
+            initialTimeSlot="lunch"
             onBack={vi.fn()}
             onOpenFoodDetail={vi.fn()}
           />
