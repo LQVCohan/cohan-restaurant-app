@@ -52,7 +52,7 @@ describe("attendance timestamp calculation", () => {
         actualCheckInAt: "2026-07-12T08:00:00.000Z",
         actualCheckOutAt: "2026-07-13T08:01:00.000Z",
       }),
-    ).toThrow("Khoảng thời gian làm việc không được vượt quá 24 giờ.");
+    ).toThrow("Tổng thời gian làm việc không được vượt quá 24 giờ.");
   });
 
   it("derives valid off-schedule statuses even before check-in", () => {
