@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, Clock3, Sparkles, TriangleAlert } from "lucide-react";
 import { formatCurrency } from "../../../../utils/formatters";
-import { __testables as promotionTestables } from "../../../../hooks/useActiveMenuPromotions";
+import { calculatePromotionPricePreview } from "../../../../hooks/useActiveMenuPromotions";
 import {
   buildFoodDetailPath,
   buildFoodDetailState,
@@ -15,7 +15,6 @@ import "../styles/MenuItemCard.scss";
 import "../styles/MenuItemPromotionPrice.scss";
 
 const MENU_ITEM_PLACEHOLDER = "/default-dishes.jpg";
-const { calculatePromotionPricePreview } = promotionTestables;
 
 const getMenuItemPrices = (item = {}) => {
   const variantPrices = (item.servingVariants || [])
