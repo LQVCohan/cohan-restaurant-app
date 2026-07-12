@@ -48,6 +48,8 @@ const customRole = { id: "role1", name: "Captain", slug: "captain", description:
 const protectedRole = { id: "role2", name: "Manager", slug: "manager", description: "System", department: "management", isSystem: true, parentRole: parentRoles[0], directPermissions: [], permissions: [permissions[0]] };
 
 const baseUser = { id: "u1", role: { permissions: [{ code: "role.read" }, { code: "role.write" }, { code: "permission.read" }, { code: "staff.write" }, { code: "system.manage" }] } };
+const brandAdminUser = { id: "brand-admin-1", role: { permissions: [] } };
+const activeBrandAdminContext = { brandMemberships: [{ role: "admin", status: "active" }] };
 
 function setBaseState(overrides = {}) {
   rbacState.current = {
@@ -81,7 +83,7 @@ function setBaseState(overrides = {}) {
   };
 }
 
-const renderPage = (user = baseUser) => render(<AuthContext.Provider value={{ user }}><RbacManagement /></AuthContext.Provider>);
+const renderPage = (user = baseUser, context = {}) => render(<AuthContext.Provider value={{ user, ...context }}><RbacManagement /></AuthContext.Provider>);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -111,6 +113,22 @@ describe("RbacManagement", () => {
   it("locks protected role form", () => {
     setBaseState({ selectedRole: protectedRole, selectedRoleId: protectedRole.id });
     renderPage();
+    fireEvent.click(screen.getByText("Tạo vai trò"));
+    expect(screen.getByText(/Vai trò mặc định chỉ được xem/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Tên vai trò")).toBeDisabled();
+  });
+
+  it("lets an active Brand Admin edit a custom role", () => {
+    renderPage(brandAdminUser, activeBrandAdminContext);
+    fireEvent.click(screen.getByRole("button", { name: "Tạo vai trò" }));
+    expect(screen.getByText("Có thể chỉnh sửa")).toBeInTheDocument();
+    expect(screen.getByLabelText("Tên vai trò")).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Tạo vai trò mới" })).not.toBeDisabled();
+  });
+
+  it("keeps protected roles locked for Brand Admin", () => {
+    setBaseState({ selectedRole: protectedRole, selectedRoleId: protectedRole.id });
+    renderPage(brandAdminUser, activeBrandAdminContext);
     fireEvent.click(screen.getByText("Tạo vai trò"));
     expect(screen.getByText(/Vai trò mặc định chỉ được xem/)).toBeInTheDocument();
     expect(screen.getByLabelText("Tên vai trò")).toBeDisabled();
