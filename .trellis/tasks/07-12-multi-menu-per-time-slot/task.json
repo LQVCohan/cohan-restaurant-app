@@ -1,44 +1,71 @@
 {
   "id": "07-12-multi-menu-per-time-slot",
   "title": "Multiple menus per restaurant time slot",
-  "status": "in_progress",
+  "status": "completed",
   "type": "full-stack-domain-fix",
   "scope": [
     "cohan-restaurant-backend/models/menu.model.js",
-    "cohan-restaurant-backend/graphql/schema/menu.graphql",
+    "cohan-restaurant-backend/graphql/schema/menuMultiSlot.graphql",
     "cohan-restaurant-backend/graphql/schema/category.graphql",
-    "cohan-restaurant-backend/graphql/schema/inventory.graphql",
-    "cohan-restaurant-backend/graphql/resolvers/menu/query.js",
-    "cohan-restaurant-backend/graphql/resolvers/menu/mutation.js",
+    "cohan-restaurant-backend/graphql/schema/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/menu/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/menu/multiSlotQuery.js",
+    "cohan-restaurant-backend/graphql/resolvers/menu/multiSlotMutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/menu/multiSlotPriceMutation.js",
     "cohan-restaurant-backend/graphql/resolvers/menu/copyMutation.js",
     "cohan-restaurant-backend/graphql/resolvers/menu/inventorySyncMutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/category/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/category/multiSlotQuery.js",
     "cohan-restaurant-backend/graphql/resolvers/category/customerQuery.js",
     "cohan-restaurant-backend/graphql/resolvers/inventory/recipe.query.js",
     "cohan-restaurant-backend/scripts/migrateMenuMultiSlotIndexes.js",
     "cohan-restaurant-backend/package.json",
     "cohan-restaurant-backend/tests/resolvers/menu-multi-slot.test.js",
-    "src/hooks/useMenuManagement.js",
-    "src/hooks/useRecipes.js",
-    "src/components/Dashboard_Manager/Storage/graphql/recipe.gql.js",
-    "src/components/Dashboard_Manager/Menu/MenuManagement.jsx",
+    "cohan-restaurant-backend/tests/resolvers/category-multi-slot.test.js",
+    "cohan-restaurant-backend/tests/scripts/migrate-menu-multi-slot-indexes.test.js",
+    "src/utils/managerMenuSelection.js",
+    "src/apollo/managerMenuSelectionLink.js",
+    "src/apollo/managerMenuSelectionLink.test.js",
+    "src/apollo/ManagerMenuSelectionSync.jsx",
+    "src/apollo/client.js",
+    "src/App.jsx",
+    "src/hooks/useCategoryManagement.js",
     "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.jsx",
-    "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModal.jsx",
-    "src/components/Customer/RestaurantMenu/components/MenuDetailView.jsx"
+    "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStripMultiMenu.scss",
+    "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx"
   ],
   "validation": {
     "planned": [
-      "cd cohan-restaurant-backend && npx vitest run tests/resolvers/menu-multi-slot.test.js tests/resolvers/menu-restaurant-access.test.js",
+      "cd cohan-restaurant-backend && npx vitest run tests/resolvers/menu-multi-slot.test.js tests/resolvers/category-multi-slot.test.js tests/resolvers/menu-restaurant-access.test.js tests/resolvers/public-customer-permission-flows.test.js tests/resolvers/inventory-recipe-search.test.js tests/scripts/migrate-menu-multi-slot-indexes.test.js",
+      "npx vitest run src/apollo/managerMenuSelectionLink.test.js src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx",
       "npm run check:graphql",
       "npm run build",
-      "manual manager and customer menu review at 390x844, 768px and 1440px",
-      "cd cohan-restaurant-backend && npm run migrate:menu-multi-slot:check"
+      "cd cohan-restaurant-backend && npm run migrate:menu-multi-slot:check",
+      "manual manager and customer menu review at 390x844, 768px and 1440px"
     ],
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail, frontend-design and ui-ux-pro-max",
-      "traced Menu schema/index through menu/category/recipe resolvers, GraphQL operations, Apollo hooks, manager UI, customer UI and tests",
-      "confirmed MenuItem already belongs to an exact menuId and is the reusable domain boundary",
-      "confirmed the unique restaurantId plus timeSlot index, findOne-by-slot resolvers and Map-by-slot UI are the shared root causes"
+      "traced Menu schema/index through menu/category/recipe resolvers, GraphQL operations, Apollo links/hooks, manager UI, customer compatibility flows and tests",
+      "confirmed MenuItem.menuId is the existing exact ownership boundary and timeSlot is only a service-window classification",
+      "removed the one-menu-per-slot schema constraint and added an idempotent deployed-database index migration",
+      "made menu creation always create a sibling document and menu editing target the selected menu id",
+      "made item creation reject ambiguous same-slot requests instead of silently attaching to the first menu",
+      "scoped manager item queries, category metrics, stock sync and bulk pricing to the selected menu id",
+      "made copy operations require an exact source when a slot contains multiple menus and permit occupied target slots",
+      "aggregated active same-slot menus for legacy public item/category browsing and all same-slot menus for manager recipe listing",
+      "replaced the collapsed timeSlot-to-menu presentation with four service-slot groups containing every named menu",
+      "added regression tests for same-slot creation, exact category/item routing, manager Apollo injection, grouped UI and index migration",
+      "re-fetched the latest mutation, migration, UI and test files and reviewed caller/selector consistency",
+      "verified the latest commit has no attached GitHub Actions workflow or combined status checks"
     ],
-    "notRun": []
+    "notRun": [
+      "backend Vitest suites were not run because the GitHub connector does not provide a repository runtime",
+      "frontend Vitest suites were not run",
+      "GraphQL schema check was not run",
+      "frontend and backend builds were not run",
+      "migration check/apply was not run because no database runtime is connected",
+      "responsive browser and real-device checks were not run",
+      "no GitHub Actions workflow or status check was attached to the latest commit"
+    ]
   }
 }
