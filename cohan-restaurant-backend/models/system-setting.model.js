@@ -14,6 +14,16 @@ const overtimeLimitSchema = new Schema(
   { _id: false },
 );
 
+const performanceLevelThresholdsSchema = new Schema(
+  {
+    excellentMin: { type: Number, default: 90, min: 0, max: 100 },
+    goodMin: { type: Number, default: 80, min: 0, max: 100 },
+    averageMin: { type: Number, default: 65, min: 0, max: 100 },
+    needsAttentionMin: { type: Number, default: 50, min: 0, max: 100 },
+  },
+  { _id: false },
+);
+
 const SystemSettingSchema = new Schema(
   {
     restaurantId: {
@@ -92,6 +102,17 @@ const SystemSettingSchema = new Schema(
           type: overtimeLimitSchema,
           default: () => ({ maxMinutesPerDay: 240 }),
         },
+      },
+    },
+    performancePolicy: {
+      levelThresholds: {
+        type: performanceLevelThresholdsSchema,
+        default: () => ({
+          excellentMin: 90,
+          goodMin: 80,
+          averageMin: 65,
+          needsAttentionMin: 50,
+        }),
       },
     },
     metadata: {
