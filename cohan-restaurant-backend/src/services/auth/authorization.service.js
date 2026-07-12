@@ -1,6 +1,7 @@
 import { GraphQLError } from "graphql";
 import { requireRestaurantAccess } from "../../../graphql/guards.js";
 import { hasRole } from "../../../utils/authz.js";
+import { getUserBrandMemberships } from "./restaurantScope.service.js";
 
 export const MANAGER_STAFF_PERMISSION_WHITELIST = Object.freeze([
   "menu.read",
@@ -48,6 +49,14 @@ export const PROTECTED_SYSTEM_ROLE_SLUGS = Object.freeze([
   "manager",
   "hr",
   "accountant",
+]);
+
+const BRAND_RBAC_PERMISSION_CODES = new Set([
+  "role.read",
+  "role.write",
+  "permission.read",
+  "staff.read",
+  "staff.write",
 ]);
 
 const AI_CHATBOT_MANAGER_PERMISSIONS = [
@@ -135,6 +144,14 @@ function dedupePermissions(permissions = []) {
   return Array.from(map.values());
 }
 
+async function hasActiveBrandRbacRole(user, permissionCode) {
+  if (!BRAND_RBAC_PERMISSION_CODES.has(permissionCode)) return false;
+  const memberships = await getUserBrandMemberships(user);
+  return memberships.some((membership) =>
+    membership?.status === "active" && ["owner", "admin"].includes(String(membership?.role || "").trim().toLowerCase())
+  );
+}
+
 async function loadPopulatedRole(role) {
   if (!role) return null;
   if (typeof role === "object" && Array.isArray(role.permissions)) return role;
@@ -165,6 +182,7 @@ export async function hasPermission(user, permissionCode) {
   const code = normalizePermissionCode(permissionCode);
   if (!code) return false;
   if (hasRole(user, ["admin"])) return true;
+  if (await hasActiveBrandRbacRole(user, code)) return true;
 
   const permissions = await getUserEffectivePermissions(user);
   const codes = permissions.map(permissionKey);
