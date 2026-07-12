@@ -1,0 +1,163 @@
+.cuisine-onboarding__notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.cuisine-onboarding__draft-note,
+.cuisine-onboarding__menu-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  margin-top: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.cuisine-onboarding__menu-note {
+  max-width: 520px;
+  border: 1px solid rgba(62, 113, 82, 0.16);
+  background: rgba(226, 239, 229, 0.82);
+  color: #385844;
+}
+
+.cuisine-template-card__slot-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  color: #7b5638;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.cuisine-template-card__metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.cuisine-template-card__menu-groups {
+  display: grid;
+  gap: 12px;
+  padding: 4px 18px 18px;
+}
+
+.cuisine-template-card__menu-group {
+  overflow: hidden;
+  border: 1px solid rgba(109, 80, 52, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.68);
+
+  > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 40px;
+    padding: 8px 11px;
+    border-bottom: 1px solid rgba(109, 80, 52, 0.1);
+    background: rgba(244, 229, 209, 0.42);
+
+    > span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #74431e;
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    small {
+      flex: 0 0 auto;
+      color: #776251;
+      font-size: 0.7rem;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+}
+
+.cuisine-template-card__menu-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px;
+}
+
+.cuisine-template-card__menu {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 10px;
+  background: #fffdf9;
+
+  > div {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  strong {
+    min-width: 0;
+    color: #3f3024;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  > div > span {
+    flex: 0 0 auto;
+    color: #8f5a32;
+    font-size: 0.68rem;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+  }
+
+  ul {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 5px;
+    margin: 8px 0 0;
+    padding: 0;
+  }
+
+  li {
+    font-size: 0.76rem;
+  }
+
+  p {
+    margin: 8px 0 0;
+    color: #806c5b;
+    font-size: 0.74rem;
+    line-height: 1.4;
+  }
+}
+
+@media (max-width: 760px) {
+  .cuisine-onboarding__notes {
+    display: grid;
+  }
+
+  .cuisine-onboarding__draft-note,
+  .cuisine-onboarding__menu-note {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .cuisine-template-card__metrics,
+  .cuisine-template-card__menu-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .cuisine-template-card__menu-list {
+    grid-template-columns: 1fr;
+  }
+}
