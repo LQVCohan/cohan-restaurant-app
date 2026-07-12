@@ -1,36 +1,44 @@
 {
   "id": "07-12-attendance-overtime-calculation-icon",
   "title": "Chuẩn hóa tính chấm công, tăng ca và icon staff",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack",
   "scope": "attendance-overtime-staff-ui",
   "priority": "P1",
   "createdAt": "2026-07-12",
+  "completedAt": "2026-07-12",
   "branch": "main",
   "base_branch": "main",
   "relatedFiles": [
-    "cohan-restaurant-backend/graphql/resolvers/staff/mutation.js",
+    "cohan-restaurant-backend/models/timesheet.model.js",
     "cohan-restaurant-backend/src/services/attendance/attendanceCalculation.service.js",
-    "cohan-restaurant-backend/src/services/overtime/overtimeRequest.service.js",
+    "cohan-restaurant-backend/src/services/attendance/attendanceOvertimeState.service.js",
     "cohan-restaurant-backend/src/services/payroll/payrollCalculator.service.js",
-    "cohan-restaurant-backend/tests/resolvers/timesheet-shift-binding.test.js",
-    "cohan-restaurant-backend/tests/services/overtime-request-workflow.test.js",
+    "cohan-restaurant-backend/tests/models/timesheet-attendance-invariants.test.js",
+    "cohan-restaurant-backend/tests/services/attendance-calculation.service.test.js",
+    "cohan-restaurant-backend/tests/services/attendance-overtime-state.test.js",
     "cohan-restaurant-backend/tests/services/payroll-overtime-night-extra.test.js",
     "src/components/Staff/StaffDashboardPage.jsx",
     "src/components/Staff/StaffDashboardPage.test.jsx"
   ],
   "validation": {
     "planned": [
-      "targeted attendance resolver Vitest",
-      "targeted overtime workflow Vitest",
+      "targeted attendance calculation Vitest",
+      "targeted overtime state Vitest",
       "targeted payroll overtime calculator Vitest",
       "StaffDashboardPage component Vitest",
       "frontend and backend build/smoke checks"
     ],
     "completed": [
-      "traced Timesheet schema through attendance resolvers/services, overtime approval, payroll runtime/calculator and staff UI"
+      "traced Timesheet schema through attendance resolvers/services, overtime approval, payroll runtime/calculator and staff UI",
+      "centralized persisted Timesheet metrics through the shared timestamp calculator",
+      "added regression coverage for attendance metrics, overtime invariants, night overtime premium and the staff attendance icon"
     ],
-    "notRun": []
+    "notRun": [
+      "Vitest was not run because the GitHub connector has no executable checkout",
+      "frontend/backend build was not run because the GitHub connector has no executable checkout",
+      "browser smoke and responsive checks were not run"
+    ]
   },
   "meta": {
     "skills": [
