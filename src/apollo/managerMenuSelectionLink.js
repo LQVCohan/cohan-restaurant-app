@@ -10,6 +10,15 @@ const isManagerMenuPage = () => {
   );
 };
 
+const getManagerRestaurantId = () => {
+  if (typeof window === "undefined") return "";
+  try {
+    return String(window.localStorage.getItem("manager.selectedRestaurantId") || "");
+  } catch {
+    return "";
+  }
+};
+
 const matchesSelection = (selection, value) =>
   selection &&
   String(value?.restaurantId || "") === selection.restaurantId &&
@@ -19,16 +28,30 @@ export const applyManagerMenuSelection = (
   operationName,
   variables = {},
   selection,
+  managerRestaurantId = "",
 ) => {
-  if (!selection) return variables;
+  const scopedVariables =
+    ["EnsureMenu", "CopyMenu"].includes(operationName) &&
+    variables.input &&
+    managerRestaurantId
+      ? {
+          ...variables,
+          input: {
+            ...variables.input,
+            restaurantId: managerRestaurantId,
+          },
+        }
+      : variables;
+
+  if (!selection) return scopedVariables;
 
   if (
     operationName === "MenuItemsConnection" &&
-    matchesSelection(selection, variables.filter)
+    matchesSelection(selection, scopedVariables.filter)
   ) {
     return {
-      ...variables,
-      filter: { ...variables.filter, menuId: selection.menuId },
+      ...scopedVariables,
+      filter: { ...scopedVariables.filter, menuId: selection.menuId },
     };
   }
 
@@ -36,15 +59,15 @@ export const applyManagerMenuSelection = (
     ["CreateMenuItem", "SyncMenuItemInventoryStatuses"].includes(
       operationName,
     ) &&
-    matchesSelection(selection, variables.input)
+    matchesSelection(selection, scopedVariables.input)
   ) {
     return {
-      ...variables,
-      input: { ...variables.input, menuId: selection.menuId },
+      ...scopedVariables,
+      input: { ...scopedVariables.input, menuId: selection.menuId },
     };
   }
 
-  return variables;
+  return scopedVariables;
 };
 
 export const managerMenuSelectionLink = new ApolloLink((operation, forward) => {
@@ -54,6 +77,7 @@ export const managerMenuSelectionLink = new ApolloLink((operation, forward) => {
     operation?.operationName || "",
     operation?.variables || {},
     getManagerMenuSelection(),
+    getManagerRestaurantId(),
   );
   return forward(operation);
 });
