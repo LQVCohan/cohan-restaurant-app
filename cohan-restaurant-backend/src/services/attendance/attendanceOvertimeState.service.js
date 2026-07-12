@@ -23,6 +23,16 @@ export function buildAttendanceOvertimeState({
     previousOvertimeMinutes !== undefined &&
     normalizeMinutes(previousOvertimeMinutes) !== overtime;
 
+  if (forcePending) {
+    return {
+      approvedOvertimeMinutes: 0,
+      overtimeApprovalStatus: overtime > 0 ? "pending" : "not_required",
+      overtimeReviewNote: "",
+      overtimeReviewedBy: null,
+      overtimeReviewedAt: null,
+    };
+  }
+
   if (!changed && status === "approved" && approved > overtime) {
     throw new Error("OVERTIME_APPROVED_MINUTES_EXCEED_ACTUAL");
   }
@@ -31,16 +41,6 @@ export function buildAttendanceOvertimeState({
     return {
       approvedOvertimeMinutes: 0,
       overtimeApprovalStatus: "not_required",
-      overtimeReviewNote: "",
-      overtimeReviewedBy: null,
-      overtimeReviewedAt: null,
-    };
-  }
-
-  if (forcePending) {
-    return {
-      approvedOvertimeMinutes: 0,
-      overtimeApprovalStatus: "pending",
       overtimeReviewNote: "",
       overtimeReviewedBy: null,
       overtimeReviewedAt: null,
