@@ -1,4 +1,8 @@
 # Multiple named menus may share one restaurant service time slot.
+extend type Query {
+  customerMenus(restaurantId: ID!): [Menu!]!
+}
+
 extend input MenuItemFilter {
   menuId: ID
 }
