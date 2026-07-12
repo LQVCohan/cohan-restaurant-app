@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import "./StaffKitchenFocusLauncher.scss";
+import "./StaffKitchenFocusTickets.scss";
 
 export const STAFF_KITCHEN_FOCUS_BODY_CLASS = "staff-kitchen-focus-active";
 const FOCUS_TARGET_SELECTOR = ".staff-kitchen-page__venue";
