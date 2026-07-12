@@ -128,7 +128,7 @@ const PolicyModal = ({
   const closeButtonRef = useRef(null);
   const previousFocusRef = useRef(null);
   const [form, setForm] = useState(DEFAULT_POLICY_THRESHOLDS);
-  const [validationMessage, setValidationMessage] = useState("");
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -136,7 +136,7 @@ const PolicyModal = ({
       ...DEFAULT_POLICY_THRESHOLDS,
       ...(policy?.levelThresholds || {}),
     });
-    setValidationMessage("");
+    setActionError("");
   }, [open, policy?.levelThresholds]);
 
   useEffect(() => {
@@ -187,11 +187,19 @@ const PolicyModal = ({
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!validation.valid) {
-      setValidationMessage(validation.message);
+      setActionError(validation.message);
       return;
     }
-    setValidationMessage("");
-    await onSave(validation.values);
+    setActionError("");
+    try {
+      await onSave(validation.values);
+    } catch (saveError) {
+      setActionError(
+        saveError?.graphQLErrors?.[0]?.message ||
+          saveError?.message ||
+          "Không thể lưu cấu hình đánh giá.",
+      );
+    }
   };
 
   return (
@@ -276,7 +284,7 @@ const PolicyModal = ({
                           ...current,
                           [field.key]: event.target.value,
                         }));
-                        setValidationMessage("");
+                        setActionError("");
                       }}
                     />
                     <small>{field.help}</small>
@@ -319,9 +327,9 @@ const PolicyModal = ({
               </p>
             </div>
 
-            {error || validationMessage ? (
+            {error || actionError ? (
               <p className="performance-policy-error" role="alert">
-                {validationMessage || error?.message || "Không tải được cấu hình."}
+                {actionError || error?.message || "Không tải được cấu hình."}
               </p>
             ) : null}
 
@@ -332,7 +340,7 @@ const PolicyModal = ({
               <button
                 type="submit"
                 className="btn-primary"
-                disabled={saving || !validation.valid}
+                disabled={saving || !validation.valid || Boolean(error)}
               >
                 {saving ? "Đang lưu…" : "Lưu mốc xếp loại"}
               </button>
@@ -347,6 +355,7 @@ const PolicyModal = ({
 const StaffPerformancePolicyPage = (props) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const [policyRenderKey, setPolicyRenderKey] = useState("default");
   const restaurantId = resolveEffectivePerformanceRestaurantId(
     props.selectedRestaurant,
   );
@@ -364,36 +373,39 @@ const StaffPerformancePolicyPage = (props) => {
 
   useEffect(() => {
     resetPerformanceLevelThresholds();
+    setPolicyRenderKey(`${restaurantId || "none"}:default`);
+    setStatusMessage("");
   }, [restaurantId]);
 
   useEffect(() => {
-    if (policy?.levelThresholds) {
-      setPerformanceLevelThresholds(policy.levelThresholds);
-    }
-  }, [policy?.levelThresholds]);
+    if (!policy?.levelThresholds) return;
+    setPerformanceLevelThresholds(policy.levelThresholds);
+    setPolicyRenderKey(
+      `${restaurantId}:${JSON.stringify(policy.levelThresholds)}`,
+    );
+  }, [policy?.levelThresholds, restaurantId]);
 
   const handleSave = async (thresholds) => {
-    try {
-      const result = await updatePolicy({
-        variables: {
-          input: {
-            restaurantId,
-            levelThresholds: thresholds,
-          },
+    const result = await updatePolicy({
+      variables: {
+        input: {
+          restaurantId,
+          levelThresholds: thresholds,
         },
-      });
-      const saved = result?.data?.updateStaffPerformancePolicy;
-      if (!saved?.levelThresholds) {
-        throw new Error("Hệ thống không trả về cấu hình đã lưu.");
-      }
-      setPerformanceLevelThresholds(saved.levelThresholds);
-      setStatusMessage(
-        "Đã lưu mốc xếp loại. Hãy tính lại hiệu suất để áp dụng cho snapshot mới.",
-      );
-      setModalOpen(false);
-    } catch (saveError) {
-      throw saveError;
+      },
+    });
+    const saved = result?.data?.updateStaffPerformancePolicy;
+    if (!saved?.levelThresholds) {
+      throw new Error("Hệ thống không trả về cấu hình đã lưu.");
     }
+    setPerformanceLevelThresholds(saved.levelThresholds);
+    setPolicyRenderKey(
+      `${restaurantId}:${JSON.stringify(saved.levelThresholds)}`,
+    );
+    setStatusMessage(
+      "Đã lưu mốc xếp loại. Hãy tính lại hiệu suất để áp dụng cho snapshot mới.",
+    );
+    setModalOpen(false);
   };
 
   return (
@@ -432,14 +444,14 @@ const StaffPerformancePolicyPage = (props) => {
         </p>
       ) : null}
 
-      <StaffPerformancePage {...props} />
+      <StaffPerformancePage key={policyRenderKey} {...props} />
 
       <PolicyModal
         open={modalOpen}
         restaurantName={restaurantName}
         policy={policy}
         loading={loading}
-        error={error}
+        error={error || updateState.error}
         saving={updateState.loading}
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
