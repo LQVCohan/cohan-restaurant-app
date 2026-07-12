@@ -14,3 +14,7 @@ extend input CreateMenuItemInput {
 extend input SyncMenuItemInventoryStatusesInput {
   menuId: ID
 }
+
+extend input BulkPriceUpdateInput {
+  menuId: ID
+}
