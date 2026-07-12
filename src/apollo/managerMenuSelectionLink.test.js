@@ -8,7 +8,7 @@ const selection = {
 };
 
 describe("applyManagerMenuSelection", () => {
-  it("adds the selected menu to item queries and mutations", () => {
+  it("adds the selected menu to item and category queries", () => {
     expect(
       applyManagerMenuSelection(
         "MenuItemsConnection",
@@ -30,17 +30,36 @@ describe("applyManagerMenuSelection", () => {
 
     expect(
       applyManagerMenuSelection(
-        "CreateMenuItem",
+        "GetCategories",
         {
-          input: {
-            restaurantId: "restaurant-1",
-            timeSlot: "dinner",
-            name: "Bò sốt vang",
-          },
+          restaurantId: "restaurant-1",
+          timeSlot: "dinner",
         },
         selection,
-      ).input.menuId,
+      ).menuId,
     ).toBe("menu-vip");
+  });
+
+  it("adds the selected menu to item, stock, and price mutations", () => {
+    for (const operationName of [
+      "CreateMenuItem",
+      "SyncMenuItemInventoryStatuses",
+      "BulkUpdateMenuItemPrices",
+    ]) {
+      expect(
+        applyManagerMenuSelection(
+          operationName,
+          {
+            input: {
+              restaurantId: "restaurant-1",
+              timeSlot: "dinner",
+              name: "Bò sốt vang",
+            },
+          },
+          selection,
+        ).input.menuId,
+      ).toBe("menu-vip");
+    }
   });
 
   it("does not route another restaurant or time slot into the selected menu", () => {
