@@ -14,10 +14,3 @@ extend input CreateMenuItemInput {
 extend input SyncMenuItemInventoryStatusesInput {
   menuId: ID
 }
-
-extend type Query {
-  customerMenuCategoriesByMenu(
-    restaurantId: ID!
-    menuId: ID!
-  ): [Category!]!
-}
