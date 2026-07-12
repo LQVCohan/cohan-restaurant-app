@@ -7,7 +7,7 @@ const KEY_PATTERN = /^[A-Za-z0-9:_-]+$/;
 const PROCESSING_WAIT_MS = 3000;
 const PROCESSING_POLL_MS = 250;
 const STALE_PROCESSING_MS = 2 * 60 * 1000;
-const PROCESSING_TTL_MS = 24 * 60 * 60 * 1000;
+const PROCESSING_TTL_MS = 15 * 60 * 1000;
 const FAILED_TTL_MS = 24 * 60 * 60 * 1000;
 const COMPLETED_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
@@ -196,47 +196,22 @@ async function claimPaymentRequest({
     if (claim.status === "COMPLETED") {
       return { owner: false, claim, result: claim.resultPayload };
     }
-    if (claim.status === "FAILED") {
-      const recovered = await recoverCompleted({
-        recover,
-        claim,
-        key,
-        requestFingerprint,
-      });
-      if (recovered != null) return { owner: false, claim, result: recovered };
-    } else {
+    if (claim.status === "PROCESSING") {
       const startedAt = new Date(claim.startedAt || 0).getTime();
-      if (Date.now() - startedAt < STALE_PROCESSING_MS) {
-        throw paymentError("Payment is already being processed", "PAYMENT_IN_PROGRESS", {
-          retryAfterMs: 1000,
-        });
-      }
-
-      const recovered = await recoverCompleted({
-        recover,
-        claim,
-        key,
-        requestFingerprint,
-      });
-      if (recovered != null) return { owner: false, claim, result: recovered };
-
-      const reclaimed = await PaymentRequestLock.findOneAndUpdate(
-        {
-          _id: claim._id,
-          status: "PROCESSING",
-          startedAt: claim.startedAt,
+      if (Date.now() - startedAt >= STALE_PROCESSING_MS) {
+        const recovered = await recoverCompleted({
+          recover,
+          claim,
+          key,
           requestFingerprint,
-        },
-        {
-          $set: {
-            startedAt: new Date(),
-            expiresAt: new Date(Date.now() + PROCESSING_TTL_MS),
-          },
-          $inc: { attempts: 1 },
-        },
-        { new: true },
-      ).lean();
-      if (reclaimed) return { owner: true, claim: reclaimed };
+        });
+        if (recovered != null) {
+          return { owner: false, claim, result: recovered };
+        }
+      }
+      throw paymentError("Payment is already being processed", "PAYMENT_IN_PROGRESS", {
+        retryAfterMs: 1000,
+      });
     }
   }
 
