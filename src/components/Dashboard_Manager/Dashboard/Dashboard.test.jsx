@@ -110,7 +110,7 @@ describe("Dashboard manager command center", () => {
     expect(screen.getByLabelText("Chọn khoảng thời gian")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
-        name: "Đơn và đặt bàn chờ xác nhận",
+        name: "Yêu cầu chờ xác nhận",
       }),
     ).toBeInTheDocument();
     expect(
@@ -123,6 +123,43 @@ describe("Dashboard manager command center", () => {
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
     expect(screen.getByText("#ORD-1001")).toBeInTheDocument();
     expect(screen.queryByText("#raw-order-id")).not.toBeInTheDocument();
+  });
+
+  it("uses one full-width queue section when only orders are waiting", () => {
+    renderDashboard({
+      pendingOrders: [
+        {
+          id: "pending-1",
+          orderCode: "POS-2001",
+          customerName: "Vương",
+          orderType: "DINE_IN",
+          tableCode: "T101",
+          total: 118000,
+          createdAt: "2026-07-12T00:10:00.000Z",
+          itemNames: ["Cơm gà"],
+        },
+      ],
+      pendingReservations: [],
+      pendingOrderCount: 1,
+      pendingReservationCount: 0,
+    });
+
+    const summary = screen.getByLabelText("Tổng yêu cầu chờ xác nhận");
+    expect(summary).toHaveTextContent("1");
+    expect(summary).toHaveTextContent("đơn món");
+    expect(summary).toHaveTextContent("0");
+    expect(summary).toHaveTextContent("đặt bàn");
+
+    const orderHeading = screen.getByRole("heading", { name: "Đơn đặt món" });
+    expect(orderHeading.closest(".dashboard-queue-sections")).toHaveClass(
+      "dashboard-queue-sections--single",
+    );
+    expect(
+      screen.queryByRole("heading", { name: "Đặt bàn" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("#POS-2001")).toBeInTheDocument();
+    expect(screen.getByText("118.000 ₫")).toBeInTheDocument();
+    expect(screen.getByText("Cơm gà")).toBeInTheDocument();
   });
 
   it("shows meaningful empty revenue copy instead of fake trend data when revenueTrend is empty", () => {
