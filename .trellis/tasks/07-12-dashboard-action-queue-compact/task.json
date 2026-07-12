@@ -1,0 +1,32 @@
+{
+  "id": "07-12-dashboard-action-queue-compact",
+  "name": "dashboard-action-queue-compact",
+  "title": "Tối ưu hàng đợi đơn món và đặt bàn",
+  "description": "Thu gọn khu vực yêu cầu chờ xác nhận, bỏ cột rỗng và tăng khả năng quét thông tin trên desktop/mobile.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-dashboard-action-queue",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-12",
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Dashboard/components/DashboardActionQueue/DashboardActionQueue.jsx",
+    "src/components/Dashboard_Manager/Dashboard/components/DashboardActionQueue/DashboardActionQueuePolish.scss",
+    "src/components/Dashboard_Manager/Dashboard/Dashboard.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "vitest run src/components/Dashboard_Manager/Dashboard/Dashboard.test.jsx",
+      "npm run build",
+      "manual responsive audit at 1440, 1024, 768, 430 and 390 px"
+    ],
+    "completed": [],
+    "notRun": []
+  },
+  "meta": {
+    "skills": ["ponytail", "ui-ux-pro-max", "frontend-design", "taste-ui-redesign"]
+  }
+}
