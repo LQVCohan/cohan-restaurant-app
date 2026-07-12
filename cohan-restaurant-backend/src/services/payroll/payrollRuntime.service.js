@@ -20,6 +20,10 @@ import { getPayrollPolicyForDate } from "../../config/payrollPolicy.vn.js";
 import { assertPayrollPeriodEditable } from "./payrollLockGuard.service.js";
 import { getStaffMembershipRestaurantFilter } from "../auth/restaurantScope.service.js";
 
+const MINUTE_MS = 60 * 1000;
+const DAY_MS = 24 * 60 * MINUTE_MS;
+const DEFAULT_PAYROLL_TIMEZONE_OFFSET_MINUTES = 7 * 60;
+
 export function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
   return new mongoose.Types.ObjectId(id);
@@ -51,50 +55,21 @@ function mapDepartmentLabel(department) {
   return labels[String(department || "").toLowerCase()] || "Other";
 }
 
-function normalizeYmd(dateValue) {
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 10);
+function toValidDate(value) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function getWeekdayCode(dateValue) {
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return "";
-  return ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][
-    date.getUTCDay()
-  ];
+function minutesBetween(startValue, endValue) {
+  const start = toValidDate(startValue);
+  const end = toValidDate(endValue);
+  if (!start || !end || end <= start) return 0;
+  return Math.max(Math.round((end.getTime() - start.getTime()) / MINUTE_MS), 0);
 }
-
-function isTimesheetIncludedInPayroll(row) {
-  return (
-    row?.isOffSchedule !== true ||
-    row?.approved === true ||
-    row?.offScheduleApprovalStatus === "approved"
-  );
-}
-
-function isHolidayWorkDate(row, settings) {
-  const holidays = new Set(
-    (settings?.holidayDates || []).map((value) => normalizeYmd(value)),
-  );
-  return holidays.has(normalizeYmd(row.workDate));
-}
-
-function isWeekendWorkDate(row, settings) {
-  const weekends = new Set(
-    (settings?.weekendDays || ["SUN"]).map((day) =>
-      String(day).trim().toUpperCase(),
-    ),
-  );
-  return weekends.has(getWeekdayCode(row.workDate));
-}
-
-const MINUTE_MS = 60 * 1000;
-const DAY_MS = 24 * 60 * MINUTE_MS;
-const DEFAULT_PAYROLL_TIMEZONE_OFFSET_MINUTES = 7 * 60;
 
 function parseClockMinutes(clockText) {
-  const [hour = "0", minute = "0"] = String(clockText || "00:00").split(
+  const [hour = "0", minute = 0] = String(clockText || "00:00").split(
     ":",
   );
   return Number(hour) * 60 + Number(minute);
@@ -112,17 +87,67 @@ function resolvePayrollTimezoneOffsetMinutes(settings) {
 }
 
 function toOffsetDayStart(dateValue, offsetMinutes) {
-  const shifted = new Date(
-    new Date(dateValue).getTime() + offsetMinutes * MINUTE_MS,
-  );
+  const date = toValidDate(dateValue);
+  if (!date) return null;
+  const shifted = new Date(date.getTime() + offsetMinutes * MINUTE_MS);
   shifted.setUTCHours(0, 0, 0, 0);
   return new Date(shifted.getTime() - offsetMinutes * MINUTE_MS);
 }
 
-function calculateNightOverlapMinutes(row, settings) {
-  const checkIn = row.actualCheckInAt ? new Date(row.actualCheckInAt) : null;
-  const checkOut = row.actualCheckOutAt ? new Date(row.actualCheckOutAt) : null;
-  if (!checkIn || !checkOut || checkOut <= checkIn) return 0;
+function toOffsetDayInfo(dateValue, settings) {
+  const date = toValidDate(dateValue);
+  if (!date) return { ymd: "", weekday: "" };
+  const offsetMinutes = resolvePayrollTimezoneOffsetMinutes(settings);
+  const shifted = new Date(date.getTime() + offsetMinutes * MINUTE_MS);
+  return {
+    ymd: shifted.toISOString().slice(0, 10),
+    weekday: ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][
+      shifted.getUTCDay()
+    ],
+  };
+}
+
+function normalizeHolidayDate(value, settings) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+  return toOffsetDayInfo(value, settings).ymd;
+}
+
+function isHolidayAt(dateValue, settings) {
+  const ymd = toOffsetDayInfo(dateValue, settings).ymd;
+  if (!ymd) return false;
+  const holidays = new Set(
+    (settings?.holidayDates || [])
+      .map((value) => normalizeHolidayDate(value, settings))
+      .filter(Boolean),
+  );
+  return holidays.has(ymd);
+}
+
+function isWeekendAt(dateValue, settings) {
+  const weekday = toOffsetDayInfo(dateValue, settings).weekday;
+  if (!weekday) return false;
+  const weekends = new Set(
+    (settings?.weekendDays || ["SUN"]).map((day) =>
+      String(day).trim().toUpperCase(),
+    ),
+  );
+  return weekends.has(weekday);
+}
+
+function isTimesheetIncludedInPayroll(row) {
+  return (
+    row?.isOffSchedule !== true ||
+    row?.approved === true ||
+    row?.offScheduleApprovalStatus === "approved"
+  );
+}
+
+function calculateNightOverlapMinutesBetween(startValue, endValue, settings) {
+  const start = toValidDate(startValue);
+  const end = toValidDate(endValue);
+  if (!start || !end || end <= start) return 0;
 
   const nightStartMinutes = parseClockMinutes(
     settings?.nightShiftStart || "22:00",
@@ -132,10 +157,11 @@ function calculateNightOverlapMinutes(row, settings) {
   );
   const wrapsMidnight = nightEndMinutes <= nightStartMinutes;
   const offsetMinutes = resolvePayrollTimezoneOffsetMinutes(settings);
-  const firstDayStart = toOffsetDayStart(checkIn, offsetMinutes);
-  const lastDayStart = toOffsetDayStart(checkOut, offsetMinutes);
-  let overlap = 0;
+  const firstDayStart = toOffsetDayStart(start, offsetMinutes);
+  const lastDayStart = toOffsetDayStart(end, offsetMinutes);
+  if (!firstDayStart || !lastDayStart) return 0;
 
+  let overlap = 0;
   for (
     let dayStart = firstDayStart.getTime() - DAY_MS;
     dayStart <= lastDayStart.getTime();
@@ -148,12 +174,115 @@ function calculateNightOverlapMinutes(row, settings) {
       (wrapsMidnight ? DAY_MS : 0);
     overlap += Math.max(
       0,
-      Math.min(checkOut.getTime(), windowEnd) -
-        Math.max(checkIn.getTime(), windowStart),
+      Math.min(end.getTime(), windowEnd) -
+        Math.max(start.getTime(), windowStart),
     );
   }
 
   return Math.round(overlap / MINUTE_MS);
+}
+
+function buildPayableAttendance(row) {
+  const checkIn = toValidDate(row.actualCheckInAt);
+  const checkOut = toValidDate(row.actualCheckOutAt);
+  const plannedStart = toValidDate(row.plannedStartTime);
+  const plannedEnd = toValidDate(row.plannedEndTime);
+  const approvedOvertimeMinutes =
+    String(row.overtimeApprovalStatus || "").toLowerCase() === "approved"
+      ? Math.max(Number(row.approvedOvertimeMinutes || 0), 0)
+      : 0;
+
+  if (!checkIn || !checkOut || checkOut <= checkIn) {
+    const storedMinutes = Math.max(Math.round(Number(row.hours || 0) * 60), 0);
+    const actualOvertimeMinutes = Math.max(Number(row.overtimeMinutes || 0), 0);
+    const payableOvertimeMinutes = Math.min(
+      approvedOvertimeMinutes,
+      actualOvertimeMinutes,
+    );
+    const regularMinutes = Math.max(storedMinutes - actualOvertimeMinutes, 0);
+    return {
+      regularInterval: null,
+      overtimeInterval: null,
+      regularMinutes,
+      overtimeMinutes: payableOvertimeMinutes,
+      totalMinutes: regularMinutes + payableOvertimeMinutes,
+    };
+  }
+
+  if (row.isOffSchedule === true || !plannedStart || !plannedEnd) {
+    const regularMinutes = minutesBetween(checkIn, checkOut);
+    return {
+      regularInterval: [checkIn, checkOut],
+      overtimeInterval: null,
+      regularMinutes,
+      overtimeMinutes: 0,
+      totalMinutes: regularMinutes,
+    };
+  }
+
+  const regularStart = new Date(
+    Math.max(checkIn.getTime(), plannedStart.getTime()),
+  );
+  const regularEnd = new Date(
+    Math.min(checkOut.getTime(), plannedEnd.getTime()),
+  );
+  const regularMinutes = minutesBetween(regularStart, regularEnd);
+
+  const actualOvertimeStart = new Date(
+    Math.max(plannedEnd.getTime(), checkIn.getTime()),
+  );
+  const actualOvertimeMinutes = minutesBetween(actualOvertimeStart, checkOut);
+  const payableOvertimeMinutes = Math.min(
+    approvedOvertimeMinutes,
+    actualOvertimeMinutes,
+  );
+  const overtimeEnd =
+    payableOvertimeMinutes > 0
+      ? new Date(
+          actualOvertimeStart.getTime() +
+            payableOvertimeMinutes * MINUTE_MS,
+        )
+      : null;
+
+  return {
+    regularInterval: regularMinutes > 0 ? [regularStart, regularEnd] : null,
+    overtimeInterval:
+      overtimeEnd && overtimeEnd > actualOvertimeStart
+        ? [actualOvertimeStart, overtimeEnd]
+        : null,
+    regularMinutes,
+    overtimeMinutes: payableOvertimeMinutes,
+    totalMinutes: regularMinutes + payableOvertimeMinutes,
+  };
+}
+
+function addOvertimeByLocalDay(bucket, interval, settings) {
+  if (!interval) return;
+  const [start, end] = interval;
+  const offsetMinutes = resolvePayrollTimezoneOffsetMinutes(settings);
+  let cursor = start.getTime();
+  const endMs = end.getTime();
+
+  while (cursor < endMs) {
+    const dayStart = toOffsetDayStart(new Date(cursor), offsetMinutes);
+    if (!dayStart) break;
+    const segmentEnd = Math.min(endMs, dayStart.getTime() + DAY_MS);
+    const segmentMinutes = Math.max(
+      Math.round((segmentEnd - cursor) / MINUTE_MS),
+      0,
+    );
+    const segmentDate = new Date(cursor);
+
+    if (isHolidayAt(segmentDate, settings)) {
+      bucket.overtimeHolidayMinutes += segmentMinutes;
+    } else if (isWeekendAt(segmentDate, settings)) {
+      bucket.overtimeWeekendMinutes += segmentMinutes;
+    } else {
+      bucket.overtimeNormalMinutes += segmentMinutes;
+    }
+
+    cursor = segmentEnd;
+  }
 }
 
 function inferRegionCodeFromRestaurant(restaurant) {
@@ -536,8 +665,16 @@ export async function buildPayrollItemsForRange({
         .select({
           employeeId: 1,
           workDate: 1,
+          plannedStartTime: 1,
+          plannedEndTime: 1,
           actualCheckInAt: 1,
           actualCheckOutAt: 1,
+          hours: 1,
+          wage: 1,
+          amount: 1,
+          latenessMinutes: 1,
+          earlyLeaveMinutes: 1,
+          overtimeMinutes: 1,
           isOffSchedule: 1,
           approved: 1,
           offScheduleApprovalStatus: 1,
@@ -666,60 +803,103 @@ export async function buildPayrollItemsForRange({
     const sid = String(row.employeeId);
     if (!runtimeBreakdownByStaff.has(sid)) {
       runtimeBreakdownByStaff.set(sid, {
+        totalPayableMinutes: 0,
         overtimeNormalMinutes: 0,
         overtimeWeekendMinutes: 0,
         overtimeHolidayMinutes: 0,
         nightMinutes: 0,
         overtimeNightMinutes: 0,
+        workedDateKeys: new Set(),
+        workedShiftCount: 0,
       });
     }
+
     const bucket = runtimeBreakdownByStaff.get(sid);
-    const approvedOvertimeMinutes =
-      row.overtimeApprovalStatus === "approved"
-        ? Math.max(Number(row.approvedOvertimeMinutes || 0), 0)
-        : 0;
-    const nightMinutes = calculateNightOverlapMinutes(row, settings);
-    bucket.nightMinutes += nightMinutes;
-    if (approvedOvertimeMinutes <= 0) continue;
-    if (isHolidayWorkDate(row, settings)) {
-      bucket.overtimeHolidayMinutes += approvedOvertimeMinutes;
-    } else if (isWeekendWorkDate(row, settings)) {
-      bucket.overtimeWeekendMinutes += approvedOvertimeMinutes;
-    } else {
-      bucket.overtimeNormalMinutes += approvedOvertimeMinutes;
+    const payable = buildPayableAttendance(row);
+    bucket.totalPayableMinutes += payable.totalMinutes;
+
+    if (payable.totalMinutes > 0) {
+      const workDateKey = toOffsetDayInfo(
+        row.workDate || row.actualCheckInAt,
+        settings,
+      ).ymd;
+      if (workDateKey) bucket.workedDateKeys.add(workDateKey);
+      bucket.workedShiftCount += 1;
     }
-    bucket.overtimeNightMinutes += Math.min(
-      approvedOvertimeMinutes,
-      nightMinutes,
-    );
+
+    if (payable.regularInterval) {
+      bucket.nightMinutes += calculateNightOverlapMinutesBetween(
+        payable.regularInterval[0],
+        payable.regularInterval[1],
+        settings,
+      );
+    }
+    if (payable.overtimeInterval) {
+      bucket.nightMinutes += calculateNightOverlapMinutesBetween(
+        payable.overtimeInterval[0],
+        payable.overtimeInterval[1],
+        settings,
+      );
+      bucket.overtimeNightMinutes += calculateNightOverlapMinutesBetween(
+        payable.overtimeInterval[0],
+        payable.overtimeInterval[1],
+        settings,
+      );
+      addOvertimeByLocalDay(bucket, payable.overtimeInterval, settings);
+    }
   }
 
   const timesheetMap = new Map(
     timesheetAgg.map((row) => {
-      const runtime = runtimeBreakdownByStaff.get(String(row._id)) || {};
+      const runtime = runtimeBreakdownByStaff.get(String(row._id));
       return [
         String(row._id),
         {
-          totalHours: Number(row.totalHours || 0),
+          totalHours: runtime
+            ? Number(runtime.totalPayableMinutes || 0) / 60
+            : Number(row.totalHours || 0),
           totalWage: Number(row.totalWage || 0),
           totalAmount: Number(row.totalAmount || 0),
           totalLatenessMinutes: Number(row.totalLatenessMinutes || 0),
           totalEarlyLeaveMinutes: Number(row.totalEarlyLeaveMinutes || 0),
           overtimeNormalHours:
-            Number(runtime.overtimeNormalMinutes || 0) / 60,
+            Number(runtime?.overtimeNormalMinutes || 0) / 60,
           overtimeWeekendHours:
-            Number(runtime.overtimeWeekendMinutes || 0) / 60,
+            Number(runtime?.overtimeWeekendMinutes || 0) / 60,
           overtimeHolidayHours:
-            Number(runtime.overtimeHolidayMinutes || 0) / 60,
-          nightHours: Number(runtime.nightMinutes || 0) / 60,
+            Number(runtime?.overtimeHolidayMinutes || 0) / 60,
+          nightHours: Number(runtime?.nightMinutes || 0) / 60,
           overtimeNightHours:
-            Number(runtime.overtimeNightMinutes || 0) / 60,
-          workedDateCount: (row.workedDateKeys || []).filter(Boolean).length,
-          workedShiftCount: Number(row.workedShiftCount || 0),
+            Number(runtime?.overtimeNightMinutes || 0) / 60,
+          workedDateCount: runtime
+            ? runtime.workedDateKeys.size
+            : (row.workedDateKeys || []).filter(Boolean).length,
+          workedShiftCount: runtime
+            ? Number(runtime.workedShiftCount || 0)
+            : Number(row.workedShiftCount || 0),
         },
       ];
     }),
   );
+
+  for (const [sid, runtime] of runtimeBreakdownByStaff.entries()) {
+    if (timesheetMap.has(sid)) continue;
+    timesheetMap.set(sid, {
+      totalHours: Number(runtime.totalPayableMinutes || 0) / 60,
+      totalWage: 0,
+      totalAmount: 0,
+      totalLatenessMinutes: 0,
+      totalEarlyLeaveMinutes: 0,
+      overtimeNormalHours: Number(runtime.overtimeNormalMinutes || 0) / 60,
+      overtimeWeekendHours: Number(runtime.overtimeWeekendMinutes || 0) / 60,
+      overtimeHolidayHours: Number(runtime.overtimeHolidayMinutes || 0) / 60,
+      nightHours: Number(runtime.nightMinutes || 0) / 60,
+      overtimeNightHours: Number(runtime.overtimeNightMinutes || 0) / 60,
+      workedDateCount: runtime.workedDateKeys.size,
+      workedShiftCount: Number(runtime.workedShiftCount || 0),
+    });
+  }
+
   const leaveMap = new Map(
     leaveAgg.map((row) => [
       String(row._id),
@@ -917,7 +1097,7 @@ export async function upsertPeriodItems(periodDoc) {
       settingsSnapshot: await getPayrollSettings(periodDoc.restaurantId),
       policySnapshot: getPayrollPolicyForDate(periodDoc.endDate),
       statsSnapshot: stats,
-      calculationVersion: "payroll_v2_salary_scope",
+      calculationVersion: "payroll_v3_approved_time",
     },
   });
 
