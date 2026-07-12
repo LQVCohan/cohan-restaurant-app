@@ -140,6 +140,37 @@ describe("multiple menus per service slot", () => {
     );
   });
 
+  it("requires menuId when a time slot contains multiple menus", async () => {
+    const { MenuMultiSlotMutation } = await import(
+      "../../graphql/resolvers/menu/multiSlotMutation.js"
+    );
+    modelMocks.Menu.find.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        limit: vi.fn().mockReturnValue({
+          lean: vi.fn().mockResolvedValue([
+            { _id: "valid-menu-vip" },
+            { _id: "valid-menu-casual" },
+          ]),
+        }),
+      }),
+    });
+
+    await expect(
+      MenuMultiSlotMutation.createMenuItem(
+        null,
+        {
+          input: {
+            restaurantId: "valid-restaurant",
+            timeSlot: "dinner",
+            categoryId: "valid-category",
+            name: "Bò sốt vang",
+          },
+        },
+        { user: { id: "valid-user" } },
+      ),
+    ).rejects.toThrow("Vui lòng chọn menuId");
+  });
+
   it("loads every menu in a slot but an exact menu when menuId is supplied", async () => {
     const { MenuMultiSlotQuery } = await import(
       "../../graphql/resolvers/menu/multiSlotQuery.js"
