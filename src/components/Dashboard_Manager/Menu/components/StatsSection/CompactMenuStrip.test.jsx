@@ -62,6 +62,11 @@ const openMenuList = () => {
   });
 };
 
+const getCompactSummary = () =>
+  screen
+    .getByRole("heading", { name: "Danh sách thực đơn" })
+    .closest(".cms-title-box");
+
 describe("CompactMenuStrip", () => {
   beforeEach(() => {
     refetchQueries.mockClear();
@@ -75,7 +80,10 @@ describe("CompactMenuStrip", () => {
     expect(
       screen.getByRole("heading", { name: "Danh sách thực đơn" }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/2 thực đơn trong 4 mốc giờ/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(within(getCompactSummary()).getByText("Menu VIP")).toBeInTheDocument();
+    });
+    expect(within(getCompactSummary()).getByText(/Bữa tối/i)).toBeInTheDocument();
 
     const dialog = openMenuList();
     expect(within(dialog).getByText("Menu VIP")).toBeInTheDocument();
@@ -84,8 +92,7 @@ describe("CompactMenuStrip", () => {
     expect(within(dialog).getByRole("heading", { name: "Bữa trưa" })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: "Bữa tối" })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: "Bữa khuya" })).toBeInTheDocument();
-
-    await waitFor(() => expect(refetchQueries).toHaveBeenCalled());
+    expect(refetchQueries).not.toHaveBeenCalled();
   });
 
   it("selects an exact sibling menu without leaving its time slot", async () => {
@@ -100,6 +107,9 @@ describe("CompactMenuStrip", () => {
 
     await waitFor(() => {
       expect(within(casualCard).getByRole("button", { pressed: true })).toBeInTheDocument();
+      expect(
+        within(getCompactSummary()).getByText("Menu ăn chơi"),
+      ).toBeInTheDocument();
     });
     expect(onTimeSlotChange).toHaveBeenCalledWith("dinner");
     expect(
