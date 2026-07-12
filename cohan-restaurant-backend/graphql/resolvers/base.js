@@ -37,6 +37,44 @@ export default {
     SUN: "sun",
   },
 
+  StaffGender: {
+    MALE: "male",
+    FEMALE: "female",
+    OTHER: "other",
+    UNSPECIFIED: "unspecified",
+  },
+
+  MaritalStatus: {
+    SINGLE: "single",
+    MARRIED: "married",
+    DIVORCED: "divorced",
+    WIDOWED: "widowed",
+    UNSPECIFIED: "unspecified",
+  },
+
+  StaffContractType: {
+    NONE: "none",
+    PROBATION: "probation",
+    FIXED_TERM: "fixed_term",
+    INDEFINITE: "indefinite",
+    SEASONAL: "seasonal",
+    SERVICE: "service",
+  },
+
+  StaffSalaryType: {
+    MONTHLY: "monthly",
+    HOURLY: "hourly",
+    SHIFT: "shift",
+    COMMISSION: "commission",
+  },
+
+  StaffTrainingStatus: {
+    NOT_STARTED: "not_started",
+    IN_PROGRESS: "in_progress",
+    COMPLETED: "completed",
+    EXPIRED: "expired",
+  },
+
   Query: {
     _empty: () => "ok",
   },

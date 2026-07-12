@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { makeExecutableSchema } from "@graphql-tools/schema";
 import typeDefs from "../../graphql/schema/index.js";
+import baseResolvers from "../../graphql/resolvers/base.js";
 
 const createSchema = () =>
   makeExecutableSchema({
     typeDefs,
+    resolvers: baseResolvers,
     resolverValidationOptions: {
       requireResolversForResolveType: "ignore",
     },
@@ -52,5 +54,20 @@ describe("staff management GraphQL contract", () => {
     expect(
       String(mutationFields.setStaffAccountStatus.type),
     ).toBe("StaffPrivateProfile!");
+  });
+
+  it("serializes lowercase staff profile values as GraphQL enums", () => {
+    const schema = createSchema();
+    const cases = [
+      ["StaffGender", "female", "FEMALE"],
+      ["MaritalStatus", "single", "SINGLE"],
+      ["StaffContractType", "fixed_term", "FIXED_TERM"],
+      ["StaffSalaryType", "monthly", "MONTHLY"],
+      ["StaffTrainingStatus", "in_progress", "IN_PROGRESS"],
+    ];
+
+    cases.forEach(([typeName, internalValue, graphValue]) => {
+      expect(schema.getType(typeName).serialize(internalValue)).toBe(graphValue);
+    });
   });
 });
