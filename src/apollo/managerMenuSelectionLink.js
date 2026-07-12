@@ -56,9 +56,11 @@ export const applyManagerMenuSelection = (
   }
 
   if (
-    ["CreateMenuItem", "SyncMenuItemInventoryStatuses"].includes(
-      operationName,
-    ) &&
+    [
+      "CreateMenuItem",
+      "SyncMenuItemInventoryStatuses",
+      "BulkUpdateMenuItemPrices",
+    ].includes(operationName) &&
     matchesSelection(selection, scopedVariables.input)
   ) {
     return {
