@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
+import { AlertTriangle, CheckCircle2, ChevronDown, Info } from "lucide-react";
 import usePayroll from "@/hooks/usePayroll";
 import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 import PayrollReadinessPanel from "./components/PayrollReadinessPanel";
@@ -7,6 +8,7 @@ import "./PayrollManagement.scss";
 import "../../../styles/PayrollPagination.css";
 
 const PAYROLL_PAGE_SIZE = 8;
+const RANGE_PREVIEW_ID = "__range_preview__";
 
 const PAYROLL_OVERVIEW_PAGE_QUERY = gql`
   query PayrollOverviewPage(
@@ -43,6 +45,11 @@ const toDateInput = (date) => {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+const toStoredDateInput = (value) => {
+  const datePart = String(value || "").slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(datePart) ? datePart : "";
 };
 
 const getDefaultRange = () => {
@@ -196,6 +203,31 @@ const mapOfficialExportRow = (row) => ({
   status: statusLabel(row.status),
 });
 
+const getRowKey = (item) =>
+  String(item.payrollItemId || item.id || item.code || item.name || "payroll-row");
+
+const getRowWarnings = (item) => {
+  const warnings = [...(item.warningMessages || [])];
+  const totalIncome = Number(item.totalIncome ?? item.grossIncome ?? 0);
+  const insuranceTotal = Number(item.insuranceTotal || 0);
+  const totalDeduction = Number(item.totalDeduction ?? item.deduction ?? 0);
+  const netSalary = Number(item.netSalary || 0);
+
+  if (item.insuranceEligible && totalIncome <= 0 && insuranceTotal <= 0) {
+    warnings.unshift(
+      "Chưa phát sinh thu nhập; khoản BH chưa được khấu trừ trong bản tính này.",
+    );
+  }
+  if (totalDeduction > totalIncome && totalDeduction > 0) {
+    warnings.unshift("Tổng khấu trừ đang lớn hơn tổng thu nhập.");
+  }
+  if (netSalary < 0) {
+    warnings.unshift("Thực nhận âm; cần rà soát trước khi chốt kỳ.");
+  }
+
+  return [...new Set(warnings.filter(Boolean))];
+};
+
 function PayrollWorkspace({
   restaurantOptions,
   selectedRestaurantId,
@@ -208,6 +240,8 @@ function PayrollWorkspace({
   const [selectedPeriodId, setSelectedPeriodId] = useState("");
   const [actionMessage, setActionMessage] = useState("");
   const [page, setPage] = useState(1);
+  const [expandedRowId, setExpandedRowId] = useState("");
+  const isRangePreview = selectedPeriodId === RANGE_PREVIEW_ID;
 
   const apiRange = useMemo(
     () => ({
@@ -218,29 +252,32 @@ function PayrollWorkspace({
   );
 
   const payroll = usePayroll({
-    periodId: selectedPeriodId || undefined,
+    periodId: isRangePreview ? undefined : selectedPeriodId || undefined,
     restaurantId: selectedRestaurantId,
     startDate: apiRange.startDate,
     endDate: apiRange.endDate,
   });
   const periods = payroll.periods || [];
-  const requestedPeriodId =
-    selectedPeriodId || payroll.currentPeriodId || periods[0]?.id || "";
+  const requestedPeriodId = isRangePreview
+    ? ""
+    : selectedPeriodId || payroll.currentPeriodId || periods[0]?.id || "";
   const detailPeriod = payroll.periodDetail?.period || null;
   const detailMatches = Boolean(
-    detailPeriod?.id &&
+    !isRangePreview &&
+      detailPeriod?.id &&
       String(detailPeriod.restaurantId || "") ===
         String(selectedRestaurantId || "") &&
       (!requestedPeriodId || String(detailPeriod.id) === String(requestedPeriodId)),
   );
-  const currentPeriod =
-    (detailMatches ? detailPeriod : null) ||
-    periods.find(
-      (period) =>
-        String(period.id) === String(requestedPeriodId) &&
-        String(period.restaurantId || "") === String(selectedRestaurantId || ""),
-    ) ||
-    null;
+  const currentPeriod = isRangePreview
+    ? null
+    : (detailMatches ? detailPeriod : null) ||
+      periods.find(
+        (period) =>
+          String(period.id) === String(requestedPeriodId) &&
+          String(period.restaurantId || "") === String(selectedRestaurantId || ""),
+      ) ||
+      null;
   const effectivePeriodId = currentPeriod?.id || requestedPeriodId;
   const hasOfficialPeriod = Boolean(currentPeriod?.id);
   const periodStatus = hasOfficialPeriod ? currentPeriod.status || "draft" : "draft";
@@ -250,6 +287,7 @@ function PayrollWorkspace({
 
   useEffect(() => {
     setPage(1);
+    setExpandedRowId("");
   }, [activeStatus, range.end, range.start, search, selectedPeriodId]);
 
   const overviewQuery = useQuery(PAYROLL_OVERVIEW_PAGE_QUERY, {
@@ -279,7 +317,10 @@ function PayrollWorkspace({
     totalPages: Math.max(1, page),
     hasMore: false,
   };
-  const stats = overview?.stats || payroll.payrollStats || currentPeriod?.stats || {};
+  const stats =
+    overview?.stats ||
+    (hasOfficialPeriod ? payroll.payrollStats || currentPeriod?.stats : null) ||
+    {};
   const tableLoading = Boolean(payroll.loading || overviewQuery.loading);
   const totalPages = Math.max(1, Number(pageInfo.totalPages || 1));
   const totalCount = Number(pageInfo.totalCount || 0);
@@ -301,7 +342,10 @@ function PayrollWorkspace({
   const totals = useMemo(() => {
     const totalPayroll = Number(
       stats.totalPayroll ??
-        items.reduce((sum, item) => sum + Number(item.netSalary || 0), 0),
+        items.reduce(
+          (sum, item) => sum + Math.max(Number(item.netSalary || 0), 0),
+          0,
+        ),
     );
     const paidAmount = Number(
       stats.paidAmount ??
@@ -319,6 +363,33 @@ function PayrollWorkspace({
     return { totalPayroll, paidAmount, remaining, progress };
   }, [items, stats]);
 
+  const pageHealth = useMemo(() => {
+    let zeroActivityCount = 0;
+    let negativeNetCount = 0;
+    let deductionOverIncomeCount = 0;
+    let warningCount = 0;
+
+    items.forEach((item) => {
+      const workDays = Number(item.actualWorkDays ?? item.workDays ?? 0);
+      const hours = Number(item.totalHours || 0);
+      const income = Number(item.totalIncome ?? item.grossIncome ?? 0);
+      const deduction = Number(item.totalDeduction ?? item.deduction ?? 0);
+      const net = Number(item.netSalary || 0);
+      if (workDays <= 0 && hours <= 0 && income <= 0) zeroActivityCount += 1;
+      if (net < 0) negativeNetCount += 1;
+      if (deduction > income && deduction > 0) deductionOverIncomeCount += 1;
+      warningCount += getRowWarnings(item).length;
+    });
+
+    return {
+      zeroActivityCount,
+      negativeNetCount,
+      deductionOverIncomeCount,
+      warningCount,
+      hasBlockingAnomaly: negativeNetCount > 0 || deductionOverIncomeCount > 0,
+    };
+  }, [items]);
+
   const refreshPayrollData = async (periodIdOverride) => {
     const targetPeriodId =
       typeof periodIdOverride === "string" && periodIdOverride
@@ -326,10 +397,10 @@ function PayrollWorkspace({
         : effectivePeriodId;
     await Promise.allSettled([
       payroll.refetchPeriods?.(),
-      targetPeriodId
+      hasOfficialPeriod && targetPeriodId
         ? payroll.refetchDetail?.({ periodId: targetPeriodId })
         : null,
-      targetPeriodId
+      hasOfficialPeriod && targetPeriodId
         ? payroll.refetchPayrollReadiness?.({ periodId: targetPeriodId })
         : null,
       overviewQuery.refetch?.({
@@ -343,6 +414,26 @@ function PayrollWorkspace({
         offset: overviewOffset,
       }),
     ]);
+  };
+
+  const handlePeriodChange = (event) => {
+    const nextPeriodId = event.target.value;
+    setSelectedPeriodId(nextPeriodId);
+    setActionMessage("");
+    if (!nextPeriodId || nextPeriodId === RANGE_PREVIEW_ID) return;
+
+    const selectedPeriod = periods.find(
+      (period) => String(period.id) === String(nextPeriodId),
+    );
+    const start = toStoredDateInput(selectedPeriod?.startDate);
+    const end = toStoredDateInput(selectedPeriod?.endDate);
+    if (start && end) setRange({ start, end });
+  };
+
+  const handleRangeChange = (field, value) => {
+    setSelectedPeriodId(RANGE_PREVIEW_ID);
+    setRange((current) => ({ ...current, [field]: value }));
+    setActionMessage("Đã chuyển sang tạm tính theo khoảng ngày.");
   };
 
   const handleCreatePeriod = async () => {
@@ -442,6 +533,7 @@ function PayrollWorkspace({
   const resetFilters = () => {
     setSearch("");
     setActiveStatus("all");
+    setSelectedPeriodId(RANGE_PREVIEW_ID);
     setRange(defaultRange);
     setPage(1);
   };
@@ -455,14 +547,14 @@ function PayrollWorkspace({
           <span className="eyebrow">Trung tâm lương thưởng</span>
           <h1 className="page-title">Quản lý lương</h1>
           <p className="page-subtitle">
-            Theo dõi kỳ lương, tổng chi phí, trạng thái chi trả và bảng lương nhân viên theo từng nhà hàng.
+            Kiểm tra nguồn dữ liệu, thu nhập, khấu trừ và tiến độ chi trả theo từng nhà hàng.
           </p>
           <div className="quick-stats payroll-summary-line">
             <span className="status-dot info">{statusLabel(periodStatus)}</span>
             <span
               className={`payroll-data-mode ${hasOfficialPeriod ? "is-official" : "is-runtime"}`}
             >
-              {hasOfficialPeriod ? "Kỳ lương chính thức" : "Dữ liệu tạm tính"}
+              {hasOfficialPeriod ? "Kỳ lương chính thức" : "Tạm tính theo khoảng ngày"}
             </span>
             <span className="payroll-date-range">
               {formatDate(currentPeriod?.startDate || range.start)} - {formatDate(currentPeriod?.endDate || range.end)}
@@ -489,13 +581,14 @@ function PayrollWorkspace({
             </select>
           </label>
           <label className="cycle-picker-compact">
-            <span className="label">Kỳ lương</span>
+            <span className="label">Nguồn dữ liệu</span>
             <select
               className="filter-select"
-              value={selectedPeriodId}
-              onChange={(event) => setSelectedPeriodId(event.target.value)}
+              value={isRangePreview ? RANGE_PREVIEW_ID : selectedPeriodId}
+              onChange={handlePeriodChange}
             >
               <option value="">Kỳ hiện tại / gần nhất</option>
+              <option value={RANGE_PREVIEW_ID}>Tạm tính theo khoảng ngày</option>
               {periods.map((period) => (
                 <option key={period.id} value={period.id}>
                   {period.name || `${formatDate(period.startDate)} - ${formatDate(period.endDate)}`}
@@ -528,7 +621,7 @@ function PayrollWorkspace({
           <article className="metric-item">
             <span className="label">Tổng bảng lương</span>
             <strong className="value highlight">{formatMoney(totals.totalPayroll)}</strong>
-            <small>Chi phí lương trong kỳ</small>
+            <small>Không cộng phiếu thực nhận âm</small>
           </article>
           <article className="metric-item">
             <span className="label">Đã chi</span>
@@ -546,30 +639,51 @@ function PayrollWorkspace({
             <span>Tiến độ chi trả</span>
             <strong>{formatNumber(totals.progress)}%</strong>
           </div>
-          <div className="progress-track">
+          <div
+            className="progress-track"
+            role="progressbar"
+            aria-label="Tiến độ chi trả"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow={Math.max(0, Math.min(100, totals.progress))}
+          >
             <div
               className="progress-fill"
               style={{ width: `${Math.max(0, Math.min(100, totals.progress))}%` }}
             />
           </div>
           <small>
-            {payroll.payrollReadiness?.readyToFinalize
-              ? "Kỳ lương sẵn sàng chốt"
-              : "Kiểm tra dữ liệu trước khi chốt"}
+            {hasOfficialPeriod
+              ? payroll.payrollReadiness?.readyToFinalize
+                ? "Kỳ lương sẵn sàng chốt"
+                : "Kiểm tra dữ liệu trước khi chốt"
+              : "Bản tạm tính chưa thể chốt hoặc thanh toán"}
           </small>
         </aside>
       </section>
 
-      <PayrollReadinessPanel
-        readiness={payroll.payrollReadiness}
-        loading={payroll.readinessLoading}
-        error={payroll.readinessError}
-        onRefresh={() =>
-          effectivePeriodId
-            ? payroll.refetchPayrollReadiness?.({ periodId: effectivePeriodId })
-            : undefined
-        }
-      />
+      {hasOfficialPeriod ? (
+        <PayrollReadinessPanel
+          readiness={payroll.payrollReadiness}
+          loading={payroll.readinessLoading}
+          error={payroll.readinessError}
+          onRefresh={() =>
+            effectivePeriodId
+              ? payroll.refetchPayrollReadiness?.({ periodId: effectivePeriodId })
+              : undefined
+          }
+        />
+      ) : (
+        <section className="payroll-preview-note" aria-label="Nguồn dữ liệu tạm tính">
+          <Info size={18} aria-hidden="true" />
+          <div>
+            <strong>Đang xem dữ liệu tạm tính</strong>
+            <span>
+              Bảng được tính trực tiếp từ lịch, chấm công, nghỉ phép và điều chỉnh trong khoảng ngày; chưa phải snapshot để chốt lương.
+            </span>
+          </div>
+        </section>
+      )}
 
       <section className="table-card payroll-table-card">
         <div className="table-controls payroll-filter-row">
@@ -578,6 +692,8 @@ function PayrollWorkspace({
               <button
                 key={status}
                 type="button"
+                role="tab"
+                aria-selected={activeStatus === status}
                 className={`tab-btn ${activeStatus === status ? "active" : ""}`}
                 onClick={() => setActiveStatus(status)}
               >
@@ -586,28 +702,37 @@ function PayrollWorkspace({
             ))}
           </div>
           <div className="right-controls payroll-search-controls">
-            <input
-              className="filter-select payroll-search-input"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Tìm nhân viên, mã, bộ phận..."
-            />
-            <input
-              className="filter-select payroll-date-input"
-              type="date"
-              value={range.start}
-              onChange={(event) =>
-                setRange((current) => ({ ...current, start: event.target.value }))
-              }
-            />
-            <input
-              className="filter-select payroll-date-input"
-              type="date"
-              value={range.end}
-              onChange={(event) =>
-                setRange((current) => ({ ...current, end: event.target.value }))
-              }
-            />
+            <label className="payroll-control-field payroll-control-field--search">
+              <span>Tìm nhân viên</span>
+              <input
+                className="filter-select payroll-search-input"
+                name="payroll-search"
+                autoComplete="off"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Tìm nhân viên, mã, bộ phận..."
+              />
+            </label>
+            <label className="payroll-control-field">
+              <span>Từ ngày</span>
+              <input
+                className="filter-select payroll-date-input"
+                name="payroll-start-date"
+                type="date"
+                value={range.start}
+                onChange={(event) => handleRangeChange("start", event.target.value)}
+              />
+            </label>
+            <label className="payroll-control-field">
+              <span>Đến ngày</span>
+              <input
+                className="filter-select payroll-date-input"
+                name="payroll-end-date"
+                type="date"
+                value={range.end}
+                onChange={(event) => handleRangeChange("end", event.target.value)}
+              />
+            </label>
           </div>
         </div>
 
@@ -649,7 +774,11 @@ function PayrollWorkspace({
               Khóa kỳ
             </button>
           </div>
-          <span className={`payroll-inline-message ${!hasOfficialPeriod ? "is-muted" : ""}`}>
+          <span
+            className={`payroll-inline-message ${!hasOfficialPeriod ? "is-muted" : ""}`}
+            role="status"
+            aria-live="polite"
+          >
             {actionMessage ||
               (!hasOfficialPeriod
                 ? "Tạo kỳ lương để tính lại, chốt hoặc khóa kỳ."
@@ -659,20 +788,58 @@ function PayrollWorkspace({
           </span>
         </div>
 
+        {items.length ? (
+          <div
+            className={`payroll-data-health ${pageHealth.hasBlockingAnomaly ? "is-warning" : pageHealth.zeroActivityCount ? "is-info" : "is-good"}`}
+            role={pageHealth.hasBlockingAnomaly ? "alert" : "status"}
+          >
+            <span className="payroll-data-health__icon" aria-hidden="true">
+              {pageHealth.hasBlockingAnomaly ? (
+                <AlertTriangle size={19} />
+              ) : pageHealth.zeroActivityCount ? (
+                <Info size={19} />
+              ) : (
+                <CheckCircle2 size={19} />
+              )}
+            </span>
+            <div>
+              <strong>
+                {pageHealth.hasBlockingAnomaly
+                  ? "Có phiếu lương cần rà soát"
+                  : pageHealth.zeroActivityCount
+                    ? `${pageHealth.zeroActivityCount} nhân viên chưa phát sinh công hoặc thu nhập trên trang này`
+                    : "Các số liệu trên trang đang cân đối"}
+              </strong>
+              <span>
+                {pageHealth.hasBlockingAnomaly
+                  ? `${pageHealth.negativeNetCount} phiếu thực nhận âm, ${pageHealth.deductionOverIncomeCount} phiếu có khấu trừ lớn hơn thu nhập. Mở chi tiết từng dòng trước khi chốt.`
+                  : pageHealth.zeroActivityCount
+                    ? "Phiếu chưa có thu nhập được giữ ở mức 0; mở chi tiết để xem cảnh báo và trạng thái BH."
+                    : pageHealth.warningCount
+                      ? `${pageHealth.warningCount} cảnh báo nghiệp vụ vẫn cần kiểm tra trong chi tiết dòng.`
+                      : "Không phát hiện thực nhận âm hoặc khấu trừ vượt thu nhập trong trang hiện tại."}
+              </span>
+            </div>
+          </div>
+        ) : null}
+
         <div className="table-responsive">
           <table className="payroll-table">
+            <caption className="payroll-sr-only">
+              Bảng thu nhập, khấu trừ và trạng thái chi trả của nhân viên
+            </caption>
             <thead>
               <tr>
-                <th className="sticky-left">Nhân viên</th>
-                <th>Bộ phận</th>
-                <th className="numeric-col">Ngày công</th>
-                <th className="numeric-col">Giờ công</th>
-                <th className="money-col">Thu nhập</th>
-                <th className="money-col">Khấu trừ</th>
-                <th className="money-col is-strong">Thực nhận</th>
-                <th className="money-col">Đã chi</th>
-                <th className="money-col">Còn lại</th>
-                <th>Trạng thái</th>
+                <th className="sticky-left" scope="col">Nhân viên</th>
+                <th scope="col">Bộ phận</th>
+                <th className="numeric-col" scope="col">Ngày công</th>
+                <th className="numeric-col" scope="col">Giờ công</th>
+                <th className="money-col" scope="col">Thu nhập</th>
+                <th className="money-col" scope="col">Khấu trừ</th>
+                <th className="money-col is-strong" scope="col">Thực nhận</th>
+                <th className="money-col" scope="col">Đã chi</th>
+                <th className="money-col" scope="col">Còn lại</th>
+                <th scope="col">Trạng thái</th>
               </tr>
             </thead>
             <tbody>
@@ -685,36 +852,114 @@ function PayrollWorkspace({
                   </tr>
                 ))
               ) : items.length ? (
-                items.map((item) => (
-                  <tr key={item.payrollItemId || item.id || item.code || item.name}>
-                    <td className="sticky-left">
-                      <div className="emp-cell">
-                        <span className="avatar">{getEmployeeInitials(item.name)}</span>
-                        <span>
-                          <strong className="name">{item.name || "Nhân viên"}</strong>
-                          <small className="sub">{item.code || item.payrollItemId || "--"}</small>
-                        </span>
-                      </div>
-                    </td>
-                    <td>{item.department || item.role || "--"}</td>
-                    <td className="numeric-cell">
-                      <span className="work-tag">
-                        {formatNumber(item.actualWorkDays ?? item.workDays)} ngày
-                      </span>
-                    </td>
-                    <td className="numeric-cell">{formatNumber(item.totalHours)} giờ</td>
-                    <td className="money-cell">{formatMoney(item.grossIncome ?? item.totalIncome)}</td>
-                    <td className="money-cell text-danger">{formatMoney(item.totalDeduction ?? item.deduction)}</td>
-                    <td className="money-cell net-cell">{formatMoney(item.netSalary)}</td>
-                    <td className="money-cell text-success">{formatMoney(item.paidAmount)}</td>
-                    <td className="money-cell">{formatMoney(item.remainingAmount)}</td>
-                    <td>
-                      <span className={`status-dot ${statusClass(item.status)}`}>
-                        {statusLabel(item.status)}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                items.map((item) => {
+                  const rowKey = getRowKey(item);
+                  const detailId = `payroll-detail-${rowKey.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+                  const expanded = expandedRowId === rowKey;
+                  const warnings = getRowWarnings(item);
+                  const totalIncome = Number(item.totalIncome ?? item.grossIncome ?? 0);
+                  const totalDeduction = Number(item.totalDeduction ?? item.deduction ?? 0);
+                  const netSalary = Number(item.netSalary || 0);
+                  const rowNeedsReview = netSalary < 0 || totalDeduction > totalIncome;
+
+                  return (
+                    <React.Fragment key={rowKey}>
+                      <tr className={rowNeedsReview ? "payroll-row-needs-review" : ""}>
+                        <td className="sticky-left">
+                          <div className="emp-cell">
+                            <span className="avatar">{getEmployeeInitials(item.name)}</span>
+                            <span className="emp-cell__identity">
+                              <strong className="name">{item.name || "Nhân viên"}</strong>
+                              <small className="sub">{item.code || item.payrollItemId || "--"}</small>
+                              <button
+                                className="payroll-detail-toggle"
+                                type="button"
+                                aria-expanded={expanded}
+                                aria-controls={detailId}
+                                onClick={() =>
+                                  setExpandedRowId((current) =>
+                                    current === rowKey ? "" : rowKey,
+                                  )
+                                }
+                              >
+                                {expanded ? "Thu gọn" : "Xem chi tiết"}
+                                <ChevronDown size={14} aria-hidden="true" />
+                              </button>
+                            </span>
+                          </div>
+                        </td>
+                        <td>{item.department || item.role || "--"}</td>
+                        <td className="numeric-cell">
+                          <span className="work-tag">
+                            {formatNumber(item.actualWorkDays ?? item.workDays)} ngày
+                          </span>
+                        </td>
+                        <td className="numeric-cell">{formatNumber(item.totalHours)} giờ</td>
+                        <td className="money-cell">{formatMoney(item.grossIncome ?? item.totalIncome)}</td>
+                        <td className={`money-cell ${totalDeduction > 0 ? "text-danger" : ""}`}>
+                          {formatMoney(totalDeduction)}
+                        </td>
+                        <td className={`money-cell net-cell ${netSalary < 0 ? "is-negative" : ""}`}>
+                          {formatMoney(netSalary)}
+                        </td>
+                        <td className="money-cell text-success">{formatMoney(item.paidAmount)}</td>
+                        <td className="money-cell">{formatMoney(item.remainingAmount)}</td>
+                        <td>
+                          <span className={`status-dot ${statusClass(item.status)}`}>
+                            {statusLabel(item.status)}
+                          </span>
+                        </td>
+                      </tr>
+                      {expanded ? (
+                        <tr className="payroll-detail-row">
+                          <td colSpan={10} id={detailId}>
+                            <div className="payroll-row-detail">
+                              <section className="payroll-detail-section">
+                                <h3>Nguồn thu nhập</h3>
+                                <dl>
+                                  <div><dt>Lương/công</dt><dd>{formatMoney(item.grossIncome)}</dd></div>
+                                  <div><dt>Phụ cấp</dt><dd>{formatMoney(item.allowance)}</dd></div>
+                                  <div><dt>Thưởng</dt><dd>{formatMoney(item.bonus)}</dd></div>
+                                  <div><dt>Tăng ca & ca đêm</dt><dd>{formatMoney(item.overtime)}</dd></div>
+                                  <div className="is-total"><dt>Tổng thu nhập</dt><dd>{formatMoney(totalIncome)}</dd></div>
+                                </dl>
+                              </section>
+                              <section className="payroll-detail-section payroll-detail-section--deduction">
+                                <h3>Khấu trừ</h3>
+                                <dl>
+                                  <div><dt>BH bắt buộc</dt><dd>{formatMoney(item.insuranceTotal)}</dd></div>
+                                  <div><dt>Thuế TNCN</dt><dd>{formatMoney(item.personalIncomeTax)}</dd></div>
+                                  <div><dt>Tạm ứng</dt><dd>{formatMoney(item.advance)}</dd></div>
+                                  <div><dt>Điều chỉnh khác</dt><dd>{formatMoney(Number(item.deduction || 0) + Number(item.otherDeduction || 0))}</dd></div>
+                                  <div className="is-total"><dt>Tổng khấu trừ</dt><dd>{formatMoney(totalDeduction)}</dd></div>
+                                </dl>
+                              </section>
+                              <section className="payroll-detail-section payroll-detail-section--audit">
+                                <h3>Kiểm tra dữ liệu</h3>
+                                <div className="payroll-audit-metrics">
+                                  <span><b>{formatNumber(item.scheduleShiftCount)}</b> ca theo lịch</span>
+                                  <span><b>{formatNumber(item.lateMinutes)}</b> phút đi muộn</span>
+                                  <span><b>{formatNumber(item.unpaidLeaveDays)}</b> ngày nghỉ không lương</span>
+                                </div>
+                                {warnings.length ? (
+                                  <ul className="payroll-warning-list">
+                                    {warnings.map((warning) => (
+                                      <li key={warning}>{warning}</li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="payroll-audit-ok">
+                                    <CheckCircle2 size={16} aria-hidden="true" /> Không có cảnh báo bổ sung.
+                                  </p>
+                                )}
+                              </section>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </React.Fragment>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={10}>
