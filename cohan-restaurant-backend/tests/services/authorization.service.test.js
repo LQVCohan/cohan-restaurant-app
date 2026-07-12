@@ -10,6 +10,7 @@ import {
 
 const restaurantScopeMocks = vi.hoisted(() => ({
   canAccessRestaurant: vi.fn(),
+  getUserBrandMemberships: vi.fn(),
 }));
 const modelMocks = vi.hoisted(() => ({
   Restaurant: {
@@ -21,6 +22,7 @@ vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
   ...(await importOriginal()),
   canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+  getUserBrandMemberships: restaurantScopeMocks.getUserBrandMemberships,
 }));
 
 const RESTAURANT_ID = "rest-main-1";
@@ -30,6 +32,8 @@ describe("authorization.service RBAC", () => {
     vi.clearAllMocks();
     restaurantScopeMocks.canAccessRestaurant.mockReset();
     restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
+    restaurantScopeMocks.getUserBrandMemberships.mockReset();
+    restaurantScopeMocks.getUserBrandMemberships.mockResolvedValue([]);
     modelMocks.Restaurant.exists.mockResolvedValue(false);
   });
 
@@ -64,6 +68,29 @@ describe("authorization.service RBAC", () => {
     const manager = { id: "manager-1", roleName: "manager" };
     expect(await hasPermission(manager, "role.write")).toBe(true);
     expect(await hasPermission(manager, "permission.write")).toBe(false);
+  });
+
+  it("allows active Brand Admin to manage staff roles without system permission writes", async () => {
+    const brandAdmin = { id: "brand-admin-1", roleName: "customer" };
+    restaurantScopeMocks.getUserBrandMemberships.mockResolvedValue([
+      { role: "admin", status: "active" },
+    ]);
+
+    await expect(hasPermission(brandAdmin, "role.read")).resolves.toBe(true);
+    await expect(hasPermission(brandAdmin, "role.write")).resolves.toBe(true);
+    await expect(hasPermission(brandAdmin, "permission.read")).resolves.toBe(true);
+    await expect(hasPermission(brandAdmin, "staff.read")).resolves.toBe(true);
+    await expect(hasPermission(brandAdmin, "staff.write")).resolves.toBe(true);
+    await expect(hasPermission(brandAdmin, "permission.write")).resolves.toBe(false);
+  });
+
+  it("does not grant RBAC writes from an inactive Brand Admin membership", async () => {
+    const formerBrandAdmin = { id: "brand-admin-2", roleName: "customer" };
+    restaurantScopeMocks.getUserBrandMemberships.mockResolvedValue([
+      { role: "admin", status: "inactive" },
+    ]);
+
+    await expect(hasPermission(formerBrandAdmin, "role.write")).resolves.toBe(false);
   });
 
   it("accepts permissions already used by seeded lower staff roles", () => {
