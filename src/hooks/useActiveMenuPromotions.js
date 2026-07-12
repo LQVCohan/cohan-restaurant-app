@@ -201,7 +201,7 @@ const getPromotionLabel = (promotion) => {
     : discountLabel;
 };
 
-const calculatePromotionPricePreview = (
+export const calculatePromotionPricePreview = (
   promotion,
   unitPrice,
   quantity = 1,
