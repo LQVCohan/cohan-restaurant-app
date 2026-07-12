@@ -1,0 +1,30 @@
+{
+  "id": "07-12-unify-all-payment-idempotency",
+  "title": "Unify idempotency across active money commands",
+  "status": "done",
+  "dev_type": "fullstack",
+  "scope": "payment-wallet-idempotency",
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-12",
+  "updatedAt": "2026-07-12",
+  "completedAt": "2026-07-12",
+  "branch": "agent/unify-payment-idempotency",
+  "base_branch": "main",
+  "pullRequest": 1365,
+  "relatedFiles": [
+    "cohan-restaurant-backend/models/payment-request-lock.model.js",
+    "cohan-restaurant-backend/models/index.js",
+    "cohan-restaurant-backend/src/services/payment/paymentRequestIdempotency.service.js",
+    "cohan-restaurant-backend/graphql/resolvers/payment/paymentIdempotencyMutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/payment/walletMoneyIdempotencyMutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/payment/index.js",
+    "cohan-restaurant-backend/graphql/schema/paymentIdempotency.graphql",
+    "cohan-restaurant-backend/graphql/schema/index.js",
+    "src/apollo/client.js",
+    "src/components/Customer/QRPaymentModal/QRPaymentModal.jsx",
+    "cohan-restaurant-backend/tests/services/payment-request-idempotency.test.js"
+  ],
+  "notes": "Added a durable payment request claim, SHA-256 payload binding, completed-result replay and destination recovery for provider sessions, POS payments, wallet top-ups, wallet refunds and wallet adjustments. Existing CheckoutRequestLock and specialized Cohan-wallet settlement idempotency remain authoritative. Runtime tests, GraphQL validation and build were not run because this connector session has no runnable checkout."
+}

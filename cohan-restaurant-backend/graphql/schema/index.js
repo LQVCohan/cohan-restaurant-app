@@ -243,6 +243,7 @@ const files = [
   "paymentTransfer.graphql",
   "walletEnums.graphql",
   "wallet.graphql",
+  "paymentIdempotency.graphql",
   "publicTableSession.graphql",
   "tableCustomer.graphql",
   "printSetting.graphql",

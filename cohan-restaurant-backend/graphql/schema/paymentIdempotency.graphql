@@ -1,0 +1,27 @@
+extend input PayOrdersByTableIdInput {
+  idempotencyKey: String!
+}
+
+extend input PayOrdersByOrderIdsInput {
+  idempotencyKey: String!
+}
+
+extend input CreateOrderPaymentInput {
+  idempotencyKey: String!
+}
+
+extend input CreateReservationPaymentInput {
+  idempotencyKey: String!
+}
+
+extend input WalletTopupInput {
+  idempotencyKey: String!
+}
+
+extend input RefundToWalletInput {
+  idempotencyKey: String!
+}
+
+extend input AdjustWalletBalanceInput {
+  idempotencyKey: String!
+}
