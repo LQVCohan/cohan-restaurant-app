@@ -43,7 +43,7 @@ const CashierShiftReconciliationSchema = BaseSchemaModel({
   shiftId: { type: Types.ObjectId, ref: "Shift", default: null, index: true },
   timesheetId: { type: Types.ObjectId, ref: "Timesheet", default: null, index: true },
   registerCode: { type: String, trim: true, uppercase: true, default: "MAIN", maxlength: 80 },
-  activeKey: { type: String, default: null },
+  activeKey: { type: String, default: undefined },
 
   status: {
     type: String,
@@ -87,7 +87,10 @@ const CashierShiftReconciliationSchema = BaseSchemaModel({
 
 CashierShiftReconciliationSchema.index(
   { activeKey: 1 },
-  { unique: true, sparse: true },
+  {
+    unique: true,
+    partialFilterExpression: { activeKey: { $type: "string" } },
+  },
 );
 CashierShiftReconciliationSchema.index({ restaurantId: 1, cashierId: 1, openedAt: -1 });
 CashierShiftReconciliationSchema.index({ restaurantId: 1, status: 1, openedAt: -1 });
