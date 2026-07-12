@@ -13,6 +13,7 @@ const staffMutationMock = vi.hoisted(() => ({
   checkInShift: vi.fn(),
   checkOutShift: vi.fn(),
   upsertStaffAttendance: vi.fn(),
+  updatePayrollSettings: vi.fn(),
   completeOvertimeRequest: vi.fn(),
   rejectOvertimeRequest: vi.fn(),
   markPayrollItemPaid: vi.fn(),
@@ -99,6 +100,9 @@ describe("payroll protected staff mutations", () => {
     staffMutationMock.checkOutShift.mockResolvedValue({ id: "attendance-1" });
     staffMutationMock.upsertStaffAttendance.mockResolvedValue({
       id: "attendance-1",
+    });
+    staffMutationMock.updatePayrollSettings.mockResolvedValue({
+      restaurantId: ids.restaurantId,
     });
     staffMutationMock.completeOvertimeRequest.mockResolvedValue({
       id: ids.requestId,
@@ -209,6 +213,131 @@ describe("payroll protected staff mutations", () => {
     expect(staffMutationMock.upsertStaffAttendance).toHaveBeenCalledWith(
       null,
       args,
+      expect.anything(),
+      undefined,
+    );
+  });
+
+  it("allows managers to update validated operational payroll settings", async () => {
+    const mutation = (
+      await import(
+        "../../graphql/resolvers/staff/payrollProtectedAttendance.mutation.js"
+      )
+    ).default;
+
+    await mutation.updatePayrollSettings(
+      null,
+      {
+        input: {
+          restaurantId: ids.restaurantId,
+          standardWorkDaysPerMonth: 24,
+          standardHoursPerDay: 8,
+          weekendDays: ["sun", "SAT", "SUN"],
+          holidayDates: ["2026-04-30T00:00:00.000Z", "2026-04-30"],
+          nightShiftStart: "22:00",
+          nightShiftEnd: "06:00",
+          notes: "Áp dụng cho chi nhánh",
+        },
+      },
+      { user: { id: ids.managerId, userType: "MANAGER" } },
+      undefined,
+    );
+
+    expect(staffMutationMock.updatePayrollSettings).toHaveBeenCalledWith(
+      null,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          restaurantId: ids.restaurantId,
+          standardWorkDaysPerMonth: 24,
+          weekendDays: ["SUN", "SAT"],
+          holidayDates: ["2026-04-30"],
+        }),
+      }),
+      expect.anything(),
+      undefined,
+    );
+  });
+
+  it("blocks manager attempts to change financial payroll policy", async () => {
+    const mutation = (
+      await import(
+        "../../graphql/resolvers/staff/payrollProtectedAttendance.mutation.js"
+      )
+    ).default;
+
+    await expect(
+      mutation.updatePayrollSettings(
+        null,
+        {
+          input: {
+            restaurantId: ids.restaurantId,
+            overtimeMultiplierHoliday: 4,
+          },
+        },
+        { user: { id: ids.managerId, userType: "MANAGER" } },
+        undefined,
+      ),
+    ).rejects.toThrow(/Kế toán hoặc Admin/i);
+
+    expect(staffMutationMock.updatePayrollSettings).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid payroll setting values before persistence", async () => {
+    const mutation = (
+      await import(
+        "../../graphql/resolvers/staff/payrollProtectedAttendance.mutation.js"
+      )
+    ).default;
+
+    await expect(
+      mutation.updatePayrollSettings(
+        null,
+        {
+          input: {
+            restaurantId: ids.restaurantId,
+            standardWorkDaysPerMonth: 0,
+          },
+        },
+        { user: { id: ids.managerId, userType: "MANAGER" } },
+        undefined,
+      ),
+    ).rejects.toThrow(/1 đến 31/i);
+
+    expect(staffMutationMock.updatePayrollSettings).not.toHaveBeenCalled();
+  });
+
+  it("keeps advanced payroll settings available to accountants", async () => {
+    const mutation = (
+      await import(
+        "../../graphql/resolvers/staff/payrollProtectedAttendance.mutation.js"
+      )
+    ).default;
+
+    await mutation.updatePayrollSettings(
+      null,
+      {
+        input: {
+          restaurantId: ids.restaurantId,
+          overtimeMultiplierWeekday: 1.75,
+          nightShiftAllowanceRate: 0.35,
+          enablePersonalIncomeTax: true,
+          personalIncomeTaxRate: 0.1,
+        },
+      },
+      { user: { id: ids.managerId, roleName: "ACCOUNTANT" } },
+      undefined,
+    );
+
+    expect(staffMutationMock.updatePayrollSettings).toHaveBeenCalledWith(
+      null,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          overtimeMultiplierWeekday: 1.75,
+          nightShiftAllowanceRate: 0.35,
+          enablePersonalIncomeTax: true,
+          personalIncomeTaxRate: 0.1,
+        }),
+      }),
       expect.anything(),
       undefined,
     );
