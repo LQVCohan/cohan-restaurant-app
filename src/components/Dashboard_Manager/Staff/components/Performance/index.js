@@ -1,4 +1,4 @@
-import StaffPerformancePolicyPage from "./StaffPerformancePolicyPage";
+import StaffPerformanceOperationsPage from "./StaffPerformanceOperationsPage";
 import "./StaffPerformanceResponsive.scss";
 
-export default StaffPerformancePolicyPage;
+export default StaffPerformanceOperationsPage;
