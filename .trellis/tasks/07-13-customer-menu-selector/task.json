@@ -1,0 +1,35 @@
+{
+  "id": "07-13-customer-menu-selector",
+  "title": "Customer named-menu selector",
+  "status": "in_progress",
+  "type": "full-stack-ui-contract-fix",
+  "scope": [
+    "cohan-restaurant-backend/graphql/schema/menuMultiSlot.graphql",
+    "cohan-restaurant-backend/graphql/schema/category.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/menu/multiSlotQuery.js",
+    "cohan-restaurant-backend/graphql/resolvers/category/customerQuery.js",
+    "cohan-restaurant-backend/tests/resolvers/menu-multi-slot.test.js",
+    "cohan-restaurant-backend/tests/resolvers/public-customer-permission-flows.test.js",
+    "src/components/Customer/RestaurantMenu/RestaurantMenu.jsx",
+    "src/components/Customer/RestaurantMenu/components/MenuDetailView.jsx",
+    "src/components/Customer/RestaurantMenu/components/MenuDetailView.test.jsx",
+    "src/components/Customer/RestaurantMenu/styles/MenuDetailView.scss",
+    "src/utils/customerFoodNavigation.js",
+    "src/utils/customerFoodNavigation.test.js",
+    "src/components/Customer/Food/FoodDetailV2Core.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "cd cohan-restaurant-backend && npx vitest run tests/resolvers/menu-multi-slot.test.js tests/resolvers/public-customer-permission-flows.test.js",
+      "npx vitest run src/components/Customer/RestaurantMenu/components/MenuDetailView.test.jsx src/utils/customerFoodNavigation.test.js",
+      "npm run check:graphql",
+      "npm run build"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, frontend-design and ui-ux-pro-max",
+      "traced Menu and MenuItem schema through multi-slot and category resolvers into RestaurantMenu, MenuDetailView, FoodDetail navigation and tests",
+      "confirmed MenuItemFilter already supports exact menuId while customer categories and UI selection do not"
+    ],
+    "notRun": []
+  }
+}
