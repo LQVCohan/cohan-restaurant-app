@@ -20,8 +20,8 @@ const menuSchema = BaseSchemaModel({
   categoryMenuId: { type: mongoose.Schema.Types.ObjectId, ref: "CategoryMenu" },
 });
 
-// Mỗi (restaurantId, timeSlot) duy nhất
-menuSchema.index({ restaurantId: 1, timeSlot: 1 }, { unique: true });
+// timeSlot chỉ là khung phục vụ; một khung giờ có thể có nhiều menu khác nhau.
+menuSchema.index({ restaurantId: 1, timeSlot: 1, isActive: 1 });
 
 export const Menu = mongoose.models.Menu || mongoose.model("Menu", menuSchema);
 export default Menu;
