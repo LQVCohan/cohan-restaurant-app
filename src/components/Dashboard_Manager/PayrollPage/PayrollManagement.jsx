@@ -71,9 +71,7 @@ const toPayrollDateTime = (dateValue, boundary = "start") => {
 
 export function escapeCsvValue(value) {
   const text = String(value ?? "");
-  if (/[",\n\r]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`;
-  }
+  if (/[",\n\r]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
   return text;
 }
 
@@ -150,16 +148,11 @@ const statusClass = (status) => {
     ["finalized", "paying", "pending_payment", "processing_payment"].includes(
       status,
     )
-  ) {
-    return "info";
-  }
+  ) return "info";
   return "warning";
 };
 const getEmployeeInitials = (name = "") => {
-  const parts = String(name || "NV")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  const parts = String(name || "NV").trim().split(/\s+/).filter(Boolean);
   return (parts.length ? parts.slice(-2) : ["N", "V"])
     .map((part) => part[0])
     .join("")
@@ -192,11 +185,14 @@ const mapOfficialExportRow = (row) => ({
   role: row.role || "",
   actualWorkDays: row.actualWorkDays || 0,
   totalHours: row.totalHours || 0,
-  grossIncome: row.grossIncome || 0,
+  grossIncome: row.totalIncome ?? row.grossIncome ?? 0,
   totalDeduction:
+    row.totalDeduction ??
     Number(row.deduction || 0) +
-    Number(row.insuranceTotal || 0) +
-    Number(row.personalIncomeTax || 0),
+      Number(row.otherDeduction || 0) +
+      Number(row.advance || 0) +
+      Number(row.insuranceTotal || 0) +
+      Number(row.personalIncomeTax || 0),
   netSalary: row.netSalary || 0,
   paidAmount: row.paidAmount || 0,
   remainingAmount: row.remainingAmount || 0,
@@ -224,7 +220,6 @@ const getRowWarnings = (item) => {
   if (netSalary < 0) {
     warnings.unshift("Thực nhận âm; cần rà soát trước khi chốt kỳ.");
   }
-
   return [...new Set(warnings.filter(Boolean))];
 };
 
@@ -301,8 +296,7 @@ function PayrollWorkspace({
       limit: PAYROLL_PAGE_SIZE,
       offset: overviewOffset,
     },
-    skip:
-      !selectedRestaurantId || !apiRange.startDate || !apiRange.endDate,
+    skip: !selectedRestaurantId || !apiRange.startDate || !apiRange.endDate,
     fetchPolicy: "cache-and-network",
   }) || {};
 
@@ -331,21 +325,21 @@ function PayrollWorkspace({
       ? Math.min(Number(pageInfo.offset || 0) + items.length, totalCount)
       : 0;
   const canCreatePeriod = Boolean(
-    selectedRestaurantId &&
-      apiRange.startDate &&
-      apiRange.endDate &&
-      !tableLoading,
+    selectedRestaurantId && apiRange.startDate && apiRange.endDate && !tableLoading,
   );
   const canEditDraft = hasOfficialPeriod && periodStatus === "draft";
   const canLockPeriod = hasOfficialPeriod && periodStatus === "paid";
 
   const totals = useMemo(() => {
-    const totalPayroll = Number(
-      stats.totalPayroll ??
-        items.reduce(
-          (sum, item) => sum + Math.max(Number(item.netSalary || 0), 0),
-          0,
-        ),
+    const totalPayroll = Math.max(
+      Number(
+        stats.totalPayroll ??
+          items.reduce(
+            (sum, item) => sum + Math.max(Number(item.netSalary || 0), 0),
+            0,
+          ),
+      ),
+      0,
     );
     const paidAmount = Number(
       stats.paidAmount ??
@@ -356,9 +350,7 @@ function PayrollWorkspace({
     );
     const progress = Number(
       stats.progress ??
-        (totalPayroll > 0
-          ? Math.round((paidAmount / totalPayroll) * 100)
-          : 0),
+        (totalPayroll > 0 ? Math.round((paidAmount / totalPayroll) * 100) : 0),
     );
     return { totalPayroll, paidAmount, remaining, progress };
   }, [items, stats]);
@@ -368,7 +360,6 @@ function PayrollWorkspace({
     let negativeNetCount = 0;
     let deductionOverIncomeCount = 0;
     let warningCount = 0;
-
     items.forEach((item) => {
       const workDays = Number(item.actualWorkDays ?? item.workDays ?? 0);
       const hours = Number(item.totalHours || 0);
@@ -380,7 +371,6 @@ function PayrollWorkspace({
       if (deduction > income && deduction > 0) deductionOverIncomeCount += 1;
       warningCount += getRowWarnings(item).length;
     });
-
     return {
       zeroActivityCount,
       negativeNetCount,
@@ -395,12 +385,15 @@ function PayrollWorkspace({
       typeof periodIdOverride === "string" && periodIdOverride
         ? periodIdOverride
         : effectivePeriodId;
+    const shouldRefreshPeriod = Boolean(
+      targetPeriodId && (hasOfficialPeriod || periodIdOverride),
+    );
     await Promise.allSettled([
       payroll.refetchPeriods?.(),
-      hasOfficialPeriod && targetPeriodId
+      shouldRefreshPeriod
         ? payroll.refetchDetail?.({ periodId: targetPeriodId })
         : null,
-      hasOfficialPeriod && targetPeriodId
+      shouldRefreshPeriod
         ? payroll.refetchPayrollReadiness?.({ periodId: targetPeriodId })
         : null,
       overviewQuery.refetch?.({
@@ -421,7 +414,6 @@ function PayrollWorkspace({
     setSelectedPeriodId(nextPeriodId);
     setActionMessage("");
     if (!nextPeriodId || nextPeriodId === RANGE_PREVIEW_ID) return;
-
     const selectedPeriod = periods.find(
       (period) => String(period.id) === String(nextPeriodId),
     );
@@ -478,9 +470,7 @@ function PayrollWorkspace({
     }
     try {
       setActionMessage(`Đang ${label.toLowerCase()}...`);
-      const result = await action({
-        variables: { periodId: effectivePeriodId },
-      });
+      const result = await action({ variables: { periodId: effectivePeriodId } });
       const resultError = getMutationResultError(result);
       if (resultError) throw new Error(resultError);
       if (!hasMutationPayload(result)) {
@@ -509,6 +499,7 @@ function PayrollWorkspace({
       } else {
         rows = items.map((item) => ({
           ...item,
+          grossIncome: item.totalIncome ?? item.grossIncome ?? 0,
           status: statusLabel(item.status),
         }));
       }
@@ -597,11 +588,7 @@ function PayrollWorkspace({
             </select>
           </label>
           <div className="actions-row">
-            <button
-              className="btn btn-white"
-              type="button"
-              onClick={() => refreshPayrollData()}
-            >
+            <button className="btn btn-white" type="button" onClick={() => refreshPayrollData()}>
               Làm mới
             </button>
             <button
@@ -621,7 +608,7 @@ function PayrollWorkspace({
           <article className="metric-item">
             <span className="label">Tổng bảng lương</span>
             <strong className="value highlight">{formatMoney(totals.totalPayroll)}</strong>
-            <small>Không cộng phiếu thực nhận âm</small>
+            <small>Toàn bộ nguồn dữ liệu đang chọn</small>
           </article>
           <article className="metric-item">
             <span className="label">Đã chi</span>
@@ -687,13 +674,12 @@ function PayrollWorkspace({
 
       <section className="table-card payroll-table-card">
         <div className="table-controls payroll-filter-row">
-          <div className="workflow-tabs" role="tablist" aria-label="Trạng thái bảng lương">
+          <div className="workflow-tabs" role="group" aria-label="Lọc trạng thái bảng lương">
             {STATUS_TABS.map((status) => (
               <button
                 key={status}
                 type="button"
-                role="tab"
-                aria-selected={activeStatus === status}
+                aria-pressed={activeStatus === status}
                 className={`tab-btn ${activeStatus === status ? "active" : ""}`}
                 onClick={() => setActiveStatus(status)}
               >
@@ -846,9 +832,7 @@ function PayrollWorkspace({
               {tableLoading && !items.length ? (
                 Array.from({ length: 5 }).map((_, index) => (
                   <tr key={`loading-${index}`}>
-                    <td className="sticky-left" colSpan={10}>
-                      Đang tải dữ liệu lương...
-                    </td>
+                    <td className="sticky-left" colSpan={10}>Đang tải dữ liệu lương...</td>
                   </tr>
                 ))
               ) : items.length ? (
@@ -895,7 +879,7 @@ function PayrollWorkspace({
                           </span>
                         </td>
                         <td className="numeric-cell">{formatNumber(item.totalHours)} giờ</td>
-                        <td className="money-cell">{formatMoney(item.grossIncome ?? item.totalIncome)}</td>
+                        <td className="money-cell">{formatMoney(totalIncome)}</td>
                         <td className={`money-cell ${totalDeduction > 0 ? "text-danger" : ""}`}>
                           {formatMoney(totalDeduction)}
                         </td>
@@ -943,9 +927,7 @@ function PayrollWorkspace({
                                 </div>
                                 {warnings.length ? (
                                   <ul className="payroll-warning-list">
-                                    {warnings.map((warning) => (
-                                      <li key={warning}>{warning}</li>
-                                    ))}
+                                    {warnings.map((warning) => <li key={warning}>{warning}</li>)}
                                   </ul>
                                 ) : (
                                   <p className="payroll-audit-ok">
@@ -969,14 +951,8 @@ function PayrollWorkspace({
                         <strong>Chưa có dữ liệu lương phù hợp</strong>
                         <span>Chọn kỳ lương, nhà hàng hoặc khoảng thời gian khác để xem bảng lương.</span>
                         <div className="payroll-empty-actions">
-                          <button className="btn btn-white" type="button" onClick={resetFilters}>
-                            Bỏ lọc
-                          </button>
-                          <button
-                            className="btn btn-primary"
-                            type="button"
-                            onClick={() => refreshPayrollData()}
-                          >
+                          <button className="btn btn-white" type="button" onClick={resetFilters}>Bỏ lọc</button>
+                          <button className="btn btn-primary" type="button" onClick={() => refreshPayrollData()}>
                             Làm mới dữ liệu
                           </button>
                         </div>
@@ -994,19 +970,11 @@ function PayrollWorkspace({
             <strong>{totalCount}</strong> nhân viên • Hiển thị {firstRow}-{lastRow} • Trang {currentPage}/{totalPages}
           </div>
           <div className="payroll-pagination-actions">
-            <button className="btn btn-white" type="button" onClick={() => goToPage(1)} disabled={currentPage <= 1 || tableLoading}>
-              Đầu
-            </button>
-            <button className="btn btn-white" type="button" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1 || tableLoading}>
-              Trước
-            </button>
+            <button className="btn btn-white" type="button" onClick={() => goToPage(1)} disabled={currentPage <= 1 || tableLoading}>Đầu</button>
+            <button className="btn btn-white" type="button" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1 || tableLoading}>Trước</button>
             <span className="payroll-page-pill">{currentPage}</span>
-            <button className="btn btn-white" type="button" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= totalPages || tableLoading}>
-              Sau
-            </button>
-            <button className="btn btn-white" type="button" onClick={() => goToPage(totalPages)} disabled={currentPage >= totalPages || tableLoading}>
-              Cuối
-            </button>
+            <button className="btn btn-white" type="button" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= totalPages || tableLoading}>Sau</button>
+            <button className="btn btn-white" type="button" onClick={() => goToPage(totalPages)} disabled={currentPage >= totalPages || tableLoading}>Cuối</button>
           </div>
         </div>
       </section>
