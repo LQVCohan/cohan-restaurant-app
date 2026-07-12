@@ -114,14 +114,12 @@ export default {
 
     await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_READ);
 
-    let menus = [];
-    if (timeSlot) {
-      const m = await Menu.findOne({ restaurantId, timeSlot }).select({ __v: 0 }).lean({ virtuals: true });
-      if (!m) return { total: 0, pageInfo: { endCursor: null, hasNextPage: false }, items: [] };
-      menus = [m];
-    } else {
-      menus = await Menu.find({ restaurantId }).select({ __v: 0 }).lean({ virtuals: true });
-      if (!menus.length) return { total: 0, pageInfo: { endCursor: null, hasNextPage: false }, items: [] };
+    const menuFilter = { restaurantId, ...(timeSlot ? { timeSlot } : {}) };
+    const menus = await Menu.find(menuFilter)
+      .select({ __v: 0 })
+      .lean({ virtuals: true });
+    if (!menus.length) {
+      return { total: 0, pageInfo: { endCursor: null, hasNextPage: false }, items: [] };
     }
 
     const menuIds = menus.map((m) => m._id);
