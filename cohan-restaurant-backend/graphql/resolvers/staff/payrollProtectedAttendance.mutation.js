@@ -9,6 +9,10 @@ function toId(id) {
   return new mongoose.Types.ObjectId(id);
 }
 
+function actorId(ctx) {
+  return ctx?.user?.id || ctx?.user?._id || null;
+}
+
 async function assertShiftAttendanceNotLocked(shiftId, action) {
   const sid = toId(shiftId);
   if (!sid) throw new Error("Invalid shiftId");
@@ -32,6 +36,21 @@ async function checkInShift(parent, args, ctx, info) {
 async function checkOutShift(parent, args, ctx, info) {
   await assertShiftAttendanceNotLocked(args?.shiftId, "attendance_check_out");
   return staffMutation.checkOutShift(parent, args, ctx, info);
+}
+
+async function upsertStaffAttendance(parent, args, ctx, info) {
+  const employeeId = args?.input?.employeeId;
+  const currentActorId = actorId(ctx);
+  if (
+    employeeId &&
+    currentActorId &&
+    String(employeeId) === String(currentActorId)
+  ) {
+    throw new Error(
+      "Nhân viên phải chấm công từ ca đã công bố bằng check-in/check-out.",
+    );
+  }
+  return staffMutation.upsertStaffAttendance(parent, args, ctx, info);
 }
 
 async function markPayrollItemPaid(parent, args, ctx, info) {
@@ -61,6 +80,7 @@ async function markPayrollPeriodPaid(parent, args, ctx, info) {
 export default {
   checkInShift,
   checkOutShift,
+  upsertStaffAttendance,
   markPayrollItemPaid,
   batchMarkPayrollPaid,
   markPayrollPeriodPaid,
