@@ -10,6 +10,11 @@ import {
   saveRestaurantPaymentCredential,
 } from "../../../src/services/payment/paymentCredential.service.js";
 import { getProviderPublicConfig } from "../../../src/services/payment/paymentSession.service.js";
+import {
+  buildPaymentProviderSetup,
+  getPaymentBaseApiUrl,
+} from "../../../src/services/payment/paymentRequestContext.js";
+import { enableRestaurantPaymentProvider } from "../../../src/services/payment/restaurantPaymentSettings.service.js";
 
 const requireRestaurantId = (value) => {
   if (!mongoose.isValidObjectId(value)) throw new Error("Invalid restaurantId");
@@ -24,6 +29,12 @@ export const PaymentCredentialQuery = {
     const rid = requireRestaurantId(restaurantId);
     await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
     return listRestaurantPaymentCredentialStatuses(rid);
+  },
+
+  async restaurantPaymentProviderSetup(_, { restaurantId }, ctx) {
+    const rid = requireRestaurantId(restaurantId);
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
+    return buildPaymentProviderSetup(getPaymentBaseApiUrl(ctx));
   },
 
   async restaurantPaymentPublicConfig(_, { restaurantId }) {
@@ -66,6 +77,7 @@ export const PaymentCredentialMutation = {
       credentials: input?.credentialPayload || {},
       actorId,
     });
+    await enableRestaurantPaymentProvider({ restaurantId: rid, provider, mode });
     await EventLog.log({
       restaurantId: rid,
       actorUserId: actorId,
@@ -73,7 +85,7 @@ export const PaymentCredentialMutation = {
       object: { kind: "PaymentProviderCredential", id: document._id },
       source: "web",
       status: "success",
-      meta: { provider, mode, action: "credential_saved", version: document.version },
+      meta: { provider, mode, action: "credential_saved_and_enabled", version: document.version },
     }).catch(() => {});
 
     const statuses = await listRestaurantPaymentCredentialStatuses(rid);
