@@ -13,7 +13,7 @@ function collectLegacyIds(items = []) {
 }
 
 describe("restaurant cuisine starter templates", () => {
-  it("provides seven versioned packages with complete preview counts and dish names", () => {
+  it("provides seven versioned packages with complete dish and menu previews", () => {
     expect(RESTAURANT_CUISINE_TEMPLATES).toHaveLength(7);
     expect(listRestaurantCuisineTemplateSummaries()).toHaveLength(7);
 
@@ -30,8 +30,32 @@ describe("restaurant cuisine starter templates", () => {
       expect(template.menuCount).toBe(menuCatalog.menus.length);
       expect(template.menuItemCount).toBe(menuCatalog.menuItems.length);
       expect(summary?.recipeCount).toBe(menuCatalog.recipes.length);
-      expect(summary?.dishNames).toEqual(menuCatalog.menuItems.map((item) => item.name));
+      expect(summary?.dishNames).toEqual(
+        menuCatalog.menuItems.map((item) => item.name),
+      );
       expect(summary?.dishNames).toHaveLength(template.menuItemCount);
+      expect(summary?.timeSlotCount).toBe(
+        new Set(menuCatalog.menus.map((menu) => menu.timeSlot)).size,
+      );
+      expect(summary?.menus).toHaveLength(menuCatalog.menus.length);
+
+      for (const menu of menuCatalog.menus) {
+        const preview = summary?.menus.find(
+          (entry) => entry.key === menu.legacyId,
+        );
+        const expectedDishes = menuCatalog.menuItems
+          .filter((item) => item.menuId === menu.legacyId)
+          .map((item) => item.name);
+
+        expect(preview).toEqual({
+          key: menu.legacyId,
+          name: menu.name,
+          timeSlot: menu.timeSlot,
+          dishCount: expectedDishes.length,
+          dishNames: expectedDishes,
+        });
+      }
+
       expect(getRestaurantCuisineTemplate(template.key)?.key).toBe(template.key);
     }
   });
