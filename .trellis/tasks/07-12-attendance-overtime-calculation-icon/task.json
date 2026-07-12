@@ -1,0 +1,44 @@
+{
+  "id": "07-12-attendance-overtime-calculation-icon",
+  "title": "Chuẩn hóa tính chấm công, tăng ca và icon staff",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "attendance-overtime-staff-ui",
+  "priority": "P1",
+  "createdAt": "2026-07-12",
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/resolvers/staff/mutation.js",
+    "cohan-restaurant-backend/src/services/attendance/attendanceCalculation.service.js",
+    "cohan-restaurant-backend/src/services/overtime/overtimeRequest.service.js",
+    "cohan-restaurant-backend/src/services/payroll/payrollCalculator.service.js",
+    "cohan-restaurant-backend/tests/resolvers/timesheet-shift-binding.test.js",
+    "cohan-restaurant-backend/tests/services/overtime-request-workflow.test.js",
+    "cohan-restaurant-backend/tests/services/payroll-overtime-night-extra.test.js",
+    "src/components/Staff/StaffDashboardPage.jsx",
+    "src/components/Staff/StaffDashboardPage.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "targeted attendance resolver Vitest",
+      "targeted overtime workflow Vitest",
+      "targeted payroll overtime calculator Vitest",
+      "StaffDashboardPage component Vitest",
+      "frontend and backend build/smoke checks"
+    ],
+    "completed": [
+      "traced Timesheet schema through attendance resolvers/services, overtime approval, payroll runtime/calculator and staff UI"
+    ],
+    "notRun": []
+  },
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "ui-ux-pro-max",
+      "wcag-ui-audit",
+      "web-design-guidelines"
+    ]
+  }
+}
