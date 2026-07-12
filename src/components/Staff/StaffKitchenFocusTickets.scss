@@ -1,0 +1,359 @@
+/* Focus-only ticket board: keep sparse orders compact and keep each action close to its dish. */
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__orders,
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__skeleton-grid {
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, 360px), 440px)
+  );
+  grid-auto-flow: row;
+  gap: 14px;
+  align-items: start;
+  justify-content: start;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__order,
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__skeleton {
+  width: 100%;
+  min-width: 0;
+  border-radius: 18px;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__order::before {
+  height: 5px;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__order-header {
+  gap: 12px;
+  align-items: start;
+  padding: 14px 14px 11px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__order-kicker {
+  margin-bottom: 5px;
+  color: #91a79a;
+  font-size: 0.68rem;
+  letter-spacing: 0.075em;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__order-title {
+  color: var(--ink);
+  font-size: 1.28rem;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__order-code {
+  margin-top: 7px;
+  color: #9fb0a6;
+  font-size: 0.71rem;
+  line-height: 1.35;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__order-age {
+  display: grid;
+  min-width: 72px;
+  min-height: 38px;
+  place-items: center;
+  padding: 6px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.065);
+  color: #dce8e1;
+  font-size: 0.72rem;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__order.is-urgent
+  .staff-kitchen-page__order-age {
+  border-color: rgba(241, 122, 112, 0.35);
+  background: rgba(241, 122, 112, 0.16);
+  color: #ffd7d3;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__order-meta {
+  gap: 6px;
+  padding: 10px 14px 11px;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__badge {
+  min-height: 26px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  color: #aebeb5;
+  font-size: 0.68rem;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__badge[data-station="kitchen"] {
+  border-color: rgba(85, 167, 124, 0.24);
+  background: var(--kitchen-soft);
+  color: #9ed0b4;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__badge[data-station="bar"] {
+  border-color: rgba(105, 169, 207, 0.24);
+  background: var(--bar-soft);
+  color: #a9d2ea;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__badge--danger {
+  border-color: rgba(241, 122, 112, 0.26);
+  background: var(--danger-soft);
+  color: #ffc7c1;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__order-note {
+  margin: 0 12px 12px;
+  padding: 10px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 3px solid #718b7b;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.045);
+  color: #d3dfd8;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__items {
+  gap: 9px;
+  padding: 0 12px 12px;
+  border-top: 0;
+  background: transparent;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__item {
+  grid-template-columns: 50px minmax(0, 1fr);
+  gap: 10px 12px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.025);
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__item.is-urgent {
+  border-color: rgba(241, 122, 112, 0.32);
+  background: linear-gradient(
+    135deg,
+    rgba(241, 122, 112, 0.13),
+    rgba(255, 255, 255, 0.025) 58%
+  );
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__quantity {
+  width: 50px;
+  height: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.065);
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__item[data-station="kitchen"]
+  .staff-kitchen-page__quantity {
+  border-color: rgba(85, 167, 124, 0.26);
+  background: var(--kitchen-soft);
+  color: #a6d8bc;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__item[data-station="bar"]
+  .staff-kitchen-page__quantity {
+  border-color: rgba(105, 169, 207, 0.26);
+  background: var(--bar-soft);
+  color: #acd7ef;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__item-name {
+  color: #f7faf8;
+  font-size: 1.04rem;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__item-badges {
+  gap: 5px;
+  margin-top: 7px;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__item-badges
+  .staff-kitchen-page__badge {
+  min-height: 24px;
+  padding-inline: 7px;
+  font-size: 0.65rem;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__timing {
+  margin-top: 7px;
+  color: #9fb0a6;
+  font-size: 0.71rem;
+  line-height: 1.4;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__item-note {
+  margin-top: 8px;
+  padding: 8px 9px;
+  border-left: 3px solid #d6aa59;
+  border-radius: 0 9px 9px 0;
+  background: rgba(214, 170, 89, 0.1);
+  color: #f1dfb6;
+  font-size: 0.73rem;
+  line-height: 1.45;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__unaccepted-reason {
+  margin-top: 7px;
+  color: #ffc7c1;
+  font-size: 0.71rem;
+  line-height: 1.4;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__action,
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__ready-label {
+  width: 100%;
+  min-height: 48px;
+  grid-column: 1 / -1;
+  border-radius: 12px;
+  font-size: 0.84rem;
+  letter-spacing: -0.01em;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__action {
+  box-shadow: none;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__action[data-station="kitchen"] {
+  background: linear-gradient(145deg, #55a77c, #397f5d);
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__action[data-station="bar"] {
+  background: linear-gradient(145deg, #69a9cf, #427f9f);
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__ready-label {
+  border: 1px solid rgba(85, 167, 124, 0.28);
+  background: rgba(85, 167, 124, 0.14);
+  color: #a6d8bc;
+}
+
+body.staff-kitchen-focus-active
+  .staff-kitchen-page.staff-kitchen-page
+  .staff-kitchen-page__ready-label[data-station="bar"] {
+  border-color: rgba(105, 169, 207, 0.28);
+  background: rgba(105, 169, 207, 0.14);
+  color: #acd7ef;
+}
+
+@media (max-width: 700px) {
+  body.staff-kitchen-focus-active
+    .staff-kitchen-page.staff-kitchen-page
+    .staff-kitchen-page__orders,
+  body.staff-kitchen-focus-active
+    .staff-kitchen-page.staff-kitchen-page
+    .staff-kitchen-page__skeleton-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  body.staff-kitchen-focus-active
+    .staff-kitchen-page.staff-kitchen-page
+    .staff-kitchen-page__order-header {
+    padding: 13px 13px 10px;
+  }
+
+  body.staff-kitchen-focus-active
+    .staff-kitchen-page.staff-kitchen-page
+    .staff-kitchen-page__order-meta {
+    padding-inline: 13px;
+  }
+
+  body.staff-kitchen-focus-active
+    .staff-kitchen-page.staff-kitchen-page
+    .staff-kitchen-page__order-note {
+    margin-inline: 11px;
+  }
+
+  body.staff-kitchen-focus-active
+    .staff-kitchen-page.staff-kitchen-page
+    .staff-kitchen-page__items {
+    padding-inline: 11px;
+  }
+}
