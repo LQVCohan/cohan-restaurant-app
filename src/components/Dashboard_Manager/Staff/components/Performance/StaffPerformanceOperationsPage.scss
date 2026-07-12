@@ -1,0 +1,113 @@
+.staff-performance-operations-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cashier-reconciliation-launcher {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 15px 18px;
+  border: 1px solid rgba(57, 91, 77, 0.14);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f8fbf9 0%, #eef6f2 100%);
+  box-shadow: 0 8px 24px rgba(37, 73, 58, 0.06);
+}
+
+.cashier-reconciliation-launcher__copy {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  strong {
+    display: block;
+    color: #204437;
+    font-size: 0.92rem;
+  }
+
+  p {
+    margin: 4px 0 0;
+    color: #687a72;
+    font-size: 0.78rem;
+    line-height: 1.45;
+  }
+}
+
+.cashier-reconciliation-launcher__icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: #dcece5;
+  color: #21674f;
+}
+
+.cashier-reconciliation-launcher__guard {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #fff7e7;
+  color: #77571f;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cashier-reconciliation-launcher__button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border: 1px solid #2d755a;
+  border-radius: 12px;
+  background: #2d755a;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: #225f48;
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(45, 117, 90, 0.25);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    border-color: #aab7b1;
+    background: #aab7b1;
+    cursor: not-allowed;
+  }
+}
+
+@media (max-width: 860px) {
+  .cashier-reconciliation-launcher {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .cashier-reconciliation-launcher__guard {
+    display: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .cashier-reconciliation-launcher {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .cashier-reconciliation-launcher__button {
+    width: 100%;
+  }
+}
