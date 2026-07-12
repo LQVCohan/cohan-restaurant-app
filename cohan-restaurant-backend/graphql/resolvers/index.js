@@ -27,6 +27,9 @@ import { withStaffInvitationFlow } from "./staff/invitationFlow.js";
 import performancePolicy, {
   wrapPerformanceRecalculation,
 } from "./staffPerformancePolicy/index.js";
+import cashierShiftReconciliation, {
+  wrapCashierPerformanceRecalculation,
+} from "./cashierShiftReconciliation/index.js";
 import attendanceOvertime from "./attendance_overtime/index.js";
 import review from "./review/index.js";
 import reviewComment from "./review_comment/index.js";
@@ -63,7 +66,9 @@ const baseStaffMutations = withStaffInvitationFlow(staff.Mutation || {});
 const staffMutations = {
   ...baseStaffMutations,
   recalculateStaffPerformanceSnapshots: wrapPerformanceRecalculation(
-    baseStaffMutations.recalculateStaffPerformanceSnapshots,
+    wrapCashierPerformanceRecalculation(
+      baseStaffMutations.recalculateStaffPerformanceSnapshots,
+    ),
   ),
 };
 const staffQueries = {
@@ -95,6 +100,7 @@ export default {
     ...(payment.Query || {}),
     ...staffQueries,
     ...(performancePolicy.Query || {}),
+    ...(cashierShiftReconciliation.Query || {}),
     ...(review.Query || {}),
     ...(reviewComment.Query || {}),
     ...(cart.Query || {}),
@@ -146,6 +152,7 @@ export default {
     ...(payment.Mutation || {}),
     ...staffMutations,
     ...(performancePolicy.Mutation || {}),
+    ...(cashierShiftReconciliation.Mutation || {}),
     ...(attendanceOvertime.Mutation || {}),
     ...(review.Mutation || {}),
     ...(reviewComment.Mutation || {}),
