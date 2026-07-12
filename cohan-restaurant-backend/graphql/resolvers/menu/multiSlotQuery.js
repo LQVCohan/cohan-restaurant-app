@@ -8,9 +8,19 @@ import {
 import { MenuQuery } from "./query.js";
 
 const PUBLIC_STATUSES = ["available", "out_of_stock"];
-const SORTS = new Set(["default", "name_asc", "name_desc", "price_asc", "price_desc"]);
+const SORTS = new Set([
+  "default",
+  "name_asc",
+  "name_desc",
+  "price_asc",
+  "price_desc",
+]);
 const normalizeSort = (sort) => (SORTS.has(sort) ? sort : "default");
 const isOid = (value) => mongoose.isValidObjectId(value);
+const emptyConnection = () => ({
+  edges: [],
+  pageInfo: { endCursor: null, hasNextPage: false },
+});
 
 const getSortSpec = (sort) => {
   switch (normalizeSort(sort)) {
@@ -57,7 +67,8 @@ const getCursorCondition = (cursor, sort) => {
     if (!isOid(parsed?.id) || parsed?.sort !== normalized) return null;
     const operator = normalized.endsWith("_desc") ? "$lt" : "$gt";
     const field = normalized.startsWith("name_") ? "name" : "basePrice";
-    const value = field === "name" ? String(parsed.value || "") : Number(parsed.value);
+    const value =
+      field === "name" ? String(parsed.value || "") : Number(parsed.value);
     if (field === "basePrice" && !Number.isFinite(value)) return null;
     return {
       $or: [
@@ -72,47 +83,61 @@ const getCursorCondition = (cursor, sort) => {
 
 export const MenuMultiSlotQuery = {
   menuItemsConnection: async (parent, args, ctx) => {
-    const menuId = args?.filter?.menuId;
-    if (!menuId) return MenuQuery.menuItemsConnection(parent, args, ctx);
-
-    const { filter, limit = 20, cursor } = args;
-    if (!isOid(filter?.restaurantId) || !isOid(menuId)) {
-      return { edges: [], pageInfo: { endCursor: null, hasNextPage: false } };
+    const { filter, limit = 20, cursor } = args || {};
+    const menuId = filter?.menuId;
+    if (!menuId && !filter?.timeSlot) {
+      return MenuQuery.menuItemsConnection(parent, args, ctx);
+    }
+    if (!isOid(filter?.restaurantId) || (menuId && !isOid(menuId))) {
+      return emptyConnection();
     }
 
     const internal = ctx?.user
       ? await hasPermission(ctx.user, PERMISSIONS.MENU_READ)
       : false;
     if (internal) {
-      await requireRestaurantPermission(ctx, filter.restaurantId, PERMISSIONS.MENU_READ);
+      await requireRestaurantPermission(
+        ctx,
+        filter.restaurantId,
+        PERMISSIONS.MENU_READ,
+      );
     }
 
-    const menu = await Menu.findOne({
-      _id: menuId,
+    const menuFilter = {
       restaurantId: filter.restaurantId,
       ...(!internal ? { isActive: true } : {}),
-    })
-      .select({ _id: 1 })
-      .lean();
-    if (!menu) {
-      return { edges: [], pageInfo: { endCursor: null, hasNextPage: false } };
-    }
+      ...(menuId ? { _id: menuId } : { timeSlot: filter.timeSlot }),
+    };
+    const menus = await Menu.find(menuFilter).select({ _id: 1 }).lean();
+    if (!menus.length) return emptyConnection();
 
+    const menuIds = menus.map((menu) => menu._id);
     const query = {
       restaurantId: filter.restaurantId,
-      menuId: menu._id,
+      menuId: menuIds.length === 1 ? menuIds[0] : { $in: menuIds },
       ...(!internal ? { status: { $in: PUBLIC_STATUSES } } : {}),
     };
-    if (filter.categoryId && isOid(filter.categoryId)) query.categoryId = filter.categoryId;
-    if (filter.status) query.status = filter.status;
+    if (filter.categoryId && isOid(filter.categoryId)) {
+      query.categoryId = filter.categoryId;
+    }
+    if (filter.status && (internal || PUBLIC_STATUSES.includes(filter.status))) {
+      query.status = filter.status;
+    }
     if (filter.search?.trim()) {
       const pattern = new RegExp(filter.search.trim(), "i");
       query.$or = [{ name: pattern }, { description: pattern }];
     }
-    if (typeof filter.minPrice === "number" || typeof filter.maxPrice === "number") {
+    if (
+      typeof filter.minPrice === "number" ||
+      typeof filter.maxPrice === "number"
+    ) {
       query.basePrice = {};
-      if (typeof filter.minPrice === "number") query.basePrice.$gte = filter.minPrice;
-      if (typeof filter.maxPrice === "number") query.basePrice.$lte = filter.maxPrice;
+      if (typeof filter.minPrice === "number") {
+        query.basePrice.$gte = filter.minPrice;
+      }
+      if (typeof filter.maxPrice === "number") {
+        query.basePrice.$lte = filter.maxPrice;
+      }
     }
 
     const sort = normalizeSort(filter.sort);
@@ -130,7 +155,9 @@ export const MenuMultiSlotQuery = {
     return {
       edges: page.map((node) => ({ node, cursor: encodeCursor(node, sort) })),
       pageInfo: {
-        endCursor: page.length ? encodeCursor(page[page.length - 1], sort) : null,
+        endCursor: page.length
+          ? encodeCursor(page[page.length - 1], sort)
+          : null,
         hasNextPage,
       },
     };
