@@ -2,15 +2,31 @@ import mongoose from "mongoose";
 import { Category, Menu, MenuItem } from "../../../models/index.js";
 
 export const CustomerCategoryQuery = {
-  customerMenuCategories: async (_, { restaurantId, timeSlot }) => {
+  customerMenuCategories: async (
+    _,
+    { restaurantId, timeSlot, menuId = null },
+  ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
-    const restaurantObjectId = new mongoose.Types.ObjectId(String(restaurantId));
-    const menuFilter = { restaurantId, timeSlot, isActive: true };
+    if (menuId && !mongoose.isValidObjectId(menuId)) return [];
 
-    let menus = await Menu.find(menuFilter).lean();
-    if (!menus.length) {
-      const legacyMenu = await Menu.findOne(menuFilter).lean();
-      menus = legacyMenu ? [legacyMenu] : [];
+    const restaurantObjectId = new mongoose.Types.ObjectId(String(restaurantId));
+    const menuFilter = {
+      restaurantId,
+      timeSlot,
+      isActive: true,
+      ...(menuId ? { _id: menuId } : {}),
+    };
+
+    let menus = [];
+    if (menuId) {
+      const menu = await Menu.findOne(menuFilter).lean();
+      menus = menu ? [menu] : [];
+    } else {
+      menus = await Menu.find(menuFilter).lean();
+      if (!menus.length) {
+        const legacyMenu = await Menu.findOne(menuFilter).lean();
+        menus = legacyMenu ? [legacyMenu] : [];
+      }
     }
     if (!menus.length) return [];
 
