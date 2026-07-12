@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   countDocuments: vi.fn(),
@@ -28,12 +28,20 @@ import {
 const userId = "64b000000000000000000001";
 const restaurantId = "64b000000000000000000002";
 const orderId = "64b000000000000000000003";
+const originalEnv = { ...process.env };
 
 describe("customer order payment mutation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.API_PUBLIC_BASE_URL;
+    delete process.env.PUBLIC_BASE_URL;
+    delete process.env.APP_PUBLIC_URL;
     mocks.countDocuments.mockResolvedValue(1);
     mocks.createOrderPayment.mockResolvedValue({ id: "payment-1", payUrl: "https://pay.test" });
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
   });
 
   it("recognizes orders owned by the authenticated customer", async () => {
@@ -49,9 +57,19 @@ describe("customer order payment mutation", () => {
       provider: "vnpay",
       paymentMethod: "vnpay",
     };
+    const ctx = {
+      user: { id: userId },
+      request: {
+        headers: {
+          "x-forwarded-proto": "https",
+          "x-forwarded-host": "api.cohan.example",
+          "x-forwarded-for": "203.0.113.8, 10.0.0.2",
+        },
+      },
+    };
 
     await expect(
-      createCustomerOwnedOrderPayment(null, { input }, { user: { id: userId } }),
+      createCustomerOwnedOrderPayment(null, { input }, ctx),
     ).resolves.toMatchObject({ id: "payment-1" });
 
     expect(mocks.requireRestaurantPermission).not.toHaveBeenCalled();
@@ -59,6 +77,8 @@ describe("customer order payment mutation", () => {
       expect.objectContaining({
         ...input,
         userId,
+        baseApiUrl: "https://api.cohan.example",
+        clientIp: "203.0.113.8",
       }),
     );
   });
