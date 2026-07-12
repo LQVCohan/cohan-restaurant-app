@@ -11,10 +11,12 @@ export function wrapPerformanceRecalculation(resolver) {
   }
 
   return async (parent, args = {}, ctx, info) => {
-    const result = await resolver(parent, args, ctx, info);
+    requireAuth(ctx);
     const restaurantId = args?.input?.restaurantId;
-    if (!restaurantId) return result;
+    if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
+    await requireRestaurantAccess(ctx, restaurantId);
 
+    const result = await resolver(parent, args, ctx, info);
     return applyPerformancePolicyToRecalculationResult({
       result,
       restaurantId,
