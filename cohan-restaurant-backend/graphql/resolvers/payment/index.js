@@ -13,6 +13,7 @@ import TransactionManagementGuardMutation from "./transactionManagementGuards.js
 import { PaymentResolvers } from "./types.js";
 import publicTablePaymentMutation from "./publicTablePaymentMutation.js";
 import PublicTableAccessGuardMutation from "./publicTableAccessGuardMutation.js";
+import withPaymentIdempotency from "./paymentIdempotencyMutation.js";
 import {
   PaymentCredentialMutation,
   PaymentCredentialQuery,
@@ -42,6 +43,22 @@ const financeDashboard = async (parent, { input }, ctx, info) => {
   );
 };
 
+const paymentMutation = {
+  ...PaymentMutation,
+  ...ReconciliationPaymentConfirmationMutation,
+  ...FinanceOperationGuardMutation,
+  ...StrictOrderPaymentMutation,
+  ...TransferPaymentMutation,
+  ...publicTablePaymentMutation,
+  ...PublicTableAccessGuardMutation,
+  ...(wallet.Mutation || {}),
+  ...MergedTablePaymentMutation,
+  ...PaymentCredentialMutation,
+  ...TransactionManagementGuardMutation,
+  // Keep this last so customer ownership is checked before the provider session is created.
+  ...CustomerOrderPaymentMutation,
+};
+
 export default {
   Query: {
     ...PaymentQuery,
@@ -51,20 +68,6 @@ export default {
     ...TransactionManagementQuery,
     financeDashboard,
   },
-  Mutation: {
-    ...PaymentMutation,
-    ...ReconciliationPaymentConfirmationMutation,
-    ...FinanceOperationGuardMutation,
-    ...StrictOrderPaymentMutation,
-    ...TransferPaymentMutation,
-    ...publicTablePaymentMutation,
-    ...PublicTableAccessGuardMutation,
-    ...(wallet.Mutation || {}),
-    ...MergedTablePaymentMutation,
-    ...PaymentCredentialMutation,
-    ...TransactionManagementGuardMutation,
-    // Keep this last so customer ownership is checked before the provider session is created.
-    ...CustomerOrderPaymentMutation,
-  },
+  Mutation: withPaymentIdempotency(paymentMutation),
   ...PaymentResolvers,
 };
