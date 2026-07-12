@@ -8,8 +8,16 @@ import { useNotification } from "../hooks/useNotification";
 =========================================== */
 
 const GET_CATEGORIES = gql`
-  query GetCategories($restaurantId: ID!, $timeSlot: TimeSlot!) {
-    categories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
+  query GetCategories(
+    $restaurantId: ID!
+    $timeSlot: TimeSlot!
+    $menuId: ID
+  ) {
+    categories(
+      restaurantId: $restaurantId
+      timeSlot: $timeSlot
+      menuId: $menuId
+    ) {
       id
       name
       icon
@@ -60,11 +68,13 @@ const TOP_CATEGORIES_BY_RESTAURANT = gql`
   query TopCategoriesByRestaurant(
     $restaurantId: ID!
     $timeSlot: TimeSlot!
+    $menuId: ID
     $limit: Int
   ) {
     topCategoriesByMenuItemCount(
       restaurantId: $restaurantId
       timeSlot: $timeSlot
+      menuId: $menuId
       limit: $limit
     ) {
       id
