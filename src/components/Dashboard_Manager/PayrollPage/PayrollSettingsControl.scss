@@ -1,0 +1,572 @@
+$settings-ink: #152033;
+$settings-muted: rgba(31, 41, 51, 0.66);
+$settings-gold: #b98a50;
+$settings-border: rgba(185, 138, 80, 0.24);
+$settings-surface: rgba(255, 252, 246, 0.94);
+$settings-success: #047857;
+$settings-danger: #b91c1c;
+
+.payroll-settings-shell {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.payroll-settings-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 clamp(1rem, 1.8vw, 1.75rem) -0.45rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid $settings-border;
+  border-radius: 20px;
+  color: $settings-ink;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(255, 248, 237, 0.88));
+  box-shadow: 0 14px 36px rgba(54, 42, 26, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+
+  &__identity {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+
+    > div {
+      display: grid;
+      gap: 0.18rem;
+      min-width: 0;
+    }
+
+    strong {
+      font-size: 0.9rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    span:last-child {
+      overflow: hidden;
+      color: $settings-muted;
+      font-size: 0.78rem;
+      line-height: 1.35;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  &__icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(185, 138, 80, 0.28);
+    border-radius: 13px;
+    color: $settings-gold;
+    background: rgba(185, 138, 80, 0.1);
+  }
+
+  &__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 42px;
+    padding: 0.68rem 0.9rem;
+    border: 0;
+    border-radius: 13px;
+    color: #fff;
+    background: $settings-ink;
+    box-shadow: 0 10px 24px rgba(21, 32, 51, 0.16);
+    font: 700 0.82rem/1 inherit;
+    cursor: pointer;
+    transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 28px rgba(21, 32, 51, 0.2);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    &:focus-visible {
+      outline: 3px solid rgba(185, 138, 80, 0.34);
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.payroll-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(21, 32, 51, 0.45);
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+  animation: payrollSettingsFade 180ms ease-out;
+}
+
+.payroll-settings-drawer {
+  display: flex;
+  flex-direction: column;
+  width: min(720px, 100%);
+  height: 100dvh;
+  color: $settings-ink;
+  background: #fbf6ec;
+  box-shadow: -24px 0 60px rgba(21, 32, 51, 0.2);
+  animation: payrollSettingsSlide 220ms ease-out;
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.15rem 1.25rem;
+    border-bottom: 1px solid $settings-border;
+    background: rgba(255, 252, 246, 0.96);
+
+    > div {
+      min-width: 0;
+    }
+
+    h2 {
+      margin: 0.18rem 0 0;
+      font-size: clamp(1.35rem, 2.3vw, 1.8rem);
+      line-height: 1.1;
+      letter-spacing: -0.035em;
+    }
+
+    p {
+      margin: 0.35rem 0 0;
+      color: $settings-muted;
+      font-size: 0.88rem;
+    }
+  }
+
+  &__eyebrow {
+    color: $settings-gold;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+}
+
+.payroll-settings-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  border: 1px solid $settings-border;
+  border-radius: 13px;
+  color: $settings-ink;
+  background: rgba(255, 255, 255, 0.78);
+  cursor: pointer;
+  transition: transform 180ms ease, background-color 180ms ease;
+
+  &:hover:not(:disabled) {
+    background: #fff;
+    transform: rotate(3deg);
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(185, 138, 80, 0.34);
+    outline-offset: 2px;
+  }
+}
+
+.payroll-settings-form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+  padding: 1rem 1.15rem 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.payroll-settings-section {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid $settings-border;
+  border-radius: 20px;
+  background: $settings-surface;
+  box-shadow: 0 12px 30px rgba(54, 42, 26, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+
+  &__heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    color: $settings-gold;
+
+    > div {
+      display: grid;
+      gap: 0.2rem;
+    }
+
+    h3 {
+      margin: 0;
+      color: $settings-ink;
+      font-size: 0.98rem;
+      letter-spacing: -0.018em;
+    }
+
+    p {
+      margin: 0;
+      color: $settings-muted;
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+  }
+
+  fieldset {
+    display: grid;
+    gap: 0.9rem;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  &--advanced.is-locked {
+    background: rgba(243, 239, 231, 0.88);
+
+    fieldset {
+      opacity: 0.58;
+    }
+  }
+}
+
+.payroll-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+
+  &--time {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+}
+
+.payroll-settings-field {
+  display: grid;
+  gap: 0.38rem;
+  min-width: 0;
+  color: $settings-ink;
+  font-size: 0.78rem;
+  font-weight: 700;
+
+  &--wide {
+    grid-column: 1 / -1;
+  }
+
+  input,
+  textarea {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.72rem 0.8rem;
+    border: 1px solid rgba(185, 138, 80, 0.28);
+    border-radius: 12px;
+    color: $settings-ink;
+    background: rgba(255, 255, 255, 0.86);
+    font: 500 0.9rem/1.3 inherit;
+    font-variant-numeric: tabular-nums;
+    transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+
+    &:focus {
+      outline: 0;
+      border-color: $settings-gold;
+      box-shadow: 0 0 0 3px rgba(185, 138, 80, 0.18);
+      background: #fff;
+    }
+
+    &:disabled {
+      color: rgba(31, 41, 51, 0.52);
+      background: rgba(234, 229, 220, 0.78);
+      cursor: not-allowed;
+    }
+  }
+
+  textarea {
+    min-height: 76px;
+    resize: vertical;
+  }
+
+  > small {
+    color: $settings-muted;
+    font-size: 0.71rem;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+}
+
+.payroll-settings-input-wrap {
+  position: relative;
+
+  input {
+    padding-right: 5.2rem;
+  }
+
+  small {
+    position: absolute;
+    top: 50%;
+    right: 0.75rem;
+    max-width: 4.4rem;
+    overflow: hidden;
+    color: $settings-muted;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+}
+
+.payroll-settings-switch {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border-radius: 13px;
+  background: rgba(185, 138, 80, 0.08);
+  cursor: pointer;
+
+  input {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    margin-top: 0.1rem;
+    accent-color: $settings-ink;
+  }
+
+  span {
+    display: grid;
+    gap: 0.22rem;
+  }
+
+  strong {
+    font-size: 0.82rem;
+  }
+
+  small {
+    color: $settings-muted;
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+}
+
+.payroll-settings-weekdays {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  legend {
+    margin-bottom: 0.5rem;
+    color: $settings-ink;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  label {
+    cursor: pointer;
+
+    input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 0.55rem 0.68rem;
+      border: 1px solid $settings-border;
+      border-radius: 11px;
+      color: $settings-muted;
+      background: rgba(255, 255, 255, 0.75);
+      font-size: 0.75rem;
+      font-weight: 700;
+      transition: transform 160ms ease, border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+    }
+
+    input:checked + span {
+      border-color: $settings-ink;
+      color: #fff;
+      background: $settings-ink;
+      box-shadow: 0 8px 18px rgba(21, 32, 51, 0.14);
+    }
+
+    input:focus-visible + span {
+      outline: 3px solid rgba(185, 138, 80, 0.34);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.payroll-settings-warning,
+.payroll-settings-feedback,
+.payroll-settings-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.78rem 0.85rem;
+  border-radius: 13px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.payroll-settings-warning {
+  border: 1px solid rgba(185, 138, 80, 0.26);
+  color: rgba(82, 60, 32, 0.88);
+  background: rgba(185, 138, 80, 0.1);
+}
+
+.payroll-settings-feedback.is-success {
+  border: 1px solid rgba(4, 120, 87, 0.24);
+  color: $settings-success;
+  background: rgba(4, 120, 87, 0.09);
+}
+
+.payroll-settings-feedback.is-error,
+.payroll-settings-state.is-error {
+  border: 1px solid rgba(185, 28, 28, 0.22);
+  color: $settings-danger;
+  background: rgba(185, 28, 28, 0.08);
+}
+
+.payroll-settings-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  margin: auto -1.15rem 0;
+  padding: 0.9rem 1.15rem max(0.9rem, env(safe-area-inset-bottom));
+  border-top: 1px solid $settings-border;
+  background: rgba(251, 246, 236, 0.96);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.payroll-settings-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0.72rem 1rem;
+  border-radius: 13px;
+  font: 750 0.82rem/1 inherit;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+
+  &.is-secondary {
+    border: 1px solid $settings-border;
+    color: $settings-ink;
+    background: rgba(255, 255, 255, 0.82);
+  }
+
+  &.is-primary {
+    border: 1px solid $settings-ink;
+    color: #fff;
+    background: $settings-ink;
+    box-shadow: 0 10px 24px rgba(21, 32, 51, 0.16);
+  }
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(185, 138, 80, 0.34);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.52;
+    cursor: not-allowed;
+  }
+}
+
+@keyframes payrollSettingsFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes payrollSettingsSlide {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (max-width: 720px) {
+  .payroll-settings-entry {
+    align-items: stretch;
+    flex-direction: column;
+    margin-inline: 0.75rem;
+
+    &__identity span:last-child {
+      white-space: normal;
+    }
+
+    &__action {
+      width: 100%;
+    }
+  }
+
+  .payroll-settings-drawer {
+    width: 100%;
+  }
+
+  .payroll-settings-form {
+    padding-inline: 0.8rem;
+  }
+
+  .payroll-settings-grid,
+  .payroll-settings-grid--time {
+    grid-template-columns: 1fr;
+  }
+
+  .payroll-settings-actions {
+    margin-inline: -0.8rem;
+    padding-inline: 0.8rem;
+
+    .payroll-settings-button {
+      flex: 1;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .payroll-settings-overlay,
+  .payroll-settings-drawer,
+  .payroll-settings-entry__action,
+  .payroll-settings-button,
+  .payroll-settings-close {
+    animation: none;
+    transition: none;
+  }
+}
