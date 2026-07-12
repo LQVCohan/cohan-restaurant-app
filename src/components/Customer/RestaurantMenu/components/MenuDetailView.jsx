@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   Check,
@@ -33,6 +34,7 @@ import { getCannotOrderReason } from "../../../../utils/restaurantStatus";
 import { shouldShowMenuItemToCustomer } from "../../../../utils/menuItemAvailability";
 import MenuItemCard from "./MenuItemCard";
 import "../styles/MenuDetailView.scss";
+import "../styles/MenuNamedSelector.scss";
 
 export const GET_CUSTOMER_MENUS = gql`
   query GetCustomerMenusForMenuDetail($restaurantId: ID!) {
@@ -149,8 +151,15 @@ const MenuDetailView = ({
   onOpenFoodDetail,
   onMenuSelectionChange,
 }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const routeMenuId = useMemo(
+    () => new URLSearchParams(location.search).get("menuId"),
+    [location.search],
+  );
+  const preferredMenuId = initialMenuId || routeMenuId || null;
   const [timeSlot, setTimeSlot] = useState(initialTimeSlot || "lunch");
-  const [selectedMenuId, setSelectedMenuId] = useState(initialMenuId || null);
+  const [selectedMenuId, setSelectedMenuId] = useState(preferredMenuId);
   const [activeCat, setActiveCat] = useState("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -182,8 +191,8 @@ const MenuDetailView = ({
   }, [initialTimeSlot]);
 
   useEffect(() => {
-    if (initialMenuId) setSelectedMenuId(initialMenuId);
-  }, [initialMenuId]);
+    if (preferredMenuId) setSelectedMenuId(preferredMenuId);
+  }, [preferredMenuId]);
 
   const {
     data: menusData,
@@ -238,13 +247,13 @@ const MenuDetailView = ({
       (menu) => String(menu.id) === String(selectedMenuId),
     );
     const requested = slotMenus.find(
-      (menu) => String(menu.id) === String(initialMenuId),
+      (menu) => String(menu.id) === String(preferredMenuId),
     );
     const nextMenu = current || requested || slotMenus[0];
     if (String(nextMenu.id) !== String(selectedMenuId)) {
       setSelectedMenuId(nextMenu.id);
     }
-  }, [initialMenuId, selectedMenuId, slotMenus]);
+  }, [preferredMenuId, selectedMenuId, slotMenus]);
 
   useEffect(() => {
     setActiveCat("all");
@@ -253,13 +262,35 @@ const MenuDetailView = ({
 
   useEffect(() => {
     if (!selectedMenu?.id) return;
+
+    const params = new URLSearchParams(location.search);
+    params.set("restaurantId", String(restaurantId));
+    params.set("timeSlot", String(timeSlot));
+    params.set("menuId", String(selectedMenu.id));
+    const nextSearch = params.toString();
+    if (nextSearch !== location.search.replace(/^\?/, "")) {
+      navigate(
+        { pathname: location.pathname, search: `?${nextSearch}` },
+        { replace: true, state: location.state },
+      );
+    }
+
     onMenuSelectionChange?.({
       restaurantId,
       timeSlot,
       menuId: selectedMenu.id,
       menu: selectedMenu,
     });
-  }, [onMenuSelectionChange, restaurantId, selectedMenu, timeSlot]);
+  }, [
+    location.pathname,
+    location.search,
+    location.state,
+    navigate,
+    onMenuSelectionChange,
+    restaurantId,
+    selectedMenu,
+    timeSlot,
+  ]);
 
   const {
     data: categoriesData,
@@ -382,6 +413,11 @@ const MenuDetailView = ({
     setLoadMoreError("");
   };
 
+  const handleBack = () => {
+    if (!lockedTimeSlot && !serviceAt) navigate("/cus-menu");
+    onBack?.();
+  };
+
   const handleLoadMore = async () => {
     if (!pageInfo?.hasNextPage || !pageInfo?.endCursor || isLoadingMore) return;
     setIsLoadingMore(true);
@@ -464,7 +500,7 @@ const MenuDetailView = ({
       <header className="menu-header">
         <div className="header-content">
           <div className="top-row">
-            <button type="button" onClick={onBack} className="back-btn">
+            <button type="button" onClick={handleBack} className="back-btn">
               <ArrowLeft size={18} aria-hidden="true" />
               Quay lại
             </button>
