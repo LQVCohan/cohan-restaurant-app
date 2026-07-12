@@ -1,0 +1,26 @@
+{
+  "id": "07-12-unify-all-payment-idempotency",
+  "title": "Unify idempotency across customer payment entry points",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "customer-payment-idempotency",
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-12",
+  "updatedAt": "2026-07-12",
+  "branch": "agent/unify-payment-idempotency",
+  "base_branch": "main",
+  "relatedFiles": [
+    "cohan-restaurant-backend/models/payment-request-lock.model.js",
+    "cohan-restaurant-backend/models/index.js",
+    "cohan-restaurant-backend/src/services/payment/paymentRequestIdempotency.service.js",
+    "cohan-restaurant-backend/graphql/resolvers/payment/paymentIdempotencyMutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/payment/index.js",
+    "cohan-restaurant-backend/graphql/schema/payments.graphql",
+    "cohan-restaurant-backend/graphql/schema/wallet.graphql",
+    "src/apollo/client.js",
+    "src/components/Customer/QRPaymentModal/QRPaymentModal.jsx",
+    "cohan-restaurant-backend/tests/services/payment-request-idempotency.test.js"
+  ]
+}
