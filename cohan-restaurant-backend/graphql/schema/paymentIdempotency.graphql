@@ -17,3 +17,11 @@ extend input CreateReservationPaymentInput {
 extend input WalletTopupInput {
   idempotencyKey: String!
 }
+
+extend input RefundToWalletInput {
+  idempotencyKey: String!
+}
+
+extend input AdjustWalletBalanceInput {
+  idempotencyKey: String!
+}
