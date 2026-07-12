@@ -1,36 +1,39 @@
 /* Late, page-scoped contract for the Brand management header. */
 .manager-layout .brand-management > .management-page-header.density-compact {
   display: grid !important;
-  grid-template-columns: minmax(210px, 240px) minmax(420px, 1fr) minmax(150px, 170px) !important;
-  grid-template-rows: auto auto !important;
-  grid-template-areas:
-    "brand-title brand-stats brand-actions"
-    "brand-meta brand-stats brand-actions";
-  align-items: stretch !important;
-  gap: 0.4rem 0.75rem !important;
+  grid-template-columns: minmax(180px, 220px) minmax(360px, 1fr) minmax(240px, 300px) !important;
+  grid-template-areas: "brand-title brand-stats brand-actions";
+  align-items: center !important;
+  gap: 0.7rem !important;
   min-height: 0;
-  padding: 0.75rem 0.85rem !important;
-  border-radius: 18px !important;
+  padding: 0.65rem 0.8rem !important;
+  border-radius: 16px !important;
 }
 
 .manager-layout .brand-management > .management-page-header.density-compact .mph-left {
   grid-area: brand-title;
+  display: flex;
   min-width: 0;
-  padding: 0 0.75rem 0 0 !important;
+  padding: 0 0.7rem 0 0 !important;
   border-right: 1px dashed var(--bm-border) !important;
   border-bottom: 0 !important;
 }
 
-.manager-layout .brand-management > .management-page-header.density-compact .mph-eyebrow {
-  font-size: 0.6rem !important;
-  letter-spacing: 0.085em !important;
+.manager-layout .brand-management > .management-page-header.density-compact :is(
+  .mph-eyebrow,
+  .mph-greeting,
+  .mph-subtitle,
+  .mph-footer-row
+) {
+  display: none !important;
 }
 
 .manager-layout .brand-management > .management-page-header.density-compact .mph-title {
   gap: 0.5rem !important;
-  margin: 0.2rem 0 0.25rem !important;
-  font-size: clamp(1.25rem, 1.6vw, 1.5rem) !important;
+  margin: 0 !important;
+  font-size: clamp(1.2rem, 1.5vw, 1.45rem) !important;
   line-height: 1.08 !important;
+  white-space: nowrap;
 }
 
 .manager-layout .brand-management > .management-page-header.density-compact .mph-title__icon {
@@ -56,13 +59,6 @@
   font-weight: 900;
 }
 
-.manager-layout .brand-management > .management-page-header.density-compact .mph-subtitle {
-  max-width: 29ch !important;
-  margin: 0 !important;
-  font-size: 0.72rem !important;
-  line-height: 1.4 !important;
-}
-
 .manager-layout .brand-management > .management-page-header.density-compact .mph-right {
   display: contents !important;
 }
@@ -71,13 +67,13 @@
   grid-area: brand-stats;
   display: grid !important;
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  align-self: stretch !important;
+  align-self: center !important;
   gap: 1px !important;
   min-width: 0;
   margin: 0 !important;
   overflow: hidden;
   border: 1px solid var(--bm-border) !important;
-  border-radius: 14px !important;
+  border-radius: 13px !important;
   background: var(--bm-border);
 }
 
@@ -85,9 +81,9 @@
   display: flex !important;
   align-items: center !important;
   min-width: 0;
-  min-height: 72px !important;
-  gap: 0.6rem !important;
-  padding: 0.65rem 0.75rem !important;
+  min-height: 58px !important;
+  gap: 0.55rem !important;
+  padding: 0.55rem 0.65rem !important;
   border: 0 !important;
   border-radius: 0 !important;
   background: rgba(251, 253, 252, 0.9) !important;
@@ -95,14 +91,14 @@
 }
 
 .manager-layout .brand-management > .management-page-header.density-compact .mph-stat-card__icon {
-  width: 30px !important;
-  height: 30px !important;
-  flex: 0 0 30px;
+  width: 29px !important;
+  height: 29px !important;
+  flex: 0 0 29px;
   border: 1px solid rgba(83, 108, 97, 0.14);
   border-radius: 9px !important;
   background: var(--bm-surface-soft) !important;
   color: var(--bm-primary-hover);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
 }
 
 .manager-layout .brand-management > .management-page-header.density-compact .mph-stat-card__body {
@@ -112,7 +108,7 @@
 .manager-layout .brand-management > .management-page-header.density-compact .mph-stat-card__label {
   overflow: hidden;
   color: var(--bm-muted);
-  font-size: 0.68rem !important;
+  font-size: 0.67rem !important;
   line-height: 1.15 !important;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -120,27 +116,25 @@
 
 .manager-layout .brand-management > .management-page-header.density-compact .mph-stat-card__value {
   color: var(--bm-ink);
-  font-size: 1.22rem !important;
+  font-size: 1.15rem !important;
   font-variant-numeric: tabular-nums;
 }
 
 .manager-layout .brand-management > .management-page-header.density-compact .mph-controls-row {
   grid-area: brand-actions;
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr);
-  align-content: center !important;
-  align-items: stretch !important;
+  display: flex !important;
+  flex-flow: row nowrap !important;
+  align-items: center !important;
   justify-content: stretch !important;
-  gap: 0.45rem !important;
+  gap: 0.4rem !important;
   min-width: 0 !important;
-  padding: 0 0 0 0.75rem !important;
+  padding: 0 0 0 0.7rem !important;
   border-top: 0 !important;
   border-left: 1px dashed var(--bm-border) !important;
 }
 
 .manager-layout .brand-management > .management-page-header.density-compact .mph-select,
 .manager-layout .brand-management > .management-page-header.density-compact .mph-btn {
-  width: 100% !important;
   min-width: 0 !important;
   min-height: 44px !important;
   height: 44px !important;
@@ -148,94 +142,81 @@
   font-size: 0.78rem !important;
 }
 
+.manager-layout .brand-management > .management-page-header.density-compact .mph-select {
+  flex: 1 1 auto;
+  width: auto !important;
+}
+
 .manager-layout .brand-management > .management-page-header.density-compact .mph-btn {
+  width: 44px !important;
+  min-width: 44px !important;
+  flex: 0 0 44px;
   justify-content: center !important;
-  padding-inline: 0.7rem !important;
+  padding: 0 !important;
+  font-size: 0.95rem !important;
 }
 
-.manager-layout .brand-management > .management-page-header.density-compact .mph-footer-row {
-  grid-area: brand-meta;
-  display: flex !important;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-start !important;
-  gap: 0.35rem;
-  min-width: 0;
-  margin: 0 !important;
-  padding: 0.1rem 0.75rem 0 0 !important;
-  border: 0 !important;
-  color: var(--bm-muted);
-  font-size: 0.66rem !important;
-}
-
-.manager-layout .brand-management > .management-page-header.density-compact .mph-footer-row > div {
-  overflow: hidden;
-  max-width: 100%;
-  padding: 0.28rem 0.48rem;
-  border: 1px solid rgba(83, 108, 97, 0.15);
-  border-radius: 999px;
-  background: rgba(249, 252, 250, 0.78);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.manager-layout .brand-management > .management-page-header.density-compact .mph-btn > span {
+  display: none;
 }
 
 @media (max-width: 1120px) {
   .manager-layout .brand-management > .management-page-header.density-compact {
-    grid-template-columns: minmax(200px, 230px) minmax(0, 1fr) !important;
-    grid-template-rows: auto auto auto !important;
-    grid-template-areas:
-      "brand-title brand-stats"
-      "brand-meta brand-stats"
-      "brand-actions brand-actions";
+    grid-template-columns: minmax(160px, 190px) minmax(300px, 1fr) minmax(200px, 240px) !important;
+    gap: 0.55rem !important;
+    padding: 0.6rem 0.7rem !important;
+  }
+
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-left,
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-controls-row {
+    padding-inline-end: 0.55rem !important;
   }
 
   .manager-layout .brand-management > .management-page-header.density-compact .mph-controls-row {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    padding: 0.65rem 0 0 !important;
-    border-top: 1px dashed var(--bm-border) !important;
-    border-left: 0 !important;
+    padding-inline: 0.55rem 0 !important;
   }
 
-  .manager-layout .brand-management > .management-page-header.density-compact .mph-select {
-    flex: 1 1 230px;
-    width: auto !important;
-    max-width: 320px;
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-stat-card {
+    min-height: 54px !important;
+    gap: 0.45rem !important;
+    padding: 0.5rem 0.55rem !important;
   }
 
-  .manager-layout .brand-management > .management-page-header.density-compact .mph-btn {
-    width: auto !important;
-    min-width: 130px !important;
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-stat-card__icon {
+    width: 27px !important;
+    height: 27px !important;
+    flex-basis: 27px;
+  }
+}
+
+@media (max-width: 900px) {
+  .manager-layout .brand-management > .management-page-header.density-compact {
+    grid-template-columns: minmax(180px, 1fr) minmax(220px, 280px) !important;
+    grid-template-areas:
+      "brand-title brand-actions"
+      "brand-stats brand-stats";
+  }
+
+  .manager-layout .brand-management > .management-page-header.density-compact .mph-stats-grid {
+    width: 100%;
   }
 }
 
 @media (max-width: 760px) {
   .manager-layout .brand-management > .management-page-header.density-compact {
-    display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-areas:
       "brand-title"
-      "brand-meta"
       "brand-stats"
       "brand-actions";
-    gap: 0.6rem !important;
-    padding: 0.75rem !important;
+    gap: 0.55rem !important;
+    padding: 0.7rem !important;
   }
 
   .manager-layout .brand-management > .management-page-header.density-compact .mph-left {
-    padding: 0 !important;
-    border: 0 !important;
-  }
-
-  .manager-layout .brand-management > .management-page-header.density-compact .mph-subtitle {
-    max-width: none !important;
-  }
-
-  .manager-layout .brand-management > .management-page-header.density-compact .mph-footer-row {
-    padding: 0 !important;
+    padding: 0 0 0.55rem !important;
+    border-right: 0 !important;
+    border-bottom: 1px dashed var(--bm-border) !important;
   }
 
   .manager-layout .brand-management > .management-page-header.density-compact .mph-stats-grid {
@@ -244,18 +225,14 @@
 
   .manager-layout .brand-management > .management-page-header.density-compact .mph-controls-row {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto;
-    padding-top: 0.65rem !important;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    padding: 0.55rem 0 0 !important;
+    border-top: 1px dashed var(--bm-border) !important;
+    border-left: 0 !important;
   }
 
   .manager-layout .brand-management > .management-page-header.density-compact .mph-select {
     width: 100% !important;
-    max-width: none;
-  }
-
-  .manager-layout .brand-management > .management-page-header.density-compact .mph-btn {
-    width: auto !important;
-    min-width: 118px !important;
   }
 }
 
@@ -264,22 +241,14 @@
     flex-direction: column;
     align-items: flex-start !important;
     justify-content: center;
-    min-height: 68px !important;
-    gap: 0.25rem !important;
-    padding: 0.55rem !important;
+    min-height: 64px !important;
+    gap: 0.22rem !important;
+    padding: 0.5rem !important;
   }
 
   .manager-layout .brand-management > .management-page-header.density-compact .mph-stat-card__icon {
-    width: 25px !important;
-    height: 25px !important;
-    flex-basis: 25px;
-  }
-
-  .manager-layout .brand-management > .management-page-header.density-compact .mph-controls-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .manager-layout .brand-management > .management-page-header.density-compact .mph-btn {
-    width: 100% !important;
+    width: 24px !important;
+    height: 24px !important;
+    flex-basis: 24px;
   }
 }
