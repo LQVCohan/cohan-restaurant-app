@@ -15,8 +15,8 @@
   "branch": "fix/staff-profile-enum-contract",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": null,
+  "commit": "2321a916f13b419ef7cf300af4dc717d2699b92b",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1362",
   "subtasks": [],
   "children": [],
   "parent": null,
@@ -30,5 +30,5 @@
     "src/components/Dashboard_Manager/Staff/StaffManagement.jsx",
     "cohan-restaurant-backend/tests/schema/staff-management-schema.test.js"
   ],
-  "notes": "The reported manager staff-list failure is caused by missing GraphQL enum internal-value mappings. The database and DTO correctly return lowercase values such as monthly, while StaffSalaryType exposes uppercase enum names. Fix the shared resolver contract rather than changing the frontend or stored data."
+  "notes": "The manager staff-list failure is caused by missing GraphQL enum internal-value mappings. The database and DTO correctly return lowercase values such as monthly, while StaffSalaryType exposes uppercase enum names. The shared resolver contract and a focused executable-schema regression test are in PR #1362. Automated tests were not run locally because the GitHub connector has no runnable checkout; task remains in progress pending CI."
 }
