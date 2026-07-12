@@ -55,7 +55,14 @@ export default {
     reviewCashierShiftReconciliation: async (_, { input }, ctx) => {
       requireAuth(ctx);
       const reviewed = await reviewCashierShiftReconciliation({ input, ctx });
-      await refreshCashierPerformanceSnapshotsForReconciliation(reviewed);
+      await refreshCashierPerformanceSnapshotsForReconciliation(reviewed).catch(
+        (error) => {
+          console.warn(
+            "[cashierShiftReconciliation] performance snapshot refresh failed",
+            error?.message || error,
+          );
+        },
+      );
       return reviewed;
     },
   },
