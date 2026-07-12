@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { EventLog } from "../../../models/index.js";
+import { EventLog, PaymentProviderCredential } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import {
@@ -23,6 +23,21 @@ const requireRestaurantId = (value) => {
 
 const findStatus = (statuses, provider, mode) =>
   statuses.find((item) => item.provider === provider && item.mode === mode);
+
+async function rollbackCredentialVersion({ document, previousActiveIds }) {
+  if (document?._id) {
+    await PaymentProviderCredential.updateOne(
+      { _id: document._id },
+      { $set: { active: false, disconnectedAt: new Date() } },
+    ).catch(() => {});
+  }
+  if (previousActiveIds.length) {
+    await PaymentProviderCredential.updateMany(
+      { _id: { $in: previousActiveIds } },
+      { $set: { active: true }, $unset: { disconnectedAt: "" } },
+    ).catch(() => {});
+  }
+}
 
 export const PaymentCredentialQuery = {
   async restaurantPaymentCredentialStatuses(_, { restaurantId }, ctx) {
@@ -69,6 +84,13 @@ export const PaymentCredentialMutation = {
     const provider = normalizePaymentProvider(input?.provider);
     const mode = normalizePaymentMode(input?.mode);
     const actorId = ctx?.user?.id || ctx?.user?._id || null;
+    const previousActive = await PaymentProviderCredential.find({
+      restaurantId: rid,
+      provider,
+      mode,
+      active: true,
+    }).select({ _id: 1 }).lean();
+    const previousActiveIds = previousActive.map((item) => item._id);
 
     const document = await saveRestaurantPaymentCredential({
       restaurantId: rid,
@@ -77,7 +99,12 @@ export const PaymentCredentialMutation = {
       credentials: input?.credentialPayload || {},
       actorId,
     });
-    await enableRestaurantPaymentProvider({ restaurantId: rid, provider, mode });
+    try {
+      await enableRestaurantPaymentProvider({ restaurantId: rid, provider, mode });
+    } catch (error) {
+      await rollbackCredentialVersion({ document, previousActiveIds });
+      throw error;
+    }
     await EventLog.log({
       restaurantId: rid,
       actorUserId: actorId,
