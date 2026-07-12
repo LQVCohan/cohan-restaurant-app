@@ -90,16 +90,16 @@ export const MenuMultiSlotMutation = {
       throw badInput("categoryMenuId không hợp lệ");
     }
 
+    await requireMenuPermission(
+      ctx,
+      restaurantId,
+      id ? MENU_PERMISSION.UPDATE_MENU : MENU_PERMISSION.CREATE_MENU,
+    );
+
     const before = id
       ? await Menu.findOne({ _id: id, restaurantId }).lean()
       : null;
     if (id && !before) throw new GraphQLError("Không tìm thấy thực đơn");
-
-    await requireMenuPermission(
-      ctx,
-      restaurantId,
-      before ? MENU_PERMISSION.UPDATE_MENU : MENU_PERMISSION.CREATE_MENU,
-    );
     if (!(await Restaurant.exists({ _id: restaurantId }))) {
       throw new GraphQLError("Không tìm thấy nhà hàng");
     }
