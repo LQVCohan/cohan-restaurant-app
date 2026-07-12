@@ -1,25 +1,26 @@
 {
   "id": "07-12-manager-menu-selected-menu-flow",
-  "title": "Make the selected manager menu explicit end to end",
+  "title": "Keep manager menu selection and query scope synchronized",
   "status": "in_progress",
   "type": "frontend-contract-fix",
   "scope": [
-    "src/hooks/useMenuManagement.js",
-    "src/components/Dashboard_Manager/Menu/MenuManagement.jsx",
+    "src/apollo/ManagerMenuSelectionSync.jsx",
+    "src/apollo/ManagerMenuSelectionSync.test.jsx",
     "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.jsx",
-    "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModal.jsx",
     "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx"
   ],
   "validation": {
     "planned": [
-      "npx vitest run src/apollo/managerMenuSelectionLink.test.js src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx",
+      "npx vitest run src/apollo/ManagerMenuSelectionSync.test.jsx src/apollo/managerMenuSelectionLink.test.js src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx",
       "npm run check:graphql",
       "npm run build"
     ],
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail, frontend-design and ui-ux-pro-max",
       "traced Menu/MenuItem schema and multi-slot resolvers through Apollo hook, manager selection, menu CRUD, item creation, inventory sync and bulk pricing",
-      "confirmed backend menuId extensions and resolver overrides are already active"
+      "confirmed backend menuId extensions and resolver overrides are already active",
+      "confirmed create item, inventory sync and bulk price mutations already receive exact menuId through the manager Apollo link",
+      "identified the remaining user-facing gap at active observable-query variables and selected-menu visibility"
     ],
     "notRun": []
   }
