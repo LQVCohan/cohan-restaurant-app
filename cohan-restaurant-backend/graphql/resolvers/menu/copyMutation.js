@@ -11,7 +11,9 @@ function isOid(value) {
 
 function assertTimeSlot(timeSlot) {
   if (!TIME_SLOTS.includes(timeSlot)) {
-    throw new GraphQLError("Invalid timeSlot");
+    throw new GraphQLError("Invalid timeSlot", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
   }
 }
 
@@ -58,6 +60,28 @@ function buildCopiedItemPayload(sourceItem, targetMenuId) {
   };
 }
 
+async function resolveSourceMenu({ restaurantId, sourceMenuId, sourceTimeSlot }) {
+  if (sourceMenuId) {
+    return Menu.findOne({ _id: sourceMenuId, restaurantId }).lean();
+  }
+
+  assertTimeSlot(sourceTimeSlot);
+  const matchingMenus = await Menu.find({
+    restaurantId,
+    timeSlot: sourceTimeSlot,
+  })
+    .limit(2)
+    .lean();
+
+  if (matchingMenus.length > 1) {
+    throw new GraphQLError(
+      "Khung giờ nguồn có nhiều thực đơn. Vui lòng chọn sourceMenuId trước khi sao chép.",
+      { extensions: { code: "BAD_USER_INPUT" } },
+    );
+  }
+  return matchingMenus[0] || null;
+}
+
 export const CopyMenuMutation = {
   copyMenu: async (_, { input }, ctx) => {
     const {
@@ -80,16 +104,22 @@ export const CopyMenuMutation = {
     }
     assertTimeSlot(targetTimeSlot);
     if (sourceTimeSlot) assertTimeSlot(sourceTimeSlot);
+    if (!sourceMenuId && !sourceTimeSlot) {
+      throw new GraphQLError("sourceMenuId or sourceTimeSlot is required", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
     if (categoryMenuId && !isOid(categoryMenuId)) {
       throw new GraphQLError("Invalid categoryMenuId");
     }
 
     await requireMenuPermission(ctx, restaurantId, MENU_PERMISSION.COPY_MENU);
 
-    const sourceMenu = sourceMenuId
-      ? await Menu.findOne({ _id: sourceMenuId, restaurantId }).lean()
-      : await Menu.findOne({ restaurantId, timeSlot: sourceTimeSlot }).lean();
-
+    const sourceMenu = await resolveSourceMenu({
+      restaurantId,
+      sourceMenuId,
+      sourceTimeSlot,
+    });
     if (!sourceMenu) throw new GraphQLError("Source menu not found");
 
     const session = await mongoose.startSession();
@@ -106,8 +136,11 @@ export const CopyMenuMutation = {
               timeSlot: targetTimeSlot,
               name: name || `${sourceMenu.name || "Menu"} (bản sao)`,
               description:
-                description !== undefined ? description : sourceMenu.description,
-              coverImage: coverImage !== undefined ? coverImage : sourceMenu.coverImage,
+                description !== undefined
+                  ? description
+                  : sourceMenu.description,
+              coverImage:
+                coverImage !== undefined ? coverImage : sourceMenu.coverImage,
               categoryMenuId:
                 categoryMenuId !== undefined
                   ? categoryMenuId || null
@@ -130,7 +163,9 @@ export const CopyMenuMutation = {
         if (!sourceItems.length) return;
 
         const insertedItems = await MenuItem.insertMany(
-          sourceItems.map((item) => buildCopiedItemPayload(item, targetMenu._id)),
+          sourceItems.map((item) =>
+            buildCopiedItemPayload(item, targetMenu._id),
+          ),
           { session, ordered: true },
         );
 
@@ -155,7 +190,9 @@ export const CopyMenuMutation = {
 
         const recipePayloads = recipes
           .map((recipe) => {
-            const targetItem = newItemByOldItemId.get(String(recipe.menuItemId));
+            const targetItem = newItemByOldItemId.get(
+              String(recipe.menuItemId),
+            );
             if (!targetItem) return null;
             return {
               restaurantId,
@@ -163,7 +200,9 @@ export const CopyMenuMutation = {
               servingVariants: clonePlain(recipe.servingVariants || []),
               notes: recipe.notes || "",
               isActive:
-                typeof recipe.isActive === "boolean" ? recipe.isActive : true,
+                typeof recipe.isActive === "boolean"
+                  ? recipe.isActive
+                  : true,
             };
           })
           .filter(Boolean);
@@ -199,7 +238,9 @@ export const CopyMenuMutation = {
 
       return targetMenuDoc;
     } catch (error) {
-      throw new GraphQLError(error?.message || "copyMenu failed");
+      throw new GraphQLError(error?.message || "copyMenu failed", {
+        extensions: error?.extensions || { code: "COPY_MENU_FAILED" },
+      });
     } finally {
       await session.endSession();
     }
