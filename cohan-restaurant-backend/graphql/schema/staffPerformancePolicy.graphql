@@ -1,0 +1,46 @@
+type StaffPerformancePolicyWeights {
+  productivity: Int!
+  punctuality: Int!
+  quality: Int!
+  managerReview: Int!
+  compliance: Int!
+}
+
+type StaffPerformanceLevelThresholds {
+  excellentMin: Int!
+  goodMin: Int!
+  averageMin: Int!
+  needsAttentionMin: Int!
+}
+
+type StaffPerformancePolicy {
+  restaurantId: ID!
+  weights: StaffPerformancePolicyWeights!
+  levelThresholds: StaffPerformanceLevelThresholds!
+  editableFields: [String!]!
+  lockedFields: [String!]!
+  updatedBy: ID
+  updatedAt: DateTime
+}
+
+input StaffPerformanceLevelThresholdsInput {
+  excellentMin: Int!
+  goodMin: Int!
+  averageMin: Int!
+  needsAttentionMin: Int!
+}
+
+input UpdateStaffPerformancePolicyInput {
+  restaurantId: ID!
+  levelThresholds: StaffPerformanceLevelThresholdsInput!
+}
+
+extend type Query {
+  staffPerformancePolicy(restaurantId: ID!): StaffPerformancePolicy!
+}
+
+extend type Mutation {
+  updateStaffPerformancePolicy(
+    input: UpdateStaffPerformancePolicyInput!
+  ): StaffPerformancePolicy!
+}
