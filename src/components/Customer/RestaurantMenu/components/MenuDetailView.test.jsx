@@ -18,12 +18,18 @@ vi.mock("../../../../hooks/useFoodPreferences", () => ({
   default: () => ({ preferences: null }),
 }));
 
-vi.mock("../../../../hooks/useActiveMenuPromotions", () => ({
-  useActiveMenuPromotions: () => ({
-    getPromotionForMenuItem: () => null,
-    getPromotionLabel: () => "",
-  }),
-}));
+vi.mock("../../../../hooks/useActiveMenuPromotions", async () => {
+  const actual = await vi.importActual(
+    "../../../../hooks/useActiveMenuPromotions",
+  );
+  return {
+    ...actual,
+    useActiveMenuPromotions: () => ({
+      getPromotionForMenuItem: () => null,
+      getPromotionLabel: () => "",
+    }),
+  };
+});
 
 const menus = [
   {
