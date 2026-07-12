@@ -272,6 +272,7 @@ const files = [
   "staffSchedulingAssistant.graphql",
   "staffResolverCompatibility.graphql",
   "staffSelfServiceCompatibility.graphql",
+  "staffPerformancePolicy.graphql",
   "operationCompatibilityExtras.graphql",
   "operationCompatibilityExtras2.graphql",
   "audit_log.graphql",
