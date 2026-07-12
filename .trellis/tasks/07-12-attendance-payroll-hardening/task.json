@@ -1,0 +1,33 @@
+{
+  "id": "07-12-attendance-payroll-hardening",
+  "title": "Khóa luồng chấm công và chuẩn hóa giờ tăng ca trả lương",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "attendance-overtime-payroll",
+  "priority": "P0",
+  "createdAt": "2026-07-12",
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/resolvers/staff/payrollProtectedAttendance.mutation.js",
+    "cohan-restaurant-backend/graphql/schema/staffAttendanceRecord.graphql",
+    "cohan-restaurant-backend/src/services/payroll/payrollRuntime.service.js",
+    "cohan-restaurant-backend/src/services/payroll/payrollValidation.service.js",
+    "cohan-restaurant-backend/src/services/payroll/payrollReadiness.service.js",
+    "cohan-restaurant-backend/tests/resolvers/staff-attendance-mutation-access.test.js",
+    "cohan-restaurant-backend/tests/services/payroll-correctness.test.js"
+  ],
+  "validation": {
+    "planned": [
+      "targeted attendance access Vitest",
+      "targeted payroll correctness Vitest",
+      "GraphQL schema validation",
+      "backend build or smoke check"
+    ],
+    "completed": [],
+    "notRun": []
+  },
+  "meta": {
+    "skills": ["ponytail"]
+  }
+}
