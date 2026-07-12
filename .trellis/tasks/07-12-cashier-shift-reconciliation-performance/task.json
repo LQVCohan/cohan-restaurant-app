@@ -1,13 +1,16 @@
 {
   "id": "07-12-cashier-shift-reconciliation-performance",
   "title": "Complete cashier shift reconciliation and performance evidence flow",
-  "status": "in_progress",
+  "status": "completed",
   "type": "fullstack-feature",
   "priority": "P0",
   "createdAt": "2026-07-12",
   "updatedAt": "2026-07-12",
+  "completedAt": "2026-07-12",
   "branch": "agent/cashier-shift-reconciliation-performance",
   "baseBranch": "main",
+  "pullRequest": 1367,
+  "validationRun": 29178129371,
   "scope": [
     "cashier shift opening, cash movement, closing and manager review",
     "restaurant and actor authorization",
