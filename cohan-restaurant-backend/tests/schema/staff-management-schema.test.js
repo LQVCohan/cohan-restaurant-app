@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { graphql } from "graphql";
 import { makeExecutableSchema } from "@graphql-tools/schema";
 import typeDefs from "../../graphql/schema/index.js";
+import baseResolvers from "../../graphql/resolvers/base.js";
 
 const createSchema = () =>
   makeExecutableSchema({
     typeDefs,
+    resolvers: baseResolvers,
     resolverValidationOptions: {
       requireResolversForResolveType: "ignore",
     },
@@ -52,5 +55,43 @@ describe("staff management GraphQL contract", () => {
     expect(
       String(mutationFields.setStaffAccountStatus.type),
     ).toBe("StaffPrivateProfile!");
+  });
+
+  it("serializes lowercase staff profile values as GraphQL enums", async () => {
+    const result = await graphql({
+      schema: createSchema(),
+      source: `
+        query StaffProfileEnumContract {
+          staff(id: "staff-1") {
+            id
+            gender
+            maritalStatus
+            contractType
+            salaryType
+            trainingStatus
+          }
+        }
+      `,
+      rootValue: {
+        staff: {
+          id: "staff-1",
+          gender: "female",
+          maritalStatus: "single",
+          contractType: "fixed_term",
+          salaryType: "monthly",
+          trainingStatus: "in_progress",
+        },
+      },
+    });
+
+    expect(result.errors).toBeUndefined();
+    expect(result.data?.staff).toEqual({
+      id: "staff-1",
+      gender: "FEMALE",
+      maritalStatus: "SINGLE",
+      contractType: "FIXED_TERM",
+      salaryType: "MONTHLY",
+      trainingStatus: "IN_PROGRESS",
+    });
   });
 });
