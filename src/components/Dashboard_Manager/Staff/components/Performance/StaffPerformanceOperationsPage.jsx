@@ -5,6 +5,24 @@ import CashierShiftReconciliationModal from "./CashierShiftReconciliationModal";
 import { resolveEffectivePerformanceRestaurantId } from "./StaffPerformancePage";
 import "./StaffPerformanceOperationsPage.scss";
 
+const isCashierEmployee = (employee = {}) => {
+  const roleText = [
+    employee.department,
+    employee.role,
+    employee.positionTitle,
+    employee.roleName,
+    employee.roleSlug,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+  return roleText.includes("cashier") || roleText.includes("thu ngan");
+};
+
 export default function StaffPerformanceOperationsPage(props) {
   const [reconciliationOpen, setReconciliationOpen] = useState(false);
   const restaurantId = resolveEffectivePerformanceRestaurantId(
@@ -16,6 +34,10 @@ export default function StaffPerformanceOperationsPage(props) {
         (restaurant) => String(restaurant.id) === String(restaurantId),
       )?.name || "Nhà hàng hiện tại",
     [props.restaurantList, restaurantId],
+  );
+  const cashierEmployees = useMemo(
+    () => (props.employees || []).filter(isCashierEmployee),
+    [props.employees],
   );
 
   return (
@@ -59,7 +81,7 @@ export default function StaffPerformanceOperationsPage(props) {
         <CashierShiftReconciliationModal
           restaurantId={restaurantId}
           restaurantName={restaurantName}
-          employees={props.employees || []}
+          employees={cashierEmployees}
           onClose={() => setReconciliationOpen(false)}
         />
       ) : null}
