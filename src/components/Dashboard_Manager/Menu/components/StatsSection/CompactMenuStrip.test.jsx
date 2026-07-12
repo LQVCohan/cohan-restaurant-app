@@ -1,102 +1,132 @@
 import React from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, within, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AuthContext } from "../../../../../context/AuthContext";
 import CompactMenuStrip from "./CompactMenuStrip";
+
+const refetchQueries = vi.fn().mockResolvedValue([]);
+const mutation = vi.fn().mockResolvedValue({ data: {} });
+
+vi.mock("@apollo/client", () => ({
+  gql: (strings) => strings.join(""),
+  useApolloClient: () => ({ refetchQueries }),
+  useMutation: () => [mutation],
+}));
 
 vi.mock("../AuditLogModal/AuditLogModal", () => ({
   default: () => null,
 }));
 
-const breakfastMenu = {
-  id: "menu-breakfast",
-  restaurantId: "restaurant-1",
-  timeSlot: "breakfast",
-  name: "Thực đơn buổi sáng",
-  description: "Các món phục vụ buổi sáng",
-  isActive: true,
-  itemCount: 4,
-};
+const dinnerMenus = [
+  {
+    id: "menu-vip",
+    restaurantId: "restaurant-1",
+    timeSlot: "dinner",
+    name: "Menu VIP",
+    description: "Không gian riêng và món cao cấp",
+    isActive: true,
+    itemCount: 8,
+  },
+  {
+    id: "menu-casual",
+    restaurantId: "restaurant-1",
+    timeSlot: "dinner",
+    name: "Menu ăn chơi",
+    description: "Món chia sẻ và đồ uống",
+    isActive: true,
+    itemCount: 12,
+  },
+];
+
+const renderStrip = (props = {}) =>
+  render(
+    <AuthContext.Provider
+      value={{
+        user: { roleName: "manager" },
+        activeRestaurantId: "restaurant-1",
+      }}
+    >
+      <CompactMenuStrip
+        menus={dinnerMenus}
+        selectedTimeSlot="dinner"
+        onTimeSlotChange={vi.fn()}
+        {...props}
+      />
+    </AuthContext.Provider>,
+  );
 
 const openMenuList = () => {
-  fireEvent.click(
-    screen.getByRole("button", { name: "Xem danh sách thực đơn" }),
-  );
-  return screen.getByRole("dialog", { name: "Danh sách thực đơn" });
+  fireEvent.click(screen.getByRole("button", { name: /Quản lý danh sách/i }));
+  return screen.getByRole("dialog", {
+    name: "Quản lý thực đơn theo khung giờ",
+  });
 };
 
 describe("CompactMenuStrip", () => {
-  it("shows a clear launcher and opens all four management time slots in a modal", () => {
-    render(<CompactMenuStrip menus={[breakfastMenu]} />);
+  beforeEach(() => {
+    refetchQueries.mockClear();
+    mutation.mockClear();
+    window.sessionStorage.clear();
+  });
+
+  it("shows every named menu grouped inside the same service time slot", async () => {
+    renderStrip();
 
     expect(
       screen.getByRole("heading", { name: "Danh sách thực đơn" }),
     ).toBeInTheDocument();
+    expect(screen.getByText(/2 thực đơn trong 4 mốc giờ/i)).toBeInTheDocument();
 
     const dialog = openMenuList();
-    expect(within(dialog).getByText("Thực đơn buổi sáng")).toBeInTheDocument();
-    expect(
-      within(dialog).getByRole("button", {
-        name: "Chọn Bữa trưa, chưa có thực đơn",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByRole("button", {
-        name: "Chọn Bữa tối, chưa có thực đơn",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByRole("button", {
-        name: "Chọn Bữa khuya, chưa có thực đơn",
-      }),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText("Menu VIP")).toBeInTheDocument();
+    expect(within(dialog).getByText("Menu ăn chơi")).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Bữa sáng" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Bữa trưa" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Bữa tối" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Bữa khuya" })).toBeInTheDocument();
+
+    await waitFor(() => expect(refetchQueries).toHaveBeenCalled());
   });
 
-  it("selects an empty time slot from the modal", () => {
+  it("selects an exact sibling menu without leaving its time slot", async () => {
     const onTimeSlotChange = vi.fn();
-    render(
-      <CompactMenuStrip
-        menus={[breakfastMenu]}
-        onTimeSlotChange={onTimeSlotChange}
-      />,
-    );
+    renderStrip({ onTimeSlotChange });
 
     const dialog = openMenuList();
-    fireEvent.click(
-      within(dialog).getByRole("button", {
-        name: "Chọn Bữa trưa, chưa có thực đơn",
-      }),
-    );
+    const casualCard = within(dialog)
+      .getByRole("heading", { name: "Menu ăn chơi" })
+      .closest("article");
+    fireEvent.click(within(casualCard).getByRole("button", { pressed: false }));
 
-    expect(onTimeSlotChange).toHaveBeenCalledWith("lunch");
+    await waitFor(() => {
+      expect(within(casualCard).getByRole("button", { pressed: true })).toBeInTheDocument();
+    });
+    expect(onTimeSlotChange).toHaveBeenCalledWith("dinner");
+    expect(
+      JSON.parse(window.sessionStorage.getItem("manager.menu.selection")),
+    ).toEqual({
+      restaurantId: "restaurant-1",
+      menuId: "menu-casual",
+      timeSlot: "dinner",
+    });
   });
 
-  it("keeps an inactive menu visible and exposes the restore action in the modal", () => {
-    const onToggleMenuActive = vi.fn();
-    const inactiveMenu = {
-      ...breakfastMenu,
-      id: "menu-dinner",
-      timeSlot: "dinner",
-      name: "Thực đơn buổi tối",
-      isActive: false,
-    };
-
-    render(
-      <CompactMenuStrip
-        menus={[inactiveMenu]}
-        onToggleMenuActive={onToggleMenuActive}
-      />,
-    );
+  it("opens a create form for an empty time slot even when another slot has menus", () => {
+    renderStrip({ onAddMenu: vi.fn() });
 
     const dialog = openMenuList();
-    expect(within(dialog).getByText("Thực đơn buổi tối")).toBeInTheDocument();
-    expect(within(dialog).getByText("Đang ẩn với khách")).toBeInTheDocument();
-
+    const breakfastSection = within(dialog)
+      .getByRole("heading", { name: "Bữa sáng" })
+      .closest("section");
     fireEvent.click(
-      within(dialog).getByRole("button", {
-        name: "Hiển thị lại thực đơn Thực đơn buổi tối",
+      within(breakfastSection).getByRole("button", {
+        name: /Tạo menu đầu tiên cho bữa sáng/i,
       }),
     );
 
-    expect(onToggleMenuActive).toHaveBeenCalledWith(inactiveMenu);
+    expect(within(dialog).getByText("Tạo thực đơn mới")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Mốc giờ phục vụ")).toHaveValue(
+      "breakfast",
+    );
   });
 });
