@@ -1,0 +1,151 @@
+enum CashierShiftReconciliationStatus {
+  OPEN
+  SUBMITTED
+  APPROVED
+  WAIVED
+  REJECTED
+}
+
+enum CashierShiftCashMovementType {
+  CASH_IN
+  CASH_OUT
+}
+
+enum CashierShiftReconciliationDecision {
+  APPROVE
+  WAIVE
+  REJECT
+}
+
+type CashierShiftCashMovement {
+  id: ID!
+  type: CashierShiftCashMovementType!
+  amount: Float!
+  reason: String!
+  occurredAt: DateTime!
+  createdBy: ID
+}
+
+type CashierShiftReconciliationAudit {
+  action: String!
+  actorId: ID
+  previousStatus: String
+  nextStatus: String
+  note: String
+  metadata: JSON
+  at: DateTime
+}
+
+type CashierShiftReconciliation {
+  id: ID!
+  restaurantId: ID!
+  cashierId: ID!
+  cashierName: String
+  cashierCode: String
+  shiftId: ID
+  timesheetId: ID
+  registerCode: String!
+  status: CashierShiftReconciliationStatus!
+
+  openedAt: DateTime!
+  closedAt: DateTime
+  submittedAt: DateTime
+  reviewedAt: DateTime
+  lockedAt: DateTime
+
+  openingCash: Float!
+  actualCash: Float
+  cashSalesAmount: Float!
+  cashRefundAmount: Float!
+  movementNetAmount: Float!
+  managerAdjustmentAmount: Float!
+  expectedCash: Float!
+  varianceAmount: Float!
+  varianceRate: Float!
+
+  attributableToCashier: Boolean!
+  cashierNote: String
+  reviewNote: String
+  evidenceAttachments: [String!]!
+  movements: [CashierShiftCashMovement!]!
+  transactionIds: [ID!]!
+  refundIds: [ID!]!
+  calculatedAt: DateTime
+
+  openedBy: ID
+  submittedBy: ID
+  reviewedBy: ID
+  auditTrail: [CashierShiftReconciliationAudit!]!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CashierShiftReconciliationFilterInput {
+  restaurantId: ID!
+  cashierId: ID
+  status: CashierShiftReconciliationStatus
+  dateFrom: DateTime
+  dateTo: DateTime
+  limit: Int = 100
+}
+
+input OpenCashierShiftReconciliationInput {
+  restaurantId: ID!
+  cashierId: ID!
+  shiftId: ID
+  timesheetId: ID
+  registerCode: String
+  openingCash: Float!
+  openedAt: DateTime
+  note: String
+}
+
+input AddCashierShiftCashMovementInput {
+  reconciliationId: ID!
+  type: CashierShiftCashMovementType!
+  amount: Float!
+  reason: String!
+  occurredAt: DateTime
+}
+
+input SubmitCashierShiftReconciliationInput {
+  reconciliationId: ID!
+  actualCash: Float!
+  closedAt: DateTime
+  note: String
+  evidenceAttachments: [String!]
+}
+
+input ReviewCashierShiftReconciliationInput {
+  reconciliationId: ID!
+  decision: CashierShiftReconciliationDecision!
+  attributableToCashier: Boolean = false
+  managerAdjustmentAmount: Float = 0
+  note: String!
+}
+
+extend type Query {
+  cashierShiftReconciliations(
+    filter: CashierShiftReconciliationFilterInput!
+  ): [CashierShiftReconciliation!]!
+}
+
+extend type Mutation {
+  openCashierShiftReconciliation(
+    input: OpenCashierShiftReconciliationInput!
+  ): CashierShiftReconciliation!
+
+  addCashierShiftCashMovement(
+    input: AddCashierShiftCashMovementInput!
+  ): CashierShiftReconciliation!
+
+  refreshCashierShiftReconciliation(id: ID!): CashierShiftReconciliation!
+
+  submitCashierShiftReconciliation(
+    input: SubmitCashierShiftReconciliationInput!
+  ): CashierShiftReconciliation!
+
+  reviewCashierShiftReconciliation(
+    input: ReviewCashierShiftReconciliationInput!
+  ): CashierShiftReconciliation!
+}
