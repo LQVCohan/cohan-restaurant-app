@@ -6,6 +6,14 @@ type RestaurantInitialSetup {
   completedBy: ID
 }
 
+type RestaurantCuisineTemplateMenu {
+  key: String!
+  name: String!
+  timeSlot: TimeSlot!
+  dishCount: Int!
+  dishNames: [String!]!
+}
+
 type RestaurantCuisineTemplate {
   key: String!
   version: Int!
@@ -14,10 +22,12 @@ type RestaurantCuisineTemplate {
   description: String!
   ingredientCount: Int!
   menuCount: Int!
+  timeSlotCount: Int!
   menuItemCount: Int!
   recipeCount: Int!
   featuredItems: [String!]!
   dishNames: [String!]!
+  menus: [RestaurantCuisineTemplateMenu!]!
 }
 
 type RestaurantCuisineTemplateApplyResult {
