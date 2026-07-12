@@ -1,24 +1,33 @@
 {
   "id": "07-12-staff-performance-policy-modal",
   "title": "Add guarded staff performance policy modal",
-  "status": "in_progress",
+  "status": "completed",
   "type": "fullstack-feature",
+  "completedAt": "2026-07-12",
   "scope": [
     "cohan-restaurant-backend/models/system-setting.model.js",
-    "cohan-restaurant-backend/src/services/staffPerformance/staffPerformance.service.js",
-    "cohan-restaurant-backend/graphql/schema/staffResolverCompatibility.graphql",
-    "cohan-restaurant-backend/graphql/resolvers/staff/index.js",
-    "cohan-restaurant-backend/graphql/resolvers/staff/performancePolicy.js",
-    "src/hooks/useStaffPerformance.js",
-    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.jsx",
-    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.scss",
+    "cohan-restaurant-backend/src/services/staffPerformance/staffPerformancePolicy.service.js",
+    "cohan-restaurant-backend/graphql/schema/staffPerformancePolicy.graphql",
+    "cohan-restaurant-backend/graphql/schema/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/staffPerformancePolicy/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/index.js",
+    "src/hooks/useStaffPerformancePolicy.js",
+    "src/utils/staffPerformanceGlobalFormat.js",
+    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePolicyPage.jsx",
+    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePolicyPage.scss",
+    "src/components/Dashboard_Manager/Staff/components/Performance/index.js",
     "cohan-restaurant-backend/tests/services/staff-performance-policy.test.js",
+    "cohan-restaurant-backend/tests/graphql/staff-performance-policy-schema.test.js",
+    "cohan-restaurant-backend/tests/resolvers/staff-performance-policy.resolver.test.js",
     "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.policy.test.jsx"
   ],
-  "rootCause": "The manager performance page only exposes a static formula disclosure. Performance level thresholds are hard-coded in calculation and frontend formatting, so managers cannot inspect a single authoritative policy or safely adjust restaurant-specific classification thresholds.",
+  "rootCause": "The manager performance page only exposed a static formula disclosure. Performance thresholds were hard-coded in backend classification and frontend formatting, with no restaurant-scoped persistence, authorization boundary, audit trail, or safe editable contract.",
+  "implementation": "Added a restaurant-scoped policy in SystemSetting, dedicated guarded GraphQL query/mutation, threshold validation, audit logging, recalculation classification wrapper, active frontend threshold formatting and an accessible manager modal that exposes exact calculation rules while allowing only four classification thresholds to be edited.",
   "validation": {
     "planned": [
       "npx vitest run cohan-restaurant-backend/tests/services/staff-performance-policy.test.js",
+      "npx vitest run cohan-restaurant-backend/tests/graphql/staff-performance-policy-schema.test.js",
+      "npx vitest run cohan-restaurant-backend/tests/resolvers/staff-performance-policy.resolver.test.js",
       "npx vitest run src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.policy.test.jsx",
       "npm run check:graphql",
       "npm run build"
@@ -26,9 +35,17 @@
     "completed": [
       "read AGENTS.md and Trellis workflow",
       "read ponytail, frontend-design, react-ui-performance, redesign-existing-projects, web-design-guidelines and wcag-ui-audit skills",
-      "traced SystemSetting schema -> staff performance service -> staff resolver -> useStaffPerformance -> StaffPerformancePage",
-      "confirmed no performance policy configuration query, mutation or manager modal exists"
+      "traced SystemSetting schema -> performance policy service -> GraphQL resolver -> policy hook -> manager performance modal",
+      "confirmed no previous performance policy query, mutation or manager configuration modal existed",
+      "re-fetched and reviewed changed runtime files and the StaffManagement caller",
+      "added focused backend, GraphQL, resolver and UI regression tests"
     ],
-    "notRun": []
+    "notRun": [
+      "Vitest suites",
+      "GraphQL schema validation command",
+      "production build",
+      "desktop/mobile browser smoke and keyboard audit"
+    ],
+    "notRunReason": "The GitHub connector does not provide a runnable repository checkout in this session."
   }
 }
