@@ -1,0 +1,26 @@
+{
+  "id": "07-12-vnpay-flow-audit-fix",
+  "title": "Audit and harden VNPAY payment flows",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "vnpay-order-reservation-wallet",
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-12",
+  "updatedAt": "2026-07-12",
+  "branch": "agent/vnpay-flow-audit-fix",
+  "base_branch": "main",
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/payment/paymentRequestContext.js",
+    "cohan-restaurant-backend/graphql/resolvers/payment/customerOrderPaymentMutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/payment/reservationPaymentMutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/payment/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/wallet/index.js",
+    "cohan-restaurant-backend/src/services/wallet/wallet.service.js",
+    "cohan-restaurant-backend/tests/services/payment-request-context.test.js",
+    "cohan-restaurant-backend/tests/customerOrderPaymentMutation.test.js",
+    ".env.example"
+  ],
+  "notes": "Trace VNPAY from GraphQL schema through provider session creation, signed return/IPN settlement, frontend polling and wallet credit. Fix public callback origin drift and wallet platform mode drift without changing signature or settlement rules."
+}
