@@ -22,7 +22,20 @@ const emptyConnection = () => ({
   pageInfo: { endCursor: null, hasNextPage: false },
 });
 
-const getSortSpec = (sort) => {
+const getListSortSpec = (sort) => {
+  switch (normalizeSort(sort)) {
+    case "name_desc":
+      return { name: -1, _id: -1 };
+    case "price_asc":
+      return { basePrice: 1, _id: 1 };
+    case "price_desc":
+      return { basePrice: -1, _id: -1 };
+    default:
+      return { name: 1, _id: 1 };
+  }
+};
+
+const getConnectionSortSpec = (sort) => {
   switch (normalizeSort(sort)) {
     case "name_asc":
       return { name: 1, _id: 1 };
@@ -81,7 +94,44 @@ const getCursorCondition = (cursor, sort) => {
   }
 };
 
+const addSearchAndCategory = (query, args) => {
+  if (args.categoryId && isOid(args.categoryId)) {
+    query.categoryId = args.categoryId;
+  }
+  if (args.search?.trim()) {
+    const pattern = new RegExp(args.search.trim(), "i");
+    query.$or = [{ name: pattern }, { description: pattern }];
+  }
+};
+
 export const MenuMultiSlotQuery = {
+  menuItems: async (parent, args) => {
+    if (!args?.timeSlot) return MenuQuery.menuItems(parent, args);
+    if (!isOid(args.restaurantId)) return [];
+
+    const menus = await Menu.find({
+      restaurantId: args.restaurantId,
+      timeSlot: args.timeSlot,
+      isActive: true,
+    })
+      .select({ _id: 1 })
+      .lean();
+    if (!menus.length) return [];
+
+    const query = {
+      restaurantId: args.restaurantId,
+      menuId: { $in: menus.map((menu) => menu._id) },
+      status: { $in: PUBLIC_STATUSES },
+    };
+    addSearchAndCategory(query, args);
+
+    const safeLimit = Math.min(Math.max(Number(args.limit) || 50, 1), 500);
+    return MenuItem.find(query)
+      .sort(getListSortSpec(args.sort))
+      .limit(safeLimit)
+      .lean({ virtuals: true });
+  },
+
   menuItemsConnection: async (parent, args, ctx) => {
     const { filter, limit = 20, cursor } = args || {};
     const menuId = filter?.menuId;
@@ -117,15 +167,9 @@ export const MenuMultiSlotQuery = {
       menuId: menuIds.length === 1 ? menuIds[0] : { $in: menuIds },
       ...(!internal ? { status: { $in: PUBLIC_STATUSES } } : {}),
     };
-    if (filter.categoryId && isOid(filter.categoryId)) {
-      query.categoryId = filter.categoryId;
-    }
+    addSearchAndCategory(query, filter);
     if (filter.status && (internal || PUBLIC_STATUSES.includes(filter.status))) {
       query.status = filter.status;
-    }
-    if (filter.search?.trim()) {
-      const pattern = new RegExp(filter.search.trim(), "i");
-      query.$or = [{ name: pattern }, { description: pattern }];
     }
     if (
       typeof filter.minPrice === "number" ||
@@ -146,7 +190,7 @@ export const MenuMultiSlotQuery = {
 
     const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 200);
     const documents = await MenuItem.find(query)
-      .sort(getSortSpec(sort))
+      .sort(getConnectionSortSpec(sort))
       .limit(safeLimit + 1)
       .lean({ virtuals: true });
     const hasNextPage = documents.length > safeLimit;
