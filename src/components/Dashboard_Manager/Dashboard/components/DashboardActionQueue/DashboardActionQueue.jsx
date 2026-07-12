@@ -1,5 +1,10 @@
-import React, { useMemo, useState } from "react";
-import { ClipboardList, X } from "lucide-react";
+import React, { useState } from "react";
+import {
+  CalendarClock,
+  ClipboardList,
+  ShoppingBag,
+  X,
+} from "lucide-react";
 import "./DashboardActionQueuePolish.scss";
 
 const formatCurrency = (value) =>
@@ -155,27 +160,17 @@ export default function DashboardActionQueue({
   onOpenTables,
 }) {
   const [rejectTarget, setRejectTarget] = useState(null);
-  const totalCount =
-    Number(counts.orders || 0) + Number(counts.reservations || 0);
-  const empty = !loading && !error && !orders.length && !reservations.length;
+  const orderCount = Number(counts.orders || orders.length || 0);
+  const reservationCount = Number(
+    counts.reservations || reservations.length || 0,
+  );
+  const totalCount = orderCount + reservationCount;
+  const hasOrders = orders.length > 0;
+  const hasReservations = reservations.length > 0;
+  const empty = !loading && !error && !hasOrders && !hasReservations;
+  const singleSection = hasOrders !== hasReservations;
   const rejectBusy =
     rejectTarget && busyKey === `order-reject:${rejectTarget.id}`;
-
-  const sections = useMemo(
-    () => [
-      {
-        key: "orders",
-        title: "Đơn hàng chờ xác nhận",
-        count: counts.orders || orders.length,
-      },
-      {
-        key: "reservations",
-        title: "Đặt bàn chờ xác nhận",
-        count: counts.reservations || reservations.length,
-      },
-    ],
-    [counts, orders.length, reservations.length],
-  );
 
   const cardClassName = [
     "dashboard-card",
@@ -185,17 +180,48 @@ export default function DashboardActionQueue({
     .filter(Boolean)
     .join(" ");
 
+  const sectionsClassName = [
+    "dashboard-queue-sections",
+    singleSection ? "dashboard-queue-sections--single" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <article className={cardClassName}>
-      <div className="dashboard-card__head">
+      <div className="dashboard-card__head dashboard-action-queue__head">
         <div>
-          <h3>Đơn và đặt bàn chờ xác nhận</h3>
-          <p>Đơn hàng và đặt bàn cần xử lý, không theo bộ lọc thời gian.</p>
+          <h3>Yêu cầu chờ xác nhận</h3>
+          <p>Ưu tiên yêu cầu chờ lâu, không phụ thuộc bộ lọc thời gian.</p>
         </div>
-        <span className="queue-count">
-          <ClipboardList size={14} />
-          {loading ? "Đang tải" : `${totalCount} yêu cầu`}
-        </span>
+        <div
+          className="dashboard-queue-summary"
+          aria-label="Tổng yêu cầu chờ xác nhận"
+        >
+          {loading ? (
+            <span className="queue-summary-chip queue-summary-chip--loading">
+              <ClipboardList size={14} aria-hidden="true" />
+              Đang tải
+            </span>
+          ) : (
+            <>
+              <span
+                className={`queue-summary-chip ${orderCount ? "is-active" : ""}`}
+              >
+                <ShoppingBag size={14} aria-hidden="true" />
+                <strong>{orderCount}</strong>
+                <span>đơn món</span>
+              </span>
+              <span
+                className={`queue-summary-chip ${reservationCount ? "is-active" : ""}`}
+              >
+                <CalendarClock size={14} aria-hidden="true" />
+                <strong>{reservationCount}</strong>
+                <span>đặt bàn</span>
+              </span>
+            </>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -211,19 +237,19 @@ export default function DashboardActionQueue({
       ) : empty ? (
         <div className="dashboard-empty dashboard-empty--compact dashboard-empty--healthy">
           <h4>Không có yêu cầu nào đang chờ</h4>
-          <p>Đơn hàng và yêu cầu đặt bàn mới sẽ hiển thị tại đây.</p>
+          <p>Đơn đặt món và đặt bàn mới sẽ hiển thị tại đây.</p>
         </div>
       ) : (
-        <div className="dashboard-queue-sections">
-          <section
-            className="dashboard-queue-section"
-            aria-labelledby="pending-orders-title"
-          >
-            <div className="dashboard-queue-section__head">
-              <h4 id="pending-orders-title">{sections[0].title}</h4>
-              <span>{sections[0].count}</span>
-            </div>
-            {orders.length ? (
+        <div className={sectionsClassName}>
+          {hasOrders ? (
+            <section
+              className="dashboard-queue-section"
+              aria-labelledby="pending-orders-title"
+            >
+              <div className="dashboard-queue-section__head">
+                <ShoppingBag size={15} aria-hidden="true" />
+                <h4 id="pending-orders-title">Đơn đặt món</h4>
+              </div>
               <div
                 className="dashboard-queue-section__list"
                 role="list"
@@ -253,22 +279,29 @@ export default function DashboardActionQueue({
                             </span>
                           ) : null}
                         </div>
-                        <p>
+                        <p className="dashboard-queue-item__context">
                           {orderType}
                           {order.tableCode ? ` • Bàn ${order.tableCode}` : ""}
                           {order.customerName ? ` • ${order.customerName}` : ""}
                         </p>
-                        <span>
-                          {formatCurrency(order.total)} •{" "}
-                          {formatDateTime(order.createdAt)}
-                        </span>
-                        <em>{itemSummary(order.itemNames)}</em>
+                        <div className="dashboard-queue-item__facts">
+                          <span className="queue-fact queue-fact--strong">
+                            {formatCurrency(order.total)}
+                          </span>
+                          <span className="queue-fact">
+                            {formatDateTime(order.createdAt)}
+                          </span>
+                        </div>
+                        <em className="dashboard-queue-item__detail">
+                          {itemSummary(order.itemNames)}
+                        </em>
                       </div>
                       <div className="dashboard-queue-item__actions">
                         <button
                           type="button"
                           className="queue-btn queue-btn--primary"
                           disabled={Boolean(busyKey)}
+                          aria-busy={busyKey === `order-confirm:${order.id}`}
                           onClick={() => onConfirmOrder?.(order)}
                         >
                           {busyKey === `order-confirm:${order.id}`
@@ -295,22 +328,18 @@ export default function DashboardActionQueue({
                   );
                 })}
               </div>
-            ) : (
-              <p className="dashboard-queue-section__empty">
-                Chưa có đơn hàng chờ xác nhận.
-              </p>
-            )}
-          </section>
+            </section>
+          ) : null}
 
-          <section
-            className="dashboard-queue-section"
-            aria-labelledby="pending-reservations-title"
-          >
-            <div className="dashboard-queue-section__head">
-              <h4 id="pending-reservations-title">{sections[1].title}</h4>
-              <span>{sections[1].count}</span>
-            </div>
-            {reservations.length ? (
+          {hasReservations ? (
+            <section
+              className="dashboard-queue-section"
+              aria-labelledby="pending-reservations-title"
+            >
+              <div className="dashboard-queue-section__head">
+                <CalendarClock size={15} aria-hidden="true" />
+                <h4 id="pending-reservations-title">Đặt bàn</h4>
+              </div>
               <div
                 className="dashboard-queue-section__list"
                 role="list"
@@ -320,6 +349,7 @@ export default function DashboardActionQueue({
                   const depositLabel =
                     DEPOSIT_STATUS_LABELS[reservation.depositStatus] ||
                     "Chưa có thông tin đặt cọc";
+                  const depositAmount = Number(reservation.depositAmount || 0);
                   const queueAge = getQueueAge(reservation.createdAt);
 
                   return (
@@ -341,24 +371,41 @@ export default function DashboardActionQueue({
                             </span>
                           ) : null}
                         </div>
-                        <p>
+                        <p className="dashboard-queue-item__context">
                           {reservation.customerName || "Khách chưa xác định"} •{" "}
                           {reservation.customerPhone || "Chưa có số điện thoại"}
                           {reservation.tableCode
                             ? ` • Bàn ${reservation.tableCode}`
                             : ""}
                         </p>
-                        <span>
-                          {reservation.partySize || 0} khách •{" "}
-                          {formatDateTime(reservation.timeTo)} • {depositLabel}
-                        </span>
-                        {reservation.note ? <em>{reservation.note}</em> : null}
+                        <div className="dashboard-queue-item__facts">
+                          <span className="queue-fact queue-fact--strong">
+                            {reservation.partySize || 0} khách
+                          </span>
+                          <span className="queue-fact">
+                            {formatDateTime(reservation.timeTo)}
+                          </span>
+                          <span className="queue-fact queue-fact--status">
+                            {depositLabel}
+                            {depositAmount > 0
+                              ? ` · ${formatCurrency(depositAmount)}`
+                              : ""}
+                          </span>
+                        </div>
+                        {reservation.note ? (
+                          <em className="dashboard-queue-item__detail">
+                            {reservation.note}
+                          </em>
+                        ) : null}
                       </div>
                       <div className="dashboard-queue-item__actions">
                         <button
                           type="button"
                           className="queue-btn queue-btn--primary"
                           disabled={Boolean(busyKey)}
+                          aria-busy={
+                            busyKey === `reservation-confirm:${reservation.id}`
+                          }
                           onClick={() =>
                             onConfirmReservation?.(reservation)
                           }
@@ -372,6 +419,9 @@ export default function DashboardActionQueue({
                           type="button"
                           className="queue-btn queue-btn--danger"
                           disabled={Boolean(busyKey)}
+                          aria-busy={
+                            busyKey === `reservation-cancel:${reservation.id}`
+                          }
                           onClick={() =>
                             onCancelReservation?.(reservation)
                           }
@@ -392,12 +442,8 @@ export default function DashboardActionQueue({
                   );
                 })}
               </div>
-            ) : (
-              <p className="dashboard-queue-section__empty">
-                Không có yêu cầu đặt bàn mới.
-              </p>
-            )}
-          </section>
+            </section>
+          ) : null}
         </div>
       )}
 
