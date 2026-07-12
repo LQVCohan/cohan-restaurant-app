@@ -23,6 +23,45 @@ const formatDateFallback = (value) => {
   }).format(date);
 };
 
+export const DEFAULT_PERFORMANCE_LEVEL_THRESHOLDS = Object.freeze({
+  excellentMin: 90,
+  goodMin: 80,
+  averageMin: 65,
+  needsAttentionMin: 50,
+});
+
+let activePerformanceLevelThresholds = {
+  ...DEFAULT_PERFORMANCE_LEVEL_THRESHOLDS,
+};
+
+const normalizeThresholds = (value = {}) => {
+  const next = {
+    ...DEFAULT_PERFORMANCE_LEVEL_THRESHOLDS,
+    ...(value || {}),
+  };
+  const numbers = Object.values(next).map(Number);
+  const valid =
+    numbers.every(
+      (item) => Number.isInteger(item) && item >= 1 && item <= 100,
+    ) &&
+    Number(next.excellentMin) > Number(next.goodMin) &&
+    Number(next.goodMin) > Number(next.averageMin) &&
+    Number(next.averageMin) > Number(next.needsAttentionMin);
+
+  if (!valid) return { ...DEFAULT_PERFORMANCE_LEVEL_THRESHOLDS };
+  return Object.fromEntries(
+    Object.entries(next).map(([key, item]) => [key, Number(item)]),
+  );
+};
+
+export const setPerformanceLevelThresholds = (value) => {
+  activePerformanceLevelThresholds = normalizeThresholds(value);
+  return { ...activePerformanceLevelThresholds };
+};
+
+export const resetPerformanceLevelThresholds = () =>
+  setPerformanceLevelThresholds(DEFAULT_PERFORMANCE_LEVEL_THRESHOLDS);
+
 const PERFORMANCE_SCORE_LEVELS = {
   excellent: {
     label: "Xuất sắc",
@@ -54,10 +93,18 @@ const PERFORMANCE_SCORE_LEVELS = {
 const getScoreLevelFallback = (value) => {
   const score = Number(value);
   if (!Number.isFinite(score)) return PERFORMANCE_SCORE_LEVELS.needs_attention;
-  if (score >= 90) return PERFORMANCE_SCORE_LEVELS.excellent;
-  if (score >= 80) return PERFORMANCE_SCORE_LEVELS.good;
-  if (score >= 65) return PERFORMANCE_SCORE_LEVELS.average;
-  if (score >= 50) return PERFORMANCE_SCORE_LEVELS.needs_attention;
+  if (score >= activePerformanceLevelThresholds.excellentMin) {
+    return PERFORMANCE_SCORE_LEVELS.excellent;
+  }
+  if (score >= activePerformanceLevelThresholds.goodMin) {
+    return PERFORMANCE_SCORE_LEVELS.good;
+  }
+  if (score >= activePerformanceLevelThresholds.averageMin) {
+    return PERFORMANCE_SCORE_LEVELS.average;
+  }
+  if (score >= activePerformanceLevelThresholds.needsAttentionMin) {
+    return PERFORMANCE_SCORE_LEVELS.needs_attention;
+  }
   return PERFORMANCE_SCORE_LEVELS.poor;
 };
 
