@@ -12,6 +12,7 @@ import {
   getMenuItemAvailability,
 } from "../../../../utils/menuItemAvailability";
 import "../styles/MenuItemCard.scss";
+import "../styles/MenuItemPromotionPrice.scss";
 
 const MENU_ITEM_PLACEHOLDER = "/default-dishes.jpg";
 const { calculatePromotionPricePreview } = promotionTestables;
