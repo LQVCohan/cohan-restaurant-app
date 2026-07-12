@@ -1,30 +1,38 @@
 {
   "id": "07-12-payroll-correctness-ui",
   "title": "Sửa tính lương âm và cải thiện giao diện bảng lương",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack",
   "scope": "manager-payroll",
   "priority": "P1",
   "createdAt": "2026-07-12",
+  "completedAt": "2026-07-12",
   "branch": "main",
   "base_branch": "main",
   "relatedFiles": [
     "cohan-restaurant-backend/src/services/payroll/payrollCalculator.service.js",
-    "cohan-restaurant-backend/src/services/payroll/payrollRuntime.service.js",
-    "cohan-restaurant-backend/tests/services/payroll-correctness.test.js",
+    "cohan-restaurant-backend/tests/services/payroll-insurance-zero-income.test.js",
     "src/components/Dashboard_Manager/PayrollPage/PayrollManagement.jsx",
-    "src/components/Dashboard_Manager/PayrollPage/PayrollManagement.scss",
-    "src/components/Dashboard_Manager/PayrollPage/PayrollManagement.test.jsx"
+    "src/styles/PayrollPagination.css",
+    "src/components/Dashboard_Manager/PayrollPage/PayrollManagement.audit.test.jsx"
   ],
   "validation": {
     "planned": [
-      "targeted payroll correctness Vitest",
+      "targeted payroll insurance Vitest",
       "targeted PayrollManagement component Vitest",
       "frontend build",
       "manual responsive audit at 1440, 768, 430 and 390 px"
     ],
-    "completed": [],
-    "notRun": []
+    "completed": [
+      "traced PayrollItem through calculator/runtime, GraphQL overview pagination, Apollo query and manager table",
+      "verified official period queries use periodId while range preview omits it",
+      "added focused regression coverage for zero-income insurance and payroll drilldown"
+    ],
+    "notRun": [
+      "Vitest was not run because the GitHub connector has no executable checkout",
+      "frontend build was not run because the GitHub connector has no executable checkout",
+      "browser responsive audit was not run"
+    ]
   },
   "meta": {
     "skills": [
