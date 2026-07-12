@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { resolvePaymentRuntimeMode } from "../../models/payment-session.model.js";
 
@@ -28,5 +29,16 @@ describe("payment session runtime mode", () => {
     expect(resolvePaymentRuntimeMode("sandbox", { NODE_ENV: "production" })).toBe(
       "sandbox",
     );
+  });
+
+  it("binds the platform credential mode for wallet sessions without a restaurant", () => {
+    const source = readFileSync(
+      new URL("../../models/payment-session.model.js", import.meta.url),
+      "utf8",
+    );
+
+    expect(source).toContain("getPlatformPaymentCredentialMode");
+    expect(source).toContain(": getPlatformPaymentCredentialMode(this.provider)");
+    expect(source).not.toContain("!this.restaurantId || !EXTERNAL_PROVIDERS");
   });
 });
