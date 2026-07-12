@@ -1,16 +1,16 @@
 {
   "id": "07-12-cuisine-template-menu-preview",
   "title": "Show multi-menu structure in restaurant template picker",
-  "status": "in_progress",
+  "status": "completed",
   "type": "full-stack-contract-ui",
   "scope": [
-    "cohan-restaurant-backend/src/data/restaurantCuisineTemplates.js",
     "cohan-restaurant-backend/src/services/restaurantCuisineTemplate.service.js",
     "cohan-restaurant-backend/graphql/schema/restaurantInitialSetup.graphql",
     "cohan-restaurant-backend/tests/services/restaurant-cuisine-template.service.test.js",
     "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.jsx",
-    "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.scss",
-    "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.test.jsx"
+    "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboardingMenuPreview.scss",
+    "src/components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboarding.test.jsx",
+    "src/App.jsx"
   ],
   "validation": {
     "planned": [
@@ -24,9 +24,22 @@
       "read AGENTS.md, Trellis workflow, ponytail, frontend-design, ui-ux-pro-max, redesign-existing-projects, taste-ui-redesign, react-ui-performance, web-design-guidelines and wcag-ui-audit",
       "fetched the latest web interface guidelines",
       "traced template definition -> snapshot builder/importer -> template summary service -> GraphQL resolver/schema -> Apollo query -> onboarding dialog -> tests",
-      "confirmed snapshot import already keys Menu conflicts by timeSlot plus name and can import multiple menus in one time slot",
-      "confirmed the remaining contract gap is template generation/preview using timeSlot as menu identity"
+      "confirmed snapshot import already identifies Menu conflicts by timeSlot plus name and can import multiple menus in one time slot",
+      "added an exact menu preview contract with menu key, name, timeSlot, dish count and dish names",
+      "kept sibling menus separate when they share the same service time",
+      "updated the picker to show menu, dish, ingredient and recipe counts plus distinct service-time count",
+      "grouped the native details preview under breakfast, lunch, dinner and late-night sections",
+      "added compatibility fallback to the existing flat dish list",
+      "preserved apply/skip mutations, permissions, setup state and existing template contents",
+      "added backend and component regression coverage for two menus in one time slot",
+      "reviewed the latest changed files and related callers before completion"
     ],
-    "notRun": []
+    "notRun": [
+      "backend Vitest was not run because the GitHub connector has no repository runtime",
+      "frontend Vitest was not run",
+      "GraphQL schema check was not run",
+      "frontend build was not run",
+      "responsive browser checks at 390x844, 768px and 1440px were not run"
+    ]
   }
 }
