@@ -26,7 +26,8 @@ const templates = [
     cuisineType: "Việt Nam",
     description: "Món Việt quen thuộc.",
     ingredientCount: 10,
-    menuCount: 3,
+    menuCount: 4,
+    timeSlotCount: 3,
     menuItemCount: 6,
     recipeCount: 6,
     dishNames: [
@@ -37,6 +38,36 @@ const templates = [
       "Đậu hũ sốt hành",
       "Trứng chiên cơm trắng",
     ],
+    menus: [
+      {
+        key: "vietnamese:menu:breakfast",
+        name: "Thực đơn buổi sáng",
+        timeSlot: "breakfast",
+        dishCount: 1,
+        dishNames: ["Phở bò"],
+      },
+      {
+        key: "vietnamese:menu:lunch",
+        name: "Cơm và bún buổi trưa",
+        timeSlot: "lunch",
+        dishCount: 2,
+        dishNames: ["Cơm gà", "Bún thịt nướng"],
+      },
+      {
+        key: "vietnamese:menu:dinner-family",
+        name: "Mâm cơm gia đình",
+        timeSlot: "dinner",
+        dishCount: 2,
+        dishNames: ["Cơm thịt kho trứng", "Trứng chiên cơm trắng"],
+      },
+      {
+        key: "vietnamese:menu:dinner-light",
+        name: "Món chay và nhẹ",
+        timeSlot: "dinner",
+        dishCount: 1,
+        dishNames: ["Đậu hũ sốt hành"],
+      },
+    ],
   },
   {
     key: "korean",
@@ -46,6 +77,7 @@ const templates = [
     description: "Món Hàn đậm vị.",
     ingredientCount: 10,
     menuCount: 3,
+    timeSlotCount: 3,
     menuItemCount: 6,
     recipeCount: 6,
     dishNames: [
@@ -55,6 +87,29 @@ const templates = [
       "Gà sốt cay Hàn Quốc",
       "Cơm cuộn rong biển",
       "Đậu hũ sốt cay",
+    ],
+    menus: [
+      {
+        key: "korean:menu:lunch",
+        name: "Thực đơn buổi trưa",
+        timeSlot: "lunch",
+        dishCount: 3,
+        dishNames: ["Cơm trộn Bibimbap", "Canh kimchi đậu hũ", "Cơm cuộn rong biển"],
+      },
+      {
+        key: "korean:menu:dinner",
+        name: "Thực đơn buổi tối",
+        timeSlot: "dinner",
+        dishCount: 2,
+        dishNames: ["Bò Bulgogi", "Gà sốt cay Hàn Quốc"],
+      },
+      {
+        key: "korean:menu:late_night",
+        name: "Thực đơn ăn khuya",
+        timeSlot: "late_night",
+        dishCount: 1,
+        dishNames: ["Đậu hũ sốt cay"],
+      },
     ],
   },
 ];
@@ -91,13 +146,22 @@ beforeEach(() => {
           name: "Cohan Quận 1",
           cuisineType: "Hàn Quốc",
           publicationStatus: "draft",
-          initialSetup: { status: "completed", templateKey: "korean", templateVersion: 1 },
+          initialSetup: {
+            status: "completed",
+            templateKey: "korean",
+            templateVersion: 1,
+          },
         },
       },
     },
   });
   skipMock.mockResolvedValue({
-    data: { skipRestaurantCuisineSetup: { id: "r1", initialSetup: { status: "skipped" } } },
+    data: {
+      skipRestaurantCuisineSetup: {
+        id: "r1",
+        initialSetup: { status: "skipped" },
+      },
+    },
   });
 
   useMutation.mockImplementation((operation) => {
@@ -120,36 +184,50 @@ describe("RestaurantCuisineOnboarding", () => {
   it("does not open for an already configured restaurant", () => {
     const { container } = render(
       <RestaurantCuisineOnboarding
-        restaurant={{ id: "r1", name: "Cohan Quận 1", initialSetup: { status: "completed" } }}
+        restaurant={{
+          id: "r1",
+          name: "Cohan Quận 1",
+          initialSetup: { status: "completed" },
+        }}
       />,
     );
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("shows backend counts and the complete dish list in a native disclosure", () => {
+  it("shows menu counts and groups multiple menus inside one service time", () => {
     render(
       <RestaurantCuisineOnboarding
-        restaurant={{ id: "r1", name: "Cohan Quận 1", initialSetup: { status: "pending" } }}
+        restaurant={{
+          id: "r1",
+          name: "Cohan Quận 1",
+          initialSetup: { status: "pending" },
+        }}
       />,
     );
 
     const querySource = operationSource(useQuery.mock.calls[0][0]);
-    expect(querySource).toContain("recipeCount");
+    expect(querySource).toContain("timeSlotCount");
+    expect(querySource).toContain("menus");
     expect(querySource).toContain("dishNames");
 
     const firstCard = document.body.querySelectorAll(".cuisine-template-card")[0];
+    expect(firstCard).toHaveTextContent("4Thực đơn");
     expect(firstCard).toHaveTextContent("6Món");
     expect(firstCard).toHaveTextContent("10Nguyên liệu");
     expect(firstCard).toHaveTextContent("6Công thức");
+    expect(firstCard).toHaveTextContent("3 mốc giờ phục vụ");
 
-    const summaryText = within(firstCard).getByText("Xem 6 món sẽ được tạo");
+    const summaryText = within(firstCard).getByText("Xem cấu trúc 4 thực đơn");
     const summary = summaryText.closest("summary");
     const details = summary.closest("details");
-    expect(summary).toBeInTheDocument();
     expect(details).not.toHaveAttribute("open");
 
     fireEvent.click(summary);
     expect(details).toHaveAttribute("open");
+    expect(within(details).getByText("Bữa tối")).toBeInTheDocument();
+    expect(within(details).getByText("2 menu")).toBeInTheDocument();
+    expect(within(details).getByText("Mâm cơm gia đình")).toBeInTheDocument();
+    expect(within(details).getByText("Món chay và nhẹ")).toBeInTheDocument();
     templates[0].dishNames.forEach((dishName) => {
       expect(within(details).getByText(dishName)).toBeInTheDocument();
     });
@@ -167,22 +245,34 @@ describe("RestaurantCuisineOnboarding", () => {
     );
 
     fireEvent.click(screen.getAllByRole("button", { name: "Để sau" })[0]);
-    expect(screen.queryByRole("dialog", { name: /chọn mô hình ẩm thực/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: /chọn mô hình ẩm thực/i }),
+    ).not.toBeInTheDocument();
 
-    rerender(<RestaurantCuisineOnboarding restaurant={restaurant} openRequest={1} />);
-    expect(screen.getByRole("dialog", { name: /chọn mô hình ẩm thực/i })).toBeInTheDocument();
+    rerender(
+      <RestaurantCuisineOnboarding restaurant={restaurant} openRequest={1} />,
+    );
+    expect(
+      screen.getByRole("dialog", { name: /chọn mô hình ẩm thực/i }),
+    ).toBeInTheDocument();
   });
 
   it("selects and applies a cuisine package", async () => {
     const { container } = render(
       <RestaurantCuisineOnboarding
-        restaurant={{ id: "r1", name: "Cohan Quận 1", initialSetup: { status: "pending" } }}
+        restaurant={{
+          id: "r1",
+          name: "Cohan Quận 1",
+          initialSetup: { status: "pending" },
+        }}
       />,
     );
 
     expect(container).toBeEmptyDOMElement();
     expect(document.body.querySelector(".cuisine-onboarding")).toBeInTheDocument();
-    expect(screen.getByRole("dialog", { name: /chọn mô hình ẩm thực/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: /chọn mô hình ẩm thực/i }),
+    ).toBeInTheDocument();
     const radios = screen.getAllByRole("radio");
     fireEvent.click(radios[1]);
     fireEvent.click(screen.getByRole("button", { name: /thiết lập nhà hàng/i }));
@@ -192,6 +282,8 @@ describe("RestaurantCuisineOnboarding", () => {
         variables: { restaurantId: "r1", templateKey: "korean" },
       });
     });
-    expect(message.success).toHaveBeenCalledWith("Đã tạo 6 món mẫu cho Cohan Quận 1");
+    expect(message.success).toHaveBeenCalledWith(
+      "Đã tạo 6 món trong 3 thực đơn mẫu cho Cohan Quận 1",
+    );
   });
 });
