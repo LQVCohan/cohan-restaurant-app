@@ -1,26 +1,39 @@
 {
   "id": "07-13-manager-payroll-settings",
   "title": "Cấu hình tính lương theo nhà hàng cho quản lý",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack",
   "scope": "manager-payroll-settings",
   "priority": "P1",
   "createdAt": "2026-07-13",
+  "completedAt": "2026-07-13",
   "branch": "main",
   "base_branch": "main",
   "relatedFiles": [
     "cohan-restaurant-backend/src/services/payroll/payrollPermission.service.js",
-    "cohan-restaurant-backend/graphql/resolvers/staff/mutation.js",
-    "src/hooks/usePayroll.js",
-    "src/components/Dashboard_Manager/PayrollPage/PayrollManagement.jsx",
-    "src/components/Dashboard_Manager/PayrollPage/PayrollManagement.scss",
-    "cohan-restaurant-backend/tests/resolvers/staff-payroll-mutation-access.test.js"
+    "cohan-restaurant-backend/graphql/resolvers/staff/payrollProtectedAttendance.mutation.js",
+    "cohan-restaurant-backend/tests/resolvers/payroll-protected-attendance-mutation.test.js",
+    "src/components/Dashboard_Manager/PayrollPage/PayrollSettingsControl.jsx",
+    "src/components/Dashboard_Manager/PayrollPage/PayrollSettingsControl.scss",
+    "src/components/Dashboard_Manager/PayrollPage/PayrollManagementWithSettings.jsx",
+    "src/layouts/ManagerLayout.jsx"
   ],
   "validation": {
     "planned": [
       "targeted payroll mutation access Vitest",
       "frontend GraphQL operation validation",
       "targeted payroll component test or build"
+    ],
+    "completed": [
+      "traced PayrollSetting through permission, resolver, GraphQL operations and manager UI",
+      "added regression cases for manager operational settings, restricted financial fields, invalid values and accountant access",
+      "reviewed the manager route commit and confirmed only the payroll lazy import changed"
+    ],
+    "notRun": [
+      "targeted Vitest suites were not run because the GitHub connector has no executable repository checkout",
+      "frontend GraphQL operation validation was not run",
+      "frontend build and browser smoke/screenshot validation were not run",
+      "the latest commit has no GitHub Actions status checks or workflow runs"
     ]
   },
   "meta": {
