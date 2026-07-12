@@ -1,147 +1,525 @@
+$ri-line: var(--manager-border, rgba(83, 108, 97, 0.22));
+$ri-surface: var(--manager-surface, rgba(249, 252, 250, 0.94));
+$ri-surface-soft: var(--manager-surface-soft, rgba(241, 247, 243, 0.94));
+$ri-text: var(--manager-text, #24312c);
+$ri-muted: var(--manager-muted, #607069);
+
 .manager-layout--restaurant-info-management .restaurant-publication-slot {
   width: min(100%, 1440px);
   display: flex;
-  justify-content: flex-end;
-  margin: 10px auto -2px;
+  justify-content: stretch;
+  margin: 10px auto 0;
   padding: 0 clamp(10px, 1.6vw, 20px);
 }
 
 .restaurant-publication-control {
-  width: min(100%, 560px);
-  min-height: 66px;
+  width: 100%;
+  min-height: 50px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--manager-border, rgba(83, 108, 97, 0.22));
-  border-radius: 16px;
-  background: var(--manager-surface, rgba(249, 252, 250, 0.94));
-  box-shadow: var(--manager-shadow, 0 16px 36px rgba(48, 72, 61, 0.09));
-  color: var(--manager-text, #24312c);
-}
-
-.restaurant-publication-control.is-published {
-  border-color: rgba(47, 125, 104, 0.34);
-  background: linear-gradient(
-    135deg,
-    var(--manager-success-soft, #e5f3ed),
-    var(--manager-surface, rgba(249, 252, 250, 0.94))
-  );
-}
-
-.restaurant-publication-control.is-draft {
-  border-color: rgba(166, 106, 24, 0.3);
-  background: linear-gradient(
-    135deg,
-    var(--manager-warning-soft, #fff3da),
-    var(--manager-surface, rgba(249, 252, 250, 0.94))
-  );
-}
-
-.restaurant-publication-control.is-error {
-  border-color: rgba(181, 71, 71, 0.32);
-  background: var(--manager-danger-soft, #fae9e7);
-}
-
-.restaurant-publication-control__icon {
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--manager-muted, #607069);
-}
-
-.is-published .restaurant-publication-control__icon {
-  color: var(--manager-success, #2f7d68);
-}
-
-.is-draft .restaurant-publication-control__icon {
-  color: var(--manager-warning, #a66a18);
-}
-
-.is-error .restaurant-publication-control__icon {
-  color: var(--manager-danger, #b54747);
-}
-
-.restaurant-publication-control__copy {
-  display: grid;
-  gap: 1px;
-}
-
-.restaurant-publication-control__copy > span {
-  color: var(--manager-muted, #607069);
-  font-size: 0.68rem;
-  font-weight: 780;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.restaurant-publication-control__copy > strong {
-  color: var(--manager-text, #24312c);
-  font-size: 0.9rem;
-  line-height: 1.25;
-}
-
-.restaurant-publication-control__copy > small {
-  color: var(--manager-muted, #607069);
-  font-size: 0.72rem;
-  line-height: 1.35;
-}
-
-.restaurant-publication-control__action {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
   gap: 10px;
-  padding-left: 12px;
-  border-left: 1px solid var(--manager-border, rgba(83, 108, 97, 0.22));
-  color: var(--manager-text, #24312c);
-  font-size: 0.76rem;
-  font-weight: 720;
-  white-space: nowrap;
+  padding: 7px 12px;
+  border: 1px solid $ri-line;
+  border-bottom-color: transparent;
+  border-radius: 18px 18px 0 0;
+  background: $ri-surface;
+  box-shadow: 0 10px 24px rgba(48, 72, 61, 0.08);
+  color: $ri-text;
+
+  &.is-published {
+    border-color: rgba(47, 125, 104, 0.34);
+    border-bottom-color: transparent;
+    background: linear-gradient(135deg, var(--manager-success-soft, #e5f3ed), $ri-surface);
+  }
+
+  &.is-draft {
+    border-color: rgba(166, 106, 24, 0.3);
+    border-bottom-color: transparent;
+    background: linear-gradient(135deg, var(--manager-warning-soft, #fff3da), $ri-surface);
+  }
+
+  &.is-error {
+    border-color: rgba(181, 71, 71, 0.32);
+    background: var(--manager-danger-soft, #fae9e7);
+  }
+
+  &__icon {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.72);
+    color: $ri-muted;
+  }
+
+  &.is-published &__icon { color: var(--manager-success, #2f7d68); }
+  &.is-draft &__icon { color: var(--manager-warning, #a66a18); }
+  &.is-error &__icon { color: var(--manager-danger, #b54747); }
+
+  &__copy {
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+
+    > span {
+      flex: 0 0 auto;
+      color: $ri-muted;
+      font-size: 0.66rem;
+      font-weight: 780;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    > strong {
+      flex: 0 0 auto;
+      color: $ri-text;
+      font-size: 0.86rem;
+      line-height: 1.25;
+    }
+
+    > small {
+      overflow: hidden;
+      color: $ri-muted;
+      font-size: 0.72rem;
+      line-height: 1.35;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  &__action {
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 12px;
+    border-left: 1px solid $ri-line;
+    color: $ri-text;
+    font-size: 0.76rem;
+    font-weight: 720;
+    white-space: nowrap;
+  }
+
+  .ant-switch:focus-visible,
+  .ant-btn:focus-visible {
+    outline: 3px solid rgba(47, 125, 104, 0.2);
+    outline-offset: 2px;
+  }
+
+  .ant-btn {
+    min-height: 36px;
+    border-radius: 10px;
+    color: var(--manager-danger, #b54747);
+    font-weight: 700;
+  }
 }
 
-.restaurant-publication-control .ant-switch:focus-visible,
-.restaurant-publication-control .ant-btn:focus-visible {
-  outline: 3px solid rgba(47, 125, 104, 0.2);
-  outline-offset: 2px;
+.manager-layout--restaurant-info-management {
+  .restaurant-publication-slot + .restaurant-management-container {
+    padding-top: 0;
+
+    > .management-page-header.density-compact {
+      margin-top: 0;
+      border-top-color: $ri-line !important;
+      border-radius: 0 0 18px 18px !important;
+      box-shadow: 0 18px 38px rgba(48, 72, 61, 0.1) !important;
+    }
+  }
+
+  .restaurant-management-container {
+    .profile-focus-panel {
+      overflow: hidden;
+      grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.65fr);
+      gap: 0;
+      margin: 0 !important;
+      border: 1px solid $ri-line;
+      border-radius: 16px 16px 0 0;
+      background: $ri-surface;
+      box-shadow: 0 12px 28px rgba(48, 72, 61, 0.07);
+
+      &__copy {
+        min-height: 0;
+        padding: 0.9rem 1rem;
+        border: 0;
+        border-radius: 0;
+        background:
+          radial-gradient(circle at 94% 10%, rgba(47, 125, 104, 0.1), transparent 15rem),
+          transparent;
+        box-shadow: none;
+
+        h2 {
+          margin-block: 0.3rem 0.18rem;
+          font-size: clamp(1.28rem, 2.2vw, 1.68rem);
+          line-height: 1.1;
+        }
+
+        p {
+          max-width: 72ch;
+          margin-bottom: 0;
+          font-size: 0.78rem;
+        }
+      }
+
+      &__eyebrow {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        letter-spacing: 0.08em;
+      }
+
+      &__facts {
+        gap: 0;
+        margin-top: 0.72rem;
+        padding-top: 0.65rem;
+        border-top: 1px solid rgba(83, 108, 97, 0.18);
+
+        span {
+          min-height: 38px;
+          padding: 0.15rem 0.72rem;
+          border: 0;
+          border-right: 1px solid rgba(83, 108, 97, 0.18);
+          border-radius: 0;
+          background: transparent;
+
+          &:first-child { padding-left: 0; }
+          &:last-child { border-right: 0; }
+        }
+      }
+    }
+
+    .profile-completion-card {
+      padding: 0.9rem 1rem;
+      border: 0;
+      border-left: 1px solid $ri-line;
+      border-radius: 0;
+      background: $ri-surface-soft;
+      box-shadow: none;
+
+      ul {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.34rem 0.55rem;
+        margin-top: 0.55rem;
+      }
+
+      li { font-size: 0.69rem; }
+    }
+
+    .quick-metrics-grid {
+      margin: -1px 0 1rem !important;
+      border-radius: 0 0 16px 16px !important;
+      box-shadow: 0 12px 28px rgba(48, 72, 61, 0.07);
+
+      .metric-card.ant-card {
+        min-height: 58px;
+        border-radius: 0 !important;
+
+        &:first-child { border-radius: 0 0 0 15px !important; }
+        &:last-child { border-radius: 0 0 15px 0 !important; }
+
+        .ant-card-body {
+          min-height: 56px;
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.7rem;
+          padding: 0.6rem 1rem;
+        }
+
+        .ant-badge { display: none; }
+      }
+
+      .metric-subtitle { font-size: 0.72rem; }
+      .metric-value {
+        flex-shrink: 0;
+        font-size: clamp(1.2rem, 1.8vw, 1.48rem);
+        font-variant-numeric: tabular-nums;
+      }
+    }
+
+    .main-layout { row-gap: 16px !important; }
+
+    .hero-uploader-section {
+      margin-bottom: 0;
+      padding-bottom: 0.8rem;
+      background: $ri-surface;
+
+      .cover-image-area { height: clamp(170px, 15vw, 220px); }
+
+      .avatar-image-area {
+        position: relative;
+        inset: auto;
+        z-index: 2;
+        align-items: flex-end;
+        margin: -38px 1.25rem 0;
+      }
+
+      .avatar-wrapper {
+        width: 92px;
+        height: 92px;
+        border-radius: 22px;
+      }
+
+      .restaurant-title-preview {
+        min-width: 0;
+        margin-bottom: 0.2rem;
+        padding: 0.55rem 0.72rem;
+        border: 1px solid rgba(83, 108, 97, 0.2);
+        border-radius: 12px;
+        background: rgba(249, 252, 250, 0.94);
+        box-shadow: 0 8px 20px rgba(48, 72, 61, 0.1);
+
+        :is(h4, span) {
+          color: $ri-text;
+          text-shadow: none;
+        }
+
+        h4 {
+          overflow: hidden;
+          max-width: 32ch;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+    }
+
+    .modern-tabs > .ant-tabs-nav { margin-bottom: 1rem; }
+  }
 }
 
-.restaurant-publication-control .ant-btn {
-  min-height: 40px;
-  border-radius: 10px;
-  color: var(--manager-danger, #b54747);
-  font-weight: 700;
+@media (min-width: 1181px) {
+  .manager-layout--restaurant-info-management
+    .restaurant-management-container
+    > .management-page-header.density-compact {
+    grid-template-columns: minmax(230px, 0.78fr) minmax(620px, 1.72fr);
+    grid-template-rows: auto auto;
+    gap: 0.35rem 1rem;
+    align-items: center;
+    padding: 0.72rem 0.9rem !important;
+
+    .mph-left {
+      grid-column: 1;
+      grid-row: 1 / span 2;
+      min-height: 78px;
+      justify-content: center;
+      padding: 0.3rem 1rem 0.3rem 0.35rem;
+      border: 0;
+      background: transparent;
+    }
+
+    .mph-title {
+      margin-block: 0.18rem 0.22rem;
+      font-size: clamp(1.28rem, 1.8vw, 1.58rem);
+
+      &__icon { display: none; }
+    }
+
+    .mph-subtitle { max-width: 38ch; }
+
+    .mph-controls-row {
+      grid-column: 2;
+      grid-row: 1;
+      display: grid;
+      grid-template-columns:
+        minmax(170px, 1.25fr)
+        minmax(170px, 1.15fr)
+        minmax(112px, 0.72fr)
+        minmax(132px, 0.82fr);
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0;
+      border: 0;
+    }
+
+    .mph-footer-row {
+      grid-column: 2;
+      grid-row: 2;
+      min-height: auto;
+      margin: 0;
+      padding: 0.42rem 0 0;
+      border: 0;
+      border-top: 1px solid $ri-line;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    :is(.mph-select, .mph-btn) {
+      min-width: 0;
+      height: 40px;
+    }
+
+    .mph-btn {
+      font-size: 0;
+
+      > span { font-size: 0.78rem; }
+    }
+  }
+}
+
+@media (max-width: 1180px) {
+  .restaurant-publication-control__copy {
+    display: grid;
+    gap: 1px;
+  }
+
+  .manager-layout--restaurant-info-management {
+    .restaurant-publication-slot + .restaurant-management-container
+      > .management-page-header.density-compact {
+      border-radius: 0 0 16px 16px !important;
+    }
+
+    .restaurant-management-container .profile-focus-panel {
+      grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
+    }
+  }
+}
+
+@media (max-width: 900px) {
+  .manager-layout--restaurant-info-management .restaurant-management-container {
+    .profile-focus-panel { grid-template-columns: 1fr; }
+
+    .profile-completion-card {
+      border-top: 1px solid $ri-line;
+      border-left: 0;
+    }
+
+    .modern-form .ant-row > .ant-col {
+      flex: 0 0 100% !important;
+      max-width: 100% !important;
+    }
+  }
 }
 
 @media (max-width: 768px) {
-  .manager-layout--restaurant-info-management .restaurant-publication-slot {
-    margin-top: 8px;
-    padding: 0 8px;
+  .manager-layout--restaurant-info-management {
+    .restaurant-publication-slot {
+      margin-top: 8px;
+      padding-inline: 8px;
+    }
+
+    .restaurant-publication-control {
+      min-height: 48px;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 9px;
+      padding: 6px 9px;
+      border-radius: 14px 14px 0 0;
+
+      &__icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+      }
+
+      &__copy > small { display: none; }
+
+      &__action,
+      > .ant-btn {
+        grid-column: auto;
+        width: auto;
+        min-height: 34px;
+        justify-content: flex-end;
+        padding: 0 0 0 9px;
+        border-top: 0;
+        border-left: 1px solid $ri-line;
+      }
+
+      &__action > span { display: none; }
+    }
+
+    .restaurant-management-container {
+      .profile-focus-panel__copy,
+      .profile-completion-card { padding: 0.8rem; }
+
+      .profile-focus-panel__facts {
+        grid-template-columns: 1fr;
+        padding-top: 0.45rem;
+
+        span {
+          min-height: 34px;
+          padding: 0.35rem 0;
+          border-right: 0;
+          border-bottom: 1px solid rgba(83, 108, 97, 0.16);
+
+          &:last-child { border-bottom: 0; }
+        }
+      }
+
+      .quick-metrics-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+
+        .metric-card .ant-card-body {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.2rem;
+          padding: 0.58rem 0.65rem;
+        }
+
+        .metric-subtitle {
+          line-height: 1.2;
+          white-space: normal;
+        }
+      }
+
+      .hero-uploader-section {
+        .cover-image-area { height: 150px; }
+
+        .avatar-image-area {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          margin: -30px 0.8rem 0;
+          padding: 0;
+        }
+
+        .avatar-wrapper {
+          width: 74px;
+          height: 74px;
+          border-radius: 18px;
+        }
+
+        .restaurant-title-preview {
+          width: 100%;
+          margin: 0;
+          padding: 0.48rem 0.58rem;
+
+          h4 {
+            max-width: 22ch;
+            font-size: 1rem;
+          }
+        }
+      }
+
+      .modern-tabs > .ant-tabs-nav {
+        overflow-x: auto;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar { display: none; }
+      }
+    }
+  }
+}
+
+@media (max-width: 430px) {
+  .restaurant-publication-control__copy {
+    > span { display: none; }
+    > strong { font-size: 0.78rem; }
   }
 
-  .restaurant-publication-control {
-    width: 100%;
-    grid-template-columns: auto minmax(0, 1fr);
-    border-radius: 14px;
-  }
-
-  .restaurant-publication-control__action,
-  .restaurant-publication-control > .ant-btn {
-    grid-column: 1 / -1;
-    width: 100%;
-    justify-content: space-between;
-    padding: 8px 0 0;
-    border-top: 1px solid var(--manager-border, rgba(83, 108, 97, 0.22));
-    border-left: 0;
+  .manager-layout--restaurant-info-management .restaurant-management-container {
+    .profile-completion-card ul { grid-template-columns: 1fr; }
+    .quick-metrics-grid {
+      .metric-subtitle { font-size: 0.64rem; }
+      .metric-value { font-size: 1.08rem; }
+    }
   }
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .restaurant-publication-control {
-    transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+    transition:
+      border-color 180ms ease,
+      background-color 180ms ease,
+      box-shadow 180ms ease;
   }
 }
