@@ -1,7 +1,7 @@
 {
   "id": "07-12-vnpay-flow-audit-fix",
   "title": "Audit and harden VNPAY payment flows",
-  "status": "in_progress",
+  "status": "done",
   "dev_type": "fullstack",
   "scope": "vnpay-order-reservation-wallet",
   "priority": "P0",
@@ -9,18 +9,22 @@
   "assignee": "LQVCohan",
   "createdAt": "2026-07-12",
   "updatedAt": "2026-07-12",
+  "completedAt": "2026-07-12",
   "branch": "agent/vnpay-flow-audit-fix",
   "base_branch": "main",
+  "pullRequest": 1369,
   "relatedFiles": [
+    "cohan-restaurant-backend/models/payment-session.model.js",
     "cohan-restaurant-backend/src/services/payment/paymentRequestContext.js",
     "cohan-restaurant-backend/graphql/resolvers/payment/customerOrderPaymentMutation.js",
     "cohan-restaurant-backend/graphql/resolvers/payment/reservationPaymentMutation.js",
     "cohan-restaurant-backend/graphql/resolvers/payment/index.js",
     "cohan-restaurant-backend/graphql/resolvers/wallet/index.js",
-    "cohan-restaurant-backend/src/services/wallet/wallet.service.js",
     "cohan-restaurant-backend/tests/services/payment-request-context.test.js",
     "cohan-restaurant-backend/tests/customerOrderPaymentMutation.test.js",
+    "cohan-restaurant-backend/tests/reservationPaymentMutation.test.js",
+    "cohan-restaurant-backend/tests/models/payment-session-runtime-mode.model.test.js",
     ".env.example"
   ],
-  "notes": "Trace VNPAY from GraphQL schema through provider session creation, signed return/IPN settlement, frontend polling and wallet credit. Fix public callback origin drift and wallet platform mode drift without changing signature or settlement rules."
+  "notes": "Unified provider return origin/client IP across checkout, reservation and wallet flows. External PaymentSessions without restaurantId now bind the real platform credential mode, preventing sandbox credentials from being paired with production endpoints. Tests/build were not run because the execution container could not resolve github.com for a repository checkout."
 }
