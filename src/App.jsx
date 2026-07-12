@@ -5,6 +5,7 @@ import AppRouter from "./routes/AppRouter";
 import { AuthProvider } from "./context/AuthProvider";
 import { ApolloProvider } from "@apollo/client/react";
 import { apolloClient } from "./apollo/client";
+import ManagerMenuSelectionSync from "./apollo/ManagerMenuSelectionSync";
 import "./styles/Globals.scss";
 import "./components/LoginPolish.scss";
 import "./components/LoginAudiencePolish.scss";
@@ -52,6 +53,7 @@ function App() {
           <NotificationProvider>
             <AppErrorBoundary>
               <ScrollToTop />
+              <ManagerMenuSelectionSync />
               <CustomerNotificationProvider>
                 <CartProvider>
                   <AppRouter />
