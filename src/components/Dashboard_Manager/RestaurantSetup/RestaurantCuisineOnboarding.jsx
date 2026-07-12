@@ -9,6 +9,7 @@ import {
   FiCheck,
   FiChevronDown,
   FiClock,
+  FiLayers,
   FiList,
   FiPackage,
   FiX,
@@ -26,9 +27,17 @@ const GET_CUISINE_TEMPLATES = gql`
       description
       ingredientCount
       menuCount
+      timeSlotCount
       menuItemCount
       recipeCount
       dishNames
+      menus {
+        key
+        name
+        timeSlot
+        dishCount
+        dishNames
+      }
     }
   }
 `;
@@ -81,6 +90,14 @@ const TEMPLATE_ICONS = {
   thai: "🌶️",
 };
 
+const TIME_SLOT_ORDER = ["breakfast", "lunch", "dinner", "late_night"];
+const TIME_SLOT_LABELS = {
+  breakfast: "Bữa sáng",
+  lunch: "Bữa trưa",
+  dinner: "Bữa tối",
+  late_night: "Bữa khuya",
+};
+
 const getErrorMessage = (error, fallback) =>
   error?.graphQLErrors?.[0]?.message || error?.message || fallback;
 
@@ -88,6 +105,13 @@ const readFocusable = (node) =>
   [...(node?.querySelectorAll(
     'button:not([disabled]), input:not([disabled]), summary, [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
   ) || [])].filter((element) => !element.hasAttribute("hidden"));
+
+const getMenuGroups = (menus) =>
+  TIME_SLOT_ORDER.map((timeSlot) => ({
+    timeSlot,
+    label: TIME_SLOT_LABELS[timeSlot],
+    menus: menus.filter((menu) => menu?.timeSlot === timeSlot),
+  })).filter((group) => group.menus.length > 0);
 
 export default function RestaurantCuisineOnboarding({ restaurant, openRequest = 0 }) {
   const restaurantId = String(restaurant?.id || restaurant?._id || "");
@@ -182,8 +206,10 @@ export default function RestaurantCuisineOnboarding({ restaurant, openRequest = 
         variables: { restaurantId, templateKey: selectedTemplate.key },
       });
       const applied = result?.data?.applyRestaurantCuisineTemplate;
+      const menuCount = applied?.menuCount || selectedTemplate.menuCount;
+      const menuItemCount = applied?.menuItemCount || selectedTemplate.menuItemCount;
       message.success(
-        `Đã tạo ${applied?.menuItemCount || selectedTemplate.menuItemCount} món mẫu cho ${restaurant.name}`,
+        `Đã tạo ${menuItemCount} món trong ${menuCount} thực đơn mẫu cho ${restaurant.name}`,
       );
       window.dispatchEvent(new CustomEvent("manager:navigate", {
         detail: { page: "menu", source: "cuisine-onboarding" },
@@ -228,11 +254,16 @@ export default function RestaurantCuisineOnboarding({ restaurant, openRequest = 
           <span className="cuisine-onboarding__eyebrow">THIẾT LẬP CHI NHÁNH MỚI</span>
           <h2 id="cuisine-onboarding-title">Chọn mô hình ẩm thực cho {restaurant.name}</h2>
           <p id="cuisine-onboarding-description">
-            Xem trước dữ liệu của từng mẫu rồi chọn gói phù hợp. COHAN sẽ tạo món ăn,
-            nguyên liệu và công thức chế biến để bạn tiếp tục chỉnh sửa trước khi xuất bản.
+            Xem trước dữ liệu và cấu trúc thực đơn của từng mẫu. COHAN sẽ tạo menu,
+            món ăn, nguyên liệu và công thức để bạn tiếp tục chỉnh sửa trước khi xuất bản.
           </p>
-          <div className="cuisine-onboarding__draft-note">
-            <FiClock aria-hidden="true" /> Chi nhánh vẫn ở trạng thái bản nháp sau khi thiết lập.
+          <div className="cuisine-onboarding__notes">
+            <div className="cuisine-onboarding__draft-note">
+              <FiClock aria-hidden="true" /> Chi nhánh vẫn ở trạng thái bản nháp sau khi thiết lập.
+            </div>
+            <div className="cuisine-onboarding__menu-note">
+              <FiLayers aria-hidden="true" /> Sau đó bạn có thể thêm menu VIP, sang trọng hoặc ăn chơi trong cùng một mốc giờ.
+            </div>
           </div>
         </div>
 
@@ -254,6 +285,12 @@ export default function RestaurantCuisineOnboarding({ restaurant, openRequest = 
             {templates.map((template) => {
               const selected = selectedKey === template.key;
               const dishNames = Array.isArray(template.dishNames) ? template.dishNames : [];
+              const menus = Array.isArray(template.menus) ? template.menus : [];
+              const menuGroups = getMenuGroups(menus);
+              const menuCount = menus.length || template.menuCount || 0;
+              const disclosureLabel = menuGroups.length
+                ? `Xem cấu trúc ${menuCount} thực đơn`
+                : `Xem ${dishNames.length || template.menuItemCount} món sẽ được tạo`;
 
               return (
                 <article
@@ -286,7 +323,16 @@ export default function RestaurantCuisineOnboarding({ restaurant, openRequest = 
                       <span className="cuisine-template-card__description">
                         {template.description}
                       </span>
+                      <span className="cuisine-template-card__slot-summary">
+                        <FiClock aria-hidden="true" />
+                        {template.timeSlotCount || menuGroups.length} mốc giờ phục vụ
+                      </span>
                       <span className="cuisine-template-card__metrics">
+                        <span>
+                          <FiLayers aria-hidden="true" />
+                          <strong>{menuCount}</strong>
+                          <small>Thực đơn</small>
+                        </span>
                         <span>
                           <FiList aria-hidden="true" />
                           <strong>{template.menuItemCount}</strong>
@@ -308,14 +354,57 @@ export default function RestaurantCuisineOnboarding({ restaurant, openRequest = 
 
                   <details className="cuisine-template-card__details">
                     <summary>
-                      <span>Xem {dishNames.length || template.menuItemCount} món sẽ được tạo</span>
+                      <span>{disclosureLabel}</span>
                       <FiChevronDown aria-hidden="true" />
                     </summary>
-                    <ul>
-                      {dishNames.map((dishName) => (
-                        <li key={dishName}>{dishName}</li>
-                      ))}
-                    </ul>
+                    {menuGroups.length ? (
+                      <div className="cuisine-template-card__menu-groups">
+                        {menuGroups.map((group) => (
+                          <section
+                            className="cuisine-template-card__menu-group"
+                            key={group.timeSlot}
+                            aria-label={group.label}
+                          >
+                            <header>
+                              <span>
+                                <FiClock aria-hidden="true" /> {group.label}
+                              </span>
+                              <small>{group.menus.length} menu</small>
+                            </header>
+                            <div className="cuisine-template-card__menu-list">
+                              {group.menus.map((menu) => {
+                                const menuDishNames = Array.isArray(menu.dishNames)
+                                  ? menu.dishNames
+                                  : [];
+                                return (
+                                  <article key={menu.key} className="cuisine-template-card__menu">
+                                    <div>
+                                      <strong>{menu.name}</strong>
+                                      <span>{menu.dishCount || menuDishNames.length} món</span>
+                                    </div>
+                                    {menuDishNames.length ? (
+                                      <ul>
+                                        {menuDishNames.map((dishName) => (
+                                          <li key={`${menu.key}:${dishName}`}>{dishName}</li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <p>Chưa có món mẫu trong thực đơn này.</p>
+                                    )}
+                                  </article>
+                                );
+                              })}
+                            </div>
+                          </section>
+                        ))}
+                      </div>
+                    ) : (
+                      <ul className="cuisine-template-card__dish-fallback">
+                        {dishNames.map((dishName) => (
+                          <li key={dishName}>{dishName}</li>
+                        ))}
+                      </ul>
+                    )}
                   </details>
                 </article>
               );
