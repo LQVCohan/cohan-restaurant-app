@@ -1,0 +1,34 @@
+{
+  "id": "07-12-staff-performance-policy-modal",
+  "title": "Add guarded staff performance policy modal",
+  "status": "in_progress",
+  "type": "fullstack-feature",
+  "scope": [
+    "cohan-restaurant-backend/models/system-setting.model.js",
+    "cohan-restaurant-backend/src/services/staffPerformance/staffPerformance.service.js",
+    "cohan-restaurant-backend/graphql/schema/staffResolverCompatibility.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/staff/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/staff/performancePolicy.js",
+    "src/hooks/useStaffPerformance.js",
+    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.jsx",
+    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.scss",
+    "cohan-restaurant-backend/tests/services/staff-performance-policy.test.js",
+    "src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.policy.test.jsx"
+  ],
+  "rootCause": "The manager performance page only exposes a static formula disclosure. Performance level thresholds are hard-coded in calculation and frontend formatting, so managers cannot inspect a single authoritative policy or safely adjust restaurant-specific classification thresholds.",
+  "validation": {
+    "planned": [
+      "npx vitest run cohan-restaurant-backend/tests/services/staff-performance-policy.test.js",
+      "npx vitest run src/components/Dashboard_Manager/Staff/components/Performance/StaffPerformancePage.policy.test.jsx",
+      "npm run check:graphql",
+      "npm run build"
+    ],
+    "completed": [
+      "read AGENTS.md and Trellis workflow",
+      "read ponytail, frontend-design, react-ui-performance, redesign-existing-projects, web-design-guidelines and wcag-ui-audit skills",
+      "traced SystemSetting schema -> staff performance service -> staff resolver -> useStaffPerformance -> StaffPerformancePage",
+      "confirmed no performance policy configuration query, mutation or manager modal exists"
+    ],
+    "notRun": []
+  }
+}
