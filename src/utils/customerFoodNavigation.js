@@ -19,19 +19,11 @@ export const resolveMenuTimeSlotAt = (
 
 export const buildFoodDetailPath = (foodId, options = {}) => {
   if (!foodId) return "";
-  const {
-    restaurantId,
-    timeSlot,
-    menuId,
-    categoryId,
-    serviceAt,
-    returnTo,
-  } = options;
+  const { restaurantId, timeSlot, categoryId, serviceAt, returnTo } = options;
   const effectiveReturnTo = returnTo || (serviceAt ? "booking" : null);
   const params = new URLSearchParams();
   if (restaurantId) params.set("restaurantId", String(restaurantId));
   if (timeSlot) params.set("timeSlot", String(timeSlot));
-  if (menuId) params.set("menuId", String(menuId));
   if (categoryId) params.set("categoryId", String(categoryId));
   if (serviceAt) params.set("serviceAt", String(serviceAt));
   if (effectiveReturnTo) params.set("returnTo", String(effectiveReturnTo));
@@ -43,19 +35,16 @@ export const buildFoodDetailState = (item, options = {}) => {
   const {
     restaurantId,
     timeSlot,
-    menuId,
     categoryId,
     selectedVariantKey,
     serviceAt,
     returnTo,
   } = options;
   const effectiveReturnTo = returnTo || (serviceAt ? "booking" : null);
-  const resolvedMenuId = menuId || item?.menuId;
   return {
     ...(item ? { dish: item } : {}),
     ...(restaurantId ? { restaurantId } : {}),
     ...(timeSlot ? { timeSlot } : {}),
-    ...(resolvedMenuId ? { menuId: resolvedMenuId } : {}),
     ...(categoryId ? { categoryId } : {}),
     ...(selectedVariantKey ? { selectedVariantKey } : {}),
     ...(serviceAt ? { serviceAt } : {}),
