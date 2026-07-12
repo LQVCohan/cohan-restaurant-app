@@ -328,7 +328,8 @@ export function buildPayrollItem({
     baseSalary,
     policy,
     regionCode,
-    isEligible: insuranceEligible,
+    // A draft with no earned income must not become an insurance-only negative payslip.
+    isEligible: insuranceEligible && totalIncome > 0,
   });
 
   const deduction = 0;
