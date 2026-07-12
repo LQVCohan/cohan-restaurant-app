@@ -4,52 +4,61 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MANAGER_MENU_SELECTION_EVENT } from "@/utils/managerMenuSelection";
 import ManagerMenuSelectionSync from "./ManagerMenuSelectionSync";
 
-const itemRefetch = vi.fn().mockResolvedValue({});
-const categoryRefetch = vi.fn().mockResolvedValue({});
-const otherRestaurantRefetch = vi.fn().mockResolvedValue({});
-const refetchQueries = vi.fn(({ onQueryUpdated }) => {
-  const results = [
-    onQueryUpdated({
-      variables: {
-        limit: 20,
-        cursor: "old-cursor",
-        filter: {
+const mocks = vi.hoisted(() => {
+  const itemRefetch = vi.fn().mockResolvedValue({});
+  const categoryRefetch = vi.fn().mockResolvedValue({});
+  const otherRestaurantRefetch = vi.fn().mockResolvedValue({});
+  const refetchQueries = vi.fn(({ onQueryUpdated }) => {
+    const results = [
+      onQueryUpdated({
+        variables: {
+          limit: 20,
+          cursor: "old-cursor",
+          filter: {
+            restaurantId: "restaurant-1",
+            timeSlot: "dinner",
+            categoryId: null,
+          },
+        },
+        refetch: itemRefetch,
+      }),
+      onQueryUpdated({
+        variables: {
           restaurantId: "restaurant-1",
           timeSlot: "dinner",
-          categoryId: null,
         },
-      },
-      refetch: itemRefetch,
-    }),
-    onQueryUpdated({
-      variables: {
-        restaurantId: "restaurant-1",
-        timeSlot: "dinner",
-      },
-      refetch: categoryRefetch,
-    }),
-    onQueryUpdated({
-      variables: {
-        restaurantId: "restaurant-2",
-        timeSlot: "dinner",
-      },
-      refetch: otherRestaurantRefetch,
-    }),
-  ];
+        refetch: categoryRefetch,
+      }),
+      onQueryUpdated({
+        variables: {
+          restaurantId: "restaurant-2",
+          timeSlot: "dinner",
+        },
+        refetch: otherRestaurantRefetch,
+      }),
+    ];
 
-  return Promise.all(results.filter((result) => result && result !== false));
+    return Promise.all(results.filter((result) => result && result !== false));
+  });
+
+  return {
+    itemRefetch,
+    categoryRefetch,
+    otherRestaurantRefetch,
+    refetchQueries,
+  };
 });
 
 vi.mock("@apollo/client", () => ({
-  useApolloClient: () => ({ refetchQueries }),
+  useApolloClient: () => ({ refetchQueries: mocks.refetchQueries }),
 }));
 
 describe("ManagerMenuSelectionSync", () => {
   beforeEach(() => {
-    itemRefetch.mockClear();
-    categoryRefetch.mockClear();
-    otherRestaurantRefetch.mockClear();
-    refetchQueries.mockClear();
+    mocks.itemRefetch.mockClear();
+    mocks.categoryRefetch.mockClear();
+    mocks.otherRestaurantRefetch.mockClear();
+    mocks.refetchQueries.mockClear();
   });
 
   it("refetches active item and category queries with the exact selected menu", async () => {
@@ -67,9 +76,9 @@ describe("ManagerMenuSelectionSync", () => {
       );
     });
 
-    await waitFor(() => expect(itemRefetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.itemRefetch).toHaveBeenCalledTimes(1));
 
-    expect(refetchQueries).toHaveBeenCalledWith(
+    expect(mocks.refetchQueries).toHaveBeenCalledWith(
       expect.objectContaining({
         include: [
           "MenuItemsConnection",
@@ -78,7 +87,7 @@ describe("ManagerMenuSelectionSync", () => {
         ],
       }),
     );
-    expect(itemRefetch).toHaveBeenCalledWith({
+    expect(mocks.itemRefetch).toHaveBeenCalledWith({
       limit: 20,
       cursor: null,
       filter: {
@@ -88,11 +97,11 @@ describe("ManagerMenuSelectionSync", () => {
         menuId: "menu-casual",
       },
     });
-    expect(categoryRefetch).toHaveBeenCalledWith({
+    expect(mocks.categoryRefetch).toHaveBeenCalledWith({
       restaurantId: "restaurant-1",
       timeSlot: "dinner",
       menuId: "menu-casual",
     });
-    expect(otherRestaurantRefetch).not.toHaveBeenCalled();
+    expect(mocks.otherRestaurantRefetch).not.toHaveBeenCalled();
   });
 });
