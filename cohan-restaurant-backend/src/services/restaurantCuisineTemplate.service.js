@@ -31,6 +31,31 @@ function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function buildMenuPreview(menuCatalog) {
+  const itemsByMenuId = new Map();
+  for (const item of menuCatalog?.menuItems || []) {
+    const menuId = String(item?.menuId || "");
+    if (!menuId) continue;
+    const dishNames = itemsByMenuId.get(menuId) || [];
+    if (item?.name) dishNames.push(item.name);
+    itemsByMenuId.set(menuId, dishNames);
+  }
+
+  return (menuCatalog?.menus || []).map((menu, index) => {
+    const key = String(
+      menu?.legacyId || `${menu?.timeSlot || "menu"}:${index + 1}`,
+    );
+    const dishNames = itemsByMenuId.get(key) || [];
+    return {
+      key,
+      name: menu?.name || "Thực đơn",
+      timeSlot: menu?.timeSlot,
+      dishCount: dishNames.length,
+      dishNames,
+    };
+  });
+}
+
 async function safeAuditLog(payload) {
   try {
     await AuditLog.create(payload);
@@ -43,11 +68,15 @@ export function listCuisineTemplates() {
   return listRestaurantCuisineTemplateSummaries().map((summary) => {
     const template = getRestaurantCuisineTemplate(summary.key);
     const menuCatalog = template?.sections?.menuCatalog;
+    const menus = buildMenuPreview(menuCatalog);
 
     return {
       ...summary,
       recipeCount: menuCatalog?.recipes?.length || 0,
       dishNames: (menuCatalog?.menuItems || []).map((item) => item.name),
+      timeSlotCount: new Set(menus.map((menu) => menu.timeSlot).filter(Boolean))
+        .size,
+      menus,
     };
   });
 }
