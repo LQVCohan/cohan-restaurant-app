@@ -36,6 +36,9 @@ function buildCopiedItemPayload(sourceItem, targetMenuId) {
     labels: clonePlain(sourceItem.labels || []),
     foodType: sourceItem.foodType || "UNKNOWN",
     meatTypes: clonePlain(sourceItem.meatTypes || []),
+    dietTags: clonePlain(sourceItem.dietTags || []),
+    allergenTags: clonePlain(sourceItem.allergenTags || []),
+    tasteProfile: clonePlain(sourceItem.tasteProfile),
     basePrice: sourceItem.basePrice,
     defaultServingKey: sourceItem.defaultServingKey,
     hasByWeightVariant: sourceItem.hasByWeightVariant,
@@ -88,17 +91,6 @@ export const CopyMenuMutation = {
       : await Menu.findOne({ restaurantId, timeSlot: sourceTimeSlot }).lean();
 
     if (!sourceMenu) throw new GraphQLError("Source menu not found");
-    if (sourceMenu.timeSlot === targetTimeSlot) {
-      throw new GraphQLError("Target timeSlot must be different from source timeSlot");
-    }
-
-    const existingTarget = await Menu.findOne({
-      restaurantId,
-      timeSlot: targetTimeSlot,
-    }).lean();
-    if (existingTarget) {
-      throw new GraphQLError("Target timeSlot already has a menu");
-    }
 
     const session = await mongoose.startSession();
     try {
