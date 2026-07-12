@@ -49,17 +49,24 @@ function makeClientIdempotencyKey(operationName = "order") {
   return `${operationName}:v1:${randomPart}`;
 }
 
-function shouldAttachIdempotency(operationName = "") {
-  return [
-    "CreateOrderForTable",
-    "CreateOffPremiseOrder",
-    "CreateStaffRemoteOrder",
-    "CreateCheckoutOrders",
-  ].includes(operationName);
-}
+const ORDER_CLIENT_META_OPERATIONS = new Set([
+  "CreateOrderForTable",
+  "CreateOffPremiseOrder",
+  "CreateStaffRemoteOrder",
+]);
 
-const checkoutIdempotencyMemory = new Map();
-const CHECKOUT_IDEMPOTENCY_STORAGE_PREFIX = "checkout-idempotency:";
+const PAYMENT_RESULT_FIELD = Object.freeze({
+  CreateCheckoutOrders: "createCheckoutOrders",
+  CreateWalletTopup: "createWalletTopup",
+  CreateOrderPayment: "createOrderPayment",
+  CreateReservationPayment: "createReservationPayment",
+  PayOrdersByTableId: "payOrdersByTableId",
+  PayOrdersByOrderIds: "payOrdersByOrderIds",
+  PayOrdersWithWallet: "payOrdersWithWallet",
+});
+
+const idempotencyMemory = new Map();
+const PAYMENT_IDEMPOTENCY_STORAGE_PREFIX = "payment-idempotency:";
 
 function canonicalizeIdempotencyValue(value) {
   if (Array.isArray(value)) return value.map(canonicalizeIdempotencyValue);
@@ -86,20 +93,20 @@ function hashIdempotencyPayload(value) {
   return `${(hash >>> 0).toString(16)}:${serialized.length}`;
 }
 
-function readStoredCheckoutKey(storageKey) {
+function readStoredIdempotencyKey(storageKey) {
   if (typeof window === "undefined") {
-    return checkoutIdempotencyMemory.get(storageKey) || null;
+    return idempotencyMemory.get(storageKey) || null;
   }
 
   try {
     return window.sessionStorage.getItem(storageKey);
   } catch {
-    return checkoutIdempotencyMemory.get(storageKey) || null;
+    return idempotencyMemory.get(storageKey) || null;
   }
 }
 
-function storeCheckoutKey(storageKey, key) {
-  checkoutIdempotencyMemory.set(storageKey, key);
+function storeIdempotencyKey(storageKey, key) {
+  idempotencyMemory.set(storageKey, key);
   if (typeof window === "undefined") return;
 
   try {
@@ -109,9 +116,9 @@ function storeCheckoutKey(storageKey, key) {
   }
 }
 
-function removeStoredCheckoutKey(storageKey, key) {
-  if (checkoutIdempotencyMemory.get(storageKey) === key) {
-    checkoutIdempotencyMemory.delete(storageKey);
+function removeStoredIdempotencyKey(storageKey, key) {
+  if (idempotencyMemory.get(storageKey) === key) {
+    idempotencyMemory.delete(storageKey);
   }
   if (typeof window === "undefined") return;
 
@@ -124,15 +131,22 @@ function removeStoredCheckoutKey(storageKey, key) {
   }
 }
 
-function getStableCheckoutIdempotencyKey(input) {
+function getStablePaymentIdempotencyKey(operationName, input) {
   const fingerprint = hashIdempotencyPayload(input);
-  const storageKey = `${CHECKOUT_IDEMPOTENCY_STORAGE_PREFIX}${fingerprint}`;
-  const stored = readStoredCheckoutKey(storageKey);
+  const storageKey = `${PAYMENT_IDEMPOTENCY_STORAGE_PREFIX}${operationName}:${fingerprint}`;
+  const stored = readStoredIdempotencyKey(storageKey);
   if (stored) return { key: stored, storageKey };
 
-  const key = makeClientIdempotencyKey("CreateCheckoutOrders");
-  storeCheckoutKey(storageKey, key);
+  const key = makeClientIdempotencyKey(operationName);
+  storeIdempotencyKey(storageKey, key);
   return { key, storageKey };
+}
+
+function orderSource(operationName, currentSource) {
+  if (currentSource) return currentSource;
+  if (operationName === "CreateOrderForTable") return "pos_dine_in";
+  if (operationName === "CreateStaffRemoteOrder") return "staff_remote";
+  return "off_premise";
 }
 
 export function normalizeScheduleGraphqlVariables(
@@ -159,55 +173,62 @@ const scheduleEnumLink = new ApolloLink((operation, forward) => {
 const idempotencyLink = new ApolloLink((operation, forward) => {
   const operationName = operation?.operationName || "";
   const input = operation?.variables?.input;
-  let checkoutKeyState = null;
+  const paymentResultField = PAYMENT_RESULT_FIELD[operationName] || null;
+  let paymentKeyState = null;
 
-  if (shouldAttachIdempotency(operationName) && input && typeof input === "object") {
-    const isCustomerCheckout = operationName === "CreateCheckoutOrders";
-    const hasTopLevelKey = Boolean(input.idempotencyKey);
-    const hasClientMetaKey = Boolean(input.clientMeta?.idempotencyKey);
-
-    if (isCustomerCheckout || (!hasTopLevelKey && !hasClientMetaKey)) {
-      checkoutKeyState = isCustomerCheckout
-        ? getStableCheckoutIdempotencyKey(input)
-        : null;
-      const key = checkoutKeyState?.key || makeClientIdempotencyKey(operationName);
-      const nextInput = {
+  if (input && typeof input === "object" && paymentResultField) {
+    paymentKeyState = getStablePaymentIdempotencyKey(operationName, input);
+    const key = paymentKeyState.key;
+    const nextInput = {
+      ...input,
+      idempotencyKey: key,
+      ...(operationName === "CreateCheckoutOrders"
+        ? {
+            clientMeta: {
+              ...(input.clientMeta || {}),
+              idempotencyKey: key,
+              source: input.clientMeta?.source || "customer_checkout",
+            },
+          }
+        : {}),
+    };
+    operation.variables = {
+      ...operation.variables,
+      input: nextInput,
+    };
+  } else if (
+    input &&
+    typeof input === "object" &&
+    ORDER_CLIENT_META_OPERATIONS.has(operationName) &&
+    !input.clientMeta?.idempotencyKey
+  ) {
+    const key = makeClientIdempotencyKey(operationName);
+    operation.variables = {
+      ...operation.variables,
+      input: {
         ...input,
-        ...(isCustomerCheckout ? { idempotencyKey: key } : {}),
         clientMeta: {
           ...(input.clientMeta || {}),
           idempotencyKey: key,
-          source:
-            input.clientMeta?.source ||
-            (operationName === "CreateOrderForTable"
-              ? "pos_dine_in"
-              : operationName === "CreateStaffRemoteOrder"
-                ? "staff_remote"
-                : operationName === "CreateCheckoutOrders"
-                  ? "customer_checkout"
-                  : "off_premise"),
+          source: orderSource(operationName, input.clientMeta?.source),
         },
-      };
-      operation.variables = {
-        ...operation.variables,
-        input: nextInput,
-      };
-    }
+      },
+    };
   }
 
   const observable = forward(operation);
-  if (!checkoutKeyState) return observable;
+  if (!paymentKeyState || !paymentResultField) return observable;
 
   return new Observable((observer) => {
     const subscription = observable.subscribe({
       next(result) {
         if (
           !result?.errors?.length &&
-          result?.data?.createCheckoutOrders
+          result?.data?.[paymentResultField] != null
         ) {
-          removeStoredCheckoutKey(
-            checkoutKeyState.storageKey,
-            checkoutKeyState.key,
+          removeStoredIdempotencyKey(
+            paymentKeyState.storageKey,
+            paymentKeyState.key,
           );
         }
         observer.next(result);
