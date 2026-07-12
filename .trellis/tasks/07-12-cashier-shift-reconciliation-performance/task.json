@@ -1,0 +1,19 @@
+{
+  "id": "07-12-cashier-shift-reconciliation-performance",
+  "title": "Complete cashier shift reconciliation and performance evidence flow",
+  "status": "in_progress",
+  "type": "fullstack-feature",
+  "priority": "P0",
+  "createdAt": "2026-07-12",
+  "updatedAt": "2026-07-12",
+  "branch": "agent/cashier-shift-reconciliation-performance",
+  "baseBranch": "main",
+  "scope": [
+    "cashier shift opening, cash movement, closing and manager review",
+    "restaurant and actor authorization",
+    "cash transaction/refund/discount attribution",
+    "approved cash variance performance evidence",
+    "manager performance reconciliation modal",
+    "focused backend, GraphQL and frontend contract tests"
+  ]
+}
