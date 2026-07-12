@@ -1,11 +1,12 @@
 {
   "id": "07-12-attendance-payroll-hardening",
   "title": "Khóa luồng chấm công và chuẩn hóa giờ tăng ca trả lương",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack",
   "scope": "attendance-overtime-payroll",
   "priority": "P0",
   "createdAt": "2026-07-12",
+  "completedAt": "2026-07-12",
   "branch": "main",
   "base_branch": "main",
   "relatedFiles": [
@@ -14,8 +15,9 @@
     "cohan-restaurant-backend/src/services/payroll/payrollRuntime.service.js",
     "cohan-restaurant-backend/src/services/payroll/payrollValidation.service.js",
     "cohan-restaurant-backend/src/services/payroll/payrollReadiness.service.js",
-    "cohan-restaurant-backend/tests/resolvers/staff-attendance-mutation-access.test.js",
-    "cohan-restaurant-backend/tests/services/payroll-correctness.test.js"
+    "cohan-restaurant-backend/tests/resolvers/payroll-protected-attendance-mutation.test.js",
+    "cohan-restaurant-backend/tests/services/payroll-correctness.test.js",
+    "cohan-restaurant-backend/tests/services/payroll-readiness.service.test.js"
   ],
   "validation": {
     "planned": [
@@ -24,8 +26,16 @@
       "GraphQL schema validation",
       "backend build or smoke check"
     ],
-    "completed": [],
-    "notRun": []
+    "completed": [
+      "traced Timesheet schema through protected attendance/overtime mutations, payroll runtime, calculator, validation, readiness and staff GraphQL operations",
+      "added regression coverage for self-service timestamp bypass, rejected/partial overtime pay, night overlap, cross-midnight classification and rejection synchronization",
+      "ran node --check against the locally reconstructed payroll runtime and payroll correctness test sources"
+    ],
+    "notRun": [
+      "targeted Vitest suites were not run because the GitHub connector has no executable repository checkout",
+      "the full frontend GraphQL schema validation suite was not run",
+      "frontend/backend builds and browser smoke checks were not run"
+    ]
   },
   "meta": {
     "skills": ["ponytail"]
