@@ -8,31 +8,38 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 16px;
-  padding: 15px 18px;
-  border: 1px solid rgba(57, 91, 77, 0.14);
-  border-radius: 18px;
-  background: linear-gradient(135deg, #f8fbf9 0%, #eef6f2 100%);
-  box-shadow: 0 8px 24px rgba(37, 73, 58, 0.06);
+  gap: 14px;
+  padding: 13px 16px;
+  border: 1px solid var(--manager-border, rgba(63, 89, 78, 0.16));
+  border-radius: 16px;
+  background: var(--manager-surface, #ffffff);
+  box-shadow: 0 7px 20px rgba(42, 73, 60, 0.05);
 }
 
 .cashier-reconciliation-launcher__copy {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 11px;
+
+  > div {
+    min-width: 0;
+  }
 
   strong {
     display: block;
-    color: #204437;
-    font-size: 0.92rem;
+    color: var(--manager-text, #23372f);
+    font-size: 0.9rem;
+    line-height: 1.25;
   }
 
   p {
-    margin: 4px 0 0;
-    color: #687a72;
-    font-size: 0.78rem;
-    line-height: 1.45;
+    max-width: 70ch;
+    margin: 3px 0 0;
+    color: var(--manager-muted, #65756e);
+    font-size: 0.75rem;
+    line-height: 1.42;
+    text-wrap: pretty;
   }
 }
 
@@ -42,52 +49,75 @@
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  border-radius: 13px;
-  background: #dcece5;
-  color: #21674f;
+  border-radius: 12px;
+  background: var(--manager-accent-soft, #e4f0eb);
+  color: var(--manager-accent, #2f7d68);
 }
 
 .cashier-reconciliation-launcher__guard {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 10px;
-  border-radius: 999px;
-  background: #fff7e7;
-  color: #77571f;
-  font-size: 0.72rem;
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid color-mix(
+    in srgb,
+    var(--manager-warning, #9b651e) 22%,
+    transparent
+  );
+  border-radius: 9px;
+  background: var(--manager-warning-soft, #fff3dc);
+  color: var(--manager-warning, #9b651e);
+  font-size: 0.69rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .cashier-reconciliation-launcher__button {
-  min-height: 40px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
   padding: 9px 14px;
-  border: 1px solid #2d755a;
-  border-radius: 12px;
-  background: #2d755a;
+  border: 1px solid var(--manager-primary, #536c61);
+  border-radius: 11px;
+  background: var(--manager-primary, #536c61);
   color: #fff;
-  font-weight: 700;
-  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 720;
   white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 
   &:hover:not(:disabled) {
-    background: #225f48;
+    border-color: var(--manager-primary-hover, #40584e);
+    background: var(--manager-primary-hover, #40584e);
+    box-shadow: 0 8px 18px rgba(64, 88, 78, 0.16);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
   }
 
   &:focus-visible {
-    outline: 3px solid rgba(45, 117, 90, 0.25);
+    outline: 3px solid rgba(47, 125, 104, 0.26);
     outline-offset: 2px;
   }
 
   &:disabled {
-    border-color: #aab7b1;
-    background: #aab7b1;
+    border-color: var(--manager-border, rgba(63, 89, 78, 0.16));
+    background: var(--manager-surface-strong, #e4eee9);
+    color: var(--manager-muted, #65756e);
     cursor: not-allowed;
+    box-shadow: none;
   }
 }
 
@@ -97,7 +127,14 @@
   }
 
   .cashier-reconciliation-launcher__guard {
-    display: none;
+    grid-column: 1;
+    width: max-content;
+    margin-left: 51px;
+  }
+
+  .cashier-reconciliation-launcher__button {
+    grid-column: 2;
+    grid-row: 1 / span 2;
   }
 }
 
@@ -105,9 +142,24 @@
   .cashier-reconciliation-launcher {
     grid-template-columns: 1fr;
     align-items: stretch;
+    gap: 10px;
+  }
+
+  .cashier-reconciliation-launcher__guard {
+    grid-column: 1;
+    width: fit-content;
+    margin-left: 0;
   }
 
   .cashier-reconciliation-launcher__button {
+    grid-column: 1;
+    grid-row: auto;
     width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cashier-reconciliation-launcher__button {
+    transition: none;
   }
 }
