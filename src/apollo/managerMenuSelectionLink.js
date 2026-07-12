@@ -56,6 +56,13 @@ export const applyManagerMenuSelection = (
   }
 
   if (
+    ["GetCategories", "TopCategoriesByRestaurant"].includes(operationName) &&
+    matchesSelection(selection, scopedVariables)
+  ) {
+    return { ...scopedVariables, menuId: selection.menuId };
+  }
+
+  if (
     [
       "CreateMenuItem",
       "SyncMenuItemInventoryStatuses",
