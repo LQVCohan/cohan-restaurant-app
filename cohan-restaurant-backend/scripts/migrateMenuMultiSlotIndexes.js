@@ -12,12 +12,21 @@ const isLegacyUniqueSlotIndex = (index) =>
   index.key?.restaurantId === 1 &&
   index.key?.timeSlot === 1;
 
+const readIndexes = async (collection) => {
+  try {
+    return await collection.indexes();
+  } catch (error) {
+    if (error?.code === 26 || error?.codeName === "NamespaceNotFound") return [];
+    throw error;
+  }
+};
+
 export async function migrateMenuMultiSlotIndexes({
   apply = APPLY,
   collection = Menu.collection,
   logger = console,
 } = {}) {
-  const indexes = await collection.indexes();
+  const indexes = await readIndexes(collection);
   const legacyIndexes = indexes.filter(isLegacyUniqueSlotIndex);
   const targetName = "restaurantId_1_timeSlot_1_isActive_1";
   const targetExists = indexes.some((index) => index.name === targetName);
