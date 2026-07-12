@@ -12,31 +12,31 @@
     "cohan-restaurant-backend/tests/resolvers/customer-menu-category-selection.test.js",
     "src/components/Customer/RestaurantMenu/components/MenuDetailView.jsx",
     "src/components/Customer/RestaurantMenu/components/MenuDetailView.test.jsx",
-    "src/components/Customer/RestaurantMenu/styles/MenuNamedSelector.scss",
-    "src/utils/customerFoodNavigation.js",
-    "src/utils/customerFoodNavigation.test.js"
+    "src/components/Customer/RestaurantMenu/components/CustomerMenuPromotionBadge.test.jsx",
+    "src/components/Customer/RestaurantMenu/styles/MenuNamedSelector.scss"
   ],
   "validation": {
     "planned": [
       "cd cohan-restaurant-backend && npx vitest run tests/resolvers/menu-multi-slot.test.js tests/resolvers/customer-menu-category-selection.test.js",
-      "npx vitest run src/components/Customer/RestaurantMenu/components/MenuDetailView.test.jsx src/utils/customerFoodNavigation.test.js",
+      "npx vitest run src/components/Customer/RestaurantMenu/components/MenuDetailView.test.jsx src/components/Customer/RestaurantMenu/components/CustomerMenuPromotionBadge.test.jsx",
       "npm run check:graphql",
       "npm run build"
     ],
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail, frontend-design and ui-ux-pro-max",
-      "traced Menu and MenuItem schema through multi-slot and category resolvers into MenuDetailView, food-detail navigation and tests",
+      "traced Menu and MenuItem schema through multi-slot and category resolvers into MenuDetailView, route selection and tests",
       "confirmed MenuItemFilter already supports exact menuId while customer categories and UI selection did not",
       "added an active-only public menu query that does not inherit manager visibility",
       "scoped category and dish queries to the customer-selected menuId while retaining legacy time-slot aggregation for existing callers",
       "added a responsive two-level service-slot and named-menu selector with explicit loading, error, empty and disabled states",
-      "preserved restaurantId, timeSlot and menuId in the customer menu URL and food-detail navigation"
+      "preserved restaurantId, timeSlot and menuId in the customer menu URL so browser history restores the same selection",
+      "backend lint, tests, Menu RBAC and build passed in GitHub Actions run 9039",
+      "frontend lint, unit tests and Menu RBAC passed in GitHub Actions run 9039",
+      "focused menu selector and promotion component tests passed after updating their query mocks"
     ],
     "notRun": [
-      "targeted backend and frontend Vitest suites",
-      "GraphQL schema check",
-      "frontend build",
-      "manual responsive browser review"
+      "frontend build and smoke tests are waiting for the final CI run",
+      "manual responsive browser review at 390, 430, 768, 1024 and 1440 remains pending"
     ]
   }
 }
