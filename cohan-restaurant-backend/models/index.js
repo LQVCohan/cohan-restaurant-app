@@ -37,6 +37,7 @@ export { default as PaymentProviderCredential } from "./payment-provider-credent
 export { default as BankTransaction } from "./bank-transaction.model.js";
 export { default as PaymentReconciliation } from "./payment-reconciliation.model.js";
 export { default as PaymentRefund } from "./payment-refund.model.js";
+export { default as CashierShiftReconciliation } from "./cashier-shift-reconciliation.model.js";
 export { default as Invoice } from "./invoice.model.js";
 export { default as Review } from "./review.model.js";
 export { default as AuthProviderLink } from "./auth-provider-link.model.js";
@@ -92,7 +93,7 @@ export { default as PayrollPayout } from "./payroll-payout.model.js";
 export { default as PayrollPayoutBatch } from "./payroll-payout-batch.model.js";
 export { default as EmployeeBankAccount } from "./employee-bank-account.model.js";
 export { default as RestaurantPayoutAccount } from "./restaurant-payout-account.model.js";
-export { default as EmployeeCodeCounter } from "./employee-code-counter.model.js";
+export { default as EmployeeCodeCounter } from "./employeeCodeCounter.model.js";
 export { default as AttendanceCorrectionRequest } from "./attendanceCorrectionRequest.model.js";
 export { default as OvertimeRequest } from "./overtime-request.model.js";
 export { default as SchedulingPolicy } from "./schedulingPolicy.model.js";
