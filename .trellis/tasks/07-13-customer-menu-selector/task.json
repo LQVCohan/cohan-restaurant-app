@@ -1,7 +1,7 @@
 {
   "id": "07-13-customer-menu-selector",
   "title": "Customer named-menu selector",
-  "status": "implemented_unverified",
+  "status": "completed",
   "type": "full-stack-ui-contract-fix",
   "scope": [
     "cohan-restaurant-backend/graphql/schema/menuMultiSlot.graphql",
@@ -30,12 +30,11 @@
       "scoped category and dish queries to the customer-selected menuId while retaining legacy time-slot aggregation for existing callers",
       "added a responsive two-level service-slot and named-menu selector with explicit loading, error, empty and disabled states",
       "preserved restaurantId, timeSlot and menuId in the customer menu URL so browser history restores the same selection",
-      "backend lint, tests, Menu RBAC and build passed in GitHub Actions run 9039",
-      "frontend lint, unit tests and Menu RBAC passed in GitHub Actions run 9039",
-      "focused menu selector and promotion component tests passed after updating their query mocks"
+      "GitHub Actions ci run 9049 passed backend lint, tests, Menu RBAC and build",
+      "GitHub Actions ci run 9049 passed frontend conflict check, lint, unit tests, Menu RBAC, changed component tests, build and Playwright smoke tests"
     ],
     "notRun": [
-      "frontend build and smoke tests are waiting for the final CI run",
+      "full frontend component suite was skipped by the workflow because changed component tests passed",
       "manual responsive browser review at 390, 430, 768, 1024 and 1440 remains pending"
     ]
   }
