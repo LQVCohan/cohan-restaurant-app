@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, Clock3, Sparkles, TriangleAlert } from "lucide-react";
 import { formatCurrency } from "../../../../utils/formatters";
+import { __testables as promotionTestables } from "../../../../hooks/useActiveMenuPromotions";
 import {
   buildFoodDetailPath,
   buildFoodDetailState,
@@ -13,13 +14,19 @@ import {
 import "../styles/MenuItemCard.scss";
 
 const MENU_ITEM_PLACEHOLDER = "/default-dishes.jpg";
+const { calculatePromotionPricePreview } = promotionTestables;
 
-export const getMenuItemPriceLabel = (item = {}) => {
-  const prices = (item.servingVariants || [])
+const getMenuItemPrices = (item = {}) => {
+  const variantPrices = (item.servingVariants || [])
     .map((variant) => Number(variant?.price))
     .filter((price) => Number.isFinite(price) && price >= 0);
-  if (!prices.length) return formatCurrency(item.basePrice);
 
+  if (variantPrices.length) return variantPrices;
+  const basePrice = Number(item.basePrice);
+  return Number.isFinite(basePrice) && basePrice >= 0 ? [basePrice] : [0];
+};
+
+export const getMenuItemPriceLabel = (item = {}, prices = getMenuItemPrices(item)) => {
   const minimum = Math.min(...prices);
   const maximum = Math.max(...prices);
   return minimum === maximum
@@ -27,11 +34,30 @@ export const getMenuItemPriceLabel = (item = {}) => {
     : `Từ ${formatCurrency(minimum)}`;
 };
 
+export const getMenuItemPricePresentation = (item = {}) => {
+  const prices = getMenuItemPrices(item);
+  const originalLabel = getMenuItemPriceLabel(item, prices);
+  const previews = prices.map((price) =>
+    calculatePromotionPricePreview(item.promotion, price, 1),
+  );
+  const discountedPrices = previews.map((preview) => preview.finalTotal);
+  const hasImmediateDiscount = previews.some((preview) => preview.discount > 0);
+
+  return {
+    originalLabel,
+    discountedLabel: hasImmediateDiscount
+      ? getMenuItemPriceLabel(item, discountedPrices)
+      : originalLabel,
+    hasImmediateDiscount,
+  };
+};
+
 const MenuItemCard = ({ item, to, state, onClick, disabled = false }) => {
   const foodPreferenceMeta = item?.foodPreferenceMeta;
   const availability = getMenuItemAvailability(item);
   const canOrderNow = canCustomerOrderMenuItem(item) && !disabled;
   const imageSrc = item?.thumbImage || MENU_ITEM_PLACEHOLDER;
+  const pricePresentation = getMenuItemPricePresentation(item);
   const maxAvailable = Number(item?.maxAvailable);
   const lowStockLabel =
     canOrderNow &&
@@ -156,7 +182,14 @@ const MenuItemCard = ({ item, to, state, onClick, disabled = false }) => {
         </div>
 
         <div className="bottom">
-          <span className="price">{getMenuItemPriceLabel(item)}</span>
+          <span className="menu-item-card__price-group">
+            {pricePresentation.hasImmediateDiscount ? (
+              <span className="menu-item-card__original-price">
+                {pricePresentation.originalLabel}
+              </span>
+            ) : null}
+            <span className="price">{pricePresentation.discountedLabel}</span>
+          </span>
           <span className="add-btn" aria-hidden="true">
             {canOrderNow ? "Chọn món" : "Xem chi tiết"}
             <ChevronRight size={16} />
