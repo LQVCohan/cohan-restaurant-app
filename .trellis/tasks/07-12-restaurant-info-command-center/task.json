@@ -1,0 +1,24 @@
+{
+  "id": "07-12-restaurant-info-command-center",
+  "title": "Tổ chức lại trang thông tin nhà hàng",
+  "status": "implemented_unverified",
+  "type": "frontend-redesign",
+  "scope": [
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantPublicationControl.scss"
+  ],
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "npm run build",
+      "browser smoke at 1920px, 430x932 and 390x844"
+    ],
+    "completed": [
+      "traced Restaurant model and GraphQL update flow through RestaurantInfoManagement and RestaurantPublicationControl",
+      "reviewed ManagerLayout caller order and shared ManagementPageHeader structure",
+      "reviewed the final route-scoped SCSS diff"
+    ],
+    "notRun": [
+      "local build and browser smoke test were unavailable in the connected GitHub environment"
+    ]
+  }
+}
