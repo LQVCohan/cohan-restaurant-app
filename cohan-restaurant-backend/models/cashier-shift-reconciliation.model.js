@@ -85,6 +85,13 @@ const CashierShiftReconciliationSchema = BaseSchemaModel({
   auditTrail: { type: [ReconciliationAuditSchema], default: [] },
 });
 
+CashierShiftReconciliationSchema.pre("validate", function releaseTerminalActiveKey(next) {
+  if (["APPROVED", "WAIVED", "REJECTED"].includes(this.status)) {
+    this.activeKey = undefined;
+  }
+  next();
+});
+
 CashierShiftReconciliationSchema.index(
   { activeKey: 1 },
   {
