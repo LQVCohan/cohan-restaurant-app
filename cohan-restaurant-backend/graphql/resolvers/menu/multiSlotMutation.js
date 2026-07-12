@@ -44,7 +44,9 @@ const optionalNumber = (value, field, max = Infinity) => {
 const normalizeEnumArray = (values, allowed, field) => {
   if (values === undefined) return undefined;
   if (!Array.isArray(values)) throw badInput(`${field} phải là danh sách`);
-  const normalized = [...new Set(values.map(String).map((value) => value.trim()).filter(Boolean))];
+  const normalized = [
+    ...new Set(values.map(String).map((value) => value.trim()).filter(Boolean)),
+  ];
   const invalid = normalized.find((value) => !allowed.has(value));
   if (invalid) throw badInput(`${field} chứa giá trị không hợp lệ: ${invalid}`);
   return normalized;
@@ -105,11 +107,20 @@ export const MenuMultiSlotMutation = {
     const values = {
       restaurantId,
       timeSlot,
-      name: String(name || "Menu").trim() || "Menu",
-      description: description ?? null,
-      coverImage: coverImage ?? null,
-      categoryMenuId: categoryMenuId || null,
-      isActive: typeof isActive === "boolean" ? isActive : true,
+      name:
+        String(name ?? before?.name ?? "Menu").trim() ||
+        before?.name ||
+        "Menu",
+      description:
+        description !== undefined ? description : before?.description ?? null,
+      coverImage:
+        coverImage !== undefined ? coverImage : before?.coverImage ?? null,
+      categoryMenuId:
+        categoryMenuId !== undefined
+          ? categoryMenuId || null
+          : before?.categoryMenuId || null,
+      isActive:
+        typeof isActive === "boolean" ? isActive : before?.isActive ?? true,
     };
 
     const document = before
@@ -134,19 +145,43 @@ export const MenuMultiSlotMutation = {
   },
 
   createMenuItem: async (parent, { input }, ctx) => {
-    if (!input?.menuId) {
+    if (!isOid(input?.restaurantId) || !isOid(input?.categoryId)) {
+      throw badInput("restaurantId hoặc categoryId không hợp lệ");
+    }
+    if (!TIME_SLOTS.has(input?.timeSlot)) {
+      throw badInput("Khung giờ không hợp lệ");
+    }
+
+    await requireMenuPermission(
+      ctx,
+      input.restaurantId,
+      MENU_PERMISSION.CREATE_ITEM,
+    );
+
+    if (!input.menuId) {
+      const matchingMenus = await Menu.find({
+        restaurantId: input.restaurantId,
+        timeSlot: input.timeSlot,
+      })
+        .select({ _id: 1 })
+        .limit(2)
+        .lean();
+
+      if (matchingMenus.length > 1) {
+        throw badInput(
+          "Khung giờ này có nhiều thực đơn. Vui lòng chọn menuId trước khi thêm món.",
+        );
+      }
       return MenuMutation.createMenuItem(parent, { input }, ctx);
     }
-    if (![input.restaurantId, input.menuId, input.categoryId].every(isOid)) {
-      throw badInput("restaurantId, menuId hoặc categoryId không hợp lệ");
-    }
+    if (!isOid(input.menuId)) throw badInput("menuId không hợp lệ");
 
     const menu = await Menu.findOne({
       _id: input.menuId,
       restaurantId: input.restaurantId,
     }).lean();
     if (!menu) throw new GraphQLError("Không tìm thấy thực đơn");
-    if (input.timeSlot && input.timeSlot !== menu.timeSlot) {
+    if (input.timeSlot !== menu.timeSlot) {
       throw badInput("Thực đơn không thuộc khung giờ đã chọn");
     }
 
@@ -162,12 +197,6 @@ export const MenuMultiSlotMutation = {
     const foodType = String(input.foodType || "UNKNOWN").toUpperCase();
     if (!FOOD_TYPES.has(foodType)) throw badInput("foodType không hợp lệ");
     const basePrice = optionalNumber(input.basePrice, "basePrice") ?? 0;
-
-    await requireMenuPermission(
-      ctx,
-      input.restaurantId,
-      MENU_PERMISSION.CREATE_ITEM,
-    );
 
     const payload = {
       restaurantId: input.restaurantId,
@@ -187,10 +216,16 @@ export const MenuMultiSlotMutation = {
       orderCounter: optionalNumber(input.orderCounter, "orderCounter"),
       notes: input.notes,
       foodType,
-      meatTypes: normalizeEnumArray(input.meatTypes, MEAT_TYPES, "meatTypes") || [],
-      dietTags: normalizeEnumArray(input.dietTags, DIET_TAGS, "dietTags") || [],
+      meatTypes:
+        normalizeEnumArray(input.meatTypes, MEAT_TYPES, "meatTypes") || [],
+      dietTags:
+        normalizeEnumArray(input.dietTags, DIET_TAGS, "dietTags") || [],
       allergenTags:
-        normalizeEnumArray(input.allergenTags, ALLERGEN_TAGS, "allergenTags") || [],
+        normalizeEnumArray(
+          input.allergenTags,
+          ALLERGEN_TAGS,
+          "allergenTags",
+        ) || [],
       tasteProfile: normalizeTasteProfile(input.tasteProfile),
     };
 
