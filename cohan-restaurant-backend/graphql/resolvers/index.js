@@ -24,6 +24,9 @@ import payment from "./payment/index.js";
 import staff from "./staff/index.js";
 import { guardPayrollOverviewQueries } from "./staff/payrollOverviewScope.query.js";
 import { withStaffInvitationFlow } from "./staff/invitationFlow.js";
+import performancePolicy, {
+  wrapPerformanceRecalculation,
+} from "./staffPerformancePolicy/index.js";
 import attendanceOvertime from "./attendance_overtime/index.js";
 import review from "./review/index.js";
 import reviewComment from "./review_comment/index.js";
@@ -56,7 +59,13 @@ const guardedBrandMemberMutations = guardBrandMemberRoleMutations({
   ...(brand.Mutation || {}),
   ...(brandInvitationFlow.Mutation || {}),
 });
-const staffMutations = withStaffInvitationFlow(staff.Mutation || {});
+const baseStaffMutations = withStaffInvitationFlow(staff.Mutation || {});
+const staffMutations = {
+  ...baseStaffMutations,
+  recalculateStaffPerformanceSnapshots: wrapPerformanceRecalculation(
+    baseStaffMutations.recalculateStaffPerformanceSnapshots,
+  ),
+};
 const staffQueries = {
   ...(staff.Query || {}),
   ...guardPayrollOverviewQueries(staff.Query || {}),
@@ -85,6 +94,7 @@ export default {
     ...(eventLogResolvers.Query || {}),
     ...(payment.Query || {}),
     ...staffQueries,
+    ...(performancePolicy.Query || {}),
     ...(review.Query || {}),
     ...(reviewComment.Query || {}),
     ...(cart.Query || {}),
@@ -135,6 +145,7 @@ export default {
     ...(eventLogResolvers.Mutation || {}),
     ...(payment.Mutation || {}),
     ...staffMutations,
+    ...(performancePolicy.Mutation || {}),
     ...(attendanceOvertime.Mutation || {}),
     ...(review.Mutation || {}),
     ...(reviewComment.Mutation || {}),
