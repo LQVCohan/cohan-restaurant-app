@@ -13,6 +13,9 @@ type StaffAttendanceRecord {
   plannedEndTime: DateTime
   actualCheckInAt: DateTime
   actualCheckOutAt: DateTime
+  # Compatibility aliases returned by myShiftAttendances/managerShiftAttendances.
+  checkInAt: DateTime
+  checkOutAt: DateTime
   workedMinutes: Float
   hours: Float
   latenessMinutes: Int
