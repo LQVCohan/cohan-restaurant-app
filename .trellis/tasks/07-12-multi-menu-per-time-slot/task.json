@@ -1,0 +1,44 @@
+{
+  "id": "07-12-multi-menu-per-time-slot",
+  "title": "Multiple menus per restaurant time slot",
+  "status": "in_progress",
+  "type": "full-stack-domain-fix",
+  "scope": [
+    "cohan-restaurant-backend/models/menu.model.js",
+    "cohan-restaurant-backend/graphql/schema/menu.graphql",
+    "cohan-restaurant-backend/graphql/schema/category.graphql",
+    "cohan-restaurant-backend/graphql/schema/inventory.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/menu/query.js",
+    "cohan-restaurant-backend/graphql/resolvers/menu/mutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/menu/copyMutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/menu/inventorySyncMutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/category/customerQuery.js",
+    "cohan-restaurant-backend/graphql/resolvers/inventory/recipe.query.js",
+    "cohan-restaurant-backend/scripts/migrateMenuMultiSlotIndexes.js",
+    "cohan-restaurant-backend/package.json",
+    "cohan-restaurant-backend/tests/resolvers/menu-multi-slot.test.js",
+    "src/hooks/useMenuManagement.js",
+    "src/hooks/useRecipes.js",
+    "src/components/Dashboard_Manager/Storage/graphql/recipe.gql.js",
+    "src/components/Dashboard_Manager/Menu/MenuManagement.jsx",
+    "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.jsx",
+    "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModal.jsx",
+    "src/components/Customer/RestaurantMenu/components/MenuDetailView.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "cd cohan-restaurant-backend && npx vitest run tests/resolvers/menu-multi-slot.test.js tests/resolvers/menu-restaurant-access.test.js",
+      "npm run check:graphql",
+      "npm run build",
+      "manual manager and customer menu review at 390x844, 768px and 1440px",
+      "cd cohan-restaurant-backend && npm run migrate:menu-multi-slot:check"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, frontend-design and ui-ux-pro-max",
+      "traced Menu schema/index through menu/category/recipe resolvers, GraphQL operations, Apollo hooks, manager UI, customer UI and tests",
+      "confirmed MenuItem already belongs to an exact menuId and is the reusable domain boundary",
+      "confirmed the unique restaurantId plus timeSlot index, findOne-by-slot resolvers and Map-by-slot UI are the shared root causes"
+    ],
+    "notRun": []
+  }
+}
