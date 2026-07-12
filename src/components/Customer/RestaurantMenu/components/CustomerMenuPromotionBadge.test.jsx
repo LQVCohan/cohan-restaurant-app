@@ -12,9 +12,16 @@ import MenuDetailView, {
 } from "./MenuDetailView";
 import MenuItemCard from "./MenuItemCard";
 
-vi.mock("../../../../hooks/useActiveMenuPromotions", () => ({
-  useActiveMenuPromotions: vi.fn(),
-}));
+vi.mock(
+  "../../../../hooks/useActiveMenuPromotions",
+  async (importOriginal) => {
+    const actual = await importOriginal();
+    return {
+      ...actual,
+      useActiveMenuPromotions: vi.fn(),
+    };
+  },
+);
 
 const readRepoFile = (relativePath) =>
   fs.readFileSync(path.resolve(process.cwd(), relativePath), "utf-8");
