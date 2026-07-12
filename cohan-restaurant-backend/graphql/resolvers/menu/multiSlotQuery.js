@@ -105,6 +105,13 @@ const addSearchAndCategory = (query, args) => {
 };
 
 export const MenuMultiSlotQuery = {
+  customerMenus: async (_parent, { restaurantId }) => {
+    if (!isOid(restaurantId)) return [];
+    return Menu.find({ restaurantId, isActive: true })
+      .sort({ timeSlot: 1, name: 1, _id: 1 })
+      .lean({ virtuals: true });
+  },
+
   menuItems: async (parent, args) => {
     if (!args?.timeSlot) return MenuQuery.menuItems(parent, args);
     if (!isOid(args.restaurantId)) return [];
