@@ -1,0 +1,29 @@
+{
+  "id": "07-13-manager-payroll-settings",
+  "title": "Cấu hình tính lương theo nhà hàng cho quản lý",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "manager-payroll-settings",
+  "priority": "P1",
+  "createdAt": "2026-07-13",
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/payroll/payrollPermission.service.js",
+    "cohan-restaurant-backend/graphql/resolvers/staff/mutation.js",
+    "src/hooks/usePayroll.js",
+    "src/components/Dashboard_Manager/PayrollPage/PayrollManagement.jsx",
+    "src/components/Dashboard_Manager/PayrollPage/PayrollManagement.scss",
+    "cohan-restaurant-backend/tests/resolvers/staff-payroll-mutation-access.test.js"
+  ],
+  "validation": {
+    "planned": [
+      "targeted payroll mutation access Vitest",
+      "frontend GraphQL operation validation",
+      "targeted payroll component test or build"
+    ]
+  },
+  "meta": {
+    "skills": ["ponytail", "frontend-design", "taste-ui-redesign", "ui-ux-pro-max"]
+  }
+}
