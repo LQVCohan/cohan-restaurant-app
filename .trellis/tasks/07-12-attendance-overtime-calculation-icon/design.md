@@ -4,9 +4,9 @@
 
 ### Một calculator cho mọi đường ghi công
 
-`calculateAttendanceMetrics` và `deriveAttendanceStatus` là nguồn sự thật duy nhất. Resolver chỉ chịu trách nhiệm xác thực quyền, chọn ca, gán timestamp và lưu kết quả.
+`calculateAttendanceMetrics` và `deriveAttendanceStatus` là nguồn sự thật duy nhất. `TimesheetSchema.pre("save")` chuẩn hóa metrics và trạng thái từ timestamp trước khi state tăng ca chạy, nên cả check-in theo ca, thao tác nhanh và chỉnh công đều có cùng kết quả lưu trữ.
 
-Không tạo abstraction mới vì service hiện tại đã có đúng trách nhiệm và đang được luồng chỉnh công sử dụng.
+Không tạo abstraction mới vì service hiện tại đã có đúng trách nhiệm và đang được luồng chỉnh công sử dụng. Các phép tính cũ trong resolver chưa quyết định dữ liệu cuối cùng; pre-save invariant ghi đè bằng kết quả chuẩn.
 
 ### Công thức chấm công
 
@@ -31,7 +31,9 @@ Phân loại payroll:
 
 ### Hoàn tất yêu cầu tăng ca
 
-Request được duyệt trước chỉ là hạn mức dự kiến. Khi hoàn tất, số phút trả mặc định là `min(phút request đã duyệt, phút thực tế trên Timesheet)` và input thủ công cũng không được vượt phút thực tế. Timesheet lưu `overtimeReviewNote`, `overtimeReviewedBy`, `overtimeReviewedAt`.
+Request được duyệt trước chỉ là hạn mức dự kiến. Khi hoàn tất, số phút trả mặc định là `min(phút request đã duyệt, phút thực tế trên Timesheet)`. State invariant chặn mọi lần lưu mới có số phút duyệt vượt phút thực tế; khi chỉnh công làm thay đổi số phút OT, approval cũ được đưa về pending.
+
+Timesheet thêm virtual tương thích `overtimeApprovalNote -> overtimeReviewNote` để luồng hoàn tất hiện tại lưu đúng ghi chú mà không tạo thêm field dữ liệu trùng.
 
 ### Icon staff
 
