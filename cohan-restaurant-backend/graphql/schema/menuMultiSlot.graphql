@@ -1,0 +1,23 @@
+# Multiple named menus may share one restaurant service time slot.
+extend input MenuItemFilter {
+  menuId: ID
+}
+
+extend input EnsureMenuInput {
+  id: ID
+}
+
+extend input CreateMenuItemInput {
+  menuId: ID
+}
+
+extend input SyncMenuItemInventoryStatusesInput {
+  menuId: ID
+}
+
+extend type Query {
+  customerMenuCategoriesByMenu(
+    restaurantId: ID!
+    menuId: ID!
+  ): [Category!]!
+}
