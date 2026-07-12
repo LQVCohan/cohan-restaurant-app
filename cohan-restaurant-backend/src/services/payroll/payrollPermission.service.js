@@ -1,7 +1,7 @@
 const ACTION_ROLE_MAP = {
   "payroll.view": ["ADMIN", "ACCOUNTANT", "HR", "MANAGER"],
   "payroll.validate": ["ADMIN", "ACCOUNTANT", "HR", "MANAGER"],
-  "payroll.settings.update": ["ADMIN", "ACCOUNTANT"],
+  "payroll.settings.update": ["ADMIN", "ACCOUNTANT", "MANAGER"],
   "payroll.period.create": ["ADMIN", "ACCOUNTANT", "MANAGER"],
   "payroll.period.recalculate": ["ADMIN", "ACCOUNTANT", "MANAGER"],
   "payroll.period.finalize": ["ADMIN", "ACCOUNTANT", "MANAGER"],
