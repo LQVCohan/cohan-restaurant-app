@@ -209,7 +209,7 @@ function buildPayableAttendance(row) {
     };
   }
 
-  if (row.isOffSchedule === true || !plannedStart || !plannedEnd) {
+  if (row.isOffSchedule === true) {
     const regularMinutes = minutesBetween(checkIn, checkOut);
     return {
       regularInterval: [checkIn, checkOut],
@@ -217,6 +217,23 @@ function buildPayableAttendance(row) {
       regularMinutes,
       overtimeMinutes: 0,
       totalMinutes: regularMinutes,
+    };
+  }
+
+  if (!plannedStart || !plannedEnd) {
+    const storedMinutes = Math.max(Math.round(Number(row.hours || 0) * 60), 0);
+    const actualOvertimeMinutes = Math.max(Number(row.overtimeMinutes || 0), 0);
+    const payableOvertimeMinutes = Math.min(
+      approvedOvertimeMinutes,
+      actualOvertimeMinutes,
+    );
+    const regularMinutes = Math.max(storedMinutes - actualOvertimeMinutes, 0);
+    return {
+      regularInterval: null,
+      overtimeInterval: null,
+      regularMinutes,
+      overtimeMinutes: payableOvertimeMinutes,
+      totalMinutes: regularMinutes + payableOvertimeMinutes,
     };
   }
 
@@ -664,6 +681,7 @@ export async function buildPayrollItemsForRange({
       })
         .select({
           employeeId: 1,
+          shiftId: 1,
           workDate: 1,
           plannedStartTime: 1,
           plannedEndTime: 1,
@@ -797,6 +815,9 @@ export async function buildPayrollItemsForRange({
         : [],
     ]);
 
+  const shiftById = new Map(
+    shifts.map((shift) => [String(shift._id), shift]),
+  );
   const runtimeBreakdownByStaff = new Map();
   for (const row of timesheetRows) {
     if (!isTimesheetIncludedInPayroll(row)) continue;
@@ -815,7 +836,14 @@ export async function buildPayrollItemsForRange({
     }
 
     const bucket = runtimeBreakdownByStaff.get(sid);
-    const payable = buildPayableAttendance(row);
+    const assignedShift = row.shiftId
+      ? shiftById.get(String(row.shiftId))
+      : null;
+    const payable = buildPayableAttendance({
+      ...row,
+      plannedStartTime: row.plannedStartTime || assignedShift?.startTime || null,
+      plannedEndTime: row.plannedEndTime || assignedShift?.endTime || null,
+    });
     bucket.totalPayableMinutes += payable.totalMinutes;
 
     if (payable.totalMinutes > 0) {
