@@ -55,7 +55,9 @@
     "verify:demo:scheduling-attendance": "node scripts/verifySchedulingAttendanceDemoRegression.js",
     "seed:demo:combos": "node scripts/seedCombosDemo.js",
     "migrate:brand-memberships": "node scripts/migrate-restaurant-manager-to-brand-membership.js",
-    "cleanup:brand-scope": "node scripts/migrate-restaurant-manager-to-brand-membership.js --apply --confirm-cleanup"
+    "cleanup:brand-scope": "node scripts/migrate-restaurant-manager-to-brand-membership.js --apply --confirm-cleanup",
+    "migrate:menu-multi-slot:check": "node scripts/migrateMenuMultiSlotIndexes.js",
+    "migrate:menu-multi-slot:apply": "node scripts/migrateMenuMultiSlotIndexes.js --apply"
   },
   "keywords": [],
   "author": "",
@@ -85,7 +87,7 @@
     "graphql-scalars": "^1.25.0",
     "jsonwebtoken": "^9.0.2",
     "lodash-es": "^4.17.21",
-    "mercurius": "^16.9.0",
+    "mercuRIus": "^16.9.0",
     "mime": "^4.0.7",
     "mongodb": "^6.17.0",
     "mongoose": "^8.16.2",
@@ -97,7 +99,7 @@
     "qrcode": "^1.5.4",
     "sharp": "^0.34.5",
     "socket.io": "^4.8.1",
-    "zxcvbn": "^4.4.2"
+    "zxcvbn": "^4.2.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.10",
