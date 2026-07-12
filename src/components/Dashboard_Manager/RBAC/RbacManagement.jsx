@@ -440,11 +440,14 @@ function RbacPremiumHeader({ restaurants, selectedRestaurantId, setSelectedResta
 }
 
 export default function RbacManagement() {
-  const { user } = useContext(AuthContext);
-  const canViewRbac = hasAnyPermission(user, auditPermissions);
+  const { user, brandMemberships = [] } = useContext(AuthContext);
+  const canManageBrandRoles = brandMemberships.some((membership) =>
+    membership?.status === "active" && ["owner", "admin"].includes(String(membership?.role || "").trim().toLowerCase())
+  );
+  const canViewRbac = canManageBrandRoles || hasAnyPermission(user, auditPermissions);
   const canViewAuditLogs = hasAnyPermission(user, auditPermissions);
-  const canWriteRoles = hasAnyPermission(user, ["role.write", "permission.write"]);
-  const canAssignRole = hasPermission(user, "staff.write");
+  const canWriteRoles = canManageBrandRoles || hasAnyPermission(user, ["role.write", "permission.write"]);
+  const canAssignRole = canManageBrandRoles || hasPermission(user, "staff.write");
   const canSeeAllRestaurants = hasPermission(user, "*") || hasPermission(user, "system.manage");
   const canViewGlobalAuditLogs = canSeeAllRestaurants;
   const [activeTab, setActiveTab] = useState("overview");
