@@ -6,6 +6,10 @@ import {
   createOrderPayment,
   sanitizePaymentSessionForClient,
 } from "../../../src/services/payment/paymentSession.service.js";
+import {
+  getPaymentBaseApiUrl,
+  getPaymentClientIp,
+} from "../../../src/services/payment/paymentRequestContext.js";
 
 const toId = (value) =>
   value && mongoose.isValidObjectId(value)
@@ -49,17 +53,11 @@ export async function createCustomerOwnedOrderPayment(parent, { input }, ctx) {
     );
   }
 
-  const baseApiUrl =
-    process.env.PUBLIC_BASE_URL ||
-    process.env.APP_PUBLIC_URL ||
-    "http://localhost:4000";
-  const clientIp =
-    ctx?.request?.ip || ctx?.req?.ip || ctx?.request?.headers?.["x-forwarded-for"] || "127.0.0.1";
   const payment = await createOrderPayment({
     ...input,
     userId: String(userId),
-    baseApiUrl,
-    clientIp: String(clientIp).split(",")[0].trim(),
+    baseApiUrl: getPaymentBaseApiUrl(ctx),
+    clientIp: getPaymentClientIp(ctx),
   });
   return sanitizePaymentSessionForClient(payment, { includeRaw: false });
 }
