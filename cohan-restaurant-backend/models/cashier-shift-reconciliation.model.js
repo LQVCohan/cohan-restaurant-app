@@ -85,9 +85,13 @@ const CashierShiftReconciliationSchema = BaseSchemaModel({
   auditTrail: { type: [ReconciliationAuditSchema], default: [] },
 });
 
-CashierShiftReconciliationSchema.pre("validate", function releaseTerminalActiveKey(next) {
+CashierShiftReconciliationSchema.pre("validate", function normalizeActiveKey(next) {
   if (["APPROVED", "WAIVED", "REJECTED"].includes(this.status)) {
     this.activeKey = undefined;
+  } else if (typeof this.activeKey === "string") {
+    // Transactions are attributed by cashier and time range, so one cashier may
+    // not own overlapping active drawers even when register codes differ.
+    this.activeKey = this.activeKey.split(":").slice(0, 2).join(":");
   }
   next();
 });
