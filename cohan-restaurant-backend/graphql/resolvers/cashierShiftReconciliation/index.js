@@ -8,6 +8,7 @@ import {
   reviewCashierShiftReconciliation,
   submitCashierShiftReconciliation,
 } from "../../../src/services/staffPerformance/cashierShiftReconciliation.service.js";
+import { refreshCashierPerformanceSnapshotsForReconciliation } from "../../../src/services/staffPerformance/cashierPerformanceSnapshotRefresh.service.js";
 
 export function wrapCashierPerformanceRecalculation(resolver) {
   if (typeof resolver !== "function") {
@@ -53,7 +54,9 @@ export default {
     },
     reviewCashierShiftReconciliation: async (_, { input }, ctx) => {
       requireAuth(ctx);
-      return reviewCashierShiftReconciliation({ input, ctx });
+      const reviewed = await reviewCashierShiftReconciliation({ input, ctx });
+      await refreshCashierPerformanceSnapshotsForReconciliation(reviewed);
+      return reviewed;
     },
   },
 };
