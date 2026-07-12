@@ -30,11 +30,12 @@ export const PERFORMANCE_POLICY_EDITABLE_FIELDS = Object.freeze([
 
 export const PERFORMANCE_POLICY_LOCKED_FIELDS = Object.freeze([
   "Trọng số 25/25/20/20/10",
-  "Công thức năng suất theo thời lượng ca",
-  "Mức trừ đi trễ, về sớm và vắng mặt",
-  "Quy tắc Chất lượng theo từng vai trò",
-  "Mức trừ yêu cầu chỉnh công",
-  "Quy trình incident và hoàn điểm appeal",
+  "Năng suất = phút làm thực tế / phút được phân ca × 100; số đơn chỉ dùng làm dữ liệu tham khảo.",
+  "Đúng giờ bắt đầu từ 100: trừ 6 điểm/lượt trễ, 5 điểm/lượt về sớm, 12 điểm/lượt vắng, 0,15 điểm/phút trễ và 0,12 điểm/phút về sớm.",
+  "Chất lượng lấy skillScore của quản lý và chỉ giảm khi có bằng chứng phù hợp vai trò từ khách hàng, bếp/bar hoặc nghiệp vụ thu ngân.",
+  "Đánh giá quản lý lấy managerRatingScore; khi chưa có review dùng mức trung lập 75.",
+  "Tuân thủ bắt đầu từ 100 và hiện trừ 7 điểm cho mỗi yêu cầu chỉnh công được ghi nhận trong kỳ.",
+  "Điểm cuối cộng/trừ các incident đã duyệt và phần hoàn điểm appeal, sau đó giới hạn trong khoảng 0–100.",
 ]);
 
 const PERFORMANCE_POLICY_MANAGER_ROLES = new Set(["ADMIN", "MANAGER", "HR"]);
