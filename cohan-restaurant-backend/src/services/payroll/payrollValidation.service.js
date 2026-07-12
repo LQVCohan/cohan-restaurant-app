@@ -123,9 +123,14 @@ export async function validatePayrollPeriod(periodId, options = {}) {
       workDate: { $gte: start, $lte: end },
       overtimeMinutes: { $gt: 0 },
       $or: [
-        { approvedOvertimeMinutes: { $exists: false } },
-        { approvedOvertimeMinutes: { $lte: 0 } },
-        { overtimeApprovalStatus: { $ne: "approved" } },
+        { overtimeApprovalStatus: { $exists: false } },
+        { overtimeApprovalStatus: null },
+        { overtimeApprovalStatus: "not_required" },
+        { overtimeApprovalStatus: "pending" },
+        {
+          overtimeApprovalStatus: "approved",
+          approvedOvertimeMinutes: { $lte: 0 },
+        },
       ],
     })
       .populate("employeeId", "fullName employeeCode")
