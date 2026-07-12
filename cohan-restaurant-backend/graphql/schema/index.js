@@ -227,6 +227,7 @@ const files = [
   "role.graphql",
   "permission.graphql",
   "menu.graphql",
+  "menuMultiSlot.graphql",
   "customerMenuItemLocations.graphql",
   "category.graphql",
   "modifier.graphql",
