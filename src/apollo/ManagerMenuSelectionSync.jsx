@@ -7,9 +7,11 @@ export default function ManagerMenuSelectionSync() {
 
   useEffect(() => {
     const handleSelection = () => {
-      client.refetchQueries({
-        include: ["GetCategories", "TopCategoriesByRestaurant"],
-      });
+      void client
+        .refetchQueries({
+          include: ["GetCategories", "TopCategoriesByRestaurant"],
+        })
+        .catch(() => {});
     };
 
     window.addEventListener(MANAGER_MENU_SELECTION_EVENT, handleSelection);
