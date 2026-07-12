@@ -1,0 +1,26 @@
+{
+  "id": "07-12-manager-menu-selected-menu-flow",
+  "title": "Make the selected manager menu explicit end to end",
+  "status": "in_progress",
+  "type": "frontend-contract-fix",
+  "scope": [
+    "src/hooks/useMenuManagement.js",
+    "src/components/Dashboard_Manager/Menu/MenuManagement.jsx",
+    "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.jsx",
+    "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModal.jsx",
+    "src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run src/apollo/managerMenuSelectionLink.test.js src/components/Dashboard_Manager/Menu/components/StatsSection/CompactMenuStrip.test.jsx",
+      "npm run check:graphql",
+      "npm run build"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, frontend-design and ui-ux-pro-max",
+      "traced Menu/MenuItem schema and multi-slot resolvers through Apollo hook, manager selection, menu CRUD, item creation, inventory sync and bulk pricing",
+      "confirmed backend menuId extensions and resolver overrides are already active"
+    ],
+    "notRun": []
+  }
+}
