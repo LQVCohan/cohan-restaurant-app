@@ -182,25 +182,67 @@ const formatAmountLabel = (value) =>
 const getPromotionLabel = (promotion) => {
   if (!promotion) return "";
 
+  let discountLabel = "Ưu đãi";
   if (
     promotion.discountType === "PERCENT" ||
     promotion.promotionType === "PERCENTAGE"
   ) {
-    return `-${formatDiscountValue(promotion.discountValue)}%`;
-  }
-
-  if (
+    discountLabel = `-${formatDiscountValue(promotion.discountValue)}%`;
+  } else if (
     promotion.discountType === "AMOUNT" ||
     promotion.promotionType === "FIXED"
   ) {
-    return `Giảm ${formatAmountLabel(promotion.discountValue)}`;
+    discountLabel = `Giảm ${formatAmountLabel(promotion.discountValue)}`;
   }
 
-  return "Ưu đãi";
+  const minimum = Math.max(0, Number(promotion.minOrderValue || 0));
+  return minimum > 0
+    ? `${discountLabel} · đơn từ ${formatAmountLabel(minimum)}`
+    : discountLabel;
+};
+
+const calculatePromotionPricePreview = (
+  promotion,
+  unitPrice,
+  quantity = 1,
+) => {
+  const safeUnitPrice = Math.max(0, Number(unitPrice || 0));
+  const safeQuantity = Math.max(1, Number(quantity || 1));
+  const originalTotal = Math.round(safeUnitPrice * safeQuantity);
+  const requiresOrderMinimum = Number(promotion?.minOrderValue || 0) > 0;
+
+  if (!promotion || originalTotal <= 0 || requiresOrderMinimum) {
+    return {
+      originalTotal,
+      finalTotal: originalTotal,
+      discount: 0,
+      requiresOrderMinimum,
+    };
+  }
+
+  const discountType = String(promotion.discountType || "").toUpperCase();
+  let discount =
+    discountType === "PERCENT"
+      ? (originalTotal * Math.max(0, Number(promotion.discountValue || 0))) / 100
+      : Math.max(0, Number(promotion.discountValue || 0));
+
+  const maxDiscount = Math.max(0, Number(promotion.maxDiscount || 0));
+  if (discountType === "PERCENT" && maxDiscount > 0) {
+    discount = Math.min(discount, maxDiscount);
+  }
+
+  discount = Math.min(originalTotal, Math.max(0, Math.round(discount)));
+  return {
+    originalTotal,
+    finalTotal: originalTotal - discount,
+    discount,
+    requiresOrderMinimum: false,
+  };
 };
 
 export const __testables = {
   buildPromotionLookup,
+  calculatePromotionPricePreview,
   collectCandidateIds,
   findPromotionInLookup,
   getMenuCategoryCandidateIds,
