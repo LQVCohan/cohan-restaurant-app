@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { CheckCircle2, ExternalLink, KeyRound, Link2Off, ShieldCheck } from "lucide-react";
+import PaymentGatewaySetupGuide from "./PaymentGatewaySetupGuide";
 import "./PaymentProviderSettingsPage.scss";
 
 const PAYMENT_PROVIDER_SETTINGS = gql`
@@ -14,6 +15,14 @@ const PAYMENT_PROVIDER_SETTINGS = gql`
       maskedIdentifier
       version
       updatedAt
+    }
+    restaurantPaymentProviderSetup(restaurantId: $restaurantId) {
+      publicBaseUrl
+      publiclyReachable
+      vnpayReturnUrl
+      vnpayIpnUrl
+      momoReturnUrl
+      momoIpnUrl
     }
     restaurantPaymentPublicConfig(restaurantId: $restaurantId) {
       defaultProvider
@@ -212,6 +221,7 @@ export default function PaymentProviderSettingsPage({ restaurantId, restaurantNa
   const [updatePaymentSettings] = useMutation(UPDATE_PAYMENT_SETTINGS);
 
   const statuses = data?.restaurantPaymentCredentialStatuses || [];
+  const setup = data?.restaurantPaymentProviderSetup;
   const publicConfig = data?.restaurantPaymentPublicConfig;
   const providerConfigs = publicConfig?.providers || EMPTY_PROVIDER_CONFIGS;
 
@@ -298,9 +308,8 @@ export default function PaymentProviderSettingsPage({ restaurantId, restaurantNa
           },
         },
       });
-      await persistProviderSettings(provider, { active: true, mode });
       setForms((current) => ({ ...current, [provider]: { ...EMPTY_FORMS[provider] } }));
-      setNotice({ message: `Đã kết nối ${provider === "momo" ? "MoMo" : "VNPAY"} cho chi nhánh.`, tone: "success" });
+      setNotice({ message: `Đã kết nối và bật ${provider === "momo" ? "MoMo" : "VNPAY"} cho chi nhánh.`, tone: "success" });
       await refetch();
     } catch (mutationError) {
       setNotice({
@@ -397,6 +406,8 @@ export default function PaymentProviderSettingsPage({ restaurantId, restaurantNa
           {feedbackMessage}
         </div>
       )}
+
+      {!loading && !error ? <PaymentGatewaySetupGuide setup={setup} /> : null}
 
       <section className="payment-provider-settings__grid" aria-label="Phương thức thanh toán">
         {PROVIDERS.map((providerMeta) => {
