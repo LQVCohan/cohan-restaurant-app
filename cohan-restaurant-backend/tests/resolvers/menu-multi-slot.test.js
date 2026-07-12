@@ -171,6 +171,33 @@ describe("multiple menus per service slot", () => {
     ).rejects.toThrow("Vui lòng chọn menuId");
   });
 
+  it("returns active named menus to customers without permission checks", async () => {
+    const { MenuMultiSlotQuery } = await import(
+      "../../graphql/resolvers/menu/multiSlotQuery.js"
+    );
+    const lean = vi.fn().mockResolvedValue([
+      { _id: "valid-menu-vip", name: "Menu VIP", isActive: true },
+      { _id: "valid-menu-casual", name: "Menu ăn chơi", isActive: true },
+    ]);
+    const sort = vi.fn().mockReturnValue({ lean });
+    modelMocks.Menu.find.mockReturnValue({ sort });
+
+    const rows = await MenuMultiSlotQuery.customerMenus(
+      null,
+      { restaurantId: "valid-restaurant" },
+      { user: { id: "valid-manager" } },
+    );
+
+    expect(modelMocks.Menu.find).toHaveBeenCalledWith({
+      restaurantId: "valid-restaurant",
+      isActive: true,
+    });
+    expect(sort).toHaveBeenCalledWith({ timeSlot: 1, name: 1, _id: 1 });
+    expect(permissionMocks.hasPermission).not.toHaveBeenCalled();
+    expect(permissionMocks.requireRestaurantPermission).not.toHaveBeenCalled();
+    expect(rows.map((menu) => menu.name)).toEqual(["Menu VIP", "Menu ăn chơi"]);
+  });
+
   it("loads every menu in a slot but an exact menu when menuId is supplied", async () => {
     const { MenuMultiSlotQuery } = await import(
       "../../graphql/resolvers/menu/multiSlotQuery.js"
