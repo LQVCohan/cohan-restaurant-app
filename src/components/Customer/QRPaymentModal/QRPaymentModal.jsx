@@ -1,11 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Modal from "@/components/common/Modal";
-import { gql } from "@apollo/client";
-import { useLazyQuery } from "@apollo/client/react";
+import { gql, useLazyQuery, useMutation } from "@apollo/client";
 import { usePaymentTimer } from "../../../hooks/usePaymentTimer";
 import { useNotification } from "../../../hooks/useNotification";
 import { formatCurrency } from "../../../utils/formatters";
-import { readStorageValue } from "@/lib/browserStorage";
 import "./QRPaymentModal.scss";
 
 const GET_RESERVATION_STATUS = gql`
@@ -25,7 +23,23 @@ const GET_RESERVATION_STATUS = gql`
   }
 `;
 
-const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:4000/graphql").replace(/\/graphql$/i, "");
+const CREATE_RESERVATION_PAYMENT = gql`
+  mutation CreateReservationPayment($input: CreateReservationPaymentInput!) {
+    createReservationPayment(input: $input) {
+      id
+      provider
+      reference
+      amount
+      status
+      callbackStatus
+      payUrl
+      qrCodeUrl
+      deeplink
+      createdAt
+      metadata
+    }
+  }
+`;
 
 const PROVIDER_OPTIONS = [
   { provider: "momo", label: "MoMo" },
@@ -36,7 +50,6 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
   const depositAmount = Number(booking?.depositAmount ?? booking?.deposit ?? 0);
 
   const [provider, setProvider] = useState("momo");
-  const [creating, setCreating] = useState(false);
   const [activePayment, setActivePayment] = useState(null);
   const [polling, setPolling] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
@@ -48,6 +61,9 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
   const [fetchStatus] = useLazyQuery(GET_RESERVATION_STATUS, {
     fetchPolicy: "network-only",
   });
+  const [createReservationPayment, { loading: creating }] = useMutation(
+    CREATE_RESERVATION_PAYMENT,
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -103,30 +119,22 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
 
   const createPayment = async () => {
     if (!booking?.id) return;
-    setCreating(true);
     try {
-      const token = readStorageValue("auth_token") || readStorageValue("token");
-      const headers = {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      };
-
-      const response = await fetch(
-        `${API_BASE}/api/payments/reservations/${booking.id}/create`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ provider }),
+      const { data } = await createReservationPayment({
+        variables: {
+          input: {
+            reservationId: booking.id,
+            provider,
+          },
         },
-      );
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || !payload?.ok) {
-        throw new Error("PAYMENT_CREATE_FAILED");
-      }
-      setActivePayment(payload.payment);
+      });
+      const payment = data?.createReservationPayment;
+      if (!payment) throw new Error("PAYMENT_CREATE_FAILED");
+
+      setActivePayment(payment);
       setPolling(true);
-      if (payload.payment?.payUrl) {
-        window.open(payload.payment.payUrl, "_blank", "noopener,noreferrer");
+      if (payment.payUrl) {
+        window.open(payment.payUrl, "_blank", "noopener,noreferrer");
       }
       showNotification(
         `Đã mở bước thanh toán bằng ${provider.toUpperCase()}.`,
@@ -137,8 +145,6 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
         "Chưa thể tạo giao dịch. Vui lòng thử lại sau ít phút.",
         "error",
       );
-    } finally {
-      setCreating(false);
     }
   };
 
