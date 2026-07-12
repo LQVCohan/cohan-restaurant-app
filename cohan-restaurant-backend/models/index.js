@@ -93,7 +93,7 @@ export { default as PayrollPayout } from "./payroll-payout.model.js";
 export { default as PayrollPayoutBatch } from "./payroll-payout-batch.model.js";
 export { default as EmployeeBankAccount } from "./employee-bank-account.model.js";
 export { default as RestaurantPayoutAccount } from "./restaurant-payout-account.model.js";
-export { default as EmployeeCodeCounter } from "./employeeCodeCounter.model.js";
+export { default as EmployeeCodeCounter } from "./employee-code-counter.model.js";
 export { default as AttendanceCorrectionRequest } from "./attendanceCorrectionRequest.model.js";
 export { default as OvertimeRequest } from "./overtime-request.model.js";
 export { default as SchedulingPolicy } from "./schedulingPolicy.model.js";
