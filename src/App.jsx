@@ -15,6 +15,7 @@ import "./components/Customer/OrdersManagement/OrdersPageA11yPolish.scss";
 import "./components/Customer/RestaurantMenu/styles/MenuDetailViewPolish.scss";
 import "./components/Customer/Food/FoodDetailAccessibilityPolish.scss";
 import "./components/Customer/AddressPage/AddressPageA11yPolish.scss";
+import "./components/Dashboard_Manager/RestaurantSetup/RestaurantCuisineOnboardingMenuPreview.scss";
 import "./styles/Homepage/RestaurantGridServiceBadges.scss";
 import "./styles/Homepage/HeaderNavigationPolish.scss";
 import ScrollToTop from "./components/common/ScrollToTop";
