@@ -4,17 +4,22 @@ const ids = {
   shiftId: "64b000000000000000000011",
   restaurantId: "64b000000000000000000012",
   employeeId: "64b000000000000000000013",
+  requestId: "64b000000000000000000014",
+  timesheetId: "64b000000000000000000015",
 };
 
 const staffMutationMock = vi.hoisted(() => ({
   checkInShift: vi.fn(),
   checkOutShift: vi.fn(),
   upsertStaffAttendance: vi.fn(),
+  completeOvertimeRequest: vi.fn(),
   markPayrollItemPaid: vi.fn(),
 }));
 
 const modelMocks = vi.hoisted(() => ({
+  OvertimeRequest: { findById: vi.fn() },
   Shift: { findById: vi.fn() },
+  Timesheet: { findOne: vi.fn() },
 }));
 
 const guardMocks = vi.hoisted(() => ({
@@ -30,10 +35,15 @@ vi.mock("../../src/services/payroll/payrollLockGuard.service.js", () =>
 );
 
 function query(value) {
-  return {
+  const result = {
+    select: vi.fn(),
+    sort: vi.fn(),
     lean: vi.fn(async () => value),
     then: (resolve, reject) => Promise.resolve(value).then(resolve, reject),
   };
+  result.select.mockReturnValue(result);
+  result.sort.mockReturnValue(result);
+  return result;
 }
 
 describe("payroll protected staff mutations", () => {
@@ -49,10 +59,31 @@ describe("payroll protected staff mutations", () => {
         endTime: new Date("2026-06-02T17:00:00.000Z"),
       }),
     );
+    modelMocks.OvertimeRequest.findById.mockReturnValue(
+      query({
+        _id: ids.requestId,
+        employeeId: ids.employeeId,
+        restaurantId: ids.restaurantId,
+        shiftId: ids.shiftId,
+        timesheetId: ids.timesheetId,
+        workDate: new Date("2026-06-02T00:00:00.000Z"),
+      }),
+    );
+    modelMocks.Timesheet.findOne.mockReturnValue(
+      query({
+        _id: ids.timesheetId,
+        employeeId: ids.employeeId,
+        restaurantId: ids.restaurantId,
+        overtimeMinutes: 60,
+      }),
+    );
     staffMutationMock.checkInShift.mockResolvedValue({ id: "attendance-1" });
     staffMutationMock.checkOutShift.mockResolvedValue({ id: "attendance-1" });
     staffMutationMock.upsertStaffAttendance.mockResolvedValue({
       id: "attendance-1",
+    });
+    staffMutationMock.completeOvertimeRequest.mockResolvedValue({
+      id: ids.requestId,
     });
     staffMutationMock.markPayrollItemPaid.mockResolvedValue({
       id: "payroll-item-1",
@@ -157,5 +188,80 @@ describe("payroll protected staff mutations", () => {
       expect.anything(),
       undefined,
     );
+  });
+
+  it("uses the Timesheet overtime as the completion source of truth", async () => {
+    const mutation = (
+      await import(
+        "../../graphql/resolvers/staff/payrollProtectedAttendance.mutation.js"
+      )
+    ).default;
+
+    await mutation.completeOvertimeRequest(
+      null,
+      { id: ids.requestId },
+      { user: { id: "manager-1", userType: "MANAGER" } },
+      undefined,
+    );
+
+    expect(staffMutationMock.completeOvertimeRequest).toHaveBeenCalledWith(
+      null,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          requestId: ids.requestId,
+          actualOvertimeMinutes: 60,
+        }),
+      }),
+      expect.anything(),
+      undefined,
+    );
+  });
+
+  it("rejects completion minutes that differ from recorded attendance", async () => {
+    const mutation = (
+      await import(
+        "../../graphql/resolvers/staff/payrollProtectedAttendance.mutation.js"
+      )
+    ).default;
+
+    await expect(
+      mutation.completeOvertimeRequest(
+        null,
+        {
+          input: {
+            requestId: ids.requestId,
+            actualOvertimeMinutes: 90,
+          },
+        },
+        { user: { id: "manager-1", userType: "MANAGER" } },
+        undefined,
+      ),
+    ).rejects.toThrow(/bản ghi chấm công/i);
+
+    expect(staffMutationMock.completeOvertimeRequest).not.toHaveBeenCalled();
+  });
+
+  it("rejects payable overtime above the recorded actual minutes", async () => {
+    const mutation = (
+      await import(
+        "../../graphql/resolvers/staff/payrollProtectedAttendance.mutation.js"
+      )
+    ).default;
+
+    await expect(
+      mutation.completeOvertimeRequest(
+        null,
+        {
+          input: {
+            requestId: ids.requestId,
+            approvedOvertimeMinutes: 90,
+          },
+        },
+        { user: { id: "manager-1", userType: "MANAGER" } },
+        undefined,
+      ),
+    ).rejects.toThrow(/không được vượt/i);
+
+    expect(staffMutationMock.completeOvertimeRequest).not.toHaveBeenCalled();
   });
 });
