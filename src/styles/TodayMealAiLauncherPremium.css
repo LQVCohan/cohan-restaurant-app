@@ -1,0 +1,301 @@
+/* Premium floating entry for the customer AI utilities.
+ * Loaded after the component styles so the existing behaviour stays intact
+ * while the visual footprint is smaller and consistent with Cohan's palette.
+ */
+.today-meal-utilities {
+  --ai-chef-accent: #ff6500;
+  --ai-chef-accent-deep: #d94d00;
+  --ai-chef-ink: #23150d;
+  --ai-chef-width: 448px;
+  --ai-chef-height: 180px;
+  left: clamp(14px, 1.9vw, 28px) !important;
+  bottom: clamp(10px, 1.5vw, 20px) !important;
+  width: var(--ai-chef-width) !important;
+  height: var(--ai-chef-height) !important;
+  isolation: isolate;
+}
+
+.today-meal-utilities .today-meal-wizard-launcher {
+  inset: auto auto 0 0 !important;
+  width: var(--ai-chef-width) !important;
+  height: var(--ai-chef-height) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 34px !important;
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: filter 180ms ease, transform 180ms ease !important;
+}
+
+.today-meal-utilities .today-meal-wizard-launcher::before,
+.today-meal-utilities .today-meal-wizard-launcher::after {
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: contain !important;
+  will-change: transform, filter, opacity;
+}
+
+.today-meal-utilities .today-meal-wizard-launcher::before {
+  left: 0 !important;
+  bottom: -1px !important;
+  z-index: 3 !important;
+  width: 128px !important;
+  height: 174px !important;
+  filter: drop-shadow(0 16px 20px rgba(112, 49, 10, 0.2)) !important;
+  animation: aiChefPremiumIdle 4.2s ease-in-out 650ms infinite !important;
+}
+
+.today-meal-utilities .today-meal-wizard-launcher::after {
+  left: 103px !important;
+  top: 7px !important;
+  z-index: 2 !important;
+  width: 338px !important;
+  height: 164px !important;
+  background-image: url("/ai-chef/ai-chef-bubble-premium.svg") !important;
+  filter: drop-shadow(0 17px 28px rgba(112, 49, 10, 0.15)) !important;
+  transform-origin: left center !important;
+}
+
+.today-meal-utilities .today-meal-wizard-launcher:hover,
+.today-meal-utilities .today-meal-wizard-launcher:focus-visible {
+  filter: saturate(1.03);
+  transform: translateY(-2px) !important;
+}
+
+.today-meal-utilities .today-meal-wizard-launcher:hover::before,
+.today-meal-utilities .today-meal-wizard-launcher:focus-visible::before {
+  transform: translateY(-5px) rotate(1.2deg) scale(1.018) !important;
+  filter: drop-shadow(0 20px 24px rgba(112, 49, 10, 0.23)) !important;
+}
+
+.today-meal-utilities .today-meal-wizard-launcher:hover::after,
+.today-meal-utilities .today-meal-wizard-launcher:focus-visible::after {
+  transform: translateY(-3px) scale(1.012) !important;
+  filter: drop-shadow(0 21px 34px rgba(112, 49, 10, 0.19)) !important;
+}
+
+.today-meal-utilities .today-meal-wizard-launcher:active {
+  transform: translateY(0) scale(0.985) !important;
+}
+
+.today-meal-utilities .today-meal-wizard-launcher:focus-visible {
+  outline: 3px solid rgba(255, 101, 0, 0.28) !important;
+  outline-offset: 5px !important;
+}
+
+.today-meal-utilities.is-open .today-meal-wizard-launcher::before {
+  animation: none !important;
+  transform: translateY(-3px) rotate(1deg) !important;
+}
+
+.today-meal-utilities.is-open .today-meal-wizard-launcher::after {
+  opacity: 0.9 !important;
+  transform: translateY(3px) scale(0.982) !important;
+  filter: drop-shadow(0 12px 22px rgba(112, 49, 10, 0.13)) !important;
+}
+
+.today-meal-utilities__menu {
+  left: clamp(116px, 9vw, 146px) !important;
+  bottom: 194px !important;
+  width: min(410px, calc(100vw - 32px)) !important;
+  padding: 14px !important;
+  border: 1px solid rgba(255, 101, 0, 0.16) !important;
+  border-radius: 26px !important;
+  background:
+    radial-gradient(circle at 8% 110%, rgba(255, 101, 0, 0.14), transparent 14rem),
+    rgba(255, 252, 248, 0.95) !important;
+  box-shadow:
+    0 28px 70px rgba(79, 34, 8, 0.19),
+    inset 0 1px rgba(255, 255, 255, 0.92) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.08) !important;
+  backdrop-filter: blur(20px) saturate(1.08) !important;
+}
+
+.today-meal-utilities__heading {
+  align-items: center !important;
+  padding: 4px 6px 12px !important;
+}
+
+.today-meal-utilities__heading span {
+  color: var(--ai-chef-accent-deep) !important;
+  letter-spacing: 0.1em !important;
+}
+
+.today-meal-utilities__heading strong {
+  color: #6f5d50 !important;
+}
+
+.today-meal-utilities__cluster {
+  gap: 9px !important;
+}
+
+.today-meal-utilities__item {
+  min-height: 70px !important;
+  border-color: rgba(105, 73, 53, 0.11) !important;
+  border-radius: 19px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 12px 28px rgba(83, 38, 10, 0.085) !important;
+}
+
+.today-meal-utilities__item--1 {
+  background:
+    radial-gradient(circle at 6% 22%, rgba(255, 101, 0, 0.15), transparent 8rem),
+    rgba(255, 255, 255, 0.98) !important;
+}
+
+.today-meal-utilities__item:hover,
+.today-meal-utilities__item:focus-visible {
+  border-color: rgba(255, 101, 0, 0.32) !important;
+  box-shadow: 0 18px 38px rgba(83, 38, 10, 0.14) !important;
+}
+
+.today-meal-utilities__item-icon {
+  color: var(--ai-chef-accent-deep) !important;
+  background: linear-gradient(145deg, #fff5ec, #ffe7d2) !important;
+  border: 1px solid rgba(255, 101, 0, 0.1);
+}
+
+@keyframes aiChefPremiumIdle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  48% {
+    transform: translateY(-4px) rotate(0.8deg);
+  }
+  58% {
+    transform: translateY(-3px) rotate(0.2deg);
+  }
+}
+
+@media (max-width: 980px) and (min-width: 761px) {
+  .today-meal-utilities {
+    --ai-chef-width: 402px;
+    --ai-chef-height: 162px;
+  }
+
+  .today-meal-utilities .today-meal-wizard-launcher::before {
+    width: 114px !important;
+    height: 156px !important;
+  }
+
+  .today-meal-utilities .today-meal-wizard-launcher::after {
+    left: 91px !important;
+    top: 7px !important;
+    width: 304px !important;
+    height: 148px !important;
+  }
+
+  .today-meal-utilities__menu {
+    left: 102px !important;
+    bottom: 176px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .today-meal-utilities {
+    --ai-chef-width: min(306px, calc(100vw - 18px));
+    --ai-chef-height: 132px;
+    left: max(6px, env(safe-area-inset-left)) !important;
+    bottom: calc(70px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .today-meal-utilities .today-meal-wizard-launcher::before {
+    left: 0 !important;
+    width: 87px !important;
+    height: 127px !important;
+  }
+
+  .today-meal-utilities .today-meal-wizard-launcher::after {
+    left: 68px !important;
+    top: 6px !important;
+    width: min(232px, calc(100vw - 84px)) !important;
+    height: 118px !important;
+  }
+
+  .today-meal-utilities__menu {
+    left: max(10px, env(safe-area-inset-left)) !important;
+    right: auto !important;
+    bottom: calc(212px + env(safe-area-inset-bottom)) !important;
+    width: min(320px, calc(100vw - 20px)) !important;
+    max-height: min(58dvh, 450px) !important;
+    padding: 12px !important;
+    border-radius: 21px !important;
+  }
+}
+
+/* Preserve the dedicated compact mobile-shell button. */
+@media (max-width: 760px) {
+  .mobile-customer-shell ~ .today-meal-utilities {
+    width: 50px !important;
+    height: 50px !important;
+    bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .mobile-customer-shell ~ .today-meal-utilities .today-meal-wizard-launcher {
+    width: 50px !important;
+    height: 50px !important;
+    min-width: 50px !important;
+    min-height: 50px !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(255, 101, 0, 0.24) !important;
+    border-radius: 17px !important;
+    background: #fffaf4 !important;
+    box-shadow: 0 14px 32px rgba(92, 45, 12, 0.18) !important;
+    transform: none !important;
+  }
+
+  .mobile-customer-shell ~ .today-meal-utilities .today-meal-wizard-launcher::before {
+    inset: 2px !important;
+    width: auto !important;
+    height: auto !important;
+    border-radius: 15px !important;
+    background-position: center 18% !important;
+    background-size: 154% auto !important;
+    clip-path: inset(5% round 14px) !important;
+    filter: none !important;
+    transform: none !important;
+    animation: none !important;
+  }
+
+  .mobile-customer-shell ~ .today-meal-utilities .today-meal-wizard-launcher::after {
+    display: none !important;
+    content: none !important;
+  }
+}
+
+@media (max-height: 690px) and (min-width: 761px) {
+  .today-meal-utilities {
+    --ai-chef-width: 390px;
+    --ai-chef-height: 154px;
+  }
+
+  .today-meal-utilities .today-meal-wizard-launcher::before {
+    width: 108px !important;
+    height: 149px !important;
+  }
+
+  .today-meal-utilities .today-meal-wizard-launcher::after {
+    left: 86px !important;
+    width: 297px !important;
+    height: 143px !important;
+  }
+
+  .today-meal-utilities__menu {
+    bottom: 168px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .today-meal-utilities .today-meal-wizard-launcher,
+  .today-meal-utilities .today-meal-wizard-launcher::before,
+  .today-meal-utilities .today-meal-wizard-launcher::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}
