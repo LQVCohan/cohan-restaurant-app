@@ -41,27 +41,30 @@ const PAYMENT_STATUS_COPY = {
 };
 
 const RESERVATION_STATUS_COPY = {
-  pending: "Yêu cầu đặt bàn đang chờ xác nhận",
-  confirmed: "Nhà hàng đã xác nhận đặt bàn",
-  accepted: "Nhà hàng đã nhận đặt bàn",
-  seated: "Khách đã được xếp bàn",
-  completed: "Lịch đặt bàn đã hoàn tất",
-  cancelled: "Lịch đặt bàn đã được hủy",
-  rejected: "Nhà hàng chưa thể nhận lịch đặt bàn này",
-  no_show: "Lịch đặt bàn được ghi nhận là khách chưa đến",
+  pending: "đang chờ nhà hàng xác nhận",
+  confirmed: "đã được nhà hàng xác nhận",
+  accepted: "đã được nhà hàng tiếp nhận",
+  seated: "đã được xếp bàn",
+  completed: "đã hoàn tất",
+  cancelled: "đã được hủy",
+  rejected: "chưa được nhà hàng chấp nhận",
+  no_show: "được ghi nhận là khách chưa đến",
 };
 
 const TECHNICAL_TOKEN_COPY = {
-  ...ORDER_STATUS_COPY,
-  ...PAYMENT_STATUS_COPY,
-  ...RESERVATION_STATUS_COPY,
+  ORDER_RECEIVED: "nhà hàng đã nhận đơn",
+  CONFIRMED: "đã xác nhận",
+  PREPARING: "đang chuẩn bị",
+  PARTIALLY_READY: "một số món đã sẵn sàng",
+  READY_TO_SERVE: "sẵn sàng phục vụ",
+  SERVED: "đã phục vụ",
+  WAITING_FOR_PAYMENT: "đang chờ thanh toán",
+  PAID: "đã thanh toán",
+  CANCELLED: "đã hủy",
+  ISSUE_REPORTED: "đang được kiểm tra",
   OUT_OF_STOCK: "đã hết món",
   LOW_STOCK: "sắp hết món",
   IN_STOCK: "đang còn món",
-  ORDER_RECEIVED: "nhà hàng đã nhận đơn",
-  READY_TO_SERVE: "sẵn sàng phục vụ",
-  WAITING_FOR_PAYMENT: "đang chờ thanh toán",
-  ISSUE_REPORTED: "đang được kiểm tra",
 };
 
 const escapeRegex = (value) =>
@@ -95,13 +98,23 @@ const humanizeTechnicalTokens = (answer = "") => {
     (left, right) => right.length - left.length,
   );
   for (const key of keys) {
-    const replacement = TECHNICAL_TOKEN_COPY[key];
     output = output.replace(
       new RegExp(`\\b${escapeRegex(key)}\\b`, "g"),
-      replacement,
+      TECHNICAL_TOKEN_COPY[key],
     );
   }
   return output;
+};
+
+const humanizeStatusPhrase = (answer = "", intent = "") => {
+  if (intent !== "reservationHelp") return String(answer || "");
+  return String(answer || "").replace(
+    /hiện (?:đang )?ở trạng thái\s+([a-z_]+)/giu,
+    (match, rawStatus) => {
+      const copy = RESERVATION_STATUS_COPY[String(rawStatus || "").toLowerCase()];
+      return copy ? `hiện ${copy}` : match;
+    },
+  );
 };
 
 const softenRigidPhrases = (answer = "") =>
@@ -132,7 +145,8 @@ const appendFriendlyNextStep = (answer = "", response = {}) => {
 };
 
 const polishAnswerTone = (answer = "", response = {}) => {
-  let output = humanizeTechnicalTokens(answer);
+  let output = humanizeStatusPhrase(answer, response?.intent);
+  output = humanizeTechnicalTokens(output);
   output = softenRigidPhrases(output);
   output = appendFriendlyNextStep(output, response);
   return output;
@@ -167,6 +181,13 @@ const buildFriendlyOrderAnswer = (order = {}) => {
   return parts.join(" ").replace(/\.\./g, ".");
 };
 
+const extractOrderLookupCode = (message = "") => {
+  const match = String(message || "").match(
+    /\b(?:POS|ORD|ORDER|DH|TRACK)[-_A-Z0-9]{4,}\b/i,
+  );
+  return match?.[0] || "";
+};
+
 const latestOrderForUser = async (options = {}, response = {}) => {
   const userId = options?.user?.id || options?.user?._id;
   if (!userId || !mongoose.isValidObjectId(userId)) return null;
@@ -178,6 +199,10 @@ const latestOrderForUser = async (options = {}, response = {}) => {
     options?.pageContext?.restaurantId;
   if (restaurantId && mongoose.isValidObjectId(restaurantId)) {
     filter.restaurantId = new mongoose.Types.ObjectId(restaurantId);
+  }
+  const lookupCode = extractOrderLookupCode(options?.message);
+  if (lookupCode) {
+    filter.$or = [{ orderCode: lookupCode }, { trackingCode: lookupCode }];
   }
 
   return Order.findOne(filter).sort({ createdAt: -1 }).lean();
@@ -253,8 +278,10 @@ export const __testables = {
   formatCurrency,
   formatDateTime,
   humanizeTechnicalTokens,
+  humanizeStatusPhrase,
   softenRigidPhrases,
   appendFriendlyNextStep,
   polishAnswerTone,
   buildFriendlyOrderAnswer,
+  extractOrderLookupCode,
 };
