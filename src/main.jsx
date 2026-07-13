@@ -81,6 +81,7 @@ import { installAuthRecoveryAndFacebook } from "./utils/installAuthRecoveryAndFa
 import { installHeroFoodVisualGuard } from "./utils/installHeroFoodVisualGuard";
 import { installReservationHistoryReportFixes } from "./utils/installReservationHistoryReportFixes";
 import { installReportPages26To29Ui } from "./utils/installReportPages26To29Ui";
+import { installBackupChecklistClarity } from "./utils/installBackupChecklistClarity";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 import "./styles/ResponsiveFoundation.css";
 import "./styles/CustomTableBuilderResponsiveFix.css";
@@ -102,6 +103,7 @@ import "./styles/MobileQrScannerShell.css";
 import "./styles/ShiftDetailModalWorkspace.css";
 import "./styles/MenuManagerCompactListFix.css";
 import "./styles/CustomerMenuCardLayoutRepair.css";
+import "./styles/BackupChecklistClarity.css";
 
 const normalizeLegacyManagerHash = () => {
   if (
@@ -135,6 +137,7 @@ installAuthRecoveryAndFacebook();
 installHeroFoodVisualGuard();
 installReservationHistoryReportFixes();
 installReportPages26To29Ui();
+installBackupChecklistClarity();
 installAttendanceWordingTuning();
 
 createRoot(document.getElementById("root")).render(
