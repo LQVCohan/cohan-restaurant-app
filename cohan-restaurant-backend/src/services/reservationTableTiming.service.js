@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 
-import { Order, Reservation, Table } from "../../models/index.js";
+import Order from "../../models/order.model.js";
+import Reservation from "../../models/reservation.model.js";
+import Table from "../../models/table.model.js";
 import { ACTIVE_RESERVATION_STATUSES } from "../../utils/tableStateGuards.js";
 import {
   ACTIVE_TABLE_SESSION_SORT,
