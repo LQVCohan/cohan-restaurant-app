@@ -1,0 +1,327 @@
+/*
+ * Final layout ownership for the synchronized manager dashboard.
+ *
+ * DashboardEmptyState.scss intentionally uses a more specific command-center
+ * selector. After the staff roster was changed from a portal to stable React
+ * composition, that selector could win the cascade while the nested stacks
+ * were still `display: contents`, producing implicit grid columns, overlapping
+ * cards and excessively stretched empty space. Keep the repair imported last
+ * and scope it to the synchronized dashboard only.
+ */
+
+.dashboard-synchronized-shell
+  .manager-dashboard:not(.manager-dashboard--no-restaurant)
+  .dashboard-operations-grid {
+  gap: 12px;
+  align-items: start;
+}
+
+.dashboard-synchronized-shell
+  .manager-dashboard:not(.manager-dashboard--no-restaurant)
+  .dashboard-card,
+.dashboard-synchronized-shell
+  .manager-dashboard:not(.manager-dashboard--no-restaurant)
+  .dashboard-staff-roster-slot {
+  min-width: 0;
+}
+
+@media (min-width: 1201px) {
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-operations-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-main-stack,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-main-secondary,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-side-stack {
+    display: contents;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--recent-orders {
+    grid-column: 1 / span 8;
+    grid-row: 1;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-staff-roster-slot {
+    grid-column: 9 / -1;
+    grid-row: 1;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--support-queue {
+    grid-column: 1 / span 4;
+    grid-row: 2;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--alerts {
+    grid-column: 5 / span 4;
+    grid-row: 2;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--performance-summary {
+    grid-column: 9 / -1;
+    grid-row: 2;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-main-secondary
+    > .dashboard-card:not(.dashboard-card--performance-summary) {
+    grid-column: 1 / span 6;
+    grid-row: 3;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--revenue {
+    grid-column: 7 / -1;
+    grid-row: 3;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--recent-orders,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-staff-roster-slot,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--support-queue,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--alerts,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--performance-summary,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-main-secondary
+    > .dashboard-card:not(.dashboard-card--performance-summary),
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--revenue {
+    height: auto;
+    align-self: start;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-staff-roster-slot
+    > .dashboard-staff-roster {
+    height: auto;
+  }
+}
+
+@media (max-width: 1200px) and (min-width: 769px) {
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-operations-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-main-stack,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-main-secondary,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-side-stack {
+    display: contents;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--recent-orders,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-staff-roster-slot,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--support-queue,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--alerts,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--performance-summary,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-main-secondary
+    > .dashboard-card:not(.dashboard-card--performance-summary),
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--revenue {
+    grid-row: auto;
+    min-width: 0;
+    height: auto;
+    align-self: start;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--recent-orders {
+    grid-column: 1 / -1;
+    order: 1;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-staff-roster-slot {
+    order: 2;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--support-queue {
+    order: 3;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--alerts {
+    order: 4;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--performance-summary {
+    order: 5;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-main-secondary
+    > .dashboard-card:not(.dashboard-card--performance-summary) {
+    order: 6;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--revenue {
+    order: 7;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-staff-roster-slot
+    > .dashboard-staff-roster {
+    height: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-operations-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-main-stack,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-main-secondary,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-side-stack {
+    display: contents;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--recent-orders,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-staff-roster-slot,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--support-queue,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--alerts,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--performance-summary,
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-main-secondary
+    > .dashboard-card:not(.dashboard-card--performance-summary),
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--revenue {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    min-width: 0;
+    height: auto;
+    align-self: start;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--recent-orders {
+    order: 1;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-staff-roster-slot {
+    order: 2;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--support-queue {
+    order: 3;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--alerts {
+    order: 4;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--performance-summary {
+    order: 5;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-main-secondary
+    > .dashboard-card:not(.dashboard-card--performance-summary) {
+    order: 6;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-card--revenue {
+    order: 7;
+  }
+
+  .dashboard-synchronized-shell
+    .manager-dashboard:not(.manager-dashboard--no-restaurant)
+    .dashboard-staff-roster-slot
+    > .dashboard-staff-roster {
+    height: auto;
+  }
+}
