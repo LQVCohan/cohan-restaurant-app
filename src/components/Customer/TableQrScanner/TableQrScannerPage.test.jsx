@@ -1,4 +1,5 @@
 import React from "react";
+import { MockedProvider } from "@apollo/client/testing";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -15,41 +16,42 @@ function LocationProbe() {
 
 const renderScanner = () =>
   render(
-    <MemoryRouter initialEntries={["/scan-table"]}>
-      <Routes>
-        <Route path="/scan-table" element={<TableQrScannerPage />} />
-        <Route path="*" element={<LocationProbe />} />
-      </Routes>
-    </MemoryRouter>,
+    <MockedProvider mocks={[]}>
+      <MemoryRouter initialEntries={["/scan-table"]}>
+        <Routes>
+          <Route path="/scan-table" element={<TableQrScannerPage />} />
+          <Route path="*" element={<LocationProbe />} />
+        </Routes>
+      </MemoryRouter>
+    </MockedProvider>,
   );
 
 describe("TableQrScannerPage", () => {
-  it("opens a validated table link as an internal route", () => {
+  it("opens a validated table link as an internal route", async () => {
     renderScanner();
 
-    fireEvent.change(screen.getByLabelText("Địa chỉ truy cập bàn"), {
+    fireEvent.change(screen.getByLabelText("Nội dung mã QR"), {
       target: {
-        value: `https://another-host.example/table/${restaurantId}/${tableId}?token=signed.table.token`,
+        value: `https://cohan.example/table/${restaurantId}/${tableId}?token=signed.table.token`,
       },
     });
-    fireEvent.click(screen.getByRole("button", { name: /mở bàn/i }));
+    fireEvent.click(screen.getByRole("button", { name: /xử lý mã/i }));
 
-    expect(screen.getByTestId("location")).toHaveTextContent(
+    expect(await screen.findByTestId("location")).toHaveTextContent(
       `/table/${restaurantId}/${tableId}?token=signed.table.token`,
     );
   });
 
-  it("keeps unrelated QR content on the scanner with actionable feedback", () => {
+  it("keeps unrelated QR content on the scanner with actionable feedback", async () => {
     renderScanner();
 
-    fireEvent.change(screen.getByLabelText("Địa chỉ truy cập bàn"), {
-      target: { value: "https://example.com/promotions" },
+    fireEvent.change(screen.getByLabelText("Nội dung mã QR"), {
+      target: { value: "not-a-cohan-qr" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /mở bàn/i }));
+    fireEvent.click(screen.getByRole("button", { name: /xử lý mã/i }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Đây không phải mã QR truy cập bàn của COHAN.",
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Mã QR không phải mã bàn hoặc mã check-in đặt bàn hợp lệ.",
     );
   });
 });
-
