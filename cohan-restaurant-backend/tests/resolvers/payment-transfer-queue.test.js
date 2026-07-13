@@ -1,7 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const RESTAURANT_ID = "64b000000000000000000001";
-const ALL_STATUSES = ["SUBMITTED", "VERIFYING", "REJECTED", "VERIFIED", "FAILED", "EXPIRED"];
+const ALL_STATUSES = [
+  "INSTRUCTIONS_SHOWN",
+  "SUBMITTED",
+  "VERIFYING",
+  "REJECTED",
+  "VERIFIED",
+  "FAILED",
+  "EXPIRED",
+];
 
 const modelMocks = vi.hoisted(() => ({
   PaymentSession: {
@@ -25,7 +33,20 @@ describe("BankTransferPaymentQuery", () => {
     expiryMocks.expireStaleTransferPayments.mockResolvedValue(undefined);
   });
 
-  it("queries the selected restaurant with the explicit status set", async () => {
+  it("keeps newly created transfers visible in the manager open queue", async () => {
+    const { normalizeTransferQueueStatuses } = await import(
+      "../../graphql/resolvers/payment/bankTransferQuery.js"
+    );
+
+    expect(
+      normalizeTransferQueueStatuses({ statuses: ["SUBMITTED", "VERIFYING"] }),
+    ).toEqual(["INSTRUCTIONS_SHOWN", "SUBMITTED", "VERIFYING"]);
+    expect(
+      normalizeTransferQueueStatuses({ status: "SUBMITTED" }),
+    ).toEqual(["SUBMITTED"]);
+  });
+
+  it("queries the selected restaurant with the expanded all-status set", async () => {
     const limit = vi.fn().mockResolvedValue([{ id: "payment-1" }]);
     const sort = vi.fn().mockReturnValue({ limit });
     modelMocks.PaymentSession.find.mockReturnValue({ sort });
@@ -33,7 +54,11 @@ describe("BankTransferPaymentQuery", () => {
 
     const result = await BankTransferPaymentQuery.transferPaymentQueue(
       null,
-      { restaurantId: RESTAURANT_ID, statuses: ALL_STATUSES, limit: 500 },
+      {
+        restaurantId: RESTAURANT_ID,
+        statuses: ["SUBMITTED", "VERIFYING", "REJECTED", "VERIFIED", "FAILED", "EXPIRED"],
+        limit: 500,
+      },
       { user: { id: "manager-1" }, io: {} },
     );
 
@@ -53,8 +78,9 @@ describe("BankTransferPaymentQuery", () => {
     expect(result).toEqual([{ id: "payment-1", sanitized: true }]);
   });
 
-  it("returns exact totals independently from the active queue filter", async () => {
+  it("returns totals including transfers waiting for customer proof", async () => {
     modelMocks.PaymentSession.aggregate.mockResolvedValue([
+      { _id: "INSTRUCTIONS_SHOWN", count: 1 },
       { _id: "SUBMITTED", count: 2 },
       { _id: "VERIFYING", count: 1 },
       { _id: "REJECTED", count: 3 },
@@ -77,8 +103,8 @@ describe("BankTransferPaymentQuery", () => {
       "transfer.status": { $in: ALL_STATUSES },
     });
     expect(result).toEqual({
-      total: 13,
-      actionable: 3,
+      total: 14,
+      actionable: 4,
       submitted: 2,
       verifying: 1,
       rejected: 3,
