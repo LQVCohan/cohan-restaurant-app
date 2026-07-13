@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   useMutation: vi.fn(),
   confirmOrder: vi.fn(),
   rejectOrder: vi.fn(),
+  setProofWaiver: vi.fn(),
   refetch: vi.fn(),
   showNotification: vi.fn(),
 }));
@@ -34,9 +35,11 @@ const operationName = (document) =>
   document?.definitions?.find((definition) => definition?.name?.value)?.name?.value;
 
 const restaurantId = "64b000000000000000000001";
+const orderId = "64b000000000000000000002";
+const itemId = "64b000000000000000000003";
 
 const qrOrder = {
-  id: "64b000000000000000000002",
+  id: orderId,
   orderCode: "QR-20260710-A01-ABC123",
   tableCode: "A01",
   currentStatus: "pending",
@@ -46,7 +49,7 @@ const qrOrder = {
   totals: { grandTotal: 50000 },
   items: [
     {
-      _id: "64b000000000000000000003",
+      _id: itemId,
       name: "Cơm gà",
       quantity: 1,
       unit: "portion",
@@ -56,6 +59,16 @@ const qrOrder = {
       servingVariant: { mode: "PORTION", sellUnit: "portion" },
     },
   ],
+};
+
+const weightedItem = {
+  ...qrOrder.items[0],
+  _id: itemId,
+  name: "Cua cân ký",
+  unit: "kg",
+  weightGrams: 850,
+  proofImages: [],
+  servingVariant: { mode: "BY_WEIGHT", sellUnit: "kg" },
 };
 
 const accessRequest = {
@@ -94,6 +107,7 @@ function setQueryData({ requests = [], orders = [qrOrder] } = {}) {
 describe("PosIncomingTableOrderQueue", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.confirm = vi.fn(() => true);
     mocks.refetch.mockResolvedValue({});
     mocks.confirmOrder.mockResolvedValue({
       data: {
@@ -109,11 +123,19 @@ describe("PosIncomingTableOrderQueue", () => {
         },
       },
     });
+    mocks.setProofWaiver.mockResolvedValue({
+      data: {
+        setOrderItemProofWaiver: {
+          order: { id: qrOrder.id, clientMeta: {} },
+        },
+      },
+    });
     setQueryData();
     mocks.useMutation.mockImplementation((document) => {
       const name = operationName(document);
       if (name === "ConfirmPosTableOrder") return [mocks.confirmOrder];
       if (name === "RejectPosTableOrder") return [mocks.rejectOrder];
+      if (name === "SetPosOrderItemProofWaiver") return [mocks.setProofWaiver];
       return [vi.fn()];
     });
   });
@@ -139,23 +161,9 @@ describe("PosIncomingTableOrderQueue", () => {
     );
   });
 
-  it("blocks kitchen handoff and exposes proof capture for a weighted item", () => {
+  it("blocks handoff and lets POS record that the customer does not need proof", async () => {
     setQueryData({
-      orders: [
-        {
-          ...qrOrder,
-          items: [
-            {
-              ...qrOrder.items[0],
-              name: "Cua cân ký",
-              unit: "kg",
-              weightGrams: 850,
-              proofImages: [],
-              servingVariant: { mode: "BY_WEIGHT", sellUnit: "kg" },
-            },
-          ],
-        },
-      ],
+      orders: [{ ...qrOrder, items: [weightedItem] }],
     });
 
     render(<PosIncomingTableOrderQueue restaurantId={restaurantId} />);
@@ -166,13 +174,72 @@ describe("PosIncomingTableOrderQueue", () => {
     expect(
       screen.getByRole("button", { name: "Bổ sung ảnh Cua cân ký" }),
     ).toBeEnabled();
+    const waiverButton = screen.getByRole("button", {
+      name: "Khách không cần ảnh Cua cân ký",
+    });
+    expect(waiverButton).toBeEnabled();
     expect(
       screen.getByRole("button", { name: "Nhận & chuyển bếp" }),
     ).toBeDisabled();
-    expect(mocks.confirmOrder).not.toHaveBeenCalled();
+
+    fireEvent.click(waiverButton);
+
+    await waitFor(() => expect(mocks.setProofWaiver).toHaveBeenCalledOnce());
+    expect(window.confirm).toHaveBeenCalledWith(
+      expect.stringContaining("Thao tác này sẽ được ghi lại"),
+    );
+    expect(mocks.setProofWaiver).toHaveBeenCalledWith({
+      variables: {
+        input: {
+          restaurantId,
+          orderId,
+          orderItemId: itemId,
+          waived: true,
+          reason: "Khách hàng xác nhận không cần ảnh minh chứng.",
+        },
+      },
+    });
   });
 
-  it("keeps the table confirmation code hidden until staff confirms they reached the matching table", () => {
+  it("allows handoff after the customer waiver is persisted", async () => {
+    setQueryData({
+      orders: [
+        {
+          ...qrOrder,
+          clientMeta: {
+            source: "customer_table_qr",
+            proofWaivers: {
+              [itemId]: {
+                waived: true,
+                waivedBy: "staff-1",
+                waivedAt: "2026-07-14T02:00:00.000Z",
+                reason: "Khách hàng xác nhận không cần ảnh minh chứng.",
+              },
+            },
+          },
+          items: [weightedItem],
+        },
+      ],
+    });
+
+    render(<PosIncomingTableOrderQueue restaurantId={restaurantId} />);
+
+    expect(
+      screen.getByText("Khách đã xác nhận không cần ảnh minh chứng"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Yêu cầu lại ảnh Cua cân ký" }),
+    ).toBeEnabled();
+    const confirmButton = screen.getByRole("button", {
+      name: "Nhận & chuyển bếp",
+    });
+    expect(confirmButton).toBeEnabled();
+
+    fireEvent.click(confirmButton);
+    await waitFor(() => expect(mocks.confirmOrder).toHaveBeenCalledOnce());
+  });
+
+  it("keeps the table confirmation code hidden until staff reaches the table", () => {
     setQueryData({ requests: [accessRequest], orders: [] });
 
     render(<PosIncomingTableOrderQueue restaurantId={restaurantId} />);
