@@ -6,17 +6,22 @@
   display: inline-flex;
   align-items: center;
   gap: 11px;
-  min-height: 52px;
+  min-height: 56px;
   max-width: min(360px, calc(100vw - 32px));
   border: 1px solid rgba(49, 95, 73, 0.26);
   border-radius: 16px;
-  padding: 9px 14px;
+  padding: 10px 15px;
   color: #244c39;
   background: #f4faf5;
   box-shadow: 0 14px 34px rgba(39, 75, 56, 0.18);
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
 
   > svg {
     flex: 0 0 auto;
@@ -28,7 +33,7 @@
   span {
     min-width: 0;
     display: grid;
-    gap: 2px;
+    gap: 3px;
   }
 
   strong {
@@ -38,13 +43,15 @@
 
   small {
     color: #65766c;
-    font-size: 0.74rem;
+    font-size: 0.75rem;
     line-height: 1.35;
   }
 
   &:hover {
     border-color: rgba(49, 95, 73, 0.5);
     background: #edf7ef;
+    box-shadow: 0 16px 38px rgba(39, 75, 56, 0.22);
+    transform: translateY(-1px);
   }
 
   &:active {
@@ -59,27 +66,108 @@
 
 .table-order-access-gate {
   display: grid;
-  gap: 16px;
+  gap: 15px;
   color: #30463a;
 
-  &__icon {
-    display: grid;
-    place-items: center;
-    width: 52px;
-    height: 52px;
-    margin-inline: auto;
-    border-radius: 16px;
-    color: #315f49;
-    background: #e8f2ea;
+  &__context {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  &__table,
+  &__secure {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    border-radius: 999px;
+    padding: 0 10px;
+    font-size: 0.78rem;
+    font-weight: 760;
 
     svg {
-      width: 26px;
-      height: 26px;
+      width: 15px;
+      height: 15px;
+    }
+  }
+
+  &__table {
+    color: #244c39;
+    background: #edf6ef;
+  }
+
+  &__secure {
+    color: #6f5b31;
+    background: #fff7e8;
+  }
+
+  &__progress {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid #dce7de;
+    border-radius: 14px;
+    background: #f8fbf8;
+
+    > div {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      color: #7a8880;
+
+      > span {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        flex: 0 0 28px;
+        border: 1px solid #ccd8cf;
+        border-radius: 50%;
+        background: #fff;
+        font-size: 0.76rem;
+        font-weight: 800;
+
+        svg {
+          width: 16px;
+          height: 16px;
+        }
+      }
+
+      strong {
+        overflow: hidden;
+        font-size: 0.78rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    > div.is-complete,
+    > div.is-active {
+      color: #315f49;
+
+      > span {
+        border-color: #7ba28b;
+        color: #315f49;
+        background: #eaf4ec;
+      }
+    }
+
+    > i {
+      height: 2px;
+      border-radius: 999px;
+      background: #d6e2d9;
     }
   }
 
   &__lead,
   &__hint,
+  &__input-hint,
   &__error {
     margin: 0;
     line-height: 1.55;
@@ -87,26 +175,59 @@
 
   &__lead {
     color: #3f5548;
-    font-size: 0.93rem;
+    font-size: 0.92rem;
     text-align: center;
+  }
+
+  &__explain {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 11px;
+    align-items: start;
+    padding: 12px 13px;
+    border: 1px solid #dce7de;
+    border-radius: 13px;
+    background: #f7faf7;
+
+    > svg {
+      width: 21px;
+      height: 21px;
+      margin-top: 2px;
+      color: #315f49;
+    }
+
+    strong {
+      display: block;
+      margin-bottom: 3px;
+      color: #304b3c;
+      font-size: 0.84rem;
+    }
+
+    p {
+      margin: 0;
+      color: #66776d;
+      font-size: 0.8rem;
+      line-height: 1.48;
+    }
   }
 
   &__steps {
     display: grid;
     gap: 8px;
     margin: 0;
-    padding: 13px 14px 13px 34px;
-    border: 1px solid #dbe7dd;
+    padding: 12px 14px 12px 34px;
+    border: 1px solid #e1e8e2;
     border-radius: 13px;
     color: #53675b;
-    background: #f7faf7;
-    font-size: 0.84rem;
+    background: #fff;
+    font-size: 0.83rem;
     line-height: 1.45;
   }
 
-  &__hint {
+  &__hint,
+  &__input-hint {
     color: #68786f;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
   }
 
   &__request {
@@ -121,6 +242,7 @@
     span {
       color: #786849;
       font-size: 0.78rem;
+      text-align: center;
     }
 
     strong {
@@ -129,11 +251,17 @@
       letter-spacing: 0.12em;
       font-variant-numeric: tabular-nums;
     }
+
+    small {
+      color: #7e6c4d;
+      font-size: 0.75rem;
+      text-align: center;
+    }
   }
 
   &__form {
     display: grid;
-    gap: 12px;
+    gap: 11px;
 
     label {
       color: #354d40;
@@ -143,7 +271,7 @@
 
     input {
       width: 100%;
-      min-height: 52px;
+      min-height: 54px;
       border: 1px solid #cbd9ce;
       border-radius: 12px;
       padding: 0 14px;
@@ -182,10 +310,18 @@
     font-size: 0.86rem;
     font-weight: 760;
     cursor: pointer;
+    transition:
+      transform 160ms ease,
+      background-color 160ms ease,
+      border-color 160ms ease;
 
     &:disabled {
       cursor: not-allowed;
       opacity: 0.58;
+    }
+
+    &:not(:disabled):active {
+      transform: translateY(1px);
     }
 
     &:focus-visible {
@@ -199,6 +335,11 @@
     color: #fff;
     background: #315f49;
 
+    &:hover:not(:disabled) {
+      border-color: #254b39;
+      background: #254b39;
+    }
+
     svg {
       width: 18px;
       height: 18px;
@@ -209,6 +350,11 @@
     border: 1px solid #ced9d1;
     color: #496052;
     background: #fff;
+
+    &:hover:not(:disabled) {
+      border-color: #9fb3a5;
+      background: #f6f9f7;
+    }
   }
 
   &__error {
@@ -225,10 +371,22 @@
   .table-order-access-launcher {
     right: 14px;
     bottom: max(86px, calc(72px + env(safe-area-inset-bottom)));
-    max-width: calc(100vw - 28px);
+    width: calc(100vw - 28px);
+    max-width: none;
   }
 
   .table-order-access-gate {
+    gap: 13px;
+
+    &__progress {
+      grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr);
+      padding-inline: 10px;
+
+      > div strong {
+        font-size: 0.74rem;
+      }
+    }
+
     &__primary,
     &__secondary {
       min-height: 48px;
@@ -237,7 +395,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .table-order-access-launcher {
+  .table-order-access-launcher,
+  .table-order-access-gate__primary,
+  .table-order-access-gate__secondary {
     transition: none;
   }
 }
