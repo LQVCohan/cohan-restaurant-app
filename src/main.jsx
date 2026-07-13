@@ -55,6 +55,7 @@ import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoUnifiedPage.
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoPremiumLayout.css";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantPreviewPolish.css";
 import "./components/Customer/RestaurantDetail/RestaurantPreviewFrameFix.scss";
+import "./styles/CustomerReviewExperienceUpgrade.css";
 import "./components/Dashboard_Manager/Staff/components/Attendance/OvertimePanelPolicyPolish.scss";
 import "./components/Dashboard_Manager/Table/TableManagementCanvasSync.css";
 import "./components/Dashboard_Manager/Table/TableManagementMergePickerFix.css";
