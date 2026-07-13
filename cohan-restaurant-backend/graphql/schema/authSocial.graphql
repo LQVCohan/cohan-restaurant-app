@@ -1,3 +1,6 @@
 extend type Mutation {
   loginWithGoogle(idToken: String!, credential: String): AuthPayload!
+  loginWithFacebook(accessToken: String!): AuthPayload!
+  requestPasswordReset(email: String!): Boolean!
+  resetPassword(token: String!, newPassword: String!): Boolean!
 }
