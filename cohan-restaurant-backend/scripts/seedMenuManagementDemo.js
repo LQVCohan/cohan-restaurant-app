@@ -15,6 +15,8 @@ import {
 } from "../models/index.js";
 
 const SEED_KEY = "cohan-menu-catalog-v1";
+const LEGACY_TAG_PATTERN = /demo-menu-management-2026/i;
+const LEGACY_ITEM_CODES = ["MM-PHO", "MM-TEA", "MM-BEEF", "MM-SOUP"];
 const DEMO_RESTAURANT_ID = process.env.DEMO_RESTAURANT_ID?.trim() || "";
 const DEMO_RESET = process.env.DEMO_RESET === "1";
 const CATEGORY_NAMES = ["Món nước", "Đồ uống", "Món chính", "Khai vị & súp"];
@@ -76,6 +78,31 @@ function buildOrderItem(menuItem, recipe) {
   };
 }
 
+async function cleanupLegacyMenuData(restaurantId) {
+  await Promise.all([
+    Order.deleteMany({
+      restaurantId,
+      $or: [
+        { orderCode: /^MM-DEMO-/i },
+        { note: LEGACY_TAG_PATTERN },
+      ],
+    }),
+    Recipe.deleteMany({ restaurantId, notes: LEGACY_TAG_PATTERN }),
+    MenuItem.deleteMany({
+      restaurantId,
+      $or: [
+        { code: { $in: LEGACY_ITEM_CODES } },
+        { name: LEGACY_TAG_PATTERN },
+        { notes: LEGACY_TAG_PATTERN },
+      ],
+    }),
+    Menu.deleteMany({ restaurantId, description: LEGACY_TAG_PATTERN }),
+    Category.deleteMany({ restaurantId, name: LEGACY_TAG_PATTERN }),
+    CategoryMenu.deleteMany({ restaurantId, description: LEGACY_TAG_PATTERN }),
+    Ingredient.deleteMany({ restaurantId, notes: LEGACY_TAG_PATTERN }),
+  ]);
+}
+
 async function main() {
   assertDemoScriptAllowed("seedMenuManagementDemo.js");
   const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017";
@@ -85,18 +112,24 @@ async function main() {
 
   const restaurant = await resolveRestaurant();
   const restaurantId = restaurant._id;
+  await cleanupLegacyMenuData(restaurantId);
 
   if (DEMO_RESET) {
     await Promise.all([
       Order.deleteMany({ restaurantId, "clientMeta.seedKey": SEED_KEY }),
       Recipe.deleteMany({ restaurantId, notes: SEED_KEY }),
       MenuItem.deleteMany({ restaurantId, notes: SEED_KEY }),
-      Menu.deleteMany({ restaurantId, description: { $in: [
-        "Bữa sáng nhẹ nhàng với các món Việt quen thuộc.",
-        "Thực đơn trưa cân bằng, phục vụ nhanh và đầy đủ dinh dưỡng.",
-        "Các món chính chọn lọc cho bữa tối và dịp gặp gỡ.",
-        "Món nhẹ và súp nóng phục vụ đến cuối ngày.",
-      ] } }),
+      Menu.deleteMany({
+        restaurantId,
+        description: {
+          $in: [
+            "Bữa sáng nhẹ nhàng với các món Việt quen thuộc.",
+            "Thực đơn trưa cân bằng, phục vụ nhanh và đầy đủ dinh dưỡng.",
+            "Các món chính chọn lọc cho bữa tối và dịp gặp gỡ.",
+            "Món nhẹ và súp nóng phục vụ đến cuối ngày.",
+          ],
+        },
+      }),
       Category.deleteMany({ restaurantId, name: { $in: CATEGORY_NAMES } }),
       CategoryMenu.deleteMany({
         restaurantId,
