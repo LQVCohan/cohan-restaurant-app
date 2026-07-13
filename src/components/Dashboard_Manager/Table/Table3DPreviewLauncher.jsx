@@ -10,6 +10,11 @@ import { createPortal } from "react-dom";
 import { ScanLine } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
+import {
+  clearTable3DBuilderSessionState,
+  getTable3DBuilderSessionState,
+  setTable3DBuilderSessionState,
+} from "@/utils/aiTableCaptureDraft";
 
 const Table3DSimulatorModalV2 = lazy(() =>
   import("./Table3DSimulatorModalV2"),
@@ -24,7 +29,9 @@ export default function Table3DPreviewLauncher() {
   const location = useLocation();
   const { restaurants = [] } = useContext(AuthContext) || {};
   const [portalTarget, setPortalTarget] = useState(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(
+    () => getTable3DBuilderSessionState().simulatorOpen,
+  );
   const [selectedRestaurantId, setSelectedRestaurantId] = useState(() =>
     typeof window === "undefined"
       ? ""
@@ -36,6 +43,7 @@ export default function Table3DPreviewLauncher() {
   useEffect(() => {
     if (!isManagerRoute) {
       setPortalTarget(null);
+      clearTable3DBuilderSessionState();
       setOpen(false);
       return undefined;
     }
@@ -70,6 +78,16 @@ export default function Table3DPreviewLauncher() {
       window.removeEventListener(MANAGER_SCOPE_EVENT, handleScopeSelection);
   }, []);
 
+  const openPreview = () => {
+    setTable3DBuilderSessionState({ simulatorOpen: true });
+    setOpen(true);
+  };
+
+  const closePreview = () => {
+    clearTable3DBuilderSessionState();
+    setOpen(false);
+  };
+
   const selectedRestaurant = useMemo(
     () =>
       restaurants.find(
@@ -86,7 +104,7 @@ export default function Table3DPreviewLauncher() {
           <button
             type="button"
             className="mph-btn mph-btn--secondary"
-            onClick={() => setOpen(true)}
+            onClick={openPreview}
             disabled={!restaurantId}
             title={
               restaurantId
@@ -105,7 +123,7 @@ export default function Table3DPreviewLauncher() {
         <Suspense fallback={null}>
           <Table3DSimulatorModalV2
             open
-            onClose={() => setOpen(false)}
+            onClose={closePreview}
             restaurantId={restaurantId}
             restaurantName={selectedRestaurant?.name || "Nhà hàng hiện tại"}
           />

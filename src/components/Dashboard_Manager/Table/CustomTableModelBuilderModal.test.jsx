@@ -18,7 +18,11 @@ vi.mock("@/lib/apiBaseUrl", () => ({
 
 vi.mock("@/utils/aiTableCaptureDraft", () => ({
   clearAiTableCaptureDraft: vi.fn().mockResolvedValue(undefined),
-  getTable3DBuilderSessionState: () => ({ open: false, mode: "parametric" }),
+  getTable3DBuilderSessionState: () => ({
+    open: false,
+    simulatorOpen: false,
+    mode: "parametric",
+  }),
   loadAiTableCaptureDraft: vi.fn().mockResolvedValue({
     images: Array(5).fill(null),
     metadata: Array(5).fill(null),
@@ -83,18 +87,21 @@ describe("CustomTableModelBuilderModal guided AI capture", () => {
     });
     expect(generateButton).toBeDisabled();
 
-    const files = inputs.map((input, index) => {
+    const files = [];
+    for (const [index, input] of inputs.entries()) {
       const file = new File([`photo-${index + 1}`], `photo-${index + 1}.jpg`, {
         type: "image/jpeg",
       });
+      files.push(file);
       fireEvent.change(input, { target: { files: [file] } });
-      return file;
-    });
+      await waitFor(() => {
+        expect(
+          screen.getByText(new RegExp(`Đã chụp ${index + 1}\/5 ảnh`, "i")),
+        ).toBeInTheDocument();
+      });
+    }
 
-    await waitFor(() => {
-      expect(screen.getByText(/Đã chụp 5\/5 ảnh/i)).toBeInTheDocument();
-      expect(generateButton).toBeEnabled();
-    });
+    expect(generateButton).toBeEnabled();
     fireEvent.click(generateButton);
 
     await waitFor(() => {

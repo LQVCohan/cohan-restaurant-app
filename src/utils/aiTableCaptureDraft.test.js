@@ -47,11 +47,16 @@ describe("aiTableCaptureDraft", () => {
 
   it("restores whether the builder and AI mode were open before a reload", () => {
     setTable3DBuilderSessionState({ open: true, mode: "ai" });
-    expect(getTable3DBuilderSessionState()).toEqual({ open: true, mode: "ai" });
+    expect(getTable3DBuilderSessionState()).toEqual({
+      open: true,
+      simulatorOpen: false,
+      mode: "ai",
+    });
 
     clearTable3DBuilderSessionState();
     expect(getTable3DBuilderSessionState()).toEqual({
       open: false,
+      simulatorOpen: false,
       mode: "parametric",
     });
   });

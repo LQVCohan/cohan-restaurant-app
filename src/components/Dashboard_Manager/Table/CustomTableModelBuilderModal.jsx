@@ -327,7 +327,9 @@ const CustomTableModelBuilderModal = ({
           setAiImageMetadata(metadata);
           const wasReloaded =
             Boolean(document.wasDiscarded) ||
-            performance.getEntriesByType?.("navigation")?.[0]?.type === "reload";
+            (typeof performance !== "undefined" &&
+              performance.getEntriesByType?.("navigation")?.[0]?.type ===
+                "reload");
           setAiDraftMessage(
             wasReloaded
               ? `Đã khôi phục ${restoredCount}/5 ảnh sau khi trang được tải lại.`

@@ -3,6 +3,8 @@ const DB_VERSION = 1;
 const STORE_NAME = "capture-slots";
 const DEFAULT_SCOPE = "default";
 
+export const TABLE_3D_SIMULATOR_OPEN_SESSION_KEY =
+  "cohan:table-3d-simulator:open";
 export const TABLE_3D_BUILDER_OPEN_SESSION_KEY =
   "cohan:table-3d-builder:open";
 export const TABLE_3D_BUILDER_MODE_SESSION_KEY =
@@ -31,22 +33,35 @@ const normalizeScope = (scope) =>
 const slotKey = (scope, index) => `${normalizeScope(scope)}:${Number(index)}`;
 
 export const getTable3DBuilderSessionState = () => {
-  if (typeof window === "undefined") return { open: false, mode: "parametric" };
+  const fallback = { open: false, simulatorOpen: false, mode: "parametric" };
+  if (typeof window === "undefined") return fallback;
   try {
     return {
       open: window.sessionStorage.getItem(TABLE_3D_BUILDER_OPEN_SESSION_KEY) === "1",
+      simulatorOpen:
+        window.sessionStorage.getItem(TABLE_3D_SIMULATOR_OPEN_SESSION_KEY) === "1",
       mode:
         window.sessionStorage.getItem(TABLE_3D_BUILDER_MODE_SESSION_KEY) ||
         "parametric",
     };
   } catch {
-    return { open: false, mode: "parametric" };
+    return fallback;
   }
 };
 
-export const setTable3DBuilderSessionState = ({ open, mode } = {}) => {
+export const setTable3DBuilderSessionState = ({
+  open,
+  simulatorOpen,
+  mode,
+} = {}) => {
   if (typeof window === "undefined") return;
   try {
+    if (typeof simulatorOpen === "boolean") {
+      window.sessionStorage.setItem(
+        TABLE_3D_SIMULATOR_OPEN_SESSION_KEY,
+        simulatorOpen ? "1" : "0",
+      );
+    }
     if (typeof open === "boolean") {
       window.sessionStorage.setItem(
         TABLE_3D_BUILDER_OPEN_SESSION_KEY,
@@ -61,9 +76,14 @@ export const setTable3DBuilderSessionState = ({ open, mode } = {}) => {
   }
 };
 
-export const clearTable3DBuilderSessionState = () => {
+export const clearTable3DBuilderSessionState = ({
+  keepSimulator = false,
+} = {}) => {
   if (typeof window === "undefined") return;
   try {
+    if (!keepSimulator) {
+      window.sessionStorage.removeItem(TABLE_3D_SIMULATOR_OPEN_SESSION_KEY);
+    }
     window.sessionStorage.removeItem(TABLE_3D_BUILDER_OPEN_SESSION_KEY);
     window.sessionStorage.removeItem(TABLE_3D_BUILDER_MODE_SESSION_KEY);
   } catch {
@@ -118,15 +138,26 @@ const canvasToBlob = (canvas, quality) =>
 
 const decodeImage = async (file) => {
   if (typeof createImageBitmap === "function") {
-    const bitmap = await createImageBitmap(file, {
-      imageOrientation: "from-image",
-    });
-    return {
-      source: bitmap,
-      width: bitmap.width,
-      height: bitmap.height,
-      dispose: () => bitmap.close?.(),
-    };
+    let bitmap = null;
+    try {
+      bitmap = await createImageBitmap(file, {
+        imageOrientation: "from-image",
+      });
+    } catch {
+      try {
+        bitmap = await createImageBitmap(file);
+      } catch {
+        bitmap = null;
+      }
+    }
+    if (bitmap) {
+      return {
+        source: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        dispose: () => bitmap.close?.(),
+      };
+    }
   }
 
   const objectUrl = URL.createObjectURL(file);

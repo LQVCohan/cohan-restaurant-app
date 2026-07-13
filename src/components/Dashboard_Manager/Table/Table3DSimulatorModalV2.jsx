@@ -81,12 +81,12 @@ export default function Table3DSimulatorModalV2({
   const customModelScope = restaurantName || restaurantId || "default";
 
   const openCustomBuilder = () => {
-    setTable3DBuilderSessionState({ open: true });
+    setTable3DBuilderSessionState({ open: true, simulatorOpen: true });
     setShowCustomBuilder(true);
   };
 
   const closeCustomBuilder = () => {
-    clearTable3DBuilderSessionState();
+    clearTable3DBuilderSessionState({ keepSimulator: true });
     setShowCustomBuilder(false);
   };
 
@@ -420,6 +420,7 @@ export default function Table3DSimulatorModalV2({
   };
 
   useEffect(() => {
+    if (showCustomBuilder) return undefined;
     const viewer = viewerRef.current;
     if (!viewer || !selectedModel?.modelUrl) return undefined;
 
@@ -502,7 +503,7 @@ export default function Table3DSimulatorModalV2({
       viewer.removeEventListener("progress", onProgress);
       viewer.removeEventListener("ar-status", onArStatus);
     };
-  }, [selectedModel?.key, selectedModel?.modelUrl]);
+  }, [selectedModel?.key, selectedModel?.modelUrl, showCustomBuilder]);
 
   const handleThumbnailError = (event) => {
     if (event.currentTarget.src !== TABLE_3D_PLACEHOLDER_THUMB) {
@@ -615,14 +616,18 @@ export default function Table3DSimulatorModalV2({
               <div className="viewer-placeholder">
                 <Box size={28} aria-hidden="true" />
                 <strong>
-                  {selectedModel
-                    ? "Mẫu này chưa có mô hình 3D"
-                    : "Chưa chọn mẫu bàn"}
+                  {showCustomBuilder
+                    ? "Đã tạm dừng preview 3D"
+                    : selectedModel
+                      ? "Mẫu này chưa có mô hình 3D"
+                      : "Chưa chọn mẫu bàn"}
                 </strong>
                 <span>
-                  {selectedModel
-                    ? "Chọn mẫu có nhãn 3D hoặc dùng Tạo mẫu mới để nhập URL/upload file."
-                    : "Hãy chọn một mẫu trong thư viện để bắt đầu."}
+                  {showCustomBuilder
+                    ? "Đang giải phóng WebGL để camera trên điện thoại hoạt động ổn định hơn."
+                    : selectedModel
+                      ? "Chọn mẫu có nhãn 3D hoặc dùng Tạo mẫu mới để nhập URL/upload file."
+                      : "Hãy chọn một mẫu trong thư viện để bắt đầu."}
                 </span>
               </div>
             )}
