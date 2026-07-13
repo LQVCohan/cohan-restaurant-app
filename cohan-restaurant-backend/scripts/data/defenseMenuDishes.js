@@ -54,7 +54,8 @@ function parseRecipeLine(value) {
 }
 
 function parseVariant(value) {
-  const [mode, key, name, price, isDefault, recipe = ""] = value.split(":");
+  const [mode, key, name, price, isDefault, ...recipeParts] = value.split(":");
+  const recipe = recipeParts.join(":");
   return {
     key,
     name,
