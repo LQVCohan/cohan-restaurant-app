@@ -17,6 +17,7 @@ import {
   withSafeReservationStatusMutation,
 } from "./checkIn.js";
 import { withReservationRealtimeEvents } from "./realtimeEvents.js";
+import { withReservationTableTimingPolicy } from "../../../src/services/reservationTableTiming.service.js";
 
 async function findLatestDepositSession(reservation) {
   const reservationId = reservation?._id || reservation?.id;
@@ -72,9 +73,10 @@ const ReviewReservationMutation = {
 const SafeReservationMutation = withSafeReservationStatusMutation(ReviewReservationMutation);
 const CustomerSafeReservationMutation = withCustomerReservationPolicy(SafeReservationMutation);
 const RealtimeReservationMutation = withReservationRealtimeEvents(CustomerSafeReservationMutation);
+const TimedReservationMutation = withReservationTableTimingPolicy(RealtimeReservationMutation);
 const ReservationMutationWithAliases = {
-  ...RealtimeReservationMutation,
-  markReservationNoShow: RealtimeReservationMutation.deleteReservation,
+  ...TimedReservationMutation,
+  markReservationNoShow: TimedReservationMutation.deleteReservation,
 };
 
 export default {

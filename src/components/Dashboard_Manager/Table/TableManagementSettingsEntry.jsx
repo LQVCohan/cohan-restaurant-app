@@ -2,6 +2,7 @@ import React, { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Tags } from "lucide-react";
 import TableManagement from "./TableManagement";
+import TableReservationTimingOverlay from "./TableReservationTimingOverlay";
 import "./TableManagementSettingsEntry.scss";
 import "./TableTypeManagementMobileFix.scss";
 
@@ -22,6 +23,7 @@ const TableManagementSettingsEntry = ({ onOpenTableSettings }) => {
   return (
     <div className="tm-settings-page" ref={rootRef}>
       <TableManagement />
+      <TableReservationTimingOverlay />
       {onOpenTableSettings &&
         controlsTarget &&
         createPortal(

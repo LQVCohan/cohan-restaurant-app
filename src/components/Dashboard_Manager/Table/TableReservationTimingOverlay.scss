@@ -1,0 +1,43 @@
+.tm-reservation-notice {
+  display: grid;
+  gap: 2px;
+  margin: 0 14px 12px;
+  padding: 9px 10px;
+  border: 1px solid #d7e4de;
+  border-radius: 11px;
+  background: #f3f8f5;
+  color: #295548;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.tm-reservation-notice strong {
+  font-size: 0.8rem;
+}
+
+.tm-reservation-notice span {
+  color: #5f6e68;
+  overflow-wrap: anywhere;
+}
+
+.tm-reservation-notice--waiting {
+  border-color: #edc977;
+  background: #fff8df;
+  color: #815f0f;
+}
+
+.tm-reservation-notice--expired {
+  border-color: #e7a5a5;
+  background: #fff0f0;
+  color: #932f2f;
+}
+
+.tm-table-card.available .tm-reservation-notice--upcoming {
+  border-left: 4px solid #3d8f75;
+}
+
+@media (max-width: 720px) {
+  .tm-reservation-notice {
+    margin-inline: 10px;
+  }
+}

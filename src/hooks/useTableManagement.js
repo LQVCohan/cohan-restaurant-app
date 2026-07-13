@@ -18,6 +18,16 @@ const F_TABLE_MIN = gql`
     reservationHoldMinutes
     minSpend
     cancelPolicy
+    nextReservationAt
+    reservationGraceEndsAt
+    reservationPhase
+    reservationId
+    reservationOrderCode
+    reservationStatus
+    reservationCustomerName
+    reservationCustomerPhone
+    reservationCustomerEmail
+    reservationPartySize
     floorId
     floorLevel
     joinGroupId
@@ -151,8 +161,6 @@ export const stripLegacyTableVisualFields = (
   );
   const { visualConfig: _legacyVisualConfig, ...safeInput } = input;
 
-  // AR placement sent both visualConfig and a derived floor position. When the
-  // legacy field is present, reject that paired coordinate at the client boundary.
   if (hasLegacyVisualConfig && dropPositionWithVisualConfig) {
     delete safeInput.position;
   }
@@ -166,6 +174,7 @@ export default function useTableManagement({ restaurantId }) {
     variables: { restaurantId },
     skip: !restaurantId,
     fetchPolicy: "cache-and-network",
+    pollInterval: 30000,
   });
 
   useEffect(() => {
