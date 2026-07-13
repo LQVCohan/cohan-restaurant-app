@@ -6,7 +6,7 @@ import ScoringGuideModal from "./ScoringGuideModal";
 
 describe("ScoringGuideModal", () => {
   it("explains the score in basic language and shows current weights", () => {
-    const { container } = render(
+    render(
       <ScoringGuideModal
         isOpen
         onClose={vi.fn()}
@@ -15,7 +15,7 @@ describe("ScoringGuideModal", () => {
     );
 
     expect(screen.getByText("Cách hệ thống tính điểm")).toBeInTheDocument();
-    expect(container.querySelector(".scoring-guide-zero-note")).toHaveTextContent(
+    expect(document.querySelector(".scoring-guide-zero-note")).toHaveTextContent(
       "Đặt một mục bằng 0 nghĩa là bỏ qua mục đó.",
     );
     expect(screen.getByText(/điểm cộng − điểm trừ/i)).toBeInTheDocument();
