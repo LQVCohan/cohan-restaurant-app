@@ -20,7 +20,7 @@ function getNextSafeSlot() {
 function toISOFromDateAndTime(dateStr, timeStr) {
   if (!dateStr || !timeStr) return null;
   const [h, m] = timeStr.split(":").map(Number);
-  const d = new Date(dateStr);
+  const d = new Date(`${dateStr}T00:00:00`);
   d.setHours(h || 0, m || 0, 0, 0);
   return d.toISOString();
 }
@@ -28,11 +28,11 @@ function toISOFromDateAndTime(dateStr, timeStr) {
 export default function ChangeTimeModal({
   isOpen,
   onClose,
-  onSubmit, // (payload: {timeTo, iso, date, time}) => void
-  title = "🕐 Đổi thời gian",
-  minDate, // yyyy-mm-dd
-  initialDate, // yyyy-mm-dd
-  initialTime, // HH:mm
+  onSubmit,
+  title = "Đổi thời gian đặt bàn",
+  minDate,
+  initialDate,
+  initialTime,
 }) {
   const suggestedSlot = useMemo(getNextSafeSlot, []);
   const today = useMemo(() => toDateInput(new Date()), []);
@@ -50,9 +50,22 @@ export default function ChangeTimeModal({
     }
   }, [isOpen, defaultDate, defaultTime]);
 
+  const iso = useMemo(() => toISOFromDateAndTime(date, time), [date, time]);
+  const selectedDate = iso ? new Date(iso) : null;
+  const isPast = !selectedDate || selectedDate.getTime() <= Date.now();
+  const preview = selectedDate && !Number.isNaN(selectedDate.getTime())
+    ? selectedDate.toLocaleString("vi-VN", {
+      weekday: "short",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+    : "Chưa chọn thời gian";
+
   const submit = () => {
-    const iso = toISOFromDateAndTime(date, time);
-    if (!iso) return;
+    if (!iso || isPast) return;
     onSubmit?.({ timeTo: iso, iso, date, time });
   };
 
@@ -62,8 +75,9 @@ export default function ChangeTimeModal({
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
       <div className="time-modal">
         <div className="form-row">
-          <label>Ngày mới</label>
+          <label htmlFor="reservation-change-date">Ngày mới</label>
           <input
+            id="reservation-change-date"
             type="date"
             min={min}
             value={date}
@@ -71,25 +85,32 @@ export default function ChangeTimeModal({
           />
         </div>
         <div className="form-row">
-          <label>Giờ mới</label>
+          <label htmlFor="reservation-change-time">Giờ mới</label>
           <input
+            id="reservation-change-time"
             type="time"
             value={time}
             onChange={(e) => setTime(e.target.value)}
           />
         </div>
 
-        <div className="hint">
-          💡 Đã tự gợi ý khung an toàn gần nhất. Hệ thống sẽ kiểm tra bàn trống khi xác nhận.
+        <div className={`change-time-review ${isPast ? "is-error" : ""}`} role="status">
+          <span>Thời gian đề nghị</span>
+          <strong>{preview}</strong>
+          <small>
+            {isPast
+              ? "Vui lòng chọn thời gian trong tương lai."
+              : "Nhà hàng sẽ kiểm tra bàn trống trước khi duyệt."}
+          </small>
         </div>
       </div>
 
       <Modal.Footer>
         <button className="btn btn--secondary" onClick={onClose}>
-          Huỷ
+          Hủy
         </button>
-        <button className="btn btn--primary" onClick={submit}>
-          Xác nhận
+        <button className="btn btn--primary" onClick={submit} disabled={isPast}>
+          Gửi yêu cầu đổi giờ
         </button>
       </Modal.Footer>
     </Modal>
