@@ -1,0 +1,420 @@
+/*
+ * Compact mode is a concise operational list, not a table and not a card with a photo.
+ * Keep only the dish name, price, remaining quantity, preparation station and actions.
+ */
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  min-height: 72px !important;
+  height: auto !important;
+  overflow: visible !important;
+  border-radius: 14px !important;
+}
+
+/* Compact means no image, image badge or sales overlay. */
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card
+  .card-image-wrapper {
+  display: none !important;
+}
+
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card
+  .card-body {
+  display: grid !important;
+  grid-template-columns: minmax(300px, 1fr) minmax(220px, 0.62fr) !important;
+  grid-auto-rows: auto !important;
+  align-items: center !important;
+  align-content: center !important;
+  gap: 12px 20px !important;
+  min-width: 0 !important;
+  min-height: 72px !important;
+  padding: 10px 14px 10px 42px !important;
+}
+
+/* Keep the title, price and remaining quantity together on one readable line. */
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card
+  .info-top {
+  display: grid !important;
+  grid-template-columns: minmax(160px, 1fr) auto !important;
+  align-items: center !important;
+  gap: 10px 18px !important;
+  min-width: 0 !important;
+}
+
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card
+  .category-name {
+  display: none !important;
+}
+
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card
+  .item-name {
+  display: block !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  color: #24303f !important;
+  font-size: 0.95rem !important;
+  font-weight: 850 !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  -webkit-line-clamp: unset !important;
+}
+
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card__meta-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 9px !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+}
+
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card__price {
+  color: #76532e !important;
+  font-size: 0.94rem !important;
+  font-weight: 850 !important;
+}
+
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card__quick-note {
+  max-width: 150px !important;
+  min-height: 24px !important;
+  padding: 4px 8px !important;
+  font-size: 10.5px !important;
+}
+
+/* The second body child is PrepStationControl; keep it as the preparation field. */
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card
+  .card-body
+  > :nth-child(2) {
+  display: flex !important;
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card
+  .card-body
+  > :nth-child(2)
+  > div:first-child {
+  flex: 0 0 auto !important;
+}
+
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card
+  .card-body
+  > :nth-child(2)
+  > select {
+  flex: 1 1 150px !important;
+  min-width: 130px !important;
+  min-height: 34px !important;
+}
+
+/* Remove category, advisory badges, warnings and variant detail from Compact. */
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card
+  .card-body
+  > :nth-child(n + 3),
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card__for-you-badge,
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .availability-warning,
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card__warning-cta,
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .variants-list {
+  display: none !important;
+}
+
+/* Actions remain buttons at the end of the list row. */
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card
+  .card-actions {
+  display: flex !important;
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  align-items: center !important;
+  align-self: stretch !important;
+  justify-content: flex-end !important;
+  flex-wrap: nowrap !important;
+  gap: 6px !important;
+  width: auto !important;
+  min-width: 0 !important;
+  padding: 10px 12px !important;
+  border-top: 0 !important;
+  border-left: 1px solid rgba(128, 109, 83, 0.14) !important;
+  background: #fffdf9 !important;
+}
+
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card
+  .card-actions
+  .divider {
+  display: none !important;
+}
+
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card
+  .card-actions
+  .action-btn,
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card
+  .card-actions
+  .status-trigger {
+  width: auto !important;
+  min-width: 36px !important;
+  min-height: 34px !important;
+  margin: 0 !important;
+  padding: 5px 8px !important;
+  border-radius: 9px !important;
+  font-size: 10.5px !important;
+  white-space: nowrap !important;
+}
+
+.manager-layout--menu
+  .mm-page-container
+  .mm-body
+  .mm-menu-results-shell
+  .mm-grid--list
+  .menu-item-card
+  .card-actions
+  .status-dropdown {
+  width: auto !important;
+  min-width: 0 !important;
+}
+
+@media (max-width: 1120px) {
+  .manager-layout--menu
+    .mm-page-container
+    .mm-body
+    .mm-menu-results-shell
+    .mm-grid--list
+    .menu-item-card {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .manager-layout--menu
+    .mm-page-container
+    .mm-body
+    .mm-menu-results-shell
+    .mm-grid--list
+    .menu-item-card
+    .card-actions {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    justify-content: flex-end !important;
+    width: 100% !important;
+    padding: 7px 12px !important;
+    border-top: 1px solid rgba(128, 109, 83, 0.14) !important;
+    border-left: 0 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .manager-layout--menu
+    .mm-page-container
+    .mm-body
+    .mm-menu-results-shell
+    .mm-grid--list
+    .menu-item-card {
+    display: grid !important;
+    flex-direction: initial !important;
+  }
+
+  .manager-layout--menu
+    .mm-page-container
+    .mm-body
+    .mm-menu-results-shell
+    .mm-grid--list
+    .menu-item-card
+    .card-body {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 9px !important;
+    padding: 11px 12px 11px 40px !important;
+  }
+
+  .manager-layout--menu
+    .mm-page-container
+    .mm-body
+    .mm-menu-results-shell
+    .mm-grid--list
+    .menu-item-card
+    .card-body
+    > :nth-child(2) {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+  }
+
+  .manager-layout--menu
+    .mm-page-container
+    .mm-body
+    .mm-menu-results-shell
+    .mm-grid--list
+    .menu-item-card
+    .card-actions {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    justify-content: stretch !important;
+  }
+
+  .manager-layout--menu
+    .mm-page-container
+    .mm-body
+    .mm-menu-results-shell
+    .mm-grid--list
+    .menu-item-card
+    .card-actions
+    .action-btn,
+  .manager-layout--menu
+    .mm-page-container
+    .mm-body
+    .mm-menu-results-shell
+    .mm-grid--list
+    .menu-item-card
+    .card-actions
+    .status-trigger {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 540px) {
+  .manager-layout--menu
+    .mm-page-container
+    .mm-body
+    .mm-menu-results-shell
+    .mm-grid--list
+    .menu-item-card
+    .info-top {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .manager-layout--menu
+    .mm-page-container
+    .mm-body
+    .mm-menu-results-shell
+    .mm-grid--list
+    .menu-item-card__meta-row {
+    justify-content: flex-start !important;
+  }
+
+  .manager-layout--menu
+    .mm-page-container
+    .mm-body
+    .mm-menu-results-shell
+    .mm-grid--list
+    .menu-item-card
+    .card-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
