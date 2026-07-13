@@ -63,7 +63,7 @@ const PAYMENT_PUBLIC_CONFIG = gql`
 const CREATE_CUSTOMER_TRANSFER_PAYMENT = gql`
   mutation CreateCustomerTransferPayment($input: CreateCustomerTransferPaymentInput!) {
     createCustomerTransferPayment(input: $input) {
-      id createdAt amount currency status reference callbackStatus metadata expiresAt
+      id createdAt amount currency reference status callbackStatus metadata expiresAt
       transfer {
         status rejectReason rejectedCount maxRejectedCount lastRejectedReason
         proofImages proofNote submittedAt verifiedAt rejectedAt
@@ -365,7 +365,7 @@ export default function OrderSummaryCheckoutModal({ isOpen, onClose, items = [],
           const fullAddress = String(address?.full || "").trim();
           if (!fullAddress) throw new Error("address_not_found");
 
-          setSelectedAddressId("");
+          setSelectedAddressId("__current__");
           setShipping((current) => ({ ...current, address: fullAddress }));
           setLocationMessage(
             "Đã điền địa chỉ theo vị trí hiện tại. Vui lòng kiểm tra và bổ sung số nhà nếu cần.",
@@ -719,6 +719,12 @@ export default function OrderSummaryCheckoutModal({ isOpen, onClose, items = [],
                 applyAddress(savedAddresses.find((address) => address.id === event.target.value))
               }
             >
+              {selectedAddressId === "__current__" ? (
+                <option value="__current__">Vị trí hiện tại</option>
+              ) : null}
+              {selectedAddressId === "__manual__" ? (
+                <option value="__manual__">Địa chỉ đang nhập</option>
+              ) : null}
               <option value="">Chọn nhanh địa chỉ</option>
               {savedAddresses.map((address) => (
                 <option key={address.id} value={address.id}>
@@ -776,7 +782,7 @@ export default function OrderSummaryCheckoutModal({ isOpen, onClose, items = [],
               id="checkout-delivery-address"
               value={shipping.address}
               onChange={(event) => {
-                setSelectedAddressId("");
+                setSelectedAddressId("__manual__");
                 setLocationMessage("");
                 setShipping((current) => ({ ...current, address: event.target.value }));
               }}
