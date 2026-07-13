@@ -6,6 +6,7 @@ import {
   jobOptions,
   validateShiftRules,
 } from "../utils/scheduleHelpers";
+import ScoringGuideModal from "./ScoringGuideModal";
 import "./ShiftRulesModal.scss";
 
 const MANDATORY_ROLE_OPTIONS = jobOptions.map((option) => ({
@@ -374,10 +375,12 @@ const ShiftRulesModal = ({
     DEFAULT_SCORING_WEIGHTS,
   );
   const [draftMandatoryRoles, setDraftMandatoryRoles] = useState([]);
+  const [isScoringGuideOpen, setIsScoringGuideOpen] = useState(false);
   const initializedOpenRef = useRef(false);
   useEffect(() => {
     if (!isOpen) {
       initializedOpenRef.current = false;
+      setIsScoringGuideOpen(false);
       return;
     }
 
@@ -966,6 +969,14 @@ const ShiftRulesModal = ({
                   gì.
                 </span>
               </div>
+              <button
+                type="button"
+                className="scoring-guide-trigger"
+                onClick={() => setIsScoringGuideOpen(true)}
+                aria-haspopup="dialog"
+              >
+                Cách tính điểm
+              </button>
             </div>
 
             <div className="scoring-presets">
@@ -1089,6 +1100,12 @@ const ShiftRulesModal = ({
           {policySaving ? "Đang lưu..." : "Lưu cài đặt"}
         </button>
       </Modal.Footer>
+
+      <ScoringGuideModal
+        isOpen={isOpen && isScoringGuideOpen}
+        onClose={() => setIsScoringGuideOpen(false)}
+        weights={draftScoringWeights}
+      />
     </Modal>
   );
 };
