@@ -3,6 +3,7 @@ import {
   KitchenOrderWorkItem,
   Order,
   PrintSetting,
+  Table,
   Warehouse,
 } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
@@ -324,6 +325,22 @@ export const ConfirmedOrderPrintMutation = {
         });
         updatePublicStatusHistory(claimed, "STAFF");
         await claimed.save({ session });
+
+        if (
+          String(claimed?.clientMeta?.source || "").toLowerCase() ===
+            "customer_table_qr" &&
+          claimed.tableId
+        ) {
+          await Table.updateOne(
+            {
+              _id: claimed.tableId,
+              restaurantId: claimed.restaurantId,
+              status: { $in: ["available", "reserved", "occupied"] },
+            },
+            { $set: { status: "occupied" } },
+            { session },
+          );
+        }
         claimed.$locals = claimed.$locals || {};
         claimed.$locals.prevPublicStatus = previousPublicStatus;
 

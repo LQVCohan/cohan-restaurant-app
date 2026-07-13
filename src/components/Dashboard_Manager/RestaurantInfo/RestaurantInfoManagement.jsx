@@ -39,6 +39,7 @@ import {
   FileTextOutlined,
 } from "@ant-design/icons";
 import { useAvatarUploadLocal } from "../../../hooks/useAvatarUploadLocal";
+import { useNotification } from "../../../hooks/useNotification";
 import { reverseGeocodeCoordinates } from "../../../lib/reverseGeocode";
 import "./RestaurantInfoManagement.scss";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
@@ -441,10 +442,28 @@ const getGeolocationErrorMessage = (error) => {
   }
 };
 
-const RestaurantInfoManagement = ({ role = "manager" }) => {
+const getRestaurantSaveErrorMessage = (error) => {
+  const messageText = String(error?.message || "").toLowerCase();
+  if (
+    messageText.includes("network") ||
+    messageText.includes("fetch") ||
+    messageText.includes("offline")
+  ) {
+    return "Mất kết nối khi lưu. Bản nháp đã được giữ trên thiết bị; hãy thử lại khi có mạng.";
+  }
+  if (messageText.includes("forbidden") || messageText.includes("permission")) {
+    return "Tài khoản hiện tại không có quyền sửa thông tin nhà hàng.";
+  }
+  return "Chưa thể lưu thông tin nhà hàng. Bản nháp đã được giữ trên thiết bị để bạn thử lại.";
+};
+
+const RestaurantInfoManagement = ({ role = "manager", restaurantId = "" }) => {
   const { upload: uploadAsset } = useAvatarUploadLocal();
+  const { showNotification } = useNotification();
   const [timeSlot, setTimeSlot] = useState("lunch");
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState(
+    () => String(restaurantId || ""),
+  );
   const [_draftName, _setDraftName] = useState("");
   const [drafts, setDrafts] = useState([]);
   const [extraAmenityInput, setExtraAmenityInput] = useState("");
@@ -548,7 +567,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   ]);
 
   // --- QUERY HOOKS ---
-  const { data: meData } = useQuery(ME_QUERY, { fetchPolicy: "network-only" });
+  const { data: meData } = useQuery(ME_QUERY, { fetchPolicy: "cache-first" });
   const me = meData?.me;
 
   const { data: scopedRestaurantsData, loading: scopedRestaurantsLoading } =
@@ -589,6 +608,12 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   }, [role, me, allRestaurantsData, scopedRestaurantsData]);
 
   useEffect(() => {
+    if (restaurantId && String(restaurantId) !== String(selectedRestaurantId)) {
+      setSelectedRestaurantId(String(restaurantId));
+    }
+  }, [restaurantId, selectedRestaurantId]);
+
+  useEffect(() => {
     if (!selectedRestaurantId && restaurantOptions.length > 0) {
       setSelectedRestaurantId(restaurantOptions[0].id);
     }
@@ -602,7 +627,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   } = useQuery(GET_RESTAURANT_DETAIL, {
     variables: { id: selectedRestaurantId },
     skip: !selectedRestaurantId,
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-and-network",
   });
   const { data: layoutMetricsData } = useQuery(GET_RESTAURANT_LAYOUT_METRICS, {
     variables: { restaurantId: selectedRestaurantId },
@@ -770,7 +795,10 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 
   // --- HANDLERS ---
 
-  const saveDraftToLocal = (label = "Bản nháp thủ công") => {
+  const saveDraftToLocal = (
+    label = "Bản nháp thủ công",
+    { notify = true } = {},
+  ) => {
     const payload = {
       id: `${Date.now()}`,
       label,
@@ -779,7 +807,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       data: restaurantForm,
     };
     setDrafts((prev) => [payload, ...prev].slice(0, 20));
-    message.success("Đã lưu bản nháp");
+    if (notify) message.success("Đã lưu bản nháp");
   };
 
   const loadDraft = (id) => {
@@ -1037,7 +1065,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 
     const validationError = validateRestaurantForm();
     if (validationError) {
-      message.error(validationError);
+      showNotification(validationError, "error");
       return;
     }
 
@@ -1200,20 +1228,19 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         : false;
 
       if (hasMismatch) {
-        message.warning(
-          "Đã gửi yêu cầu lưu nhưng dữ liệu trả về chưa đồng bộ. Vui lòng tải lại trang hoặc kiểm tra lại API.",
+        showNotification(
+          "Dữ liệu vừa lưu chưa hiển thị đầy đủ. Hãy tải lại trang rồi kiểm tra trước khi sửa tiếp.",
+          "warning",
         );
         setIsDirty(true);
         return;
       }
 
       setIsDirty(false);
-      message.success("Cập nhật thông tin nhà hàng thành công");
+      showNotification("Đã cập nhật thông tin nhà hàng.", "success");
     } catch (error) {
-      saveDraftToLocal("Bản nháp tự động khi lỗi mạng");
-      message.error(
-        error?.message || "Không thể cập nhật thông tin. Đã lưu bản nháp cục bộ.",
-      );
+      saveDraftToLocal("Bản nháp tự động khi lỗi mạng", { notify: false });
+      showNotification(getRestaurantSaveErrorMessage(error), "error");
     }
   };
 
@@ -2253,7 +2280,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 export const AdminRestaurantInfoManagement = () => (
   <RestaurantInfoManagement role="admin" />
 );
-export const ManagerRestaurantInfoManagement = () => (
-  <RestaurantInfoManagement role="manager" />
+export const ManagerRestaurantInfoManagement = (props) => (
+  <RestaurantInfoManagement role="manager" {...props} />
 );
 export default RestaurantInfoManagement;

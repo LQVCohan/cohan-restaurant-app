@@ -333,7 +333,11 @@ const ManagerLayout = () => {
     };
     syncFromHash();
     window.addEventListener("hashchange", syncFromHash);
-    return () => window.removeEventListener("hashchange", syncFromHash);
+    window.addEventListener("popstate", syncFromHash);
+    return () => {
+      window.removeEventListener("hashchange", syncFromHash);
+      window.removeEventListener("popstate", syncFromHash);
+    };
   }, []);
 
   useEffect(() => {
@@ -341,7 +345,11 @@ const ManagerLayout = () => {
     localStorage.setItem("manager.currentPage", currentPage);
     const expectedHash = `#${currentPage}`;
     if (window.location.pathname !== MANAGER_CANONICAL_PATH || window.location.hash !== expectedHash) {
-      history.replaceState(null, "", `${MANAGER_CANONICAL_PATH}${expectedHash}`);
+      history.replaceState(
+        { managerPage: currentPage },
+        "",
+        `${MANAGER_CANONICAL_PATH}${window.location.search}${expectedHash}`,
+      );
     }
   }, [currentPage, validPages]);
 
@@ -377,7 +385,11 @@ const ManagerLayout = () => {
     setShowTableSettings(true);
     setSidebarOpen(false);
     localStorage.setItem("manager.currentPage", "tables");
-    history.replaceState(null, "", buildManagerNavigationUrl({ page: "tables" }));
+    history.pushState(
+      { managerPage: "tables" },
+      "",
+      buildManagerNavigationUrl({ page: "tables" }),
+    );
   };
 
   useEffect(() => {
@@ -389,8 +401,11 @@ const ManagerLayout = () => {
       setCurrentPage(pageId);
       setSidebarOpen(false);
       localStorage.setItem("manager.currentPage", pageId);
-      history.replaceState(null, "", buildManagerNavigationUrl({ page: pageId, query }));
-      window.dispatchEvent(new PopStateEvent("popstate"));
+      history.pushState(
+        { managerPage: pageId },
+        "",
+        buildManagerNavigationUrl({ page: pageId, query }),
+      );
       window.dispatchEvent(new CustomEvent("manager:navigation-query", { detail: { page: pageId, query, source: event?.detail?.source || "manager:navigate" } }));
     };
     window.addEventListener("manager:navigate", handleManagerNavigate);
@@ -402,6 +417,11 @@ const ManagerLayout = () => {
   const handlePageChange = (pageId) => {
     setShowTableSettings(false);
     setCurrentPage(pageId);
+    const nextUrl = `${MANAGER_CANONICAL_PATH}${window.location.search}#${pageId}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (currentUrl !== nextUrl) {
+      history.pushState({ managerPage: pageId }, "", nextUrl);
+    }
   };
 
   const managerSearchItems = useMemo(
@@ -469,7 +489,9 @@ const ManagerLayout = () => {
             <RestaurantPublicationControl
               restaurantId={requestedRestaurantId || brandSelection.selectedRestaurantId || null}
             />
-            <ManagerRestaurantInfoManagement />
+            <ManagerRestaurantInfoManagement
+              restaurantId={requestedRestaurantId || brandSelection.selectedRestaurantId || null}
+            />
           </>
         );
       case "rbac": return <RbacManagement />;

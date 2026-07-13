@@ -42,6 +42,9 @@ const renderModal = () => {
         ${group("Đặt cọc và khuyến mãi", "booking")}
         ${group("Chính sách đặt bàn", "policy")}
         ${group("Trợ lý vận hành bàn", "assistant")}
+        <section class="cohan-table-customer-profiles" data-testid="customers">
+          Khách liên kết
+        </section>
         <div class="actions-end" data-testid="danger-zone">
           <button class="btn danger" type="button">Xóa bàn</button>
         </div>
@@ -74,9 +77,14 @@ describe("table detail modal tabs", () => {
     );
     expect(screen.getByTestId("summary")).not.toHaveAttribute("hidden");
     expect(screen.getByTestId("status")).not.toHaveAttribute("hidden");
+    expect(screen.getByTestId("customers")).not.toHaveAttribute("hidden");
     expect(screen.getByTestId("configuration")).toHaveAttribute("hidden");
     expect(getSaveButton()).toHaveTextContent("Lưu cấu hình");
     expect(getSaveButton()).toHaveAttribute("hidden");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Khách liên kết" }));
+    expect(screen.getByTestId("customers")).not.toHaveAttribute("hidden");
+    expect(screen.getByTestId("status")).toHaveAttribute("hidden");
 
     fireEvent.click(screen.getByRole("tab", { name: "Cấu hình" }));
 
@@ -142,11 +150,11 @@ describe("table detail modal tabs", () => {
     const overviewTab = screen.getByRole("tab", { name: "Tổng quan" });
     fireEvent.keyDown(overviewTab, { key: "ArrowRight" });
 
-    const configurationTab = screen.getByRole("tab", { name: "Cấu hình" });
-    expect(configurationTab).toHaveAttribute("aria-selected", "true");
-    expect(document.activeElement).toBe(configurationTab);
+    const customersTab = screen.getByRole("tab", { name: "Khách liên kết" });
+    expect(customersTab).toHaveAttribute("aria-selected", "true");
+    expect(document.activeElement).toBe(customersTab);
 
-    fireEvent.keyDown(configurationTab, { key: "End" });
+    fireEvent.keyDown(customersTab, { key: "End" });
     expect(screen.getByRole("tab", { name: "Gợi ý AI" })).toHaveAttribute(
       "aria-selected",
       "true",

@@ -550,16 +550,6 @@ export async function publicSubmitTableOrder(_parent, { input }, ctx) {
         { session: transaction },
       );
 
-      await Table.updateOne(
-        {
-          _id: currentAccess.tid,
-          restaurantId: currentAccess.rid,
-          status: { $in: ["reserved", "occupied", "payment_pending"] },
-        },
-        { $set: { status: "occupied" } },
-        { session: transaction },
-      );
-
       await ensureOrderTracking(order);
       updatePublicStatusHistory(order, "CUSTOMER");
       await order.save({ session: transaction });

@@ -139,6 +139,9 @@ const applyMapCoordinates = (card, lat, lng) => {
 };
 
 const createMapCard = (context) => {
+  const currentLocationSource = context.root.querySelector(
+    ".address-section-card .ant-card-extra button",
+  );
   const card = document.createElement("section");
   card.className = "restaurant-location-map-card";
   card.setAttribute("aria-label", "Chọn vị trí nhà hàng trên bản đồ");
@@ -148,14 +151,28 @@ const createMapCard = (context) => {
         <strong>Vị trí trên bản đồ</strong>
         <span>Nhấp vào bản đồ hoặc kéo ghim để cập nhật tọa độ.</span>
       </div>
-      <div class="restaurant-location-map-card__coordinates" aria-label="Tọa độ đang chọn">
-        <span>Vĩ độ <b data-map-lat>Chưa đặt</b></span>
-        <span>Kinh độ <b data-map-lng>Chưa đặt</b></span>
+      <div class="restaurant-location-map-card__controls">
+        <div class="restaurant-location-map-card__coordinates" aria-label="Tọa độ đang chọn">
+          <span>Vĩ độ <b data-map-lat>Chưa đặt</b></span>
+          <span>Kinh độ <b data-map-lng>Chưa đặt</b></span>
+        </div>
+        <button type="button" class="restaurant-location-map-card__locate">
+          Dùng vị trí hiện tại
+        </button>
       </div>
     </div>
     <div class="restaurant-location-map-card__canvas" role="region" aria-label="Bản đồ vị trí nhà hàng"></div>
   `;
   context.row.insertAdjacentElement("afterend", card);
+
+  const locateButton = card.querySelector(
+    ".restaurant-location-map-card__locate",
+  );
+  locateButton.disabled = !currentLocationSource;
+  locateButton.addEventListener("click", () => currentLocationSource?.click());
+  currentLocationSource?.closest(".ant-card-extra")?.classList.add(
+    "restaurant-current-location-source",
+  );
 
   const pair = readRestaurantCoordinatePair(
     context.latitude.input,

@@ -28,12 +28,12 @@ describe("getPublicTableOrderCapability", () => {
     ).toBe(false);
   });
 
-  it("does not let an unopened available table order", () => {
+  it("allows a verified QR device to submit while the table is still available", () => {
     expect(
       getPublicTableOrderCapability({
         tableStatus: "available",
         session: null,
-      }).canOrder,
-    ).toBe(false);
+      }),
+    ).toEqual({ canOrder: true, reason: null });
   });
 });

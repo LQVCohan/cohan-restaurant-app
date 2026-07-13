@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Home, UsersRound } from "lucide-react";
 import "./Styles/Sidebar.scss";
 import "./Styles/SidebarShellFix.scss";
@@ -96,13 +96,16 @@ export const persistManagerPageDestination = (pageId) => {
 
   localStorage.setItem("manager.currentPage", normalizedPage);
   const nextUrl = `${window.location.pathname}${window.location.search}#${encodeURIComponent(normalizedPage)}`;
-  window.history.replaceState(null, "", nextUrl);
+  if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== nextUrl) {
+    window.history.pushState({ managerPage: normalizedPage }, "", nextUrl);
+  }
   return true;
 };
 
 const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBrand = null }) => {
   const { user } = useContext(AuthContext);
   const [avatarImageFailed, setAvatarImageFailed] = useState(false);
+  const activeItemRef = useRef(null);
   const accountId = String(user?.id || user?._id || "anonymous");
   const sidebarUser = useMemo(() => getDisplayUser(user), [user]);
   const sidebarUserName = sidebarUser.fullName || "Quản lý";
@@ -146,6 +149,17 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBr
   useEffect(() => {
     setAvatarImageFailed(false);
   }, [accountId, sidebarAvatarSrc]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    activeItemRef.current?.scrollIntoView?.({
+      block: "nearest",
+      inline: "nearest",
+      behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
+        ? "auto"
+        : "smooth",
+    });
+  }, [activeItem, isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -196,6 +210,7 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBr
               return (
                 <button
                   key={item.id}
+                  ref={activeItem === item.id ? activeItemRef : null}
                   className={`nav-item ${isAiItem ? "nav-item--ai" : ""} ${activeItem === item.id ? "active" : ""}`}
                   onClick={() => handleItemClick(item)}
                   title={item.label}

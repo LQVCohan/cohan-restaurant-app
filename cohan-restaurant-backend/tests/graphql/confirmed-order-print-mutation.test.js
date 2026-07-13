@@ -21,6 +21,7 @@ const modelMocks = vi.hoisted(() => ({
   },
   KitchenOrderWorkItem: { find: vi.fn() },
   PrintSetting: { findOne: vi.fn(), updateOne: vi.fn() },
+  Table: { updateOne: vi.fn() },
   Warehouse: { findOne: vi.fn() },
 }));
 const authMocks = vi.hoisted(() => ({
@@ -155,6 +156,7 @@ describe("ConfirmedOrderPrintMutation", () => {
     kitchenMocks.syncKitchenOrderWorkItemsForKitchenEntry.mockResolvedValue({ syncedCount: 2 });
     mockPrintSetting();
     modelMocks.PrintSetting.updateOne.mockResolvedValue({ modifiedCount: 1 });
+    modelMocks.Table.updateOne.mockResolvedValue({ modifiedCount: 1 });
     modelMocks.Warehouse.findOne.mockReturnValue({
       sort: vi.fn(() => ({
         session: vi.fn(() => ({ lean: vi.fn(async () => ({ _id: warehouseId })) })),
@@ -219,6 +221,36 @@ describe("ConfirmedOrderPrintMutation", () => {
       expect.objectContaining({
         meta: expect.objectContaining({ statusFrom: "pending", statusTo: "confirmed" }),
       }),
+    );
+  });
+
+  it("marks the table occupied only when POS accepts the first QR batch", async () => {
+    const tableId = "64b000000000000000000008";
+    mockInitialPendingOrder();
+    const claimedOrder = createOrderDocument({
+      tableId,
+      clientMeta: { source: "customer_table_qr" },
+    });
+    modelMocks.Order.findOneAndUpdate.mockResolvedValue(claimedOrder);
+    mockWorkItems([]);
+
+    const { ConfirmedOrderPrintMutation } = await import(
+      "../../graphql/resolvers/order/confirmedOrderPrintMutation.js"
+    );
+    await ConfirmedOrderPrintMutation.confirmIncomingOrder(
+      null,
+      { input: { id: orderId, restaurantId } },
+      { user: { id: staffId } },
+    );
+
+    expect(modelMocks.Table.updateOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _id: tableId,
+        restaurantId,
+        status: { $in: ["available", "reserved", "occupied"] },
+      }),
+      { $set: { status: "occupied" } },
+      { session: sessionMocks },
     );
   });
 

@@ -157,6 +157,12 @@ const M_REJECT = gql`
   }
 `;
 
+export const toLeaveDateTime = (value) => {
+  const dateOnly = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return value;
+  return `${dateOnly}T00:00:00.000Z`;
+};
+
 export const useLeaveManagement = ({
   selectedDate,
   status,
@@ -168,8 +174,8 @@ export const useLeaveManagement = ({
     () => ({
       restaurantId: restaurantId || undefined,
       employeeId: employeeId || undefined,
-      startDate: selectedDate || undefined,
-      endDate: selectedDate || undefined,
+      startDate: selectedDate ? toLeaveDateTime(selectedDate) : undefined,
+      endDate: selectedDate ? toLeaveDateTime(selectedDate) : undefined,
       status: status === "all" ? undefined : status,
       search: search?.trim() || undefined,
     }),
@@ -203,7 +209,15 @@ export const useLeaveManagement = ({
   };
 
   const submitLeaveRequest = async (input) => {
-    await createLeaveMutation({ variables: { input } });
+    await createLeaveMutation({
+      variables: {
+        input: {
+          ...input,
+          startDate: toLeaveDateTime(input?.startDate),
+          endDate: toLeaveDateTime(input?.endDate),
+        },
+      },
+    });
     await refetchIfReady();
   };
 

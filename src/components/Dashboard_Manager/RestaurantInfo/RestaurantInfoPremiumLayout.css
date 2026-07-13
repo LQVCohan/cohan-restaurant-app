@@ -56,7 +56,7 @@
 }
 
 .manager-layout .restaurant-management-container .hero-uploader-section .cover-overlay .ant-btn {
-  min-height: 38px;
+  min-height: 44px;
   border-color: rgba(255, 255, 255, 0.62) !important;
   border-radius: 11px;
   background: rgba(31, 48, 40, 0.7) !important;
@@ -449,6 +449,41 @@
   justify-content: flex-end;
 }
 
+.manager-layout .restaurant-management-container .restaurant-location-map-card__controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.manager-layout .restaurant-management-container .restaurant-location-map-card__locate {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(31, 111, 74, 0.28);
+  border-radius: 10px;
+  color: #165c3c;
+  background: #eaf5ee;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.manager-layout .restaurant-management-container .restaurant-location-map-card__locate:hover {
+  border-color: rgba(31, 111, 74, 0.5);
+  background: #dff0e5;
+}
+
+.manager-layout .restaurant-management-container .restaurant-location-map-card__locate:focus-visible {
+  outline: 3px solid rgba(31, 111, 74, 0.24);
+  outline-offset: 2px;
+}
+
+.manager-layout .restaurant-management-container .restaurant-current-location-source {
+  display: none;
+}
+
 .manager-layout .restaurant-management-container .restaurant-location-map-card__coordinates > span {
   display: inline-flex;
   align-items: center;
@@ -469,7 +504,7 @@
 
 .manager-layout .restaurant-management-container .restaurant-location-map-card__canvas {
   width: 100%;
-  height: clamp(280px, 34vw, 360px);
+  height: clamp(200px, 24vw, 240px);
   background: #dfe9e3;
 }
 

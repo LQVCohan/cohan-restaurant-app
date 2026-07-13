@@ -1,5 +1,6 @@
 const TAB_ITEMS = [
   { key: "overview", label: "Tổng quan" },
+  { key: "customers", label: "Khách liên kết" },
   { key: "configuration", label: "Cấu hình" },
   { key: "operations", label: "Vận hành" },
   { key: "booking", label: "Đặt bàn" },
@@ -10,6 +11,7 @@ const SAVE_TABS = new Set(["configuration", "booking"]);
 
 const TAB_STATE_COPY = {
   overview: "Xem nhanh tình trạng bàn. Thao tác trạng thái được áp dụng ngay.",
+  customers: "Thông tin khách chỉ hiển thị tại đây và vẫn gắn với bàn gốc khi ghép bàn.",
   configuration: "Các thay đổi trong mục này được áp dụng khi bấm Lưu cấu hình.",
   operations: "Các thao tác vận hành được áp dụng ngay sau khi xác nhận.",
   booking: "Các thay đổi đặt bàn được áp dụng khi bấm Lưu cấu hình.",
@@ -93,7 +95,8 @@ const getDirectSections = (body) =>
   Array.from(body?.children || []).filter(
     (element) =>
       element.classList?.contains("talite-group") ||
-      element.classList?.contains("actions-end"),
+      element.classList?.contains("actions-end") ||
+      element.classList?.contains("cohan-table-customer-profiles"),
   );
 
 const getDirectSummary = (body) =>
@@ -150,10 +153,22 @@ const syncSections = (modal, activeKey) => {
   if (summary) summary.hidden = false;
 
   getDirectSections(body).forEach((section) => {
+    const isCustomerSection = section.classList.contains(
+      "cohan-table-customer-profiles",
+    );
     const isGroup = section.classList.contains("talite-group");
-    const sectionKey = isGroup ? classifyGroup(section) : "configuration";
-    const sectionKind = isGroup ? classifyGroupKind(section) : "danger";
-    const visibleInOverview = isGroup && isStatusGroup(section);
+    const sectionKey = isCustomerSection
+      ? "customers"
+      : isGroup
+        ? classifyGroup(section)
+        : "configuration";
+    const sectionKind = isCustomerSection
+      ? "customers"
+      : isGroup
+        ? classifyGroupKind(section)
+        : "danger";
+    const visibleInOverview =
+      (isGroup && isStatusGroup(section)) || isCustomerSection;
 
     section.dataset.tableDetailSection = sectionKey;
     section.dataset.tableDetailKind = sectionKind;

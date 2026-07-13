@@ -14,7 +14,13 @@ import {
   verifyTableAccessToken,
 } from "../../utils/publicTableSession.js";
 
-const SESSION_BOOTSTRAP_TABLE_STATUSES = new Set(["occupied"]);
+// A verified table QR may create a lightweight pre-service session. The table
+// itself remains available/reserved until POS accepts the first submitted batch.
+const SESSION_BOOTSTRAP_TABLE_STATUSES = new Set([
+  "available",
+  "reserved",
+  "occupied",
+]);
 
 const toId = (value) =>
   value && mongoose.isValidObjectId(String(value))
@@ -86,9 +92,7 @@ function assertTableIsOpenForQrService(table) {
   const tableStatus = String(table?.status || "").toLowerCase();
   if (SESSION_BOOTSTRAP_TABLE_STATUSES.has(tableStatus)) return;
   throw new GraphQLError(
-    ["available", "reserved"].includes(tableStatus)
-      ? "Nhân viên cần mở bàn sang trạng thái đang phục vụ trước khi khách xác nhận gọi món."
-      : "Bàn hiện chưa sẵn sàng để bắt đầu phiên gọi món.",
+    "Bàn hiện chưa sẵn sàng để bắt đầu phiên gọi món.",
     { extensions: { code: "TABLE_SESSION_NOT_OPEN" } },
   );
 }

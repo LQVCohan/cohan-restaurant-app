@@ -97,7 +97,7 @@ export default function FoodAvailabilityWatchPanel({
         </strong>
         <p>
           {message ||
-            "Nhập email để nhận nhắc khi món khả dụng trở lại. Hệ thống không tự giữ món, đơn vẫn được xử lý theo FCFS."}
+            "Nhập email để nhận nhắc khi món khả dụng trở lại. Hệ thống không tự giữ món; đơn được xác nhận theo thời điểm nhà hàng nhận yêu cầu."}
         </p>
 
         {!registered && !user?.email ? (
@@ -131,7 +131,7 @@ export default function FoodAvailabilityWatchPanel({
         {!registered ? (
           <button type="button" onClick={handleRegister} disabled={registering}>
             <Bell size={15} />
-            {registering ? "Đang đăng ký..." : "Gửi email khi có lại"}
+            {registering ? "Đang đăng ký…" : "Gửi email khi có lại"}
           </button>
         ) : null}
       </div>

@@ -35,6 +35,15 @@ const catalogData = {
       isActive: false,
       itemCount: 1,
     },
+    {
+      id: "menu-dinner-chef",
+      restaurantId: "restaurant-1",
+      timeSlot: "dinner",
+      name: "Thực đơn tối của bếp trưởng",
+      description: "Món theo ngày",
+      isActive: true,
+      itemCount: 1,
+    },
   ],
   breakfast: connection([
     { id: "dish-1", menuId: "menu-breakfast", name: "Phở bò", basePrice: 65000, status: "available" },
@@ -43,6 +52,7 @@ const catalogData = {
   lunch: connection([]),
   dinner: connection([
     { id: "dish-3", menuId: "menu-dinner", name: "Cơm gà", basePrice: 55000, status: "hidden" },
+    { id: "dish-4", menuId: "menu-dinner-chef", name: "Cá hấp", basePrice: 95000, status: "available" },
   ], true),
   lateNight: connection([]),
 };
@@ -82,6 +92,12 @@ describe("ManagerMenuCatalogModal", () => {
     expect(within(dinnerCard).getByText("Cơm gà")).toBeInTheDocument();
     expect(within(dinnerCard).getByText(/200 món đầu tiên/)).toBeInTheDocument();
 
+    const chefDinnerCard = screen
+      .getByText("Thực đơn tối của bếp trưởng")
+      .closest("article");
+    expect(within(chefDinnerCard).getByText("Cá hấp")).toBeInTheDocument();
+    expect(within(chefDinnerCard).queryByText("Cơm gà")).not.toBeInTheDocument();
+
     expect(screen.getAllByText("Chưa có thực đơn")).toHaveLength(2);
   });
 
@@ -114,7 +130,10 @@ describe("ManagerMenuCatalogModal", () => {
       />,
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Mất kết nối");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Kiểm tra kết nối rồi thử tải lại",
+    );
+    expect(screen.getByRole("alert")).not.toHaveTextContent("Mất kết nối");
     fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
     expect(refetch).toHaveBeenCalledTimes(1);
   });

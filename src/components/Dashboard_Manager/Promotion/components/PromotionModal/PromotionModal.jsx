@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Clock,
   DollarSign,
@@ -62,6 +63,22 @@ const toNumber = (value, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const formatVietnamDateTimePreview = (value) => {
+  if (!value) return "Chưa chọn";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Chưa chọn";
+  return new Intl.DateTimeFormat("vi-VN", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+};
+
+const TARGET_AUDIENCE_LABELS = {
+  new: "Khách hàng mới",
+  vip: "Khách VIP",
+  birthday: "Khách có sinh nhật trong tháng",
+};
+
 const PromotionModal = ({
   promotion,
   restaurants = [],
@@ -89,6 +106,7 @@ const PromotionModal = ({
     buildInitialFormData(promotion, fallbackRestaurantId),
   );
   const [errors, setErrors] = useState({});
+  const modalRef = useRef(null);
 
   useEffect(() => {
     setFormData(buildInitialFormData(promotion, fallbackRestaurantId));
@@ -101,6 +119,66 @@ const PromotionModal = ({
       (item) => String(item.categoryId || "") === String(formData.categoryId),
     );
   }, [formData.categoryId, menuItems]);
+
+  const derivedConditions = useMemo(() => {
+    const lines = [];
+    const minOrderValue = toNumber(formData.minOrderValue);
+    const maxDiscount = toNumber(formData.maxDiscount);
+    const usageLimit = toNumber(formData.usageLimit);
+    if (minOrderValue > 0) {
+      lines.push(`Đơn hàng tối thiểu ${minOrderValue.toLocaleString("vi-VN")}đ`);
+    }
+    if (maxDiscount > 0) {
+      lines.push(`Giảm tối đa ${maxDiscount.toLocaleString("vi-VN")}đ`);
+    }
+    if (usageLimit > 0) lines.push(`Tối đa ${usageLimit.toLocaleString("vi-VN")} lượt dùng`);
+    if (formData.targetAudience && formData.targetAudience !== "all") {
+      lines.push(
+        `Chỉ áp dụng cho nhóm: ${TARGET_AUDIENCE_LABELS[formData.targetAudience] || formData.targetAudience}`,
+      );
+    }
+    return lines;
+  }, [
+    formData.maxDiscount,
+    formData.minOrderValue,
+    formData.targetAudience,
+    formData.usageLimit,
+  ]);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const previousFocus = document.activeElement;
+    document.body.style.overflow = "hidden";
+    const focusFrame = window.requestAnimationFrame(() => {
+      modalRef.current?.focus();
+    });
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose?.();
+      if (event.key !== "Tab" || !modalRef.current) return;
+      const focusable = Array.from(
+        modalRef.current.querySelectorAll(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+      previousFocus?.focus?.();
+    };
+  }, [onClose]);
 
   const handleInputChange = (event) => {
     const { checked, name, type, value } = event.target;
@@ -240,6 +318,11 @@ const PromotionModal = ({
     }
 
     setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      window.requestAnimationFrame(() => {
+        modalRef.current?.querySelector(".error")?.focus();
+      });
+    }
     return Object.keys(nextErrors).length === 0;
   };
 
@@ -271,10 +354,7 @@ const PromotionModal = ({
           : [],
       scope: formData.type === "combo" ? "order" : formData.scope,
       giftItemId: formData.type === "combo" ? null : formData.giftItemId,
-      conditions: formData.conditions
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean),
+      conditions: derivedConditions,
       status: mode === "draft" ? "draft" : "active",
       productId: formData.giftItemId || null,
       level: toNumber(formData.level, 1),
@@ -282,34 +362,43 @@ const PromotionModal = ({
     });
   };
 
-  return (
+  return createPortal(
     <div
       className="premium-modal-overlay"
+      role="presentation"
       onClick={(event) => event.target === event.currentTarget && onClose()}
     >
-      <div className="premium-modal">
+      <div
+        className="premium-modal"
+        ref={modalRef}
+        role="dialog"
+        tabIndex={-1}
+        aria-modal="true"
+        aria-labelledby="promotion-modal-title"
+      >
         <div className="modal-header">
           <div className="header-content">
-            <h2>{promotion ? "Chỉnh sửa ưu đãi" : "Tạo ưu đãi mới"}</h2>
+            <h2 id="promotion-modal-title">{promotion ? "Chỉnh sửa ưu đãi" : "Tạo ưu đãi mới"}</h2>
             <p>Điền thông tin chi tiết để thiết lập chương trình khuyến mãi.</p>
           </div>
-          <button className="btn-close" onClick={onClose}>
-            <X size={20} />
+          <button className="btn-close" onClick={onClose} type="button" aria-label="Đóng">
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
 
         <div className="modal-body">
-          <form id="promoForm" onSubmit={handleSubmit}>
+          <form id="promoForm" autoComplete="off" onSubmit={handleSubmit}>
             <div className="form-section">
               <h3 className="section-title">
-                <FileText size={18} /> Thông tin chung
+                <FileText size={18} aria-hidden="true" /> Thông tin chung
               </h3>
               <div className="grid-2">
                 <div className="form-group full">
-                  <label>
+                  <label htmlFor="promotion-name">
                     Tên chương trình <span className="req">*</span>
                   </label>
                   <input
+                    id="promotion-name"
                     className={errors.name ? "error" : ""}
                     name="name"
                     onChange={handleInputChange}
@@ -323,12 +412,13 @@ const PromotionModal = ({
                 </div>
 
                 <div className="form-group">
-                  <label>
+                  <label htmlFor="promotion-code">
                     Mã code <span className="req">*</span>
                   </label>
                   <div className="input-icon-wrapper">
-                    <Tag className="input-icon" size={16} />
+                    <Tag className="input-icon" size={16} aria-hidden="true" />
                     <input
+                      id="promotion-code"
                       className={`code-input ${errors.code ? "error" : ""}`}
                       name="code"
                       onChange={handleInputChange}
@@ -343,10 +433,11 @@ const PromotionModal = ({
                 </div>
 
                 <div className="form-group">
-                  <label>
+                  <label htmlFor="promotion-restaurant">
                     Nhà hàng áp dụng <span className="req">*</span>
                   </label>
                   <select
+                    id="promotion-restaurant"
                     className={errors.restaurantId ? "error" : ""}
                     disabled={!restaurantOptions.length}
                     name="restaurantId"
@@ -373,14 +464,15 @@ const PromotionModal = ({
 
             <div className="form-section">
               <h3 className="section-title">
-                <Percent size={18} /> Loại khuyến mãi và giá trị
+                <Percent size={18} aria-hidden="true" /> Loại khuyến mãi và giá trị
               </h3>
               <div className="grid-3">
                 <div className="form-group">
-                  <label>
+                  <label htmlFor="promotion-type">
                     Loại <span className="req">*</span>
                   </label>
                   <select
+                    id="promotion-type"
                     className={errors.type ? "error" : ""}
                     name="type"
                     onChange={handleInputChange}
@@ -397,10 +489,11 @@ const PromotionModal = ({
                 {formData.type === "bogo" ? (
                   <>
                     <div className="form-group">
-                      <label>
+                      <label htmlFor="promotion-buy-quantity">
                         SL mua <span className="req">*</span>
                       </label>
                       <input
+                        id="promotion-buy-quantity"
                         className={errors.buyQuantity ? "error" : ""}
                         min="1"
                         name="buyQuantity"
@@ -414,10 +507,11 @@ const PromotionModal = ({
                     </div>
 
                     <div className="form-group">
-                      <label>
+                      <label htmlFor="promotion-get-quantity">
                         SL tặng <span className="req">*</span>
                       </label>
                       <input
+                        id="promotion-get-quantity"
                         className={errors.getQuantity ? "error" : ""}
                         min="1"
                         name="getQuantity"
@@ -432,10 +526,10 @@ const PromotionModal = ({
                   </>
                 ) : formData.type === "freeship" ? (
                   <div className="form-group full">
-                    <label>Giá trị</label>
+                    <label htmlFor="promotion-freeship-value">Giá trị</label>
                     <div className="input-icon-wrapper">
-                      <DollarSign className="input-icon" size={16} />
-                      <input disabled type="text" value="Miễn phí vận chuyển" />
+                      <DollarSign className="input-icon" size={16} aria-hidden="true" />
+                      <input id="promotion-freeship-value" disabled type="text" value="Miễn phí vận chuyển" />
                     </div>
                     <p className="field-hint">
                       Khi thanh toán đơn giao hàng, hệ thống sẽ giảm trực tiếp
@@ -446,8 +540,9 @@ const PromotionModal = ({
                 ) : formData.type === "combo" ? (
                   <>
                     <div className="form-group">
-                      <label>Kiểu giảm</label>
+                      <label htmlFor="promotion-discount-type">Kiểu giảm</label>
                       <select
+                        id="promotion-discount-type"
                         name="discountType"
                         onChange={handleInputChange}
                         value={formData.discountType}
@@ -458,10 +553,11 @@ const PromotionModal = ({
                     </div>
 
                     <div className="form-group">
-                      <label>
+                      <label htmlFor="promotion-discount-value">
                         Mức giảm <span className="req">*</span>
                       </label>
                       <input
+                        id="promotion-discount-value"
                         className={errors.discountValue ? "error" : ""}
                         min="0"
                         name="discountValue"
@@ -476,8 +572,9 @@ const PromotionModal = ({
                     </div>
 
                     <div className="form-group">
-                      <label>Giảm tối đa</label>
+                      <label htmlFor="promotion-max-discount">Giảm tối đa</label>
                       <input
+                        id="promotion-max-discount"
                         min="0"
                         name="maxDiscount"
                         onChange={handleInputChange}
@@ -490,10 +587,11 @@ const PromotionModal = ({
                 ) : (
                   <>
                     <div className="form-group">
-                      <label>
+                      <label htmlFor="promotion-discount-value">
                         Mức giảm <span className="req">*</span>
                       </label>
                       <input
+                        id="promotion-discount-value"
                         className={errors.discountValue ? "error" : ""}
                         min="0"
                         name="discountValue"
@@ -508,8 +606,9 @@ const PromotionModal = ({
                     </div>
 
                     <div className="form-group">
-                      <label>Giảm tối đa</label>
+                      <label htmlFor="promotion-max-discount">Giảm tối đa</label>
                       <input
+                        id="promotion-max-discount"
                         min="0"
                         name="maxDiscount"
                         onChange={handleInputChange}
@@ -524,10 +623,11 @@ const PromotionModal = ({
 
               <div className="grid-2 mt-3">
                 <div className="form-group">
-                  <label>Đơn tối thiểu</label>
+                  <label htmlFor="promotion-min-order">Đơn tối thiểu</label>
                   <div className="input-icon-wrapper">
-                    <DollarSign className="input-icon" size={16} />
+                    <DollarSign className="input-icon" size={16} aria-hidden="true" />
                     <input
+                      id="promotion-min-order"
                       min="0"
                       name="minOrderValue"
                       onChange={handleInputChange}
@@ -539,8 +639,9 @@ const PromotionModal = ({
                 </div>
 
                 <div className="form-group">
-                  <label>Giới hạn lượt dùng</label>
+                  <label htmlFor="promotion-usage-limit">Giới hạn lượt dùng</label>
                   <input
+                    id="promotion-usage-limit"
                     min="0"
                     name="usageLimit"
                     onChange={handleInputChange}
@@ -553,7 +654,7 @@ const PromotionModal = ({
             </div>
             <div className="form-section">
               <h3 className="section-title">
-                <Gift size={18} /> Cấu hình dùng chồng
+                <Gift size={18} aria-hidden="true" /> Cấu hình dùng chồng
               </h3>
 
               <div className="grid-2">
@@ -570,8 +671,9 @@ const PromotionModal = ({
                 </label>
 
                 <div className="form-group">
-                  <label>Độ ưu tiên</label>
+                  <label htmlFor="promotion-level">Độ ưu tiên</label>
                   <select
+                    id="promotion-level"
                     name="level"
                     value={formData.level}
                     onChange={handleInputChange}
@@ -580,22 +682,25 @@ const PromotionModal = ({
                     <option value={2}>Trung bình</option>
                     <option value={3}>Cao</option>
                   </select>
+                  <p className="text-xs text-secondary">
+                    Mức cao được xét trước khi nhiều ưu đãi cùng hợp lệ; không tự cho phép cộng dồn.
+                  </p>
                 </div>
               </div>
 
               <p className="text-xs text-secondary mt-2">
-                Promotion chỉ được cộng với coupon nếu cả promotion và coupon
-                đều cho phép.
+                Khuyến mãi chỉ được dùng cùng coupon khi cả hai đều cho phép.
               </p>
             </div>
             <div className="form-section">
               <h3 className="section-title">
-                <ShoppingBag size={18} /> Đối tượng áp dụng
+                <ShoppingBag size={18} aria-hidden="true" /> Đối tượng áp dụng
               </h3>
               <div className="grid-2">
                 <div className="form-group">
-                  <label>Phạm vi</label>
+                  <label htmlFor="promotion-scope">Phạm vi</label>
                   <select
+                    id="promotion-scope"
                     disabled={formData.type === "bogo" || formData.type === "combo"}
                     name="scope"
                     onChange={handleInputChange}
@@ -615,10 +720,11 @@ const PromotionModal = ({
                 </div>
 
                 <div className="form-group">
-                  <label>Khách hàng mục tiêu</label>
+                  <label htmlFor="promotion-target-audience">Khách hàng mục tiêu</label>
                   <div className="input-icon-wrapper">
-                    <Users className="input-icon" size={16} />
+                    <Users className="input-icon" size={16} aria-hidden="true" />
                     <select
+                      id="promotion-target-audience"
                       name="targetAudience"
                       onChange={handleInputChange}
                       value={formData.targetAudience}
@@ -633,8 +739,9 @@ const PromotionModal = ({
 
                 {formData.scope === "item" && (
                   <div className="form-group full">
-                    <label>Lọc món theo danh mục</label>
+                    <label htmlFor="promotion-category-filter">Lọc món theo danh mục</label>
                     <select
+                      id="promotion-category-filter"
                       name="categoryId"
                       onChange={handleInputChange}
                       value={formData.categoryId}
@@ -655,10 +762,11 @@ const PromotionModal = ({
 
                 {formData.scope === "category" && (
                   <div className="form-group full">
-                    <label>
+                    <label htmlFor="promotion-category">
                       Danh mục áp dụng <span className="req">*</span>
                     </label>
                     <select
+                      id="promotion-category"
                       className={errors.categoryId ? "error" : ""}
                       name="categoryId"
                       onChange={handleInputChange}
@@ -679,13 +787,14 @@ const PromotionModal = ({
 
                 {formData.scope === "item" && (
                   <div className="form-group full">
-                    <label>
+                    <label htmlFor="promotion-item">
                       {formData.type === "bogo"
                         ? "Món khách phải mua"
                         : "Món áp dụng"}{" "}
                       <span className="req">*</span>
                     </label>
                     <select
+                      id="promotion-item"
                       className={errors.itemId ? "error" : ""}
                       name="itemId"
                       onChange={handleInputChange}
@@ -706,9 +815,9 @@ const PromotionModal = ({
 
                 {formData.type === "combo" && (
                   <div className="form-group full">
-                    <label>
+                    <div className="field-label">
                       Món trong combo <span className="req">*</span>
-                    </label>
+                    </div>
                     <p className="field-hint">
                       Khi thanh toán, hệ thống chỉ giảm combo nếu bill có đủ tất
                       cả món trong combo. Số lượt combo được tính theo món có số
@@ -766,12 +875,13 @@ const PromotionModal = ({
 
                 {formData.type === "bogo" && (
                   <div className="form-group full">
-                    <label>
+                    <label htmlFor="promotion-gift-item">
                       Món tặng <span className="req">*</span>
                     </label>
                     <div className="input-icon-wrapper">
-                      <Gift className="input-icon" size={16} />
+                      <Gift className="input-icon" size={16} aria-hidden="true" />
                       <select
+                        id="promotion-gift-item"
                         className={errors.giftItemId ? "error" : ""}
                         name="giftItemId"
                         onChange={handleInputChange}
@@ -795,14 +905,15 @@ const PromotionModal = ({
 
             <div className="form-section">
               <h3 className="section-title">
-                <Clock size={18} /> Thời gian
+                <Clock size={18} aria-hidden="true" /> Thời gian
               </h3>
               <div className="grid-2">
                 <div className="form-group">
-                  <label>
+                  <label htmlFor="promotion-start-date">
                     Bắt đầu <span className="req">*</span>
                   </label>
                   <input
+                    id="promotion-start-date"
                     className={errors.startDate ? "error" : ""}
                     name="startDate"
                     onChange={handleInputChange}
@@ -812,13 +923,17 @@ const PromotionModal = ({
                   {errors.startDate && (
                     <span className="err-msg">{errors.startDate}</span>
                   )}
+                  <span className="text-xs text-secondary">
+                    Giờ Việt Nam: {formatVietnamDateTimePreview(formData.startDate)}
+                  </span>
                 </div>
 
                 <div className="form-group">
-                  <label>
+                  <label htmlFor="promotion-end-date">
                     Kết thúc <span className="req">*</span>
                   </label>
                   <input
+                    id="promotion-end-date"
                     className={errors.endDate ? "error" : ""}
                     name="endDate"
                     onChange={handleInputChange}
@@ -828,14 +943,18 @@ const PromotionModal = ({
                   {errors.endDate && (
                     <span className="err-msg">{errors.endDate}</span>
                   )}
+                  <span className="text-xs text-secondary">
+                    Giờ Việt Nam: {formatVietnamDateTimePreview(formData.endDate)}
+                  </span>
                 </div>
               </div>
             </div>
 
             <div className="form-section no-border">
               <div className="form-group full">
-                <label>Mô tả chương trình</label>
+                <label htmlFor="promotion-description">Mô tả chương trình</label>
                 <textarea
+                  id="promotion-description"
                   name="description"
                   onChange={handleInputChange}
                   placeholder="Mô tả ngắn để đội vận hành hiểu rõ chương trình"
@@ -845,14 +964,21 @@ const PromotionModal = ({
               </div>
 
               <div className="form-group full">
-                <label>Điều kiện áp dụng (mỗi dòng 1 điều kiện)</label>
-                <textarea
-                  name="conditions"
-                  onChange={handleInputChange}
-                  placeholder="- Không áp dụng lễ tết"
-                  rows="3"
-                  value={formData.conditions}
-                />
+                <label>Điều kiện hệ thống sẽ kiểm tra</label>
+                {derivedConditions.length ? (
+                  <ul className="promotion-derived-conditions">
+                    {derivedConditions.map((condition) => (
+                      <li key={condition}>{condition}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="promotion-derived-conditions is-empty">
+                    Không có điều kiện bổ sung. Hệ thống vẫn kiểm tra thời gian, phạm vi và trạng thái chương trình.
+                  </p>
+                )}
+                <p className="text-xs text-secondary">
+                  Danh sách này được tạo từ các trường cấu hình ở trên để tránh lưu điều kiện chỉ có tính mô tả.
+                </p>
               </div>
             </div>
           </form>
@@ -871,13 +997,14 @@ const PromotionModal = ({
               Lưu nháp
             </button>
             <button className="btn-primary" form="promoForm" type="submit">
-              <Save size={18} />
+              <Save size={18} aria-hidden="true" />
               {promotion ? "Lưu thay đổi" : "Tạo khuyến mãi"}
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
 

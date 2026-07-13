@@ -1,4 +1,5 @@
 import { validatePublicTableOrderSessionAccess } from "../../../src/services/publicTableOrderAccess.service.js";
+import { ensurePublicTableSessionForAccess } from "../../../src/services/publicTableSessionBootstrap.service.js";
 import { withTableOrderSessionCookieCredentials } from "../shared/tableOrderSessionCookies.js";
 import publicTablePaymentMutation from "./publicTablePaymentMutation.js";
 
@@ -27,7 +28,9 @@ export const PublicTableAccessGuardMutation = {
   },
 
   async publicCallStaffForTable(parent, args, ctx, info) {
-    await requireVerifiedTableSession(args?.input, ctx);
+    // Calling for help must work from the printed QR before the device/order
+    // session is confirmed. The static token is verified again downstream.
+    await ensurePublicTableSessionForAccess(args?.input || {});
     return publicTablePaymentMutation.publicCallStaffForTable(
       parent,
       args,
