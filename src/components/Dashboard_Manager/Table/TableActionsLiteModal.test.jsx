@@ -30,6 +30,7 @@ vi.mock("@/hooks/useModalClosePipeline", () => ({
 }));
 vi.mock("@/utils/vrStorage", () => ({
   loadTableVrImage: () => "",
+  loadTableVrImageMetadata: () => null,
   removeTableVrImage: vi.fn(),
   storeTableVrImage: vi.fn(),
 }));
