@@ -16,6 +16,10 @@ import {
   INGREDIENT_DEFS,
   SEED_KEY,
 } from "./seedDefenseMenuCatalog.js";
+import {
+  isManagedRealMenuPhotoPath,
+  validateDefenseMenuPhotoCatalog,
+} from "./data/defenseMenuRealPhotos.js";
 
 const DEMO_RESTAURANT_ID = process.env.DEMO_RESTAURANT_ID?.trim() || "";
 const PRIMARY_RESTAURANT_NAME = "Nhà hàng COHAN Thủ Đức";
@@ -44,6 +48,7 @@ async function verifyDatabaseCatalog(restaurantId) {
   const expectedIngredientNames = INGREDIENT_DEFS.map(
     (ingredient) => ingredient.name,
   );
+  validateDefenseMenuPhotoCatalog(expectedCodes);
 
   const [menus, menuItems, ingredients] = await Promise.all([
     Menu.find({ restaurantId, isActive: true }).select("_id timeSlot").lean(),
@@ -81,16 +86,23 @@ async function verifyDatabaseCatalog(restaurantId) {
   }
 
   const menuIds = new Set(menus.map((menu) => idString(menu._id)));
+  const photoPaths = new Set();
   for (const item of menuItems) {
     if (!menuIds.has(idString(item.menuId))) {
       fail(`${item.code} points to an inactive or missing menu`);
     }
     if (!item.categoryId) fail(`${item.code} has no category`);
     if (item.status !== "available") fail(`${item.code} is not available`);
-    if (!String(item.thumbImage || "").startsWith("/images/menu/")) {
-      fail(`${item.code} has no managed local image`);
+    if (!isManagedRealMenuPhotoPath(item.thumbImage)) {
+      fail(`${item.code} does not use a managed raster food photograph`);
     }
+    photoPaths.add(String(item.thumbImage));
     if (item.notes !== SEED_KEY) fail(`${item.code} is not owned by catalog v2`);
+  }
+  if (photoPaths.size !== DISH_DEFS.length) {
+    fail(
+      `expected one real photograph path per dish, got ${photoPaths.size}/${DISH_DEFS.length}`,
+    );
   }
 
   const ingredientByName = new Map(
@@ -162,6 +174,7 @@ async function verifyDatabaseCatalog(restaurantId) {
   return {
     menus: menus.length,
     dishes: menuItems.length,
+    realDishPhotos: photoPaths.size,
     byWeightDishes: byWeightItems.length,
     ingredients: ingredients.length,
     recipes: recipes.length,
