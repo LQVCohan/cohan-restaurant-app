@@ -34,8 +34,12 @@ describe("auth refresh session isolation", () => {
 
     setAuth({ token: "expired-token" });
     const oldPromise = refreshAccessTokenOnce();
+    const oldRefreshSignal = fetch.mock.calls[0][1].signal;
 
+    expect(oldRefreshSignal.aborted).toBe(false);
     clearRefreshPromise();
+    expect(oldRefreshSignal.aborted).toBe(true);
+
     setAuth({ token: "new-login-token" });
     oldRefresh.resolve({ ok: false });
 
@@ -57,7 +61,10 @@ describe("auth refresh session isolation", () => {
     setAuth({ token: "new-login-token" });
     oldRefresh.resolve({
       ok: true,
-      json: async () => ({ token: "old-refreshed-token", user: { id: "old-user" } }),
+      json: async () => ({
+        token: "old-refreshed-token",
+        user: { id: "old-user" },
+      }),
     });
 
     await expect(oldPromise).resolves.toMatchObject({
@@ -89,7 +96,10 @@ describe("auth refresh session isolation", () => {
 
     activeRefresh.resolve({
       ok: true,
-      json: async () => ({ token: "rotated-new-token", user: { id: "new-user" } }),
+      json: async () => ({
+        token: "rotated-new-token",
+        user: { id: "new-user" },
+      }),
     });
 
     await expect(activePromise).resolves.toMatchObject({
