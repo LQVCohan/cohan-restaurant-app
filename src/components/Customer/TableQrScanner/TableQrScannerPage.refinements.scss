@@ -1,0 +1,566 @@
+/* Focused scanner refinements loaded after the base scanner styles. */
+
+.table-qr-scanner__camera-topbar {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+
+  span,
+  small {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(16, 31, 25, 0.68);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+
+  span {
+    font-size: 0.76rem;
+    font-weight: 820;
+  }
+
+  small {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.7rem;
+    font-weight: 720;
+  }
+
+  svg {
+    width: 15px;
+    height: 15px;
+  }
+}
+
+.table-qr-scanner__camera-actions.has-torch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.table-qr-scanner__torch-button {
+  min-width: 0;
+}
+
+.table-qr-scanner__guide,
+.table-qr-scanner__manual {
+  summary {
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
+
+  summary > svg:last-child {
+    flex: 0 0 auto;
+    transition: transform 180ms ease;
+  }
+
+  &[open] summary > svg:last-child {
+    transform: rotate(180deg);
+  }
+}
+
+.table-qr-scanner__guide {
+  display: block;
+
+  > summary {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+  }
+
+  > summary > span:nth-child(2) {
+    min-width: 0;
+    display: grid;
+    gap: 4px;
+  }
+
+  > summary small {
+    color: #ffad76;
+    font-size: 0.7rem;
+    font-weight: 850;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  > summary strong {
+    color: #fff;
+    font-size: clamp(1.18rem, 2.2vw, 1.55rem);
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+  }
+
+  > summary > svg:last-child {
+    width: 21px;
+    height: 21px;
+    color: rgba(255, 255, 255, 0.64);
+  }
+}
+
+.table-qr-scanner__guide-icon {
+  margin: 0;
+}
+
+.table-qr-scanner__guide-body {
+  margin-top: 22px;
+
+  > p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.66);
+    line-height: 1.65;
+  }
+}
+
+.table-qr-scanner__manual {
+  > summary {
+    min-width: 0;
+  }
+
+  .table-qr-scanner__manual-copy {
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .table-qr-scanner__manual-copy > span {
+    min-width: 0;
+    display: grid;
+    gap: 4px;
+  }
+
+  .table-qr-scanner__manual-copy strong {
+    color: var(--qr-ink);
+    font-size: 1.08rem;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  .table-qr-scanner__manual-copy small {
+    color: var(--qr-muted);
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  .table-qr-scanner__manual-copy > svg:last-child {
+    width: 21px;
+    height: 21px;
+    color: var(--qr-muted);
+  }
+
+  form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 9px;
+  }
+
+  form > p,
+  .table-qr-scanner__manual-label-row {
+    grid-column: 1 / -1;
+  }
+
+  textarea {
+    width: 100%;
+    min-width: 0;
+    min-height: 84px;
+    max-height: 180px;
+    resize: vertical;
+    padding: 12px 14px;
+    border: 1px solid rgba(81, 59, 42, 0.2);
+    border-radius: 15px;
+    color: var(--qr-ink);
+    background: #fff;
+    font: inherit;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+
+    &::placeholder {
+      color: #9a9188;
+    }
+
+    &:focus-visible {
+      outline: 3px solid rgba(222, 100, 40, 0.24);
+      outline-offset: 1px;
+      border-color: rgba(222, 100, 40, 0.58);
+    }
+  }
+}
+
+.table-qr-scanner__manual-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  label {
+    margin: 0;
+  }
+
+  button {
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid rgba(36, 70, 58, 0.18);
+    border-radius: 10px;
+    color: var(--qr-forest-dark);
+    background: #f4efe7;
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 800;
+    cursor: pointer;
+
+    &:hover {
+      background: #ece4d8;
+    }
+
+    svg {
+      width: 15px;
+      height: 15px;
+    }
+  }
+}
+
+.table-qr-scanner__manual-submit {
+  min-width: 132px;
+  min-height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  border: 1px solid var(--qr-forest);
+  border-radius: 15px;
+  color: #fff;
+  background: var(--qr-forest);
+  font: inherit;
+  font-weight: 820;
+  cursor: pointer;
+  touch-action: manipulation;
+
+  &:hover:not(:disabled) {
+    background: var(--qr-forest-dark);
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.65;
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media (max-width: 760px) {
+  .table-qr-scanner {
+    min-height: calc(100dvh - 58px);
+    padding:
+      10px max(10px, env(safe-area-inset-right))
+      calc(18px + env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left));
+    overflow: visible;
+  }
+
+  .table-qr-scanner__container {
+    gap: 12px;
+  }
+
+  .table-qr-scanner__intro {
+    padding: 0 3px;
+  }
+
+  .table-qr-scanner__eyebrow {
+    margin-bottom: 5px;
+    font-size: 0.65rem;
+    letter-spacing: 0.11em;
+  }
+
+  .table-qr-scanner__intro h1 {
+    font-size: clamp(1.55rem, 7.8vw, 2rem);
+    line-height: 1.04;
+    letter-spacing: -0.045em;
+  }
+
+  .table-qr-scanner__intro > p:last-child {
+    max-width: 43ch;
+    margin-top: 7px;
+    font-size: 0.78rem;
+    line-height: 1.45;
+  }
+
+  .table-qr-scanner__workspace {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .table-qr-scanner__camera-card {
+    padding: 8px;
+    border-radius: 20px;
+    box-shadow: 0 14px 34px rgba(74, 48, 28, 0.11);
+  }
+
+  .table-qr-scanner__viewport {
+    min-height: 0;
+    height: clamp(320px, 53dvh, 500px);
+    border-radius: 15px;
+  }
+
+  .table-qr-scanner__camera-topbar {
+    top: 9px;
+    left: 9px;
+    right: 9px;
+    gap: 7px;
+
+    span,
+    small {
+      min-height: 28px;
+      padding: 5px 8px;
+    }
+
+    span {
+      font-size: 0.67rem;
+    }
+
+    small {
+      font-size: 0.62rem;
+    }
+  }
+
+  .table-qr-scanner__camera-placeholder {
+    gap: 7px;
+    padding: 70px 20px 48px;
+
+    > span {
+      width: 56px;
+      height: 56px;
+      margin-bottom: 3px;
+      border-radius: 18px;
+    }
+
+    svg {
+      width: 27px;
+      height: 27px;
+    }
+
+    strong {
+      font-size: 0.92rem;
+    }
+
+    p {
+      font-size: 0.76rem;
+    }
+  }
+
+  .table-qr-scanner__frame {
+    width: min(68%, 260px);
+  }
+
+  .table-qr-scanner__frame i {
+    width: 38px;
+    height: 38px;
+  }
+
+  .table-qr-scanner__camera-state {
+    bottom: 10px;
+    min-height: 29px;
+    padding: 5px 10px;
+    font-size: 0.67rem;
+  }
+
+  .table-qr-scanner__camera-actions {
+    padding: 8px 0 0;
+  }
+
+  .table-qr-scanner__primary-button,
+  .table-qr-scanner__secondary-button {
+    min-height: 46px;
+    border-radius: 13px;
+    font-size: 0.8rem;
+  }
+
+  .table-qr-scanner__camera-actions.has-torch {
+    gap: 7px;
+  }
+
+  .table-qr-scanner__guide {
+    padding: 12px;
+    border-radius: 17px;
+    box-shadow: 0 10px 26px rgba(74, 48, 28, 0.1);
+
+    > summary {
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      gap: 9px;
+    }
+
+    > summary small {
+      font-size: 0.6rem;
+    }
+
+    > summary strong {
+      font-size: 0.88rem;
+    }
+  }
+
+  .table-qr-scanner__guide-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+
+    svg {
+      width: 19px;
+      height: 19px;
+    }
+  }
+
+  .table-qr-scanner__guide-body {
+    margin-top: 12px;
+
+    > p {
+      font-size: 0.76rem;
+      line-height: 1.5;
+    }
+  }
+
+  .table-qr-scanner__guide ol {
+    margin-top: 12px;
+    gap: 8px;
+  }
+
+  .table-qr-scanner__guide li {
+    grid-template-columns: 25px 1fr;
+    gap: 8px;
+    font-size: 0.76rem;
+    line-height: 1.4;
+  }
+
+  .table-qr-scanner__guide li span {
+    width: 25px;
+    height: 25px;
+    border-radius: 8px;
+    font-size: 0.67rem;
+  }
+
+  .table-qr-scanner__feedback {
+    padding: 10px 12px;
+    border-radius: 13px;
+    font-size: 0.76rem;
+    line-height: 1.45;
+  }
+
+  .table-qr-scanner__manual {
+    display: block;
+    padding: 12px;
+    border-radius: 17px;
+    box-shadow: 0 10px 26px rgba(74, 48, 28, 0.08);
+
+    .table-qr-scanner__manual-copy {
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      gap: 9px;
+    }
+
+    .table-qr-scanner__manual-copy > svg:first-child {
+      width: 38px;
+      height: 38px;
+      padding: 10px;
+      border-radius: 12px;
+    }
+
+    .table-qr-scanner__manual-copy strong {
+      font-size: 0.86rem;
+    }
+
+    .table-qr-scanner__manual-copy small {
+      font-size: 0.69rem;
+    }
+
+    form {
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    form > p,
+    .table-qr-scanner__manual-label-row {
+      grid-column: auto;
+    }
+
+    textarea {
+      min-height: 76px;
+      max-height: 140px;
+      padding: 10px 11px;
+      border-radius: 12px;
+      font-size: 16px;
+    }
+  }
+
+  .table-qr-scanner__manual-label-row {
+    label {
+      font-size: 0.7rem;
+    }
+
+    button {
+      min-height: 32px;
+      padding: 5px 8px;
+      font-size: 0.69rem;
+    }
+  }
+
+  .table-qr-scanner__manual-submit {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+  }
+
+  .table-qr-scanner__manual form > p {
+    margin-top: 0;
+    font-size: 0.68rem;
+    line-height: 1.4;
+  }
+}
+
+@media (max-width: 360px) {
+  .table-qr-scanner__viewport {
+    height: clamp(300px, 50dvh, 410px);
+  }
+
+  .table-qr-scanner__camera-topbar small {
+    display: none;
+  }
+
+  .table-qr-scanner__camera-actions.has-torch {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table-qr-scanner__guide summary > svg:last-child,
+  .table-qr-scanner__manual summary > svg:last-child,
+  .table-qr-scanner__manual-submit {
+    transition: none;
+  }
+}

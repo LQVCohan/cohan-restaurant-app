@@ -95,6 +95,8 @@ import "./styles/MobileHomeResponsivePolish.css";
 import "./styles/MobileHomeVisualQc.css";
 import "./styles/MobileCustomerExperienceQc.css";
 import "./styles/ReservationHistoryReportFixes.css";
+import "./components/Customer/TableQrScanner/TableQrScannerPage.refinements.scss";
+import "./styles/MobileQrScannerShell.css";
 
 const normalizeLegacyManagerHash = () => {
   if (

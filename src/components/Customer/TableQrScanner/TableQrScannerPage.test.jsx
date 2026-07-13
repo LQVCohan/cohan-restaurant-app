@@ -11,7 +11,12 @@ const tableId = "6a5018c92a9577d6a9cf4bb2";
 
 function LocationProbe() {
   const location = useLocation();
-  return <div data-testid="location">{location.pathname}{location.search}</div>;
+  return (
+    <div data-testid="location">
+      {location.pathname}
+      {location.search}
+    </div>
+  );
 }
 
 const renderScanner = () =>
@@ -53,5 +58,16 @@ describe("TableQrScannerPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Mã QR không phải mã bàn hoặc mã check-in đặt bàn hợp lệ.",
     );
+  });
+
+  it("asks for QR content before processing an empty manual form", async () => {
+    renderScanner();
+
+    fireEvent.click(screen.getByRole("button", { name: /xử lý mã/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Hãy dán đường dẫn hoặc nội dung mã QR trước khi xử lý.",
+    );
+    expect(screen.getByLabelText("Nội dung mã QR")).toHaveFocus();
   });
 });
