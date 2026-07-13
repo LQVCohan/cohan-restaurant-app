@@ -2,25 +2,52 @@ import mongoose from "mongoose";
 import { Order } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import {
+  normalizeOrderProofImages,
+  requiresOrderItemProofImage,
+} from "../../../src/services/orderProofRules.service.js";
 import { emitCustomerTrackingUpdateIfChanged } from "../../../src/services/orderTracking.service.js";
 import { emitOrderEvent } from "./helper/emitOrderEvent.js";
+
+const MAX_PROOF_IMAGES = 5;
 
 const toObjectId = (value) =>
   value && mongoose.isValidObjectId(value) ? new mongoose.Types.ObjectId(value) : null;
 
+const isAllowedProofImageUrl = (value) => {
+  const url = String(value || "").trim();
+  if (url.startsWith("/uploads/")) return true;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
+};
+
 const cleanProofImages = (values = []) => {
-  const list = Array.isArray(values)
-    ? [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))]
-    : [];
+  const list = normalizeOrderProofImages(values);
   if (!list.length) throw new Error("At least one proof image is required");
+  if (list.length > MAX_PROOF_IMAGES) {
+    throw new Error(`At most ${MAX_PROOF_IMAGES} proof images are allowed`);
+  }
+  if (list.some((value) => !isAllowedProofImageUrl(value))) {
+    throw new Error("Invalid proof image URL");
+  }
   return list;
 };
 
-const requiresByWeightProof = (item = {}) => {
-  const mode = String(item?.servingVariant?.mode || "").toUpperCase();
-  const unit = String(item?.unit || item?.servingVariant?.sellUnit || "").toLowerCase();
-  return mode === "BY_WEIGHT" || unit === "kg" || Number(item?.weightGrams || 0) > 0;
-};
+async function requireProofUpdatePermission(ctx, restaurantId) {
+  try {
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.ORDER_UPDATE);
+  } catch (primaryError) {
+    try {
+      await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.PAYMENT_WRITE);
+    } catch {
+      throw primaryError;
+    }
+  }
+}
 
 export const OrderProofMutation = {
   async uploadOrderItemProof(_parent, { input }, ctx) {
@@ -32,12 +59,12 @@ export const OrderProofMutation = {
     const proofImages = cleanProofImages(input?.proofImages || []);
     const order = await Order.findOne(filter);
     if (!order) throw new Error("Order not found");
-    await requireRestaurantPermission(ctx, order.restaurantId, PERMISSIONS.ORDER_UPDATE);
+    await requireProofUpdatePermission(ctx, order.restaurantId);
 
     const item = order.items.id(input?.orderItemId);
     if (!item) throw new Error("Order item not found");
-    if (!requiresByWeightProof(item)) {
-      throw new Error("Proof is only required for by-weight items");
+    if (!requiresOrderItemProofImage(item)) {
+      throw new Error("Proof is only allowed for items that require evidence");
     }
 
     const now = new Date();
@@ -48,13 +75,13 @@ export const OrderProofMutation = {
     const isLate = deadlineAt ? now.getTime() > deadlineAt.getTime() : false;
 
     item.proofImages = proofImages;
-    order.customerVisibleNote = "Nhà hàng đã cập nhật ảnh minh chứng cân ký cho món của bạn.";
+    order.customerVisibleNote = `Nhà hàng đã cập nhật ảnh minh chứng cho món ${item.name}.`;
     order.statusTimeline = order.statusTimeline || [];
     order.statusTimeline.push({
       status: order.currentStatus,
       at: now,
       byUserId: ctx?.user?.id || ctx?.user?._id || null,
-      note: `${isLate ? "Cập nhật trễ" : "Cập nhật"} ảnh minh chứng cân ký cho món ${item.name}.`,
+      note: `${isLate ? "Cập nhật trễ" : "Cập nhật"} ảnh minh chứng cho món ${item.name}.`,
     });
     await order.save();
 
