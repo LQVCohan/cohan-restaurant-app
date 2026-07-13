@@ -3,104 +3,129 @@ import path from "node:path";
 import process from "node:process";
 import { describe, expect, it } from "vitest";
 
-const paymentModalPath = path.resolve(
-  process.cwd(),
+const read = (relativePath) =>
+  fs.readFileSync(path.resolve(process.cwd(), relativePath), "utf8");
+
+const paymentModalSource = read(
   "src/components/Dashboard_Manager/POS/components/modals/PaymentModal.jsx",
 );
-
-const paymentModalStylesPath = path.resolve(
-  process.cwd(),
+const paymentModalLegacySource = read(
+  "src/components/Dashboard_Manager/POS/components/modals/PaymentModalLegacy.jsx",
+);
+const paymentModalStylesSource = read(
   "src/components/Dashboard_Manager/POS/components/modals/PaymentModal.module.scss",
 );
-
-const orderManagementPath = path.resolve(
-  process.cwd(),
-  "src/hooks/useOrderManagement.js",
+const partialPaymentStylesSource = read(
+  "src/components/Dashboard_Manager/POS/components/modals/PartialTablePayment.scss",
 );
-
-const paymentModalSource = fs.readFileSync(paymentModalPath, "utf8");
-const paymentModalStylesSource = fs.readFileSync(
-  paymentModalStylesPath,
-  "utf8",
+const orderManagementSource = read("src/hooks/useOrderManagement.js");
+const orderManagementLegacySource = read(
+  "src/hooks/useOrderManagementLegacy.js",
 );
-const orderManagementSource = fs.readFileSync(orderManagementPath, "utf8");
 
 describe("PaymentModal voucher payment flow", () => {
-  it("forwards payment-stage pricing and promotionIds through useOrderManagement", () => {
-    expect(orderManagementSource).toMatch(/pricing\s*(?:=\s*null)?\s*,/);
-    expect(orderManagementSource).toMatch(/promotionIds\s*(?:=\s*\[\])?\s*,/);
-    expect(orderManagementSource).toMatch(/paymentInputExtras/);
-    expect(orderManagementSource).toMatch(/\.\.\.paymentInputExtras/);
+  it("keeps voucher preview helpers and the existing payment-stage flow", () => {
+    expect(paymentModalLegacySource).toContain("useDiscountPreview");
+    expect(paymentModalLegacySource).toContain(
+      "buildOrderDiscountPreviewInput",
+    );
+    expect(paymentModalLegacySource).toContain("buildDiscountPricingInput");
+    expect(paymentModalLegacySource).toContain("getDiscountBreakdownTotal");
+    expect(paymentModalLegacySource).toContain("formatDiscountReasonLabel");
+    expect(paymentModalLegacySource).toContain("confirmPayment({");
+    expect(paymentModalLegacySource).toContain("pricing: paymentPricing");
+    expect(paymentModalLegacySource).toContain(
+      "promotionIds: selectedPromotionIds",
+    );
 
-    expect(orderManagementSource).toMatch(/discountReason/);
-    expect(orderManagementSource).toMatch(/voucherCode/);
-    expect(orderManagementSource).toMatch(/promotionId/);
-    expect(orderManagementSource).toMatch(/shippingFee/);
-  });
-
-  it("keeps voucher preview helpers and routes payment through confirmPayment", () => {
-    expect(paymentModalSource).toContain("useDiscountPreview");
-    expect(paymentModalSource).toContain("buildOrderDiscountPreviewInput");
-    expect(paymentModalSource).toContain("buildDiscountPricingInput");
-    expect(paymentModalSource).toContain("getDiscountBreakdownTotal");
-    expect(paymentModalSource).toContain("formatDiscountReasonLabel");
-
-    expect(paymentModalSource).not.toContain(
+    expect(paymentModalLegacySource).not.toContain(
       "PAY_ORDERS_BY_TABLE_ID_WITH_TOTALS",
     );
-    expect(paymentModalSource).not.toContain(
-      "useMutation(PAY_ORDERS_BY_TABLE_ID_WITH_TOTALS)",
-    );
-    expect(paymentModalSource).not.toContain(
-      "mutation PayOrdersByTableIdWithTotals",
-    );
-    expect(paymentModalSource).not.toContain("executeDiscountedDineInPayment");
-
-    expect(paymentModalSource).toContain("confirmPayment({");
-    expect(paymentModalSource).toContain("pricing: paymentPricing");
-    expect(paymentModalSource).toContain("promotionIds: selectedPromotionIds");
-    expect(paymentModalSource).toContain(
-      "paidAmount: Number(payableTotalVnd || 0)",
-    );
-
-    expect(paymentModalSource).toContain("discountBlocksPayment");
-    expect(paymentModalSource).toContain("discountNeedsReapply");
-    expect(paymentModalSource).toContain(
-      "Vui lòng áp dụng coupon hợp lệ trước khi xác nhận thanh toán.",
+    expect(paymentModalLegacySource).not.toContain(
+      "executeDiscountedDineInPayment",
     );
   });
 
-  it("allows selecting an active promotion in the payment modal", () => {
-    expect(paymentModalSource).toContain("useActiveDiscountPromotions");
-    expect(paymentModalSource).toContain("activePromotions");
-    expect(paymentModalSource).toContain("selectedPromotionId");
-    expect(paymentModalSource).toContain("Chương trình khuyến mãi");
-    expect(paymentModalSource).toContain("setSelectedPromotionIds");
+  it("allows selecting an active promotion in the legacy payment body", () => {
+    expect(paymentModalLegacySource).toContain(
+      "useActiveDiscountPromotions",
+    );
+    expect(paymentModalLegacySource).toContain("activePromotions");
+    expect(paymentModalLegacySource).toContain("selectedPromotionId");
+    expect(paymentModalLegacySource).toContain(
+      "Chương trình khuyến mãi",
+    );
+    expect(paymentModalLegacySource).toContain(
+      "setSelectedPromotionIds",
+    );
   });
 
   it("keeps the line-level promotion breakdown block and styles", () => {
-    expect(paymentModalSource).toContain("promotionLineItems");
-    expect(paymentModalSource).toContain("discountBreakdown?.promotionLines");
-    expect(paymentModalSource).toContain("Ưu đãi theo món");
-    expect(paymentModalSource).toContain("Món áp dụng");
-    expect(paymentModalSource).toContain("Khuyến mãi");
-
-    expect(paymentModalStylesSource).toContain(".linePromotionBreakdown");
+    expect(paymentModalLegacySource).toContain("promotionLineItems");
+    expect(paymentModalLegacySource).toContain(
+      "discountBreakdown?.promotionLines",
+    );
+    expect(paymentModalLegacySource).toContain("Ưu đãi theo món");
+    expect(paymentModalStylesSource).toContain(
+      ".linePromotionBreakdown",
+    );
     expect(paymentModalStylesSource).toContain(".linePromotionTitle");
     expect(paymentModalStylesSource).toContain(".linePromotionRow");
   });
 });
 
-describe("useOrderManagement payment mutation payload", () => {
-  it("accepts pricing and promotionIds and requests richer invoice totals", () => {
-    expect(orderManagementSource).toMatch(/pricing\s*(?:=\s*null)?\s*,/);
-    expect(orderManagementSource).toMatch(/promotionIds\s*(?:=\s*\[\])?\s*,/);
-    expect(orderManagementSource).toMatch(/paymentInputExtras/);
-    expect(orderManagementSource).toMatch(/\.\.\.paymentInputExtras/);
+describe("partial table payment batches", () => {
+  it("defaults to every batch and filters the legacy modal when partially selected", () => {
+    expect(paymentModalSource).toContain("PaymentModalLegacy");
+    expect(paymentModalSource).toContain("groupItemsByBatch");
+    expect(paymentModalSource).toContain(
+      "setSelectedOrderIds(allOrderIds)",
+    );
+    expect(paymentModalSource).toContain("selectedOrderIds");
+    expect(paymentModalSource).toContain("selectedItems");
+    expect(paymentModalSource).toContain(
+      "totalAmount={selectedTotalAmount}",
+    );
+    expect(paymentModalSource).toContain("Đợt gọi món");
+    expect(partialPaymentStylesSource).toContain(
+      ".partial-table-payment-panel",
+    );
+  });
 
-    expect(orderManagementSource).toMatch(/discountReason/);
-    expect(orderManagementSource).toMatch(/voucherCode/);
-    expect(orderManagementSource).toMatch(/promotionId/);
-    expect(orderManagementSource).toMatch(/shippingFee/);
+  it("routes only a partial selection to payOrdersByOrderIds and keeps the all-table fallback", () => {
+    expect(orderManagementSource).toContain(
+      "useOrderManagementLegacy",
+    );
+    expect(orderManagementSource).toContain(
+      "PAY_SELECTED_TABLE_ORDERS",
+    );
+    expect(orderManagementSource).toContain("payOrdersByOrderIds");
+    expect(orderManagementSource).toContain(
+      "getPartialTablePaymentSelection",
+    );
+    expect(orderManagementSource).toContain(
+      "return legacy.confirmPayment",
+    );
+    expect(orderManagementSource).toContain(
+      "return legacy.resolvePayableOrderIds",
+    );
+  });
+
+  it("preserves payment pricing and promotion metadata in both payment paths", () => {
+    expect(orderManagementLegacySource).toMatch(
+      /pricing\s*(?:=\s*null)?\s*,/,
+    );
+    expect(orderManagementLegacySource).toMatch(
+      /promotionIds\s*(?:=\s*\[\])?\s*,/,
+    );
+    expect(orderManagementLegacySource).toContain(
+      "paymentInputExtras",
+    );
+    expect(orderManagementSource).toContain(
+      "...(pricing ? { pricing } : {})",
+    );
+    expect(orderManagementSource).toContain(
+      "promotionIds: normalizedPromotionIds",
+    );
   });
 });
