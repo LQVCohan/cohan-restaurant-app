@@ -83,6 +83,7 @@ import { installReservationHistoryReportFixes } from "./utils/installReservation
 import { installReportPages26To29Ui } from "./utils/installReportPages26To29Ui";
 import { installCustomerReviewOwnerActions } from "./utils/installCustomerReviewOwnerActions";
 import { installBackupChecklistClarity } from "./utils/installBackupChecklistClarity";
+import { installBackupConflictFriendlyLabels } from "./utils/installBackupConflictFriendlyLabels";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 import "./styles/ResponsiveFoundation.css";
 import "./styles/CustomTableBuilderResponsiveFix.css";
@@ -105,6 +106,7 @@ import "./styles/ShiftDetailModalWorkspace.css";
 import "./styles/MenuManagerCompactListFix.css";
 import "./styles/CustomerMenuCardLayoutRepair.css";
 import "./styles/BackupChecklistClarity.css";
+import "./styles/BackupConflictFriendly.css";
 
 const normalizeLegacyManagerHash = () => {
   if (
@@ -140,6 +142,7 @@ installReservationHistoryReportFixes();
 installReportPages26To29Ui();
 installCustomerReviewOwnerActions();
 installBackupChecklistClarity();
+installBackupConflictFriendlyLabels();
 installAttendanceWordingTuning();
 
 createRoot(document.getElementById("root")).render(
