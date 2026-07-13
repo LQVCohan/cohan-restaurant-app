@@ -313,11 +313,44 @@ const VRViewer = () => {
     setImageUrl(loadTableVrImage(tableId));
   }, [tableId]);
 
+  const handleCloseViewer = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen?.();
+      }
+    } catch (error) {
+      console.warn("Không thể thoát toàn màn hình trước khi đóng trang.", error);
+    }
+
+    try {
+      window.opener?.focus?.();
+    } catch {
+      // Trình duyệt có thể chặn quyền truy cập cửa sổ mở trang này.
+    }
+
+    window.close();
+
+    window.setTimeout(() => {
+      if (window.closed) return;
+      if (window.history.length > 1) {
+        navigate(-1);
+        return;
+      }
+      navigate("/manager#tables", { replace: true });
+    }, 120);
+  };
+
   return (
     <main className="vr-viewer" aria-labelledby="vr-viewer-title">
       <header className="vr-viewer__header">
-        <button type="button" className="vr-viewer__back" onClick={() => navigate(-1)}>
-          ← Quay lại
+        <button
+          type="button"
+          className="vr-viewer__back"
+          onClick={handleCloseViewer}
+          aria-label="Đóng trang xem không gian 360 độ"
+          title="Đóng trang hiện tại"
+        >
+          × Đóng
         </button>
         <h1 className="vr-viewer__title" id="vr-viewer-title">
           Không gian 360° — Bàn {tableId}
