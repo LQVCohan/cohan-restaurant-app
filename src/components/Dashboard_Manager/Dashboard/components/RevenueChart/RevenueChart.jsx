@@ -31,13 +31,15 @@ const formatChartDate = (value) => {
   const isoDate = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (isoDate) return `${isoDate[3]}/${isoDate[2]}/${isoDate[1]}`;
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return text;
-  return new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date);
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(value);
+  }
+
+  return text;
 };
 
 const RevenueChartSkeleton = () => (
