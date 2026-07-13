@@ -36,6 +36,7 @@ export default function MainLayout({ children }) {
   const isFocusedTableFlow =
     location.pathname === "/scan-table" || isPublicTableRoute;
   const publicTableRouteKey = `${location.pathname}${location.search || ""}`;
+  const isHomeDesktop = !isMobile && location.pathname === "/";
 
   React.useEffect(() => {
     const handler = () => setIsCartOpen(true);
@@ -105,7 +106,7 @@ export default function MainLayout({ children }) {
   }
 
   return (
-    <>
+    <div className={`customer-desktop-shell${isHomeDesktop ? " customer-desktop-shell--home" : ""}`}>
       <Header onCartToggle={() => setIsCartOpen(true)} cartItemCount={getTotalItems()} />
       <main className="customer-experience-main">{children}</main>
       {foodRestaurantSelector}
@@ -114,6 +115,6 @@ export default function MainLayout({ children }) {
       {!isFocusedTableFlow && <TodayMealWizard />}
       {!isFocusedTableFlow && <PostOrderReviewPrompt />}
       <Footer />
-    </>
+    </div>
   );
 }
