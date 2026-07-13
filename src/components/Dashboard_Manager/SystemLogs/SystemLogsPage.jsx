@@ -8,10 +8,24 @@ import {
   ChevronRight,
   ClipboardList,
   Database,
+  Eye,
   RefreshCw,
   Search,
   ShieldCheck,
+  X,
 } from "lucide-react";
+import {
+  buildDetailGroups,
+  buildSearchText,
+  formatActor,
+  formatAuditTarget,
+  formatDateTimeParts,
+  formatObjectReference,
+  formatStatus,
+  humanizeAction,
+  humanizeScope,
+  matchesFriendlySearch,
+} from "./systemLogsPresentation";
 import "./SystemLogsPage.scss";
 import "./SystemLogsPagePagination.scss";
 
@@ -77,83 +91,139 @@ const EVENT_LOGS_QUERY = gql`
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const MAX_COMBINED_WINDOW = 100;
 
-const formatDateTime = (value) => {
-  if (!value) return "--";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "short",
-    timeStyle: "medium",
-  }).format(date);
-};
-
-const formatJson = (value) => {
-  if (value === null || value === undefined || value === "") return "--";
-  if (typeof value === "string") return value;
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-};
-
-const compactText = (...values) => values.filter(Boolean).join(" · ");
-
-const objectLabel = (object) => {
-  if (!object) return "--";
-  return compactText(object.kind, object.code || object.id) || "--";
-};
-
-const normalizeAuditLog = (log) => ({
-  key: `audit-${log.id}`,
-  kind: "audit",
-  kindLabel: "Audit",
-  at: log.createdAt || log.updatedAt,
-  title: log.action || "AUDIT",
-  scope: log.module || log.entity || log.targetType || "audit",
-  actor: log.actorName || log.actorRole || log.byUserId || log.actorId || "Hệ thống",
-  target: log.targetName || compactText(log.entity || log.targetType, log.entityId || log.targetId) || "--",
-  status: "audit",
-  summary: compactText(log.module, log.entity, log.targetType),
-  detail: {
+const normalizeAuditLog = (log) => {
+  const action = humanizeAction(log.action);
+  const scope = humanizeScope(log.module || log.entity || log.targetType || "audit");
+  const actor = formatActor(log);
+  const target = formatAuditTarget(log);
+  const detail = {
     before: log.before,
     after: log.after,
     diff: log.diff,
     metadata: log.metadata,
-  },
-});
+  };
 
-const normalizeEventLog = (log) => ({
-  key: `event-${log.id}`,
-  kind: "event",
-  kindLabel: "Event",
-  at: log.at || log.createdAt,
-  title: log.verb || "event",
-  scope: log.source || "event",
-  actor: log.actorUserId || log.customerProfileId || "Hệ thống",
-  target: objectLabel(log.target || log.object),
-  status: log.status || "info",
-  summary: compactText(objectLabel(log.object), log.orderId && `order:${log.orderId}`, log.tableId && `table:${log.tableId}`),
-  detail: {
+  return {
+    key: `audit-${log.id}`,
+    kind: "audit",
+    kindLabel: "Thay đổi quản trị",
+    at: log.createdAt || log.updatedAt,
+    dateTime: formatDateTimeParts(log.createdAt || log.updatedAt),
+    title: action,
+    scope,
+    actor,
+    target,
+    status: "Đã ghi nhận",
+    detailGroups: buildDetailGroups(detail),
+    searchText: buildSearchText(
+      action,
+      scope,
+      actor,
+      target,
+      log.action,
+      log.module,
+      log.entity,
+      log.targetType,
+      detail,
+    ),
+  };
+};
+
+const normalizeEventLog = (log) => {
+  const action = humanizeAction(log.verb);
+  const scope = humanizeScope(log.source || log.object?.kind || log.target?.kind || "event");
+  const actor = formatActor(log);
+  const target = formatObjectReference(log.target || log.object || {});
+  const status = formatStatus(log.status);
+  const detail = {
     meta: log.meta,
     diff: log.diff,
     ip: log.ip,
     userAgent: log.userAgent,
     correlationId: log.correlationId,
     sessionId: log.sessionId,
-  },
-});
+  };
 
-const matchesSearch = (entry, search) => {
-  const q = search.trim().toLowerCase();
-  if (!q) return true;
-  return [entry.title, entry.scope, entry.actor, entry.target, entry.summary, entry.status, formatJson(entry.detail)]
-    .join(" ")
-    .toLowerCase()
-    .includes(q);
+  return {
+    key: `event-${log.id}`,
+    kind: "event",
+    kindLabel: "Hoạt động vận hành",
+    at: log.at || log.createdAt,
+    dateTime: formatDateTimeParts(log.at || log.createdAt),
+    title: action,
+    scope,
+    actor,
+    target,
+    status,
+    detailGroups: buildDetailGroups(detail),
+    searchText: buildSearchText(
+      action,
+      scope,
+      actor,
+      target,
+      status,
+      log.verb,
+      log.source,
+      log.object,
+      log.target,
+      log.orderId,
+      log.tableId,
+      detail,
+    ),
+  };
+};
+
+const sortByNewest = (left, right) => {
+  const leftTime = Number.isFinite(Number(left.at)) ? Number(left.at) : new Date(left.at || 0).getTime();
+  const rightTime = Number.isFinite(Number(right.at)) ? Number(right.at) : new Date(right.at || 0).getTime();
+  return rightTime - leftTime;
 };
 
 const clampPage = (value, totalPages) => Math.min(Math.max(Number(value) || 1, 1), totalPages);
+
+const DetailList = ({ items }) => (
+  <dl className="system-logs-page__detail-list">
+    {items.map((item) => (
+      <div key={item.key}>
+        <dt>{item.label}</dt>
+        <dd><pre>{item.value}</pre></dd>
+      </div>
+    ))}
+  </dl>
+);
+
+const ActivityDetails = ({ entry }) => {
+  const hasVisibleDetails = entry.detailGroups.visible.length > 0;
+  const hasTechnicalDetails = entry.detailGroups.technical.length > 0;
+
+  return (
+    <details className="system-logs-page__details">
+      <summary>
+        <Eye size={15} aria-hidden="true" />
+        Xem thông tin
+      </summary>
+      <div className="system-logs-page__details-panel">
+        <div className="system-logs-page__details-overview">
+          <span>Trạng thái</span>
+          <strong>{entry.status}</strong>
+        </div>
+
+        {hasVisibleDetails ? (
+          <DetailList items={entry.detailGroups.visible} />
+        ) : (
+          <p className="system-logs-page__details-empty">Không có thông tin bổ sung.</p>
+        )}
+
+        {hasTechnicalDetails && (
+          <details className="system-logs-page__technical-details">
+            <summary>Thông tin dành cho bộ phận hỗ trợ</summary>
+            <DetailList items={entry.detailGroups.technical} />
+          </details>
+        )}
+      </div>
+    </details>
+  );
+};
 
 const SystemLogsPage = ({ restaurantId, isAdmin = false }) => {
   const [kind, setKind] = useState("all");
@@ -204,8 +274,8 @@ const SystemLogsPage = ({ restaurantId, isAdmin = false }) => {
     const auditRows = kind === "event" ? [] : (auditQuery.data?.auditLogs?.items || []).map(normalizeAuditLog);
     const eventRows = kind === "audit" ? [] : (eventQuery.data?.eventLogs?.items || []).map(normalizeEventLog);
     const rows = [...auditRows, ...eventRows]
-      .filter((entry) => matchesSearch(entry, search))
-      .sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
+      .filter((entry) => matchesFriendlySearch(entry, search))
+      .sort(sortByNewest);
 
     if (kind !== "all") return rows;
     const start = (page - 1) * pageSize;
@@ -228,8 +298,8 @@ const SystemLogsPage = ({ restaurantId, isAdmin = false }) => {
     return (
       <div className="system-logs-page system-logs-page--empty">
         <ShieldCheck size={38} />
-        <h2>Chọn chi nhánh để xem nhật ký</h2>
-        <p>Manager chỉ xem log trong phạm vi nhà hàng được phân quyền.</p>
+        <h2>Chọn chi nhánh để xem hoạt động</h2>
+        <p>Bạn chỉ xem được hoạt động tại những nhà hàng mình được phân quyền.</p>
       </div>
     );
   }
@@ -238,101 +308,145 @@ const SystemLogsPage = ({ restaurantId, isAdmin = false }) => {
     <div className="system-logs-page">
       <header className="system-logs-page__header">
         <div>
-          <span className="system-logs-page__eyebrow">Check log</span>
-          <h2>Nhật ký hệ thống</h2>
-          <p>Theo dõi audit log quản trị và event log vận hành theo từng trang.</p>
+          <span className="system-logs-page__eyebrow">Lịch sử hoạt động</span>
+          <h2>Theo dõi hoạt động hệ thống</h2>
+          <p>Xem ai đã thực hiện thao tác nào, vào thời điểm nào và liên quan đến nội dung gì.</p>
         </div>
         <button type="button" className="system-logs-page__refresh" onClick={refetch} disabled={loading}>
-          <RefreshCw size={16} /> Làm mới
+          <RefreshCw className={loading ? "is-spinning" : ""} size={17} />
+          {loading ? "Đang cập nhật" : "Cập nhật"}
         </button>
       </header>
 
-      <section className="system-logs-page__stats" aria-label="Tổng quan log">
-        <button type="button" className={kind === "all" ? "active" : ""} onClick={() => setKind("all")}>
-          <Database size={18} />
-          <span>Tất cả</span>
-          <strong>{Math.min(totalAudit + totalEvent, MAX_COMBINED_WINDOW).toLocaleString("vi-VN")}</strong>
+      <section className="system-logs-page__stats" aria-label="Chọn nhóm hoạt động">
+        <button
+          type="button"
+          className={kind === "all" ? "active" : ""}
+          onClick={() => setKind("all")}
+          aria-pressed={kind === "all"}
+        >
+          <span className="system-logs-page__stat-icon"><Database size={19} /></span>
+          <span className="system-logs-page__stat-copy">
+            <strong>Tất cả hoạt động</strong>
+            <small>Danh sách gần nhất từ toàn hệ thống</small>
+          </span>
+          <b>{Math.min(totalAudit + totalEvent, MAX_COMBINED_WINDOW).toLocaleString("vi-VN")}</b>
         </button>
-        <button type="button" className={kind === "audit" ? "active" : ""} onClick={() => setKind("audit")}>
-          <ClipboardList size={18} />
-          <span>Audit log</span>
-          <strong>{totalAudit.toLocaleString("vi-VN")}</strong>
+        <button
+          type="button"
+          className={kind === "audit" ? "active" : ""}
+          onClick={() => setKind("audit")}
+          aria-pressed={kind === "audit"}
+        >
+          <span className="system-logs-page__stat-icon"><ClipboardList size={19} /></span>
+          <span className="system-logs-page__stat-copy">
+            <strong>Thay đổi quản trị</strong>
+            <small>Cài đặt, dữ liệu và phân quyền</small>
+          </span>
+          <b>{totalAudit.toLocaleString("vi-VN")}</b>
         </button>
-        <button type="button" className={kind === "event" ? "active" : ""} onClick={() => setKind("event")}>
-          <Activity size={18} />
-          <span>Event log</span>
-          <strong>{totalEvent.toLocaleString("vi-VN")}</strong>
+        <button
+          type="button"
+          className={kind === "event" ? "active" : ""}
+          onClick={() => setKind("event")}
+          aria-pressed={kind === "event"}
+        >
+          <span className="system-logs-page__stat-icon"><Activity size={19} /></span>
+          <span className="system-logs-page__stat-copy">
+            <strong>Hoạt động vận hành</strong>
+            <small>Thao tác phát sinh trong nhà hàng</small>
+          </span>
+          <b>{totalEvent.toLocaleString("vi-VN")}</b>
         </button>
       </section>
 
-      <section className="system-logs-page__toolbar" aria-label="Bộ lọc log">
+      <section className="system-logs-page__toolbar" aria-label="Tìm kiếm và tùy chọn hiển thị">
         <label className="system-logs-page__search">
-          <span>Tìm trong dữ liệu đang tải</span>
+          <span>Tìm kiếm hoạt động</span>
           <div>
-            <Search size={16} />
+            <Search size={17} aria-hidden="true" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="action, module, bàn, order, người thao tác..."
+              placeholder="Tìm theo hành động, bàn, đơn hàng hoặc người thực hiện..."
             />
+            {search && (
+              <button type="button" onClick={() => setSearch("")} aria-label="Xóa từ khóa tìm kiếm">
+                <X size={16} />
+              </button>
+            )}
           </div>
         </label>
-        <label>
-          <span>Số dòng / trang</span>
+        <label className="system-logs-page__page-size">
+          <span>Số hoạt động mỗi trang</span>
           <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
             {PAGE_SIZE_OPTIONS.map((option) => (
-              <option key={option} value={option}>{option} dòng</option>
+              <option key={option} value={option}>{option} hoạt động</option>
             ))}
           </select>
         </label>
       </section>
 
       <div className="system-logs-page__meta">
-        <span>Hiển thị {rangeStart.toLocaleString("vi-VN")}–{rangeEnd.toLocaleString("vi-VN")} / {totalRows.toLocaleString("vi-VN")} bản ghi</span>
-        {kind === "all" && <span>Tất cả đang gộp 100 bản ghi mới nhất từ hai nguồn log.</span>}
+        <span>
+          Đang hiển thị <strong>{rangeStart.toLocaleString("vi-VN")}–{rangeEnd.toLocaleString("vi-VN")}</strong>
+          {" "}trong tổng số <strong>{totalRows.toLocaleString("vi-VN")}</strong> hoạt động
+        </span>
+        {kind === "all" && <span>Để tải nhanh, danh sách này hiển thị tối đa 100 hoạt động gần nhất.</span>}
       </div>
 
-      {error && <div className="system-logs-page__error">{error.message || "Không thể tải nhật ký hệ thống."}</div>}
+      {error && (
+        <div className="system-logs-page__error" role="alert">
+          Không thể tải lịch sử hoạt động lúc này. Vui lòng thử cập nhật lại.
+        </div>
+      )}
 
       <section className="system-logs-page__table" aria-live="polite">
         <div className="system-logs-page__table-head">
           <span>Thời gian</span>
-          <span>Loại</span>
-          <span>Hành động</span>
-          <span>Người thao tác</span>
-          <span>Đối tượng</span>
-          <span>Chi tiết</span>
+          <span>Nhóm hoạt động</span>
+          <span>Nội dung</span>
+          <span>Người thực hiện</span>
+          <span>Liên quan đến</span>
+          <span>Thông tin thêm</span>
         </div>
 
         {loading && entries.length === 0 ? (
-          <div className="system-logs-page__state">Đang tải nhật ký...</div>
+          <div className="system-logs-page__state">Đang tải lịch sử hoạt động...</div>
         ) : entries.length === 0 ? (
-          <div className="system-logs-page__state">Chưa có log phù hợp.</div>
+          <div className="system-logs-page__state">
+            {search ? "Không tìm thấy hoạt động phù hợp. Hãy thử từ khóa khác." : "Chưa có hoạt động nào được ghi nhận."}
+          </div>
         ) : entries.map((entry) => (
           <article className="system-logs-page__row" key={entry.key}>
-            <time dateTime={entry.at || undefined}>{formatDateTime(entry.at)}</time>
-            <span className={`system-logs-page__badge system-logs-page__badge--${entry.kind}`}>{entry.kindLabel}</span>
-            <strong title={entry.title}>{entry.title}</strong>
-            <span title={entry.actor}>{entry.actor}</span>
-            <span title={entry.target}>{entry.target}</span>
-            <details>
-              <summary>{entry.summary || entry.status || "Xem chi tiết"}</summary>
-              <pre>{formatJson(entry.detail)}</pre>
-            </details>
+            <time data-label="Thời gian" dateTime={entry.at || undefined} title={entry.dateTime.full}>
+              <strong>{entry.dateTime.date}</strong>
+              <small>{entry.dateTime.time}</small>
+            </time>
+            <span data-label="Nhóm hoạt động" className={`system-logs-page__badge system-logs-page__badge--${entry.kind}`}>
+              {entry.kindLabel}
+            </span>
+            <div data-label="Nội dung" className="system-logs-page__action" title={entry.title}>
+              <strong>{entry.title}</strong>
+              <small>{entry.scope}</small>
+            </div>
+            <span data-label="Người thực hiện" className="system-logs-page__actor" title={entry.actor}>{entry.actor}</span>
+            <span data-label="Liên quan đến" className="system-logs-page__target" title={entry.target}>{entry.target}</span>
+            <div data-label="Thông tin thêm"><ActivityDetails entry={entry} /></div>
           </article>
         ))}
       </section>
 
-      <nav className="system-logs-page__pagination" aria-label="Phân trang nhật ký hệ thống">
+      <nav className="system-logs-page__pagination" aria-label="Chuyển trang lịch sử hoạt động">
         <button type="button" onClick={() => goToPage(1)} disabled={page <= 1 || loading} aria-label="Trang đầu">
           <ChevronFirst size={16} />
         </button>
         <button type="button" onClick={() => goToPage(page - 1)} disabled={page <= 1 || loading}>
-          <ChevronLeft size={16} /> Trước
+          <ChevronLeft size={16} /> Trang trước
         </button>
         <strong>Trang {page.toLocaleString("vi-VN")} / {totalPages.toLocaleString("vi-VN")}</strong>
         <button type="button" onClick={() => goToPage(page + 1)} disabled={page >= totalPages || loading}>
-          Sau <ChevronRight size={16} />
+          Trang sau <ChevronRight size={16} />
         </button>
         <button type="button" onClick={() => goToPage(totalPages)} disabled={page >= totalPages || loading} aria-label="Trang cuối">
           <ChevronLast size={16} />
@@ -342,4 +456,5 @@ const SystemLogsPage = ({ restaurantId, isAdmin = false }) => {
   );
 };
 
+export { normalizeAuditLog, normalizeEventLog, sortByNewest };
 export default SystemLogsPage;
