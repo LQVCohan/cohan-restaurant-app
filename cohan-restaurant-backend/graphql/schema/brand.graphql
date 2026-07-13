@@ -72,6 +72,28 @@ type BrandMemberCandidate {
   status: String
 }
 
+type BrandMemberPageInfo {
+  page: Int!
+  pageSize: Int!
+  totalCount: Int!
+  totalPages: Int!
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+}
+
+type BrandMemberSummary {
+  total: Int!
+  active: Int!
+  inactive: Int!
+  invited: Int!
+}
+
+type BrandMemberPage {
+  items: [BrandMembership!]!
+  pageInfo: BrandMemberPageInfo!
+  summary: BrandMemberSummary!
+}
+
 input CreateBrandInput {
   name: String!
   slug: String
@@ -153,6 +175,15 @@ extend type Query {
   brand(id: ID!): Brand
   brands(limit: Int = 50, cursor: ID, status: String, search: String): [Brand!]!
   brandMembers(brandId: ID!): [BrandMembership!]!
+  brandMembersPage(
+    brandId: ID!
+    search: String
+    role: String
+    restaurantId: ID
+    status: String
+    page: Int = 1
+    pageSize: Int = 10
+  ): BrandMemberPage!
   brandMemberCandidates(brandId: ID!, search: String!, limit: Int = 20): [BrandMemberCandidate!]!
   myBrandMemberships: [BrandMembership!]!
 }

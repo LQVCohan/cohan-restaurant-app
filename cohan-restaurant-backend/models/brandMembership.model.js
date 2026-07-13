@@ -43,6 +43,10 @@ BrandMembershipSchema.pre("validate", function validateScope(next) {
 BrandMembershipSchema.index({ brandId: 1, userId: 1 }, { unique: true });
 BrandMembershipSchema.index({ userId: 1, status: 1 });
 BrandMembershipSchema.index({ brandId: 1, role: 1 });
+BrandMembershipSchema.index(
+  { brandId: 1, status: 1, role: 1, restaurantIds: 1, createdAt: -1 },
+  { name: "brand_member_directory_filters" },
+);
 BrandMembershipSchema.index({ inviteTokenHash: 1 }, { sparse: true });
 BrandMembershipSchema.index(
   { brandId: 1, role: 1, status: 1, restaurantIds: 1 },
