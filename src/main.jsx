@@ -63,6 +63,7 @@ import "./styles/TableEmptyStatePremium.css";
 import "./styles/MergedTableLifecycleUi.css";
 import "./styles/Table3DMainModalRepair.css";
 import "./styles/Table3DModalContentSafety.css";
+import "./styles/AuthRecoveryAndFacebook.css";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
 import { installRestaurantHoursEnhancement } from "./utils/installRestaurantHoursEnhancement";
@@ -76,6 +77,7 @@ import { installTableEmptyStateEnhancement } from "./utils/installTableEmptyStat
 import { installGuidedAiCaptureCards } from "./utils/installGuidedAiCaptureCards";
 import { installAiChatbotMenuSuggestionLifecycle } from "./utils/installAiChatbotMenuSuggestionLifecycle";
 import { installMobileHomeVisualQc } from "./utils/installMobileHomeVisualQc";
+import { installAuthRecoveryAndFacebook } from "./utils/installAuthRecoveryAndFacebook";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 import "./styles/ResponsiveFoundation.css";
 import "./styles/CustomTableBuilderResponsiveFix.css";
@@ -120,6 +122,7 @@ installTableEmptyStateEnhancement();
 installGuidedAiCaptureCards();
 installAiChatbotMenuSuggestionLifecycle();
 installMobileHomeVisualQc();
+installAuthRecoveryAndFacebook();
 installAttendanceWordingTuning();
 
 createRoot(document.getElementById("root")).render(
