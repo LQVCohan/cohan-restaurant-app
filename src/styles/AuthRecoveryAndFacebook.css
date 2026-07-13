@@ -1,0 +1,218 @@
+.auth-recovery-is-open {
+  overflow: hidden;
+}
+
+.auth-recovery-modal[hidden] {
+  display: none;
+}
+
+.auth-recovery-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.auth-recovery-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.58);
+  backdrop-filter: blur(7px);
+}
+
+.auth-recovery-modal__dialog {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 470px);
+  max-height: min(720px, calc(100vh - 32px));
+  overflow: auto;
+  padding: 30px;
+  border: 1px solid #fed7aa;
+  border-radius: 26px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(124, 45, 18, 0.24);
+}
+
+.auth-recovery-modal__brand {
+  display: inline-flex;
+  margin-bottom: 14px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.auth-recovery-modal__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  background: #fff;
+  color: #4b5563;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.auth-recovery-form {
+  display: grid;
+  gap: 13px;
+}
+
+.auth-recovery-form h2 {
+  margin: 0;
+  color: #111827;
+  font-size: clamp(25px, 4vw, 32px);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.auth-recovery-form p {
+  margin: 0 0 4px;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.auth-recovery-form label {
+  color: #374151;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.auth-recovery-form input {
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 14px;
+  background: #fff;
+  color: #111827;
+  font-size: 15px;
+  outline: none;
+}
+
+.auth-recovery-form input:focus {
+  border-color: #fb923c;
+  box-shadow: 0 0 0 4px rgba(251, 146, 60, 0.16);
+}
+
+.auth-recovery-form__submit,
+.facebook-login-button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 850;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease;
+}
+
+.auth-recovery-form__submit {
+  margin-top: 4px;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #fff;
+  box-shadow: 0 12px 26px rgba(234, 88, 12, 0.22);
+}
+
+.auth-recovery-form__submit:hover:not(:disabled),
+.facebook-login-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.auth-recovery-form__submit:disabled,
+.facebook-login-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.auth-recovery-form__status {
+  min-height: 20px;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.auth-recovery-form__status[data-tone="success"],
+.facebook-login-status[data-tone="success"] {
+  color: #15803d;
+}
+
+.auth-recovery-form__status[data-tone="error"],
+.facebook-login-status[data-tone="error"] {
+  color: #b91c1c;
+}
+
+.google-login-row .facebook-login-button {
+  width: min(100%, 300px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  padding: 0 18px;
+  border: 1px solid #1877f2;
+  background: #1877f2;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(24, 119, 242, 0.2);
+}
+
+.facebook-login-button__icon {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  color: #1877f2;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.facebook-login-status {
+  width: min(100%, 300px);
+  min-height: 18px;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .auth-recovery-modal {
+    align-items: end;
+    padding: 0;
+  }
+
+  .auth-recovery-modal__dialog {
+    width: 100%;
+    max-height: 88vh;
+    padding: 26px 20px calc(22px + env(safe-area-inset-bottom));
+    border-radius: 24px 24px 0 0;
+  }
+
+  .google-login-row .facebook-login-button,
+  .facebook-login-status {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-recovery-form__submit,
+  .facebook-login-button {
+    transition: none;
+  }
+}

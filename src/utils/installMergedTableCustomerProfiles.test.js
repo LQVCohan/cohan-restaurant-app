@@ -188,4 +188,15 @@ describe("installMergedTableCustomerProfiles", () => {
       expect(document.body.textContent).toContain("6 khách");
     });
   });
+
+  it("marks and hides the customer section immediately outside supported tabs", () => {
+    const modal = document.querySelector(".talite-modal");
+    modal.dataset.tableDetailActiveTab = "configuration";
+
+    const section = __testables.prepareModal(modal);
+
+    expect(section).toHaveAttribute("data-table-detail-section", "customers");
+    expect(section).toHaveAttribute("data-table-detail-kind", "customers");
+    expect(section).toHaveAttribute("hidden");
+  });
 });

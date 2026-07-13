@@ -53,6 +53,7 @@ const catalogData = {
   dinner: connection([
     { id: "dish-3", menuId: "menu-dinner", name: "Cơm gà", basePrice: 55000, status: "hidden" },
     { id: "dish-4", menuId: "menu-dinner-chef", name: "Cá hấp", basePrice: 95000, status: "available" },
+    { id: "dish-5", menuId: null, name: "Canh trong ngày", basePrice: 30000, status: "available" },
   ], true),
   lateNight: connection([]),
 };
@@ -98,7 +99,27 @@ describe("ManagerMenuCatalogModal", () => {
     expect(within(chefDinnerCard).getByText("Cá hấp")).toBeInTheDocument();
     expect(within(chefDinnerCard).queryByText("Cơm gà")).not.toBeInTheDocument();
 
+    const unassignedCard = screen.getByText("Món chưa gắn thực đơn").closest("article");
+    expect(within(unassignedCard).getByText("Canh trong ngày")).toBeInTheDocument();
+    expect(within(dinnerCard).queryByText("Canh trong ngày")).not.toBeInTheDocument();
+    expect(within(chefDinnerCard).queryByText("Canh trong ngày")).not.toBeInTheDocument();
+
     expect(screen.getAllByText("Chưa có thực đơn")).toHaveLength(2);
+  });
+
+  it("offers a direct action to the full menu management workflow", () => {
+    const onManage = vi.fn();
+    render(
+      <ManagerMenuCatalogModal
+        isOpen
+        onClose={vi.fn()}
+        restaurantId="restaurant-1"
+        onManage={onManage}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Quản lý thực đơn" }));
+    expect(onManage).toHaveBeenCalledTimes(1);
   });
 
   it("skips the query and explains that a branch must be selected", () => {

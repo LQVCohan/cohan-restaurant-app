@@ -37,10 +37,10 @@ $status-blue-text: #1d4ed8; // Đã phục vụ
 
 .hm-modal {
   width: 100%;
-  max-width: 900px;
-  height: 85vh;
+  max-width: 980px;
+  max-height: calc(100dvh - 32px);
   background-color: $hm-bg-surface;
-  border-radius: 1rem;
+  border-radius: 1.125rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
@@ -54,7 +54,7 @@ $status-blue-text: #1d4ed8; // Đã phục vụ
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 1.5rem;
+  padding: 1.1rem 1.25rem;
   border-bottom: 1px solid $border;
   background-color: #fff;
 
@@ -90,7 +90,7 @@ $status-blue-text: #1d4ed8; // Đã phục vụ
   border-radius: 0.5rem;
   color: $text-sub;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 
   &:hover {
     background-color: #f1f5f9;
@@ -101,19 +101,43 @@ $status-blue-text: #1d4ed8; // Đã phục vụ
 
 // --- Stats Bar ---
 .hm-stats {
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  padding: 1rem 1.5rem;
-  background-color: #fffbeb; // Nền vàng rất nhạt (Warm tint)
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 12px;
+  background-color: #f7faf8;
   border-bottom: 1px solid rgba($gold, 0.2);
 }
 
 .hm-stat-item {
-  display: flex;
-  flex-direction: column;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.25rem;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  color: $charcoal;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+
+  &:hover {
+    border-color: rgba($gold, 0.42);
+    background: #fff;
+  }
+
+  &.is-active {
+    border-color: rgba(47, 125, 104, 0.34);
+    background: #fff;
+    box-shadow: inset 3px 0 0 #2f7d68;
+  }
+
+  &:active { transform: translateY(1px); }
+  &:focus-visible { outline: 3px solid rgba(47, 125, 104, 0.18); outline-offset: 1px; }
 }
 
 .hm-stat-label {
@@ -125,15 +149,9 @@ $status-blue-text: #1d4ed8; // Đã phục vụ
 }
 
 .hm-stat-val {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 800;
   color: $charcoal;
-}
-
-.hm-stat-divider {
-  width: 1px;
-  height: 24px;
-  background-color: rgba($gold, 0.3); // Divider màu vàng
 }
 
 // Stats Specific Colors
@@ -147,66 +165,20 @@ $status-blue-text: #1d4ed8; // Đã phục vụ
   color: $status-red-text;
 }
 
-// --- Filters ---
-.hm-filters {
-  padding: 1rem 1.5rem 0.5rem;
-  background-color: $hm-bg-surface;
-
-  &__scroll {
-    display: flex;
-    gap: 0.5rem;
-    overflow-x: auto;
-    padding-bottom: 0.5rem;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-}
-
-.hm-chip {
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  border: 1px solid $border;
-  background-color: white;
-  color: $text-sub;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: $gold;
-    color: $gold;
-  }
-
-  // Active State: Style "Premium" (Đen nền, chữ Trắng/Vàng)
-  &--active {
-    background-color: $charcoal;
-    border-color: $charcoal;
-    color: white; // Hoặc dùng $gold nếu muốn nổi bật hơn
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-
-    &:hover {
-      background-color: black;
-      color: $gold;
-    }
-  }
-}
-
 // --- Body & List ---
 .hm-body {
-  flex: 1;
+  min-height: 0;
+  max-height: calc(100dvh - 220px);
   overflow-y: auto;
-  padding: 1rem 1.5rem;
+  padding: 14px;
   background-color: $hm-bg-body;
 }
 
 .hm-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
 }
 
 // --- Card (Đồng bộ style với Analysis Page) ---
@@ -214,8 +186,9 @@ $status-blue-text: #1d4ed8; // Đã phục vụ
   background-color: white;
   border: 1px solid $border;
   border-radius: 0.75rem;
-  padding: 1.25rem;
-  transition: all 0.2s ease;
+  padding: 1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease,
+    border-color 0.2s ease;
   position: relative;
 
   // Hover effect: Viền vàng đặc trưng
@@ -354,7 +327,7 @@ $status-blue-text: #1d4ed8; // Đã phục vụ
   font-weight: 600;
   color: $charcoal;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 
   &:hover {
     background-color: $charcoal;
@@ -399,7 +372,7 @@ $status-blue-text: #1d4ed8; // Đã phục vụ
 }
 
 .hm-loader-area {
-  padding: 1.5rem 0;
+  padding: 1rem 0 0;
   display: flex;
   justify-content: center;
 }
@@ -413,7 +386,8 @@ $status-blue-text: #1d4ed8; // Đã phục vụ
   font-weight: 600;
   font-size: 0.85rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s,
+    color 0.2s;
 
   &:hover {
     border-color: $gold;
@@ -515,5 +489,52 @@ $status-blue-text: #1d4ed8; // Đã phục vụ
   &--muted {
     color: $text-sub;
     font-weight: 600;
+  }
+}
+
+@media (max-width: 760px) {
+  .hm-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .hm-modal {
+    max-height: 96dvh;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .hm-header__subtitle {
+    display: none;
+  }
+
+  .hm-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hm-stat-item {
+    min-height: 50px;
+  }
+
+  .hm-body {
+    max-height: calc(96dvh - 210px);
+    padding: 10px;
+  }
+
+  .hm-list {
+    grid-template-columns: 1fr;
+  }
+
+  .hm-card__meta {
+    flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-overlay,
+  .hm-modal,
+  .hm-card,
+  .hm-stat-item {
+    animation: none;
+    transition: none;
   }
 }

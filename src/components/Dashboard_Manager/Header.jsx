@@ -164,6 +164,12 @@ const Header = ({
     setShowMenuCatalog(false);
     logout?.();
   };
+  const openMenuManagement = () => {
+    setShowMenuCatalog(false);
+    window.dispatchEvent(new CustomEvent("manager:navigate", {
+      detail: { page: "menu", source: "menu-catalog" },
+    }));
+  };
   const toggleDarkMode = () => { setIsDarkMode((value) => !value); setShowUserMenu(false); };
 
   return (
@@ -188,7 +194,7 @@ const Header = ({
               title={selectedRestaurantId ? "Xem menu và món theo khung giờ" : "Chọn chi nhánh trước"}
             >
               <FiPackage aria-hidden="true" />
-              <span>Danh sách thực đơn</span>
+              <span>Xem &amp; quản lý thực đơn</span>
             </button>
           ) : null}
 
@@ -260,6 +266,7 @@ const Header = ({
           onClose={() => setShowMenuCatalog(false)}
           restaurantId={selectedRestaurantId}
           restaurantName={selectedRestaurant?.name || ""}
+          onManage={openMenuManagement}
         />
       ) : null}
     </>

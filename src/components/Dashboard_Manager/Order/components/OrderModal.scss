@@ -42,9 +42,9 @@ $st-cancelled-text: #b91c1c;
 .om-modal-box {
   background: white;
   width: 100%;
-  max-width: 600px; // Chỉ giới hạn chiều rộng của cái hộp này thôi
-  max-height: 90vh;
-  border-radius: 12px;
+  max-width: 760px;
+  max-height: min(92dvh, 900px);
+  border-radius: 18px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
@@ -229,12 +229,13 @@ $st-cancelled-text: #b91c1c;
 .itemCard {
   background: white;
   border: 1px solid $border-color;
-  border-radius: 8px;
+  border-radius: 14px;
   padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: all 0.2s;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(270px, 0.9fr);
+  align-items: start;
+  gap: 16px;
+  transition: border-color 0.2s, background-color 0.2s, opacity 0.2s;
   &:hover {
     border-color: $gold;
   }
@@ -307,66 +308,129 @@ $st-cancelled-text: #b91c1c;
     font-weight: 600;
   }
   &__actions {
-    margin-left: 12px;
-    flex-shrink: 0;
+    min-width: 0;
   }
 }
 
-.statusDropdown {
-  position: relative;
-  .statusBtn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: white;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    border: 1px solid $border-color;
-    color: $charcoal;
-    &:disabled {
-      opacity: 0.7;
-      cursor: default;
-      background: #f1f5f9;
+.itemCard__workflow {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(83, 108, 97, 0.18);
+  border-radius: 12px;
+  background: #f7faf8;
+}
+
+.itemCard__workflowHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: $text-sub;
+  font-size: 0.72rem;
+  font-weight: 700;
+
+  strong {
+    padding: 4px 7px;
+    border-radius: 7px;
+    color: #40584e;
+    background: #e7f1ec;
+    font-size: 0.72rem;
+  }
+
+  strong.is-red {
+    color: $st-cancelled-text;
+    background: $st-cancelled-bg;
+  }
+}
+
+.itemCard__steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+    color: #8b9891;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1.25;
+    text-align: center;
+
+    > span {
+      height: 5px;
+      border-radius: 999px;
+      background: #dce5e0;
     }
-    &:not(:disabled):hover {
-      border-color: $gold;
+
+    &.is-done,
+    &.is-current {
+      color: #315748;
+    }
+
+    &.is-done > span,
+    &.is-current > span {
+      background: #2f7d68;
+    }
+
+    &.is-current > span {
+      box-shadow: 0 0 0 3px rgba(47, 125, 104, 0.12);
     }
   }
-  .statusMenu {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    margin-top: 4px;
-    background: white;
-    border: 1px solid $border-color;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    z-index: 10;
-    min-width: 150px;
-    overflow: hidden;
-    animation: fadeIn 0.1s ease;
-    .statusMenuItem {
-      display: block;
-      width: 100%;
-      text-align: left;
-      padding: 10px 12px;
-      font-size: 0.85rem;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-weight: 500;
-      color: $text-main;
-      &:hover {
-        background: #f8fafc;
-        color: $gold;
-      }
-    }
+}
+
+.itemCard__workflowActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.itemCard__nextStatus,
+.itemCard__cancel {
+  min-height: 44px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.itemCard__nextStatus {
+  border: 1px solid #2f7d68;
+  color: #fff;
+  background: #2f7d68;
+
+  &:hover {
+    background: #40584e;
   }
+}
+
+.itemCard__nextStatus:active,
+.itemCard__cancel:active {
+  transform: translateY(1px);
+}
+
+.itemCard__nextStatus:focus-visible,
+.itemCard__cancel:focus-visible {
+  outline: 3px solid rgba(47, 125, 104, 0.2);
+  outline-offset: 2px;
+}
+
+.itemCard__saving {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #315748;
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .total-summary {
@@ -455,7 +519,8 @@ $st-cancelled-text: #b91c1c;
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s,
+    transform 0.2s;
   border: none;
   &.ghost {
     background: transparent;
@@ -677,7 +742,6 @@ $st-cancelled-text: #b91c1c;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin-top: 10px;
   padding: 0 11px;
   border: 1px solid #fecaca;
   border-radius: 8px;
@@ -694,10 +758,7 @@ $st-cancelled-text: #b91c1c;
   background: #ffe4e6;
 }
 
-.itemCard__cancel:focus-visible {
-  outline: 3px solid rgba(220, 38, 38, 0.2);
-  outline-offset: 2px;
-}
+.itemCard__cancel:focus-visible { outline-color: rgba(220, 38, 38, 0.22); }
 
 .itemCard__header .metaTag.combo {
   background: #fff3e8;
@@ -713,4 +774,46 @@ $st-cancelled-text: #b91c1c;
   color: #e65c00;
   font-size: 0.72rem;
   font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .om-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .om-modal-box {
+    max-height: 96dvh;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .om-header,
+  .om-body,
+  .om-footer {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .itemCard {
+    grid-template-columns: 1fr;
+  }
+
+  .itemCard__workflowActions {
+    grid-template-columns: 1fr;
+  }
+
+  .om-footer .om-btn {
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .om-overlay,
+  .om-modal-box,
+  .itemCard,
+  .itemCard__nextStatus,
+  .itemCard__cancel {
+    animation: none;
+    transition: none;
+  }
 }

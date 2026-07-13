@@ -1,0 +1,50 @@
+{
+  "id": "07-13-report-pages-1-5-rework",
+  "title": "Làm lại các lỗi và giao diện trong 5 trang đầu report",
+  "status": "completed",
+  "dev_type": "fullstack-ui-fix",
+  "scope": "manager-order-menu-stock-table",
+  "priority": "P1",
+  "createdAt": "2026-07-13",
+  "completedAt": "2026-07-13",
+  "branch": "agent/fix-report-pages-1-5",
+  "base_branch": "main",
+  "base_commit": "872f3501e47413a07d8f74b83130e9f18183cd5c",
+  "source": "test lỗi.docx pages 1-5",
+  "relatedAreas": [
+    "manager order and kitchen",
+    "order history and new order",
+    "menu catalog and menu management",
+    "quick stock receiving",
+    "table detail and table settings"
+  ],
+  "validation": {
+    "completed": [
+      "rendered and reviewed all 29 report pages, then scoped implementation to pages 1-5",
+      "traced order, menu, stock and table callers before changing presentation and row-selection contracts",
+      "13 changed component test files passed with 58 tests under the CI --changed selection",
+      "targeted regression suite passed with 38 tests across 11 files",
+      "the 3 component files that failed in the attached older CI log now pass with 35 tests",
+      "frontend unit suite passed 96 files/383 tests; the 2 schema suites then passed 10 tests after backend schema dependencies were staged",
+      "focused ESLint completed with no errors",
+      "npm run check:conflicts passed",
+      "npm run build passed"
+    ],
+    "notRun": [
+      "desktop and phone screenshots were not captured because this runtime has no browser executable; responsive breakpoints and reduced-motion/focus styles were reviewed statically",
+      "authenticated live manager workflows were not exercised against a real restaurant database"
+    ]
+  },
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "redesign-existing-projects",
+      "taste-ui-redesign",
+      "ui-ux-pro-max",
+      "react-ui-performance",
+      "wcag-ui-audit",
+      "web-design-guidelines"
+    ]
+  }
+}

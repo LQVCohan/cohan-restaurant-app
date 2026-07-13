@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import QuickStockModal from "./QuickStockModal";
 
@@ -55,6 +55,8 @@ describe("QuickStockModal", () => {
       />,
     );
 
+    const rowCheckboxes = screen.getAllByRole("checkbox");
+    fireEvent.click(rowCheckboxes[0]);
     const quantityInputs = await screen.findAllByLabelText(/Số lượng/);
     const priceInputs = screen.getAllByLabelText(/Giá lô/);
     fireEvent.change(quantityInputs[0], {
@@ -66,13 +68,49 @@ describe("QuickStockModal", () => {
     expect(quantityInputs[0]).toHaveValue(5);
     fireEvent.click(screen.getByRole("button", { name: "Nhập 1 mặt hàng" }));
 
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onSubmit.mock.calls[0][0]).toHaveLength(1);
     expect(onSubmit.mock.calls[0][0][0]).toMatchObject({
       id: "ingredient-1",
       qty: 5,
       unitPrice: 90000,
     });
+    expect(onSubmit.mock.calls[0][0]).toHaveLength(1);
+  });
+
+  it("does not validate rows the user did not select", async () => {
+    const onSubmit = vi.fn(async () => undefined);
+    render(
+      <QuickStockModal
+        isOpen
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+        entries={[
+          ingredientEntry,
+          { ...ingredientEntry, id: "ingredient-2", name: "Muối" },
+        ]}
+        ingredients={[
+          ingredient,
+          { ...ingredient, id: "ingredient-2", name: "Muối" },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Chọn Muối để nhập kho"));
+    const selectedRow = screen.getByText("Muối").closest("article");
+    const quantityInput = within(selectedRow).getByLabelText(/Số lượng/);
+    const priceInput = within(selectedRow).getByLabelText(/Giá lô/);
+    fireEvent.change(quantityInput, { target: { value: "3" } });
+    fireEvent.change(priceInput, { target: { value: "45000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Nhập 1 mặt hàng" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0][0]).toEqual([
+      expect.objectContaining({ id: "ingredient-2", qty: 3, unitPrice: 45000 }),
+    ]);
   });
 
   it("offers convertible units and keeps the selected unit in the receipt payload", async () => {
@@ -155,7 +193,7 @@ describe("QuickStockModal", () => {
     });
   });
 
-  it("shows Vietnam time and submits the matching UTC instant", () => {
+  it("shows Vietnam time and submits the matching UTC instant", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-10T01:29:00.000Z"));
     const onSubmit = vi.fn(async () => undefined);
@@ -195,6 +233,9 @@ describe("QuickStockModal", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Nhập kho ngay/ }));
 
+    await act(async () => {
+      await Promise.resolve();
+    });
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onSubmit.mock.calls[0][0][0].datetime).toBe("2026-07-10T01:29:00.000Z");
   });

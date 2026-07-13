@@ -61,7 +61,9 @@ describe("OrderModal immediate item cancellation", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Hủy món ngay" }));
+    expect(screen.getByText("Tình trạng món")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Báo món đã sẵn sàng" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Hủy món" }));
     fireEvent.change(screen.getByLabelText("Lý do chính"), {
       target: { value: "Món cháy / khét" },
     });
@@ -74,5 +76,39 @@ describe("OrderModal immediate item cancellation", () => {
       quantity: 1,
       reason: "Món cháy / khét",
     });
+  });
+
+  it("shows one explicit next kitchen action instead of a status menu", async () => {
+    const onUpdateItemStatus = vi.fn(async () => undefined);
+    render(
+      <OrderModal
+        order={{
+          id: "order-2",
+          orderCode: "ORD-02",
+          currentStatus: "confirmed",
+          createdAt: new Date().toISOString(),
+          payment: { status: "pending", method: "cash" },
+          items: [
+            {
+              _id: "item-2",
+              name: "Cơm gà",
+              quantity: 1,
+              unitPrice: 59000,
+              status: "pending",
+              voidRequests: [],
+              returnRequests: [],
+            },
+          ],
+        }}
+        onClose={vi.fn()}
+        onUpdateItemStatus={onUpdateItemStatus}
+      />,
+    );
+
+    expect(screen.getByText("Chưa thanh toán · Tiền mặt")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Bắt đầu chế biến" }));
+    await waitFor(() =>
+      expect(onUpdateItemStatus).toHaveBeenCalledWith("order-2", 0, "preparing"),
+    );
   });
 });

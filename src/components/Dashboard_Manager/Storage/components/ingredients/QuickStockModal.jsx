@@ -41,9 +41,7 @@ const formatVietnamDateTimeDisplay = (value) => {
   return `${day}/${month}/${year}, ${timePart}`;
 };
 
-const isRowSelectedForStock = (row) =>
-  String(row?.qty ?? "").trim() !== "" ||
-  String(row?.unitPrice ?? "").trim() !== "";
+const isRowSelectedForStock = (row) => Boolean(row?.selected);
 
 /**
  * QuickStockModal
@@ -112,6 +110,7 @@ const QuickStockModal = ({
     setFormRows(
       normalized.map((entry) => ({
         ...entry,
+        selected: normalized.length === 1,
         qty: "",
         unitPrice: "",
         lot: "",
@@ -129,9 +128,11 @@ const QuickStockModal = ({
 
     // Modal dùng focus trap riêng; focus trễ hơn một nhịp để ô số lượng thắng focus container.
     const focusTimer = window.setTimeout(() => {
-      const firstQuantity = fieldRefs.current.get("0:qty");
-      firstQuantity?.focus();
-      firstQuantity?.select?.();
+      const firstField = fieldRefs.current.get(
+        normalized.length > 1 ? "0:selected" : "0:qty",
+      );
+      firstField?.focus();
+      firstField?.select?.();
     }, 80);
 
     return () => window.clearTimeout(focusTimer);
@@ -215,6 +216,24 @@ const QuickStockModal = ({
       else delete next[idx];
       return next;
     });
+  };
+
+  const toggleRow = (idx, selected) => {
+    setFormRows((rows) =>
+      rows.map((row, rowIndex) =>
+        rowIndex === idx ? { ...row, selected } : row,
+      ),
+    );
+    setErrors((current) => {
+      if (!current[idx]) return current;
+      const next = { ...current };
+      delete next[idx];
+      return next;
+    });
+    setSubmitError("");
+    if (selected) {
+      window.setTimeout(() => focusField(idx, "qty"), 0);
+    }
   };
 
   const getIngredient = (row) => ingredientMap.get(String(row.id));
@@ -304,10 +323,10 @@ const QuickStockModal = ({
     const usesSharedDatetime = selectedRows.some((row) => !row.datetime);
 
     if (!selectedRows.length) {
-      setSubmitError("Nhập số lượng cho ít nhất một mặt hàng.");
+      setSubmitError("Chọn ít nhất một mặt hàng cần nhập kho.");
       setReceiptErrors({});
       setErrors({});
-      window.setTimeout(() => focusField(0, "qty"), 0);
+      window.setTimeout(() => focusField(0, "selected"), 0);
       return false;
     }
 
@@ -513,11 +532,11 @@ const QuickStockModal = ({
               <Zap size={18} />
             </span>
             <div>
-              <strong>Nhập số lượng và giá lô</strong>
-              <span>Chỉ nhập những mặt hàng cần bổ sung; dòng để trống sẽ được bỏ qua.</span>
+              <strong>Chọn mặt hàng cần nhập</strong>
+              <span>Chỉ các mặt hàng được chọn mới cần số lượng và giá lô.</span>
             </div>
             <span className="qsm-fast-start__count">
-              {formRows.length} mặt hàng
+              {selectedRowCount}/{formRows.length} đã chọn
             </span>
           </section>
 
@@ -581,7 +600,7 @@ const QuickStockModal = ({
               );
 
               return (
-                <article className="qsm-item" key={`${row.id}-${idx}`}>
+                <article className={`qsm-item ${row.selected ? "is-selected" : "is-skipped"}`} key={`${row.id}-${idx}`}>
                   <div className="qsm-item__head">
                     <div>
                       <div className="qsm-name">{row.name || "—"}</div>
@@ -590,13 +609,23 @@ const QuickStockModal = ({
                         gốc <b>{row.unit || "—"}</b>
                       </div>
                     </div>
-                    {formRows.length > 1 ? (
-                      <span className="qsm-badge">
-                        {idx + 1}/{formRows.length}
-                      </span>
-                    ) : null}
+                    <label className="qsm-item__toggle">
+                      <input
+                        ref={(node) => setFieldRef(idx, "selected", node)}
+                        type="checkbox"
+                        checked={row.selected}
+                        aria-label={`Chọn ${row.name || `mặt hàng ${idx + 1}`} để nhập kho`}
+                        onChange={(event) => toggleRow(idx, event.target.checked)}
+                      />
+                      <span>{row.selected ? "Đã chọn nhập" : "Chọn để nhập"}</span>
+                    </label>
                   </div>
 
+                  {!row.selected ? (
+                    <p className="qsm-item__skipped-copy">Mặt hàng này sẽ không được đưa vào phiếu nhập.</p>
+                  ) : null}
+
+                  <fieldset className="qsm-item__fields" disabled={!row.selected}>
                   <div className="qsm-grid qsm-grid--primary">
                     <label className="qsm-field">
                       <span className="qsm-label">
@@ -604,7 +633,7 @@ const QuickStockModal = ({
                       </span>
                       <input
                         ref={(node) => setFieldRef(idx, "qty", node)}
-                        autoFocus={idx === 0}
+                        autoFocus={idx === 0 && formRows.length === 1}
                         type="number"
                         min="0"
                         step="any"
@@ -851,6 +880,7 @@ const QuickStockModal = ({
                       </label>
                     </div>
                   </details>
+                  </fieldset>
                 </article>
               );
             })}
