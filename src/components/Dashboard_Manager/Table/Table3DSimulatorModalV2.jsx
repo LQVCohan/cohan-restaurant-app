@@ -10,6 +10,11 @@ import {
   getModelAssetSummary,
 } from "@/config/table3dCatalog";
 import {
+  clearTable3DBuilderSessionState,
+  getTable3DBuilderSessionState,
+  setTable3DBuilderSessionState,
+} from "@/utils/aiTableCaptureDraft";
+import {
   deleteCustomTableModel,
   loadCustomTableModels,
   mergeCatalogWithCustomModels,
@@ -63,7 +68,9 @@ export default function Table3DSimulatorModalV2({
   const [modelLoading, setModelLoading] = useState(false);
   const [modelLoadProgress, setModelLoadProgress] = useState(0);
   const [modelViewerCanActivateAr, setModelViewerCanActivateAr] = useState(null);
-  const [showCustomBuilder, setShowCustomBuilder] = useState(false);
+  const [showCustomBuilder, setShowCustomBuilder] = useState(
+    () => getTable3DBuilderSessionState().open,
+  );
   const [customModels, setCustomModels] = useState([]);
   const [isOpeningAr, setIsOpeningAr] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
@@ -72,6 +79,16 @@ export default function Table3DSimulatorModalV2({
   const [capabilities, setCapabilities] = useState(getCapabilities);
   const viewerRef = useRef(null);
   const customModelScope = restaurantName || restaurantId || "default";
+
+  const openCustomBuilder = () => {
+    setTable3DBuilderSessionState({ open: true, simulatorOpen: true });
+    setShowCustomBuilder(true);
+  };
+
+  const closeCustomBuilder = () => {
+    clearTable3DBuilderSessionState({ keepSimulator: true });
+    setShowCustomBuilder(false);
+  };
 
   useEffect(() => {
     if (
@@ -403,6 +420,7 @@ export default function Table3DSimulatorModalV2({
   };
 
   useEffect(() => {
+    if (showCustomBuilder) return undefined;
     const viewer = viewerRef.current;
     if (!viewer || !selectedModel?.modelUrl) return undefined;
 
@@ -485,7 +503,7 @@ export default function Table3DSimulatorModalV2({
       viewer.removeEventListener("progress", onProgress);
       viewer.removeEventListener("ar-status", onArStatus);
     };
-  }, [selectedModel?.key, selectedModel?.modelUrl]);
+  }, [selectedModel?.key, selectedModel?.modelUrl, showCustomBuilder]);
 
   const handleThumbnailError = (event) => {
     if (event.currentTarget.src !== TABLE_3D_PLACEHOLDER_THUMB) {
@@ -548,7 +566,7 @@ export default function Table3DSimulatorModalV2({
           loading={loading}
           error={error}
           onReload={reload}
-          onCreateCustomModel={() => setShowCustomBuilder(true)}
+          onCreateCustomModel={openCustomBuilder}
           pendingDeleteModelKey={pendingDeleteModelKey}
           onDeleteCustomModel={handleDeleteCustomModel}
           isSelectedModelHiddenByFilters={isSelectedModelHiddenByFilters}
@@ -568,7 +586,7 @@ export default function Table3DSimulatorModalV2({
           </div>
 
           <div className="table-3d-stage">
-            {selectedModel?.modelUrl && !modelError ? (
+            {!showCustomBuilder && selectedModel?.modelUrl && !modelError ? (
               <model-viewer
                 ref={viewerRef}
                 src={selectedModel.modelUrl}
@@ -598,19 +616,23 @@ export default function Table3DSimulatorModalV2({
               <div className="viewer-placeholder">
                 <Box size={28} aria-hidden="true" />
                 <strong>
-                  {selectedModel
-                    ? "Mẫu này chưa có mô hình 3D"
-                    : "Chưa chọn mẫu bàn"}
+                  {showCustomBuilder
+                    ? "Đã tạm dừng preview 3D"
+                    : selectedModel
+                      ? "Mẫu này chưa có mô hình 3D"
+                      : "Chưa chọn mẫu bàn"}
                 </strong>
                 <span>
-                  {selectedModel
-                    ? "Chọn mẫu có nhãn 3D hoặc dùng Tạo mẫu mới để nhập URL/upload file."
-                    : "Hãy chọn một mẫu trong thư viện để bắt đầu."}
+                  {showCustomBuilder
+                    ? "Đang giải phóng WebGL để camera trên điện thoại hoạt động ổn định hơn."
+                    : selectedModel
+                      ? "Chọn mẫu có nhãn 3D hoặc dùng Tạo mẫu mới để nhập URL/upload file."
+                      : "Hãy chọn một mẫu trong thư viện để bắt đầu."}
                 </span>
               </div>
             )}
 
-            {modelLoading && selectedModel?.modelUrl && (
+            {!showCustomBuilder && modelLoading && selectedModel?.modelUrl && (
               <div className="table-3d-model-loading" role="status">
                 <Loader2 size={24} className="spin" aria-hidden="true" />
                 <strong>Đang tải mô hình 3D</strong>
@@ -673,13 +695,14 @@ export default function Table3DSimulatorModalV2({
 
       <CustomTableModelBuilderModal
         open={showCustomBuilder}
-        onClose={() => setShowCustomBuilder(false)}
+        onClose={closeCustomBuilder}
+        draftScope={customModelScope}
         onApply={(customItem) => {
           const saved = upsertCustomTableModel(customItem, customModelScope);
           setCustomModels(saved);
           setTableType(getCustomModelCatalogTableType(customItem));
           setSelectedModelKey(customItem.key);
-          setShowCustomBuilder(false);
+          closeCustomBuilder();
         }}
       />
     </Modal>

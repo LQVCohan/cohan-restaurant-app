@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Modal from "@/components/common/Modal";
 import Button from "@/components/common/Button";
 import { toBackendRootUrl } from "@/lib/apiBaseUrl";
@@ -20,6 +20,14 @@ import {
   getTableAreaLabel,
   TABLE_AREA_OPTIONS,
 } from "@/utils/tableManagementOptions";
+import {
+  clearAiTableCaptureDraft,
+  getTable3DBuilderSessionState,
+  loadAiTableCaptureDraft,
+  processAiTableCapture,
+  saveAiTableCaptureDraftSlot,
+  setTable3DBuilderSessionState,
+} from "@/utils/aiTableCaptureDraft";
 
 const BUILDER_MODES = {
   PARAMETRIC: "parametric",
@@ -254,8 +262,17 @@ const StatusCard = ({ tone = "info", children }) => (
   </div>
 );
 
-const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
-  const [mode, setMode] = useState(BUILDER_MODES.PARAMETRIC);
+const CustomTableModelBuilderModal = ({
+  open,
+  onClose,
+  onApply,
+  draftScope = "default",
+}) => {
+  const [mode, setMode] = useState(() =>
+    getTable3DBuilderSessionState().mode === BUILDER_MODES.AI
+      ? BUILDER_MODES.AI
+      : BUILDER_MODES.PARAMETRIC,
+  );
   const [form, setForm] = useState(DEFAULT_CUSTOM_TABLE_SPEC);
   const [urlForm, setUrlForm] = useState(DEFAULT_CUSTOM_URL_TABLE_SPEC);
   const [uploadForm, setUploadForm] = useState(
@@ -271,6 +288,11 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [aiImageMetadata, setAiImageMetadata] = useState(
+    Array(AI_REQUIRED_IMAGES).fill(null),
+  );
+  const [aiCaptureProcessingIndex, setAiCaptureProcessingIndex] = useState(null);
+  const [aiDraftMessage, setAiDraftMessage] = useState("");
 
   const normalizedPreview = useMemo(
     () => normalizeCustomTableSpec(form),
@@ -285,7 +307,48 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
   const isAiGenerating = ["submitting", "queued", "processing"].includes(
     aiStatus,
   );
-  const isBusy = isUploading || aiStatus === "submitting";
+  const isBusy =
+    isUploading ||
+    aiStatus === "submitting" ||
+    aiCaptureProcessingIndex !== null;
+
+  useEffect(() => {
+    if (!open) return undefined;
+    let cancelled = false;
+    const sessionState = getTable3DBuilderSessionState();
+    if (sessionState.mode === BUILDER_MODES.AI) setMode(BUILDER_MODES.AI);
+
+    loadAiTableCaptureDraft(draftScope, AI_REQUIRED_IMAGES)
+      .then(({ images, metadata }) => {
+        if (cancelled) return;
+        const restoredCount = images.filter(Boolean).length;
+        if (restoredCount) {
+          setAiForm((previous) => ({ ...previous, images }));
+          setAiImageMetadata(metadata);
+          const wasReloaded =
+            Boolean(document.wasDiscarded) ||
+            (typeof performance !== "undefined" &&
+              performance.getEntriesByType?.("navigation")?.[0]?.type ===
+                "reload");
+          setAiDraftMessage(
+            wasReloaded
+              ? `Đã khôi phục ${restoredCount}/5 ảnh sau khi trang được tải lại.`
+              : `Đã khôi phục ${restoredCount}/5 ảnh đã chụp trước đó.`,
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAiDraftMessage(
+            "Trình duyệt không cho lưu bản nháp ảnh; hãy giữ trang mở cho đến khi gửi đủ 5 ảnh.",
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [draftScope, open]);
 
   const updateField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -303,22 +366,57 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
     setAiForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleAiImageChange = (index, file) => {
-    setAiForm((prev) => {
-      const images = AI_CAPTURE_STEPS.map(
-        (_, imageIndex) => prev.images?.[imageIndex] || null,
-      );
-      images[index] = file || null;
-      return { ...prev, images };
-    });
+  const handleAiImageChange = async (index, file, inputElement) => {
+    if (!file || aiCaptureProcessingIndex !== null) return;
     setError("");
+    setAiDraftMessage("");
+    setAiCaptureProcessingIndex(index);
+    try {
+      const processed = await processAiTableCapture(file);
+      await saveAiTableCaptureDraftSlot(draftScope, index, processed);
+      setAiForm((previous) => {
+        const images = AI_CAPTURE_STEPS.map(
+          (_, imageIndex) => previous.images?.[imageIndex] || null,
+        );
+        images[index] = processed.file;
+        return { ...previous, images };
+      });
+      setAiImageMetadata((previous) => {
+        const next = [...previous];
+        next[index] = processed.metadata;
+        return next;
+      });
+      setAiDraftMessage(
+        `Đã tối ưu ảnh ${index + 1}: ${formatFileSize(
+          processed.metadata.originalSize,
+        )} → ${formatFileSize(processed.file.size)} và lưu bản nháp.`,
+      );
+    } catch (captureError) {
+      setError(captureError?.message || "Không thể xử lý ảnh vừa chụp.");
+    } finally {
+      if (inputElement) inputElement.value = "";
+      setAiCaptureProcessingIndex(null);
+    }
   };
 
   const handleModeChange = (nextMode) => {
     setMode(nextMode);
+    setTable3DBuilderSessionState({ open: true, mode: nextMode });
     setError("");
     setUploadStatus("");
     if (nextMode !== BUILDER_MODES.AI) setAiStatus("idle");
+  };
+
+  const handleClearAiImages = async () => {
+    if (aiCaptureProcessingIndex !== null || isAiGenerating) return;
+    await clearAiTableCaptureDraft(draftScope, AI_REQUIRED_IMAGES).catch(() => {});
+    setAiForm((previous) => ({
+      ...previous,
+      images: Array(AI_REQUIRED_IMAGES).fill(null),
+    }));
+    setAiImageMetadata(Array(AI_REQUIRED_IMAGES).fill(null));
+    setAiDraftMessage("Đã xóa bản nháp 5 ảnh trên thiết bị này.");
+    setError("");
   };
 
   const handleReferenceImage = (event) => {
@@ -520,6 +618,8 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
       const payload = await requestAiTable3DGeneration(formData);
       setAiJob(payload);
       setAiStatus(payload.status || "queued");
+      await clearAiTableCaptureDraft(draftScope, AI_REQUIRED_IMAGES).catch(() => {});
+      setAiDraftMessage("Đã gửi đủ 5 ảnh; bản nháp trên thiết bị đã được xóa.");
       if (payload?.generatedModelUrl) {
         const item = buildAiGeneratedTableCatalogItem({
           ...aiForm,
@@ -951,12 +1051,14 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
                     Chụp đủ 5 ảnh theo thứ tự
                   </span>
                   <small className="custom-table-builder__hint">
-                    Giữ bàn đứng yên, dùng cùng khoảng cách và ánh sáng. Trên điện
-                    thoại, nút chọn ảnh sẽ ưu tiên mở camera sau.
+                    Giữ bàn đứng yên, dùng cùng khoảng cách và ánh sáng. Mỗi ảnh sẽ
+                    được nén ngay và lưu bản nháp trên thiết bị trước khi chụp ảnh kế
+                    tiếp.
                   </small>
                   <div className="custom-table-builder__image-list">
                     {AI_CAPTURE_STEPS.map((step, index) => {
                       const file = aiImages[index];
+                      const metadata = aiImageMetadata[index];
                       return (
                         <div
                           key={step.key}
@@ -965,18 +1067,35 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
                           <span>
                             {index + 1}. {step.label}
                           </span>
-                          <small>{file ? file.name : step.hint}</small>
+                          <small>
+                            {aiCaptureProcessingIndex === index
+                              ? "Đang nén và lưu ảnh…"
+                              : file
+                                ? `${file.name}${
+                                    metadata
+                                      ? ` · ${formatFileSize(
+                                          metadata.originalSize,
+                                        )} → ${formatFileSize(file.size)}`
+                                      : ""
+                                  }`
+                                : step.hint}
+                          </small>
                           <input
                             type="file"
-                            accept="image/png,image/jpeg,image/webp"
+                            accept="image/*"
                             capture="environment"
                             aria-label={`Ảnh ${index + 1}: ${step.label}`}
-                            onChange={(event) =>
-                              handleAiImageChange(
-                                index,
-                                event.target.files?.[0] || null,
-                              )
+                            disabled={
+                              aiCaptureProcessingIndex !== null || isAiGenerating
                             }
+                            onChange={(event) => {
+                              const input = event.currentTarget;
+                              void handleAiImageChange(
+                                index,
+                                input.files?.[0] || null,
+                                input,
+                              );
+                            }}
                           />
                         </div>
                       );
@@ -1049,6 +1168,7 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
                   />
                 </Field>
               </Section>
+              {aiDraftMessage && <StatusCard>{aiDraftMessage}</StatusCard>}
               <StatusCard tone={aiStatus === "failed" ? "danger" : "info"}>
                 Đã chụp {capturedImageCount}/{AI_REQUIRED_IMAGES} ảnh · Trạng thái:{" "}
                 {getAiStatusLabel(aiStatus)}
@@ -1061,11 +1181,24 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
                   disabled={
                     isUploading ||
                     isAiGenerating ||
+                    aiCaptureProcessingIndex !== null ||
                     capturedImageCount !== AI_REQUIRED_IMAGES
                   }
                 >
                   {isAiGenerating ? "Đang tạo..." : "Gửi 5 ảnh tạo model"}
                 </Button>
+                {capturedImageCount > 0 && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleClearAiImages}
+                    disabled={
+                      aiCaptureProcessingIndex !== null || isAiGenerating
+                    }
+                  >
+                    Xóa ảnh đã chụp
+                  </Button>
+                )}
                 {aiJob?.jobId && (
                   <Button variant="secondary" onClick={handleRefreshAiJob}>
                     Kiểm tra job

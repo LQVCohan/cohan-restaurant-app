@@ -20,4 +20,13 @@ describe("Vite development proxy", () => {
       changeOrigin: true,
     });
   });
+
+  it("disables HMR for the stable mobile camera profile", () => {
+    vi.stubEnv("VITE_DEV_HMR", "false");
+    vi.stubEnv("VITE_DEV_INFER_REQUEST_HOST", "true");
+
+    const config = createViteConfig({ mode: "test" });
+
+    expect(config.server.hmr).toBe(false);
+  });
 });

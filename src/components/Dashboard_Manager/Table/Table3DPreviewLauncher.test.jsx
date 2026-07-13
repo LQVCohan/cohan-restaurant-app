@@ -1,7 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
 import Table3DPreviewLauncher from "./Table3DPreviewLauncher";
 
@@ -15,6 +15,9 @@ vi.mock("./Table3DSimulatorModalV2", () => ({
 }));
 
 describe("Table3DPreviewLauncher", () => {
+  beforeEach(() => {
+    window.sessionStorage.clear();
+  });
   it("adds the manager header action and opens the global preview modal", async () => {
     render(
       <MemoryRouter initialEntries={["/manager#tables"]}>
