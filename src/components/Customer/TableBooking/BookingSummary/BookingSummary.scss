@@ -172,6 +172,33 @@ $border: #e5e7eb;
       }
     }
 
+    .bsm-btn-vr {
+      width: 100%;
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      margin: -4px 0 18px;
+      padding: 11px 14px;
+      color: $brand-dark;
+      background: linear-gradient(135deg, $brand-soft, #fff8f2);
+      border: 1px solid rgba($brand, 0.34);
+      border-radius: 14px;
+      font-size: 0.8rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: 0.2s ease;
+
+      &:hover {
+        border-color: $brand;
+        background: rgba($brand, 0.14);
+        transform: translateY(-1px);
+      }
+    }
+
     .bsm-info-list {
       display: flex;
       flex-direction: column;

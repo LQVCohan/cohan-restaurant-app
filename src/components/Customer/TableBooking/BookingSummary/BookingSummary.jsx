@@ -1,5 +1,12 @@
 import React from "react";
-import { Users, MapPin, Wallet, UtensilsCrossed, XCircle } from "lucide-react";
+import {
+  Users,
+  MapPin,
+  Wallet,
+  UtensilsCrossed,
+  XCircle,
+  ScanLine,
+} from "lucide-react";
 import "./BookingSummary.scss";
 
 const BookingSummary = ({
@@ -10,6 +17,7 @@ const BookingSummary = ({
   menuDeposit = 0,
   menuItemsCount = 0,
   onOrderDishes,
+  onView360,
 }) => {
   const formatPrice = (price) => {
     if (!price || price === 0) return "Miễn phí";
@@ -40,6 +48,17 @@ const BookingSummary = ({
                 <span className="status-text">Đang được chọn</span>
               </div>
             </div>
+
+            {onView360 && (
+              <button
+                type="button"
+                className="bsm-btn bsm-btn-secondary bsm-btn-vr"
+                onClick={onView360}
+              >
+                <ScanLine size={18} aria-hidden="true" />
+                Xem không gian 360° của bàn
+              </button>
+            )}
 
             <div className="bsm-info-list">
               <div className="bsm-info-item">
