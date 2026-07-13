@@ -1,10 +1,9 @@
 {
   "id": "07-14-review-experience-ui-upgrade",
   "title": "Upgrade restaurant review experience",
-  "status": "in_progress",
+  "status": "completed",
   "type": "frontend-ui",
   "scope": [
-    "src/components/Customer/RestaurantDetail/components/ReviewsSection/ReviewsSection.jsx",
     "src/components/Customer/RestaurantDetail/components/ReviewsSection/ReviewsSection.scss"
   ],
   "validation": {
@@ -17,8 +16,18 @@
     ],
     "completed": [
       "read AGENTS.md, Trellis workflow, ponytail, frontend-design, redesign-existing-projects, ui-ux-pro-max, web-design-guidelines, wcag-ui-audit and react-ui-performance",
-      "reviewed the current screenshots, RestaurantDetail shell, ReviewsSection data flow, shared Modal implementation and existing component tests"
+      "reviewed the supplied screenshots, RestaurantDetail shell, ReviewsSection markup/data flow, modal markup and existing component tests",
+      "replaced the legacy stylesheet with one warm orange/cream responsive review surface without changing React, Apollo or GraphQL behavior",
+      "added 44px interaction targets, visible focus, loading/empty/error/disabled states, bounded modal height, mobile bottom-sheet behavior and reduced-motion handling",
+      "re-fetched and reviewed the changed stylesheet in full after commit",
+      "confirmed the draft pull request is mergeable against main"
     ],
-    "notRun": []
+    "notRun": [
+      "Vitest was not run because the GitHub connector does not provide a repository runtime",
+      "conflict-marker, GraphQL and frontend build commands were not run locally",
+      "responsive browser checks at 390x844, 430x932, 768px, 1024px and 1440px were not run",
+      "real keyboard and device review was not run",
+      "no GitHub Actions workflow was present for the pull-request head commit at the time of checking"
+    ]
   }
 }
