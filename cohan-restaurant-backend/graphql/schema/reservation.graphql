@@ -123,6 +123,7 @@ input RejectReservationChangeInput {
 input CheckInReservationInput {
   reservationId: ID!
   note: String
+  confirmEarlyArrival: Boolean = false
 }
 
 extend type Query {
