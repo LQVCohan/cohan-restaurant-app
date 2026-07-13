@@ -16,6 +16,7 @@ import "../../../styles/Homepage/HomePremiumPolish.scss";
 import "../../../styles/Homepage/HomeA11yPolish.scss";
 import "../../../styles/Homepage/HomeResponsiveFix.scss";
 import "../../../styles/Homepage/FeaturedDishesSingleItemFix.scss";
+import "../../../styles/Homepage/HomeForYouCompact.scss";
 
 const getCurrentTimeSlot = () => {
   const hour = new Date().getHours();
