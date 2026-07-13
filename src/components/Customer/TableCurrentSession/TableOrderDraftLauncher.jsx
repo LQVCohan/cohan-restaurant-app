@@ -1,6 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
-import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Minus,
+  Plus,
+  Search,
+  ShoppingBag,
+  ShoppingCart,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 import Modal from "@/components/common/Modal";
@@ -57,7 +67,10 @@ const SUBMIT = gql`
     publicSubmitTableOrder(input: $input) {
       ok
       message
-      order { id orderCode }
+      order {
+        id
+        orderCode
+      }
     }
   }
 `;
@@ -108,6 +121,14 @@ const draftLine = (item) => {
   };
 };
 
+const isSameLine = (line, item) => {
+  const variant = variantOf(item);
+  return (
+    line.dishId === item.id &&
+    line.servingKey === (variant.key || item.defaultServingKey || "portion")
+  );
+};
+
 export default function TableOrderDraftLauncher() {
   const location = useLocation();
   const match = location.pathname.match(ROUTE);
@@ -122,6 +143,8 @@ export default function TableOrderDraftLauncher() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [waitingToSubmit, setWaitingToSubmit] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [cartExpanded, setCartExpanded] = useState(false);
 
   const { data, refetch } = useQuery(CONTEXT, {
     variables: { restaurantId, tableId, token },
@@ -144,9 +167,24 @@ export default function TableOrderDraftLauncher() {
       (menuData?.menuItemsConnection?.edges || [])
         .map((edge) => edge?.node)
         .filter(Boolean)
-        .filter((item) => !["inactive", "archived"].includes(String(item.status || "").toLowerCase())),
+        .filter(
+          (item) =>
+            !["inactive", "archived"].includes(
+              String(item.status || "").toLowerCase(),
+            ),
+        ),
     [menuData?.menuItemsConnection?.edges],
   );
+  const filteredItems = useMemo(() => {
+    const keyword = searchTerm.trim().toLocaleLowerCase("vi");
+    if (!keyword) return items;
+    return items.filter((item) => {
+      const variant = variantOf(item);
+      return `${item.name || ""} ${variant.name || ""}`
+        .toLocaleLowerCase("vi")
+        .includes(keyword);
+    });
+  }, [items, searchTerm]);
   const [submit, { loading: submitting }] = useMutation(SUBMIT);
 
   const sendDraft = useCallback(async () => {
@@ -172,6 +210,7 @@ export default function TableOrderDraftLauncher() {
       );
       setCart([]);
       setOpen(false);
+      setCartExpanded(false);
       setWaitingToSubmit(false);
     } catch {
       setError(
@@ -211,45 +250,86 @@ export default function TableOrderDraftLauncher() {
     ) : null;
   }
 
-  const count = cart.reduce((sum, line) => sum + Number(line.quantity || 1), 0);
+  const count = cart.reduce(
+    (sum, line) => sum + Number(line.quantity || 1),
+    0,
+  );
   const total = cart.reduce(
-    (sum, line) => sum + Number(line.basePrice || 0) * Number(line.quantity || 1),
+    (sum, line) =>
+      sum + Number(line.basePrice || 0) * Number(line.quantity || 1),
     0,
   );
 
   const addItem = (item) => {
-    setCart((current) => [...current, draftLine(item)]);
+    const nextLine = draftLine(item);
+    setCart((current) => {
+      const existingIndex = current.findIndex((line) => isSameLine(line, item));
+      if (existingIndex < 0) return [...current, nextLine];
+      return current.map((line, index) =>
+        index === existingIndex
+          ? {
+              ...line,
+              quantity: Math.min(20, Number(line.quantity || 1) + 1),
+            }
+          : line,
+      );
+    });
     setMessage("");
     setError("");
-    window.dispatchEvent(new CustomEvent(TABLE_ORDER_ACCESS_REQUIRED_EVENT));
+  };
+
+  const changeItemQuantity = (item, delta) => {
+    setCart((current) => {
+      const existingIndex = current.findIndex((line) => isSameLine(line, item));
+      if (existingIndex < 0) {
+        return delta > 0 ? [...current, draftLine(item)] : current;
+      }
+      const currentLine = current[existingIndex];
+      const nextQuantity = Number(currentLine.quantity || 1) + delta;
+      if (nextQuantity <= 0) {
+        return current.filter((_, index) => index !== existingIndex);
+      }
+      return current.map((line, index) =>
+        index === existingIndex
+          ? { ...line, quantity: Math.min(20, nextQuantity) }
+          : line,
+      );
+    });
+    setMessage("");
+    setError("");
   };
 
   const updateQuantity = (localId, delta) => {
     setCart((current) =>
-      current.map((line) =>
-        line.localId === localId
-          ? {
-              ...line,
-              quantity: Math.max(1, Math.min(20, line.quantity + delta)),
-            }
-          : line,
-      ),
+      current.flatMap((line) => {
+        if (line.localId !== localId) return [line];
+        const nextQuantity = Number(line.quantity || 1) + delta;
+        if (nextQuantity <= 0) return [];
+        return [{ ...line, quantity: Math.min(20, nextQuantity) }];
+      }),
+    );
+  };
+
+  const removeLine = (localId) => {
+    setCart((current) =>
+      current.filter((entry) => entry.localId !== localId),
     );
   };
 
   return (
     <>
       <button
-        className="table-order-draft-launcher"
+        className={`table-order-draft-launcher ${open ? "is-hidden" : ""}`}
         type="button"
         onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
       >
         <ShoppingBag aria-hidden="true" />
         <span>
           <strong>Chọn món tại bàn</strong>
           <small>Chọn trước, xác nhận với nhân viên khi gửi</small>
         </span>
-        {count ? <b>{count}</b> : null}
+        {count ? <b aria-label={`${count} món đã chọn`}>{count}</b> : null}
       </button>
 
       <Modal
@@ -257,86 +337,211 @@ export default function TableOrderDraftLauncher() {
         onClose={() => !submitting && setOpen(false)}
         title={`Chọn món · Bàn ${context?.tableCode || "--"}`}
         size="xl"
+        className="table-order-draft-modal"
+        zIndex={1200}
       >
         <div className="table-order-draft">
-          <section className="table-order-draft__menu">
-            {loading ? <p>Đang tải thực đơn…</p> : null}
-            {!loading && !items.length ? <p>Chưa có món đang bán.</p> : null}
-            {items.map((item) => {
+          <div className="table-order-draft__toolbar">
+            <label className="table-order-draft__search">
+              <Search aria-hidden="true" />
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Tìm món ăn, đồ uống…"
+                aria-label="Tìm món"
+              />
+              {searchTerm ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  aria-label="Xóa từ khóa tìm kiếm"
+                >
+                  <X aria-hidden="true" />
+                </button>
+              ) : null}
+            </label>
+            <span aria-live="polite">
+              {loading ? "Đang tải…" : `${filteredItems.length} món`}
+            </span>
+          </div>
+
+          <section className="table-order-draft__menu" aria-label="Danh sách món">
+            {loading ? (
+              <div className="table-order-draft__state">Đang tải thực đơn…</div>
+            ) : null}
+            {!loading && !items.length ? (
+              <div className="table-order-draft__state">Chưa có món đang bán.</div>
+            ) : null}
+            {!loading && items.length > 0 && !filteredItems.length ? (
+              <div className="table-order-draft__state">
+                Không tìm thấy món phù hợp với “{searchTerm.trim()}”.
+              </div>
+            ) : null}
+            {filteredItems.map((item) => {
               const variant = variantOf(item);
+              const cartLine = cart.find((line) => isSameLine(line, item));
+              const itemQuantity = Number(cartLine?.quantity || 0);
               return (
-                <article key={item.id}>
-                  <img src={item.thumbImage || "/default-dishes.jpg"} alt="" />
-                  <div>
+                <article key={item.id} className={itemQuantity ? "is-selected" : ""}>
+                  <div className="table-order-draft__image">
+                    <img
+                      src={item.thumbImage || "/default-dishes.jpg"}
+                      alt={item.name || "Món ăn"}
+                    />
+                    {itemQuantity ? <b>{itemQuantity}</b> : null}
+                  </div>
+                  <div className="table-order-draft__info">
                     <strong>{item.name}</strong>
                     <small>{variant.name || "Phần tiêu chuẩn"}</small>
                   </div>
-                  <b>{formatCurrency(variant.price ?? item.basePrice ?? 0)}</b>
-                  <button type="button" onClick={() => addItem(item)}>
-                    Thêm món
-                  </button>
+                  <b className="table-order-draft__price">
+                    {formatCurrency(variant.price ?? item.basePrice ?? 0)}
+                  </b>
+                  <div className="table-order-draft__item-actions">
+                    {itemQuantity ? (
+                      <div className="table-order-draft__stepper">
+                        <button
+                          type="button"
+                          onClick={() => changeItemQuantity(item, -1)}
+                          aria-label={`Giảm ${item.name}`}
+                        >
+                          <Minus aria-hidden="true" />
+                        </button>
+                        <strong aria-live="polite">{itemQuantity}</strong>
+                        <button
+                          type="button"
+                          onClick={() => changeItemQuantity(item, 1)}
+                          disabled={itemQuantity >= 20}
+                          aria-label={`Tăng ${item.name}`}
+                        >
+                          <Plus aria-hidden="true" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => addItem(item)}>
+                        <Plus aria-hidden="true" />
+                        Thêm món
+                      </button>
+                    )}
+                  </div>
                 </article>
               );
             })}
           </section>
 
-          <aside className="table-order-draft__cart">
-            <h3>Món đã chọn</h3>
-            {!cart.length ? <p>Chưa có món nào.</p> : null}
-            {cart.map((line) => (
-              <div key={line.localId} className="table-order-draft__line">
-                <span>
-                  <strong>{line.name}</strong>
-                  <small>{formatCurrency(line.basePrice)}</small>
-                </span>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => updateQuantity(line.localId, -1)}
-                    aria-label={`Giảm ${line.name}`}
-                  >
-                    <Minus />
-                  </button>
-                  <b>{line.quantity}</b>
-                  <button
-                    type="button"
-                    onClick={() => updateQuantity(line.localId, 1)}
-                    aria-label={`Tăng ${line.name}`}
-                  >
-                    <Plus />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setCart((current) =>
-                        current.filter((entry) => entry.localId !== line.localId),
-                      )
-                    }
-                    aria-label={`Xóa ${line.name}`}
-                  >
-                    <Trash2 />
-                  </button>
-                </div>
-              </div>
-            ))}
-            <footer>
-              <span>Tổng tạm tính</span>
-              <strong>{formatCurrency(total)}</strong>
-            </footer>
-            {error ? <p className="table-order-draft__error" role="alert">{error}</p> : null}
+          <aside
+            className={`table-order-draft__cart ${cartExpanded ? "is-expanded" : ""}`}
+          >
             <button
-              className="table-order-draft__confirm"
+              className="table-order-draft__cart-toggle"
               type="button"
-              disabled={!cart.length || submitting}
-              onClick={() =>
-                window.dispatchEvent(
-                  new CustomEvent(TABLE_ORDER_ACCESS_REQUIRED_EVENT),
-                )
-              }
+              onClick={() => setCartExpanded((current) => !current)}
+              aria-expanded={cartExpanded}
+              aria-controls="table-order-draft-cart-panel"
             >
-              Nhờ nhân viên xác nhận để gửi món
+              <span>
+                <ShoppingCart aria-hidden="true" />
+                <span>
+                  <strong>{count ? `${count} món đã chọn` : "Giỏ món đang trống"}</strong>
+                  <small>{count ? "Chạm để xem và gửi món" : "Chọn món từ thực đơn"}</small>
+                </span>
+              </span>
+              <span>
+                <strong>{formatCurrency(total)}</strong>
+                {cartExpanded ? (
+                  <ChevronDown aria-hidden="true" />
+                ) : (
+                  <ChevronUp aria-hidden="true" />
+                )}
+              </span>
             </button>
-            <small>Món chỉ vào bếp sau khi nhân viên xác nhận đúng bàn.</small>
+
+            <div
+              id="table-order-draft-cart-panel"
+              className="table-order-draft__cart-panel"
+            >
+              <div className="table-order-draft__cart-heading">
+                <span>
+                  <ShoppingCart aria-hidden="true" />
+                  <h3>Món đã chọn</h3>
+                </span>
+                {count ? <b>{count}</b> : null}
+              </div>
+
+              <div className="table-order-draft__lines">
+                {!cart.length ? (
+                  <div className="table-order-draft__empty-cart">
+                    <ShoppingBag aria-hidden="true" />
+                    <strong>Chưa có món nào</strong>
+                    <small>Chọn “Thêm món” để bắt đầu.</small>
+                  </div>
+                ) : null}
+                {cart.map((line) => (
+                  <div key={line.localId} className="table-order-draft__line">
+                    <span>
+                      <strong>{line.name}</strong>
+                      <small>
+                        {line.servingVariant?.name || "Phần tiêu chuẩn"} ·{" "}
+                        {formatCurrency(line.basePrice)}
+                      </small>
+                    </span>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(line.localId, -1)}
+                        aria-label={`Giảm ${line.name}`}
+                      >
+                        <Minus aria-hidden="true" />
+                      </button>
+                      <b>{line.quantity}</b>
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(line.localId, 1)}
+                        disabled={line.quantity >= 20}
+                        aria-label={`Tăng ${line.name}`}
+                      >
+                        <Plus aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className="table-order-draft__remove"
+                        onClick={() => removeLine(line.localId)}
+                        aria-label={`Xóa ${line.name}`}
+                      >
+                        <Trash2 aria-hidden="true" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <footer>
+                <span>Tổng tạm tính</span>
+                <strong>{formatCurrency(total)}</strong>
+              </footer>
+              {error ? (
+                <p className="table-order-draft__error" role="alert">
+                  {error}
+                </p>
+              ) : null}
+              <button
+                className="table-order-draft__confirm"
+                type="button"
+                disabled={!cart.length || submitting}
+                onClick={() => {
+                  setError("");
+                  window.dispatchEvent(
+                    new CustomEvent(TABLE_ORDER_ACCESS_REQUIRED_EVENT),
+                  );
+                }}
+              >
+                {submitting ? "Đang gửi món…" : "Xác nhận với nhân viên để gửi món"}
+              </button>
+              <small className="table-order-draft__notice">
+                Món chỉ vào bếp sau khi nhân viên xác nhận đúng bàn.
+              </small>
+            </div>
           </aside>
         </div>
       </Modal>
