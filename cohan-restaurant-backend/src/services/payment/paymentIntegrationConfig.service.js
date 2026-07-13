@@ -2,6 +2,17 @@ const PROVIDERS = ["momo", "vnpay"];
 const MODES = ["sandbox", "production"];
 const VNPAY_CHANNELS = new Set(["", "VNPAYQR", "VNBANK", "INTCARD"]);
 
+function syncLegacyPaymentEnvironment(env = process.env) {
+  if (env.PAYMENT_PUBLIC_BASE_URL && !env.PUBLIC_BASE_URL) {
+    env.PUBLIC_BASE_URL = env.PAYMENT_PUBLIC_BASE_URL;
+  }
+  if (env.PAYMENT_WEB_RETURN_URL && !env.PUBLIC_WEB_URL) {
+    env.PUBLIC_WEB_URL = env.PAYMENT_WEB_RETURN_URL;
+  }
+}
+
+syncLegacyPaymentEnvironment();
+
 function normalizeUrl(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
