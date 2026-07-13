@@ -1,21 +1,26 @@
 /*
  * Shared responsive polish for the public table session.
- * Loaded after the individual table-order components so the two independent
- * launchers behave like one coherent action dock.
+ * Loaded after the individual table-order components so the independent
+ * bottom actions and status notice behave like one coherent action dock.
  */
 
 .table-order-draft-launcher,
-.table-order-access-launcher {
+.table-order-access-launcher,
+.table-order-blocked {
   box-sizing: border-box;
   min-width: 0;
   min-height: 66px;
-  padding: 12px 16px;
   border-radius: 18px;
   transition:
     transform 180ms ease,
     box-shadow 180ms ease,
     border-color 180ms ease,
     background-color 180ms ease;
+}
+
+.table-order-draft-launcher,
+.table-order-access-launcher {
+  padding: 12px 16px;
 }
 
 .table-order-draft-launcher {
@@ -28,15 +33,37 @@
   box-shadow: 0 18px 44px rgba(25, 70, 57, 0.28);
 }
 
-.table-order-access-launcher {
+.table-order-access-launcher,
+.table-order-blocked {
   right: max(24px, env(safe-area-inset-right));
   bottom: max(24px, env(safe-area-inset-bottom));
   width: min(350px, calc(50vw - 36px));
   max-width: none;
+}
+
+.table-order-access-launcher {
   background: rgba(250, 253, 250, 0.98);
   box-shadow: 0 18px 44px rgba(35, 73, 53, 0.18);
   -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
+}
+
+.table-order-blocked {
+  gap: 11px;
+  padding: 12px 15px;
+  box-shadow: 0 16px 38px rgba(82, 61, 38, 0.14);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+.table-order-blocked span {
+  min-width: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .table-order-draft-launcher:hover,
@@ -45,7 +72,8 @@
 }
 
 .table-order-draft-launcher > svg,
-.table-order-access-launcher > svg {
+.table-order-access-launcher > svg,
+.table-order-blocked > svg {
   width: 24px;
   height: 24px;
 }
@@ -151,24 +179,27 @@
     width: 316px;
   }
 
-  .table-order-access-launcher {
+  .table-order-access-launcher,
+  .table-order-blocked {
     width: 338px;
   }
 }
 
 @media (max-width: 860px) {
   .table-order-draft-launcher,
-  .table-order-access-launcher {
+  .table-order-access-launcher,
+  .table-order-blocked {
     right: max(18px, env(safe-area-inset-right));
     width: min(360px, calc(100vw - 36px));
   }
 
-  .table-order-access-launcher {
+  .table-order-access-launcher,
+  .table-order-blocked {
     bottom: max(22px, env(safe-area-inset-bottom));
   }
 
   .table-order-draft-launcher {
-    bottom: calc(100px + env(safe-area-inset-bottom));
+    bottom: calc(104px + env(safe-area-inset-bottom));
   }
 
   .customer-table-session-page {
@@ -293,22 +324,32 @@
   }
 
   .table-order-draft-launcher,
-  .table-order-access-launcher {
+  .table-order-access-launcher,
+  .table-order-blocked {
     left: max(12px, env(safe-area-inset-left));
     right: max(12px, env(safe-area-inset-right));
     width: auto;
     max-width: none;
     min-height: 64px;
-    padding: 10px 13px;
     border-radius: 18px;
   }
 
+  .table-order-draft-launcher,
   .table-order-access-launcher {
+    padding: 10px 13px;
+  }
+
+  .table-order-blocked {
+    padding: 10px 13px;
+  }
+
+  .table-order-access-launcher,
+  .table-order-blocked {
     bottom: calc(78px + env(safe-area-inset-bottom));
   }
 
   .table-order-draft-launcher {
-    bottom: calc(150px + env(safe-area-inset-bottom));
+    bottom: calc(154px + env(safe-area-inset-bottom));
   }
 
   .table-order-draft-launcher strong,
@@ -321,8 +362,13 @@
     font-size: 0.72rem;
   }
 
+  .table-order-blocked span {
+    font-size: 0.76rem;
+  }
+
   .table-order-draft-launcher > svg,
-  .table-order-access-launcher > svg {
+  .table-order-access-launcher > svg,
+  .table-order-blocked > svg {
     width: 22px;
     height: 22px;
   }
@@ -376,7 +422,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .table-order-draft-launcher,
-  .table-order-access-launcher {
+  .table-order-access-launcher,
+  .table-order-blocked {
     transition: none;
   }
 }
