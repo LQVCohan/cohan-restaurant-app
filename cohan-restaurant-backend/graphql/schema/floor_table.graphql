@@ -25,7 +25,6 @@ type Floor {
   planImage: String
   isActive: Boolean
   isWatching: Boolean
-  # Dữ liệu layout (decor items) cho Floor Plan Designer
   layout: JSON
   meta: FloorMeta
   createdAt: DateTime
@@ -54,7 +53,6 @@ input CreateFloorInput {
   planImage: String
   isActive: Boolean
   isWatching: Boolean
-  # Cho phép gửi layout ngay khi tạo
   layout: JSON
   meta: FloorMetaInput
 }
@@ -67,7 +65,6 @@ input UpdateFloorInput {
   planImage: String
   isActive: Boolean
   isWatching: Boolean
-  # Cập nhật layout khi save từ Designer
   layout: JSON
   meta: FloorMetaInput
 }
@@ -109,6 +106,16 @@ type Table {
   tableQrGeneratedAt: DateTime
   tableQrExpiresAt: DateTime
   status: TableStatus!
+  nextReservationAt: DateTime
+  reservationGraceEndsAt: DateTime
+  reservationPhase: String
+  reservationId: ID
+  reservationOrderCode: String
+  reservationStatus: String
+  reservationCustomerName: String
+  reservationCustomerPhone: String
+  reservationCustomerEmail: String
+  reservationPartySize: Int
   floorLevel: Int
   deposit: Int
   tags: [String!]
@@ -219,9 +226,9 @@ input GenerateTableAccessQrInput {
 
 input MergeTablesInput {
   restaurantId: ID!
-  tableIds: [ID!]! # các bàn vật lý sẽ vào một bàn ghép mới
-  anchorId: ID! # bàn nguồn mặc định cho order mới nếu UI chưa chọn bàn con
-  joinGroupId: String # nếu không truyền -> server tự sinh
+  tableIds: [ID!]!
+  anchorId: ID!
+  joinGroupId: String
 }
 
 type MergeResult {
@@ -235,11 +242,9 @@ type MergeResult {
 input SplitTablesInput {
   restaurantId: ID!
   joinGroupId: String!
-  # Chế độ tách:
-  mode: SplitMode! # ALL | PARTIAL
-  # Nếu PARTIAL, chỉ lock-in các itemIds chuyển đi:
+  mode: SplitMode!
   itemIds: [ID!]
-  tableIds: [ID!] # các bàn cần tách trong PARTIAL
+  tableIds: [ID!]
   createNewTable: Boolean
 }
 
@@ -256,9 +261,7 @@ type SplitResult {
 extend type Query {
   floors(restaurantId: ID!): [Floor!]!
   floorByLevel(restaurantId: ID!, level: Int!): Floor
-  # Lấy chi tiết 1 tầng (bao gồm layout)
   floor(id: ID!): Floor
-
   publicFloors(restaurantId: ID!): [Floor!]!
 
   tables(
@@ -283,24 +286,21 @@ extend type Query {
 extend type Mutation {
   mergeTables(input: MergeTablesInput!): MergeResult!
   splitTables(input: SplitTablesInput!): SplitResult!
-
   createFloor(input: CreateFloorInput!): Floor!
   updateFloor(input: UpdateFloorInput!): Floor!
-  deleteFloor(id: ID!): Boolean! # hard delete; nếu muốn soft → đổi bool/flag
+  deleteFloor(id: ID!): Boolean!
   createTable(input: CreateTableInput!): Table!
   updateTable(input: UpdateTableInput!): Table!
   deleteTable(id: ID!): Boolean!
-
-  moveTable(input: MoveTableInput!): Table! # đổi sàn / đổi tọa độ
-  setTableStatus(input: SetTableStatusInput!): Table! # đổi trạng thái nhanh
-  swapTableCodes(input: SwapTableCodesInput!): Boolean! # hoán đổi code giữa 2 bàn
-  bulkUpsertTables(input: BulkUpsertTablesInput!): Int! # trả về số bàn upsert
+  moveTable(input: MoveTableInput!): Table!
+  setTableStatus(input: SetTableStatusInput!): Table!
+  swapTableCodes(input: SwapTableCodesInput!): Boolean!
+  bulkUpsertTables(input: BulkUpsertTablesInput!): Int!
   generateTableAccessQr(input: GenerateTableAccessQrInput!): Table!
   revokeTableAccessQr(tableId: ID!): Table!
   acquireTableViewLock(input: AcquireTableViewLockInput!): Table!
   releaseTableViewLock(input: ReleaseTableViewLockInput!): Table
 }
-
 
 input AcquireTableViewLockInput {
   tableId: ID!
