@@ -29,6 +29,7 @@ const renderCard = (props = {}) => {
     maxAvailable: 12,
     prepStation: "kitchen",
     basePrice: 65000,
+    thumbImage: "/bun-bo.jpg",
     servingVariants: [{ key: "regular", name: "Tô thường", price: 65000 }],
     ...props.item,
   };
@@ -53,6 +54,26 @@ describe("MenuItemCard", () => {
     expect(screen.getByText("Còn 12 suất")).toBeInTheDocument();
     expect(screen.queryByText("cat-raw-456")).not.toBeInTheDocument();
     expect(screen.queryByText("raw-id-123")).not.toBeInTheDocument();
+  });
+
+  it("renders compact mode as one reduced row without photo or full-card details", () => {
+    const { container } = renderCard({
+      viewMode: "list",
+      onEdit: vi.fn(),
+      onDelete: vi.fn(),
+      onStatusChange: vi.fn(),
+    });
+
+    expect(container.querySelector(".menu-item-card")).toHaveClass(
+      "menu-item-card--compact",
+    );
+    expect(screen.getByRole("heading", { name: "Bún bò Huế" })).toBeInTheDocument();
+    expect(screen.getByText("Còn 12 suất")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /Khu chế biến của món/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Chỉnh sửa món ăn" })).toBeInTheDocument();
+    expect(screen.queryByAltText("Ảnh món Bún bò Huế")).not.toBeInTheDocument();
+    expect(screen.queryByText("Món nước")).not.toBeInTheDocument();
+    expect(screen.queryByText("Tô thường")).not.toBeInTheDocument();
   });
 
   it("renders zero remaining servings when ingredient stock is exhausted", () => {
