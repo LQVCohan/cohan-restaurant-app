@@ -88,6 +88,7 @@ import { installCustomerReviewOwnerActions } from "./utils/installCustomerReview
 import { installCustomerMenuRestaurantCombos } from "./utils/installCustomerMenuRestaurantCombos";
 import { installBackupChecklistClarity } from "./utils/installBackupChecklistClarity";
 import { installBackupConflictFriendlyLabels } from "./utils/installBackupConflictFriendlyLabels";
+import { installStaffReservationQrScannerEntry } from "./utils/installStaffReservationQrScannerEntry";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 import "./styles/ResponsiveFoundation.css";
 import "./styles/CustomTableBuilderResponsiveFix.css";
@@ -112,6 +113,7 @@ import "./styles/CustomerMenuCardLayoutRepair.css";
 import "./styles/CustomerMenuRestaurantCombos.css";
 import "./styles/BackupChecklistClarity.css";
 import "./styles/BackupConflictFriendly.css";
+import "./styles/StaffReservationQrScannerEntry.css";
 
 const normalizeLegacyManagerHash = () => {
   if (
@@ -151,6 +153,7 @@ installCustomerReviewOwnerActions();
 installCustomerMenuRestaurantCombos();
 installBackupChecklistClarity();
 installBackupConflictFriendlyLabels();
+installStaffReservationQrScannerEntry();
 installAttendanceWordingTuning();
 
 createRoot(document.getElementById("root")).render(
