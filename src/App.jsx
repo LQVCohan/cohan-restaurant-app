@@ -30,6 +30,8 @@ import "./components/common/AiChatbotConversationLayout.scss";
 import AppErrorBoundary from "./components/common/AppErrorBoundary";
 import Table3DPreviewLauncher from "./components/Dashboard_Manager/Table/Table3DPreviewLauncher";
 import StaffKitchenFocusLauncher from "./components/Staff/StaffKitchenFocusLauncher";
+import RestaurantMediaExperienceLauncher from "./components/common/RestaurantMediaExperienceLauncher";
+import "./components/common/RestaurantMediaExperienceLauncherPositionFix.scss";
 
 const isFocusedQrRoute = (pathname) =>
   pathname === "/scan-table" || pathname.startsWith("/table/");
@@ -69,6 +71,7 @@ function App() {
                   <AppRouter />
                   <Table3DPreviewLauncher />
                   <StaffKitchenFocusLauncher />
+                  <RestaurantMediaExperienceLauncher />
                   <ScopedMenuAvailabilityPrompt />
                   <ScopedAiChatbotWidget />
                 </CartProvider>
