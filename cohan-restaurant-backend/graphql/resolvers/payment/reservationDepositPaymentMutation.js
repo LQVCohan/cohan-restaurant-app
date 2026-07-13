@@ -8,7 +8,10 @@ import {
   Reservation,
   Table,
 } from "../../../models/index.js";
-import { INACTIVE_ORDER_STATUSES } from "../../../utils/orderLifecycle.js";
+import {
+  INACTIVE_ORDER_STATUSES,
+  orderBatchOrLegacyFilter,
+} from "../../../utils/orderLifecycle.js";
 
 const toId = (value) =>
   value && mongoose.isValidObjectId(value)
@@ -24,30 +27,21 @@ const uniqueIds = (values = []) => [
   ).values(),
 ];
 
-async function loadReservationCandidatesForTable(input = {}) {
-  const restaurantId = toId(input.restaurantId);
-  const tableId = toId(input.tableId);
-  if (!restaurantId || !tableId) return [];
+const activeOrderFilter = ({ restaurantId, tableIds }) => ({
+  $and: [
+    {
+      restaurantId,
+      tableId: { $in: tableIds },
+      currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
+    },
+    orderBatchOrLegacyFilter(),
+  ],
+});
 
-  const table = await Table.findOne({ _id: tableId, restaurantId })
-    .select({ _id: 1, mergedFromTableIds: 1 })
-    .lean();
-  if (!table) return [];
-
-  const tableIds = uniqueIds([
-    table._id,
-    ...(Array.isArray(table.mergedFromTableIds)
-      ? table.mergedFromTableIds
-      : []),
-  ]);
-  const orders = await Order.find({
-    restaurantId,
-    tableId: { $in: tableIds },
-    currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
-  })
-    .select({ reservationId: 1, parentOrderId: 1, rootOrderId: 1 })
-    .lean();
-
+async function loadReservationCandidatesFromOrders({
+  restaurantId,
+  orders = [],
+}) {
   const parentIds = uniqueIds(
     orders.flatMap((order) => [order.parentOrderId, order.rootOrderId]),
   );
@@ -71,6 +65,103 @@ async function loadReservationCandidatesForTable(input = {}) {
   })
     .sort({ timeTo: 1, _id: 1 })
     .lean();
+}
+
+async function loadReservationCandidatesForTable(input = {}) {
+  const restaurantId = toId(input.restaurantId);
+  const tableId = toId(input.tableId);
+  if (!restaurantId || !tableId) return [];
+
+  const table = await Table.findOne({ _id: tableId, restaurantId })
+    .select({ _id: 1, mergedFromTableIds: 1 })
+    .lean();
+  if (!table) return [];
+
+  const tableIds = uniqueIds([
+    table._id,
+    ...(Array.isArray(table.mergedFromTableIds)
+      ? table.mergedFromTableIds
+      : []),
+  ]);
+  const orders = await Order.find(
+    activeOrderFilter({ restaurantId, tableIds }),
+  )
+    .select({ reservationId: 1, parentOrderId: 1, rootOrderId: 1 })
+    .lean();
+
+  return loadReservationCandidatesFromOrders({ restaurantId, orders });
+}
+
+export function selectionCoversAllActiveOrders(
+  selectedOrderIds = [],
+  activeOrderIds = [],
+) {
+  const selected = new Set(
+    selectedOrderIds.map((value) => String(value || "")).filter(Boolean),
+  );
+  const active = [
+    ...new Set(
+      activeOrderIds.map((value) => String(value || "")).filter(Boolean),
+    ),
+  ];
+  return active.length > 0 && active.every((id) => selected.has(id));
+}
+
+async function loadFinalSelectionDepositContext(input = {}) {
+  const restaurantId = toId(input.restaurantId);
+  const selectedOrderIds = uniqueIds(
+    Array.isArray(input.orderIds) ? input.orderIds : [],
+  );
+  if (!restaurantId || !selectedOrderIds.length) {
+    return { restaurantId, reservations: [], isFinalSelection: false };
+  }
+
+  const selectedOrders = await Order.find({
+    _id: { $in: selectedOrderIds },
+    restaurantId,
+    currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
+  })
+    .select({
+      _id: 1,
+      tableId: 1,
+      reservationId: 1,
+      parentOrderId: 1,
+      rootOrderId: 1,
+    })
+    .lean();
+  if (!selectedOrders.length) {
+    return { restaurantId, reservations: [], isFinalSelection: false };
+  }
+
+  const tableIds = uniqueIds(selectedOrders.map((order) => order.tableId));
+  if (!tableIds.length) {
+    return { restaurantId, reservations: [], isFinalSelection: false };
+  }
+
+  const allActiveOrders = await Order.find(
+    activeOrderFilter({ restaurantId, tableIds }),
+  )
+    .select({
+      _id: 1,
+      tableId: 1,
+      reservationId: 1,
+      parentOrderId: 1,
+      rootOrderId: 1,
+    })
+    .lean();
+  const isFinalSelection = selectionCoversAllActiveOrders(
+    selectedOrderIds,
+    allActiveOrders.map((order) => order._id),
+  );
+  if (!isFinalSelection) {
+    return { restaurantId, reservations: [], isFinalSelection: false };
+  }
+
+  const reservations = await loadReservationCandidatesFromOrders({
+    restaurantId,
+    orders: allActiveOrders,
+  });
+  return { restaurantId, reservations, isFinalSelection: true };
 }
 
 function availableDeposit(reservation) {
@@ -286,60 +377,114 @@ async function persistDepositApplication({
   return result;
 }
 
+async function settleWithReservationDeposit({
+  baseResolver,
+  mutation,
+  parent,
+  args,
+  ctx,
+  info,
+  restaurantId,
+  reservations,
+}) {
+  if (!restaurantId || !reservations.length) {
+    return baseResolver.call(mutation, parent, args, ctx, info);
+  }
+
+  const input = args?.input || {};
+  const requestedPaidAmount = input.paidAmount;
+  const result = await baseResolver.call(
+    mutation,
+    parent,
+    {
+      ...args,
+      input: {
+        ...input,
+        // The existing resolver settles the gross invoice. Immediately after
+        // that commit, this wrapper converts the new transaction/cashflow to
+        // only the amount collected now and records the reservation credit.
+        paidAmount: undefined,
+      },
+    },
+    ctx,
+    info,
+  );
+  if (!result?.invoice) return result;
+
+  const grossTotal = Number(result.invoice?.totals?.grandTotal || 0);
+  const allocation = allocateDepositCredit(reservations, grossTotal);
+  if (!(allocation.totalCredit > 0)) return result;
+
+  return persistDepositApplication({
+    result,
+    restaurantId,
+    grossTotal,
+    totalCredit: allocation.totalCredit,
+    breakdown: allocation.breakdown,
+    requestedPaidAmount,
+    ctx,
+  });
+}
+
 export function withReservationDepositPayment(mutation = {}) {
   const basePayByTable = mutation.payOrdersByTableId;
-  if (typeof basePayByTable !== "function") return mutation;
+  const basePayByOrderIds = mutation.payOrdersByOrderIds;
+  const wrapped = { ...mutation };
 
-  return {
-    ...mutation,
-    async payOrdersByTableId(parent, args, ctx, info) {
+  if (typeof basePayByTable === "function") {
+    wrapped.payOrdersByTableId = async function payOrdersByTableId(
+      parent,
+      args,
+      ctx,
+      info,
+    ) {
       const input = args?.input || {};
       const restaurantId = toId(input.restaurantId);
       const reservations = await loadReservationCandidatesForTable(input);
-      if (!restaurantId || !reservations.length) {
-        return basePayByTable.call(mutation, parent, args, ctx, info);
-      }
-
-      const requestedPaidAmount = input.paidAmount;
-      const result = await basePayByTable.call(
+      return settleWithReservationDeposit({
+        baseResolver: basePayByTable,
         mutation,
         parent,
-        {
-          ...args,
-          input: {
-            ...input,
-            // The original payment resolver settles the gross invoice. We
-            // reconcile the already-recorded reservation deposit immediately
-            // afterwards so the new transaction/cashflow contains only the
-            // amount that must be collected at POS.
-            paidAmount: undefined,
-          },
-        },
+        args,
         ctx,
         info,
-      );
-      if (!result?.invoice) return result;
-
-      const grossTotal = Number(result.invoice?.totals?.grandTotal || 0);
-      const allocation = allocateDepositCredit(reservations, grossTotal);
-      if (!(allocation.totalCredit > 0)) return result;
-
-      return persistDepositApplication({
-        result,
         restaurantId,
-        grossTotal,
-        totalCredit: allocation.totalCredit,
-        breakdown: allocation.breakdown,
-        requestedPaidAmount,
-        ctx,
+        reservations,
       });
-    },
-  };
+    };
+  }
+
+  if (typeof basePayByOrderIds === "function") {
+    wrapped.payOrdersByOrderIds = async function payOrdersByOrderIds(
+      parent,
+      args,
+      ctx,
+      info,
+    ) {
+      const context = await loadFinalSelectionDepositContext(args?.input || {});
+      if (!context.isFinalSelection) {
+        return basePayByOrderIds.call(mutation, parent, args, ctx, info);
+      }
+      return settleWithReservationDeposit({
+        baseResolver: basePayByOrderIds,
+        mutation,
+        parent,
+        args,
+        ctx,
+        info,
+        restaurantId: context.restaurantId,
+        reservations: context.reservations,
+      });
+    };
+  }
+
+  return wrapped;
 }
 
 export const reservationDepositPaymentInternals = {
   availableDeposit,
   allocateDepositCredit,
+  selectionCoversAllActiveOrders,
 };
 
 export default withReservationDepositPayment;
