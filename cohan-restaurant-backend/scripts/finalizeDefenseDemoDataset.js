@@ -38,7 +38,7 @@ const DEFENSE_CUSTOMER_EMAIL = "customer.demo@cohan.local";
 const SOURCE_CUSTOMER_EMAIL = /@customer-demo\.cohan\.local$/i;
 const SCOPED_DEMO_EMAIL = /\.demo@cohan\.local$/i;
 const CUSTOMER_ORDER_SEED_KEY = "customer-manager-demo";
-const MENU_SEED_KEY = "cohan-menu-catalog-v1";
+export const MENU_SEED_KEY = "cohan-menu-catalog-v2";
 const PRODUCTION_MARKER_PATTERN =
   /\b(?:demo|defen[cs]e|seed(?:ed|ing)?)\b|\[(?:demo|defen[cs]e)[^\]]*\]|PR\d+|MM-DEMO|CMD-/i;
 const scriptPath = fileURLToPath(import.meta.url);
