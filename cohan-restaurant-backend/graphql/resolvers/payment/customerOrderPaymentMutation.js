@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { Order } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import { getPaymentPublicBaseUrl } from "../../../src/services/payment/paymentIntegrationConfig.service.js";
 import {
   createOrderPayment,
   sanitizePaymentSessionForClient,
@@ -49,10 +50,12 @@ export async function createCustomerOwnedOrderPayment(parent, { input }, ctx) {
     );
   }
 
-  const baseApiUrl =
-    process.env.PUBLIC_BASE_URL ||
-    process.env.APP_PUBLIC_URL ||
-    "http://localhost:4000";
+  const baseApiUrl = getPaymentPublicBaseUrl({
+    request: ctx?.request || ctx?.req || null,
+  });
+  if (!baseApiUrl) {
+    throw new Error("PAYMENT_PUBLIC_BASE_URL_REQUIRED");
+  }
   const clientIp =
     ctx?.request?.ip || ctx?.req?.ip || ctx?.request?.headers?.["x-forwarded-for"] || "127.0.0.1";
   const payment = await createOrderPayment({
