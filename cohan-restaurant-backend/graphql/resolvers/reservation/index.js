@@ -35,29 +35,28 @@ async function findDepositTransaction(reservation) {
 
 function deriveReservationDepositBreakdown(reservation = {}) {
   const total = Math.max(0, Number(reservation.depositAmount || 0));
-  const derivedMenu = Math.min(
+  const storedMenu = Math.max(0, Number(reservation.menuDepositAmount || 0));
+  const storedTable = Math.max(0, Number(reservation.tableDepositAmount || 0));
+  const storedBreakdownIsComplete =
+    total === 0 || Math.abs(storedMenu + storedTable - total) < 0.5;
+
+  if (storedBreakdownIsComplete) {
+    return {
+      total,
+      table: Math.min(total, storedTable),
+      menu: Math.min(total, storedMenu),
+    };
+  }
+
+  const menu = Math.min(
     total,
     Math.max(0, Math.round(Number(reservation.linkedMenuSubtotal || 0) * 0.5)),
   );
-  const hasStoredMenu = Number.isFinite(Number(reservation.menuDepositAmount));
-  const hasStoredTable = Number.isFinite(Number(reservation.tableDepositAmount));
-  const menu = Math.min(
+  return {
     total,
-    Math.max(
-      0,
-      hasStoredMenu ? Number(reservation.menuDepositAmount) : derivedMenu,
-    ),
-  );
-  const table = Math.min(
-    Math.max(0, total - menu),
-    Math.max(
-      0,
-      hasStoredTable
-        ? Number(reservation.tableDepositAmount)
-        : total - menu,
-    ),
-  );
-  return { total, table, menu };
+    table: Math.max(0, total - menu),
+    menu,
+  };
 }
 
 const ReservationType = {
