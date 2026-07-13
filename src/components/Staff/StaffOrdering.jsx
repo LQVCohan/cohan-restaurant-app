@@ -41,6 +41,10 @@ import {
   normalizeProofImages,
   requiresProofImage,
 } from "@/utils/orderProofRules";
+import {
+  isWeightServingVariant,
+  parsePortionQuantity,
+} from "@/utils/staffOrderQuantity";
 const STAFF_ORDER_NO_PERMISSION_MESSAGE =
   "Vai trò hiện tại không có quyền thực hiện thao tác này.";
 const REQUEST_ORDER_ITEM_VOID = gql`
@@ -1216,18 +1220,38 @@ export default function StaffOrdering() {
       item.servingVariants?.find((v) => v?.key === item.servingKey) ||
       item.servingVariants?.[0] ||
       null;
+    const isWeightVariant = isWeightServingVariant(selectedVariant);
+    const requestedPortionQuantity = parsePortionQuantity(
+      addOptions.quantity ?? "1",
+    );
+    const requestedWeightGrams = isWeightVariant
+      ? Number(addOptions.weightGrams)
+      : null;
+
+    if (!isWeightVariant && requestedPortionQuantity == null) {
+      alert("Số phần phải là số nguyên từ 1 đến 99.");
+      return;
+    }
+    if (
+      isWeightVariant &&
+      (!Number.isFinite(requestedWeightGrams) || requestedWeightGrams <= 0)
+    ) {
+      alert("Vui lòng nhập khối lượng kilogram hợp lệ trước khi thêm món.");
+      return;
+    }
 
     const targetTableId =
       orderMode === "remote" ? "remote_order" : selectedTable?.id;
     if (!targetTableId) return alert("Vui lòng chọn bàn trước khi thêm món");
 
     const nextPriority = mapItemPriorityFromServeOrder(serveOrder);
-    const signature = `${item.id}__${selectedVariant?.key || item.servingKey || "portion"}__${prep || ""}__${serveOrder || ""}`;
+    const signature = `${item.id}__${selectedVariant?.key || item.servingKey || "portion"}__${prep || ""}__${serveOrder || ""}${isWeightVariant ? `__${requestedWeightGrams}g` : ""}`;
     const hasDraftProofImages = proofImages.length > 0;
+    const keepSeparateLine = hasDraftProofImages || isWeightVariant;
 
     setCartByTable((prevMap) => {
       const prev = prevMap[targetTableId] || [];
-      const idx = hasDraftProofImages ? -1 : prev.findIndex(
+      const idx = keepSeparateLine ? -1 : prev.findIndex(
         (x) =>
           x.signature === signature && x.status === "pending" && !x.persisted,
       );
@@ -1237,7 +1261,8 @@ export default function StaffOrdering() {
               i === idx
                 ? {
                     ...x,
-                    quantity: Number(x.quantity || 1) + 1,
+                    quantity:
+                      Number(x.quantity || 1) + (requestedPortionQuantity || 1),
                     priority: nextPriority,
                   }
                 : x,
@@ -1245,10 +1270,9 @@ export default function StaffOrdering() {
           : (() => {
               const defaultVariant = selectedVariant;
 
-              const unit =
-                defaultVariant?.mode === "BY_WEIGHT"
-                  ? defaultVariant?.sellUnit || "kg"
-                  : defaultVariant?.sellUnit || "portion";
+              const unit = isWeightVariant
+                ? defaultVariant?.sellUnit || "kg"
+                : defaultVariant?.sellUnit || "portion";
               const newItem = {
                 id: "C" + Date.now(),
                 signature,
@@ -1260,12 +1284,14 @@ export default function StaffOrdering() {
                 servingVariant: defaultVariant,
                 price: Number(defaultVariant?.price ?? item.price ?? 0),
                 unit,
-                weightGrams: null,
+                weightGrams: requestedWeightGrams,
                 name: item.name,
                 prep: prep || "Mặc định",
                 serveOrder,
                 priority: nextPriority,
-                quantity: 1,
+                quantity: isWeightVariant
+                  ? 1
+                  : requestedPortionQuantity || 1,
 
                 status: "pending",
                 proofImages,

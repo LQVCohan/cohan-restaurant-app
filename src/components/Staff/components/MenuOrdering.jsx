@@ -6,6 +6,8 @@ import {
   X,
   Search,
   Plus,
+  Minus,
+  Scale,
   Crown,
   ChevronRight,
   Camera,
@@ -17,6 +19,13 @@ import {
   normalizeProofImages,
   requiresProofImage,
 } from "@/utils/orderProofRules";
+import {
+  getStaffOrderSelectionTotal,
+  isWeightServingVariant,
+  parsePortionQuantity,
+  parseWeightKg,
+  weightKgToGrams,
+} from "@/utils/staffOrderQuantity";
 import "./MenuOrdering.scss";
 
 const NO_PERMISSION_MESSAGE =
@@ -64,6 +73,8 @@ export default function MenuOrdering({
   const [prepChoice, setPrepChoice] = useState("");
   const [serveOrder, setServeOrder] = useState("Mang ra cùng lúc");
   const [selectedVariantKey, setSelectedVariantKey] = useState("");
+  const [portionQuantityInput, setPortionQuantityInput] = useState("1");
+  const [weightKgInput, setWeightKgInput] = useState("1");
   const [draftProofImages, setDraftProofImages] = useState([]);
   const [proofDraftItem, setProofDraftItem] = useState(null);
   const [actionError, setActionError] = useState("");
@@ -116,14 +127,45 @@ export default function MenuOrdering({
     );
   }, [selectedItem, selectedVariantKey, selectedVariants]);
 
+  const isWeightVariant = isWeightServingVariant(selectedVariant);
+  const selectedUnitPrice = Number(
+    selectedVariant?.price ?? selectedItem?.price ?? 0,
+  );
+  const portionQuantity = parsePortionQuantity(portionQuantityInput);
+  const weightKg = parseWeightKg(weightKgInput);
+  const quantityIsValid = isWeightVariant
+    ? weightKg != null
+    : portionQuantity != null;
+  const selectionTotal = getStaffOrderSelectionTotal({
+    price: selectedUnitPrice,
+    variant: selectedVariant,
+    portionQuantity: portionQuantityInput,
+    weightKg: weightKgInput,
+  });
+  const quantityStepNumber = selectedVariants.length > 1 ? 2 : 1;
+  const serveOrderStepNumber = quantityStepNumber + 1;
+  const proofStepNumber = serveOrderStepNumber + 1;
+  const selectedUnitLabel = isWeightVariant
+    ? String(selectedVariant?.sellUnit || "kg").toLowerCase()
+    : "phần";
+
   const draftProofTarget = useMemo(() => {
     if (!selectedItem) return null;
     return {
       ...selectedItem,
+      quantity: isWeightVariant ? 1 : portionQuantity || 1,
+      weightGrams: isWeightVariant ? weightKgToGrams(weightKgInput) : null,
       servingVariant: selectedVariant,
       proofImages: draftProofImages,
     };
-  }, [draftProofImages, selectedItem, selectedVariant]);
+  }, [
+    draftProofImages,
+    isWeightVariant,
+    portionQuantity,
+    selectedItem,
+    selectedVariant,
+    weightKgInput,
+  ]);
 
   const shouldSuggestProof = useMemo(() => {
     if (!draftProofTarget) return false;
@@ -182,6 +224,8 @@ export default function MenuOrdering({
     setSelectedVariantKey("");
     setPrepChoice("");
     setServeOrder("Mang ra cùng lúc");
+    setPortionQuantityInput("1");
+    setWeightKgInput("1");
     setDraftProofImages([]);
     setProofDraftItem(null);
     setActionError("");
@@ -201,9 +245,29 @@ export default function MenuOrdering({
     setSelectedVariantKey(getVariantKey(defaultVariant));
     setPrepChoice("");
     setServeOrder("Mang ra cùng lúc");
+    setPortionQuantityInput("1");
+    setWeightKgInput("1");
     setDraftProofImages([]);
     setProofDraftItem(null);
     setActionError("");
+  };
+
+  const adjustSelectionAmount = (direction) => {
+    setActionError("");
+
+    if (isWeightVariant) {
+      const current = parseWeightKg(weightKgInput) ?? 0;
+      const next = Math.min(
+        100,
+        Math.max(0.1, Math.round((current + direction * 0.1) * 1000) / 1000),
+      );
+      setWeightKgInput(String(next));
+      return;
+    }
+
+    const current = parsePortionQuantity(portionQuantityInput) ?? 1;
+    const next = Math.min(99, Math.max(1, current + direction));
+    setPortionQuantityInput(String(next));
   };
 
   const handleConfirmAdd = () => {
@@ -217,10 +281,21 @@ export default function MenuOrdering({
       return;
     }
 
+    if (!quantityIsValid) {
+      setActionError(
+        isWeightVariant
+          ? "Khối lượng phải lớn hơn 0 và không vượt quá 100 kg. Có thể nhập số thập phân như 0,5 hoặc 1,25."
+          : "Số phần phải là số nguyên từ 1 đến 99.",
+      );
+      return;
+    }
+
     setActionError("");
 
     onAdd(selectedItem, {
       variant: selectedVariant,
+      quantity: isWeightVariant ? 1 : portionQuantity,
+      weightGrams: isWeightVariant ? weightKgToGrams(weightKgInput) : null,
       prep: prepChoice || "Mặc định",
       serveOrder,
       proofImages: draftProofImages,
@@ -443,7 +518,7 @@ export default function MenuOrdering({
               <div className="header-info">
                 <h3>{selectedItem.name}</h3>
                 <p className="price-text">
-                  {selectedItem.price.toLocaleString()}đ
+                  {selectedUnitPrice.toLocaleString("vi-VN")}đ/{selectedUnitLabel}
                 </p>
               </div>
               <button
@@ -470,7 +545,10 @@ export default function MenuOrdering({
                           className={`option-chip ${
                             selectedVariantKey === variantKey ? "selected" : ""
                           }`}
-                          onClick={() => setSelectedVariantKey(variantKey)}
+                          onClick={() => {
+                            setSelectedVariantKey(variantKey);
+                            setActionError("");
+                          }}
                         >
                           {variant.name || variant.key}
                           {variant.price != null
@@ -482,8 +560,88 @@ export default function MenuOrdering({
                   </div>
                 </div>
               )}
+
               <div className="option-group">
-                <label className="group-label">2. Thứ tự lên món</label>
+                <label className="group-label">
+                  {quantityStepNumber}. {isWeightVariant ? "Khối lượng gọi món" : "Số phần"}
+                </label>
+                <div className={`quantity-editor-card ${isWeightVariant ? "is-weight" : "is-portion"}`}>
+                  <div className="quantity-editor-card__top">
+                    <span className="quantity-editor-card__icon" aria-hidden="true">
+                      <Scale size={18} />
+                    </span>
+                    <div>
+                      <strong>
+                        {isWeightVariant ? "Nhập số kilogram" : "Nhập số phần nguyên"}
+                      </strong>
+                      <p>
+                        {isWeightVariant
+                          ? "Có thể nhập số thập phân, ví dụ 0,5 kg hoặc 1,25 kg."
+                          : "Chỉ nhận số nguyên từ 1 đến 99 phần."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="quantity-stepper">
+                    <button
+                      type="button"
+                      className="quantity-stepper__button"
+                      onClick={() => adjustSelectionAmount(-1)}
+                      aria-label={isWeightVariant ? "Giảm 0,1 kilogram" : "Giảm một phần"}
+                    >
+                      <Minus size={18} />
+                    </button>
+                    <label className="quantity-stepper__field">
+                      <input
+                        type="text"
+                        inputMode={isWeightVariant ? "decimal" : "numeric"}
+                        aria-label={isWeightVariant ? "Khối lượng kilogram" : "Số phần"}
+                        value={isWeightVariant ? weightKgInput : portionQuantityInput}
+                        onChange={(event) => {
+                          const next = event.target.value;
+                          setActionError("");
+                          if (isWeightVariant) {
+                            if (/^\d{0,3}(?:[.,]\d{0,3})?$/.test(next)) {
+                              setWeightKgInput(next);
+                            }
+                            return;
+                          }
+                          setPortionQuantityInput(next.replace(/\D/g, "").slice(0, 2));
+                        }}
+                      />
+                      <span className="quantity-stepper__suffix">
+                        {isWeightVariant ? "kg" : "phần"}
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      className="quantity-stepper__button"
+                      onClick={() => adjustSelectionAmount(1)}
+                      aria-label={isWeightVariant ? "Tăng 0,1 kilogram" : "Tăng một phần"}
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </div>
+
+                  <div className="quantity-editor-card__meta">
+                    <span>
+                      {isWeightVariant && weightKg != null
+                        ? `${Math.round(weightKg * 1000).toLocaleString("vi-VN")} g`
+                        : isWeightVariant
+                          ? "Chưa nhập khối lượng hợp lệ"
+                          : portionQuantity != null
+                            ? `${portionQuantity} phần`
+                            : "Chưa nhập số phần hợp lệ"}
+                    </span>
+                    <span className="quantity-editor-card__total">
+                      Tạm tính <strong>{selectionTotal.toLocaleString("vi-VN")}đ</strong>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="option-group">
+                <label className="group-label">{serveOrderStepNumber}. Thứ tự lên món</label>
                 <div className="chips-container">
                   {[
                     "Khai vị (Mang ra trước)",
@@ -504,7 +662,7 @@ export default function MenuOrdering({
 
               <div className="option-group proof-option-card">
                 <div className="proof-option-card__copy">
-                  <label className="group-label">3. Ảnh minh chứng</label>
+                  <label className="group-label">{proofStepNumber}. Ảnh minh chứng</label>
                   <p>Dùng cho món cân ký hoặc món cần xác nhận hình ảnh trước khi gửi bếp.</p>
                   <span className="proof-option-card__status">
                     {draftProofImages.length
@@ -526,11 +684,24 @@ export default function MenuOrdering({
                   Chụp ảnh minh chứng
                 </button>
               </div>
+
+              {actionError && (
+                <div className="item-options-error" role="alert">
+                  {actionError}
+                </div>
+              )}
             </div>
 
             <div className="sheet-footer">
-              <button type="button" className="btn-confirm-add" onClick={handleConfirmAdd}>
-                Thêm vào đơn
+              <button
+                type="button"
+                className="btn-confirm-add"
+                onClick={handleConfirmAdd}
+                disabled={!quantityIsValid}
+              >
+                {quantityIsValid
+                  ? `Thêm vào đơn • ${selectionTotal.toLocaleString("vi-VN")}đ`
+                  : "Nhập số lượng hợp lệ"}
               </button>
             </div>
           </div>
