@@ -1,0 +1,32 @@
+// Keeps the featured-dish section visually balanced when the API returns only one item.
+// This file is intentionally scoped to the homepage featured dishes only.
+
+.home .dish-grid__container:has(.dish-grid__list > .dish-card:only-child) {
+  .dish-grid__header {
+    width: min(100%, 860px);
+    margin-inline: auto;
+  }
+
+  .dish-grid__list > .dish-card:only-child {
+    width: min(100%, 860px);
+    justify-self: center;
+  }
+}
+
+@media (max-width: 1040px) {
+  .home .dish-grid__container:has(.dish-grid__list > .dish-card:only-child) {
+    .dish-grid__header,
+    .dish-grid__list > .dish-card:only-child {
+      width: min(100%, 760px);
+    }
+  }
+}
+
+@media (max-width: 680px) {
+  .home .dish-grid__container:has(.dish-grid__list > .dish-card:only-child) {
+    .dish-grid__header,
+    .dish-grid__list > .dish-card:only-child {
+      width: 100%;
+    }
+  }
+}
