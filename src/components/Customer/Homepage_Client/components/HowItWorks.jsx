@@ -35,9 +35,11 @@ const HowItWorks = () => {
       <div className="how-it-works__wave-top" aria-hidden="true" />
       <div className="how-it-works__container">
         <div className="how-it-works__header">
-          <span className="how-it-works__badge">Quy trình đơn giản</span>
-          <h3 className="how-it-works__title" id="how-it-works-title">Cách thức hoạt động</h3>
-          <p className="how-it-works__subtitle">Từ chọn món đến thanh toán và theo dõi đơn, mọi bước đều nằm trong một luồng.</p>
+          <div className="how-it-works__heading-copy">
+            <span className="how-it-works__badge">Quy trình đơn giản</span>
+            <h3 className="how-it-works__title" id="how-it-works-title">Cách thức hoạt động</h3>
+            <p className="how-it-works__subtitle">Từ chọn món đến thanh toán và theo dõi đơn, mọi bước đều nằm trong một luồng.</p>
+          </div>
         </div>
 
         <div className="how-it-works__grid">
