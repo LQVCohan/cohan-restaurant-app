@@ -15,7 +15,15 @@ const hasBackendCartRefs = (item) =>
       (item?.backendCartItemId || item?.cartItemId),
   );
 
-const CheckoutBlockedState = ({ icon: Icon, title, message, actionLabel, onAction, secondaryLabel, onSecondary }) => (
+const CheckoutBlockedState = ({
+  icon: Icon,
+  title,
+  message,
+  actionLabel,
+  onAction,
+  secondaryLabel,
+  onSecondary,
+}) => (
   <main className="checkout-empty-state">
     <section
       className="checkout-empty-state__card"
@@ -34,7 +42,11 @@ const CheckoutBlockedState = ({ icon: Icon, title, message, actionLabel, onActio
           {actionLabel}
         </button>
         {secondaryLabel && (
-          <button type="button" className="btn btn--secondary" onClick={onSecondary}>
+          <button
+            type="button"
+            className="btn btn--secondary"
+            onClick={onSecondary}
+          >
             {secondaryLabel}
           </button>
         )}
@@ -46,7 +58,7 @@ const CheckoutBlockedState = ({ icon: Icon, title, message, actionLabel, onActio
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { cart, clearCart } = useCart();
+  const { cart, clearCart, refetchServerCart } = useCart();
   const { user, isAuthenticated, loading } = useContext(AuthContext) || {};
   const { showNotification } = useNotification();
   const [checkoutCompleted, setCheckoutCompleted] = React.useState(false);
@@ -61,8 +73,9 @@ const CheckoutPage = () => {
   }, [isAuthenticated, loading, location, navigate, showNotification]);
 
   const isCustomer =
-    String(user?.roleName || user?.role?.slug || user?.role?.name || "").toLowerCase() ===
-    "customer";
+    String(
+      user?.roleName || user?.role?.slug || user?.role?.name || "",
+    ).toLowerCase() === "customer";
 
   const expiredHoldItems = React.useMemo(
     () => (checkoutItems || []).filter((item) => isHoldExpired(item)),
@@ -87,6 +100,7 @@ const CheckoutPage = () => {
   const handleSuccess = () => {
     setCheckoutCompleted(true);
     clearCart();
+    Promise.resolve(refetchServerCart?.()).catch(() => {});
   };
 
   if (loading || !isAuthenticated) return null;
@@ -98,7 +112,9 @@ const CheckoutPage = () => {
         title="Không thể checkout"
         message="Vui lòng đăng nhập bằng tài khoản khách hàng để giữ món và đặt món."
         actionLabel="Đăng nhập tài khoản khách hàng"
-        onAction={() => navigate("/login", { replace: true, state: { from: location } })}
+        onAction={() =>
+          navigate("/login", { replace: true, state: { from: location } })
+        }
         secondaryLabel="Quay lại"
         onSecondary={handleClose}
       />
