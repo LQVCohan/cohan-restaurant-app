@@ -101,6 +101,7 @@ import "./components/Customer/TableQrScanner/TableQrScannerPage.refinements.scss
 import "./styles/MobileQrScannerShell.css";
 import "./styles/ShiftDetailModalWorkspace.css";
 import "./styles/MenuManagerCompactListFix.css";
+import "./styles/CustomerMenuCardLayoutRepair.css";
 
 const normalizeLegacyManagerHash = () => {
   if (
