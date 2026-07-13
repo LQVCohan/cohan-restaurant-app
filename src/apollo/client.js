@@ -60,6 +60,7 @@ const PAYMENT_RESULT_FIELD = Object.freeze({
   CreateCheckoutOrders: "createCheckoutOrders",
   CreateWalletTopup: "createWalletTopup",
   CreateOrderPayment: "createOrderPayment",
+  CreateCheckoutOrderPayment: "createOrderPayment",
   CreateReservationPayment: "createReservationPayment",
   PayOrdersByTableId: "payOrdersByTableId",
   PayOrdersByOrderIds: "payOrdersByOrderIds",
@@ -120,6 +121,8 @@ function storeIdempotencyKey(storageKey, key) {
 }
 
 function removeStoredIdempotencyKey(storageKey, key) {
+  if (!storageKey) return;
+
   if (idempotencyMemory.get(storageKey) === key) {
     idempotencyMemory.delete(storageKey);
   }
@@ -143,6 +146,14 @@ function getStablePaymentIdempotencyKey(operationName, input) {
   const key = makeClientIdempotencyKey(operationName);
   storeIdempotencyKey(storageKey, key);
   return { key, storageKey };
+}
+
+function resolvePaymentIdempotencyKey(operationName, input) {
+  const explicitKey = String(input?.idempotencyKey || "").trim();
+  if (explicitKey) {
+    return { key: explicitKey, storageKey: null };
+  }
+  return getStablePaymentIdempotencyKey(operationName, input);
 }
 
 function orderSource(operationName, currentSource) {
@@ -180,7 +191,7 @@ const idempotencyLink = new ApolloLink((operation, forward) => {
   let paymentKeyState = null;
 
   if (input && typeof input === "object" && paymentResultField) {
-    paymentKeyState = getStablePaymentIdempotencyKey(operationName, input);
+    paymentKeyState = resolvePaymentIdempotencyKey(operationName, input);
     const key = paymentKeyState.key;
     const nextInput = {
       ...input,
@@ -367,13 +378,22 @@ const cache = new InMemoryCache({
           },
         },
         menuItemsWithRecipes: {
-          keyArgs: ["restaurantId", "timeSlot", "search", "categoryId", "first", "after"],
+          keyArgs: [
+            "restaurantId",
+            "timeSlot",
+            "search",
+            "categoryId",
+            "first",
+            "after",
+          ],
           merge(_existing, incoming) {
             if (!incoming) return incoming;
             return {
               ...incoming,
               items: [...(incoming.items || [])],
-              pageInfo: incoming.pageInfo ? { ...incoming.pageInfo } : incoming.pageInfo,
+              pageInfo: incoming.pageInfo
+                ? { ...incoming.pageInfo }
+                : incoming.pageInfo,
             };
           },
         },

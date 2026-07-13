@@ -82,3 +82,140 @@ describe('apollo mutation variable sanitization', () => {
     });
   });
 });
+
+describe('apollo payment idempotency', () => {
+  it('injects an idempotency key for the checkout modal VNPAY operation name', async () => {
+    sessionStorage.clear();
+    vi.resetModules();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => JSON.stringify({
+        data: { createOrderPayment: { id: 'payment-1' } },
+      }),
+      headers: { get: () => 'application/json' },
+    }));
+
+    const { apolloClient } = await import('./client.js');
+    await apolloClient.mutate({
+      mutation: gql`
+        mutation CreateCheckoutOrderPayment($input: CreateOrderPaymentInput!) {
+          createOrderPayment(input: $input) {
+            id
+          }
+        }
+      `,
+      variables: {
+        input: {
+          restaurantId: 'restaurant-1',
+          orderIds: ['order-1'],
+          provider: 'vnpay',
+          paymentMethod: 'vnpay',
+        },
+      },
+    });
+
+    const [, request] = global.fetch.mock.calls[0];
+    const body = JSON.parse(request.body);
+    expect(body.variables.input.idempotencyKey).toMatch(
+      /^CreateCheckoutOrderPayment:v1:/,
+    );
+  });
+
+  it('preserves the checkout key supplied by the checkout flow', async () => {
+    sessionStorage.clear();
+    vi.resetModules();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => JSON.stringify({
+        data: {
+          createCheckoutOrders: {
+            checkout: { checkoutCode: 'CHECKOUT-1' },
+          },
+        },
+      }),
+      headers: { get: () => 'application/json' },
+    }));
+
+    const { apolloClient } = await import('./client.js');
+    await apolloClient.mutate({
+      mutation: gql`
+        mutation CreateCheckoutOrders($input: CreateCheckoutOrdersInput!) {
+          createCheckoutOrders(input: $input) {
+            checkout {
+              checkoutCode
+            }
+          }
+        }
+      `,
+      variables: {
+        input: {
+          idempotencyKey: 'checkout-stable-key',
+          paymentMethod: 'card',
+          items: [{ restaurantId: 'restaurant-1' }],
+        },
+      },
+    });
+
+    const [, request] = global.fetch.mock.calls[0];
+    const body = JSON.parse(request.body);
+    expect(body.variables.input.idempotencyKey).toBe('checkout-stable-key');
+    expect(body.variables.input.clientMeta).toMatchObject({
+      idempotencyKey: 'checkout-stable-key',
+      source: 'customer_checkout',
+    });
+  });
+
+  it('reuses a generated payment key after a failed attempt', async () => {
+    sessionStorage.clear();
+    vi.resetModules();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () => JSON.stringify({
+            data: null,
+            errors: [{ message: 'Temporary provider failure' }],
+          }),
+          headers: { get: () => 'application/json' },
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () => JSON.stringify({
+            data: { createOrderPayment: { id: 'payment-1' } },
+          }),
+          headers: { get: () => 'application/json' },
+        }),
+    );
+
+    const mutation = gql`
+      mutation CreateCheckoutOrderPayment($input: CreateOrderPaymentInput!) {
+        createOrderPayment(input: $input) {
+          id
+        }
+      }
+    `;
+    const variables = {
+      input: {
+        restaurantId: 'restaurant-1',
+        orderIds: ['order-1'],
+        provider: 'vnpay',
+        paymentMethod: 'vnpay',
+      },
+    };
+    const { apolloClient } = await import('./client.js');
+
+    await expect(apolloClient.mutate({ mutation, variables })).rejects.toThrow(
+      'Temporary provider failure',
+    );
+    await apolloClient.mutate({ mutation, variables });
+
+    const firstBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    const secondBody = JSON.parse(global.fetch.mock.calls[1][1].body);
+    expect(firstBody.variables.input.idempotencyKey).toBeTruthy();
+    expect(secondBody.variables.input.idempotencyKey).toBe(
+      firstBody.variables.input.idempotencyKey,
+    );
+  });
+});
