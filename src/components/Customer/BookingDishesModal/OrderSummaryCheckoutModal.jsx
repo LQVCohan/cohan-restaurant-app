@@ -6,6 +6,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import { formatCurrency } from "../../../utils/formatters";
 import { isValidPhoneNumber, normalizePhoneNumber } from "../../../utils/phoneNumber";
 import { getToken } from "../../../lib/authStorage";
+import { reverseGeocodeCoordinates } from "../../../lib/reverseGeocode";
 import { useAvatarUploadLocal } from "@/hooks/useAvatarUploadLocal";
 import { getOrderLineDisplay } from "../../../utils/orderLineDisplay";
 import {
@@ -22,6 +23,7 @@ import {
 import "./OrderSummaryModal.scss";
 import "./OrderSummaryTransferUpload.scss";
 import "./OrderSummaryCheckoutUpgrade.scss";
+import "./OrderSummaryCheckoutExperience.scss";
 
 const ORDER_VAT_RATE = 0.1;
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
@@ -164,6 +166,14 @@ export const validateCheckoutShipping = (shipping = {}) => {
   return "";
 };
 
+export const getCheckoutLocationErrorMessage = (geoError = {}) => {
+  const code = Number(geoError?.code);
+  if (code === 1) return "Bạn chưa cấp quyền truy cập vị trí.";
+  if (code === 2) return "Không thể xác định vị trí hiện tại.";
+  if (code === 3) return "Quá thời gian xác định vị trí. Vui lòng thử lại.";
+  return "Không thể lấy địa chỉ hiện tại.";
+};
+
 const mergeCoupons = (...lists) => {
   const map = new Map();
   lists.flat().filter(Boolean).forEach((coupon) => {
@@ -256,6 +266,8 @@ export default function OrderSummaryCheckoutModal({ isOpen, onClose, items = [],
   const [proofNotes, setProofNotes] = useState({});
   const [submittingProofId, setSubmittingProofId] = useState("");
   const [socketConnected, setSocketConnected] = useState(false);
+  const [locatingAddress, setLocatingAddress] = useState(false);
+  const [locationMessage, setLocationMessage] = useState("");
 
   const [createCheckoutOrders] = useMutation(CREATE_CHECKOUT_ORDERS);
   const [createOrderPayment] = useMutation(CREATE_ORDER_PAYMENT);
@@ -309,12 +321,15 @@ export default function OrderSummaryCheckoutModal({ isOpen, onClose, items = [],
     setTransferSessions([]);
     setProofFiles({});
     setProofNotes({});
+    setLocatingAddress(false);
+    setLocationMessage("");
     checkoutKeyRef.current = `checkout-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   }, [isOpen, user]);
 
   const applyAddress = useCallback((address) => {
     if (!address) return;
     setSelectedAddressId(address.id);
+    setLocationMessage("");
     setShipping((current) => ({
       ...current,
       fullName: address.receiverName || current.fullName,
@@ -322,6 +337,53 @@ export default function OrderSummaryCheckoutModal({ isOpen, onClose, items = [],
       address: address.fullAddress || "",
       note: address.note || current.note,
     }));
+  }, []);
+
+  const handleUseCurrentLocation = useCallback(() => {
+    setError("");
+    setLocationMessage("");
+
+    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
+      setLocationMessage("Trình duyệt không hỗ trợ lấy vị trí hiện tại.");
+      return;
+    }
+
+    setLocatingAddress(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const latitude = Number(position?.coords?.latitude);
+          const longitude = Number(position?.coords?.longitude);
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            throw new Error("invalid_coordinates");
+          }
+
+          const address = await reverseGeocodeCoordinates({
+            lat: latitude,
+            lng: longitude,
+          });
+          const fullAddress = String(address?.full || "").trim();
+          if (!fullAddress) throw new Error("address_not_found");
+
+          setSelectedAddressId("__current__");
+          setShipping((current) => ({ ...current, address: fullAddress }));
+          setLocationMessage(
+            "Đã điền địa chỉ theo vị trí hiện tại. Vui lòng kiểm tra và bổ sung số nhà nếu cần.",
+          );
+        } catch {
+          setLocationMessage(
+            "Đã xác định vị trí nhưng chưa đọc được địa chỉ. Vui lòng nhập địa chỉ thủ công.",
+          );
+        } finally {
+          setLocatingAddress(false);
+        }
+      },
+      (geoError) => {
+        setLocationMessage(getCheckoutLocationErrorMessage(geoError));
+        setLocatingAddress(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
   }, []);
 
   useEffect(() => {
@@ -657,6 +719,12 @@ export default function OrderSummaryCheckoutModal({ isOpen, onClose, items = [],
                 applyAddress(savedAddresses.find((address) => address.id === event.target.value))
               }
             >
+              {selectedAddressId === "__current__" ? (
+                <option value="__current__">Vị trí hiện tại</option>
+              ) : null}
+              {selectedAddressId === "__manual__" ? (
+                <option value="__manual__">Địa chỉ đang nhập</option>
+              ) : null}
               <option value="">Chọn nhanh địa chỉ</option>
               {savedAddresses.map((address) => (
                 <option key={address.id} value={address.id}>
@@ -697,15 +765,42 @@ export default function OrderSummaryCheckoutModal({ isOpen, onClose, items = [],
               autoComplete="email"
             />
           </label>
-          <label className="checkout-contact-grid__wide">
-            Địa chỉ giao hàng
+          <div className="checkout-contact-field checkout-contact-grid__wide">
+            <div className="checkout-address-label-row">
+              <label htmlFor="checkout-delivery-address">Địa chỉ giao hàng</label>
+              <button
+                type="button"
+                className="checkout-current-location-btn"
+                onClick={handleUseCurrentLocation}
+                disabled={locatingAddress}
+              >
+                <span aria-hidden="true">⌖</span>
+                {locatingAddress ? "Đang lấy vị trí..." : "Lấy địa chỉ hiện tại"}
+              </button>
+            </div>
             <input
+              id="checkout-delivery-address"
               value={shipping.address}
-              onChange={(event) => setShipping((current) => ({ ...current, address: event.target.value }))}
+              onChange={(event) => {
+                setSelectedAddressId("__manual__");
+                setLocationMessage("");
+                setShipping((current) => ({ ...current, address: event.target.value }));
+              }}
               placeholder="Số nhà, đường, phường/xã, quận/huyện"
               autoComplete="street-address"
+              aria-describedby={locationMessage ? "checkout-location-message" : undefined}
             />
-          </label>
+            {locationMessage ? (
+              <small
+                id="checkout-location-message"
+                className="checkout-location-message"
+                role="status"
+                aria-live="polite"
+              >
+                {locationMessage}
+              </small>
+            ) : null}
+          </div>
           <label className="checkout-contact-grid__wide">
             Ghi chú <small>Tùy chọn</small>
             <textarea

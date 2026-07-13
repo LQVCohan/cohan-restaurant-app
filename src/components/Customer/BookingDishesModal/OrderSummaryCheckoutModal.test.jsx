@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getCheckoutLocationErrorMessage,
   isCheckoutContactValid,
   validateCheckoutShipping,
 } from "./OrderSummaryCheckoutModal";
@@ -51,5 +52,19 @@ describe("checkout contact validation", () => {
         deliveryMethod: "delivery",
       }),
     ).toMatch(/địa chỉ giao hàng/i);
+  });
+});
+
+describe("checkout current location feedback", () => {
+  it("explains when location permission is denied", () => {
+    expect(getCheckoutLocationErrorMessage({ code: 1 })).toMatch(/chưa cấp quyền/i);
+  });
+
+  it("explains when geolocation times out", () => {
+    expect(getCheckoutLocationErrorMessage({ code: 3 })).toMatch(/quá thời gian/i);
+  });
+
+  it("returns a safe fallback for unknown errors", () => {
+    expect(getCheckoutLocationErrorMessage({ code: 99 })).toMatch(/không thể lấy địa chỉ/i);
   });
 });
