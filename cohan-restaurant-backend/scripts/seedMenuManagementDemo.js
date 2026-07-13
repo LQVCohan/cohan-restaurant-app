@@ -14,25 +14,28 @@ import {
   Warehouse,
 } from "../models/index.js";
 
-const TAG = "[demo-menu-management-2026]";
+const SEED_KEY = "cohan-menu-catalog-v1";
 const DEMO_RESTAURANT_ID = process.env.DEMO_RESTAURANT_ID?.trim() || "";
 const DEMO_RESET = process.env.DEMO_RESET === "1";
+const CATEGORY_NAMES = ["Món nước", "Đồ uống", "Món chính", "Khai vị & súp"];
 
 async function resolveRestaurant() {
   if (DEMO_RESTAURANT_ID) {
     const restaurant = await Restaurant.findById(DEMO_RESTAURANT_ID);
-    if (!restaurant)
+    if (!restaurant) {
       throw new Error(`DEMO_RESTAURANT_NOT_FOUND: ${DEMO_RESTAURANT_ID}`);
+    }
     return restaurant;
   }
-  const existing = await Restaurant.findOne({ status: "active" }).sort({
-    createdAt: 1,
-  });
+
+  const existing = await Restaurant.findOne({ status: "active" }).sort({ createdAt: 1 });
   if (existing) return existing;
+
   return Restaurant.create({
-    name: `Menu Demo Restaurant ${TAG}`,
+    name: "Nhà hàng COHAN Thủ Đức",
     status: "active",
-    description: `Auto-created for MenuManagement demo seed ${TAG}`,
+    description:
+      "Không gian ẩm thực Việt hiện đại, phù hợp cho gia đình và các buổi gặp gỡ.",
   });
 }
 
@@ -40,20 +43,21 @@ async function upsertOne(Model, filter, payload) {
   return Model.findOneAndUpdate(
     filter,
     { $set: payload },
-    { new: true, upsert: true },
+    { new: true, upsert: true, setDefaultsOnInsert: true },
   );
 }
 
 function buildOrderItem(menuItem, recipe) {
   const defaultVariant =
-    recipe.servingVariants.find((v) => v.isDefault) ||
+    recipe.servingVariants.find((variant) => variant.isDefault) ||
     recipe.servingVariants[0];
+  const quantity = 2;
   return {
     dishId: menuItem._id,
     menuId: menuItem.menuId,
     categoryId: menuItem.categoryId,
     name: menuItem.name,
-    unit: "portion",
+    unit: defaultVariant.sellUnit || "portion",
     servingKey: defaultVariant.key,
     servingVariant: {
       key: defaultVariant.key,
@@ -63,10 +67,10 @@ function buildOrderItem(menuItem, recipe) {
       sellQty: defaultVariant.sellQty,
       sellUnit: defaultVariant.sellUnit,
     },
-    quantity: 2,
+    quantity,
     baseUnitPrice: defaultVariant.price,
     unitPrice: defaultVariant.price,
-    lineSubtotal: defaultVariant.price * 2,
+    lineSubtotal: defaultVariant.price * quantity,
     ingredientsSnapshot: [],
     status: "served",
   };
@@ -74,62 +78,105 @@ function buildOrderItem(menuItem, recipe) {
 
 async function main() {
   assertDemoScriptAllowed("seedMenuManagementDemo.js");
-  const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
-  const DB_NAME = process.env.MONGO_DB || "cohan";
+  const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017";
+  const dbName = process.env.MONGO_DB || "cohan";
   console.log("Connecting with DB settings:", safeDbInfo());
-  await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
+  await mongoose.connect(mongoUri, { dbName });
 
   const restaurant = await resolveRestaurant();
   const restaurantId = restaurant._id;
 
   if (DEMO_RESET) {
     await Promise.all([
-      Order.deleteMany({ restaurantId, note: { $regex: TAG } }),
-      Recipe.deleteMany({ restaurantId, notes: { $regex: TAG } }),
-      MenuItem.deleteMany({ restaurantId, notes: { $regex: TAG } }),
-      Menu.deleteMany({ restaurantId, description: { $regex: TAG } }),
-      Category.deleteMany({ restaurantId, name: { $regex: TAG } }),
-      CategoryMenu.deleteMany({ restaurantId, description: { $regex: TAG } }),
-      Ingredient.deleteMany({ restaurantId, notes: { $regex: TAG } }),
+      Order.deleteMany({ restaurantId, "clientMeta.seedKey": SEED_KEY }),
+      Recipe.deleteMany({ restaurantId, notes: SEED_KEY }),
+      MenuItem.deleteMany({ restaurantId, notes: SEED_KEY }),
+      Menu.deleteMany({ restaurantId, description: { $in: [
+        "Bữa sáng nhẹ nhàng với các món Việt quen thuộc.",
+        "Thực đơn trưa cân bằng, phục vụ nhanh và đầy đủ dinh dưỡng.",
+        "Các món chính chọn lọc cho bữa tối và dịp gặp gỡ.",
+        "Món nhẹ và súp nóng phục vụ đến cuối ngày.",
+      ] } }),
+      Category.deleteMany({ restaurantId, name: { $in: CATEGORY_NAMES } }),
+      CategoryMenu.deleteMany({
+        restaurantId,
+        name: { $in: ["Bữa sáng", "Bữa trưa", "Bữa tối"] },
+      }),
+      Ingredient.deleteMany({ restaurantId, notes: SEED_KEY }),
     ]);
   }
 
   const [breakfastGroup, lunchGroup, dinnerGroup] = await Promise.all([
     upsertOne(
       CategoryMenu,
-      { restaurantId, name: "Morning Comfort" },
-      { restaurantId, name: "Morning Comfort", icon: "☀️", description: TAG },
+      { restaurantId, name: "Bữa sáng" },
+      {
+        restaurantId,
+        name: "Bữa sáng",
+        icon: "☀️",
+        description: "Khởi đầu ngày mới với các món Việt nóng hổi và dễ dùng.",
+      },
     ),
     upsertOne(
       CategoryMenu,
-      { restaurantId, name: "Lunch Express" },
-      { restaurantId, name: "Lunch Express", icon: "🥗", description: TAG },
+      { restaurantId, name: "Bữa trưa" },
+      {
+        restaurantId,
+        name: "Bữa trưa",
+        icon: "🥗",
+        description: "Lựa chọn cân bằng cho bữa trưa tại nhà hàng hoặc mang đi.",
+      },
     ),
     upsertOne(
       CategoryMenu,
-      { restaurantId, name: "Night Specials" },
-      { restaurantId, name: "Night Specials", icon: "🌙", description: TAG },
+      { restaurantId, name: "Bữa tối" },
+      {
+        restaurantId,
+        name: "Bữa tối",
+        icon: "🌙",
+        description: "Món chính và món dùng chung phù hợp cho gia đình, bạn bè.",
+      },
     ),
   ]);
 
   const menuDefs = [
-    ["breakfast", "Breakfast Menu", breakfastGroup._id],
-    ["lunch", "Lunch Menu", lunchGroup._id],
-    ["dinner", "Dinner Menu", dinnerGroup._id],
-    ["late_night", "Late Night Menu", dinnerGroup._id],
+    {
+      timeSlot: "breakfast",
+      name: "Thực đơn sáng",
+      description: "Bữa sáng nhẹ nhàng với các món Việt quen thuộc.",
+      categoryMenuId: breakfastGroup._id,
+    },
+    {
+      timeSlot: "lunch",
+      name: "Thực đơn trưa",
+      description: "Thực đơn trưa cân bằng, phục vụ nhanh và đầy đủ dinh dưỡng.",
+      categoryMenuId: lunchGroup._id,
+    },
+    {
+      timeSlot: "dinner",
+      name: "Thực đơn tối",
+      description: "Các món chính chọn lọc cho bữa tối và dịp gặp gỡ.",
+      categoryMenuId: dinnerGroup._id,
+    },
+    {
+      timeSlot: "late_night",
+      name: "Thực đơn khuya",
+      description: "Món nhẹ và súp nóng phục vụ đến cuối ngày.",
+      categoryMenuId: dinnerGroup._id,
+    },
   ];
   const menus = {};
-  for (const [timeSlot, name, categoryMenuId] of menuDefs) {
-    menus[timeSlot] = await upsertOne(
+  for (const definition of menuDefs) {
+    menus[definition.timeSlot] = await upsertOne(
       Menu,
-      { restaurantId, timeSlot },
+      { restaurantId, timeSlot: definition.timeSlot },
       {
         restaurantId,
-        timeSlot,
-        name,
-        description: `Seeded ${TAG}`,
+        timeSlot: definition.timeSlot,
+        name: definition.name,
+        description: definition.description,
         isActive: true,
-        categoryMenuId,
+        categoryMenuId: definition.categoryMenuId,
       },
     );
   }
@@ -137,119 +184,202 @@ async function main() {
   const categories = {
     noodle: await upsertOne(
       Category,
-      { restaurantId, name: `Noodles ${TAG}` },
-      { restaurantId, name: `Noodles ${TAG}`, icon: "🍜", isActive: true },
+      { restaurantId, name: "Món nước" },
+      { restaurantId, name: "Món nước", icon: "🍜", isActive: true },
     ),
     drink: await upsertOne(
       Category,
-      { restaurantId, name: `Drinks ${TAG}` },
-      { restaurantId, name: `Drinks ${TAG}`, icon: "🥤", isActive: true },
+      { restaurantId, name: "Đồ uống" },
+      { restaurantId, name: "Đồ uống", icon: "🥤", isActive: true },
     ),
-    grill: await upsertOne(
+    main: await upsertOne(
       Category,
-      { restaurantId, name: `Grill ${TAG}` },
-      { restaurantId, name: `Grill ${TAG}`, icon: "🔥", isActive: true },
+      { restaurantId, name: "Món chính" },
+      { restaurantId, name: "Món chính", icon: "🍽️", isActive: true },
+    ),
+    starter: await upsertOne(
+      Category,
+      { restaurantId, name: "Khai vị & súp" },
+      { restaurantId, name: "Khai vị & súp", icon: "🥣", isActive: true },
     ),
   };
 
   const warehouse = await upsertOne(
     Warehouse,
-    { restaurantId, name: "Main Demo Warehouse" },
+    { restaurantId, code: "KHO-TT-01" },
     {
       restaurantId,
-      name: "Main Demo Warehouse",
-      code: "WH-DEMO-01",
+      name: "Kho trung tâm Thủ Đức",
+      code: "KHO-TT-01",
       isActive: true,
     },
   );
 
   const ingredientDefs = [
     {
-      name: `Rice Noodle ${TAG}`,
-      baseUnit: "g",
-      minStock: 1000,
-      costPerBaseUnit: 0.03,
-    },
-    {
-      name: `Beef Slice ${TAG}`,
+      key: "riceNoodle",
+      name: "Bánh phở tươi",
       baseUnit: "g",
       minStock: 3000,
-      costPerBaseUnit: 0.12,
+      costPerBaseUnit: 0.035,
+      onHand: 9000,
+      reserved: 300,
     },
     {
-      name: `Milk Tea Base ${TAG}`,
-      baseUnit: "ml",
+      key: "beef",
+      name: "Thịt bò Úc",
+      baseUnit: "g",
       minStock: 4000,
-      costPerBaseUnit: 0.02,
+      costPerBaseUnit: 0.22,
+      onHand: 7500,
+      reserved: 500,
+    },
+    {
+      key: "peachTea",
+      name: "Nền trà đào",
+      baseUnit: "ml",
+      minStock: 5000,
+      costPerBaseUnit: 0.025,
+      onHand: 12000,
+      reserved: 600,
+    },
+    {
+      key: "pumpkin",
+      name: "Bí đỏ Đà Lạt",
+      baseUnit: "g",
+      minStock: 2500,
+      costPerBaseUnit: 0.04,
+      onHand: 6000,
+      reserved: 200,
     },
   ];
   const ingredients = {};
-  for (const def of ingredientDefs) {
-    const ing = await upsertOne(
+  for (const definition of ingredientDefs) {
+    const ingredient = await upsertOne(
       Ingredient,
-      { restaurantId, name: def.name },
-      { restaurantId, ...def, notes: TAG },
+      { restaurantId, name: definition.name },
+      {
+        restaurantId,
+        name: definition.name,
+        baseUnit: definition.baseUnit,
+        minStock: definition.minStock,
+        costPerBaseUnit: definition.costPerBaseUnit,
+        notes: SEED_KEY,
+      },
     );
-    ingredients[def.name] = ing;
+    ingredients[definition.key] = ingredient;
+    await upsertOne(
+      StockItem,
+      {
+        restaurantId,
+        warehouseId: warehouse._id,
+        ingredientId: ingredient._id,
+      },
+      {
+        restaurantId,
+        warehouseId: warehouse._id,
+        ingredientId: ingredient._id,
+        onHand: definition.onHand,
+        reserved: definition.reserved,
+      },
+    );
   }
 
   const menuItemDefs = [
     {
-      code: "MM-PHO",
-      name: `Pho Signature ${TAG}`,
+      code: "MON-PHO-001",
+      name: "Phở bò đặc biệt",
+      description:
+        "Nước dùng hầm xương trong 12 giờ, dùng cùng bò tái, nạm, gân và rau thơm.",
       menu: menus.breakfast,
       category: categories.noodle,
       status: "available",
-      price: 65000,
+      price: 79000,
+      image: "/images/menu/pho-bo-dac-biet.svg",
+      ingredientKey: "riceNoodle",
+      ingredientQty: 180,
+      foodType: "NON_VEGETARIAN",
+      meatTypes: ["BEEF"],
+      prepStation: "kitchen",
+      avgPrepTimeMin: 12,
     },
     {
-      code: "MM-TEA",
-      name: `Milk Tea Classic ${TAG}`,
+      code: "NUOC-TRA-001",
+      name: "Trà đào cam sả",
+      description:
+        "Trà đen ủ lạnh, đào miếng, cam vàng và sả tươi, vị thanh mát dễ uống.",
       menu: menus.lunch,
       category: categories.drink,
-      status: "unavailable",
-      price: 42000,
+      status: "available",
+      price: 49000,
+      image: "/images/menu/tra-dao-cam-sa.svg",
+      ingredientKey: "peachTea",
+      ingredientQty: 300,
+      foodType: "VEGAN",
+      meatTypes: [],
+      prepStation: "bar",
+      avgPrepTimeMin: 5,
     },
     {
-      code: "MM-BEEF",
-      name: `Beef Grill Plate ${TAG}`,
+      code: "MON-BO-002",
+      name: "Bò nướng sốt tiêu đen",
+      description:
+        "Thăn bò nướng vừa chín, phủ sốt tiêu đen, dùng kèm rau củ theo mùa.",
       menu: menus.dinner,
-      category: categories.grill,
-      status: "out_of_stock",
-      price: 92000,
+      category: categories.main,
+      status: "available",
+      price: 169000,
+      image: "/images/menu/bo-nuong-tieu-den.svg",
+      ingredientKey: "beef",
+      ingredientQty: 220,
+      foodType: "NON_VEGETARIAN",
+      meatTypes: ["BEEF"],
+      prepStation: "kitchen",
+      avgPrepTimeMin: 18,
     },
     {
-      code: "MM-SOUP",
-      name: `Night Soup ${TAG}`,
+      code: "SUP-BIDO-001",
+      name: "Súp bí đỏ kem tươi",
+      description:
+        "Bí đỏ Đà Lạt xay mịn cùng kem tươi, bánh mì nướng giòn và hạt bí rang.",
       menu: menus.late_night,
-      category: categories.noodle,
-      status: "hidden",
-      price: 39000,
+      category: categories.starter,
+      status: "available",
+      price: 59000,
+      image: "/images/menu/sup-bi-do.svg",
+      ingredientKey: "pumpkin",
+      ingredientQty: 250,
+      foodType: "VEGETARIAN",
+      meatTypes: [],
+      prepStation: "kitchen",
+      avgPrepTimeMin: 10,
     },
   ];
 
   const createdItems = [];
-  for (const def of menuItemDefs) {
+  for (const definition of menuItemDefs) {
     const item = await upsertOne(
       MenuItem,
+      { restaurantId, code: definition.code },
       {
         restaurantId,
-        menuId: def.menu._id,
-        categoryId: def.category._id,
-        name: def.name,
-      },
-      {
-        restaurantId,
-        menuId: def.menu._id,
-        categoryId: def.category._id,
-        code: def.code,
-        name: def.name,
-        description: `Demo item ${TAG}`,
-        status: def.status,
-        basePrice: def.price,
-        defaultServingKey: "regular",
-        hasByWeightVariant: true,
-        notes: TAG,
+        menuId: definition.menu._id,
+        categoryId: definition.category._id,
+        code: definition.code,
+        name: definition.name,
+        description: definition.description,
+        status: definition.status,
+        basePrice: definition.price,
+        defaultServingKey: "standard",
+        hasByWeightVariant: false,
+        thumbImage: definition.image,
+        foodType: definition.foodType,
+        meatTypes: definition.meatTypes,
+        prepStation: definition.prepStation,
+        avgPrepTimeMin: definition.avgPrepTimeMin,
+        servingPortion: 1,
+        servingUnit: "người",
+        notes: SEED_KEY,
       },
     );
     createdItems.push(item);
@@ -260,38 +390,21 @@ async function main() {
       {
         restaurantId,
         menuItemId: item._id,
-        notes: TAG,
+        notes: SEED_KEY,
         servingVariants: [
           {
-            key: "regular",
-            name: "Regular",
+            key: "standard",
+            name: "Phần tiêu chuẩn",
             mode: "PORTION",
             sellQty: 1,
             sellUnit: "portion",
-            price: def.price,
+            price: definition.price,
             isDefault: true,
             ingredients: [
               {
-                ingredientId: ingredients[`Rice Noodle ${TAG}`]._id,
-                qty: 120,
-                unit: "g",
-                wastePct: 5,
-              },
-            ],
-          },
-          {
-            key: "by_weight",
-            name: "By Weight",
-            mode: "BY_WEIGHT",
-            sellQty: 100,
-            sellUnit: "g",
-            price: Math.round(def.price / 2),
-            isDefault: false,
-            ingredients: [
-              {
-                ingredientId: ingredients[`Beef Slice ${TAG}`]._id,
-                qty: 80,
-                unit: "g",
+                ingredientId: ingredients[definition.ingredientKey]._id,
+                qty: definition.ingredientQty,
+                unit: ingredients[definition.ingredientKey].baseUnit,
                 wastePct: 3,
               },
             ],
@@ -301,129 +414,64 @@ async function main() {
     );
   }
 
-  await upsertOne(
-    StockItem,
-    {
-      restaurantId,
-      warehouseId: warehouse._id,
-      ingredientId: ingredients[`Rice Noodle ${TAG}`]._id,
-    },
-    {
-      restaurantId,
-      warehouseId: warehouse._id,
-      ingredientId: ingredients[`Rice Noodle ${TAG}`]._id,
-      onHand: 5000,
-      reserved: 100,
-    },
-  );
-  await upsertOne(
-    StockItem,
-    {
-      restaurantId,
-      warehouseId: warehouse._id,
-      ingredientId: ingredients[`Milk Tea Base ${TAG}`]._id,
-    },
-    {
-      restaurantId,
-      warehouseId: warehouse._id,
-      ingredientId: ingredients[`Milk Tea Base ${TAG}`]._id,
-      onHand: 4200,
-      reserved: 200,
-    },
-  );
-  await upsertOne(
-    StockItem,
-    {
-      restaurantId,
-      warehouseId: warehouse._id,
-      ingredientId: ingredients[`Beef Slice ${TAG}`]._id,
-    },
-    {
-      restaurantId,
-      warehouseId: warehouse._id,
-      ingredientId: ingredients[`Beef Slice ${TAG}`]._id,
-      onHand: 0,
-      reserved: 0,
-    },
-  );
-
   const orderItemSource = createdItems[0];
   const orderRecipe = await Recipe.findOne({
     restaurantId,
     menuItemId: orderItemSource._id,
   }).lean();
-  const item = buildOrderItem(orderItemSource, orderRecipe);
+  const orderItem = buildOrderItem(orderItemSource, orderRecipe);
+  const today = new Date().toISOString().slice(0, 10).replaceAll("-", "");
 
-  await upsertOne(
-    Order,
-    {
-      restaurantId,
-      orderCode: `MM-DEMO-SERVED-${new Date().toISOString().slice(0, 10)}`,
-    },
-    {
-      restaurantId,
-      orderCode: `MM-DEMO-SERVED-${new Date().toISOString().slice(0, 10)}`,
-      orderType: "dine_in",
-      currentStatus: "served",
-      kitchenStatus: "served",
-      orderPaymentStatus: "paid",
-      items: [item],
-      totals: {
-        subtotal: item.lineSubtotal,
-        discount: 0,
-        tax: 0,
-        service: 0,
-        grandTotal: item.lineSubtotal,
+  for (const [suffix, currentStatus] of [
+    ["001", "served"],
+    ["002", "completed"],
+  ]) {
+    await upsertOne(
+      Order,
+      { restaurantId, orderCode: `COHAN-${today}-${suffix}` },
+      {
+        restaurantId,
+        orderCode: `COHAN-${today}-${suffix}`,
+        orderType: "dine_in",
+        currentStatus,
+        kitchenStatus: "served",
+        orderPaymentStatus: "paid",
+        items: [orderItem],
+        totals: {
+          subtotal: orderItem.lineSubtotal,
+          discount: 0,
+          tax: 0,
+          service: 0,
+          grandTotal: orderItem.lineSubtotal,
+        },
+        payment: {
+          method: "cash",
+          status: "paid",
+          paidAmount: orderItem.lineSubtotal,
+        },
+        statusTimeline: [
+          {
+            status: currentStatus,
+            note:
+              currentStatus === "completed"
+                ? "Đơn hàng đã hoàn tất"
+                : "Món đã được phục vụ tại bàn",
+          },
+        ],
+        note: "Khách dùng bữa tại nhà hàng",
+        clientMeta: { seedKey: SEED_KEY },
       },
-      payment: {
-        method: "cash",
-        status: "paid",
-        paidAmount: item.lineSubtotal,
-      },
-      statusTimeline: [{ status: "served", note: TAG }],
-      note: `seed ${TAG}`,
-    },
-  );
-
-  await upsertOne(
-    Order,
-    {
-      restaurantId,
-      orderCode: `MM-DEMO-COMPLETED-${new Date().toISOString().slice(0, 10)}`,
-    },
-    {
-      restaurantId,
-      orderCode: `MM-DEMO-COMPLETED-${new Date().toISOString().slice(0, 10)}`,
-      orderType: "dine_in",
-      currentStatus: "completed",
-      kitchenStatus: "served",
-      orderPaymentStatus: "paid",
-      items: [item],
-      totals: {
-        subtotal: item.lineSubtotal,
-        discount: 0,
-        tax: 0,
-        service: 0,
-        grandTotal: item.lineSubtotal,
-      },
-      payment: {
-        method: "cash",
-        status: "paid",
-        paidAmount: item.lineSubtotal,
-      },
-      statusTimeline: [{ status: "completed", note: TAG }],
-      note: `seed ${TAG}`,
-    },
-  );
+    );
+  }
 
   console.log(
-    `[seed:demo:menu-management] done for restaurant=${restaurantId}`,
+    `[seed:menu-management] completed for restaurant=${restaurantId}; items=${createdItems.length}`,
   );
   await mongoose.disconnect();
 }
 
 main().catch(async (error) => {
-  console.error("[seed:demo:menu-management] failed", error);
+  console.error("[seed:menu-management] failed", error);
   await mongoose.disconnect();
   process.exit(1);
 });
