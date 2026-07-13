@@ -520,6 +520,10 @@ const OrderManagement = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [historyCustomerContext, setHistoryCustomerContext] = useState({
+    customerId: "",
+    customerName: "",
+  });
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [rejectDialog, setRejectDialog] = useState({
     open: false,
@@ -632,7 +636,8 @@ const OrderManagement = () => {
     const openFromQuery = (query = {}) => {
       const orderId = String(query?.orderId || "").trim();
       const restaurantId = String(query?.restaurantId || "").trim();
-      if (!orderId) return;
+      const customerId = String(query?.customerId || "").trim();
+      const customerName = String(query?.customerName || "").trim();
       if (
         restaurantId &&
         selectedRestaurantId &&
@@ -640,13 +645,19 @@ const OrderManagement = () => {
       ) {
         return;
       }
-      void openOrderDetailById(orderId);
+      if (!orderId && (customerId || customerName)) {
+        setHistoryCustomerContext({ customerId, customerName });
+        setShowHistory(true);
+      }
+      if (orderId) void openOrderDetailById(orderId);
     };
 
     const params = new URLSearchParams(window.location.search);
     openFromQuery({
       orderId: params.get("orderId"),
       restaurantId: params.get("restaurantId"),
+      customerId: params.get("customerId"),
+      customerName: params.get("customerName"),
     });
 
     const handleNavigationQuery = (event) => {
@@ -666,6 +677,22 @@ const OrderManagement = () => {
     const params = new URLSearchParams(window.location.search);
     if (!params.has("orderId")) return;
     params.delete("orderId");
+    params.delete("customerId");
+    params.delete("customerName");
+    const search = params.toString() ? `?${params.toString()}` : "";
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${window.location.pathname}${search}${window.location.hash}`,
+    );
+  }, []);
+
+  const closeHistory = useCallback(() => {
+    setShowHistory(false);
+    setHistoryCustomerContext({ customerId: "", customerName: "" });
+    const params = new URLSearchParams(window.location.search);
+    params.delete("customerId");
+    params.delete("customerName");
     const search = params.toString() ? `?${params.toString()}` : "";
     window.history.replaceState(
       window.history.state,
@@ -1931,7 +1958,9 @@ const OrderManagement = () => {
         {showHistory && (
           <HistoryModal
             restaurantId={selectedRestaurantId}
-            onClose={() => setShowHistory(false)}
+            customerId={historyCustomerContext.customerId}
+            customerName={historyCustomerContext.customerName}
+            onClose={closeHistory}
             onViewOrder={(order) => setSelectedOrder(order)}
           />
         )}

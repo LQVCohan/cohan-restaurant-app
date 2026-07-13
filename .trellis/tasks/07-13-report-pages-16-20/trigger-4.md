@@ -1,1 +1,0 @@
-Run hardened patch matcher.

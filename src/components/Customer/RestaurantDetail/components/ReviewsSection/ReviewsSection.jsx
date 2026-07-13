@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { AuthContext } from "@/context/AuthContext";
+import { toUserFacingErrorMessage } from "@/utils/userFacingError";
 
 import "./ReviewsSection.scss";
 
@@ -335,7 +336,7 @@ const ReviewsSection = ({ restaurantId }) => {
       await reactReview({ variables: { id: reviewId, reaction } });
     } catch (error) {
       setSubmitError(
-        error?.message || "Không thể cập nhật tương tác đánh giá.",
+        toUserFacingErrorMessage(error, "Không thể cập nhật tương tác đánh giá."),
       );
     }
   };
@@ -346,7 +347,7 @@ const ReviewsSection = ({ restaurantId }) => {
       setSubmitError("");
       await helpfulReview({ variables: { id: reviewId } });
     } catch (error) {
-      setSubmitError(error?.message || "Không thể đánh dấu hữu ích.");
+      setSubmitError(toUserFacingErrorMessage(error, "Không thể đánh dấu hữu ích."));
     }
   };
 
@@ -392,7 +393,7 @@ const ReviewsSection = ({ restaurantId }) => {
       setSubmitSuccess("Đã gửi báo cáo đánh giá.");
       await refreshReviewSurface();
     } catch (error) {
-      setSubmitError(error?.message || "Không thể gửi báo cáo đánh giá.");
+      setSubmitError(toUserFacingErrorMessage(error, "Không thể gửi báo cáo đánh giá."));
     }
   };
 
@@ -420,7 +421,7 @@ const ReviewsSection = ({ restaurantId }) => {
         },
       });
     } catch (error) {
-      setSubmitError(error?.message || "Không thể tải thêm đánh giá.");
+      setSubmitError(toUserFacingErrorMessage(error, "Không thể tải thêm đánh giá."));
     } finally {
       setIsLoadingMore(false);
     }
@@ -484,7 +485,7 @@ const ReviewsSection = ({ restaurantId }) => {
       );
       await refreshReviewSurface();
     } catch (error) {
-      setSubmitError(error?.message || "Không thể gửi đánh giá.");
+      setSubmitError(toUserFacingErrorMessage(error, "Không thể gửi đánh giá."));
     }
   };
 
@@ -532,7 +533,7 @@ const ReviewsSection = ({ restaurantId }) => {
 
       {reviewsError && (
         <div className="reviews-inline-message reviews-inline-message--error" role="alert">
-          <span>Không thể tải đánh giá: {reviewsError.message}</span>
+          <span>Chưa thể tải đánh giá. Vui lòng thử lại.</span>
           <button type="button" className="btn btn--secondary" onClick={() => refetchReviews?.()}>
             Thử lại
           </button>
@@ -657,6 +658,10 @@ const ReviewsSection = ({ restaurantId }) => {
                         height="48"
                         loading="lazy"
                         decoding="async"
+                          onError={(event) => {
+                            event.currentTarget.onerror = null;
+                            event.currentTarget.src = "/cohan_logo_icon.svg";
+                          }}
                       />
                     ) : (
                       <span aria-label={review.user.name}>
@@ -742,6 +747,10 @@ const ReviewsSection = ({ restaurantId }) => {
                           height="135"
                           loading="lazy"
                           decoding="async"
+                          onError={(event) => {
+                            event.currentTarget.onerror = null;
+                            event.currentTarget.src = "/cohan_logo_icon.svg";
+                          }}
                         />
                       </div>
                     ))}

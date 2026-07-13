@@ -55,4 +55,48 @@ describe("HistoryModal", () => {
     expect(screen.queryByText("#POS-01")).not.toBeInTheDocument();
     expect(screen.getByText("#POS-02")).toBeInTheDocument();
   });
+
+  it("filters history by the exact customer id", async () => {
+    loadOrdersAll.mockResolvedValueOnce({
+      data: {
+        ordersByRestaurant: {
+          edges: [
+            {
+              node: {
+                id: "order-a",
+                orderCode: "POS-A",
+                currentStatus: "completed",
+                user: { id: "customer-a", fullName: "Nguyễn An" },
+                items: [],
+                totals: { grandTotal: 100000 },
+              },
+            },
+            {
+              node: {
+                id: "order-b",
+                orderCode: "POS-B",
+                currentStatus: "completed",
+                user: { id: "customer-b", fullName: "Nguyễn An" },
+                items: [],
+                totals: { grandTotal: 120000 },
+              },
+            },
+          ],
+          pageInfo: { endCursor: null, hasNextPage: false },
+        },
+      },
+    });
+    render(
+      <HistoryModal
+        restaurantId="restaurant-1"
+        customerId="customer-a"
+        customerName="Nguyễn An"
+        onClose={vi.fn()}
+        onViewOrder={vi.fn()}
+      />,
+    );
+    expect(await screen.findByText("#POS-A")).toBeInTheDocument();
+    expect(screen.queryByText("#POS-B")).not.toBeInTheDocument();
+    expect(screen.getByText("Đơn hàng của Nguyễn An")).toBeInTheDocument();
+  });
 });

@@ -856,7 +856,10 @@ const useUserManagement = () => {
     phone,
     expiresInDays = 30,
   }) => {
-    await createGuestMut({ variables: { fullName, phone, expiresInDays } });
+    const result = await createGuestMut({
+      variables: { fullName, phone, expiresInDays },
+    });
+    return result?.data?.createGuestUser || null;
   };
 
   const updateMyProfile = async (partialInput) => {

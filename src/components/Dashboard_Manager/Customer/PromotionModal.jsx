@@ -17,13 +17,47 @@ import { AuthContext } from "../../../context/AuthContext";
 import useCommunication from "../../../hooks/useCommunication";
 import { usePromotions } from "../../../hooks/usePromotions";
 import { useCoupons } from "../../../hooks/useCoupons";
+import { toUserFacingErrorMessage } from "../../../utils/userFacingError";
 import "./PromotionModal.scss";
 
 const CAMPAIGN_LOG_SUBJECT = "__PROMO_CAMPAIGN_LOG__";
 const SUPPORTED_CHANNELS = {
-  inapp: { label: "Thông báo trong app", enabled: true },
-  email: { label: "Email", enabled: false, reason: "Chưa có mutation gửi email trong hạ tầng hiện tại" },
-  zalo: { label: "Zalo", enabled: false, reason: "Chưa có tích hợp Zalo an toàn trong codebase hiện tại" },
+  inapp: { label: "Thông báo trong ứng dụng", enabled: true },
+  email: {
+    label: "Email",
+    enabled: false,
+    reason: "Kênh email chưa được cấu hình cho chiến dịch này.",
+  },
+  zalo: {
+    label: "Zalo",
+    enabled: false,
+    reason: "Kênh Zalo chưa được kết nối.",
+  },
+};
+
+const OFFER_KIND_LABELS = {
+  promotion: "Chương trình khuyến mãi",
+  coupon: "Mã ưu đãi",
+  couponPackage: "Gói ưu đãi",
+};
+
+const isCurrentOffer = (offer, restaurantId) => {
+  if (!offer) return false;
+  if (
+    restaurantId &&
+    offer.restaurantId &&
+    String(offer.restaurantId) !== String(restaurantId)
+  ) {
+    return false;
+  }
+  if (offer.status && offer.status !== "active") return false;
+  if (offer.isActive === false) return false;
+  const now = Date.now();
+  const start = offer.startDate ? new Date(offer.startDate).getTime() : null;
+  const end = offer.endDate ? new Date(offer.endDate).getTime() : null;
+  if (Number.isFinite(start) && start > now) return false;
+  if (Number.isFinite(end) && end < now) return false;
+  return true;
 };
 
 const getCustomerTier = (customer) => {
@@ -51,7 +85,7 @@ const buildRecipientSet = (customers, targetMode, manualIds, segment) => {
 const buildOfferOptions = (promotions, coupons, couponPackages, restaurantId) => {
   const rows = [];
   promotions
-    .filter((p) => !restaurantId || String(p.restaurantId) === String(restaurantId))
+    .filter((p) => isCurrentOffer(p, restaurantId))
     .forEach((p) => {
       rows.push({
         id: `promotion:${p.id}`,
@@ -62,7 +96,9 @@ const buildOfferOptions = (promotions, coupons, couponPackages, restaurantId) =>
         code: p.code || "",
       });
     });
-  coupons.forEach((coupon) => {
+  coupons
+    .filter((coupon) => isCurrentOffer(coupon, restaurantId))
+    .forEach((coupon) => {
     rows.push({
       id: `coupon:${coupon.id}`,
       sourceId: coupon.id,
@@ -72,7 +108,9 @@ const buildOfferOptions = (promotions, coupons, couponPackages, restaurantId) =>
       code: coupon.code || "",
     });
   });
-  couponPackages.forEach((couponPackage) => {
+  couponPackages
+    .filter((couponPackage) => isCurrentOffer(couponPackage, restaurantId))
+    .forEach((couponPackage) => {
     rows.push({
       id: `couponPackage:${couponPackage.id}`,
       sourceId: couponPackage.id,
@@ -117,8 +155,16 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
     [restaurantIdProp, restaurants, user]
   );
 
-  const { allPromotions, loading: promotionsLoading } = usePromotions();
-  const { allCoupons, allCouponPackages } = useCoupons();
+  const {
+    allPromotions,
+    loading: promotionsLoading,
+    error: promotionsError,
+  } = usePromotions({
+    restaurantId,
+    activeOnly: true,
+    showErrorBanner: false,
+  });
+  const { allCoupons, allCouponPackages } = useCoupons(restaurantId);
   const {
     thread,
     threadLoading,
@@ -224,7 +270,7 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
       return;
     }
     if (scheduleType === "later") {
-      setErrorMsg("Lên lịch gửi sau chưa có job queue thật, chỉ hỗ trợ gửi ngay.");
+      setErrorMsg("Tính năng lên lịch gửi chưa sẵn sàng. Vui lòng chọn gửi ngay.");
       return;
     }
 
@@ -253,7 +299,10 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
 
           status = "sent";
         } catch (err) {
-          reason = err?.message || "Gửi thất bại";
+          reason = toUserFacingErrorMessage(
+            err,
+            "Chưa gửi được ưu đãi tới khách hàng này.",
+          );
         }
 
         deliveryResults.push({
@@ -325,7 +374,12 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
         setErrorMsg(`Gửi một phần: ${successCount}/${deliveryResults.length} thành công.`);
       }
     } catch (err) {
-      setErrorMsg(err?.message || "Gửi chiến dịch thất bại.");
+      setErrorMsg(
+        toUserFacingErrorMessage(
+          err,
+          "Chưa thể gửi chiến dịch. Vui lòng kiểm tra và thử lại.",
+        ),
+      );
     } finally {
       setIsSending(false);
     }
@@ -344,7 +398,7 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
             <Gift className="text-blue-500" />
             Gửi ưu đãi tới khách hàng
           </h2>
-          <button className="pm-close-btn" onClick={onClose}>
+          <button type="button" className="pm-close-btn" onClick={onClose} aria-label="Đóng cửa sổ gửi ưu đãi">
             <X size={24} />
           </button>
         </div>
@@ -361,9 +415,14 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
         <div className="pm-body">
           {currentStep === 1 && (
             <div className="step-content">
-              {promotionsLoading && <div className="pm-state">Đang tải ưu đãi từ database...</div>}
-              {!promotionsLoading && offerOptions.length === 0 && (
-                <div className="pm-state">Không có ưu đãi/coupon nào trong database.</div>
+              {promotionsLoading && <div className="pm-state">Đang tải danh sách ưu đãi...</div>}
+              {promotionsError && !promotionsLoading && (
+                <div className="pm-state pm-state--error" role="alert">
+                  Chưa thể tải ưu đãi của nhà hàng này. Vui lòng thử lại.
+                </div>
+              )}
+              {!promotionsLoading && !promotionsError && offerOptions.length === 0 && (
+                <div className="pm-state">Nhà hàng chưa có ưu đãi đang áp dụng.</div>
               )}
               <div className="promo-grid">
                 {offerOptions.map((offer) => (
@@ -380,7 +439,9 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
                     </div>
                     <h4>{offer.title}</h4>
                     <p>{offer.description}</p>
-                    <span className={`promo-tag type-${offer.kind}`}>{offer.kind}</span>
+                    <span className={`promo-tag type-${offer.kind}`}>
+                      {OFFER_KIND_LABELS[offer.kind] || "Ưu đãi"}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -393,7 +454,7 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
                 {[
                   { id: "all", label: "Tất cả khách hàng", icon: <Target size={14} /> },
                   { id: "manual", label: "Chọn thủ công", icon: <Check size={14} /> },
-                  { id: "segment", label: "Theo segment", icon: <Zap size={14} /> },
+                  { id: "segment", label: "Theo nhóm khách", icon: <Zap size={14} /> },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -487,15 +548,16 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
                     />
                     <div>Gửi ngay</div>
                   </label>
-                  <label>
+                  <label className="is-disabled" title="Tính năng đang được hoàn thiện">
                     <input
                       type="radio"
                       name="schedule"
                       value="later"
                       checked={scheduleType === "later"}
                       onChange={(e) => setScheduleType(e.target.value)}
+                      disabled
                     />
-                    <div>Lên lịch gửi sau (chưa hỗ trợ)</div>
+                    <div>Lên lịch gửi sau — chưa sẵn sàng</div>
                   </label>
                 </div>
               </div>
@@ -529,7 +591,7 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
           {errorMsg && <div className="pm-error">{errorMsg}</div>}
 
           <div className="campaign-history">
-            <h4>Lịch sử chiến dịch (DB - từ chat log)</h4>
+            <h4>Lịch sử gửi ưu đãi</h4>
             {threadLoading ? (
               <div className="pm-state">Đang tải lịch sử...</div>
             ) : campaignHistory.length === 0 ? (
@@ -567,6 +629,11 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
       </div>
     </Modal>
   );
+};
+
+export const __testables = {
+  buildOfferOptions,
+  isCurrentOffer,
 };
 
 export default PromotionModal;

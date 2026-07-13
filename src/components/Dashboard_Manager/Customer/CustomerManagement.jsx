@@ -241,6 +241,25 @@ const CustomerManagement = () => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
+
+  useEffect(() => {
+    const applyNavigationSearch = (query = {}) => {
+      const value = String(query?.search || query?.customerName || "").trim();
+      if (value) setSearchQuery(value);
+    };
+    const params = new URLSearchParams(window.location.search);
+    applyNavigationSearch({
+      search: params.get("search"),
+      customerName: params.get("customerName"),
+    });
+    const handleNavigation = (event) => {
+      if (event?.detail?.page !== "customers") return;
+      applyNavigationSearch(event.detail.query);
+    };
+    window.addEventListener("manager:navigation-query", handleNavigation);
+    return () =>
+      window.removeEventListener("manager:navigation-query", handleNavigation);
+  }, []);
   const [rankDraft, setRankDraft] = useState([]);
 
   const { data: rankSettingsData, refetch: refetchRankSettings } = useQuery(

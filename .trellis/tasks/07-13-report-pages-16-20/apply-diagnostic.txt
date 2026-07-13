@@ -1,8 +1,0 @@
-returncode=1
-
-STDOUT
-
-
-STDERR
-Expected exactly one match in src/hooks/useUserManagement.js, found 0: '  const createGuest = async ({\n      fullName = "Guest",\n      phone,\n      expiresInDays = 30,\n    '
-

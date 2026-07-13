@@ -153,7 +153,10 @@ describe("ReviewsSection staff tagging", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /gửi đánh giá/i }));
 
-    expect((await screen.findAllByText("Lỗi GraphQL"))[0]).toBeInTheDocument();
+    expect(
+      (await screen.findAllByText("Không thể gửi đánh giá."))[0],
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Lỗi GraphQL")).not.toBeInTheDocument();
     expect(screen.queryByText("Đánh giá của bạn đã được đăng. Cảm ơn bạn đã chia sẻ trải nghiệm.")).not.toBeInTheDocument();
   });
 
