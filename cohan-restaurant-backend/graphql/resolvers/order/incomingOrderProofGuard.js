@@ -18,14 +18,17 @@ export async function assertIncomingOrderProofReady(input = {}) {
   const restaurantId = toObjectId(input?.restaurantId);
   const filter = restaurantId ? { _id: orderId, restaurantId } : { _id: orderId };
   const order = await Order.findOne(filter)
-    .select({ currentStatus: 1, items: 1 })
+    .select({ currentStatus: 1, items: 1, clientMeta: 1 })
     .lean();
 
   if (!order || String(order.currentStatus || "").toLowerCase() !== "pending") {
     return;
   }
 
-  const issues = getOrderProofReadinessIssues(order.items || []);
+  const issues = getOrderProofReadinessIssues(
+    order.items || [],
+    order.clientMeta?.proofWaivers || {},
+  );
   if (!issues.length) return;
 
   throw new GraphQLError(formatOrderProofReadinessError(issues), {
