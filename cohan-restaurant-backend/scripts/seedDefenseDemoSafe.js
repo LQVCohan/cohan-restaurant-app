@@ -38,6 +38,10 @@ function runScript(scriptName, args = []) {
 }
 
 runScript("seedDefenseDemo.js", process.argv.slice(2));
+// Replace the four-item smoke menu with the full operating catalog. This step
+// resolves the current primary restaurant dynamically, seeds portion/by-weight
+// variants and refreshes ingredient purchase costs and stock values.
+runScript("seedDefenseMenuCatalog.js");
 // userType is the Mongoose discriminator key. Raw repair is required because
 // findOneAndUpdate strips discriminator-key changes by default, which can leave
 // manager/staff accounts stored as CUSTOMER after an upsert.
