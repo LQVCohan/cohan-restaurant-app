@@ -30,6 +30,31 @@ function polishServingVariantSection(root) {
   });
 }
 
+function polishQrFilters(root) {
+  root.querySelectorAll(".table-qr-filters").forEach((filters) => {
+    if (filters.dataset.reportFiltersPolished === "1") return;
+    filters.dataset.reportFiltersPolished = "1";
+    Object.assign(filters.style, {
+      display: "grid",
+      gridTemplateColumns: "minmax(220px,1.6fr) minmax(140px,.8fr) minmax(160px,.9fr) auto",
+      gap: "10px",
+      alignItems: "end",
+      paddingTop: "10px",
+    });
+    filters.querySelectorAll("label").forEach((label) => {
+      Object.assign(label.style, { display: "grid", gap: "5px" });
+    });
+    filters.querySelectorAll("input, select, button").forEach((control) => {
+      Object.assign(control.style, {
+        minHeight: "40px",
+        border: "1px solid #d8e3de",
+        borderRadius: "10px",
+        padding: "0 11px",
+      });
+    });
+  });
+}
+
 function polishItemDetailTitle(root) {
   root.querySelectorAll("h1, h2, h3, header, [class*='title']").forEach((node) => {
     const text = normalize(node.textContent);
@@ -50,6 +75,7 @@ function polishTechnicalCopy(root) {
 
 function applyPolish() {
   polishServingVariantSection(document);
+  polishQrFilters(document);
   polishItemDetailTitle(document);
   polishTechnicalCopy(document);
 }
