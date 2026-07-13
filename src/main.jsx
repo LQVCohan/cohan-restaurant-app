@@ -76,6 +76,7 @@ import { installMergedTableLifecycleUi } from "./utils/installMergedTableLifecyc
 import { installTableEmptyStateEnhancement } from "./utils/installTableEmptyStateEnhancement";
 import { installGuidedAiCaptureCards } from "./utils/installGuidedAiCaptureCards";
 import { installAiChatbotMenuSuggestionLifecycle } from "./utils/installAiChatbotMenuSuggestionLifecycle";
+import { installMobileHomeVisualQc } from "./utils/installMobileHomeVisualQc";
 import { installAuthRecoveryAndFacebook } from "./utils/installAuthRecoveryAndFacebook";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 import "./styles/ResponsiveFoundation.css";
@@ -90,6 +91,7 @@ import "./styles/TodayMealAiLauncherPremium.css";
 import "./styles/AiChatbotConversationCalm.css";
 import "./styles/AiChatbotCompactMenuSuggestions.css";
 import "./styles/MobileHomeResponsivePolish.css";
+import "./styles/MobileHomeVisualQc.css";
 
 const normalizeLegacyManagerHash = () => {
   if (
@@ -119,6 +121,7 @@ installMergedTableLifecycleUi();
 installTableEmptyStateEnhancement();
 installGuidedAiCaptureCards();
 installAiChatbotMenuSuggestionLifecycle();
+installMobileHomeVisualQc();
 installAuthRecoveryAndFacebook();
 installAttendanceWordingTuning();
 
