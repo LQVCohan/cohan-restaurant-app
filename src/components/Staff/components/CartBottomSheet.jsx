@@ -4,12 +4,11 @@ import {
   Clock,
   ChefHat,
   AlertTriangle,
-  Printer,
   Camera,
   Minus,
+  Plus,
   Trash2,
   Tag,
-  Scissors,
   Banknote,
   CheckCircle2,
   ShoppingBag,
@@ -32,6 +31,7 @@ function getStaffCartPayableTotal({ discountBreakdown, fallbackTotal }) {
       0,
   );
 }
+
 function getStaffCartLineTotal(item) {
   const price = Number(item?.price || 0);
   const variant = item?.servingVariant || {};
@@ -43,7 +43,6 @@ function getStaffCartLineTotal(item) {
 
     const sellQty = Number(variant?.sellQty || 1);
     const safeSellQty = Number.isFinite(sellQty) && sellQty > 0 ? sellQty : 1;
-
     const sellUnit = String(variant?.sellUnit || "kg").toLowerCase();
     const soldAmount = sellUnit === "g" ? grams : grams / 1000;
 
@@ -52,6 +51,11 @@ function getStaffCartLineTotal(item) {
 
   return Math.round(price * Number(item?.quantity || 1));
 }
+
+function isWeightItem(item) {
+  return String(item?.servingVariant?.mode || "").toUpperCase() === "BY_WEIGHT";
+}
+
 export default function CartBottomSheet({
   cart = [],
   setCart,
@@ -133,12 +137,47 @@ export default function CartBottomSheet({
     onAdjustPersistedItemQuantity?.(item, delta);
   };
 
+  const handleDraftQuantityAdjust = (item, delta) => {
+    if (!permissions.canEditPendingItem) {
+      alert(NO_PERMISSION_MESSAGE);
+      return;
+    }
+
+    setCart((prev) =>
+      (prev || []).flatMap((cartItem) => {
+        if (cartItem.id !== item.id) return [cartItem];
+
+        const currentQty = Number(cartItem.quantity || 1);
+        const nextQty = currentQty + delta;
+
+        if (nextQty <= 0) return [];
+        if (nextQty > 99) {
+          alert("Số lượng tối đa cho một món là 99.");
+          return [cartItem];
+        }
+
+        return [{ ...cartItem, quantity: nextQty }];
+      }),
+    );
+  };
+
   const handleRemind = (item) => {
     if (!permissions.canRemindItems) {
       alert(NO_PERMISSION_MESSAGE);
       return;
     }
     onRemindItem?.(item);
+  };
+
+  const handleOpenCamera = (item) => {
+    if (!permissions.canCaptureProof) {
+      alert(NO_PERMISSION_MESSAGE);
+      return;
+    }
+
+    // Tạm đóng giỏ để modal chụp ảnh xuất hiện ngay, không bị chồng lớp.
+    onClose?.();
+    onOpenProofCapture?.(item);
   };
 
   const totalPrice = cart.reduce(
@@ -150,10 +189,10 @@ export default function CartBottomSheet({
     <div className="staff-pos-cart-overlay" onClick={onClose}>
       <div
         className="staff-pos-cart-sheet"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
         <div className="drag-indicator">
-          <div className="drag-handle"></div>
+          <div className="drag-handle" />
         </div>
 
         <div className="sheet-header">
@@ -161,7 +200,12 @@ export default function CartBottomSheet({
             <h3>Đơn: {table?.name || "Chưa chọn bàn"}</h3>
             <p className="subtitle">{cart.length} món đang chọn</p>
           </div>
-          <button className="btn-close" onClick={onClose}>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={onClose}
+            aria-label="Đóng giỏ hàng"
+          >
             <X size={24} />
           </button>
         </div>
@@ -199,7 +243,7 @@ export default function CartBottomSheet({
 
                 <div className="item-tools">
                   <div className="status-badges">
-                    {item.voidRequests?.some((r) => r.status === "pending") && (
+                    {item.voidRequests?.some((request) => request.status === "pending") && (
                       <span className="badge badge-void">
                         <AlertTriangle size={12} /> Chờ duyệt hủy
                       </span>
@@ -207,18 +251,18 @@ export default function CartBottomSheet({
 
                     {Number(item.cancelledQuantity || 0) > 0 && (
                       <span className="badge badge-void">
-                        <AlertTriangle size={12} /> Đã hủy{" "}
-                        {item.cancelledQuantity}
+                        <AlertTriangle size={12} /> Đã hủy {item.cancelledQuantity}
                       </span>
                     )}
-                    {String(item?.servingVariant?.mode || "").toUpperCase() ===
-                      "BY_WEIGHT" &&
+
+                    {isWeightItem(item) &&
                       (!Number.isFinite(Number(item.weightGrams)) ||
                         Number(item.weightGrams) <= 0) && (
                         <span className="badge badge-proof-required">
                           <ShieldAlert size={12} /> Thiếu cân nặng
                         </span>
                       )}
+
                     {item.status === "pending" &&
                       !["confirmed", "preparing", "ready", "served"].includes(
                         item.orderStatus,
@@ -234,29 +278,33 @@ export default function CartBottomSheet({
                           <ChefHat size={12} /> Bếp đã nhận
                         </span>
                       )}
+
                     {item.status === "cooking" && (
                       <span className="badge badge-cooking">
                         <ChefHat size={12} /> Đang chế biến
                       </span>
                     )}
+
                     {item.status === "void_pending" && (
                       <span className="badge badge-void">
                         <AlertTriangle size={12} /> Chờ duyệt hủy
                       </span>
                     )}
+
                     {item.requiresProof && !item.hasPhoto && (
                       <span className="badge badge-proof-required">
                         <ShieldAlert size={12} /> Cần ảnh
                       </span>
                     )}
+
                     {item.hasPhoto && (
                       <span className="badge badge-proof-ok">
                         <Camera size={12} /> {item.proofImages?.length || 0} ảnh
                       </span>
                     )}
                   </div>
-                  {String(item?.servingVariant?.mode || "").toUpperCase() ===
-                    "BY_WEIGHT" && (
+
+                  {isWeightItem(item) && (
                     <div className="weight-input-row">
                       <input
                         type="number"
@@ -265,21 +313,21 @@ export default function CartBottomSheet({
                         placeholder="Nhập cân nặng (gram)"
                         value={item.weightGrams ?? ""}
                         disabled={!permissions.canEditPendingItem}
-                        onChange={(e) => {
+                        onChange={(event) => {
                           if (!permissions.canEditPendingItem) {
                             alert(NO_PERMISSION_MESSAGE);
                             return;
                           }
-                          const raw = e.target.value;
+
+                          const raw = event.target.value;
                           setCart((prev) =>
-                            (prev || []).map((c) =>
-                              c.id === item.id
+                            (prev || []).map((cartItem) =>
+                              cartItem.id === item.id
                                 ? {
-                                    ...c,
-                                    weightGrams:
-                                      raw === "" ? null : Number(raw),
+                                    ...cartItem,
+                                    weightGrams: raw === "" ? null : Number(raw),
                                   }
-                                : c,
+                                : cartItem,
                             ),
                           );
                         }}
@@ -289,66 +337,81 @@ export default function CartBottomSheet({
 
                   <div className="actions">
                     <button
+                      type="button"
                       className={`btn-icon ${item.hasPhoto ? "active-cam" : ""}`}
                       disabled={!permissions.canCaptureProof}
-                      onClick={() => {
-                        if (!permissions.canCaptureProof) {
-                          alert(NO_PERMISSION_MESSAGE);
-                          return;
-                        }
-                        onOpenProofCapture?.(item);
-                      }}
+                      onClick={() => handleOpenCamera(item)}
+                      aria-label={`Bổ sung ảnh cho ${item.name}`}
+                      title="Bổ sung ảnh"
                     >
                       <Camera size={16} />
                     </button>
+
                     {item.status === "pending" && !item.persisted ? (
-                      permissions.canCreateOrder && (
-                        <button
-                          className="btn-icon btn-minus"
-                          onClick={() => {
-                            if (!permissions.canEditPendingItem) {
-                              alert(NO_PERMISSION_MESSAGE);
-                              return;
-                            }
-                            setCart((prev) =>
-                              (prev || []).flatMap((c) => {
-                                if (c.id !== item.id) return [c];
-                                const nextQty = Number(c.quantity || 1) - 1;
-                                return nextQty > 0
-                                  ? [{ ...c, quantity: nextQty }]
-                                  : [];
-                              }),
-                            );
-                          }}
-                        >
-                          <Minus size={16} />
-                        </button>
-                      )
+                      permissions.canCreateOrder && !isWeightItem(item) ? (
+                        <>
+                          <button
+                            type="button"
+                            className="btn-icon btn-minus"
+                            onClick={() => handleDraftQuantityAdjust(item, -1)}
+                            aria-label={`Giảm số lượng ${item.name}`}
+                            title="Giảm số lượng"
+                          >
+                            <Minus size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-icon btn-plus"
+                            onClick={() => handleDraftQuantityAdjust(item, 1)}
+                            aria-label={`Tăng số lượng ${item.name}`}
+                            title="Tăng số lượng"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </>
+                      ) : null
                     ) : item.status === "pending" && item.persisted ? (
-                      permissions.canAdjustItemQuantity && (
-                        <button
-                          className="btn-icon btn-minus"
-                          onClick={() =>
-                            handlePersistedQuantityAdjust(item, -1)
-                          }
-                        >
-                          <Minus size={16} />
-                        </button>
-                      )
+                      permissions.canAdjustItemQuantity && !isWeightItem(item) ? (
+                        <>
+                          <button
+                            type="button"
+                            className="btn-icon btn-minus"
+                            onClick={() => handlePersistedQuantityAdjust(item, -1)}
+                            aria-label={`Giảm số lượng ${item.name}`}
+                            title="Giảm số lượng"
+                          >
+                            <Minus size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-icon btn-plus"
+                            onClick={() => handlePersistedQuantityAdjust(item, 1)}
+                            aria-label={`Tăng số lượng ${item.name}`}
+                            title="Tăng số lượng"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </>
+                      ) : null
                     ) : item.status !== "void_pending" ? (
                       <>
                         {permissions.canRequestItemVoid && (
                           <button
+                            type="button"
                             className="btn-icon btn-void"
                             onClick={() => handleRequestVoid(item)}
+                            aria-label={`Yêu cầu hủy ${item.name}`}
+                            title="Yêu cầu hủy món"
                           >
                             <Trash2 size={16} />
                           </button>
                         )}
                         {permissions.canRemindItems && (
                           <button
+                            type="button"
                             className="btn-icon"
                             onClick={() => handleRemind(item)}
+                            aria-label={`Nhắc món ${item.name}`}
                             title="Nhắc món"
                           >
                             <Clock size={16} />
@@ -375,8 +438,8 @@ export default function CartBottomSheet({
             </span>
           </div>
 
-          <div className="billing-actions">
-            {discountEnabled ? (
+          {discountEnabled && (
+            <div className="billing-actions">
               <div className="staff-discount-box">
                 <div className="staff-discount-row">
                   <input
@@ -427,38 +490,12 @@ export default function CartBottomSheet({
                   </div>
                 )}
               </div>
-            ) : (
-              <button
-                className="btn-sub disabled"
-                type="button"
-                disabled
-                title="Ưu đãi chỉ áp dụng cho đơn giao hàng/mang về"
-              >
-                <Tag size={16} /> Thêm Ưu Đãi
-              </button>
-            )}
-
-            <button
-              className="btn-sub disabled"
-              type="button"
-              disabled
-              title="Chức năng tách bill sẽ được bổ sung ở phiên bản sau"
-            >
-              <Scissors size={16} /> Tách Bill
-            </button>
-
-            <button
-              className="btn-sub disabled"
-              type="button"
-              disabled
-              title="Chức năng in tạm tính sẽ được bổ sung ở phiên bản sau"
-            >
-              <Printer size={16} /> In Tạm Tính
-            </button>
-          </div>
+            </div>
+          )}
 
           <div className="main-actions">
             <button
+              type="button"
               className="btn-primary btn-send-kitchen"
               disabled={cart.length === 0 || sending || !permissions.canCreateOrder}
               onClick={handleSend}
@@ -467,6 +504,7 @@ export default function CartBottomSheet({
               {sending ? "Đang gửi..." : sendActionLabel}
             </button>
             <button
+              type="button"
               className="btn-primary btn-checkout"
               disabled={
                 cart.length === 0 ||
