@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import mongoose from "mongoose";
 import { PaymentProviderCredential, Restaurant } from "../../../models/index.js";
+import { getPlatformVnpayBankCode } from "./paymentIntegrationConfig.service.js";
 
 const ALGORITHM = "aes-256-gcm";
 const VERSION = 1;
@@ -26,7 +27,6 @@ export function normalizePaymentMode(value) {
 export function getPlatformPaymentCredentialMode(providerValue) {
   const provider = normalizePaymentProvider(providerValue);
   const providerMode = process.env[`${provider.toUpperCase()}_PLATFORM_MODE`];
-  // ponytail: generic platform credentials are sandbox unless explicitly marked otherwise.
   return normalizePaymentMode(providerMode || process.env.PAYMENT_PLATFORM_MODE || "sandbox");
 }
 
@@ -120,7 +120,15 @@ export function normalizeCredentialPayload(providerValue, input = {}) {
   return {
     tmnCode: required(input.tmnCode, "VNPAY_TMN_CODE"),
     hashSecret: required(input.hashSecret, "VNPAY_HASH_SECRET"),
-    bankCode: String(input.bankCode || "").trim().toUpperCase(),
+  };
+}
+
+function applyPlatformManagedCredentialDefaults(providerValue, credentials = {}) {
+  const provider = normalizePaymentProvider(providerValue);
+  if (provider !== "vnpay") return { ...credentials };
+  return {
+    ...credentials,
+    bankCode: getPlatformVnpayBankCode(),
   };
 }
 
@@ -145,7 +153,7 @@ export function getPlatformPaymentCredentials(providerValue) {
   return {
     tmnCode: String(process.env.VNPAY_TMN_CODE || "").trim(),
     hashSecret: String(process.env.VNPAY_HASH_SECRET || "").trim(),
-    bankCode: String(process.env.VNPAY_BANK_CODE || "").trim().toUpperCase(),
+    bankCode: getPlatformVnpayBankCode(),
   };
 }
 
@@ -299,7 +307,10 @@ export async function resolvePaymentProviderCredential({
       throw new Error("PAYMENT_CREDENTIAL_SCOPE_MISMATCH");
     }
     return {
-      credentials: decryptPaymentCredential(document.encryptedPayload),
+      credentials: applyPlatformManagedCredentialDefaults(
+        provider,
+        decryptPaymentCredential(document.encryptedPayload),
+      ),
       source: "restaurant",
       credentialId: document._id,
       mode,

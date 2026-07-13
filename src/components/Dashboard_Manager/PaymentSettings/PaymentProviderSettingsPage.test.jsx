@@ -16,6 +16,23 @@ vi.mock("@apollo/client", () => ({
   useMutation: (...args) => useMutationMock(...args),
 }));
 
+const readiness = (provider, mode, overrides = {}) => ({
+  provider,
+  mode,
+  publicBaseUrl: "https://api.cohan.vn",
+  webBaseUrl: "https://cohan.vn",
+  returnUrl: `https://api.cohan.vn/api/payments/return/${provider}`,
+  ipnUrl: `https://api.cohan.vn/api/payments/webhooks/${provider}`,
+  gatewayUrl: provider === "momo" ? "https://test-payment.momo.vn/v2/gateway/api/create" : "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
+  paymentChannel: provider === "vnpay" ? "VNPAYQR" : "captureWallet",
+  encryptionReady: true,
+  callbackReady: true,
+  webReturnReady: true,
+  ready: true,
+  blockers: [],
+  ...overrides,
+});
+
 describe("PaymentProviderSettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -57,6 +74,12 @@ describe("PaymentProviderSettingsPage", () => {
             updatedAt: "2026-07-11T00:00:00.000Z",
           },
         ],
+        restaurantPaymentIntegrationReadiness: [
+          readiness("momo", "sandbox"),
+          readiness("momo", "production"),
+          readiness("vnpay", "sandbox"),
+          readiness("vnpay", "production"),
+        ],
         restaurantPaymentPublicConfig: {
           defaultProvider: "vnpay",
           providers: [
@@ -95,14 +118,22 @@ describe("PaymentProviderSettingsPage", () => {
     expect(screen.getByLabelText("Khóa bảo mật (Hash Secret)")).toHaveValue("");
   });
 
+  it("shows platform-owned callback and QR configuration without asking the restaurant to enter it", () => {
+    render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
+
+    expect(screen.getAllByText("https://api.cohan.vn/api/payments/return/vnpay").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("VNPAY-QR").length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText(/Cách thanh toán ưu tiên/i)).not.toBeInTheDocument();
+  });
+
   it("links managers to the official provider setup guides", () => {
     render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
 
-    expect(screen.getByRole("link", { name: /Hướng dẫn lấy thông tin từ MoMo/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Hướng dẫn lấy bộ mã từ MoMo/i })).toHaveAttribute(
       "href",
       "https://developers.momo.vn/v3/vi/docs/payment/onboarding/integration-process/",
     );
-    expect(screen.getByRole("link", { name: /Hướng dẫn lấy thông tin từ VNPAY/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Hướng dẫn lấy bộ mã từ VNPAY/i })).toHaveAttribute(
       "href",
       "https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html",
     );
@@ -114,7 +145,7 @@ describe("PaymentProviderSettingsPage", () => {
     fireEvent.change(screen.getByLabelText("Mã đối tác (Partner Code)"), { target: { value: "PARTNER_NEW" } });
     fireEvent.change(screen.getByLabelText("Khóa truy cập (Access Key)"), { target: { value: "ACCESS_NEW" } });
     fireEvent.change(screen.getByLabelText("Khóa bảo mật (Secret Key)"), { target: { value: "SECRET_NEW" } });
-    fireEvent.click(screen.getByRole("button", { name: /Cập nhật kết nối/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Cập nhật bộ mã/i }));
 
     await waitFor(() => {
       expect(saveCredentialMock).toHaveBeenCalledWith({
@@ -134,6 +165,30 @@ describe("PaymentProviderSettingsPage", () => {
     });
     expect(updateSettingsMock).toHaveBeenCalled();
     expect(refetchMock).toHaveBeenCalled();
+  });
+
+  it("sends only the restaurant-specific VNPAY credentials", async () => {
+    render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
+
+    fireEvent.change(screen.getByLabelText("Mã website hoặc điểm bán (TmnCode)"), { target: { value: "TMNCODE1" } });
+    fireEvent.change(screen.getByLabelText("Khóa bảo mật (Hash Secret)"), { target: { value: "HASH_SECRET" } });
+    fireEvent.click(screen.getAllByRole("button", { name: /Lưu bộ mã merchant/i })[0]);
+
+    await waitFor(() => {
+      expect(saveCredentialMock).toHaveBeenCalledWith({
+        variables: {
+          input: {
+            restaurantId: "restaurant-1",
+            provider: "vnpay",
+            mode: "sandbox",
+            credentialPayload: {
+              tmnCode: "TMNCODE1",
+              hashSecret: "HASH_SECRET",
+            },
+          },
+        },
+      });
+    });
   });
 
   it("does not persist an unsaved mode when only toggling provider visibility", async () => {

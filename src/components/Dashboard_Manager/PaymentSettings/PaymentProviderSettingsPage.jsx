@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
-import { CheckCircle2, ExternalLink, KeyRound, Link2Off, ShieldCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ExternalLink,
+  KeyRound,
+  Link2Off,
+  Settings,
+  ShieldCheck,
+} from "lucide-react";
 import "./PaymentProviderSettingsPage.scss";
 
 const PAYMENT_PROVIDER_SETTINGS = gql`
@@ -14,6 +22,21 @@ const PAYMENT_PROVIDER_SETTINGS = gql`
       maskedIdentifier
       version
       updatedAt
+    }
+    restaurantPaymentIntegrationReadiness(restaurantId: $restaurantId) {
+      provider
+      mode
+      publicBaseUrl
+      webBaseUrl
+      returnUrl
+      ipnUrl
+      gatewayUrl
+      paymentChannel
+      encryptionReady
+      callbackReady
+      webReturnReady
+      ready
+      blockers
     }
     restaurantPaymentPublicConfig(restaurantId: $restaurantId) {
       defaultProvider
@@ -45,8 +68,16 @@ const SAVE_PAYMENT_CREDENTIAL = gql`
 `;
 
 const DISCONNECT_PAYMENT_CREDENTIAL = gql`
-  mutation DisconnectRestaurantPaymentCredential($restaurantId: ID!, $provider: String!, $mode: String!) {
-    disconnectRestaurantPaymentCredential(restaurantId: $restaurantId, provider: $provider, mode: $mode) {
+  mutation DisconnectRestaurantPaymentCredential(
+    $restaurantId: ID!
+    $provider: String!
+    $mode: String!
+  ) {
+    disconnectRestaurantPaymentCredential(
+      restaurantId: $restaurantId
+      provider: $provider
+      mode: $mode
+    ) {
       provider
       mode
       configured
@@ -59,12 +90,20 @@ const DISCONNECT_PAYMENT_CREDENTIAL = gql`
 `;
 
 const UPDATE_PAYMENT_SETTINGS = gql`
-  mutation UpdateRestaurantPaymentSettings($input: UpdateRestaurantPaymentSettingsInput!) {
+  mutation UpdateRestaurantPaymentSettings(
+    $input: UpdateRestaurantPaymentSettingsInput!
+  ) {
     updateRestaurantPaymentSettings(input: $input) {
       id
       paymentSettings {
         defaultProvider
-        providers { provider label active priority mode }
+        providers {
+          provider
+          label
+          active
+          priority
+          mode
+        }
       }
     }
   }
@@ -75,20 +114,23 @@ const PROVIDERS = [
     id: "momo",
     name: "MoMo",
     description: "Nhận thanh toán qua ví MoMo và mã QR.",
-    guideUrl: "https://developers.momo.vn/v3/vi/docs/payment/onboarding/integration-process/",
+    guideUrl:
+      "https://developers.momo.vn/v3/vi/docs/payment/onboarding/integration-process/",
+    merchantHint:
+      "Bạn chỉ cần nhập bộ mã riêng được cấp trong tài khoản MoMo for Business.",
     fields: [
       {
         name: "partnerCode",
         label: "Mã đối tác",
         providerLabel: "Partner Code",
-        hint: "Mã nhận diện tài khoản doanh nghiệp do MoMo cấp.",
+        hint: "Mã định danh tài khoản doanh nghiệp do MoMo cấp riêng cho bạn.",
         placeholder: "Dán Partner Code từ MoMo",
       },
       {
         name: "accessKey",
         label: "Khóa truy cập",
         providerLabel: "Access Key",
-        hint: "Khóa cho phép hệ thống kết nối với tài khoản MoMo của bạn.",
+        hint: "Khóa truy cập thuộc đúng bộ mã của môi trường bạn đang chọn.",
         placeholder: "Dán Access Key từ MoMo",
         secret: true,
       },
@@ -96,7 +138,7 @@ const PROVIDERS = [
         name: "secretKey",
         label: "Khóa bảo mật",
         providerLabel: "Secret Key",
-        hint: "Khóa dùng để xác nhận giao dịch đến từ đúng tài khoản.",
+        hint: "Khóa ký giao dịch riêng của merchant; không chia sẻ cho người khác.",
         placeholder: "Dán Secret Key từ MoMo",
         secret: true,
       },
@@ -107,74 +149,83 @@ const PROVIDERS = [
     name: "VNPAY",
     description: "Nhận thanh toán qua ngân hàng, thẻ và VNPAY-QR.",
     guideUrl: "https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html",
+    merchantHint:
+      "Bạn chỉ cần nhập TmnCode và Hash Secret riêng do VNPAY cấp.",
     fields: [
       {
         name: "tmnCode",
         label: "Mã website hoặc điểm bán",
         providerLabel: "TmnCode",
-        hint: "Mã nhận diện kết nối do VNPAY cấp cho website hoặc điểm bán.",
+        hint: "Mã định danh kết nối riêng của merchant trên hệ thống VNPAY.",
         placeholder: "Dán TmnCode từ VNPAY",
       },
       {
         name: "hashSecret",
         label: "Khóa bảo mật",
         providerLabel: "Hash Secret",
-        hint: "Khóa dùng để kiểm tra thông tin giao dịch không bị thay đổi.",
+        hint: "Chuỗi bí mật dùng kiểm tra chữ ký giao dịch của merchant.",
         placeholder: "Dán Hash Secret từ VNPAY",
         secret: true,
-      },
-      {
-        name: "bankCode",
-        label: "Cách thanh toán ưu tiên",
-        providerLabel: "Không bắt buộc",
-        hint: "Để khách tự chọn hoặc mở sẵn một cách thanh toán phổ biến.",
-        type: "select",
-        options: [
-          ["", "Để khách tự chọn"],
-          ["VNBANK", "Ngân hàng nội địa"],
-          ["VNPAYQR", "VNPAY-QR"],
-          ["INTCARD", "Thẻ quốc tế"],
-        ],
       },
     ],
   },
 ];
 
 const MODE_OPTIONS = [
-  { value: "sandbox", label: "Tài khoản dùng thử", description: "Dùng để kiểm tra trước khi nhận tiền thật." },
-  { value: "production", label: "Tài khoản chính thức", description: "Dùng cho giao dịch thật của khách hàng." },
+  {
+    value: "sandbox",
+    label: "Tài khoản dùng thử",
+    description: "Bộ mã Test/Sandbox để kiểm tra trước khi nhận tiền thật.",
+  },
+  {
+    value: "production",
+    label: "Tài khoản chính thức",
+    description: "Bộ mã Production đã được nhà cung cấp kích hoạt.",
+  },
 ];
 
 const EMPTY_FORMS = {
   momo: { partnerCode: "", accessKey: "", secretKey: "" },
-  vnpay: { tmnCode: "", hashSecret: "", bankCode: "VNBANK" },
+  vnpay: { tmnCode: "", hashSecret: "" },
 };
-const EMPTY_PROVIDER_CONFIGS = [];
 const EMPTY_NOTICE = { message: "", tone: "info" };
 
-const statusLabel = (status) => {
-  if (!status?.configured) return "Chưa kết nối";
-  return status.source === "restaurant" ? "Tài khoản chi nhánh" : "Tài khoản COHAN";
-};
-
-const statusDescription = (status) => {
-  if (!status?.configured) return "Chưa có tài khoản cho loại đang chọn.";
-  return status.source === "restaurant"
-    ? "Chi nhánh đang dùng tài khoản riêng."
-    : "Đang dùng tài khoản thanh toán do COHAN hỗ trợ.";
+const channelLabel = (provider, value) => {
+  if (provider === "momo") {
+    return value === "captureWallet" ? "Ví MoMo / QR" : value || "MoMo";
+  }
+  return (
+    {
+      AUTO: "Khách tự chọn tại VNPAY",
+      VNPAYQR: "VNPAY-QR",
+      VNBANK: "Ngân hàng nội địa",
+      INTCARD: "Thẻ quốc tế",
+    }[value] ||
+    value ||
+    "Khách tự chọn tại VNPAY"
+  );
 };
 
 const friendlyPaymentError = (error, fallback) => {
   const message = String(error?.message || error || "");
-  if (/invalid restaurantid/i.test(message)) return "Chi nhánh đang chọn không hợp lệ. Vui lòng chọn lại.";
-  if (/unsupported payment provider/i.test(message)) return "Phương thức thanh toán này chưa được hỗ trợ.";
+  if (/invalid restaurantid/i.test(message)) {
+    return "Chi nhánh đang chọn không hợp lệ. Vui lòng chọn lại.";
+  }
+  if (/unsupported payment provider/i.test(message)) {
+    return "Phương thức thanh toán này chưa được hỗ trợ.";
+  }
   if (/payment_credential_encryption_key_required/i.test(message)) {
-    return "Hệ thống chưa sẵn sàng để lưu thông tin thanh toán. Vui lòng liên hệ quản trị viên.";
+    return "Hệ thống chưa sẵn sàng để lưu thông tin thanh toán. Vui lòng liên hệ chủ nền tảng.";
+  }
+  if (/payment_public_base_url_required/i.test(message)) {
+    return "Chủ nền tảng chưa cấu hình URL callback thanh toán công khai.";
   }
   if (/payment_credential_decrypt_failed/i.test(message)) {
-    return "Không thể đọc thông tin đã lưu. Vui lòng lưu lại kết nối hoặc liên hệ quản trị viên.";
+    return "Không thể đọc thông tin đã lưu. Vui lòng lưu lại kết nối hoặc liên hệ chủ nền tảng.";
   }
-  if (/required/i.test(message)) return "Vui lòng nhập đủ các thông tin bắt buộc.";
+  if (/required/i.test(message)) {
+    return "Vui lòng nhập đủ các thông tin bắt buộc.";
+  }
   if (/failed to fetch|network request failed|networkerror/i.test(message)) {
     return "Không thể kết nối đến hệ thống. Vui lòng kiểm tra mạng và thử lại.";
   }
@@ -184,41 +235,80 @@ const friendlyPaymentError = (error, fallback) => {
 function ProviderLogo({ provider }) {
   if (provider === "momo") {
     return (
-      <span className="payment-provider-card__brand-logo payment-provider-card__brand-logo--momo" role="img" aria-label="Logo MoMo">
-        <span>Mo</span><span>Mo</span>
+      <span
+        className="payment-provider-card__brand-logo payment-provider-card__brand-logo--momo"
+        role="img"
+        aria-label="Logo MoMo"
+      >
+        <span>Mo</span>
+        <span>Mo</span>
       </span>
     );
   }
   return (
-    <span className="payment-provider-card__brand-logo payment-provider-card__brand-logo--vnpay" role="img" aria-label="Logo VNPAY">
-      <span>VN</span><span>PAY</span>
+    <span
+      className="payment-provider-card__brand-logo payment-provider-card__brand-logo--vnpay"
+      role="img"
+      aria-label="Logo VNPAY"
+    >
+      <span>VN</span>
+      <span>PAY</span>
     </span>
   );
 }
 
-export default function PaymentProviderSettingsPage({ restaurantId, restaurantName = "" }) {
+function statusLabel(status, readiness) {
+  if (!status?.configured) return "Chưa có mã merchant";
+  if (!readiness?.ready) return "Đã lưu · chờ hệ thống";
+  return status.source === "restaurant"
+    ? "Sẵn sàng nhận tiền"
+    : "Tài khoản COHAN";
+}
+
+function statusDescription(status, readiness) {
+  if (!status?.configured) {
+    return "Chưa có bộ mã cho loại tài khoản đang chọn.";
+  }
+  if (!readiness?.ready) {
+    return "Thông tin riêng đã lưu, nhưng cấu hình chung của nền tảng chưa hoàn tất.";
+  }
+  return status.source === "restaurant"
+    ? "Tiền được đối soát theo tài khoản merchant riêng của chi nhánh."
+    : "Đang dùng tài khoản thanh toán chung do COHAN vận hành.";
+}
+
+export default function PaymentProviderSettingsPage({
+  restaurantId,
+  restaurantName = "",
+}) {
   const [forms, setForms] = useState(EMPTY_FORMS);
   const [modes, setModes] = useState({ momo: "sandbox", vnpay: "sandbox" });
   const [notice, setNotice] = useState(EMPTY_NOTICE);
   const [savingProvider, setSavingProvider] = useState("");
 
-  const { data, loading, error, refetch } = useQuery(PAYMENT_PROVIDER_SETTINGS, {
-    variables: { restaurantId },
-    skip: !restaurantId,
-    fetchPolicy: "network-only",
-  });
+  const { data, loading, error, refetch } = useQuery(
+    PAYMENT_PROVIDER_SETTINGS,
+    {
+      variables: { restaurantId },
+      skip: !restaurantId,
+      fetchPolicy: "network-only",
+    },
+  );
   const [saveCredential] = useMutation(SAVE_PAYMENT_CREDENTIAL);
   const [disconnectCredential] = useMutation(DISCONNECT_PAYMENT_CREDENTIAL);
   const [updatePaymentSettings] = useMutation(UPDATE_PAYMENT_SETTINGS);
 
   const statuses = data?.restaurantPaymentCredentialStatuses || [];
+  const readinessItems = data?.restaurantPaymentIntegrationReadiness || [];
   const publicConfig = data?.restaurantPaymentPublicConfig;
-  const providerConfigs = publicConfig?.providers || EMPTY_PROVIDER_CONFIGS;
+  const providerConfigs = publicConfig?.providers || [];
 
   const savedModes = useMemo(() => {
     const next = { momo: "sandbox", vnpay: "sandbox" };
     providerConfigs.forEach((item) => {
-      if (Object.prototype.hasOwnProperty.call(next, item.provider)) next[item.provider] = item.mode;
+      if (Object.prototype.hasOwnProperty.call(next, item.provider)) {
+        next[item.provider] = item.mode;
+      }
     });
     return next;
   }, [providerConfigs]);
@@ -228,38 +318,43 @@ export default function PaymentProviderSettingsPage({ restaurantId, restaurantNa
   }, [restaurantId, savedModes]);
 
   const statusMap = useMemo(
-    () => new Map(statuses.map((item) => [`${item.provider}:${item.mode}`, item])),
+    () =>
+      new Map(
+        statuses.map((item) => [`${item.provider}:${item.mode}`, item]),
+      ),
     [statuses],
   );
+  const readinessMap = useMemo(
+    () =>
+      new Map(
+        readinessItems.map((item) => [`${item.provider}:${item.mode}`, item]),
+      ),
+    [readinessItems],
+  );
 
-  const clearNotice = () => setNotice(EMPTY_NOTICE);
   const updateField = (provider, field, value) => {
     setForms((current) => ({
       ...current,
       [provider]: { ...current[provider], [field]: value },
     }));
-    clearNotice();
-  };
-
-  const updateMode = (provider, mode) => {
-    setModes((current) => ({ ...current, [provider]: mode }));
-    clearNotice();
+    setNotice(EMPTY_NOTICE);
   };
 
   const persistProviderSettings = async (provider, patch = {}) => {
     const current = providerConfigs.length
       ? providerConfigs
       : PROVIDERS.map((item, index) => ({
-        provider: item.id,
-        label: item.name,
-        active: item.id === "vnpay",
-        priority: index + 1,
-        mode: "sandbox",
-      }));
+          provider: item.id,
+          label: item.name,
+          active: false,
+          priority: index + 1,
+          mode: "sandbox",
+        }));
     const providers = current.map((item) => ({
       provider: item.provider,
       label: item.label,
-      active: item.provider === provider ? patch.active ?? item.active : item.active,
+      active:
+        item.provider === provider ? patch.active ?? item.active : item.active,
       priority: item.priority,
       mode: item.provider === provider ? patch.mode ?? item.mode : item.mode,
     }));
@@ -277,16 +372,22 @@ export default function PaymentProviderSettingsPage({ restaurantId, restaurantNa
   const handleSave = async (provider) => {
     const mode = modes[provider];
     const form = forms[provider];
-    const requiredFields = provider === "momo"
-      ? ["partnerCode", "accessKey", "secretKey"]
-      : ["tmnCode", "hashSecret"];
+    const readiness = readinessMap.get(`${provider}:${mode}`);
+    const requiredFields =
+      provider === "momo"
+        ? ["partnerCode", "accessKey", "secretKey"]
+        : ["tmnCode", "hashSecret"];
+
     if (requiredFields.some((field) => !String(form[field] || "").trim())) {
-      setNotice({ message: "Vui lòng nhập đủ các thông tin bắt buộc trước khi lưu.", tone: "error" });
+      setNotice({
+        message: "Vui lòng nhập đủ các thông tin bắt buộc trước khi lưu.",
+        tone: "error",
+      });
       return;
     }
 
     setSavingProvider(provider);
-    clearNotice();
+    setNotice(EMPTY_NOTICE);
     try {
       await saveCredential({
         variables: {
@@ -298,13 +399,27 @@ export default function PaymentProviderSettingsPage({ restaurantId, restaurantNa
           },
         },
       });
-      await persistProviderSettings(provider, { active: true, mode });
-      setForms((current) => ({ ...current, [provider]: { ...EMPTY_FORMS[provider] } }));
-      setNotice({ message: `Đã kết nối ${provider === "momo" ? "MoMo" : "VNPAY"} cho chi nhánh.`, tone: "success" });
+      await persistProviderSettings(provider, {
+        active: Boolean(readiness?.ready),
+        mode,
+      });
+      setForms((current) => ({
+        ...current,
+        [provider]: { ...EMPTY_FORMS[provider] },
+      }));
+      setNotice({
+        message: readiness?.ready
+          ? `Đã lưu tài khoản ${provider === "momo" ? "MoMo" : "VNPAY"} và bật cho khách thanh toán.`
+          : "Đã lưu an toàn bộ mã merchant. Phương thức sẽ sẵn sàng sau khi chủ nền tảng hoàn tất cấu hình chung.",
+        tone: readiness?.ready ? "success" : "info",
+      });
       await refetch();
     } catch (mutationError) {
       setNotice({
-        message: friendlyPaymentError(mutationError, "Không thể lưu kết nối thanh toán. Vui lòng thử lại."),
+        message: friendlyPaymentError(
+          mutationError,
+          "Không thể lưu kết nối thanh toán. Vui lòng thử lại.",
+        ),
         tone: "error",
       });
     } finally {
@@ -315,17 +430,24 @@ export default function PaymentProviderSettingsPage({ restaurantId, restaurantNa
   const handleDisconnect = async (provider) => {
     const mode = modes[provider];
     setSavingProvider(provider);
-    clearNotice();
+    setNotice(EMPTY_NOTICE);
     try {
-      await disconnectCredential({ variables: { restaurantId, provider, mode } });
+      await disconnectCredential({
+        variables: { restaurantId, provider, mode },
+      });
+      await persistProviderSettings(provider, { active: false });
       setNotice({
-        message: "Đã gỡ tài khoản riêng của chi nhánh. COHAN sẽ dùng tài khoản hỗ trợ khi có sẵn.",
+        message:
+          "Đã gỡ bộ mã merchant riêng và ẩn phương thức khỏi bước thanh toán.",
         tone: "success",
       });
       await refetch();
     } catch (mutationError) {
       setNotice({
-        message: friendlyPaymentError(mutationError, "Không thể gỡ kết nối thanh toán. Vui lòng thử lại."),
+        message: friendlyPaymentError(
+          mutationError,
+          "Không thể gỡ kết nối thanh toán. Vui lòng thử lại.",
+        ),
         tone: "error",
       });
     } finally {
@@ -334,9 +456,20 @@ export default function PaymentProviderSettingsPage({ restaurantId, restaurantNa
   };
 
   const handleToggle = async (provider, active) => {
+    const mode = modes[provider];
+    const readiness = readinessMap.get(`${provider}:${mode}`);
     const providerName = provider === "momo" ? "MoMo" : "VNPAY";
+    if (active && !readiness?.ready) {
+      setNotice({
+        message:
+          "Chưa thể bật vì callback, khóa mã hóa hoặc URL quay lại của nền tảng chưa hoàn tất.",
+        tone: "error",
+      });
+      return;
+    }
+
     setSavingProvider(provider);
-    clearNotice();
+    setNotice(EMPTY_NOTICE);
     try {
       await persistProviderSettings(provider, { active });
       setNotice({
@@ -348,7 +481,10 @@ export default function PaymentProviderSettingsPage({ restaurantId, restaurantNa
       await refetch();
     } catch (mutationError) {
       setNotice({
-        message: friendlyPaymentError(mutationError, "Không thể thay đổi lựa chọn thanh toán. Vui lòng thử lại."),
+        message: friendlyPaymentError(
+          mutationError,
+          "Không thể thay đổi lựa chọn thanh toán. Vui lòng thử lại.",
+        ),
         tone: "error",
       });
     } finally {
@@ -367,157 +503,286 @@ export default function PaymentProviderSettingsPage({ restaurantId, restaurantNa
   }
 
   const queryErrorMessage = error
-    ? friendlyPaymentError(error, "Không thể tải thông tin thanh toán. Vui lòng thử lại.")
+    ? friendlyPaymentError(
+        error,
+        "Không thể tải thông tin thanh toán. Vui lòng thử lại.",
+      )
     : "";
-  const feedbackMessage = loading ? "Đang tải thông tin thanh toán..." : queryErrorMessage || notice.message;
+  const feedbackMessage = loading
+    ? "Đang tải thông tin thanh toán..."
+    : queryErrorMessage || notice.message;
   const feedbackTone = error ? "error" : loading ? "info" : notice.tone;
 
   return (
     <main className="payment-provider-settings">
       <header className="payment-provider-settings__header">
         <div className="payment-provider-settings__header-copy">
-          <p className="payment-provider-settings__eyebrow">THANH TOÁN TRỰC TUYẾN</p>
+          <p className="payment-provider-settings__eyebrow">
+            THANH TOÁN TRỰC TUYẾN
+          </p>
           <h1>Kết nối MoMo và VNPAY</h1>
           <p>
-            Thêm tài khoản nhận tiền cho <strong>{restaurantName || "chi nhánh đang chọn"}</strong>.
-            Các thông tin bảo mật chỉ được dùng để xác nhận giao dịch.
+            COHAN cấu hình sẵn cổng, callback, bảo mật và cách thanh toán.
+            Chủ nhà hàng chỉ nhập bộ mã merchant riêng cho{" "}
+            <strong>{restaurantName || "chi nhánh đang chọn"}</strong>.
           </p>
         </div>
         <div className="payment-provider-settings__security">
           <ShieldCheck aria-hidden="true" />
-          <span><strong>Thông tin được bảo vệ</strong><small>Các khóa sẽ không hiển thị lại sau khi lưu.</small></span>
+          <span>
+            <strong>Thông tin được mã hóa</strong>
+            <small>Các khóa bí mật không hiển thị lại sau khi lưu.</small>
+          </span>
         </div>
       </header>
 
-      {feedbackMessage && (
+      {feedbackMessage ? (
         <div
           className={`payment-provider-settings__notice is-${feedbackTone}`}
           role={feedbackTone === "error" ? "alert" : "status"}
         >
           {feedbackMessage}
         </div>
-      )}
+      ) : null}
 
-      <section className="payment-provider-settings__grid" aria-label="Phương thức thanh toán">
+      <aside className="payment-provider-settings__note">
+        <Settings aria-hidden="true" />
+        <strong>Phần chủ nền tảng quản lý</strong>
+        <p>
+          Domain HTTPS, Return URL, IPN/webhook, endpoint Sandbox/Production,
+          khóa mã hóa và kênh VNPAY-QR được cấu hình một lần trên máy chủ.
+        </p>
+      </aside>
+
+      <section
+        className="payment-provider-settings__grid"
+        aria-label="Phương thức thanh toán"
+      >
         {PROVIDERS.map((providerMeta) => {
           const mode = modes[providerMeta.id];
           const status = statusMap.get(`${providerMeta.id}:${mode}`);
-          const providerConfig = providerConfigs.find((item) => item.provider === providerMeta.id);
+          const readiness = readinessMap.get(`${providerMeta.id}:${mode}`);
+          const providerConfig = providerConfigs.find(
+            (item) => item.provider === providerMeta.id,
+          );
           const busy = savingProvider === providerMeta.id;
+          const ready = Boolean(status?.configured && readiness?.ready);
+
           return (
-            <article className={`payment-provider-card payment-provider-card--${providerMeta.id}`} key={providerMeta.id}>
+            <article
+              className={`payment-provider-card payment-provider-card--${providerMeta.id}`}
+              key={providerMeta.id}
+            >
               <div className="payment-provider-card__title">
                 <ProviderLogo provider={providerMeta.id} />
                 <div className="payment-provider-card__title-copy">
                   <h2>{providerMeta.name}</h2>
                   <p>{providerMeta.description}</p>
                 </div>
-                <span className={`payment-provider-card__status ${status?.configured ? "is-ready" : ""}`}>
-                  {status?.configured && <CheckCircle2 aria-hidden="true" />}
-                  {statusLabel(status)}
+                <span
+                  className={`payment-provider-card__status ${ready ? "is-ready" : ""}`}
+                >
+                  {ready ? <CheckCircle2 aria-hidden="true" /> : null}
+                  {statusLabel(status, readiness)}
                 </span>
               </div>
 
               <div className="payment-provider-card__summary">
-                <fieldset className="payment-provider-card__mode" disabled={busy}>
-                  <legend>Loại tài khoản</legend>
+                <fieldset
+                  className="payment-provider-card__mode"
+                  disabled={busy}
+                >
+                  <legend>Loại bộ mã merchant</legend>
                   <div className="payment-provider-card__mode-options">
                     {MODE_OPTIONS.map((option) => (
-                      <label className={mode === option.value ? "is-selected" : ""} key={option.value}>
+                      <label
+                        className={mode === option.value ? "is-selected" : ""}
+                        key={option.value}
+                      >
                         <input
                           type="radio"
                           name={`${providerMeta.id}-mode`}
                           value={option.value}
                           checked={mode === option.value}
-                          onChange={() => updateMode(providerMeta.id, option.value)}
+                          onChange={() => {
+                            setModes((current) => ({
+                              ...current,
+                              [providerMeta.id]: option.value,
+                            }));
+                            setNotice(EMPTY_NOTICE);
+                          }}
                         />
-                        <span><strong>{option.label}</strong><small>{option.description}</small></span>
+                        <span>
+                          <strong>{option.label}</strong>
+                          <small>{option.description}</small>
+                        </span>
                       </label>
                     ))}
                   </div>
                 </fieldset>
 
                 <div className="payment-provider-card__saved-account">
-                  <span>Mã tài khoản đang dùng</span>
-                  <strong title={status?.maskedIdentifier || "Chưa có"}>{status?.maskedIdentifier || "Chưa có"}</strong>
-                  <small>{statusDescription(status)}</small>
+                  <span>Mã merchant đang dùng</span>
+                  <strong title={status?.maskedIdentifier || "Chưa có"}>
+                    {status?.maskedIdentifier || "Chưa có"}
+                  </strong>
+                  <small>{statusDescription(status, readiness)}</small>
                 </div>
 
-                <label className={`payment-provider-card__toggle ${!status?.configured ? "is-disabled" : ""}`}>
+                <label
+                  className={`payment-provider-card__toggle ${!ready ? "is-disabled" : ""}`}
+                >
                   <input
                     type="checkbox"
-                    checked={Boolean(providerConfig?.active)}
-                    onChange={(event) => handleToggle(providerMeta.id, event.target.checked)}
-                    disabled={busy || !status?.configured}
+                    checked={Boolean(providerConfig?.active && ready)}
+                    onChange={(event) =>
+                      handleToggle(providerMeta.id, event.target.checked)
+                    }
+                    disabled={busy || !ready}
                   />
-                  <span className="payment-provider-card__toggle-control" aria-hidden="true" />
+                  <span
+                    className="payment-provider-card__toggle-control"
+                    aria-hidden="true"
+                  />
                   <span className="payment-provider-card__toggle-copy">
                     <strong>Cho phép khách thanh toán</strong>
-                    <small>{status?.configured ? `Hiển thị ${providerMeta.name} ở bước thanh toán.` : "Kết nối tài khoản trước khi bật."}</small>
+                    <small>
+                      {ready
+                        ? `Hiển thị ${providerMeta.name} ở bước thanh toán.`
+                        : "Cần đủ mã merchant và cấu hình chung."}
+                    </small>
                   </span>
                 </label>
               </div>
 
-              <form onSubmit={(event) => { event.preventDefault(); handleSave(providerMeta.id); }}>
+              <div className="payment-provider-card__summary">
+                <div className="payment-provider-card__saved-account">
+                  <span>Return URL do COHAN quản lý</span>
+                  <strong title={readiness?.returnUrl || "Chưa cấu hình"}>
+                    {readiness?.returnUrl || "Chưa cấu hình"}
+                  </strong>
+                  <small>Đưa khách quay lại sau thanh toán.</small>
+                </div>
+                <div className="payment-provider-card__saved-account">
+                  <span>IPN / Webhook do COHAN quản lý</span>
+                  <strong title={readiness?.ipnUrl || "Chưa cấu hình"}>
+                    {readiness?.ipnUrl || "Chưa cấu hình"}
+                  </strong>
+                  <small>Nhận xác nhận giao dịch từ nhà cung cấp.</small>
+                </div>
+                <div className="payment-provider-card__saved-account">
+                  <span>Kênh thanh toán</span>
+                  <strong>
+                    {channelLabel(providerMeta.id, readiness?.paymentChannel)}
+                  </strong>
+                  <small>Chủ nền tảng đặt thống nhất.</small>
+                </div>
+                <div className="payment-provider-card__saved-account">
+                  <span>Trạng thái hạ tầng</span>
+                  <strong>
+                    {readiness?.ready ? "Đã sẵn sàng" : "Chưa hoàn tất"}
+                  </strong>
+                  <small>
+                    {readiness?.ready
+                      ? "Có thể lưu bộ mã và bật thanh toán."
+                      : "Liên hệ chủ nền tảng để hoàn tất phần dùng chung."}
+                  </small>
+                </div>
+              </div>
+
+              {readiness?.blockers?.length ? (
+                <div
+                  className="payment-provider-settings__notice is-error"
+                  role="alert"
+                >
+                  <AlertTriangle aria-hidden="true" />{" "}
+                  {readiness.blockers.join(" ")}
+                </div>
+              ) : null}
+
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  handleSave(providerMeta.id);
+                }}
+              >
                 <div className="payment-provider-card__form-heading">
                   <div>
-                    <h3>Thông tin kết nối</h3>
-                    <p>Sao chép đúng các mã được {providerMeta.name} cấp cho loại tài khoản đã chọn.</p>
+                    <h3>Chỉ nhập thông tin riêng của bạn</h3>
+                    <p>{providerMeta.merchantHint}</p>
                   </div>
-                  <a href={providerMeta.guideUrl} target="_blank" rel="noreferrer">
-                    <ExternalLink aria-hidden="true" /> Hướng dẫn lấy thông tin từ {providerMeta.name}
+                  <a
+                    href={providerMeta.guideUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <ExternalLink aria-hidden="true" /> Hướng dẫn lấy bộ mã từ{" "}
+                    {providerMeta.name}
                   </a>
                 </div>
 
                 {providerMeta.fields.map((field) => {
                   const fieldId = `${providerMeta.id}-${field.name}`;
-                  const accessibleLabel = `${field.label} (${field.providerLabel})`;
                   return (
-                    <div className="payment-provider-card__field" key={field.name}>
+                    <div
+                      className="payment-provider-card__field"
+                      key={field.name}
+                    >
                       <label htmlFor={fieldId}>
                         <span>{field.label}</span>
                         <small>{field.providerLabel}</small>
                       </label>
-                      {field.type === "select" ? (
-                        <select
-                          id={fieldId}
-                          aria-label={accessibleLabel}
-                          aria-describedby={`${fieldId}-hint`}
-                          value={forms[providerMeta.id][field.name]}
-                          onChange={(event) => updateField(providerMeta.id, field.name, event.target.value)}
-                          disabled={busy}
-                        >
-                          {field.options.map(([value, label]) => <option key={value || "auto"} value={value}>{label}</option>)}
-                        </select>
-                      ) : (
-                        <input
-                          id={fieldId}
-                          aria-label={accessibleLabel}
-                          aria-describedby={`${fieldId}-hint`}
-                          type={field.secret ? "password" : "text"}
-                          autoComplete={field.secret ? "new-password" : "off"}
-                          spellCheck="false"
-                          value={forms[providerMeta.id][field.name]}
-                          onChange={(event) => updateField(providerMeta.id, field.name, event.target.value)}
-                          placeholder={field.placeholder}
-                          disabled={busy}
-                        />
-                      )}
-                      <small className="payment-provider-card__field-hint" id={`${fieldId}-hint`}>{field.hint}</small>
+                      <input
+                        id={fieldId}
+                        aria-label={`${field.label} (${field.providerLabel})`}
+                        aria-describedby={`${fieldId}-hint`}
+                        type={field.secret ? "password" : "text"}
+                        autoComplete={field.secret ? "new-password" : "off"}
+                        spellCheck="false"
+                        value={forms[providerMeta.id][field.name]}
+                        onChange={(event) =>
+                          updateField(
+                            providerMeta.id,
+                            field.name,
+                            event.target.value,
+                          )
+                        }
+                        placeholder={field.placeholder}
+                        disabled={busy}
+                      />
+                      <small
+                        className="payment-provider-card__field-hint"
+                        id={`${fieldId}-hint`}
+                      >
+                        {field.hint}
+                      </small>
                     </div>
                   );
                 })}
 
                 <div className="payment-provider-card__actions">
-                  <button type="submit" className="payment-provider-card__primary" disabled={busy}>
+                  <button
+                    type="submit"
+                    className="payment-provider-card__primary"
+                    disabled={busy}
+                  >
                     <KeyRound aria-hidden="true" />
-                    {busy ? "Đang lưu..." : status?.source === "restaurant" ? "Cập nhật kết nối" : "Lưu kết nối"}
+                    {busy
+                      ? "Đang lưu..."
+                      : status?.source === "restaurant"
+                        ? "Cập nhật bộ mã"
+                        : "Lưu bộ mã merchant"}
                   </button>
-                  {status?.source === "restaurant" && (
-                    <button type="button" className="payment-provider-card__danger" onClick={() => handleDisconnect(providerMeta.id)} disabled={busy}>
-                      <Link2Off aria-hidden="true" /> Gỡ tài khoản chi nhánh
+                  {status?.source === "restaurant" ? (
+                    <button
+                      type="button"
+                      className="payment-provider-card__danger"
+                      onClick={() => handleDisconnect(providerMeta.id)}
+                      disabled={busy}
+                    >
+                      <Link2Off aria-hidden="true" /> Gỡ bộ mã chi nhánh
                     </button>
-                  )}
+                  ) : null}
                 </div>
               </form>
             </article>
@@ -526,8 +791,13 @@ export default function PaymentProviderSettingsPage({ restaurantId, restaurantNa
       </section>
 
       <aside className="payment-provider-settings__note">
-        <strong>Phạm vi áp dụng</strong>
-        <p>Tài khoản ở trang này dùng cho tiền đặt cọc, đơn hàng và thanh toán tại quầy của chi nhánh. Nạp tiền vào Ví COHAN vẫn được xử lý qua tài khoản chung của COHAN.</p>
+        <strong>Tiền thanh toán đi đâu?</strong>
+        <p>
+          Khi chi nhánh dùng bộ mã merchant riêng, tiền được nhà cung cấp đối
+          soát về tài khoản ngân hàng đã đăng ký trong hợp đồng MoMo/VNPAY của
+          chi nhánh. COHAN chỉ tạo yêu cầu, xác minh callback và lưu trạng thái
+          giao dịch.
+        </p>
       </aside>
     </main>
   );

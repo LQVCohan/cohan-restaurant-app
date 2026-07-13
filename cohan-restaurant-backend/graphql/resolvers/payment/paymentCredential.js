@@ -9,6 +9,7 @@ import {
   normalizePaymentProvider,
   saveRestaurantPaymentCredential,
 } from "../../../src/services/payment/paymentCredential.service.js";
+import { listPaymentIntegrationReadiness } from "../../../src/services/payment/paymentIntegrationConfig.service.js";
 import { getProviderPublicConfig } from "../../../src/services/payment/paymentSession.service.js";
 
 const requireRestaurantId = (value) => {
@@ -16,8 +17,8 @@ const requireRestaurantId = (value) => {
   return value;
 };
 
-const findStatus = (statuses, provider, mode) =>
-  statuses.find((item) => item.provider === provider && item.mode === mode);
+const findStatus = (items, provider, mode) =>
+  items.find((item) => item.provider === provider && item.mode === mode);
 
 export const PaymentCredentialQuery = {
   async restaurantPaymentCredentialStatuses(_, { restaurantId }, ctx) {
@@ -26,11 +27,18 @@ export const PaymentCredentialQuery = {
     return listRestaurantPaymentCredentialStatuses(rid);
   },
 
+  async restaurantPaymentIntegrationReadiness(_, { restaurantId }, ctx) {
+    const rid = requireRestaurantId(restaurantId);
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
+    return listPaymentIntegrationReadiness();
+  },
+
   async restaurantPaymentPublicConfig(_, { restaurantId }) {
     const rid = requireRestaurantId(restaurantId);
-    const [config, statuses] = await Promise.all([
+    const [config, statuses, readinessItems] = await Promise.all([
       getProviderPublicConfig(rid),
       listRestaurantPaymentCredentialStatuses(rid),
+      Promise.resolve(listPaymentIntegrationReadiness()),
     ]);
     return {
       ...config,
@@ -40,9 +48,17 @@ export const PaymentCredentialQuery = {
           providerConfig.provider,
           providerConfig.mode,
         );
+        const readiness = findStatus(
+          readinessItems,
+          providerConfig.provider,
+          providerConfig.mode,
+        );
         return {
           ...providerConfig,
-          active: providerConfig.active && Boolean(status?.configured),
+          active:
+            providerConfig.active &&
+            Boolean(status?.configured) &&
+            Boolean(readiness?.ready),
           configured: Boolean(status?.configured),
           credentialSource: status?.source || "none",
         };
