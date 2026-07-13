@@ -17,6 +17,9 @@ import "../styles/MobileCustomerFloatingControls.scss";
 const TableOrderRouteExperience = React.lazy(
   () => import("../components/Customer/TableCurrentSession/TableOrderRouteExperience"),
 );
+const TableOrderDraftLauncher = React.lazy(
+  () => import("../components/Customer/TableCurrentSession/TableOrderDraftLauncher"),
+);
 
 export default function MainLayout({ children }) {
   const [isCartOpen, setIsCartOpen] = React.useState(false);
@@ -81,6 +84,7 @@ export default function MainLayout({ children }) {
   const tableOrderExperience = isPublicTableRoute ? (
     <React.Suspense fallback={null}>
       <TableOrderRouteExperience key={publicTableRouteKey} />
+      <TableOrderDraftLauncher key={`${publicTableRouteKey}:draft`} />
     </React.Suspense>
   ) : null;
 
