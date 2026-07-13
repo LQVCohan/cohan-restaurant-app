@@ -1,3 +1,9 @@
+.table-qr-scanner__manual-copy > svg:last-child {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 @media (max-width: 760px) {
   .mobile-customer-shell--scanner {
     min-height: 100dvh;
