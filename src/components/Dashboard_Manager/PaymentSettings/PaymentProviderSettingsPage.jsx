@@ -106,6 +106,7 @@ const PROVIDERS = [
     description: "Nhận thanh toán qua ví MoMo và mã QR.",
     guideUrl:
       "https://developers.momo.vn/v3/vi/docs/payment/onboarding/integration-process/",
+    instruction: "Nhập đúng bộ thông tin MoMo cấp cho nhà hàng của bạn.",
     fields: [
       {
         name: "partnerCode",
@@ -126,7 +127,7 @@ const PROVIDERS = [
         name: "secretKey",
         label: "Khóa bảo mật",
         providerLabel: "Secret Key",
-        hint: "Không chia sẻ khóa này cho người khác.",
+        hint: "Khóa này được bảo vệ và không hiển thị lại sau khi lưu.",
         placeholder: "Dán Secret Key từ MoMo",
         secret: true,
       },
@@ -137,6 +138,7 @@ const PROVIDERS = [
     name: "VNPAY",
     description: "Nhận thanh toán qua ngân hàng, thẻ và VNPAY-QR.",
     guideUrl: "https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html",
+    instruction: "Nhập đúng bộ thông tin VNPAY cấp cho nhà hàng của bạn.",
     fields: [
       {
         name: "tmnCode",
@@ -149,7 +151,7 @@ const PROVIDERS = [
         name: "hashSecret",
         label: "Khóa bảo mật",
         providerLabel: "Hash Secret",
-        hint: "Không chia sẻ khóa này cho người khác.",
+        hint: "Khóa này được bảo vệ và không hiển thị lại sau khi lưu.",
         placeholder: "Dán Hash Secret từ VNPAY",
         secret: true,
       },
@@ -161,12 +163,12 @@ const MODE_OPTIONS = [
   {
     value: "sandbox",
     label: "Dùng thử",
-    description: "Bộ mã Sandbox/Test.",
+    description: "Dùng để kiểm tra trước khi nhận tiền thật.",
   },
   {
     value: "production",
     label: "Chính thức",
-    description: "Bộ mã nhận tiền thật.",
+    description: "Dùng để nhận thanh toán thật.",
   },
 ];
 
@@ -231,14 +233,21 @@ function ProviderLogo({ provider }) {
 function statusLabel(status, ready) {
   if (!status?.configured) return "Chưa kết nối";
   if (!ready) return "Đã lưu";
-  return status.source === "restaurant" ? "Đã kết nối" : "Dùng tài khoản COHAN";
+  return "Đang hoạt động";
 }
 
 function statusDescription(status, ready) {
   if (!status?.configured) return "Nhập thông tin bên dưới để kết nối.";
-  if (!ready) return "Thông tin đã được lưu, nhưng phương thức chưa thể bật.";
-  if (status.source === "restaurant") return "Mã merchant riêng của chi nhánh đang được sử dụng.";
-  return "Chi nhánh đang sử dụng tài khoản thanh toán do COHAN cung cấp.";
+  if (!ready) return "Thông tin đã được lưu và đang chờ kích hoạt.";
+  return "Khách hàng có thể sử dụng phương thức này khi thanh toán.";
+}
+
+function accountDisplay(status) {
+  if (!status?.configured) return "Chưa có";
+  if (status.source === "restaurant") {
+    return status.maskedIdentifier || "Đã lưu";
+  }
+  return "Đã thiết lập";
 }
 
 export default function PaymentProviderSettingsPage({
@@ -556,6 +565,7 @@ export default function PaymentProviderSettingsPage({
                           name={`${providerMeta.id}-mode`}
                           value={option.value}
                           checked={mode === option.value}
+                          aria-label={option.label}
                           onChange={() => {
                             setModes((current) => ({
                               ...current,
@@ -575,8 +585,8 @@ export default function PaymentProviderSettingsPage({
 
                 <div className="payment-provider-card__saved-account">
                   <span>Tài khoản đang dùng</span>
-                  <strong title={status?.maskedIdentifier || "Chưa có"}>
-                    {status?.maskedIdentifier || "Chưa có"}
+                  <strong title={accountDisplay(status)}>
+                    {accountDisplay(status)}
                   </strong>
                   <small>{statusDescription(status, ready)}</small>
                 </div>
@@ -626,15 +636,14 @@ export default function PaymentProviderSettingsPage({
                 <div className="payment-provider-card__form-heading">
                   <div>
                     <h3>Thông tin kết nối</h3>
-                    <p>Nhập đúng bộ mã được {providerMeta.name} cấp cho bạn.</p>
+                    <p>{providerMeta.instruction}</p>
                   </div>
                   <a
                     href={providerMeta.guideUrl}
                     target="_blank"
                     rel="noreferrer"
                   >
-                    <ExternalLink aria-hidden="true" /> Hướng dẫn lấy bộ mã từ{" "}
-                    {providerMeta.name}
+                    <ExternalLink aria-hidden="true" /> Hướng dẫn lấy thông tin
                   </a>
                 </div>
 
