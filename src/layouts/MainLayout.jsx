@@ -17,15 +17,20 @@ import "../styles/MobileCustomerFloatingControls.scss";
 const TableOrderRouteExperience = React.lazy(
   () => import("../components/Customer/TableCurrentSession/TableOrderRouteExperience"),
 );
-const TableOrderDraftLauncher = React.lazy(
-  () => import("../components/Customer/TableCurrentSession/TableOrderDraftLauncher"),
-);
 
 export default function MainLayout({ children }) {
   const [isCartOpen, setIsCartOpen] = React.useState(false);
   const location = useLocation();
   const isMobile = useIsMobile();
-  const { cart, updateQuantity, removeFromCart, clearCart, removeRestaurantItems, getTotalItems, getTotalPrice } = useCart();
+  const {
+    cart,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    removeRestaurantItems,
+    getTotalItems,
+    getTotalPrice,
+  } = useCart();
   const cartActions = useCustomerCartActions({
     cart,
     updateQuantity,
@@ -57,7 +62,7 @@ export default function MainLayout({ children }) {
   ];
 
   const shouldHideLayout = hiddenRoutes.some((path) =>
-    location.pathname.startsWith(path)
+    location.pathname.startsWith(path),
   );
 
   if (shouldHideLayout || isRestaurantDetailPreview) {
@@ -84,7 +89,6 @@ export default function MainLayout({ children }) {
   const tableOrderExperience = isPublicTableRoute ? (
     <React.Suspense fallback={null}>
       <TableOrderRouteExperience key={publicTableRouteKey} />
-      <TableOrderDraftLauncher key={`${publicTableRouteKey}:draft`} />
     </React.Suspense>
   ) : null;
 
@@ -110,7 +114,10 @@ export default function MainLayout({ children }) {
 
   return (
     <>
-      <Header onCartToggle={() => setIsCartOpen(true)} cartItemCount={getTotalItems()} />
+      <Header
+        onCartToggle={() => setIsCartOpen(true)}
+        cartItemCount={getTotalItems()}
+      />
       <main className="customer-experience-main">{children}</main>
       {foodRestaurantSelector}
       {tableOrderExperience}
