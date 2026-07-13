@@ -22,6 +22,7 @@
     "test:watch": "vitest",
     "check:user-email": "node scripts/check-user-by-email.js",
     "seed:demo:scheduling": "node scripts/seedSchedulingAttendanceDemo.js",
+    "seed:demo:schedule-weeks": "node scripts/seedScheduleCurrentAndPreviousWeek.js",
     "seed:demo:brand-staff-workforce": "node scripts/seedBrandStaffWorkforceDemo.js",
     "verify:demo:performance": "node scripts/verifyStaffPerformanceDemoRegression.js",
     "repair:demo:operator-account-types": "node scripts/repairDemoOperatorAccountTypes.js",
