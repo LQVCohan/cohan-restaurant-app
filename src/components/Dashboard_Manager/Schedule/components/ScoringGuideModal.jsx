@@ -45,21 +45,21 @@ const POSITIVE_ITEMS = [
     label: "Loại nhân sự",
     fallback: 10,
     explanation:
-      "Dùng mức ưu tiên đã đặt cho full-time, part-time, thử việc, thời vụ hoặc hợp đồng.",
+      "Dùng mức ưu tiên đã đặt cho nhân viên toàn thời gian, bán thời gian, thử việc, thời vụ hoặc hợp đồng.",
   },
   {
     key: "costEfficiency",
     label: "Chi phí",
     fallback: 5,
     explanation:
-      "Hệ thống đổi lương giờ, lương ca hoặc lương tháng thành chi phí một giờ. Người có chi phí thấp hơn nhận nhiều điểm hơn.",
+      "Hệ thống đổi lương giờ, lương ca hoặc lương tháng thành chi phí một giờ. Người có chi phí thấp hơn nhận nhiều điểm hơn. Nếu cả nhóm chưa có dữ liệu lương, mục này được bỏ qua.",
   },
   {
     key: "reliability",
     label: "Độ tin cậy",
     fallback: 5,
     explanation:
-      "Lấy trung bình điểm đúng giờ và tuân thủ. Điểm 80/100 sẽ nhận 80% mức điểm này.",
+      "Lấy trung bình điểm đúng giờ và tuân thủ. Điểm 80/100 sẽ nhận 80% mức điểm này. Chưa có dữ liệu thì dùng điểm hiệu suất hoặc 75/100.",
   },
 ];
 
