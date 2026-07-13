@@ -1,0 +1,104 @@
+/* Repair the customer menu card layout after the highlighted single-item layout
+   caused the card body to collapse. Loaded last so it safely overrides the
+   component SCSS without changing menu data or navigation behavior. */
+
+.restaurant-app .menu-detail-view .menu-grid:not(.list-view) {
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, 320px), 420px)
+  ) !important;
+  align-items: start !important;
+  justify-content: center !important;
+}
+
+.restaurant-app .menu-detail-view .menu-grid:not(.list-view) > .item-card {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  max-width: 420px !important;
+  min-height: 455px !important;
+  grid-template-columns: none !important;
+  grid-auto-flow: row !important;
+  align-self: start !important;
+  overflow: hidden !important;
+}
+
+.restaurant-app
+  .menu-detail-view
+  .menu-grid:not(.list-view)
+  > .item-card
+  > .thumb {
+  width: 100% !important;
+  height: 240px !important;
+  min-height: 240px !important;
+  flex: 0 0 240px !important;
+}
+
+.restaurant-app
+  .menu-detail-view
+  .menu-grid:not(.list-view)
+  > .item-card
+  > .details {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 215px !important;
+  height: auto !important;
+  padding: 1.2rem 1.25rem 1.25rem !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+}
+
+.restaurant-app
+  .menu-detail-view
+  .menu-grid:not(.list-view)
+  > .item-card
+  > .details
+  .bottom {
+  margin-top: auto !important;
+}
+
+/* Do not visually mute dish photography just because the restaurant is closed;
+   the card remains a clear, readable entry point to food details. */
+.restaurant-app
+  .menu-detail-view
+  .menu-grid:not(.list-view)
+  > .item-card.inactive
+  > .thumb
+  img {
+  filter: saturate(0.96) brightness(0.99) !important;
+}
+
+@media (max-width: 680px) {
+  .restaurant-app .menu-detail-view .menu-grid:not(.list-view) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .restaurant-app .menu-detail-view .menu-grid:not(.list-view) > .item-card {
+    max-width: none !important;
+    min-height: 0 !important;
+  }
+
+  .restaurant-app
+    .menu-detail-view
+    .menu-grid:not(.list-view)
+    > .item-card
+    > .thumb {
+    height: 220px !important;
+    min-height: 220px !important;
+    flex-basis: 220px !important;
+  }
+
+  .restaurant-app
+    .menu-detail-view
+    .menu-grid:not(.list-view)
+    > .item-card
+    > .details {
+    min-height: 0 !important;
+    padding: 1rem !important;
+  }
+}
