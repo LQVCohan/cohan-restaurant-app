@@ -4,6 +4,7 @@ import Table from "../../../models/table.model.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import * as authorizationService from "../../../src/services/auth/authorization.service.js";
 import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
+import { getTableReservationSnapshot } from "../../../src/services/reservationTableTiming.service.js";
 
 const TABLE_LIST_READ_PERMISSIONS = [
   PERMISSIONS.TABLE_READ,
@@ -76,7 +77,6 @@ async function cleanupTableLegacyState(restaurantId) {
       { ...scoped, "viewLock.expiresAt": { $lte: new Date() } },
       { $unset: { viewLock: 1 } },
     ).catch(() => {}),
-    // ponytail: 1đ was the old "not configured" sentinel, never a real deposit.
     Table.updateMany(
       { ...scoped, deposit: 1 },
       { $set: { deposit: 0 } },
@@ -120,8 +120,6 @@ export const normalizeTableLimit = (limit, fallback = 200) => {
 };
 
 export function buildTableFilter({ restaurantId, floorId, status, type, search }) {
-  // Bàn vật lý đang nằm trong một bàn ghép được giữ trong DB để có thể tách lại,
-  // nhưng không hiển thị đồng thời với bàn ghép.
   const q = { restaurantId, mergedIntoTableId: null };
   if (floorId && mongoose.isValidObjectId(floorId)) q.floorId = floorId;
   if (status) q.status = status;
@@ -137,6 +135,35 @@ export function buildTableFilter({ restaurantId, floorId, status, type, search }
   return q;
 }
 
+async function enrichManagerTables(rows, ctx) {
+  return Promise.all(
+    rows.map(async (table) => {
+      const snapshot = await getTableReservationSnapshot(table, ctx);
+      if (!snapshot) return table;
+      const storedStatus = String(table.status || "available");
+      const canUseReservationStatus = ![
+        "occupied",
+        "cleaning",
+        "offline",
+        "payment_pending",
+      ].includes(storedStatus);
+      const effectiveStatus =
+        canUseReservationStatus && snapshot.reservationPhase === "waiting"
+          ? "reserved"
+          : canUseReservationStatus &&
+              ["upcoming", "expired"].includes(snapshot.reservationPhase) &&
+              storedStatus === "reserved"
+            ? "available"
+            : storedStatus;
+      return {
+        ...table,
+        ...snapshot,
+        status: effectiveStatus,
+      };
+    }),
+  );
+}
+
 export default {
   tables: async (
     _p,
@@ -148,11 +175,12 @@ export default {
     await cleanupTableLegacyState(restaurantId);
     const q = buildTableFilter({ restaurantId, floorId, status, type, search });
 
-    return Table.find(q)
+    const rows = await Table.find(q)
       .select(TABLE_SELECT)
       .sort({ floorLevel: 1, code: 1 })
       .limit(normalizeTableLimit(limit))
       .lean({ virtuals: true });
+    return enrichManagerTables(rows, ctx);
   },
 
   publicTables: async (
@@ -175,17 +203,19 @@ export default {
     if (
       !mongoose.isValidObjectId(restaurantId) ||
       !mongoose.isValidObjectId(floorId)
-    )
+    ) {
       return null;
+    }
     await requireTableListAccess(ctx, restaurantId);
     await cleanupTableLegacyState(restaurantId);
-    return Table.findOne({
+    const table = await Table.findOne({
       restaurantId,
       floorId,
       code,
       mergedIntoTableId: null,
-    }).lean({
-      virtuals: true,
-    });
+    }).lean({ virtuals: true });
+    if (!table) return null;
+    const [enriched] = await enrichManagerTables([table], ctx);
+    return enriched;
   },
 };
