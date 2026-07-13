@@ -126,14 +126,17 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
     <section className="categories">
       <div className="categories__container">
         <div className="categories__header">
-          <div>
+          <div className="categories__heading-copy">
             <span className="categories__badge">Khám phá nhanh</span>
             <h3 className="categories__title">
               {isGlobal ? "Danh mục phổ biến" : "Thực đơn nhà hàng"}
             </h3>
+            <p className="categories__subtitle">
+              Chọn nhóm món phù hợp để tìm nhà hàng và thực đơn nhanh hơn.
+            </p>
           </div>
           <button type="button" className="categories__view-all" onClick={() => navigate("/restaurants")}>
-            Xem tất cả <span>›</span>
+            Xem tất cả <span>→</span>
           </button>
         </div>
 
