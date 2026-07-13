@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { gql, useQuery } from "@apollo/client";
 import PaymentModalLegacy from "./PaymentModalLegacy";
 import { usePos } from "@/context/PosContext";
 import useOrderManagement from "@/hooks/useOrderManagement";
@@ -11,6 +12,24 @@ import {
   tableHasPartialPaymentHistory,
 } from "@/utils/partialTablePaymentSelection";
 import "./PartialTablePayment.scss";
+
+const ACTIVE_RESERVATION_DEPOSIT = gql`
+  query PosActiveReservationDeposit($restaurantId: ID!, $tableId: ID!) {
+    activeReservationByTable(restaurantId: $restaurantId, tableId: $tableId) {
+      id
+      orderCode
+      status
+      customerName
+      depositAmount
+      tableDepositAmount
+      menuDepositAmount
+      depositStatus
+      depositAppliedAmount
+      depositAppliedAt
+      linkedMenuSubtotal
+    }
+  }
+`;
 
 const formatVnd = (value) =>
   new Intl.NumberFormat("vi-VN", {
@@ -78,6 +97,7 @@ export default function PaymentModal(props) {
         table?.restaurantId ||
         table?.restaurant_id ||
         pos?.currentTable?.restaurantId ||
+        pos?.restaurantId ||
         "",
       tableId:
         table?.id ||
@@ -94,8 +114,25 @@ export default function PaymentModal(props) {
       pos?.currentTable?.restaurantId,
       pos?.currentTable?.id,
       pos?.currentTable?._id,
+      pos?.restaurantId,
     ],
   );
+
+  const { data: reservationDepositData } = useQuery(
+    ACTIVE_RESERVATION_DEPOSIT,
+    {
+      variables: paymentScope,
+      skip:
+        !isOpen ||
+        !isDineIn ||
+        !paymentScope.restaurantId ||
+        !paymentScope.tableId,
+      fetchPolicy: "cache-and-network",
+      nextFetchPolicy: "cache-first",
+    },
+  );
+  const reservationDeposit =
+    reservationDepositData?.activeReservationByTable || null;
 
   useEffect(() => {
     if (!isOpen || !isDineIn || !allOrderIds.length) return;
@@ -151,6 +188,28 @@ export default function PaymentModal(props) {
     if (!isPartialPayment) return Number(totalAmount || 0);
     return selectedItems.reduce((sum, item) => sum + getLineTotal(item), 0);
   }, [isPartialPayment, selectedItems, totalAmount]);
+
+  const reservationDepositCredit = useMemo(() => {
+    if (
+      !reservationDeposit ||
+      isPartialPayment ||
+      String(reservationDeposit.depositStatus || "").toLowerCase() !== "paid" ||
+      reservationDeposit.depositAppliedAt
+    ) {
+      return 0;
+    }
+    const remaining = Math.max(
+      0,
+      Number(reservationDeposit.depositAmount || 0) -
+        Number(reservationDeposit.depositAppliedAmount || 0),
+    );
+    return Math.min(Math.max(0, selectedTotalAmount), remaining);
+  }, [isPartialPayment, reservationDeposit, selectedTotalAmount]);
+
+  const amountAfterReservationDeposit = Math.max(
+    0,
+    selectedTotalAmount - reservationDepositCredit,
+  );
 
   const toggleBatch = useCallback((orderId) => {
     const normalized = normalizeId(orderId);
@@ -239,6 +298,8 @@ export default function PaymentModal(props) {
         remainingOrderIds,
         paidBatchCount: paidOrderIds.length,
         totalBatchCount: allOrderIds.length,
+        reservationDepositCredit,
+        amountCollectedAfterDeposit: amountAfterReservationDeposit,
       });
 
       if (isPartialPayment) {
@@ -247,9 +308,11 @@ export default function PaymentModal(props) {
     },
     [
       allOrderIds,
+      amountAfterReservationDeposit,
       isPartialPayment,
       onComplete,
       paymentScope,
+      reservationDepositCredit,
       restoreTableAfterPartialPayment,
       selectedIdSet,
     ],
@@ -257,15 +320,70 @@ export default function PaymentModal(props) {
 
   const showBatchSelector =
     isOpen && isDineIn && payableBatches.length > 1;
+  const showDepositPanel =
+    isOpen &&
+    isDineIn &&
+    reservationDeposit &&
+    String(reservationDeposit.depositStatus || "").toLowerCase() === "paid" &&
+    Number(reservationDeposit.depositAmount || 0) > 0;
 
   return (
     <>
       <PaymentModalLegacy
         {...props}
         order={selectedItems}
-        totalAmount={selectedTotalAmount}
+        totalAmount={
+          reservationDepositCredit > 0
+            ? amountAfterReservationDeposit
+            : selectedTotalAmount
+        }
         onComplete={handleComplete}
       />
+
+      {showDepositPanel && (
+        <aside
+          className={`reservation-deposit-credit-panel ${
+            isPartialPayment ? "is-deferred" : "is-applied"
+          }`}
+          aria-label="Tiền cọc đặt bàn"
+        >
+          <div className="reservation-deposit-credit-panel__header">
+            <span>TIỀN CỌC ĐÃ GHI NHẬN</span>
+            <strong>{formatVnd(reservationDeposit.depositAmount)}</strong>
+          </div>
+          <div className="reservation-deposit-credit-panel__rows">
+            {Number(reservationDeposit.tableDepositAmount || 0) > 0 && (
+              <div>
+                <span>Cọc bàn</span>
+                <strong>{formatVnd(reservationDeposit.tableDepositAmount)}</strong>
+              </div>
+            )}
+            {Number(reservationDeposit.menuDepositAmount || 0) > 0 && (
+              <div>
+                <span>Cọc món</span>
+                <strong>{formatVnd(reservationDeposit.menuDepositAmount)}</strong>
+              </div>
+            )}
+            {!isPartialPayment && (
+              <div className="reservation-deposit-credit-panel__credit">
+                <span>Khấu trừ vào order tổng</span>
+                <strong>-{formatVnd(reservationDepositCredit)}</strong>
+              </div>
+            )}
+            {!isPartialPayment && (
+              <div className="reservation-deposit-credit-panel__due">
+                <span>Còn phải thu trước ưu đãi</span>
+                <strong>{formatVnd(amountAfterReservationDeposit)}</strong>
+              </div>
+            )}
+          </div>
+          <p>
+            {isPartialPayment
+              ? "Tiền cọc chưa dùng cho thanh toán từng đợt. Hệ thống sẽ trừ một lần khi thanh toán toàn bộ phần còn lại của bàn."
+              : "Backend sẽ khấu trừ tiền cọc sau khi tính coupon/promotion và chỉ ghi nhận phần tiền thực thu mới vào giao dịch POS."}
+          </p>
+        </aside>
+      )}
 
       {showBatchSelector && (
         <aside
