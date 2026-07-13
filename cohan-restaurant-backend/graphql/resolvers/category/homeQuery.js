@@ -4,7 +4,6 @@ import {
   MenuItem,
   Restaurant,
 } from "../../../models/index.js";
-import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 import { buildPublicRestaurantFilter } from "../restaurant/publicRestaurantAccess.js";
 import { aggregateGlobalHomeCategories } from "./homeCategoryAggregation.js";
 
@@ -14,13 +13,10 @@ async function topGlobalCategoriesByMenuItemCount(
 ) {
   const publicRestaurants = await Restaurant.find(
     buildPublicRestaurantFilter(),
-  ).lean();
-  const restaurantIds = publicRestaurants
-    .filter(
-      (restaurant) =>
-        computeRestaurantAvailability(restaurant).canOrder === true,
-    )
-    .map((restaurant) => restaurant._id);
+  )
+    .select({ _id: 1 })
+    .lean();
+  const restaurantIds = publicRestaurants.map((restaurant) => restaurant._id);
 
   if (!restaurantIds.length) return [];
 
