@@ -57,6 +57,7 @@ export default function AuthSessionReconciler({ children }) {
       if (
         explicitAnonymousRef.current ||
         latestAuth.token === session.token ||
+        (latestAuth.token && latestAuth.user) ||
         !latestAuth.login
       ) {
         return;
