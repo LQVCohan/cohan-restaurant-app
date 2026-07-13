@@ -39,10 +39,15 @@ const ensureSmall = (label, text, className) => {
 
   let small = className ? span.querySelector(`small.${className}`) : null;
   if (!small) {
+    small = [...span.querySelectorAll("small")].find(
+      (candidate) => normalizeText(candidate.textContent) === normalizeText(text),
+    );
+  }
+  if (!small) {
     small = document.createElement("small");
-    if (className) small.className = className;
     span.appendChild(small);
   }
+  if (className) small.classList.add(className);
   if (small.textContent !== text) small.textContent = text;
 };
 
