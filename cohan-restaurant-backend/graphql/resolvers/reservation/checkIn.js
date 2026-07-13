@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { EventLog, Order, Reservation, Table } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
-import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import { requireAnyRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import {
   getReservationEarliestCheckInAt,
   isReservationCheckInOpen,
@@ -19,6 +19,14 @@ import {
   buildActiveTableSessionKey,
 } from "../../../utils/orderLifecycle.js";
 import { confirmReservationSlot } from "../../../src/services/reservationAvailability.service.js";
+
+const RESERVATION_CHECK_IN_PERMISSIONS = Object.freeze([
+  PERMISSIONS.RESERVATION_UPDATE,
+  PERMISSIONS.RESERVATION_READ,
+  PERMISSIONS.ORDER_CREATE,
+  PERMISSIONS.ORDER_READ,
+  PERMISSIONS.TABLE_WRITE,
+]);
 
 function toObjectId(id, field = "ID") {
   if (!id || !mongoose.isValidObjectId(id)) {
@@ -37,6 +45,13 @@ function appendNote(existing, note) {
   const clean = String(note || "").trim();
   if (!clean) return existing;
   return [existing, clean].filter(Boolean).join("\n");
+}
+
+function getMinutesBeforeReservation(reservation, now = new Date()) {
+  const reservationAt = new Date(reservation?.timeTo || 0).getTime();
+  const nowAt = new Date(now).getTime();
+  if (!Number.isFinite(reservationAt) || !Number.isFinite(nowAt)) return 0;
+  return Math.max(0, Math.ceil((reservationAt - nowAt) / 60000));
 }
 
 async function createUniqueOrderCode(prefix, date, tableCode, session) {
@@ -61,13 +76,18 @@ async function findActiveTableSession({ restaurantId, tableId, tableCode, sessio
   return query;
 }
 
-export function assertReservationArrivalWindow(reservation, now = new Date()) {
+export function assertReservationArrivalWindow(
+  reservation,
+  now = new Date(),
+  { confirmEarlyArrival = false } = {},
+) {
   if (String(reservation?.status || "") === "seated") return;
   if (isReservationCheckInOpen(reservation, now)) return;
+  if (confirmEarlyArrival === true) return;
 
   const earliestCheckInAt = getReservationEarliestCheckInAt(reservation);
   throw new GraphQLError(
-    "Chưa đến thời gian nhận khách. Chỉ được check-in sớm tối đa 15 phút trước giờ đặt.",
+    "Khách đến sớm hơn mốc nhận thông thường. Cần nhân viên xác nhận trước khi mở bàn.",
     {
       extensions: {
         code: "RESERVATION_CHECK_IN_TOO_EARLY",
@@ -75,12 +95,21 @@ export function assertReservationArrivalWindow(reservation, now = new Date()) {
         reservationTime: reservation?.timeTo
           ? new Date(reservation.timeTo).toISOString()
           : null,
+        minutesBeforeReservation: getMinutesBeforeReservation(reservation, now),
+        orderCode: reservation?.orderCode || null,
+        customerName: reservation?.customerName || null,
+        tableCode: reservation?.tableCode || null,
+        requiresStaffConfirmation: true,
       },
     },
   );
 }
 
-function assertCheckInAllowed(reservation, now = new Date()) {
+function assertCheckInAllowed(
+  reservation,
+  now = new Date(),
+  { confirmEarlyArrival = false } = {},
+) {
   const status = String(reservation.status || "");
   if (!["confirmed", "seated"].includes(status)) {
     throw new GraphQLError("Chỉ có reservation đã xác nhận mới được check-in.", {
@@ -92,7 +121,7 @@ function assertCheckInAllowed(reservation, now = new Date()) {
       extensions: { code: "RESERVATION_CHANGE_PENDING" },
     });
   }
-  assertReservationArrivalWindow(reservation, now);
+  assertReservationArrivalWindow(reservation, now, { confirmEarlyArrival });
 }
 
 function isSameReservationSession(activeSession, reservation) {
@@ -256,8 +285,22 @@ async function checkInReservationCore({ input, ctx }) {
       );
       if (!reservation) throw new GraphQLError("Reservation not found", { extensions: { code: "NOT_FOUND" } });
 
-      await requireRestaurantPermission(ctx, reservation.restaurantId, PERMISSIONS.RESERVATION_UPDATE);
-      assertCheckInAllowed(reservation);
+      await requireAnyRestaurantPermission(
+        ctx,
+        reservation.restaurantId,
+        RESERVATION_CHECK_IN_PERMISSIONS,
+      );
+
+      const checkInAt = new Date();
+      const confirmEarlyArrival = input.confirmEarlyArrival === true;
+      const minutesBeforeReservation = getMinutesBeforeReservation(
+        reservation,
+        checkInAt,
+      );
+      const isEarlyArrivalConfirmation =
+        confirmEarlyArrival && !isReservationCheckInOpen(reservation, checkInAt);
+
+      assertCheckInAllowed(reservation, checkInAt, { confirmEarlyArrival });
 
       const table = await Table.findOne(
         {
@@ -310,6 +353,10 @@ async function checkInReservationCore({ input, ctx }) {
             reusedSession: sessionState.reused,
             attachedReservationOrders: attachedOrderCount,
             depositAmount: Number(reservation.depositAmount || 0),
+            earlyArrivalConfirmed: isEarlyArrivalConfirmation,
+            minutesBeforeReservation: isEarlyArrivalConfirmation
+              ? minutesBeforeReservation
+              : 0,
           },
         },
         { session },
