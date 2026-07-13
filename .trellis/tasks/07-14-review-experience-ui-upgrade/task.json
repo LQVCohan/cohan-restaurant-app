@@ -1,0 +1,24 @@
+{
+  "id": "07-14-review-experience-ui-upgrade",
+  "title": "Upgrade restaurant review experience",
+  "status": "in_progress",
+  "type": "frontend-ui",
+  "scope": [
+    "src/components/Customer/RestaurantDetail/components/ReviewsSection/ReviewsSection.jsx",
+    "src/components/Customer/RestaurantDetail/components/ReviewsSection/ReviewsSection.scss"
+  ],
+  "validation": {
+    "planned": [
+      "npx vitest run src/components/Customer/RestaurantDetail/components/ReviewsSection/ReviewsSection.test.jsx src/components/Customer/RestaurantDetail/components/ReviewsSection/ReviewsSection.flow.test.jsx",
+      "npm run check:conflicts",
+      "npm run check:graphql",
+      "npm run build",
+      "manual responsive review at 390x844, 430x932, 768px, 1024px and 1440px"
+    ],
+    "completed": [
+      "read AGENTS.md, Trellis workflow, ponytail, frontend-design, redesign-existing-projects, ui-ux-pro-max, web-design-guidelines, wcag-ui-audit and react-ui-performance",
+      "reviewed the current screenshots, RestaurantDetail shell, ReviewsSection data flow, shared Modal implementation and existing component tests"
+    ],
+    "notRun": []
+  }
+}
