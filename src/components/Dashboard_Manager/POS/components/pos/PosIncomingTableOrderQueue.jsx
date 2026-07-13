@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import {
+  Camera,
   Check,
   ChevronDown,
   ClipboardList,
@@ -10,9 +11,14 @@ import {
 } from "lucide-react";
 
 import { AuthContext } from "@/context/AuthContext";
+import StaffProofCaptureModal from "@/components/Staff/components/StaffProofCaptureModal";
 import useSocketOrder from "@/hooks/useSocketOrder";
 import { useNotification } from "@/hooks/useNotification";
 import { hasAnyPermission } from "@/utils/frontendPermissionAccess";
+import {
+  normalizeProofImages,
+  requiresProofImage,
+} from "@/utils/orderProofRules";
 
 import styles from "./PosIncomingTableOrderQueue.module.scss";
 
@@ -47,6 +53,7 @@ const POS_INCOMING_TABLE_ORDERS = gql`
             quantity
             unit
             weightGrams
+            proofImages
             note
             servingVariant { mode sellUnit }
           }
@@ -101,6 +108,12 @@ const getErrorMessage = (error, fallback) =>
   error?.message ||
   fallback;
 
+const getMissingProofItems = (order) =>
+  (order?.items || []).filter(
+    (item) =>
+      requiresProofImage(item) && normalizeProofImages(item?.proofImages).length === 0,
+  );
+
 export default function PosIncomingTableOrderQueue({
   restaurantId,
   allowReject,
@@ -116,9 +129,10 @@ export default function PosIncomingTableOrderQueue({
   const [rejectReason, setRejectReason] = useState("");
   const [revealedRequestId, setRevealedRequestId] = useState("");
   const [actionError, setActionError] = useState("");
+  const [proofTarget, setProofTarget] = useState(null);
 
   const { data, loading, refetch } = useQuery(POS_INCOMING_TABLE_ORDERS, {
-    variables: { restaurantId, limit: 60 },
+    variables: { restaurantId, limit: 200 },
     skip: !restaurantId,
     fetchPolicy: "cache-and-network",
     pollInterval: 12000,
@@ -188,8 +202,34 @@ export default function PosIncomingTableOrderQueue({
     }
   }, [accessRequests, revealedRequestId]);
 
+  const openProofCapture = (order, item) => {
+    if (!order?.id || !item?._id) return;
+    setActionError("");
+    setProofTarget({
+      ...item,
+      id: item._id,
+      persisted: true,
+      restaurantId,
+      orderId: order.id,
+      orderItemId: item._id,
+    });
+  };
+
   const handleConfirm = async (order) => {
     if (!order?.id || busyOrderId) return;
+
+    const missingProofItems = getMissingProofItems(order);
+    if (missingProofItems.length) {
+      const names = missingProofItems
+        .slice(0, 3)
+        .map((item) => item.name)
+        .join(", ");
+      setActionError(
+        `Chưa thể chuyển bếp. Các món cần ảnh minh chứng: ${names}.`,
+      );
+      return;
+    }
+
     setBusyOrderId(order.id);
     setActionError("");
     try {
@@ -247,185 +287,228 @@ export default function PosIncomingTableOrderQueue({
   if (!restaurantId) return null;
 
   return (
-    <details className={styles.queue} open={pendingCount > 0}>
-      <summary className={styles.summary}>
-        <span className={styles.summaryIcon} aria-hidden="true">
-          <ClipboardList size={18} />
-        </span>
-        <span className={styles.summaryCopy}>
-          <strong>QR tại bàn cần xử lý</strong>
-          <small>
-            {loading && !pendingCount
-              ? "Đang kiểm tra…"
-              : pendingCount
-                ? `${accessRequests.length} xác nhận · ${pendingOrders.length} order`
-                : "Không có yêu cầu QR đang chờ"}
-          </small>
-        </span>
-        {pendingCount ? (
-          <span className={styles.count} aria-label={`${pendingCount} yêu cầu QR đang chờ`}>
-            {pendingCount}
+    <>
+      <details className={styles.queue} open={pendingCount > 0}>
+        <summary className={styles.summary}>
+          <span className={styles.summaryIcon} aria-hidden="true">
+            <ClipboardList size={18} />
           </span>
-        ) : null}
-        <ChevronDown className={styles.chevron} aria-hidden="true" />
-      </summary>
+          <span className={styles.summaryCopy}>
+            <strong>QR tại bàn cần xử lý</strong>
+            <small>
+              {loading && !pendingCount
+                ? "Đang kiểm tra…"
+                : pendingCount
+                  ? `${accessRequests.length} xác nhận · ${pendingOrders.length} order`
+                  : "Không có yêu cầu QR đang chờ"}
+            </small>
+          </span>
+          {pendingCount ? (
+            <span className={styles.count} aria-label={`${pendingCount} yêu cầu QR đang chờ`}>
+              {pendingCount}
+            </span>
+          ) : null}
+          <ChevronDown className={styles.chevron} aria-hidden="true" />
+        </summary>
 
-      <div className={styles.body} aria-live="polite">
-        {actionError ? <p className={styles.error} role="alert">{actionError}</p> : null}
+        <div className={styles.body} aria-live="polite">
+          {actionError ? <p className={styles.error} role="alert">{actionError}</p> : null}
 
-        {accessRequests.map((request) => {
-          const isRevealed = revealedRequestId === request.requestId;
-          return (
-            <article
-              className={`${styles.card} ${styles.accessCard}`}
-              key={request.requestId}
-            >
-              <header className={styles.accessHeader}>
-                <span className={styles.accessIcon} aria-hidden="true">
-                  <ShieldCheck size={18} />
-                </span>
-                <div>
-                  <span>Khách chờ xác nhận tại bàn</span>
-                  <strong>Bàn {request.tableCode || "--"}</strong>
-                </div>
-                <em>#{request.requestLabel}</em>
-              </header>
-
-              <p className={styles.securityNote}>
-                Tới đúng bàn, yêu cầu khách mở màn hình có mã <strong>#{request.requestLabel}</strong>, rồi mới hiện và đọc mã 6 số.
-              </p>
-
-              <div className={styles.accessMeta}>
-                <span>Yêu cầu lúc {formatTime(request.requestedAt)}</span>
-                <span>Hết hạn {formatTime(request.expiresAt)}</span>
-              </div>
-
-              {isRevealed ? (
-                <div className={styles.confirmationCode} role="status">
-                  <span>Mã xác nhận tại bàn</span>
-                  <strong>{request.confirmationCode}</strong>
-                  <small>Chỉ đọc cho khách đang cầm thiết bị có mã yêu cầu khớp.</small>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className={styles.revealCode}
-                  onClick={() => setRevealedRequestId(request.requestId)}
-                >
-                  <KeyRound size={17} aria-hidden="true" />
-                  Đã tới đúng bàn – hiện mã
-                </button>
-              )}
-            </article>
-          );
-        })}
-
-        {pendingOrders.map((order) => {
-          const isBusy = busyOrderId === order.id;
-          const isRejecting = canReject && rejectOrderId === order.id;
-          return (
-            <article className={styles.card} key={order.id}>
-              <header className={styles.cardHeader}>
-                <div>
-                  <span>Bàn</span>
-                  <strong>{order.tableCode || "--"}</strong>
-                </div>
-                <div className={styles.cardMeta}>
-                  <span>{order.orderCode}</span>
-                  <strong>{formatMoney(order.totals?.grandTotal)}</strong>
-                </div>
-              </header>
-
-              <ul className={styles.items}>
-                {(order.items || []).map((item) => (
-                  <li key={item._id || `${order.id}-${item.name}`}>
-                    <div>
-                      <strong>{item.name}</strong>
-                      {item.note ? <small>{item.note}</small> : null}
-                    </div>
-                    <span>{formatQuantity(item)}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {order.note ? (
-                <p className={styles.note}><strong>Ghi chú:</strong> {order.note}</p>
-              ) : null}
-
-              {isRejecting ? (
-                <form
-                  className={styles.rejectForm}
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void handleReject(order);
-                  }}
-                >
-                  <label htmlFor={`pos-reject-order-${order.id}`}>Lý do từ chối</label>
-                  <textarea
-                    id={`pos-reject-order-${order.id}`}
-                    value={rejectReason}
-                    onChange={(event) => setRejectReason(event.target.value.slice(0, 300))}
-                    placeholder="Ví dụ: món đã hết, cần khách chọn lại…"
-                    rows={2}
-                    autoFocus
-                    disabled={isBusy}
-                  />
-                  <div className={styles.actions}>
-                    <button type="submit" className={styles.rejectConfirm} disabled={isBusy}>
-                      <X size={16} aria-hidden="true" />
-                      {isBusy ? "Đang từ chối…" : "Xác nhận từ chối"}
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.secondary}
-                      onClick={() => {
-                        setRejectOrderId("");
-                        setRejectReason("");
-                        setActionError("");
-                      }}
-                      disabled={isBusy}
-                    >
-                      Hủy
-                    </button>
+          {accessRequests.map((request) => {
+            const isRevealed = revealedRequestId === request.requestId;
+            return (
+              <article
+                className={`${styles.card} ${styles.accessCard}`}
+                key={request.requestId}
+              >
+                <header className={styles.accessHeader}>
+                  <span className={styles.accessIcon} aria-hidden="true">
+                    <ShieldCheck size={18} />
+                  </span>
+                  <div>
+                    <span>Khách chờ xác nhận tại bàn</span>
+                    <strong>Bàn {request.tableCode || "--"}</strong>
                   </div>
-                </form>
-              ) : (
-                <div className={styles.actions}>
+                  <em>#{request.requestLabel}</em>
+                </header>
+
+                <p className={styles.securityNote}>
+                  Tới đúng bàn, yêu cầu khách mở màn hình có mã <strong>#{request.requestLabel}</strong>, rồi mới hiện và đọc mã 6 số.
+                </p>
+
+                <div className={styles.accessMeta}>
+                  <span>Yêu cầu lúc {formatTime(request.requestedAt)}</span>
+                  <span>Hết hạn {formatTime(request.expiresAt)}</span>
+                </div>
+
+                {isRevealed ? (
+                  <div className={styles.confirmationCode} role="status">
+                    <span>Mã xác nhận tại bàn</span>
+                    <strong>{request.confirmationCode}</strong>
+                    <small>Chỉ đọc cho khách đang cầm thiết bị có mã yêu cầu khớp.</small>
+                  </div>
+                ) : (
                   <button
                     type="button"
-                    className={styles.accept}
-                    onClick={() => void handleConfirm(order)}
-                    disabled={Boolean(busyOrderId)}
+                    className={styles.revealCode}
+                    onClick={() => setRevealedRequestId(request.requestId)}
                   >
-                    <Check size={16} aria-hidden="true" />
-                    {isBusy ? "Đang nhận…" : "Nhận & chuyển bếp"}
+                    <KeyRound size={17} aria-hidden="true" />
+                    Đã tới đúng bàn – hiện mã
                   </button>
-                  {canReject ? (
+                )}
+              </article>
+            );
+          })}
+
+          {pendingOrders.map((order) => {
+            const isBusy = busyOrderId === order.id;
+            const isRejecting = canReject && rejectOrderId === order.id;
+            const missingProofItems = getMissingProofItems(order);
+            const firstMissingProofItem = missingProofItems[0] || null;
+            return (
+              <article className={styles.card} key={order.id}>
+                <header className={styles.cardHeader}>
+                  <div>
+                    <span>Bàn</span>
+                    <strong>{order.tableCode || "--"}</strong>
+                  </div>
+                  <div className={styles.cardMeta}>
+                    <span>{order.orderCode}</span>
+                    <strong>{formatMoney(order.totals?.grandTotal)}</strong>
+                  </div>
+                </header>
+
+                <ul className={styles.items}>
+                  {(order.items || []).map((item) => {
+                    const proofImages = normalizeProofImages(item?.proofImages);
+                    const proofRequired = requiresProofImage(item);
+                    return (
+                      <li key={item._id || `${order.id}-${item.name}`}>
+                        <div>
+                          <strong>{item.name}</strong>
+                          {item.note ? <small>{item.note}</small> : null}
+                          {proofRequired ? (
+                            <small>
+                              {proofImages.length
+                                ? `Đã có ${proofImages.length} ảnh minh chứng`
+                                : "Cần ảnh minh chứng trước khi chuyển bếp"}
+                            </small>
+                          ) : null}
+                        </div>
+                        <span>{formatQuantity(item)}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                {order.note ? (
+                  <p className={styles.note}><strong>Ghi chú:</strong> {order.note}</p>
+                ) : null}
+
+                {isRejecting ? (
+                  <form
+                    className={styles.rejectForm}
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void handleReject(order);
+                    }}
+                  >
+                    <label htmlFor={`pos-reject-order-${order.id}`}>Lý do từ chối</label>
+                    <textarea
+                      id={`pos-reject-order-${order.id}`}
+                      value={rejectReason}
+                      onChange={(event) => setRejectReason(event.target.value.slice(0, 300))}
+                      placeholder="Ví dụ: món đã hết, cần khách chọn lại…"
+                      rows={2}
+                      autoFocus
+                      disabled={isBusy}
+                    />
+                    <div className={styles.actions}>
+                      <button type="submit" className={styles.rejectConfirm} disabled={isBusy}>
+                        <X size={16} aria-hidden="true" />
+                        {isBusy ? "Đang từ chối…" : "Xác nhận từ chối"}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.secondary}
+                        onClick={() => {
+                          setRejectOrderId("");
+                          setRejectReason("");
+                          setActionError("");
+                        }}
+                        disabled={isBusy}
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className={styles.actions}>
+                    {firstMissingProofItem ? (
+                      <button
+                        type="button"
+                        className={styles.secondary}
+                        onClick={() => openProofCapture(order, firstMissingProofItem)}
+                        disabled={Boolean(busyOrderId)}
+                      >
+                        <Camera size={16} aria-hidden="true" />
+                        Bổ sung ảnh {firstMissingProofItem.name}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
-                      className={styles.secondary}
-                      onClick={() => {
-                        setRejectOrderId(order.id);
-                        setRejectReason("");
-                        setActionError("");
-                      }}
-                      disabled={Boolean(busyOrderId)}
+                      className={styles.accept}
+                      onClick={() => void handleConfirm(order)}
+                      disabled={Boolean(busyOrderId) || missingProofItems.length > 0}
                     >
-                      Từ chối
+                      <Check size={16} aria-hidden="true" />
+                      {isBusy ? "Đang nhận…" : "Nhận & chuyển bếp"}
                     </button>
-                  ) : null}
-                </div>
-              )}
-            </article>
-          );
-        })}
+                    {canReject ? (
+                      <button
+                        type="button"
+                        className={styles.secondary}
+                        onClick={() => {
+                          setRejectOrderId(order.id);
+                          setRejectReason("");
+                          setActionError("");
+                        }}
+                        disabled={Boolean(busyOrderId)}
+                      >
+                        Từ chối
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+              </article>
+            );
+          })}
 
-        {!pendingCount ? (
-          <p className={styles.empty}>
-            Yêu cầu xác nhận tại bàn và order khách gửi từ QR sẽ xuất hiện tại đây.
-          </p>
-        ) : null}
-      </div>
-    </details>
+          {!pendingCount ? (
+            <p className={styles.empty}>
+              Yêu cầu xác nhận tại bàn và order khách gửi từ QR sẽ xuất hiện tại đây.
+            </p>
+          ) : null}
+        </div>
+      </details>
+
+      {proofTarget ? (
+        <StaffProofCaptureModal
+          open
+          item={proofTarget}
+          onClose={() => setProofTarget(null)}
+          onSave={(images) => {
+            setProofTarget(null);
+            setActionError("");
+            showNotification(
+              `Đã lưu ${normalizeProofImages(images).length} ảnh minh chứng cho ${proofTarget.name}.`,
+              "success",
+            );
+            void refetch?.();
+          }}
+        />
+      ) : null}
+    </>
   );
 }
