@@ -3,7 +3,7 @@ import { apolloClient } from "../apollo/client";
 import { getToken } from "../lib/authStorage";
 import { toApiAssetUrl } from "../lib/apiBaseUrl";
 
-const CUSTOMER_MENU_RESTAURANT_LOOKUP = gql`
+const RESTAURANT_LOOKUP = gql`
   query CustomerMenuRestaurantComboLookup($limit: Int) {
     publicRestaurants(limit: $limit) {
       edges {
@@ -16,7 +16,7 @@ const CUSTOMER_MENU_RESTAURANT_LOOKUP = gql`
   }
 `;
 
-const CUSTOMER_MENU_RESTAURANT_COMBOS = gql`
+const RESTAURANT_COMBOS = gql`
   query CustomerMenuRestaurantCombos($filter: CustomerComboFilterInput) {
     customerCombos(filter: $filter) {
       id
@@ -38,14 +38,12 @@ const CUSTOMER_MENU_RESTAURANT_COMBOS = gql`
         menuItemId
         name
         qty
-        imageUrl
-        price
       }
     }
   }
 `;
 
-const ADD_CUSTOMER_MENU_COMBO_TO_CART = gql`
+const ADD_COMBO_TO_CART = gql`
   mutation AddCustomerMenuComboToCart($comboId: ID!, $quantity: Int = 1) {
     addComboToCart(comboId: $comboId, quantity: $quantity) {
       id
@@ -57,166 +55,155 @@ const ADD_CUSTOMER_MENU_COMBO_TO_CART = gql`
 
 const PAGE_SELECTOR = ".restaurant-app .menu-detail-view";
 const CONTAINER_SELECTOR = `${PAGE_SELECTOR} .menu-detail-container`;
-const ROOT_ATTRIBUTE = "data-customer-menu-restaurant-combos";
+const ROOT_SELECTOR = "[data-customer-menu-restaurant-combos]";
 const DEFAULT_IMAGE = "/default-dishes.jpg";
-const READY_STATES = new Set(["loading", "ready", "empty", "unresolved"]);
+const SETTLED_STATES = new Set(["loading", "ready", "empty", "error", "unresolved"]);
 
-let observer = null;
-let syncQueued = false;
+let queued = false;
 let requestSequence = 0;
 
-const formatMoney = (value) =>
-  `${Number(value || 0).toLocaleString("vi-VN")}đ`;
+const money = (value) => `${Number(value || 0).toLocaleString("vi-VN")}đ`;
 
-const createElement = (tag, className, text) => {
-  const element = document.createElement(tag);
-  if (className) element.className = className;
-  if (text != null) element.textContent = text;
-  return element;
+const element = (tag, className, text) => {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text != null) node.textContent = text;
+  return node;
 };
 
-const getRestaurantName = () =>
+const restaurantNameFromPage = () =>
   document
     .querySelector(`${PAGE_SELECTOR} .restaurant-title-block h2`)
     ?.textContent?.trim() || "Nhà hàng";
 
-const getRestaurantIdFromVisibleMenu = (container) => {
-  const urlRestaurantId = new URLSearchParams(window.location.search).get(
-    "restaurantId",
-  );
-  if (urlRestaurantId) return urlRestaurantId;
+const restaurantIdFromPage = (container) => {
+  const explicitId = new URLSearchParams(window.location.search).get("restaurantId");
+  if (explicitId) return explicitId;
 
-  const links = container.querySelectorAll(
+  for (const link of container.querySelectorAll(
     '.menu-grid .item-card[href*="restaurantId="]',
-  );
-  for (const link of links) {
+  )) {
     try {
       const restaurantId = new URL(link.href, window.location.origin).searchParams.get(
         "restaurantId",
       );
       if (restaurantId) return restaurantId;
     } catch {
-      // Ignore malformed links and continue with the restaurant-name fallback.
+      // Continue to the restaurant-name lookup below.
     }
   }
-
   return null;
 };
 
-const resolveRestaurantIdByName = async (restaurantName) => {
+const resolveRestaurantId = async (restaurantName) => {
   const { data } = await apolloClient.query({
-    query: CUSTOMER_MENU_RESTAURANT_LOOKUP,
+    query: RESTAURANT_LOOKUP,
     variables: { limit: 100 },
     fetchPolicy: "cache-first",
   });
-
-  const normalizedName = String(restaurantName || "")
-    .trim()
-    .toLocaleLowerCase("vi");
-  const restaurants = (data?.publicRestaurants?.edges || [])
-    .map((edge) => edge?.node)
-    .filter(Boolean);
-  const exactMatch = restaurants.find(
-    (restaurant) =>
-      String(restaurant?.name || "")
-        .trim()
-        .toLocaleLowerCase("vi") === normalizedName,
-  );
-
-  return exactMatch?.id || null;
+  const wantedName = String(restaurantName).trim().toLocaleLowerCase("vi");
+  const restaurant = (data?.publicRestaurants?.edges || [])
+    .map((entry) => entry?.node)
+    .find(
+      (entry) =>
+        String(entry?.name || "").trim().toLocaleLowerCase("vi") === wantedName,
+    );
+  return restaurant?.id || null;
 };
 
 const ensureRoot = (container) => {
-  let root = container.querySelector(`[${ROOT_ATTRIBUTE}]`);
-  if (root) return root;
-
-  root = document.createElement("section");
-  root.setAttribute(ROOT_ATTRIBUTE, "");
-  root.className = "customer-menu-combos";
+  const existing = container.querySelector(ROOT_SELECTOR);
+  if (existing) return existing;
+  const root = element("section", "customer-menu-combos");
+  root.setAttribute("data-customer-menu-restaurant-combos", "");
   root.setAttribute("aria-live", "polite");
   container.append(root);
   return root;
 };
 
-const renderLoading = (root, restaurantName) => {
-  root.replaceChildren();
-  const header = createElement("div", "customer-menu-combos__header");
-  const copy = createElement("div", "customer-menu-combos__header-copy");
+const buildHeader = (restaurantName, count, restaurantId) => {
+  const header = element("div", "customer-menu-combos__header");
+  const copy = element("div", "customer-menu-combos__header-copy");
   copy.append(
-    createElement("span", "customer-menu-combos__eyebrow", "Combo nhà hàng"),
-    createElement("h3", "", `Combo tại ${restaurantName}`),
-    createElement(
+    element("span", "customer-menu-combos__eyebrow", "Combo nhà hàng"),
+    element("h3", "", `Combo tại ${restaurantName}`),
+    element(
       "p",
       "",
-      "Đang kiểm tra các combo đang bán và mức giá tiết kiệm...",
+      "Các gói món được lọc riêng theo đúng nhà hàng bạn đang xem.",
     ),
   );
   header.append(copy);
 
-  const loading = createElement("div", "customer-menu-combos__loading");
-  loading.setAttribute("role", "status");
-  loading.append(
-    createElement("span", "customer-menu-combos__spinner"),
-    createElement("span", "", "Đang tải combo của nhà hàng"),
-  );
-  root.append(header, loading);
+  if (Number.isFinite(count)) {
+    const actions = element("div", "customer-menu-combos__header-actions");
+    actions.append(element("span", "customer-menu-combos__count", `${count} combo`));
+    const link = element(
+      "a",
+      "customer-menu-combos__all-link",
+      "Khám phá trang Combo",
+    );
+    link.href = restaurantId
+      ? `/combos?restaurantId=${encodeURIComponent(restaurantId)}`
+      : "/combos";
+    actions.append(link);
+    header.append(actions);
+  }
+  return header;
 };
 
-const renderMessage = ({ root, restaurantName, title, message, tone, retry }) => {
-  root.replaceChildren();
-  const header = createElement("div", "customer-menu-combos__header");
-  const copy = createElement("div", "customer-menu-combos__header-copy");
-  copy.append(
-    createElement("span", "customer-menu-combos__eyebrow", "Combo nhà hàng"),
-    createElement("h3", "", `Combo tại ${restaurantName}`),
-    createElement("p", "", "Các gói món được lọc riêng theo nhà hàng đang xem."),
+const renderLoading = (root, restaurantName) => {
+  const loading = element("div", "customer-menu-combos__loading");
+  loading.setAttribute("role", "status");
+  loading.append(
+    element("span", "customer-menu-combos__spinner"),
+    element("span", "", "Đang tải combo của nhà hàng"),
   );
-  header.append(copy);
+  root.replaceChildren(buildHeader(restaurantName), loading);
+};
 
-  const state = createElement(
+const renderState = (root, restaurantName, { title, message, tone, retry }) => {
+  const state = element(
     "div",
     `customer-menu-combos__state customer-menu-combos__state--${tone}`,
   );
-  state.append(createElement("strong", "", title), createElement("p", "", message));
+  state.append(element("strong", "", title), element("p", "", message));
   if (retry) {
-    const retryButton = createElement("button", "", "Thử tải lại");
-    retryButton.type = "button";
-    retryButton.addEventListener("click", () => {
+    const button = element("button", "", "Thử tải lại");
+    button.type = "button";
+    button.addEventListener("click", () => {
       root.dataset.comboState = "";
       queueSync();
     });
-    state.append(retryButton);
+    state.append(button);
   }
-  root.append(header, state);
+  root.replaceChildren(buildHeader(restaurantName), state);
 };
 
-const announce = (root, message, tone = "success") => {
-  let status = root.querySelector(".customer-menu-combos__notice");
-  if (!status) {
-    status = createElement("div", "customer-menu-combos__notice");
-    status.setAttribute("role", "status");
-    root.prepend(status);
-  }
-  status.className = `customer-menu-combos__notice customer-menu-combos__notice--${tone}`;
-  status.textContent = message;
-  window.setTimeout(() => {
-    if (status.isConnected) status.remove();
-  }, 4500);
+const announce = (root, message, tone) => {
+  root.querySelector(".customer-menu-combos__notice")?.remove();
+  const notice = element(
+    "div",
+    `customer-menu-combos__notice customer-menu-combos__notice--${tone}`,
+    message,
+  );
+  notice.setAttribute("role", "status");
+  root.prepend(notice);
+  window.setTimeout(() => notice.isConnected && notice.remove(), 4500);
 };
 
-const addComboToCart = async ({ combo, button, root }) => {
+const addCombo = async (root, combo, button) => {
   if (!getToken()) {
     window.location.assign("/login");
     return;
   }
 
-  const previousLabel = button.textContent;
+  const label = button.textContent;
   button.disabled = true;
   button.textContent = "Đang thêm...";
-
   try {
     await apolloClient.mutate({
-      mutation: ADD_CUSTOMER_MENU_COMBO_TO_CART,
+      mutation: ADD_COMBO_TO_CART,
       variables: { comboId: combo.id, quantity: 1 },
     });
     await apolloClient.refetchQueries({
@@ -231,26 +218,24 @@ const addComboToCart = async ({ combo, button, root }) => {
     );
   } finally {
     button.disabled = false;
-    button.textContent = previousLabel;
+    button.textContent = label;
   }
 };
 
-const createComboCard = (combo, root) => {
-  const card = createElement("article", "customer-menu-combo-card");
-  card.setAttribute("aria-label", combo.name || "Combo nhà hàng");
-
-  const media = createElement("div", "customer-menu-combo-card__media");
+const comboCard = (root, combo) => {
+  const card = element("article", "customer-menu-combo-card");
+  const media = element("div", "customer-menu-combo-card__media");
   const image = document.createElement("img");
   image.src = toApiAssetUrl(combo.imageUrl) || DEFAULT_IMAGE;
   image.alt = combo.name || "Combo nhà hàng";
   image.loading = "lazy";
   image.decoding = "async";
   image.addEventListener("error", () => {
-    image.src = DEFAULT_IMAGE;
+    if (!image.src.endsWith(DEFAULT_IMAGE)) image.src = DEFAULT_IMAGE;
   });
-  media.append(image);
   media.append(
-    createElement(
+    image,
+    element(
       "span",
       "customer-menu-combo-card__badge",
       combo.badge || "Combo trọn gói",
@@ -258,7 +243,7 @@ const createComboCard = (combo, root) => {
   );
   if (Number(combo.discountPercent) > 0) {
     media.append(
-      createElement(
+      element(
         "span",
         "customer-menu-combo-card__discount",
         `-${Math.round(Number(combo.discountPercent))}%`,
@@ -266,67 +251,59 @@ const createComboCard = (combo, root) => {
     );
   }
 
-  const body = createElement("div", "customer-menu-combo-card__body");
-  const heading = createElement("div", "customer-menu-combo-card__heading");
+  const body = element("div", "customer-menu-combo-card__body");
+  const heading = element("div", "customer-menu-combo-card__heading");
   heading.append(
-    createElement("h4", "", combo.name || "Combo nhà hàng"),
-    createElement(
+    element("h4", "", combo.name || "Combo nhà hàng"),
+    element(
       "p",
       "",
       combo.description || "Gọi nhanh trọn bộ món với mức giá ưu đãi.",
     ),
   );
 
-  const meta = createElement("div", "customer-menu-combo-card__meta");
+  const meta = element("div", "customer-menu-combo-card__meta");
   const itemCount = (combo.items || []).reduce(
-    (total, item) => total + Math.max(1, Number(item?.qty || 1)),
+    (sum, item) => sum + Math.max(1, Number(item?.qty || 1)),
     0,
   );
-  meta.append(createElement("span", "", `${itemCount} món`));
-  if (Number(combo.minPeople) > 0 || Number(combo.maxPeople) > 0) {
-    const minPeople = Number(combo.minPeople || combo.maxPeople || 1);
-    const maxPeople = Number(combo.maxPeople || combo.minPeople || minPeople);
+  meta.append(element("span", "", `${itemCount} món`));
+  const minPeople = Number(combo.minPeople || 0);
+  const maxPeople = Number(combo.maxPeople || 0);
+  if (minPeople || maxPeople) {
+    const minimum = minPeople || maxPeople;
+    const maximum = maxPeople || minPeople;
     meta.append(
-      createElement(
+      element(
         "span",
         "",
-        minPeople === maxPeople
-          ? `${minPeople} người`
-          : `${minPeople}–${maxPeople} người`,
+        minimum === maximum ? `${minimum} người` : `${minimum}–${maximum} người`,
       ),
     );
   }
 
-  const items = createElement("ul", "customer-menu-combo-card__items");
+  const items = element("ul", "customer-menu-combo-card__items");
   (combo.items || []).slice(0, 4).forEach((item) => {
-    const listItem = createElement("li");
-    listItem.append(
-      createElement("span", "", `${Math.max(1, Number(item?.qty || 1))}×`),
+    const row = element("li");
+    row.append(
+      element("span", "", `${Math.max(1, Number(item?.qty || 1))}×`),
       document.createTextNode(item?.name || "Món trong combo"),
     );
-    items.append(listItem);
+    items.append(row);
   });
 
-  const footer = createElement("div", "customer-menu-combo-card__footer");
-  const prices = createElement("div", "customer-menu-combo-card__prices");
+  const footer = element("div", "customer-menu-combo-card__footer");
+  const prices = element("div", "customer-menu-combo-card__prices");
   const comboPrice = Number(combo.comboPrice ?? combo.originalPrice ?? 0);
   const originalPrice = Number(combo.originalPrice || 0);
-  prices.append(createElement("strong", "", formatMoney(comboPrice)));
-  if (originalPrice > comboPrice) {
-    prices.append(createElement("del", "", formatMoney(originalPrice)));
-  }
+  prices.append(element("strong", "", money(comboPrice)));
+  if (originalPrice > comboPrice) prices.append(element("del", "", money(originalPrice)));
 
-  const addButton = createElement(
-    "button",
-    "customer-menu-combo-card__action",
-    "Thêm combo",
-  );
-  addButton.type = "button";
-  addButton.disabled = combo.isAvailable === false;
-  addButton.addEventListener("click", () =>
-    addComboToCart({ combo, button: addButton, root }),
-  );
-  footer.append(prices, addButton);
+  const button = element("button", "customer-menu-combo-card__action", "Thêm combo");
+  button.type = "button";
+  button.disabled = combo.isAvailable === false;
+  button.addEventListener("click", () => addCombo(root, combo, button));
+  footer.append(prices, button);
 
   body.append(heading, meta);
   if (items.childElementCount) body.append(items);
@@ -335,56 +312,23 @@ const createComboCard = (combo, root) => {
   return card;
 };
 
-const renderCombos = ({ root, restaurantId, restaurantName, combos }) => {
-  root.replaceChildren();
-
-  const header = createElement("div", "customer-menu-combos__header");
-  const copy = createElement("div", "customer-menu-combos__header-copy");
-  copy.append(
-    createElement("span", "customer-menu-combos__eyebrow", "Combo nhà hàng"),
-    createElement("h3", "", `Combo tại ${restaurantName}`),
-    createElement(
-      "p",
-      "",
-      "Xem các gói món đang bán tại đúng nhà hàng này và thêm nhanh vào giỏ.",
-    ),
-  );
-
-  const actions = createElement("div", "customer-menu-combos__header-actions");
-  actions.append(
-    createElement(
-      "span",
-      "customer-menu-combos__count",
-      `${combos.length} combo`,
-    ),
-  );
-  const allCombosLink = createElement(
-    "a",
-    "customer-menu-combos__all-link",
-    "Khám phá trang Combo",
-  );
-  allCombosLink.href = `/combos?restaurantId=${encodeURIComponent(restaurantId)}`;
-  actions.append(allCombosLink);
-  header.append(copy, actions);
-
-  const grid = createElement("div", "customer-menu-combos__grid");
-  combos.slice(0, 6).forEach((combo) => grid.append(createComboCard(combo, root)));
-  root.append(header, grid);
+const renderCombos = (root, restaurantName, restaurantId, combos) => {
+  const grid = element("div", "customer-menu-combos__grid");
+  combos.slice(0, 6).forEach((combo) => grid.append(comboCard(root, combo)));
+  root.replaceChildren(buildHeader(restaurantName, combos.length, restaurantId), grid);
 };
 
-const syncCustomerMenuCombos = async () => {
-  syncQueued = false;
+const sync = async () => {
+  queued = false;
   if (!window.location.pathname.startsWith("/cus-menu")) return;
 
   const container = document.querySelector(CONTAINER_SELECTOR);
   if (!container) return;
-
-  const restaurantName = getRestaurantName();
+  const restaurantName = restaurantNameFromPage();
   const root = ensureRoot(container);
-  const currentState = root.dataset.comboState || "";
   if (
     root.dataset.restaurantName === restaurantName &&
-    READY_STATES.has(currentState)
+    SETTLED_STATES.has(root.dataset.comboState)
   ) {
     return;
   }
@@ -397,15 +341,12 @@ const syncCustomerMenuCombos = async () => {
 
   try {
     const restaurantId =
-      getRestaurantIdFromVisibleMenu(container) ||
-      (await resolveRestaurantIdByName(restaurantName));
+      restaurantIdFromPage(container) || (await resolveRestaurantId(restaurantName));
+    if (!root.isConnected || root.dataset.requestId !== requestId) return;
 
-    if (root.dataset.requestId !== requestId || !root.isConnected) return;
     if (!restaurantId) {
       root.dataset.comboState = "unresolved";
-      renderMessage({
-        root,
-        restaurantName,
+      renderState(root, restaurantName, {
         title: "Chưa xác định được nhà hàng",
         message: "Vui lòng tải lại trang hoặc chọn lại nhà hàng để xem combo.",
         tone: "warning",
@@ -416,7 +357,7 @@ const syncCustomerMenuCombos = async () => {
 
     root.dataset.restaurantId = String(restaurantId);
     const { data } = await apolloClient.query({
-      query: CUSTOMER_MENU_RESTAURANT_COMBOS,
+      query: RESTAURANT_COMBOS,
       variables: {
         filter: {
           restaurantId: String(restaurantId),
@@ -427,19 +368,17 @@ const syncCustomerMenuCombos = async () => {
       },
       fetchPolicy: "network-only",
     });
+    if (!root.isConnected || root.dataset.requestId !== requestId) return;
 
-    if (root.dataset.requestId !== requestId || !root.isConnected) return;
     const combos = (data?.customerCombos || []).filter(
       (combo) =>
         combo?.sourceType === "COMBO" &&
-        String(combo?.restaurantId || "") === String(restaurantId),
+        (!combo?.restaurantId ||
+          String(combo.restaurantId) === String(restaurantId)),
     );
-
     if (!combos.length) {
       root.dataset.comboState = "empty";
-      renderMessage({
-        root,
-        restaurantName,
+      renderState(root, restaurantName, {
         title: "Nhà hàng chưa có combo khả dụng",
         message:
           "Các món lẻ vẫn hiển thị bình thường. Combo sẽ xuất hiện tại đây khi nhà hàng mở bán.",
@@ -449,16 +388,13 @@ const syncCustomerMenuCombos = async () => {
     }
 
     root.dataset.comboState = "ready";
-    renderCombos({ root, restaurantId, restaurantName, combos });
+    renderCombos(root, restaurantName, restaurantId, combos);
   } catch (error) {
-    if (root.dataset.requestId !== requestId || !root.isConnected) return;
+    if (!root.isConnected || root.dataset.requestId !== requestId) return;
     root.dataset.comboState = "error";
-    renderMessage({
-      root,
-      restaurantName,
+    renderState(root, restaurantName, {
       title: "Không thể tải combo",
-      message:
-        error?.message || "Kết nối đang gián đoạn. Vui lòng thử tải lại combo.",
+      message: error?.message || "Kết nối đang gián đoạn. Vui lòng thử lại.",
       tone: "error",
       retry: true,
     });
@@ -466,11 +402,9 @@ const syncCustomerMenuCombos = async () => {
 };
 
 function queueSync() {
-  if (syncQueued) return;
-  syncQueued = true;
-  window.requestAnimationFrame(() => {
-    void syncCustomerMenuCombos();
-  });
+  if (queued) return;
+  queued = true;
+  window.requestAnimationFrame(() => void sync());
 }
 
 export function installCustomerMenuRestaurantCombos() {
@@ -479,8 +413,9 @@ export function installCustomerMenuRestaurantCombos() {
   window.__cohanCustomerMenuRestaurantCombosInstalled = true;
 
   const start = () => {
-    observer = new MutationObserver(queueSync);
-    observer.observe(document.body, { childList: true, subtree: true });
+    const menuObserver = new MutationObserver(queueSync);
+    menuObserver.observe(document.body, { childList: true, subtree: true });
+    window.__cohanCustomerMenuRestaurantCombosObserver = menuObserver;
     window.addEventListener("popstate", queueSync);
     queueSync();
   };
