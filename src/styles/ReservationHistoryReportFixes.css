@@ -115,9 +115,24 @@
   gap: 12px;
 }
 
-.time-modal .hint,
 .time-modal .change-time-review {
   grid-column: 1 / -1;
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid #dfe8e3;
+  border-radius: 14px;
+  background: #f3f7f5;
+}
+
+.time-modal .change-time-review span,
+.time-modal .change-time-review small {
+  color: #68736d;
+}
+
+.time-modal .change-time-review.is-error {
+  border-color: rgba(185, 65, 65, 0.35);
+  background: rgba(185, 65, 65, 0.07);
 }
 
 .changetable {
@@ -125,13 +140,58 @@
   overflow: hidden;
 }
 
-.changetable__filters {
-  overflow: auto;
-  padding-right: 8px;
+.changetable--compact {
+  display: grid;
+  gap: 12px;
+}
+
+.changetable__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.changetable__summary > div {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid #e2e9e5;
+  border-radius: 12px;
+  background: #f7faf8;
+}
+
+.changetable__summary span,
+.changetable__toolbar label > span {
+  color: #68736d;
+  font-size: 0.78rem;
+}
+
+.changetable__toolbar {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.55fr) minmax(190px, 1.5fr) minmax(150px, 0.9fr);
+  gap: 10px;
+}
+
+.changetable__toolbar label {
+  display: grid;
+  gap: 5px;
+}
+
+.changetable__toolbar input,
+.changetable__toolbar select {
+  min-height: 42px;
 }
 
 .changetable__list {
   overflow: auto;
+  min-height: 150px;
+}
+
+.changetable__review {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #edf5f1;
+  color: #29483e;
 }
 
 .changetable .table-card .meta strong[data-free="true"] {
@@ -152,7 +212,6 @@
     grid-template-columns: 1fr;
   }
 
-  .time-modal .hint,
   .time-modal .change-time-review {
     grid-column: auto;
   }
@@ -160,5 +219,10 @@
   .changetable {
     max-height: calc(100dvh - 180px);
     overflow: auto;
+  }
+
+  .changetable__summary,
+  .changetable__toolbar {
+    grid-template-columns: 1fr;
   }
 }
