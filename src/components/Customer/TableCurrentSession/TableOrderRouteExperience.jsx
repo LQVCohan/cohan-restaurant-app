@@ -2,8 +2,11 @@ import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import TableOrderAccessGate from "./TableOrderAccessGate";
+import TableOrderDraftLauncher from "./TableOrderDraftLauncher";
 import TableOrderExperience from "./TableOrderExperience";
 import TableProofUpdateNotifier from "./TableProofUpdateNotifier";
+
+import "./TableOrderResponsiveLayout.scss";
 
 const TABLE_PATH_PATTERN = /^\/table\/([a-f\d]{24})\/([a-f\d]{24})\/?$/i;
 const IDENTITY_CHOICE_PREFIX = "cohan:table-order:identity-choice";
@@ -35,6 +38,7 @@ export default function TableOrderRouteExperience() {
   return (
     <React.Fragment key={routeInstanceKey}>
       <TableOrderAccessGate />
+      <TableOrderDraftLauncher />
       <TableOrderExperience />
       <TableProofUpdateNotifier />
     </React.Fragment>
