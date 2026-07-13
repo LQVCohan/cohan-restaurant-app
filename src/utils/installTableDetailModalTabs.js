@@ -157,11 +157,12 @@ const syncSections = (modal, activeKey) => {
       "cohan-table-customer-profiles",
     );
     const isGroup = section.classList.contains("talite-group");
-    const sectionKey = isCustomerSection
+    const explicitSectionKey = section.dataset.tableDetailSection;
+    const sectionKey = explicitSectionKey || (isCustomerSection
       ? "customers"
       : isGroup
         ? classifyGroup(section)
-        : "configuration";
+        : "configuration");
     const sectionKind = isCustomerSection
       ? "customers"
       : isGroup

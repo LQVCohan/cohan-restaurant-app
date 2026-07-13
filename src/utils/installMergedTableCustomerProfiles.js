@@ -534,6 +534,10 @@ const prepareModal = (modal) => {
     section = makeElement("div", SECTION_CLASS);
     info.insertAdjacentElement("afterend", section);
   }
+  section.dataset.tableDetailSection = "customers";
+  section.dataset.tableDetailKind = "customers";
+  const activeTab = modal.dataset.tableDetailActiveTab || "overview";
+  section.hidden = !["overview", "customers"].includes(activeTab);
   loadCustomerProfiles(modal, section);
   return section;
 };

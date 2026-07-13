@@ -850,7 +850,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                     value={currentTable?.code || undefined}
                     onChange={handleTableChange}
                     options={tableSelectOptions}
-                    placeholder={tablesLoading ? "Đang tải bàn..." : "Tìm và chọn bàn"}
+                    placeholder={tablesLoading ? "Đang tải bàn…" : "Tìm và chọn bàn"}
                     showSearch
                     allowClear
                     optionFilterProp="label"
@@ -910,7 +910,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                   <input
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Tìm món ăn, từ khóa, danh mục..."
+                    placeholder="Tìm món ăn, từ khóa, danh mục…"
                     className="searchbox__input"
                     aria-label="Tìm món ăn"
                   />
@@ -1036,6 +1036,41 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                 </div>
 
                 <div className="cart-panel__body">
+                  <section className={`cart-panel__table-picker ${currentTable ? "is-selected" : "is-required"}`}>
+                    <div className="cart-panel__table-picker-heading">
+                      <div>
+                        <span>Bàn phục vụ</span>
+                        <strong>{currentTable ? `Bàn ${currentTable.code}` : "Chọn bàn trước khi lưu đơn"}</strong>
+                      </div>
+                      <span>{availableTables.length} bàn trống</span>
+                    </div>
+                    <label className="sr-only" htmlFor="new-order-cart-table">
+                      Chọn bàn cho đơn hàng
+                    </label>
+                    <SearchSelect
+                      id="new-order-cart-table"
+                      className="new-order-search-select cart-panel__table-select"
+                      value={currentTable?.code || undefined}
+                      onChange={handleTableChange}
+                      options={tableSelectOptions}
+                      placeholder={tablesLoading ? "Đang tải bàn…" : "Tìm theo mã bàn hoặc tầng"}
+                      showSearch
+                      allowClear
+                      optionFilterProp="label"
+                      filterOption={filterSearchOption}
+                      notFoundContent="Không còn bàn trống ở tầng đang chọn"
+                      disabled={tablesLoading}
+                      suffixIcon={<ChevronDown size={16} strokeWidth={2.2} aria-hidden="true" />}
+                      classNames={{
+                        popup: { root: "new-order-search-select__popup" },
+                      }}
+                      aria-label="Chọn bàn cho đơn hàng"
+                    />
+                    {!currentTable ? (
+                      <p role="status">Đơn chưa thể lưu vì chưa chọn bàn phục vụ.</p>
+                    ) : null}
+                  </section>
+
                   <div className="cart-panel__context">
                     <span>
                       <SlidersHorizontal size={14} strokeWidth={2.2} /> {selectedFloorLabel}
@@ -1138,6 +1173,9 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                     )}
                     {isSaving ? "Đang lưu" : "Lưu đơn hàng"}
                   </button>
+                  {!currentTable && currentOrder.length > 0 ? (
+                    <p className="cart-panel__save-hint">Chọn bàn ở phía trên để bật nút lưu đơn.</p>
+                  ) : null}
                 </div>
               </aside>
             </div>

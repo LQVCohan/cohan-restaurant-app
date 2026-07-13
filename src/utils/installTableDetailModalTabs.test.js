@@ -172,4 +172,21 @@ describe("table detail modal tabs", () => {
 
     expect(screen.getByRole("button", { name: "Đang lưu…" })).toBeVisible();
   });
+
+  it("hides a customer section inserted after another tab is already active", () => {
+    const modal = renderModal();
+    screen.getByTestId("customers").remove();
+    fireEvent.click(screen.getByRole("tab", { name: "Cấu hình" }));
+
+    const lateCustomerSection = document.createElement("section");
+    lateCustomerSection.className = "cohan-table-customer-profiles";
+    lateCustomerSection.dataset.testid = "late-customers";
+    lateCustomerSection.textContent = "Khách được tải muộn";
+    modal.querySelector(".talite-body").appendChild(lateCustomerSection);
+    enhanceTableDetailModal(modal);
+
+    expect(screen.getByTestId("late-customers")).toHaveAttribute("hidden");
+    fireEvent.click(screen.getByRole("tab", { name: "Khách liên kết" }));
+    expect(screen.getByTestId("late-customers")).not.toHaveAttribute("hidden");
+  });
 });

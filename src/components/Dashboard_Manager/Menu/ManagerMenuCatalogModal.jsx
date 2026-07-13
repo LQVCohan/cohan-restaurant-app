@@ -122,6 +122,7 @@ export default function ManagerMenuCatalogModal({
   onClose,
   restaurantId,
   restaurantName = "",
+  onManage,
 }) {
   const { data, loading, error, refetch } = useQuery(MANAGER_MENU_CATALOG, {
     variables: { restaurantId },
@@ -137,19 +138,39 @@ export default function ManagerMenuCatalogModal({
       const slotMenus = menus.filter((menu) => menu?.timeSlot === slot.value);
       const connection = data?.[CONNECTION_KEY_BY_SLOT[slot.value]];
       const connectionItems = getConnectionItems(connection);
-      const rows = slotMenus.length ? slotMenus : [null];
-
-      return rows.map((menu) => ({
+      const menuRowsForSlot = slotMenus.map((menu) => ({
         ...slot,
-        key: `${slot.value}:${menu?.id || "empty"}`,
+        key: `${slot.value}:${menu.id}`,
         menu,
-        items: menu
-          ? connectionItems.filter(
-              (item) => !item?.menuId || String(item.menuId) === String(menu.id),
-            )
-          : [],
+        items: connectionItems.filter(
+          (item) => String(item?.menuId || "") === String(menu.id),
+        ),
         truncated: Boolean(connection?.pageInfo?.hasNextPage),
       }));
+
+      const unassignedItems = connectionItems.filter((item) => !item?.menuId);
+      const unassignedRow = unassignedItems.length
+        ? [{
+            ...slot,
+            key: `${slot.value}:unassigned`,
+            menu: null,
+            isUnassigned: true,
+            items: unassignedItems,
+            truncated: Boolean(connection?.pageInfo?.hasNextPage),
+          }]
+        : [];
+
+      if (!menuRowsForSlot.length && !unassignedRow.length) {
+        return [{
+          ...slot,
+          key: `${slot.value}:empty`,
+          menu: null,
+          items: [],
+          truncated: Boolean(connection?.pageInfo?.hasNextPage),
+        }];
+      }
+
+      return [...menuRowsForSlot, ...unassignedRow];
     });
   }, [data]);
 
@@ -171,9 +192,21 @@ export default function ManagerMenuCatalogModal({
             <h3>{restaurantName || "Nhà hàng đang chọn"}</h3>
             <p>Xem từng menu, khung giờ phục vụ và các món đang thuộc menu đó.</p>
           </div>
-          <div className="manager-menu-catalog__metrics" aria-label="Số liệu thực đơn">
-            <span><strong>{totalMenus}</strong> menu</span>
-            <span><strong>{totalItems}</strong> món đã tải</span>
+          <div className="manager-menu-catalog__summary-actions">
+            <div className="manager-menu-catalog__metrics" aria-label="Số liệu thực đơn">
+              <span><strong>{totalMenus}</strong> thực đơn</span>
+              <span><strong>{totalItems}</strong> món đã tải</span>
+            </div>
+            {typeof onManage === "function" ? (
+              <button
+                type="button"
+                className="manager-menu-catalog__manage"
+                onClick={onManage}
+                disabled={!restaurantId}
+              >
+                <ListChecks size={16} aria-hidden="true" /> Quản lý thực đơn
+              </button>
+            ) : null}
           </div>
         </header>
 
@@ -186,7 +219,7 @@ export default function ManagerMenuCatalogModal({
         ) : loading && !data ? (
           <div className="manager-menu-catalog__state" role="status">
             <RefreshCw className="is-spinning" aria-hidden="true" />
-            <strong>Đang tải thực đơn...</strong>
+            <strong>Đang tải thực đơn…</strong>
           </div>
         ) : error ? (
           <div className="manager-menu-catalog__state manager-menu-catalog__state--error" role="alert">
@@ -202,22 +235,32 @@ export default function ManagerMenuCatalogModal({
             {menuRows.map((row) => (
               <article
                 key={row.key}
-                className={`manager-menu-catalog__card ${row.menu?.isActive === false ? "is-hidden" : ""}`}
+                className={`manager-menu-catalog__card ${row.menu?.isActive === false ? "is-hidden" : ""} ${row.isUnassigned ? "is-unassigned" : ""}`}
               >
                 <div className="manager-menu-catalog__card-heading">
                   <div>
                     <span className="manager-menu-catalog__slot">
                       <Clock3 size={15} aria-hidden="true" /> {row.label}
                     </span>
-                    <h4>{row.menu?.name || "Chưa có thực đơn"}</h4>
-                    <p>{row.menu?.description || "Chưa có mô tả cho khung giờ này."}</p>
+                    <h4>{row.isUnassigned ? "Món chưa gắn thực đơn" : row.menu?.name || "Chưa có thực đơn"}</h4>
+                    <p>
+                      {row.isUnassigned
+                        ? "Các món này chưa được phân vào thực đơn cụ thể."
+                        : row.menu?.description || "Chưa có mô tả cho khung giờ này."}
+                    </p>
                   </div>
                   <span className={`manager-menu-catalog__visibility ${row.menu?.isActive === false ? "is-hidden" : ""}`}>
-                    {!row.menu ? "Chưa tạo" : row.menu.isActive === false ? "Đang ẩn" : "Đang hiển thị"}
+                    {row.isUnassigned
+                      ? "Cần phân loại"
+                      : !row.menu
+                        ? "Chưa tạo"
+                        : row.menu.isActive === false
+                          ? "Đang ẩn"
+                          : "Đang hiển thị"}
                   </span>
                 </div>
 
-                {row.menu ? (
+                {row.menu || row.isUnassigned ? (
                   <div className="manager-menu-catalog__items">
                     <div className="manager-menu-catalog__items-heading">
                       <span><ListChecks size={15} aria-hidden="true" /> Món trong menu</span>
@@ -238,7 +281,7 @@ export default function ManagerMenuCatalogModal({
                         ))}
                       </ul>
                     ) : (
-                      <div className="manager-menu-catalog__empty">Menu này chưa có món.</div>
+                      <div className="manager-menu-catalog__empty">Thực đơn này chưa có món.</div>
                     )}
                     {row.truncated ? (
                       <p className="manager-menu-catalog__limit-note">

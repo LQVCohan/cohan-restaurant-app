@@ -95,7 +95,7 @@ describe("Manager Header account isolation", () => {
       },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Danh sách thực đơn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xem & quản lý thực đơn" }));
     expect(screen.getByTestId("menu-catalog-modal")).toHaveTextContent(
       "restaurant-1:Cohan Quận 1",
     );
