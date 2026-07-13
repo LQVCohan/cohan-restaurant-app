@@ -21,11 +21,10 @@ import {
   safeDbInfo,
 } from "./lib/scriptSafety.js";
 
-const DEFENSE_TAG = "[defense-demo-2026]";
-const DEFAULT_BRAND_NAME = "COHAN Demo Business";
-const DEFAULT_BRAND_SLUG = "cohan-demo-business";
-const DEFAULT_RESTAURANT_NAME = "COHAN Defense Demo Restaurant";
-const SECONDARY_RESTAURANT_NAME = "COHAN Defense Demo Restaurant - Quận 1";
+export const DEFENSE_BRAND_NAME = "COHAN Hospitality";
+export const DEFENSE_BRAND_SLUG = "cohan-hospitality";
+export const DEFENSE_PRIMARY_RESTAURANT_NAME = "Nhà hàng COHAN Thủ Đức";
+export const DEFENSE_SECONDARY_RESTAURANT_NAME = "Nhà hàng COHAN Nguyễn Huệ";
 const scriptPath = fileURLToPath(import.meta.url);
 const scriptsDir = path.dirname(scriptPath);
 const backendDir = path.dirname(scriptsDir);
@@ -137,7 +136,7 @@ export function buildDefenseAccountDefinitions({
       email: "customer.demo@cohan.local",
       payload: {
         ...verified,
-        fullName: "COHAN Demo Customer",
+        fullName: "Nguyễn Minh An",
         username: "customer.demo",
         userType: "CUSTOMER",
         role: roleId("customer"),
@@ -222,6 +221,11 @@ const commonRestaurantPayload = {
   publicationStatus: "published",
   operationalStatus: "normal",
   timezone: "Asia/Ho_Chi_Minh",
+  cuisineType: "Ẩm thực Việt Nam hiện đại",
+  priceRange: "150.000đ - 500.000đ/người",
+  openingHours: "10:00",
+  closingHours: "22:30",
+  amenities: ["Phòng riêng", "Wi-Fi", "Bãi đỗ xe", "Thanh toán không tiền mặt"],
   capabilities: {
     acceptsReservations: true,
     acceptsOrders: true,
@@ -233,12 +237,16 @@ const commonRestaurantPayload = {
 
 async function resolveDefenseRestaurants() {
   const primary = await Restaurant.findOneAndUpdate(
-    { name: DEFAULT_RESTAURANT_NAME },
+    { name: DEFENSE_PRIMARY_RESTAURANT_NAME },
     {
       $set: {
         ...commonRestaurantPayload,
-        name: DEFAULT_RESTAURANT_NAME,
-        description: `${DEFENSE_TAG} Full local dataset for graduation defense`,
+        name: DEFENSE_PRIMARY_RESTAURANT_NAME,
+        description:
+          "Không gian ẩm thực Việt hiện đại, phù hợp cho gia đình, gặp gỡ đối tác và các buổi tiệc thân mật.",
+        phone: "028 7300 2026",
+        email: "thuduc@cohan.vn",
+        seatingCapacity: 120,
         address: {
           line1: "1 Võ Văn Ngân",
           ward: "Linh Chiểu",
@@ -254,12 +262,16 @@ async function resolveDefenseRestaurants() {
   );
 
   const secondary = await Restaurant.findOneAndUpdate(
-    { name: SECONDARY_RESTAURANT_NAME },
+    { name: DEFENSE_SECONDARY_RESTAURANT_NAME },
     {
       $set: {
         ...commonRestaurantPayload,
-        name: SECONDARY_RESTAURANT_NAME,
-        description: `${DEFENSE_TAG} Secondary branch for Brand and scope demonstration`,
+        name: DEFENSE_SECONDARY_RESTAURANT_NAME,
+        description:
+          "Chi nhánh trung tâm với không gian sang trọng, phục vụ món Việt chọn lọc và thực đơn theo mùa.",
+        phone: "028 7300 2027",
+        email: "nguyenhue@cohan.vn",
+        seatingCapacity: 90,
         address: {
           line1: "12 Nguyễn Huệ",
           ward: "Bến Nghé",
@@ -308,17 +320,18 @@ async function normalizeDefenseBrand({ primary, secondary, accounts }) {
   const userIdByEmail = new Map(accounts.map((account) => [account.email, account.userId]));
   const ownerId = userIdByEmail.get("business.owner.demo@cohan.local");
   const brand = await Brand.findOneAndUpdate(
-    { slug: DEFAULT_BRAND_SLUG },
+    { slug: DEFENSE_BRAND_SLUG },
     {
       $set: {
-        name: DEFAULT_BRAND_NAME,
-        slug: DEFAULT_BRAND_SLUG,
-        description: `${DEFENSE_TAG} Business with two demo restaurant branches`,
+        name: DEFENSE_BRAND_NAME,
+        slug: DEFENSE_BRAND_SLUG,
+        description:
+          "Thương hiệu nhà hàng Việt hiện đại, tập trung vào nguyên liệu tuyển chọn và trải nghiệm phục vụ chuyên nghiệp.",
         ownerId,
-        businessName: "COHAN Restaurant Business",
-        businessTaxCode: "DEMO-COHAN-2026",
-        businessEmail: "business.owner.demo@cohan.local",
-        businessPhone: "0900002026",
+        businessName: "Công ty TNHH Ẩm thực COHAN",
+        businessTaxCode: "0318262026",
+        businessEmail: "contact@cohan.vn",
+        businessPhone: "028 7300 2026",
         address: primary.address,
         status: "active",
         deletedAt: null,
@@ -375,8 +388,6 @@ async function main() {
   const primaryRestaurantId = String(primary._id);
   await mongoose.disconnect();
 
-  // Full operational data is seeded once for the primary branch. The second
-  // branch exists for Brand, membership and restaurant-scope demonstrations.
   for (const step of buildSeedSteps({ restaurantId: primaryRestaurantId, reset })) {
     runSeedStep(step);
   }
@@ -387,9 +398,9 @@ async function main() {
   await mongoose.disconnect();
 
   console.log("\n✅ COHAN defense dataset is ready");
-  console.log(`Brand: ${DEFAULT_BRAND_NAME} (${brand._id})`);
-  console.log(`Primary/full data: ${DEFAULT_RESTAURANT_NAME} (${primaryRestaurantId})`);
-  console.log(`Secondary/Brand demo: ${SECONDARY_RESTAURANT_NAME} (${secondary._id})`);
+  console.log(`Brand: ${DEFENSE_BRAND_NAME} (${brand._id})`);
+  console.log(`Primary/full data: ${DEFENSE_PRIMARY_RESTAURANT_NAME} (${primaryRestaurantId})`);
+  console.log(`Secondary/Brand scope: ${DEFENSE_SECONDARY_RESTAURANT_NAME} (${secondary._id})`);
   console.table(
     accounts.map(({ email, payload }) => ({
       email,
