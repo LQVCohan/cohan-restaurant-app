@@ -3,13 +3,26 @@ import mongoose from "mongoose";
 import { Coupon, Promotion, Restaurant, MenuItem } from "../models/index.js";
 import { assertDemoScriptAllowed, safeDbInfo } from "./lib/scriptSafety.js";
 
-const DEMO_TAG = "[demo-coupon-promotion-2026]";
 const DEMO_RESTAURANT_ID = process.env.DEMO_RESTAURANT_ID?.trim() || "";
+const LEGACY_COUPON_CODES = [
+  "ACTIVE10",
+  "FIXED20K",
+  "EXPIRED10",
+  "LIMIT5",
+  "USERONLY",
+];
+const LEGACY_PROMOTION_CODES = [
+  "LUNCH10",
+  "ORDER20K",
+  "FREESHIP",
+  "PHOTEA",
+  "FAMILYCOMBO",
+];
 
 function nowPlusDays(days) {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d;
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date;
 }
 
 function normalizeText(value) {
@@ -23,14 +36,13 @@ function normalizeText(value) {
 async function resolveRestaurant() {
   if (DEMO_RESTAURANT_ID) {
     const restaurant = await Restaurant.findById(DEMO_RESTAURANT_ID);
-    if (!restaurant)
+    if (!restaurant) {
       throw new Error(`DEMO_RESTAURANT_NOT_FOUND: ${DEMO_RESTAURANT_ID}`);
+    }
     return restaurant;
   }
 
-  const existing = await Restaurant.findOne({ status: "active" }).sort({
-    createdAt: 1,
-  });
+  const existing = await Restaurant.findOne({ status: "active" }).sort({ createdAt: 1 });
   if (!existing) {
     throw new Error(
       "NO_ACTIVE_RESTAURANT_FOUND: seed restaurant data first or provide DEMO_RESTAURANT_ID",
@@ -39,13 +51,32 @@ async function resolveRestaurant() {
   return existing;
 }
 
+async function cleanupLegacyCampaigns(restaurantId) {
+  await Promise.all([
+    Coupon.deleteMany({
+      restaurantId,
+      $or: [
+        { code: { $in: LEGACY_COUPON_CODES } },
+        { description: /demo-coupon-promotion|validation demo|usage demo/i },
+      ],
+    }),
+    Promotion.deleteMany({
+      restaurantId,
+      $or: [
+        { code: { $in: LEGACY_PROMOTION_CODES } },
+        { description: /demo-coupon-promotion/i },
+      ],
+    }),
+  ]);
+}
+
 async function seedCoupons(restaurantId) {
   const now = new Date();
   const couponDefs = [
     {
-      name: "Active 10% Coupon",
-      code: "ACTIVE10",
-      description: `10% active coupon ${DEMO_TAG}`,
+      name: "Ưu đãi thành viên 10%",
+      code: "THANHVIEN10",
+      description: "Giảm 10% cho hóa đơn từ 100.000đ, tối đa 50.000đ.",
       discountType: "PERCENT",
       discountValue: 10,
       minOrderValue: 100000,
@@ -57,9 +88,9 @@ async function seedCoupons(restaurantId) {
       isActive: true,
     },
     {
-      name: "Fixed 20k Coupon",
-      code: "FIXED20K",
-      description: `20,000 VND off ${DEMO_TAG}`,
+      name: "Giảm 20.000đ cho đơn từ 120.000đ",
+      code: "GIAM20K",
+      description: "Áp dụng trực tiếp 20.000đ cho hóa đơn đủ điều kiện.",
       discountType: "AMOUNT",
       discountValue: 20000,
       minOrderValue: 120000,
@@ -70,9 +101,9 @@ async function seedCoupons(restaurantId) {
       isActive: true,
     },
     {
-      name: "Expired 10% Coupon",
-      code: "EXPIRED10",
-      description: `Expired validation demo ${DEMO_TAG}`,
+      name: "Ưu đãi mùa hè 10%",
+      code: "MUAHE10",
+      description: "Chương trình ưu đãi theo mùa đã kết thúc.",
       discountType: "PERCENT",
       discountValue: 10,
       minOrderValue: 100000,
@@ -83,9 +114,9 @@ async function seedCoupons(restaurantId) {
       isActive: true,
     },
     {
-      name: "Limit 5 Coupon",
-      code: "LIMIT5",
-      description: `Near max usage demo ${DEMO_TAG}`,
+      name: "Ưu đãi giới hạn 5%",
+      code: "UUDAI5",
+      description: "Giảm 5% cho hóa đơn từ 80.000đ, số lượng có hạn.",
       discountType: "PERCENT",
       discountValue: 5,
       minOrderValue: 80000,
@@ -96,15 +127,15 @@ async function seedCoupons(restaurantId) {
       isActive: true,
     },
     {
-      name: "User Only Coupon",
-      code: "USERONLY",
-      description: `Per-user limit via constraints ${DEMO_TAG}`,
+      name: "Quà chào mừng khách hàng mới",
+      code: "CHAOMUNG15K",
+      description: "Giảm 15.000đ cho lần sử dụng đầu tiên của mỗi tài khoản.",
       discountType: "AMOUNT",
       discountValue: 15000,
       minOrderValue: 90000,
       maxUsage: 500,
       used: 0,
-      constraints: { perUserLimit: 1, note: DEMO_TAG },
+      constraints: { perUserLimit: 1 },
       startAt: nowPlusDays(-3),
       endAt: nowPlusDays(30),
       isActive: true,
@@ -115,9 +146,10 @@ async function seedCoupons(restaurantId) {
     await Coupon.findOneAndUpdate(
       { restaurantId, code: coupon.code },
       { $set: { ...coupon, restaurantId, publishAt: now } },
-      { upsert: true, new: true },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
     );
   }
+  return couponDefs.map((coupon) => coupon.code);
 }
 
 async function seedPromotions(restaurantId) {
@@ -127,31 +159,28 @@ async function seedPromotions(restaurantId) {
   })
     .select("_id name")
     .lean();
-  const normalizedMenuItems = menuItems.map((item) => ({
+  const normalizedItems = menuItems.map((item) => ({
     ...item,
     normalizedName: normalizeText(item.name),
   }));
 
-  let pho = normalizedMenuItems.find((item) =>
-    item.normalizedName.includes("pho"),
-  );
-  let tea = normalizedMenuItems.find(
+  let pho = normalizedItems.find((item) => item.normalizedName.includes("pho"));
+  let tea = normalizedItems.find(
     (item) =>
-      item.normalizedName.includes("tra") ||
-      item.normalizedName.includes("tea"),
+      item.normalizedName.includes("tra") || item.normalizedName.includes("tea"),
   );
+  if (!pho && normalizedItems[0]) pho = normalizedItems[0];
+  if (!tea && normalizedItems[1]) tea = normalizedItems[1];
 
-  if (!pho && normalizedMenuItems[0]) pho = normalizedMenuItems[0];
-  if (!tea && normalizedMenuItems[1]) tea = normalizedMenuItems[1];
-
-  const comboItems = normalizedMenuItems
+  const comboItems = normalizedItems
     .slice(0, 2)
     .map((item) => ({ itemId: item._id, quantity: 1 }));
 
-  const defs = [
+  const definitions = [
     {
-      name: "Lunch 10% percentage",
-      code: "LUNCH10",
+      name: "Ưu đãi bữa trưa 10%",
+      description: "Giảm 10% cho hóa đơn bữa trưa từ 120.000đ.",
+      code: "TRUA10",
       promotionType: "PERCENTAGE",
       scope: "ORDER",
       discountType: "PERCENT",
@@ -161,8 +190,9 @@ async function seedPromotions(restaurantId) {
       stacking: false,
     },
     {
-      name: "Fixed 20k order discount",
-      code: "ORDER20K",
+      name: "Giảm 20.000đ cho hóa đơn",
+      description: "Ưu đãi trực tiếp 20.000đ cho hóa đơn từ 150.000đ.",
+      code: "HOADON20K",
       promotionType: "FIXED",
       scope: "ORDER",
       discountType: "AMOUNT",
@@ -171,8 +201,9 @@ async function seedPromotions(restaurantId) {
       stacking: false,
     },
     {
-      name: "Freeship order promotion",
-      code: "FREESHIP",
+      name: "Miễn phí giao hàng",
+      description: "Hỗ trợ phí giao hàng tối đa 30.000đ cho đơn từ 100.000đ.",
+      code: "FREESHIP30K",
       promotionType: "FREESHIP",
       scope: "ORDER",
       discountType: "AMOUNT",
@@ -183,9 +214,10 @@ async function seedPromotions(restaurantId) {
   ];
 
   if (pho && tea && String(pho._id) !== String(tea._id)) {
-    defs.push({
-      name: "Buy Pho get Tea BOGO",
-      code: "PHOTEA",
+    definitions.push({
+      name: "Tặng trà đào khi gọi phở",
+      description: "Mua một phần phở, tặng một ly trà đào cam sả.",
+      code: "PHOTANGTRA",
       promotionType: "BOGO",
       scope: "ITEM",
       itemId: pho._id,
@@ -196,16 +228,13 @@ async function seedPromotions(restaurantId) {
       discountValue: 100,
       stacking: false,
     });
-  } else {
-    console.warn(
-      "[seed:demo:coupon-promotion] Skipped BOGO PHOTEA: requires two distinct menu items (buy + gift).",
-    );
   }
 
   if (comboItems.length >= 2) {
-    defs.push({
-      name: "Family Combo promotion",
-      code: "FAMILYCOMBO",
+    definitions.push({
+      name: "Combo sum họp",
+      description: "Giảm 15% khi gọi combo hai món dành cho nhóm khách.",
+      code: "COMBOSUMHOP",
       promotionType: "COMBO",
       scope: "ORDER",
       comboItems,
@@ -214,58 +243,42 @@ async function seedPromotions(restaurantId) {
       minOrderValue: 200000,
       stacking: false,
     });
-  } else {
-    console.warn(
-      "[seed:demo:coupon-promotion] Skipped COMBO FAMILYCOMBO: requires at least 2 menu items.",
-    );
   }
 
-  for (const promotion of defs) {
+  for (const promotion of definitions) {
     await Promotion.findOneAndUpdate(
       { restaurantId, code: promotion.code },
       {
         $set: {
           ...promotion,
           restaurantId,
-          description: `${promotion.name} ${DEMO_TAG}`,
           startAt: nowPlusDays(-3),
           endAt: nowPlusDays(45),
           isActive: true,
         },
       },
-      { upsert: true, new: true },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
     );
   }
 
-  return defs.map((item) => item.code);
+  return definitions.map((promotion) => promotion.code);
 }
 
 async function main() {
   assertDemoScriptAllowed("seedCouponPromotionDemo.js");
-  const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
-  const DB_NAME = process.env.MONGO_DB || "cohan";
+  const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017";
+  const dbName = process.env.MONGO_DB || "cohan";
   console.log("Connecting with DB settings:", safeDbInfo());
-  await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
+  await mongoose.connect(mongoUri, { dbName });
 
   const restaurant = await resolveRestaurant();
-  await seedCoupons(restaurant._id);
-  const seededPromotionCodes = await seedPromotions(restaurant._id);
+  await cleanupLegacyCampaigns(restaurant._id);
+  const couponCodes = await seedCoupons(restaurant._id);
+  const promotionCodes = await seedPromotions(restaurant._id);
 
-  const seededCouponCodes = [
-    "ACTIVE10",
-    "FIXED20K",
-    "EXPIRED10",
-    "LIMIT5",
-    "USERONLY",
-  ];
-  console.log(`Seeded coupon codes: ${seededCouponCodes.join(", ")}`);
-  console.log(`Seeded promotion codes: ${seededPromotionCodes.join(", ")}`);
-  console.log("Coupon/Promotion demo data seeded successfully.");
+  console.log(`Seeded coupon codes: ${couponCodes.join(", ")}`);
+  console.log(`Seeded promotion codes: ${promotionCodes.join(", ")}`);
   console.log(`Restaurant: ${restaurant._id} - ${restaurant.name}`);
-  if (!DEMO_RESTAURANT_ID) {
-    console.log("Tip: set DEMO_RESTAURANT_ID to target a specific restaurant.");
-  }
-
   await mongoose.disconnect();
 }
 

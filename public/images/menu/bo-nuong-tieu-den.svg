@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Bò nướng sốt tiêu đen</title>
+  <desc id="desc">Thăn bò nướng dùng với rau củ và sốt tiêu đen</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#e7dbc8"/>
+      <stop offset="1" stop-color="#9f8668"/>
+    </linearGradient>
+    <radialGradient id="plate" cx="50%" cy="40%" r="65%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d8d4ce"/>
+    </radialGradient>
+    <linearGradient id="beef" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#783a2b"/>
+      <stop offset=".55" stop-color="#a85a3f"/>
+      <stop offset="1" stop-color="#4d261f"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="22" stdDeviation="20" flood-opacity=".3"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)"/>
+  <ellipse cx="600" cy="650" rx="390" ry="74" fill="#4a3424" opacity=".2"/>
+  <g filter="url(#shadow)">
+    <ellipse cx="600" cy="432" rx="396" ry="278" fill="url(#plate)"/>
+    <ellipse cx="600" cy="432" rx="330" ry="220" fill="#faf8f2"/>
+  </g>
+  <path d="M357 397c36-126 154-192 301-154 135 35 199 149 143 255-53 100-194 134-326 94-129-39-160-123-118-195Z" fill="url(#beef)"/>
+  <g stroke="#d99373" stroke-width="13" stroke-linecap="round" opacity=".65">
+    <path d="M421 336l274 181"/>
+    <path d="M470 300l281 184"/>
+    <path d="M389 394l249 166"/>
+  </g>
+  <path d="M735 294c42 68 66 131 74 190" fill="none" stroke="#34211d" stroke-width="26" stroke-linecap="round" opacity=".7"/>
+  <g>
+    <circle cx="785" cy="532" r="42" fill="#e4a837"/>
+    <circle cx="847" cy="487" r="38" fill="#d96b3b"/>
+    <circle cx="850" cy="558" r="34" fill="#6f9d4e"/>
+    <circle cx="783" cy="585" r="30" fill="#b9cf57"/>
+  </g>
+  <g fill="#26201e">
+    <circle cx="691" cy="295" r="9"/>
+    <circle cx="718" cy="323" r="8"/>
+    <circle cx="685" cy="347" r="7"/>
+    <circle cx="743" cy="368" r="8"/>
+    <circle cx="654" cy="381" r="7"/>
+  </g>
+  <path d="M345 531c-43 13-77 43-100 88 55-18 105-15 148 7-1-37-17-69-48-95Z" fill="#4c8b50"/>
+</svg>
