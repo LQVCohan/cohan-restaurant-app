@@ -119,7 +119,10 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
       return;
     }
 
-    onCategorySelect?.({ id: category.id, name: category.name });
+    onCategorySelect?.({
+      id: isGlobal ? null : category.id,
+      name: category.name,
+    });
   };
 
   return (
