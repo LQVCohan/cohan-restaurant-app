@@ -2,7 +2,7 @@ import QRCode from "qrcode";
 import { Table } from "../../../models/index.js";
 import { ACTIVE_RESERVATION_STATUSES } from "../../../utils/tableStateGuards.js";
 
-const qrStatuses = new Set(["confirmed", "pending_change"]);
+const qrStatuses = new Set(["confirmed"]);
 
 const endAt = (item) => {
   if (item?.isUnlimitedTime) return null;
