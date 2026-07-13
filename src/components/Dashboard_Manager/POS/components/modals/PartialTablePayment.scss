@@ -147,6 +147,101 @@
   font-size: 14px;
 }
 
+.reservation-deposit-credit-panel {
+  position: fixed;
+  z-index: 1016;
+  top: 50%;
+  left: 18px;
+  width: min(340px, calc(100vw - 36px));
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  padding: 17px;
+  border: 1px solid #9bd6c2;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #f5fcf9, #ecf8f3);
+  color: #204b3d;
+  box-shadow: 0 22px 60px rgb(15 72 55 / 18%);
+  transform: translateY(-50%);
+}
+
+.reservation-deposit-credit-panel.is-deferred {
+  border-color: #e6c979;
+  background: linear-gradient(145deg, #fffaf0, #fff5d9);
+  color: #6f5617;
+}
+
+.reservation-deposit-credit-panel__header,
+.reservation-deposit-credit-panel__rows > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reservation-deposit-credit-panel__header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(58, 118, 96, 0.18);
+}
+
+.reservation-deposit-credit-panel__header span {
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+}
+
+.reservation-deposit-credit-panel__header strong {
+  color: #0a6d4f;
+  font-size: 18px;
+}
+
+.reservation-deposit-credit-panel__rows {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.reservation-deposit-credit-panel__rows > div {
+  color: #49675d;
+  font-size: 12px;
+}
+
+.reservation-deposit-credit-panel__rows strong {
+  color: #1a5441;
+}
+
+.reservation-deposit-credit-panel__credit {
+  padding-top: 9px;
+  border-top: 1px dashed rgba(58, 118, 96, 0.25);
+}
+
+.reservation-deposit-credit-panel__credit strong {
+  color: #0a7a56;
+}
+
+.reservation-deposit-credit-panel__due {
+  padding: 10px 11px;
+  border-radius: 12px;
+  background: #dff3ea;
+}
+
+.reservation-deposit-credit-panel__due strong {
+  color: #094d39;
+  font-size: 15px;
+}
+
+.reservation-deposit-credit-panel p {
+  margin: 0;
+  padding-top: 11px;
+  border-top: 1px solid rgba(58, 118, 96, 0.16);
+  color: #61776f;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.reservation-deposit-credit-panel.is-deferred p {
+  color: #76663f;
+}
+
 @media (max-width: 1180px) {
   .partial-table-payment-panel {
     top: auto;
@@ -158,6 +253,15 @@
     transform: none;
   }
 
+  .reservation-deposit-credit-panel {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: 32vh;
+    transform: none;
+  }
+
   .partial-table-payment-panel__list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -166,5 +270,9 @@
 @media (max-width: 620px) {
   .partial-table-payment-panel__list {
     grid-template-columns: 1fr;
+  }
+
+  .reservation-deposit-credit-panel {
+    padding: 14px;
   }
 }
