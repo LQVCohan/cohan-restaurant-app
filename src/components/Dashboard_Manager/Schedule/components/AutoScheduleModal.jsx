@@ -100,6 +100,12 @@ const getCandidateDisplayName = (candidate) => {
   return fallbackId ? `Nhân viên #${fallbackId}` : "Nhân viên chưa rõ";
 };
 
+const getCandidateDisplayScore = (candidate) => {
+  const value = candidate?.score ?? candidate?.selectionScore ?? candidate?.validationScore;
+  const score = Number(value);
+  return Number.isFinite(score) ? score : null;
+};
+
 const buildRoleRows = (item) => {
   const roleNeeds = Array.isArray(item?.roleNeeds) ? item.roleNeeds : [];
   const unfilledRoles = Array.isArray(item?.unfilledRoles) ? item.unfilledRoles : [];
@@ -267,18 +273,21 @@ function AutoSchedulePreviewModal({
               <section className="auto-preview-section assignment-block">
                 <h4>Nhân sự đề xuất</h4>
                 <ul>
-                  {assignedRows.map((assignment, idx) => (
-                    <li key={`${assignment.staffId || assignment.employeeId || idx}-assignment`}>
-                      <CheckCircle2 size={16} />
-                      <div>
-                        <strong>{getCandidateDisplayName(assignment)}</strong>
-                        <span>
-                          {getRoleLabel(assignment.role || assignment.requiredRole || currentItem.shiftType)}
-                          {assignment.score || assignment.validationScore ? ` · Điểm ${compactNumber(assignment.score || assignment.validationScore)}` : ""}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
+                  {assignedRows.map((assignment, idx) => {
+                    const displayScore = getCandidateDisplayScore(assignment);
+                    return (
+                      <li key={`${assignment.staffId || assignment.employeeId || idx}-assignment`}>
+                        <CheckCircle2 size={16} />
+                        <div>
+                          <strong>{getCandidateDisplayName(assignment)}</strong>
+                          <span>
+                            {getRoleLabel(assignment.role || assignment.requiredRole || currentItem.shiftType)}
+                            {displayScore !== null ? ` · Điểm phù hợp ${compactNumber(displayScore)}/100` : ""}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             )}
@@ -406,6 +415,7 @@ const AutoScheduleModal = ({
   overrideSummary = null,
 }) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [hasGeneratedInSession, setHasGeneratedInSession] = useState(false);
   const previewItems = preview?.items || [];
   const applicableCount = previewItems.filter((item) => item.canApply).length;
   const selectedCount = previewItems.filter((item) => selectedShiftKeys[item.shiftKey]).length;
@@ -445,16 +455,19 @@ const AutoScheduleModal = ({
   );
 
   useEffect(() => {
-    if (!isOpen) setIsPreviewOpen(false);
+    setIsPreviewOpen(false);
+    setHasGeneratedInSession(false);
   }, [isOpen]);
 
   useEffect(() => {
-    if (previewItems.length > 0 && !generating) {
+    if (hasGeneratedInSession && previewItems.length > 0 && !generating) {
       setIsPreviewOpen(true);
     }
-  }, [generating, previewItems.length]);
+  }, [generating, hasGeneratedInSession, previewItems.length]);
 
   const handleGenerateClick = () => {
+    setHasGeneratedInSession(true);
+    setIsPreviewOpen(false);
     const horizonDays = weekWindow.days;
     if (Number(config?.horizonDays || 0) !== horizonDays) {
       onConfigChange?.({ ...config, horizonDays });
@@ -601,7 +614,7 @@ const AutoScheduleModal = ({
               {generating ? "Đang tạo preview..." : "Tạo preview chia ca"}
             </button>
 
-            {previewItems.length > 0 && (
+            {hasGeneratedInSession && previewItems.length > 0 && (
               <button
                 type="button"
                 className="btn-secondary"
