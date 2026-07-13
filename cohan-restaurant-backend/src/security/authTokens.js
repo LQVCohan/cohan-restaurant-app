@@ -76,6 +76,18 @@ function getRefreshCookieSameSite() {
   return REFRESH_COOKIE_SAME_SITE_VALUES.has(configured) ? configured : fallback;
 }
 
+function shouldUsePartitionedRefreshCookie({ sameSite, isProduction }) {
+  if (sameSite !== "none") return false;
+  const configured = String(
+    process.env.REFRESH_TOKEN_COOKIE_PARTITIONED || "",
+  )
+    .trim()
+    .toLowerCase();
+  if (configured === "true") return true;
+  if (configured === "false") return false;
+  return isProduction;
+}
+
 export function refreshCookieOptions({ persistent = true } = {}) {
   const isProduction = process.env.NODE_ENV === "production";
   const sameSite = getRefreshCookieSameSite();
@@ -86,6 +98,10 @@ export function refreshCookieOptions({ persistent = true } = {}) {
     sameSite,
   };
 
+  if (shouldUsePartitionedRefreshCookie({ sameSite, isProduction })) {
+    options.partitioned = true;
+  }
+
   if (persistent) {
     options.maxAge = getRefreshCookieMaxAgeSeconds({ persistent });
   }
@@ -93,7 +109,23 @@ export function refreshCookieOptions({ persistent = true } = {}) {
   return options;
 }
 
+function isLogoutCookieClear(reply) {
+  const routeUrl =
+    reply?.request?.routeOptions?.url ||
+    reply?.request?.routerPath ||
+    reply?.request?.raw?.url ||
+    "";
+  return String(routeUrl).split("?")[0] === "/api/auth/logout";
+}
+
 export function clearRefreshCookie(reply) {
+  // The logout request already revokes the exact refresh token received from
+  // the browser. Avoid sending a late Set-Cookie deletion response because it
+  // can arrive after a subsequent login and erase that newly-issued cookie.
+  // A revoked cookie left behind is harmless and is overwritten by the next
+  // login; a later failed refresh also clears it through this same helper.
+  if (isLogoutCookieClear(reply)) return;
+
   reply.clearCookie(process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token", {
     ...refreshCookieOptions(),
     maxAge: 0,
