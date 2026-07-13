@@ -4,6 +4,20 @@ import { Coupon, Promotion, Restaurant, MenuItem } from "../models/index.js";
 import { assertDemoScriptAllowed, safeDbInfo } from "./lib/scriptSafety.js";
 
 const DEMO_RESTAURANT_ID = process.env.DEMO_RESTAURANT_ID?.trim() || "";
+const LEGACY_COUPON_CODES = [
+  "ACTIVE10",
+  "FIXED20K",
+  "EXPIRED10",
+  "LIMIT5",
+  "USERONLY",
+];
+const LEGACY_PROMOTION_CODES = [
+  "LUNCH10",
+  "ORDER20K",
+  "FREESHIP",
+  "PHOTEA",
+  "FAMILYCOMBO",
+];
 
 function nowPlusDays(days) {
   const date = new Date();
@@ -35,6 +49,25 @@ async function resolveRestaurant() {
     );
   }
   return existing;
+}
+
+async function cleanupLegacyCampaigns(restaurantId) {
+  await Promise.all([
+    Coupon.deleteMany({
+      restaurantId,
+      $or: [
+        { code: { $in: LEGACY_COUPON_CODES } },
+        { description: /demo-coupon-promotion|validation demo|usage demo/i },
+      ],
+    }),
+    Promotion.deleteMany({
+      restaurantId,
+      $or: [
+        { code: { $in: LEGACY_PROMOTION_CODES } },
+        { description: /demo-coupon-promotion/i },
+      ],
+    }),
+  ]);
 }
 
 async function seedCoupons(restaurantId) {
@@ -239,6 +272,7 @@ async function main() {
   await mongoose.connect(mongoUri, { dbName });
 
   const restaurant = await resolveRestaurant();
+  await cleanupLegacyCampaigns(restaurant._id);
   const couponCodes = await seedCoupons(restaurant._id);
   const promotionCodes = await seedPromotions(restaurant._id);
 
