@@ -51,6 +51,51 @@ const formatAddress = (address) =>
 
 const hasTrackedStock = (location) => Number(location?.maxAvailable || 0) > 0;
 
+const normalizeLocationKeyPart = (value) =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+const getLocationSignature = (location) => {
+  const name = normalizeLocationKeyPart(location?.restaurant?.name);
+  const address = normalizeLocationKeyPart(
+    formatAddress(location?.restaurant?.address),
+  );
+
+  if (name || address) return `${name}|${address}`;
+  return `restaurant:${String(location?.restaurantId || location?.restaurant?.id || "unknown")}`;
+};
+
+const getLocationMenuItemId = (location) =>
+  location?.menuItemId || location?.menuItem?.id;
+
+export const dedupeRestaurantLocations = (
+  locations = [],
+  currentMenuItemId,
+) => {
+  const unique = new Map();
+
+  (Array.isArray(locations) ? locations : []).filter(Boolean).forEach((location) => {
+    const signature = getLocationSignature(location);
+    const previous = unique.get(signature);
+    const isCurrent =
+      String(getLocationMenuItemId(location) || "") ===
+      String(currentMenuItemId || "");
+    const previousIsCurrent =
+      String(getLocationMenuItemId(previous) || "") ===
+      String(currentMenuItemId || "");
+
+    if (!previous || (isCurrent && !previousIsCurrent)) {
+      unique.set(signature, location);
+    }
+  });
+
+  return [...unique.values()];
+};
+
 export const getPreferredRestaurantLocation = (
   locations = [],
   currentMenuItemId,
@@ -124,6 +169,10 @@ export default function FoodDetailRestaurantSelectorMount() {
   const locations = useMemo(
     () => data?.customerMenuItemLocations || [],
     [data?.customerMenuItemLocations],
+  );
+  const displayLocations = useMemo(
+    () => dedupeRestaurantLocations(locations, foodId),
+    [foodId, locations],
   );
 
   useEffect(() => {
@@ -225,11 +274,11 @@ export default function FoodDetailRestaurantSelectorMount() {
           </strong>
         </div>
         {!loading && !error ? (
-          <small>{locations.length} nhà hàng</small>
+          <small>{displayLocations.length} nhà hàng</small>
         ) : null}
       </div>
 
-      {loading && !locations.length ? (
+      {loading && !displayLocations.length ? (
         <div className="food-location-selector__state" aria-live="polite">
           Đang kiểm tra các nhà hàng…
         </div>
@@ -244,15 +293,15 @@ export default function FoodDetailRestaurantSelectorMount() {
         </div>
       ) : null}
 
-      {!loading && !error && !locations.length ? (
+      {!loading && !error && !displayLocations.length ? (
         <div className="food-location-selector__state">
           Chưa tìm thấy nhà hàng khác đang phục vụ món này.
         </div>
       ) : null}
 
-      {!loading && !error && locations.length ? (
+      {!loading && !error && displayLocations.length ? (
         <div className="food-location-selector__list">
-          {locations.map((option) => {
+          {displayLocations.map((option) => {
             const optionMenuItemId =
               option?.menuItemId || option?.menuItem?.id;
             const selected = String(optionMenuItemId) === String(foodId);
