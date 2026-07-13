@@ -11,6 +11,7 @@ import "./DashboardEmptyState.scss";
 import "./DashboardStockWording.scss";
 import "./DashboardLabelReset.scss";
 import "./DashboardPromotionTheme.scss";
+import "./DashboardLayoutRepair.scss";
 
 const getRestaurantId = (restaurant) =>
   String(restaurant?.id ?? restaurant?._id ?? restaurant?.restaurantId ?? "");
