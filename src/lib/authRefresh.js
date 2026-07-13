@@ -1,6 +1,13 @@
 import { getRefreshUrl } from "@/lib/apiBaseUrl";
+import { getToken } from "@/lib/authStorage";
 
 let refreshPromise = null;
+let refreshGeneration = 0;
+
+function getCurrentSessionPayload() {
+  const token = getToken();
+  return token ? { token, user: undefined, stale: true } : null;
+}
 
 export async function refreshAccessToken() {
   try {
@@ -25,13 +32,26 @@ export async function refreshAccessToken() {
 
 export function refreshAccessTokenOnce() {
   if (!refreshPromise) {
-    refreshPromise = refreshAccessToken().finally(() => {
-      refreshPromise = null;
-    });
+    const generation = refreshGeneration;
+    const pendingRefresh = refreshAccessToken()
+      .then((payload) => {
+        if (generation !== refreshGeneration) {
+          return getCurrentSessionPayload();
+        }
+        return payload;
+      })
+      .finally(() => {
+        if (refreshPromise === pendingRefresh) {
+          refreshPromise = null;
+        }
+      });
+
+    refreshPromise = pendingRefresh;
   }
   return refreshPromise;
 }
 
 export function clearRefreshPromise() {
+  refreshGeneration += 1;
   refreshPromise = null;
 }
