@@ -3,15 +3,11 @@ import React, { useMemo, useState, useEffect } from "react";
 import Modal from "@/components/common/Modal";
 import "./ChangeTableModal.scss";
 
-/**
- * Props
- * - isOpen, onClose
- * - currentReservation: { restaurantId, restaurantName, partySize, depositAmount }
- * - restaurants: [{id, name}]
- * - tablesByRestaurant: Map<string, Table[]> | { [rid]: Table[] }
- *   Table: { id, name, capacity, deposit, floor?:string, note?:string }
- * - onSubmit: ({restaurantId, tableId}) => void
- */
+const formatDeposit = (value) => {
+  const amount = Number(value || 0);
+  return amount > 0 ? `${amount.toLocaleString("vi-VN")}đ` : "Miễn phí";
+};
+
 export default function ChangeTableModal({
   isOpen,
   onClose,
@@ -20,40 +16,43 @@ export default function ChangeTableModal({
   tablesByRestaurant = {},
   onSubmit,
 }) {
-  const currentRid = currentReservation?.restaurantId;
-  const [restaurantId, setRestaurantId] = useState(currentRid || "");
+  const currentRid = currentReservation?.restaurantId || restaurants?.[0]?.id || "";
   const [search, setSearch] = useState("");
   const [people, setPeople] = useState(currentReservation?.partySize || 2);
-  const [sort, setSort] = useState("deposit_asc"); // deposit_asc | deposit_desc | capacity_desc
+  const [sort, setSort] = useState("best_fit");
   const [selectedTable, setSelectedTable] = useState(null);
 
   useEffect(() => {
-    if (isOpen) {
-      setRestaurantId(currentRid || restaurants?.[0]?.id || "");
-      setPeople(currentReservation?.partySize || 2);
-      setSelectedTable(null);
-      setSearch("");
-      setSort("deposit_asc");
-    }
-  }, [isOpen, currentRid, currentReservation, restaurants]);
+    if (!isOpen) return;
+    setPeople(currentReservation?.partySize || 2);
+    setSelectedTable(null);
+    setSearch("");
+    setSort("best_fit");
+  }, [isOpen, currentReservation]);
 
   const tables = useMemo(() => {
-    const list = tablesByRestaurant?.[restaurantId] || [];
-    let filtered = list.filter(
-      (t) =>
-        (!people || t.capacity >= people) &&
-        (!search ||
-          t.name?.toLowerCase().includes(search.toLowerCase()) ||
-          String(t.capacity).includes(search))
-    );
-    if (sort === "deposit_asc")
-      filtered.sort((a, b) => (a.deposit ?? 0) - (b.deposit ?? 0));
-    if (sort === "deposit_desc")
-      filtered.sort((a, b) => (b.deposit ?? 0) - (a.deposit ?? 0));
-    if (sort === "capacity_desc")
-      filtered.sort((a, b) => (b.capacity ?? 0) - (a.capacity ?? 0));
+    const list = [...(tablesByRestaurant?.[currentRid] || [])];
+    const query = search.trim().toLowerCase();
+    const filtered = list.filter((table) =>
+      (!people || Number(table.capacity || 0) >= people) &&
+      (!query ||
+        String(table.name || "").toLowerCase().includes(query) ||
+        String(table.floor || "").toLowerCase().includes(query) ||
+        String(table.capacity || "").includes(query)));
+
+    if (sort === "deposit_asc") {
+      filtered.sort((a, b) => Number(a.deposit || 0) - Number(b.deposit || 0));
+    } else if (sort === "capacity_desc") {
+      filtered.sort((a, b) => Number(b.capacity || 0) - Number(a.capacity || 0));
+    } else {
+      filtered.sort((a, b) => {
+        const aGap = Math.max(0, Number(a.capacity || 0) - Number(people || 0));
+        const bGap = Math.max(0, Number(b.capacity || 0) - Number(people || 0));
+        return aGap - bGap || Number(a.deposit || 0) - Number(b.deposit || 0);
+      });
+    }
     return filtered;
-  }, [tablesByRestaurant, restaurantId, people, search, sort]);
+  }, [tablesByRestaurant, currentRid, people, search, sort]);
 
   useEffect(() => {
     if (!isOpen || !tables.length) return;
@@ -61,131 +60,112 @@ export default function ChangeTableModal({
     setSelectedTable(tables[0]);
   }, [isOpen, selectedTable, tables]);
 
-  const switchingRestaurant = restaurantId && restaurantId !== currentRid;
-  const currentDeposit = Number(currentReservation?.depositAmount || 0);
-  const penalty = switchingRestaurant ? Math.floor(currentDeposit * 0.5) : 0;
-
   const confirm = () => {
     if (!selectedTable) return;
-    onSubmit?.({ restaurantId, tableId: selectedTable.id });
+    onSubmit?.({ restaurantId: currentRid, tableId: selectedTable.id });
   };
 
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="🪑 Đổi bàn" size="lg">
-      <div className="changetable">
-        <aside className="changetable__filters">
-          <div className="form-row">
-            <label>Nhà hàng</label>
-            <select
-              value={restaurantId}
-              onChange={(e) => setRestaurantId(e.target.value)}
-            >
-              {restaurants.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
+    <Modal isOpen={isOpen} onClose={onClose} title="Đổi bàn đã đặt" size="lg">
+      <div className="changetable changetable--compact">
+        <header className="changetable__summary">
+          <div>
+            <span>Nhà hàng</span>
+            <strong>{currentReservation?.restaurantName || restaurants?.[0]?.name || "Nhà hàng hiện tại"}</strong>
           </div>
+          <div>
+            <span>Số khách</span>
+            <strong>{people} người</strong>
+          </div>
+          <div>
+            <span>Cọc hiện tại</span>
+            <strong>{formatDeposit(currentReservation?.depositAmount)}</strong>
+          </div>
+        </header>
 
-          <div className="form-row">
-            <label>Số người</label>
+        <div className="changetable__toolbar">
+          <label>
+            <span>Số khách</span>
             <input
               type="number"
               min={1}
               value={people}
               onChange={(e) => setPeople(Math.max(1, Number(e.target.value)))}
             />
-          </div>
-
-          <div className="form-row">
-            <label>Tìm kiếm</label>
+          </label>
+          <label className="changetable__search">
+            <span>Tìm bàn hoặc khu vực</span>
             <input
-              type="text"
-              placeholder="Số bàn, tên khu vực…"
+              type="search"
+              placeholder="Ví dụ: T201, tầng 2..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </div>
-
-          <div className="form-row">
-            <label>Sắp xếp</label>
+          </label>
+          <label>
+            <span>Sắp xếp</span>
             <select value={sort} onChange={(e) => setSort(e.target.value)}>
-              <option value="deposit_asc">Cọc tăng dần</option>
-              <option value="deposit_desc">Cọc giảm dần</option>
+              <option value="best_fit">Phù hợp nhất</option>
+              <option value="deposit_asc">Cọc thấp trước</option>
               <option value="capacity_desc">Sức chứa lớn trước</option>
             </select>
-          </div>
+          </label>
+        </div>
 
-          {selectedTable && (
-            <div className="alert alert--info">
-              ⚡ Đã tự chọn <b>{selectedTable.name}</b> phù hợp với {people} khách.
-              Bạn có thể đổi bàn khác trước khi xác nhận.
-            </div>
-          )}
-
-          {switchingRestaurant ? (
-            <div className="alert alert--warning">
-              🔁 Bạn đang chuyển sang <b>nhà hàng khác</b>.<br />
-              Xác nhận đổi sẽ <b>khấu trừ 50%</b> tiền cọc hiện tại:{" "}
-              <b>{currentDeposit.toLocaleString("vi-VN")}đ</b> → mất{" "}
-              <b>{penalty.toLocaleString("vi-VN")}đ</b>.
-            </div>
-          ) : (
-            <div className="alert alert--info">
-              ✅ Chỉ đổi bàn trong cùng nhà hàng. Vui lòng đợi nhà hàng xác nhận
-              sau khi gửi yêu cầu.
-            </div>
-          )}
-        </aside>
-
-        <section className="changetable__list">
+        <section className="changetable__list" aria-live="polite">
           {tables.length === 0 ? (
-            <div className="empty">Không tìm thấy bàn phù hợp.</div>
+            <div className="empty">Không có bàn trống phù hợp với số khách và từ khóa hiện tại.</div>
           ) : (
             <div className="grid">
-              {tables.map((t) => {
-                const active = selectedTable?.id === t.id;
+              {tables.map((table) => {
+                const active = selectedTable?.id === table.id;
+                const freeDeposit = Number(table.deposit || 0) <= 0;
                 return (
                   <button
-                    key={t.id}
+                    key={table.id}
                     type="button"
                     className={`table-card ${active ? "active" : ""}`}
-                    onClick={() => setSelectedTable(t)}
+                    onClick={() => setSelectedTable(table)}
+                    aria-pressed={active}
                   >
                     <div className="table-card__top">
-                      <div className="name">{t.name}</div>
-                      <div className="cap">👥 {t.capacity}</div>
+                      <div className="name">{table.name}</div>
+                      <div className="cap">{table.capacity} chỗ</div>
                     </div>
                     <div className="meta">
                       <span>Tiền cọc</span>
-                      <strong>
-                        {(t.deposit ?? 0).toLocaleString("vi-VN")}đ
+                      <strong data-free={freeDeposit ? "true" : "false"}>
+                        {formatDeposit(table.deposit)}
                       </strong>
                     </div>
-                    {t.floor && <div className="sub">Tầng/Khu: {t.floor}</div>}
-                    {t.note && <div className="sub">{t.note}</div>}
+                    {table.floor && <div className="sub">{table.floor}</div>}
+                    {table.note && <div className="sub">{table.note}</div>}
                   </button>
                 );
               })}
             </div>
           )}
         </section>
+
+        <div className="changetable__review" role="status">
+          {selectedTable
+            ? <>Bàn đề nghị: <strong>{selectedTable.name}</strong> • {selectedTable.capacity} chỗ • {formatDeposit(selectedTable.deposit)}</>
+            : "Chọn một bàn trống để gửi yêu cầu."}
+        </div>
       </div>
 
       <Modal.Footer>
         <button className="btn btn--secondary" onClick={onClose}>
-          Huỷ
+          Hủy
         </button>
         <button
           className="btn btn--primary"
           onClick={confirm}
           disabled={!selectedTable}
-          title={!selectedTable ? "Chọn một bàn để tiếp tục" : undefined}
         >
-          Xác nhận đổi bàn
+          Gửi yêu cầu đổi bàn
         </button>
       </Modal.Footer>
     </Modal>
