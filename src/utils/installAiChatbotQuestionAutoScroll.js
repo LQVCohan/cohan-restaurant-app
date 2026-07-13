@@ -1,4 +1,6 @@
 const USER_MESSAGE_SELECTOR = ".ai-chatbot-message.user";
+const RESPONSE_MESSAGE_SELECTOR =
+  ".ai-chatbot-message.assistant:not(.loading), .ai-chatbot-message.staff";
 const SCROLL_CONTAINER_SELECTOR = ".ai-chatbot-body";
 
 let observer = null;
@@ -19,7 +21,7 @@ const getScrollBehavior = () => {
     : "smooth";
 };
 
-const scrollToQuestion = (messageElement) => {
+const scrollToMessage = (messageElement) => {
   if (!(messageElement instanceof HTMLElement)) return;
 
   const scrollContainer =
@@ -45,7 +47,7 @@ const scrollToQuestion = (messageElement) => {
   scrollContainer.scrollTop = top;
 };
 
-const scheduleQuestionScroll = (messageElement) => {
+const scheduleMessageScroll = (messageElement) => {
   if (
     !(messageElement instanceof HTMLElement) ||
     handledMessages.has(messageElement)
@@ -55,16 +57,25 @@ const scheduleQuestionScroll = (messageElement) => {
 
   handledMessages.add(messageElement);
   nextFrame(() => {
-    nextFrame(() => scrollToQuestion(messageElement));
+    nextFrame(() => scrollToMessage(messageElement));
   });
 };
 
-const findAddedUserMessages = (node) => {
+const findAddedChatMessages = (node) => {
   if (!(node instanceof HTMLElement)) return [];
 
   const matches = [];
-  if (node.matches(USER_MESSAGE_SELECTOR)) matches.push(node);
-  matches.push(...node.querySelectorAll(USER_MESSAGE_SELECTOR));
+  if (
+    node.matches(USER_MESSAGE_SELECTOR) ||
+    node.matches(RESPONSE_MESSAGE_SELECTOR)
+  ) {
+    matches.push(node);
+  }
+  matches.push(
+    ...node.querySelectorAll(
+      `${USER_MESSAGE_SELECTOR}, ${RESPONSE_MESSAGE_SELECTOR}`,
+    ),
+  );
   return matches;
 };
 
@@ -74,16 +85,16 @@ const startObserver = () => {
   }
 
   observer = new MutationObserver((mutations) => {
-    const addedUserMessages = [];
+    const addedMessages = [];
 
     for (const mutation of mutations) {
       for (const node of mutation.addedNodes) {
-        addedUserMessages.push(...findAddedUserMessages(node));
+        addedMessages.push(...findAddedChatMessages(node));
       }
     }
 
-    const latestQuestion = addedUserMessages.at(-1);
-    if (latestQuestion) scheduleQuestionScroll(latestQuestion);
+    const latestMessage = addedMessages.at(-1);
+    if (latestMessage) scheduleMessageScroll(latestMessage);
   });
 
   observer.observe(document.body, {
