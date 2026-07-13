@@ -2,8 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { gql, useMutation } from "@apollo/client";
 import { Camera, Upload, X, RotateCcw, Trash2 } from "lucide-react";
 import { useAvatarUploadLocal } from "@/hooks/useAvatarUploadLocal";
+import { prepareOrderProofImage } from "@/utils/orderProofImage";
 import { normalizeProofImages } from "@/utils/orderProofRules";
 import "./StaffProofCaptureModal.scss";
+
+const MAX_PROOF_IMAGES = 5;
 
 const UPLOAD_ORDER_ITEM_PROOF = gql`
   mutation StaffUploadOrderItemProof($input: UploadOrderItemProofInput!) {
@@ -101,10 +104,16 @@ export default function StaffProofCaptureModal({
   }, [open, item?.id]);
 
   const uploadProofFile = async (file) => {
+    if (proofImages.length >= MAX_PROOF_IMAGES) {
+      alert(`Mỗi món chỉ lưu tối đa ${MAX_PROOF_IMAGES} ảnh minh chứng.`);
+      return;
+    }
+
     setUploading(true);
     try {
-      const url = await upload(file, (p) => setUploadProgress(p));
-      setProofImages((prev) => [...prev, url]);
+      const evidenceFile = await prepareOrderProofImage(file);
+      const url = await upload(evidenceFile, (p) => setUploadProgress(p));
+      setProofImages((prev) => normalizeProofImages([...prev, url]));
     } catch (error) {
       alert(error?.message || "Upload ảnh thất bại");
     } finally {
@@ -160,7 +169,7 @@ export default function StaffProofCaptureModal({
               orderId: item.orderId,
               orderItemId: item.orderItemId || item.id,
               proofImages: cleaned,
-              note: "Staff updated by-weight item proof image.",
+              note: "Staff updated order item proof images.",
             },
           },
         });
@@ -211,7 +220,9 @@ export default function StaffProofCaptureModal({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploading || savingProof}
+            disabled={
+              uploading || savingProof || proofImages.length >= MAX_PROOF_IMAGES
+            }
           >
             <Upload size={16} /> Fallback camera/file
           </button>

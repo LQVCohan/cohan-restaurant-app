@@ -51,6 +51,7 @@ const qrOrder = {
       quantity: 1,
       unit: "portion",
       weightGrams: null,
+      proofImages: [],
       note: "Ít cay",
       servingVariant: { mode: "PORTION", sellUnit: "portion" },
     },
@@ -136,6 +137,39 @@ describe("PosIncomingTableOrderQueue", () => {
       "Đã nhận order của bàn A01 và chuyển món vào bếp.",
       "success",
     );
+  });
+
+  it("blocks kitchen handoff and exposes proof capture for a weighted item", () => {
+    setQueryData({
+      orders: [
+        {
+          ...qrOrder,
+          items: [
+            {
+              ...qrOrder.items[0],
+              name: "Cua cân ký",
+              unit: "kg",
+              weightGrams: 850,
+              proofImages: [],
+              servingVariant: { mode: "BY_WEIGHT", sellUnit: "kg" },
+            },
+          ],
+        },
+      ],
+    });
+
+    render(<PosIncomingTableOrderQueue restaurantId={restaurantId} />);
+
+    expect(
+      screen.getByText("Cần ảnh minh chứng trước khi chuyển bếp"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Bổ sung ảnh Cua cân ký" }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Nhận & chuyển bếp" }),
+    ).toBeDisabled();
+    expect(mocks.confirmOrder).not.toHaveBeenCalled();
   });
 
   it("keeps the table confirmation code hidden until staff confirms they reached the matching table", () => {
