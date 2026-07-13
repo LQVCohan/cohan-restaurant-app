@@ -16,8 +16,8 @@ const RESTAURANT_LOOKUP = gql`
   }
 `;
 
-const RESTAURANT_COMBOS = gql`
-  query CustomerMenuRestaurantCombos($filter: CustomerComboFilterInput) {
+const RESTAURANT_OFFERS = gql`
+  query CustomerMenuRestaurantOffers($filter: CustomerComboFilterInput) {
     customerCombos(filter: $filter) {
       id
       sourceType
@@ -57,7 +57,13 @@ const PAGE_SELECTOR = ".restaurant-app .menu-detail-view";
 const CONTAINER_SELECTOR = `${PAGE_SELECTOR} .menu-detail-container`;
 const ROOT_SELECTOR = "[data-customer-menu-restaurant-combos]";
 const DEFAULT_IMAGE = "/default-dishes.jpg";
-const SETTLED_STATES = new Set(["loading", "ready", "empty", "error", "unresolved"]);
+const SETTLED_STATES = new Set([
+  "loading",
+  "ready",
+  "empty",
+  "error",
+  "unresolved",
+]);
 
 let queued = false;
 let requestSequence = 0;
@@ -71,22 +77,44 @@ const element = (tag, className, text) => {
   return node;
 };
 
+export const isBundleRestaurantOffer = (offer) =>
+  offer?.sourceType === "COMBO";
+
+export const filterRestaurantOffers = (offers = [], restaurantId) =>
+  (offers || []).filter(
+    (offer) =>
+      ["COMBO", "PROMOTION"].includes(offer?.sourceType) &&
+      (!restaurantId ||
+        !offer?.restaurantId ||
+        String(offer.restaurantId) === String(restaurantId)),
+  );
+
+export const summarizeRestaurantOffers = (offers = []) => ({
+  comboCount: offers.filter(isBundleRestaurantOffer).length,
+  promotionCount: offers.filter((offer) => offer?.sourceType === "PROMOTION")
+    .length,
+  total: offers.length,
+});
+
 const restaurantNameFromPage = () =>
   document
     .querySelector(`${PAGE_SELECTOR} .restaurant-title-block h2`)
     ?.textContent?.trim() || "Nhà hàng";
 
 const restaurantIdFromPage = (container) => {
-  const explicitId = new URLSearchParams(window.location.search).get("restaurantId");
+  const explicitId = new URLSearchParams(window.location.search).get(
+    "restaurantId",
+  );
   if (explicitId) return explicitId;
 
   for (const link of container.querySelectorAll(
     '.menu-grid .item-card[href*="restaurantId="]',
   )) {
     try {
-      const restaurantId = new URL(link.href, window.location.origin).searchParams.get(
-        "restaurantId",
-      );
+      const restaurantId = new URL(
+        link.href,
+        window.location.origin,
+      ).searchParams.get("restaurantId");
       if (restaurantId) return restaurantId;
     } catch {
       // Continue to the restaurant-name lookup below.
@@ -106,7 +134,8 @@ const resolveRestaurantId = async (restaurantName) => {
     .map((entry) => entry?.node)
     .find(
       (entry) =>
-        String(entry?.name || "").trim().toLocaleLowerCase("vi") === wantedName,
+        String(entry?.name || "").trim().toLocaleLowerCase("vi") ===
+        wantedName,
     );
   return restaurant?.id || null;
 };
@@ -121,27 +150,44 @@ const ensureRoot = (container) => {
   return root;
 };
 
-const buildHeader = (restaurantName, count, restaurantId) => {
+const buildHeader = (restaurantName, summary, restaurantId) => {
   const header = element("div", "customer-menu-combos__header");
   const copy = element("div", "customer-menu-combos__header-copy");
   copy.append(
-    element("span", "customer-menu-combos__eyebrow", "Combo nhà hàng"),
-    element("h3", "", `Combo tại ${restaurantName}`),
+    element("span", "customer-menu-combos__eyebrow", "Combo & ưu đãi"),
+    element("h3", "", `Combo và ưu đãi tại ${restaurantName}`),
     element(
       "p",
       "",
-      "Các gói món được lọc riêng theo đúng nhà hàng bạn đang xem.",
+      "Combo trọn gói có thể thêm ngay vào giỏ; ưu đãi thanh toán sẽ tự áp dụng khi bạn chọn đủ món điều kiện.",
     ),
   );
   header.append(copy);
 
-  if (Number.isFinite(count)) {
+  if (summary) {
     const actions = element("div", "customer-menu-combos__header-actions");
-    actions.append(element("span", "customer-menu-combos__count", `${count} combo`));
+    if (summary.comboCount) {
+      actions.append(
+        element(
+          "span",
+          "customer-menu-combos__count",
+          `${summary.comboCount} combo`,
+        ),
+      );
+    }
+    if (summary.promotionCount) {
+      actions.append(
+        element(
+          "span",
+          "customer-menu-combos__count",
+          `${summary.promotionCount} ưu đãi`,
+        ),
+      );
+    }
     const link = element(
       "a",
       "customer-menu-combos__all-link",
-      "Khám phá trang Combo",
+      "Xem tất cả",
     );
     link.href = restaurantId
       ? `/combos?restaurantId=${encodeURIComponent(restaurantId)}`
@@ -157,7 +203,7 @@ const renderLoading = (root, restaurantName) => {
   loading.setAttribute("role", "status");
   loading.append(
     element("span", "customer-menu-combos__spinner"),
-    element("span", "", "Đang tải combo của nhà hàng"),
+    element("span", "", "Đang tải combo và ưu đãi của nhà hàng"),
   );
   root.replaceChildren(buildHeader(restaurantName), loading);
 };
@@ -222,12 +268,29 @@ const addCombo = async (root, combo, button) => {
   }
 };
 
-const comboCard = (root, combo) => {
-  const card = element("article", "customer-menu-combo-card");
+const choosePromotionItems = (root, promotion) => {
+  document
+    .querySelector(`${CONTAINER_SELECTOR} .menu-results-context`)
+    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  announce(
+    root,
+    `Hãy chọn đủ các món trong “${promotion.name}”; ưu đãi sẽ được kiểm tra ở bước thanh toán.`,
+    "success",
+  );
+};
+
+const offerCard = (root, offer) => {
+  const bundle = isBundleRestaurantOffer(offer);
+  const card = element(
+    "article",
+    `customer-menu-combo-card customer-menu-combo-card--${
+      bundle ? "bundle" : "promotion"
+    }`,
+  );
   const media = element("div", "customer-menu-combo-card__media");
   const image = document.createElement("img");
-  image.src = toApiAssetUrl(combo.imageUrl) || DEFAULT_IMAGE;
-  image.alt = combo.name || "Combo nhà hàng";
+  image.src = toApiAssetUrl(offer.imageUrl) || DEFAULT_IMAGE;
+  image.alt = offer.name || (bundle ? "Combo nhà hàng" : "Ưu đãi nhà hàng");
   image.loading = "lazy";
   image.decoding = "async";
   image.addEventListener("error", () => {
@@ -238,15 +301,15 @@ const comboCard = (root, combo) => {
     element(
       "span",
       "customer-menu-combo-card__badge",
-      combo.badge || "Combo trọn gói",
+      offer.badge || (bundle ? "Combo trọn gói" : "Ưu đãi thanh toán"),
     ),
   );
-  if (Number(combo.discountPercent) > 0) {
+  if (Number(offer.discountPercent) > 0) {
     media.append(
       element(
         "span",
         "customer-menu-combo-card__discount",
-        `-${Math.round(Number(combo.discountPercent))}%`,
+        `-${Math.round(Number(offer.discountPercent))}%`,
       ),
     );
   }
@@ -254,22 +317,32 @@ const comboCard = (root, combo) => {
   const body = element("div", "customer-menu-combo-card__body");
   const heading = element("div", "customer-menu-combo-card__heading");
   heading.append(
-    element("h4", "", combo.name || "Combo nhà hàng"),
+    element("h4", "", offer.name || (bundle ? "Combo nhà hàng" : "Ưu đãi")),
     element(
       "p",
       "",
-      combo.description || "Gọi nhanh trọn bộ món với mức giá ưu đãi.",
+      offer.description ||
+        (bundle
+          ? "Gọi nhanh trọn bộ món với mức giá ưu đãi."
+          : "Ưu đãi được áp dụng khi giỏ hàng đủ các món và điều kiện thanh toán."),
     ),
   );
 
   const meta = element("div", "customer-menu-combo-card__meta");
-  const itemCount = (combo.items || []).reduce(
+  meta.append(
+    element(
+      "span",
+      "",
+      bundle ? "Combo thêm vào giỏ" : "Ưu đãi khi thanh toán",
+    ),
+  );
+  const itemCount = (offer.items || []).reduce(
     (sum, item) => sum + Math.max(1, Number(item?.qty || 1)),
     0,
   );
   meta.append(element("span", "", `${itemCount} món`));
-  const minPeople = Number(combo.minPeople || 0);
-  const maxPeople = Number(combo.maxPeople || 0);
+  const minPeople = Number(offer.minPeople || 0);
+  const maxPeople = Number(offer.maxPeople || 0);
   if (minPeople || maxPeople) {
     const minimum = minPeople || maxPeople;
     const maximum = maxPeople || minPeople;
@@ -283,26 +356,34 @@ const comboCard = (root, combo) => {
   }
 
   const items = element("ul", "customer-menu-combo-card__items");
-  (combo.items || []).slice(0, 4).forEach((item) => {
+  (offer.items || []).slice(0, 4).forEach((item) => {
     const row = element("li");
     row.append(
       element("span", "", `${Math.max(1, Number(item?.qty || 1))}×`),
-      document.createTextNode(item?.name || "Món trong combo"),
+      document.createTextNode(item?.name || "Món trong chương trình"),
     );
     items.append(row);
   });
 
   const footer = element("div", "customer-menu-combo-card__footer");
   const prices = element("div", "customer-menu-combo-card__prices");
-  const comboPrice = Number(combo.comboPrice ?? combo.originalPrice ?? 0);
-  const originalPrice = Number(combo.originalPrice || 0);
-  prices.append(element("strong", "", money(comboPrice)));
-  if (originalPrice > comboPrice) prices.append(element("del", "", money(originalPrice)));
+  const offerPrice = Number(offer.comboPrice ?? offer.originalPrice ?? 0);
+  const originalPrice = Number(offer.originalPrice || 0);
+  prices.append(element("strong", "", money(offerPrice)));
+  if (originalPrice > offerPrice) {
+    prices.append(element("del", "", money(originalPrice)));
+  }
 
-  const button = element("button", "customer-menu-combo-card__action", "Thêm combo");
+  const button = element(
+    "button",
+    "customer-menu-combo-card__action",
+    bundle ? "Thêm combo" : "Chọn món",
+  );
   button.type = "button";
-  button.disabled = combo.isAvailable === false;
-  button.addEventListener("click", () => addCombo(root, combo, button));
+  button.disabled = offer.isAvailable === false;
+  button.addEventListener("click", () =>
+    bundle ? addCombo(root, offer, button) : choosePromotionItems(root, offer),
+  );
   footer.append(prices, button);
 
   body.append(heading, meta);
@@ -312,10 +393,14 @@ const comboCard = (root, combo) => {
   return card;
 };
 
-const renderCombos = (root, restaurantName, restaurantId, combos) => {
+const renderOffers = (root, restaurantName, restaurantId, offers) => {
+  const summary = summarizeRestaurantOffers(offers);
   const grid = element("div", "customer-menu-combos__grid");
-  combos.slice(0, 6).forEach((combo) => grid.append(comboCard(root, combo)));
-  root.replaceChildren(buildHeader(restaurantName, combos.length, restaurantId), grid);
+  offers.slice(0, 6).forEach((offer) => grid.append(offerCard(root, offer)));
+  root.replaceChildren(
+    buildHeader(restaurantName, summary, restaurantId),
+    grid,
+  );
 };
 
 const sync = async () => {
@@ -341,14 +426,16 @@ const sync = async () => {
 
   try {
     const restaurantId =
-      restaurantIdFromPage(container) || (await resolveRestaurantId(restaurantName));
+      restaurantIdFromPage(container) ||
+      (await resolveRestaurantId(restaurantName));
     if (!root.isConnected || root.dataset.requestId !== requestId) return;
 
     if (!restaurantId) {
       root.dataset.comboState = "unresolved";
       renderState(root, restaurantName, {
         title: "Chưa xác định được nhà hàng",
-        message: "Vui lòng tải lại trang hoặc chọn lại nhà hàng để xem combo.",
+        message:
+          "Vui lòng tải lại trang hoặc chọn lại nhà hàng để xem combo và ưu đãi.",
         tone: "warning",
         retry: true,
       });
@@ -357,11 +444,10 @@ const sync = async () => {
 
     root.dataset.restaurantId = String(restaurantId);
     const { data } = await apolloClient.query({
-      query: RESTAURANT_COMBOS,
+      query: RESTAURANT_OFFERS,
       variables: {
         filter: {
           restaurantId: String(restaurantId),
-          sourceType: "COMBO",
           onlyAvailable: true,
           limit: 12,
         },
@@ -370,30 +456,28 @@ const sync = async () => {
     });
     if (!root.isConnected || root.dataset.requestId !== requestId) return;
 
-    const combos = (data?.customerCombos || []).filter(
-      (combo) =>
-        combo?.sourceType === "COMBO" &&
-        (!combo?.restaurantId ||
-          String(combo.restaurantId) === String(restaurantId)),
+    const offers = filterRestaurantOffers(
+      data?.customerCombos || [],
+      restaurantId,
     );
-    if (!combos.length) {
+    if (!offers.length) {
       root.dataset.comboState = "empty";
       renderState(root, restaurantName, {
-        title: "Nhà hàng chưa có combo khả dụng",
+        title: "Nhà hàng chưa có combo hoặc ưu đãi khả dụng",
         message:
-          "Các món lẻ vẫn hiển thị bình thường. Combo sẽ xuất hiện tại đây khi nhà hàng mở bán.",
+          "Các món lẻ vẫn hiển thị bình thường. Chương trình mới sẽ xuất hiện tại đây khi nhà hàng mở bán.",
         tone: "empty",
       });
       return;
     }
 
     root.dataset.comboState = "ready";
-    renderCombos(root, restaurantName, restaurantId, combos);
+    renderOffers(root, restaurantName, restaurantId, offers);
   } catch (error) {
     if (!root.isConnected || root.dataset.requestId !== requestId) return;
     root.dataset.comboState = "error";
     renderState(root, restaurantName, {
-      title: "Không thể tải combo",
+      title: "Không thể tải combo và ưu đãi",
       message: error?.message || "Kết nối đang gián đoạn. Vui lòng thử lại.",
       tone: "error",
       retry: true,
