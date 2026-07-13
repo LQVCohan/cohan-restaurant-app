@@ -169,13 +169,25 @@ describe("EmployeeFormModal draft lifecycle", () => {
       screen.getByText("Có dữ liệu nhân viên nhập dở. Khôi phục?"),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Khôi phục" }));
-    expect(screen.getByDisplayValue("Nguyen Test")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Nguyen Test")).toBeInTheDocument();
+      expect(screen.getByLabelText("Nhà hàng chính")).toHaveValue("rest-1");
+    });
 
     fireEvent.click(screen.getByRole("button", { name: /tiếp theo/i }));
-    fireEvent.change(screen.getByPlaceholderText("09..."), {
+    const phoneInput = screen.getByPlaceholderText("09...");
+    fireEvent.change(phoneInput, {
       target: { value: "0912345678" },
     });
+    await waitFor(() => expect(phoneInput).toHaveValue("0912345678"));
+
     fireEvent.click(screen.getByRole("button", { name: /tiếp theo/i }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /hoàn tất/i })).toBeEnabled();
+      expect(screen.getByPlaceholderText("0")).toHaveValue("5.310.000");
+    });
+
     fireEvent.click(screen.getByRole("button", { name: /hoàn tất/i }));
 
     await waitFor(() => {

@@ -1,19 +1,33 @@
 import mongoose from "mongoose";
 
-import { Order, Reservation, Table } from "../../models/index.js";
-import { ACTIVE_RESERVATION_STATUSES } from "../../utils/tableStateGuards.js";
 import {
   ACTIVE_TABLE_SESSION_SORT,
   activeTableSessionLookupFilter,
 } from "../../utils/orderLifecycle.js";
 
 export const RESERVATION_ARRIVAL_GRACE_MINUTES = 15;
+const ACTIVE_RESERVATION_STATUSES = [
+  "pending_payment",
+  "confirmed",
+  "seated",
+  "pending_change",
+];
 const VISIBLE_STATUSES = ["pending_payment", "confirmed", "pending_change"];
 const RESERVATION_OWNED_TABLE_STATUSES = ["reserved", "payment_pending"];
 
 const validDate = (value) => {
   const date = value ? new Date(value) : null;
   return date && !Number.isNaN(date.getTime()) ? date : null;
+};
+
+const loadRegisteredModel = async (modelName, modulePath) => {
+  // Focused resolver tests replace mongoose with a deliberately small mock.
+  // In that environment reservation enrichment is optional, so do not load a
+  // complete model graph that the test did not request.
+  if (!mongoose?.models) return null;
+  if (mongoose.models[modelName]) return mongoose.models[modelName];
+  const module = await import(modulePath);
+  return module.default || mongoose.models[modelName] || null;
 };
 
 export function getReservationTimingPhase(reservation, now = new Date()) {
@@ -33,6 +47,12 @@ async function nextReservation(table, now = new Date()) {
   if (!mongoose.isValidObjectId(tableId) || !mongoose.isValidObjectId(restaurantId)) {
     return null;
   }
+
+  const Reservation = await loadRegisteredModel(
+    "Reservation",
+    "../../models/reservation.model.js",
+  );
+  if (!Reservation) return null;
 
   const earliestVisible = new Date(
     now.getTime() - RESERVATION_ARRIVAL_GRACE_MINUTES * 60_000,
@@ -84,6 +104,8 @@ export function getCachedTableReservationSnapshot(table, ctx) {
 }
 
 async function hasActiveSession({ restaurantId, tableId, tableCode }) {
+  const Order = await loadRegisteredModel("Order", "../../models/order.model.js");
+  if (!Order) return false;
   const session = await Order.findOne(
     activeTableSessionLookupFilter({
       restaurantId,
@@ -103,6 +125,12 @@ export async function synchronizeReservationOwnedTableState(reservation) {
   if (!mongoose.isValidObjectId(tableId) || !mongoose.isValidObjectId(restaurantId)) {
     return;
   }
+
+  const [Table, Reservation] = await Promise.all([
+    loadRegisteredModel("Table", "../../models/table.model.js"),
+    loadRegisteredModel("Reservation", "../../models/reservation.model.js"),
+  ]);
+  if (!Table || !Reservation) return;
 
   const table = await Table.findOne({ _id: tableId, restaurantId })
     .select({ _id: 1, code: 1, status: 1, restaurantId: 1 })

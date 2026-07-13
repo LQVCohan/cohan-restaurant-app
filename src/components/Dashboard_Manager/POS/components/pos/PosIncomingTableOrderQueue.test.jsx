@@ -144,7 +144,7 @@ describe("PosIncomingTableOrderQueue", () => {
     render(<PosIncomingTableOrderQueue restaurantId={restaurantId} />);
 
     expect(screen.getByText("Bàn B03")).toBeInTheDocument();
-    expect(screen.getByText("#A1B2")).toBeInTheDocument();
+    expect(screen.getByText("#A1B2", { selector: "em" })).toBeInTheDocument();
     expect(screen.queryByText("493201")).not.toBeInTheDocument();
 
     fireEvent.click(

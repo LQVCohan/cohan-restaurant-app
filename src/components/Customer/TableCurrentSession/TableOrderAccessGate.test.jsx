@@ -101,7 +101,7 @@ describe("TableOrderAccessGate", () => {
     });
   });
 
-  it("requires the staff request label and six-digit code before opening table ordering", async () => {
+  it("asks for staff confirmation only when the customer opens the send-order step", async () => {
     render(
       <MemoryRouter initialEntries={[tableUrl]}>
         <TableOrderAccessGate />
@@ -109,13 +109,23 @@ describe("TableOrderAccessGate", () => {
     );
 
     expect(
+      screen.queryByRole("dialog", { name: "Xác nhận gọi món tại bàn" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Nhờ nhân viên xác nhận tại bàn A01",
+      }),
+    );
+
+    expect(
       await screen.findByRole("dialog", {
-        name: "Xác nhận thiết bị tại bàn",
+        name: "Xác nhận gọi món tại bàn",
       }),
     ).toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Yêu cầu mã từ nhân viên" }),
+      screen.getByRole("button", { name: "Gửi yêu cầu cho nhân viên" }),
     );
 
     expect(await screen.findByText("#A1B2")).toBeInTheDocument();
@@ -131,7 +141,7 @@ describe("TableOrderAccessGate", () => {
     });
 
     const confirmButton = screen.getByRole("button", {
-      name: "Xác nhận và mở gọi món",
+      name: "Xác nhận và gửi món",
     });
     expect(confirmButton).toBeDisabled();
 

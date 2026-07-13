@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { gql, useApolloClient, useMutation, useQuery } from "@apollo/client";
-import { KeyRound, ShieldCheck } from "lucide-react";
+import {
+  CheckCircle2,
+  KeyRound,
+  MapPin,
+  ShieldCheck,
+} from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 import Modal from "@/components/common/Modal";
@@ -66,10 +71,10 @@ const CONFIRM_TABLE_ORDER_ACCESS = gql`
 const getErrorMessage = (error, fallback) => {
   const code = error?.graphQLErrors?.[0]?.extensions?.code;
   if (code === "TABLE_CONFIRMATION_RATE_LIMITED") {
-    return "Bạn đã nhập sai nhiều lần. Hãy tạo mã xác nhận mới và nhờ nhân viên hỗ trợ.";
+    return "Bạn đã nhập sai nhiều lần. Hãy tạo yêu cầu mới và nhờ nhân viên hỗ trợ tại bàn.";
   }
   if (code === "FORBIDDEN") {
-    return "Yêu cầu chưa được nhân viên xác nhận. Vui lòng gọi nhân viên tại bàn.";
+    return "Yêu cầu chưa được nhân viên xác nhận. Vui lòng kiểm tra lại mã với nhân viên đang đứng tại bàn.";
   }
   return fallback;
 };
@@ -115,6 +120,8 @@ export default function TableOrderAccessGate() {
   const confirmed = Boolean(access?.orderAccessConfirmed);
   const canRequest = Boolean(access?.canRequestOrderAccess);
   const busy = requesting || confirming;
+  const tableLabel = access?.tableCode ? `Bàn ${access.tableCode}` : "Bàn hiện tại";
+  const currentStage = requestToken ? 2 : 1;
 
   useEffect(() => {
     if (!confirmed) return;
@@ -167,7 +174,7 @@ export default function TableOrderAccessGate() {
       setError(
         getErrorMessage(
           requestError,
-          "Không thể gửi yêu cầu xác nhận. Vui lòng gọi nhân viên tại bàn.",
+          "Không thể gửi yêu cầu xác nhận. Vui lòng gọi nhân viên tại bàn để được hỗ trợ.",
         ),
       );
     }
@@ -222,12 +229,13 @@ export default function TableOrderAccessGate() {
         type="button"
         className="table-order-access-launcher"
         onClick={() => setIsOpen(true)}
+        aria-haspopup="dialog"
         aria-label={`Nhờ nhân viên xác nhận tại ${access?.tableCode ? `bàn ${access.tableCode}` : "bàn này"}`}
       >
         <ShieldCheck aria-hidden="true" />
         <span>
-          <strong>Nhờ nhân viên xác nhận</strong>
-          <small>Chỉ cần làm khi bạn chuẩn bị gửi món</small>
+          <strong>Xác nhận để gửi món</strong>
+          <small>{tableLabel} · chỉ cần xác nhận một lần</small>
         </span>
       </button>
 
@@ -240,20 +248,53 @@ export default function TableOrderAccessGate() {
         zIndex={1210}
       >
         <div className="table-order-access-gate">
-          <div className="table-order-access-gate__icon" aria-hidden="true">
-            <ShieldCheck />
+          <div className="table-order-access-gate__context">
+            <span className="table-order-access-gate__table">
+              <MapPin aria-hidden="true" />
+              {tableLabel}
+            </span>
+            <span className="table-order-access-gate__secure">
+              <ShieldCheck aria-hidden="true" />
+              Xác nhận an toàn
+            </span>
           </div>
+
+          <div
+            className="table-order-access-gate__progress"
+            aria-label={`Bước ${currentStage} trên 2`}
+          >
+            <div className="is-complete">
+              <span>{requestToken ? <CheckCircle2 aria-hidden="true" /> : "1"}</span>
+              <strong>Gửi yêu cầu</strong>
+            </div>
+            <i aria-hidden="true" />
+            <div className={requestToken ? "is-active" : ""}>
+              <span>2</span>
+              <strong>Nhập mã</strong>
+            </div>
+          </div>
+
           <p className="table-order-access-gate__lead">
-            Bạn đã chọn món. Nhân viên cần xác nhận thiết bị này một lần trước
-            khi món được gửi vào hệ thống của nhà hàng.
+            Bạn vẫn có thể chọn món trước. Bước này chỉ mở khi chuẩn bị gửi món
+            vào hệ thống nhà hàng.
           </p>
 
           {!requestToken ? (
             <>
+              <div className="table-order-access-gate__explain">
+                <ShieldCheck aria-hidden="true" />
+                <div>
+                  <strong>Vì sao cần xác nhận?</strong>
+                  <p>
+                    Nhân viên đối chiếu đúng bàn và thiết bị để tránh người ngoài
+                    quét mã rồi gửi món nhầm.
+                  </p>
+                </div>
+              </div>
               <ol className="table-order-access-gate__steps">
-                <li>Gửi yêu cầu xác nhận cho nhân viên.</li>
-                <li>Cho nhân viên xem mã yêu cầu tại đúng bàn.</li>
-                <li>Nhập 6 số nhân viên đọc để tiếp tục gửi món.</li>
+                <li>Gửi yêu cầu cho nhân viên.</li>
+                <li>Cho nhân viên xem mã yêu cầu trên màn hình.</li>
+                <li>Nhập 6 số nhân viên đọc để gửi món.</li>
               </ol>
               {access?.orderAccessBlockedReason ? (
                 <p className="table-order-access-gate__hint">
@@ -273,13 +314,10 @@ export default function TableOrderAccessGate() {
           ) : (
             <form onSubmit={handleConfirm} className="table-order-access-gate__form">
               <div className="table-order-access-gate__request">
-                <span>Mã yêu cầu của bàn</span>
+                <span>Mã yêu cầu đang hiển thị cho nhân viên</span>
                 <strong>#{requestLabel}</strong>
+                <small>Đảm bảo nhân viên đang đứng đúng {tableLabel.toLowerCase()}.</small>
               </div>
-              <p className="table-order-access-gate__hint">
-                Cho nhân viên xem mã này. Sau khi đối chiếu đúng bàn, nhân viên
-                sẽ đọc mã xác nhận gồm 6 số.
-              </p>
               <label htmlFor="table-order-confirmation-code">
                 Mã xác nhận gồm 6 số
               </label>
@@ -299,6 +337,10 @@ export default function TableOrderAccessGate() {
                 required
                 autoFocus
               />
+              <p className="table-order-access-gate__input-hint">
+                Mã chỉ có hiệu lực trong thời gian ngắn và không cần dùng lại ở
+                những lần gọi thêm món trong cùng phiên.
+              </p>
               <div className="table-order-access-gate__actions">
                 <button
                   type="submit"
