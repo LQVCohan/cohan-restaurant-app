@@ -37,7 +37,7 @@ describe("featured dish selection", () => {
     expect(result.map((dish) => dish.id)).toEqual(["available"]);
   });
 
-  it("removes repeated dish names and attaches the real restaurant name", () => {
+  it("keeps matching dish names from different restaurants and removes duplicates within one restaurant", () => {
     const restaurantNameById = buildRestaurantNameMap({
       edges: [
         { node: { id: "restaurant-1", name: "Nhà hàng Việt" } },
@@ -48,19 +48,20 @@ describe("featured dish selection", () => {
     const result = selectFeaturedDishes(
       [
         makeDish({ id: "bun-1", restaurantId: "restaurant-1", name: "Bún thịt nướng" }),
+        makeDish({ id: "bun-1-duplicate", restaurantId: "restaurant-1", name: "bun thit nuong" }),
         makeDish({ id: "bun-2", restaurantId: "restaurant-2", name: "bun thit nuong" }),
         makeDish({ id: "com", restaurantId: "restaurant-2", name: "Cơm gà" }),
       ],
       { limit: 8, restaurantNameById },
     );
 
-    expect(result).toHaveLength(2);
+    expect(result.map((dish) => dish.id)).toEqual(["bun-1", "bun-2", "com"]);
     expect(result[0]).toMatchObject({
       id: "bun-1",
       restaurantName: "Nhà hàng Việt",
     });
     expect(result[1]).toMatchObject({
-      id: "com",
+      id: "bun-2",
       restaurantName: "Bếp Cohan",
     });
   });
