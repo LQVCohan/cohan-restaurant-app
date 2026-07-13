@@ -11,6 +11,7 @@ import {
   ReservationCustomerHistoryQuery,
 } from "./customerHistory.js";
 import { ReservationCustomerHistoryEnhancedQuery } from "./customerHistoryQueryEnhanced.js";
+import { withCustomerReservationPolicy } from "./customerReservationPolicy.js";
 import {
   ReservationCheckInMutation,
   withSafeReservationStatusMutation,
@@ -69,7 +70,8 @@ const ReviewReservationMutation = {
 };
 
 const SafeReservationMutation = withSafeReservationStatusMutation(ReviewReservationMutation);
-const RealtimeReservationMutation = withReservationRealtimeEvents(SafeReservationMutation);
+const CustomerSafeReservationMutation = withCustomerReservationPolicy(SafeReservationMutation);
+const RealtimeReservationMutation = withReservationRealtimeEvents(CustomerSafeReservationMutation);
 const ReservationMutationWithAliases = {
   ...RealtimeReservationMutation,
   markReservationNoShow: RealtimeReservationMutation.deleteReservation,
