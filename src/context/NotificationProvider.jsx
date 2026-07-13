@@ -40,9 +40,26 @@ const TECHNICAL_COPY_REPLACEMENTS = [
   [/\bexport\b/gi, "xuất file"],
 ];
 
+const TECHNICAL_ERROR_PATTERN =
+  /(Variable\s+"\$|got invalid value|cannot represent|GraphQL|ApolloError|TypeError|ReferenceError|SyntaxError|ObjectId|ECONN(?:REFUSED|RESET)|\bat input\.[a-z]|\bextensions\.code\b|\bstatus code\s*\d{3}\b|\b[a-f0-9]{24}\b|\b[0-9a-f]{8}-[0-9a-f-]{27,}\b)/i;
+const DATE_TIME_ERROR_PATTERN =
+  /(datetime|date-time|cannot represent.*date|invalid.*(?:startDate|endDate))/i;
+const ORDER_CODE_PATTERN = /#?\b(?:ORD|POS|RSV)-[A-Z0-9-]+\b/i;
+
+const toTechnicalErrorFallback = (message) => {
+  const orderCode = message.match(ORDER_CODE_PATTERN)?.[0]?.replace(/^#/, "");
+  const fallback = DATE_TIME_ERROR_PATTERN.test(message)
+    ? "Thời gian đã chọn chưa hợp lệ. Vui lòng kiểm tra và thử lại."
+    : "Thao tác chưa hoàn tất. Vui lòng kiểm tra thông tin và thử lại.";
+  return orderCode ? `${fallback} Mã đơn: ${orderCode}.` : fallback;
+};
+
 export const toUserFacingCopy = (value) => {
   if (value == null) return value;
   let message = String(value);
+  if (TECHNICAL_ERROR_PATTERN.test(message)) {
+    return toTechnicalErrorFallback(message);
+  }
   TECHNICAL_COPY_REPLACEMENTS.forEach(([pattern, replacement]) => {
     message = message.replace(pattern, replacement);
   });

@@ -52,26 +52,65 @@ export const getShiftDurationMeta = (startTime, endTime) => {
   const hoursLabel = `${formatHours(durationHours)} giờ`;
 
   if (durationHours >= 3.5 && durationHours <= 4.5) {
-    return { tone: "part-time", label: `Bán thời gian · ${hoursLabel}` };
+    return { tone: "short", label: `Ca ${hoursLabel}` };
   }
   if (durationHours >= 7 && durationHours <= 9) {
-    return { tone: "full-time", label: `Toàn thời gian · ${hoursLabel}` };
+    return { tone: "standard", label: `Ca ${hoursLabel}` };
   }
   return { tone: "flexible", label: `Ca linh hoạt · ${hoursLabel}` };
+};
+
+const EMPLOYMENT_TYPE_META = {
+  full_time: { tone: "full-time", singular: "toàn thời gian" },
+  part_time: { tone: "part-time", singular: "bán thời gian" },
+  contract: { tone: "contract", singular: "hợp đồng" },
+  probation: { tone: "probation", singular: "thử việc" },
+  seasonal: { tone: "seasonal", singular: "thời vụ" },
+};
+
+const normalizeEmploymentType = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+
+export const getEmploymentMixMeta = (staffList = []) => {
+  const counts = new Map();
+  staffList.forEach((staff) => {
+    const type = normalizeEmploymentType(staff?.employmentType);
+    if (!EMPLOYMENT_TYPE_META[type]) return;
+    counts.set(type, (counts.get(type) || 0) + 1);
+  });
+
+  return Object.entries(EMPLOYMENT_TYPE_META)
+    .filter(([type]) => counts.has(type))
+    .map(([type, meta]) => ({
+      type,
+      tone: meta.tone,
+      count: counts.get(type),
+      label: `${counts.get(type)} ${meta.singular}`,
+    }));
+};
+
+const getEmploymentTypeLabel = (staff) => {
+  const type = normalizeEmploymentType(staff?.employmentType);
+  return EMPLOYMENT_TYPE_META[type]?.singular || "chưa rõ loại hợp đồng";
 };
 
 const getStaffTitle = (staff) => {
   const roleLabel = getJobName(staff.roleSlug || staff.job);
   const departmentLabel = staff.departmentLabel;
   if (!departmentLabel || departmentLabel === roleLabel) {
-    return `${staff.name} - ${roleLabel}`;
+    return `${staff.name} - ${roleLabel} · ${getEmploymentTypeLabel(staff)}`;
   }
-  return `${staff.name} - ${roleLabel} · ${departmentLabel}`;
+  return `${staff.name} - ${roleLabel} · ${departmentLabel} · ${getEmploymentTypeLabel(staff)}`;
 };
 
 const ShiftCard = ({ shift, staffList, onClick }) => {
   const assignedStaff = shift.staffIds
-    .map((id) => staffList.find((staff) => staff.id === id))
+    .map((id) =>
+      staffList.find((staff) => String(staff?.id || "") === String(id || "")),
+    )
     .filter(Boolean);
   const totalRequired = Math.max(shift.essentialJobs.length, 1);
   const currentCount = assignedStaff.length;
@@ -87,13 +126,15 @@ const ShiftCard = ({ shift, staffList, onClick }) => {
         : "Đủ yêu cầu";
   const isCritical = missingCount > 0;
   const durationMeta = getShiftDurationMeta(shift.startTime, shift.endTime);
+  const employmentMix = getEmploymentMixMeta(assignedStaff);
+  const employmentLabel = employmentMix.map((item) => item.label).join(", ");
 
   return (
     <button
       type="button"
       className={`shift-card ${isCritical ? "critical" : "optimal"}`}
       onClick={() => onClick(shift)}
-      aria-label={`Xem chi tiết ca ${shift.startTime} - ${shift.endTime}${durationMeta ? `, ${durationMeta.label}` : ""}, ${currentCount} nhân sự, ${coverageLabel}`}
+      aria-label={`Xem chi tiết ca ${shift.startTime} - ${shift.endTime}${durationMeta ? `, ${durationMeta.label}` : ""}, ${currentCount} nhân sự${employmentLabel ? `, ${employmentLabel}` : ""}, ${coverageLabel}`}
     >
       <div className="card-header">
         <div className="shift-time-group">
@@ -106,7 +147,7 @@ const ShiftCard = ({ shift, staffList, onClick }) => {
           {durationMeta ? (
             <span
               className={`shift-duration-badge ${durationMeta.tone}`}
-              title="Phân loại theo thời lượng ca"
+              title="Thời lượng ca"
             >
               {durationMeta.label}
             </span>
@@ -163,6 +204,15 @@ const ShiftCard = ({ shift, staffList, onClick }) => {
             {coverageLabel}
           </span>
         </div>
+        {employmentMix.length > 0 ? (
+          <div className="staff-contracts" aria-label={`Loại hợp đồng: ${employmentLabel}`}>
+            {employmentMix.slice(0, 2).map((item) => (
+              <span key={item.type} className={`staff-contract-badge ${item.tone}`}>
+                {item.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <div className="card-footer">

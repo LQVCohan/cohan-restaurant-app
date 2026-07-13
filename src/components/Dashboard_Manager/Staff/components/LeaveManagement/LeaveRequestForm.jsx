@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AuthContext } from "@/context/AuthContext";
+import { useNotification } from "@/hooks/useNotification";
 import { matchesEmployeeSearch } from "../../../../../utils/employeeSearch";
 import { isForbiddenError, isUnauthenticatedError } from "@/utils/graphqlErrorUtils";
 import "./LeaveRequestForm.scss";
@@ -81,6 +82,7 @@ const LeaveRequestForm = ({
   onSubmitted,
 }) => {
   const authContext = React.useContext(AuthContext) || {};
+  const { showNotification } = useNotification();
   const user = authContext.user;
   const roleCandidate = resolveRoleCandidate(user);
   const normalizedRole = String(roleCandidate || "").toLowerCase();
@@ -246,7 +248,9 @@ const LeaveRequestForm = ({
     const selectedRestaurantId = restaurantId || selectedEmployee?.restaurantId || "";
 
     if (!selectedRestaurantId) {
-      setSubmitFeedback("Không xác định được nhà hàng của nhân sự. Vui lòng đăng nhập lại.");
+      const message = "Không xác định được nhà hàng của nhân sự. Vui lòng đăng nhập lại.";
+      setSubmitFeedback(message);
+      showNotification(message, "error");
       return;
     }
 
@@ -263,10 +267,14 @@ const LeaveRequestForm = ({
         reason: formData.reason.trim(),
       });
       resetForm();
-      setSubmitFeedback("Đã gửi đơn nghỉ phép.");
+      const message = "Đã gửi đơn nghỉ phép.";
+      setSubmitFeedback(message);
+      showNotification(message, "success");
       onSubmitted?.();
     } catch (submitError) {
-      setSubmitFeedback(getSubmitErrorMessage(submitError));
+      const message = getSubmitErrorMessage(submitError);
+      setSubmitFeedback(message);
+      showNotification(message, "error");
     }
   };
 
@@ -304,7 +312,7 @@ const LeaveRequestForm = ({
         )}
         {error && !hasStaffList && (
           <span className="err-msg state-msg">
-            Không tải được danh sách nhân viên: {error.message}
+            Chưa thể tải danh sách nhân viên. Vui lòng thử lại.
           </span>
         )}
         {!loading && !error && !hasStaffList && (

@@ -87,6 +87,14 @@
     align-items: center;
     margin-bottom: 0.68rem;
 
+    .shift-time-group {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.32rem;
+    }
+
     .time-badge {
       display: flex;
       align-items: center;
@@ -105,6 +113,32 @@
         width: 0.78rem;
         height: 0.78rem;
         color: #64748b;
+      }
+    }
+
+    .shift-duration-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 0 0.45rem;
+      border: 1px solid #dbe3df;
+      border-radius: 999px;
+      color: #53635f;
+      background: #f5f7f4;
+      font-size: 0.66rem;
+      font-weight: 820;
+      white-space: nowrap;
+
+      &.short {
+        color: #6b542f;
+        background: #f8f1e4;
+        border-color: #ead8b8;
+      }
+
+      &.standard {
+        color: #285f58;
+        background: #eaf4ef;
+        border-color: #cce3d9;
       }
     }
   }
@@ -257,6 +291,40 @@
       .text-good {
         color: var(--m-success, #10b981);
         font-weight: 850;
+      }
+    }
+
+    .staff-contracts {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.28rem;
+      margin-top: 0.42rem;
+    }
+
+    .staff-contract-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 21px;
+      padding: 0 0.42rem;
+      border: 1px solid #d8dfdc;
+      border-radius: 999px;
+      color: #596661;
+      background: #f5f7f5;
+      font-size: 0.62rem;
+      font-weight: 820;
+      white-space: nowrap;
+
+      &.full-time {
+        color: #285f58;
+        border-color: #c6dfd4;
+        background: #eaf5f0;
+      }
+
+      &.part-time {
+        color: #76552d;
+        border-color: #e7d2af;
+        background: #f8f0e1;
       }
     }
   }

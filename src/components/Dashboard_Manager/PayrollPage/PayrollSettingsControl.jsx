@@ -223,9 +223,20 @@ const mutationError = (error) =>
   error?.message ||
   "Không thể lưu cấu hình tính lương.";
 
-const NumberField = ({ label, value, onChange, suffix, min = 0, max, step = "1", disabled }) => (
+export const formatSavedPayrollValue = (value, suffix = "") => {
+  const numericValue = Number(value);
+  const formattedValue = Number.isFinite(numericValue)
+    ? new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(numericValue)
+    : String(value || "0");
+  return `${formattedValue}${suffix ? ` ${suffix}` : ""}`;
+};
+
+const NumberField = ({ label, value, savedValue, onChange, suffix, min = 0, max, step = "1", disabled }) => (
   <label className="payroll-settings-field">
-    <span>{label}</span>
+    <span className="payroll-settings-field__heading">
+      <span>{label}</span>
+      <small>Hiện tại: {formatSavedPayrollValue(savedValue, suffix)}</small>
+    </span>
     <div className="payroll-settings-input-wrap">
       <input
         type="number"
@@ -257,6 +268,7 @@ const PayrollSettingsControl = ({ restaurantId, restaurantName, actor }) => {
   });
   const [updateSettings] = useMutation(MUT_UPDATE_SETTINGS);
   const settings = settingsQuery.data?.payrollSettings || null;
+  const savedForm = useMemo(() => toForm(settings), [settings]);
 
   const summary = useMemo(() => {
     if (!settings) return "Chưa tải cấu hình";
@@ -371,12 +383,12 @@ const PayrollSettingsControl = ({ restaurantId, restaurantName, actor }) => {
                   </div>
                 </div>
                 <div className="payroll-settings-grid">
-                  <NumberField label="Ngày công chuẩn" suffix="ngày/tháng" min="1" max="31" value={form.standardWorkDaysPerMonth} onChange={(value) => setField("standardWorkDaysPerMonth", value)} />
-                  <NumberField label="Giờ công chuẩn" suffix="giờ/ngày" min="1" max="24" step="0.5" value={form.standardHoursPerDay} onChange={(value) => setField("standardHoursPerDay", value)} />
-                  <NumberField label="Trừ đi muộn" suffix="đ/phút" value={form.latenessPenaltyPerMinute} onChange={(value) => setField("latenessPenaltyPerMinute", value)} />
-                  <NumberField label="Trừ về sớm" suffix="đ/phút" value={form.earlyLeavePenaltyPerMinute} onChange={(value) => setField("earlyLeavePenaltyPerMinute", value)} />
-                  <NumberField label="Nghỉ không lương" suffix="đ/ngày" value={form.unpaidLeaveDeductionPerDay} onChange={(value) => setField("unpaidLeaveDeductionPerDay", value)} />
-                  <NumberField label="Phụ cấp mặc định" suffix="đ/kỳ" value={form.defaultAllowance} onChange={(value) => setField("defaultAllowance", value)} />
+                  <NumberField label="Ngày công chuẩn" suffix="ngày/tháng" min="1" max="31" value={form.standardWorkDaysPerMonth} savedValue={savedForm.standardWorkDaysPerMonth} onChange={(value) => setField("standardWorkDaysPerMonth", value)} />
+                  <NumberField label="Giờ công chuẩn" suffix="giờ/ngày" min="1" max="24" step="0.5" value={form.standardHoursPerDay} savedValue={savedForm.standardHoursPerDay} onChange={(value) => setField("standardHoursPerDay", value)} />
+                  <NumberField label="Trừ đi muộn" suffix="đ/phút" value={form.latenessPenaltyPerMinute} savedValue={savedForm.latenessPenaltyPerMinute} onChange={(value) => setField("latenessPenaltyPerMinute", value)} />
+                  <NumberField label="Trừ về sớm" suffix="đ/phút" value={form.earlyLeavePenaltyPerMinute} savedValue={savedForm.earlyLeavePenaltyPerMinute} onChange={(value) => setField("earlyLeavePenaltyPerMinute", value)} />
+                  <NumberField label="Nghỉ không lương" suffix="đ/ngày" value={form.unpaidLeaveDeductionPerDay} savedValue={savedForm.unpaidLeaveDeductionPerDay} onChange={(value) => setField("unpaidLeaveDeductionPerDay", value)} />
+                  <NumberField label="Phụ cấp mặc định" suffix="đ/kỳ" value={form.defaultAllowance} savedValue={savedForm.defaultAllowance} onChange={(value) => setField("defaultAllowance", value)} />
                 </div>
                 <label className="payroll-settings-switch">
                   <input type="checkbox" checked={form.allowPaidLeaveInWorkDays} onChange={(event) => setField("allowPaidLeaveInWorkDays", event.target.checked)} />
@@ -418,11 +430,11 @@ const PayrollSettingsControl = ({ restaurantId, restaurantName, actor }) => {
                 </label>
                 <div className="payroll-settings-grid payroll-settings-grid--time">
                   <label className="payroll-settings-field">
-                    <span>Bắt đầu ca đêm</span>
+                    <span className="payroll-settings-field__heading"><span>Bắt đầu ca đêm</span><small>Hiện tại: {savedForm.nightShiftStart}</small></span>
                     <input type="time" value={form.nightShiftStart} onChange={(event) => setField("nightShiftStart", event.target.value)} />
                   </label>
                   <label className="payroll-settings-field">
-                    <span>Kết thúc ca đêm</span>
+                    <span className="payroll-settings-field__heading"><span>Kết thúc ca đêm</span><small>Hiện tại: {savedForm.nightShiftEnd}</small></span>
                     <input type="time" value={form.nightShiftEnd} onChange={(event) => setField("nightShiftEnd", event.target.value)} />
                   </label>
                 </div>
@@ -438,12 +450,12 @@ const PayrollSettingsControl = ({ restaurantId, restaurantName, actor }) => {
                 </div>
                 <fieldset disabled={!canEditAdvanced}>
                   <div className="payroll-settings-grid">
-                    <NumberField label="OT ngày thường" suffix="lần" min="1" max="5" step="0.1" disabled={!canEditAdvanced} value={form.overtimeMultiplierWeekday} onChange={(value) => setField("overtimeMultiplierWeekday", value)} />
-                    <NumberField label="OT cuối tuần" suffix="lần" min="1" max="5" step="0.1" disabled={!canEditAdvanced} value={form.overtimeMultiplierWeekend} onChange={(value) => setField("overtimeMultiplierWeekend", value)} />
-                    <NumberField label="OT ngày lễ" suffix="lần" min="1" max="5" step="0.1" disabled={!canEditAdvanced} value={form.overtimeMultiplierHoliday} onChange={(value) => setField("overtimeMultiplierHoliday", value)} />
-                    <NumberField label="Phụ cấp ca đêm" suffix="%" min="0" max="100" step="1" disabled={!canEditAdvanced} value={form.nightShiftAllowancePercent} onChange={(value) => setField("nightShiftAllowancePercent", value)} />
-                    <NumberField label="Thưởng mặc định" suffix="đ/kỳ" disabled={!canEditAdvanced} value={form.defaultBonus} onChange={(value) => setField("defaultBonus", value)} />
-                    <NumberField label="Khấu trừ mặc định" suffix="đ/kỳ" disabled={!canEditAdvanced} value={form.defaultDeduction} onChange={(value) => setField("defaultDeduction", value)} />
+                    <NumberField label="OT ngày thường" suffix="lần" min="1" max="5" step="0.1" disabled={!canEditAdvanced} value={form.overtimeMultiplierWeekday} savedValue={savedForm.overtimeMultiplierWeekday} onChange={(value) => setField("overtimeMultiplierWeekday", value)} />
+                    <NumberField label="OT cuối tuần" suffix="lần" min="1" max="5" step="0.1" disabled={!canEditAdvanced} value={form.overtimeMultiplierWeekend} savedValue={savedForm.overtimeMultiplierWeekend} onChange={(value) => setField("overtimeMultiplierWeekend", value)} />
+                    <NumberField label="OT ngày lễ" suffix="lần" min="1" max="5" step="0.1" disabled={!canEditAdvanced} value={form.overtimeMultiplierHoliday} savedValue={savedForm.overtimeMultiplierHoliday} onChange={(value) => setField("overtimeMultiplierHoliday", value)} />
+                    <NumberField label="Phụ cấp ca đêm" suffix="%" min="0" max="100" step="1" disabled={!canEditAdvanced} value={form.nightShiftAllowancePercent} savedValue={savedForm.nightShiftAllowancePercent} onChange={(value) => setField("nightShiftAllowancePercent", value)} />
+                    <NumberField label="Thưởng mặc định" suffix="đ/kỳ" disabled={!canEditAdvanced} value={form.defaultBonus} savedValue={savedForm.defaultBonus} onChange={(value) => setField("defaultBonus", value)} />
+                    <NumberField label="Khấu trừ mặc định" suffix="đ/kỳ" disabled={!canEditAdvanced} value={form.defaultDeduction} savedValue={savedForm.defaultDeduction} onChange={(value) => setField("defaultDeduction", value)} />
                   </div>
                   <label className="payroll-settings-switch">
                     <input type="checkbox" disabled={!canEditAdvanced} checked={form.enablePersonalIncomeTax} onChange={(event) => setField("enablePersonalIncomeTax", event.target.checked)} />
@@ -453,8 +465,8 @@ const PayrollSettingsControl = ({ restaurantId, restaurantName, actor }) => {
                     </span>
                   </label>
                   <div className="payroll-settings-grid">
-                    <NumberField label="Tỷ lệ thuế TNCN" suffix="%" min="0" max="100" step="0.1" disabled={!canEditAdvanced || !form.enablePersonalIncomeTax} value={form.personalIncomeTaxPercent} onChange={(value) => setField("personalIncomeTaxPercent", value)} />
-                    <NumberField label="Ngưỡng miễn thuế" suffix="đ" disabled={!canEditAdvanced || !form.enablePersonalIncomeTax} value={form.personalIncomeTaxFreeThreshold} onChange={(value) => setField("personalIncomeTaxFreeThreshold", value)} />
+                    <NumberField label="Tỷ lệ thuế TNCN" suffix="%" min="0" max="100" step="0.1" disabled={!canEditAdvanced || !form.enablePersonalIncomeTax} value={form.personalIncomeTaxPercent} savedValue={savedForm.personalIncomeTaxPercent} onChange={(value) => setField("personalIncomeTaxPercent", value)} />
+                    <NumberField label="Ngưỡng miễn thuế" suffix="đ" disabled={!canEditAdvanced || !form.enablePersonalIncomeTax} value={form.personalIncomeTaxFreeThreshold} savedValue={savedForm.personalIncomeTaxFreeThreshold} onChange={(value) => setField("personalIncomeTaxFreeThreshold", value)} />
                   </div>
                 </fieldset>
               </section>

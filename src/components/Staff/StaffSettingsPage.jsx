@@ -4,6 +4,7 @@ import { AuthContext } from "@/context/AuthContext";
 import {
   hasStaffKitchenAccess,
   hasStaffOrderAccess,
+  canAccessRoute,
   resolveUserRoleName,
 } from "@/utils/frontendRoleAccess";
 import { getStaffRoleDisplayLabel } from "@/utils/staffRoleOptions";
@@ -75,6 +76,7 @@ export default function StaffSettingsPage() {
     () => JSON.stringify(settings) !== JSON.stringify(savedSettings),
     [savedSettings, settings],
   );
+  const canOpenManagerWorkspace = canAccessRoute(user, "/manager");
 
   const accessItems = useMemo(
     () => [
@@ -108,9 +110,19 @@ export default function StaffSettingsPage() {
           <h1 id="staff-settings-title">Thiết lập làm việc</h1>
           <p>Cá nhân hóa nhắc việc, mật độ hiển thị và các thông tin phiên làm việc của nhân viên.</p>
         </div>
-        <Link to="/staff/profile" className="staff-settings__profile-link">
-          Xem hồ sơ
-        </Link>
+        <div className="staff-settings__intro-actions" aria-label="Điều hướng tài khoản">
+          <Link to="/" className="staff-settings__home-link">
+            Về trang chủ
+          </Link>
+          {canOpenManagerWorkspace ? (
+            <Link to="/manager#dashboard" className="staff-settings__manager-link">
+              Về trang quản lý
+            </Link>
+          ) : null}
+          <Link to="/staff/profile" className="staff-settings__profile-link">
+            Xem hồ sơ
+          </Link>
+        </div>
       </header>
 
       <div className="staff-settings__grid">

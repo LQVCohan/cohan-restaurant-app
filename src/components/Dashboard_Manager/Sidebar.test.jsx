@@ -107,4 +107,41 @@ describe("Manager Sidebar", () => {
     );
     expect(onPageChange).toHaveBeenCalledWith("orders");
   });
+
+  it("reveals the active destination as soon as the collapsed rail expands", () => {
+    const scrollIntoView = vi.fn();
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    const onPageChange = vi.fn();
+    const onClose = vi.fn();
+    const view = render(
+      <AuthContext.Provider value={{ user: managerUser }}>
+        <Sidebar
+          isOpen={false}
+          activeItem="payroll"
+          onClose={onClose}
+          onToggle={vi.fn()}
+          onPageChange={onPageChange}
+        />
+      </AuthContext.Provider>,
+    );
+
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    view.rerender(
+      <AuthContext.Provider value={{ user: managerUser }}>
+        <Sidebar
+          isOpen
+          activeItem="payroll"
+          onClose={onClose}
+          onToggle={vi.fn()}
+          onPageChange={onPageChange}
+        />
+      </AuthContext.Provider>,
+    );
+
+    expect(scrollIntoView).toHaveBeenCalledWith(
+      expect.objectContaining({ block: "nearest", inline: "nearest" }),
+    );
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+  });
 });

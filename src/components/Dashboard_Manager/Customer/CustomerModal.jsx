@@ -31,6 +31,7 @@ import "./CustomerModalPolish.scss";
 import "./CustomerModalPremiumTune.scss";
 import CustomerAvatarMedia from "./CustomerAvatarMedia";
 import { getRankDisplayConfig } from "./customerRankUtils";
+import { navigateToManagerOrders } from "./customerOrderNavigation";
 
 /* ===== Helpers & Utils ===== */
 const normalizeEpochToMs = (v) => {
@@ -132,6 +133,19 @@ const CustomerModal = ({
   } = useCommunication({ restaurantId });
 
   const recentOrders = useMemo(() => customer?.recentOrders || [], [customer]);
+  const openOrderHistory = (order = null, viewAll = false) => {
+    if (!viewAll && typeof onShowBill === "function") {
+      onShowBill(order?.raw || order);
+      return;
+    }
+    const navigated = navigateToManagerOrders({
+      order,
+      customer,
+      restaurantId,
+      viewAll,
+    });
+    if (navigated) onClose?.();
+  };
 
   const { data: detailAnalyticsData } = useQuery(
     GET_CUSTOMER_DETAIL_ANALYTICS,
@@ -539,7 +553,13 @@ const CustomerModal = ({
                   <span>Hoạt động mua hàng</span>
                   <h3>Lịch sử gần đây</h3>
                 </div>
-                <button type="button">Xem tất cả</button>
+                <button
+                  type="button"
+                  onClick={() => openOrderHistory(null, true)}
+                  aria-label={`Xem tất cả đơn hàng của ${customer?.displayName || customer?.fullName || customer?.name || "khách hàng"}`}
+                >
+                  Xem tất cả
+                </button>
               </div>
               <div className="cm-order-list">
                 {recentOrders.length > 0 ? (
@@ -553,11 +573,10 @@ const CustomerModal = ({
                     return (
                       <button
                         type="button"
-                        key={i}
+                        key={order?.id || order?.orderCode || i}
                         className="cm-order-row"
-                        onClick={() =>
-                          onShowBill && onShowBill(order?.raw || order)
-                        }
+                        onClick={() => openOrderHistory(order)}
+                        aria-label={`Mở chi tiết đơn ${order?.orderCode || order?.id || i + 1}`}
                       >
                         <span>
                           {formatDate(

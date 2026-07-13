@@ -109,7 +109,9 @@
 }
 
 .sidebar-nav {
+  min-height: 0;
   scrollbar-gutter: stable;
+  touch-action: pan-y;
 }
 
 .nav-section-title {
@@ -209,10 +211,12 @@
   }
 
   .manager-layout:not(.sidebar-open) .sidebar-nav {
+    min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
   }
 
   .manager-layout:not(.sidebar-open) .nav-item {
