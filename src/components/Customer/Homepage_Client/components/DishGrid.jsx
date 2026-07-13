@@ -100,7 +100,7 @@ const fallbackDishSuggestions = [
     description: "Ưu tiên món ít dầu, nhiều rau hoặc khẩu vị cân bằng hơn.",
     image: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=620&q=80",
     cta: "Khám phá",
-    path: "/for-you",
+    path: "/search?q=Healthy%20Salad",
   },
   {
     key: "group-meal",
