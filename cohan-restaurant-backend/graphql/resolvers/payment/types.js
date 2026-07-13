@@ -31,6 +31,10 @@ export const PaymentResolvers = {
     },
   },
   Cashflow: {
+    id(parent) {
+      const id = parent?._id || parent?.id;
+      return id ? String(id) : null;
+    },
     restaurantId(parent) {
       return parent.restaurantId ? String(parent.restaurantId) : null;
     },
