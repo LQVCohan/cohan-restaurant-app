@@ -3,6 +3,7 @@ import { gql, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import { useNotification } from "@/hooks/useNotification";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
+import TableQrPreviewModal from "./TableQrPreviewModal";
 import "./TableQrManagementPage.scss";
 
 const TABLE_QR_FIELDS = gql`
@@ -55,6 +56,7 @@ export default function TableQrManagementPage() {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
   const [busyTableId, setBusyTableId] = useState("");
   const [copiedTableId, setCopiedTableId] = useState("");
+  const [previewTableId, setPreviewTableId] = useState("");
   const [search, setSearch] = useState("");
   const [floorFilter, setFloorFilter] = useState("all");
   const [qrFilter, setQrFilter] = useState("all");
@@ -86,6 +88,10 @@ export default function TableQrManagementPage() {
         (qrFilter === "all" || state === qrFilter);
     });
   }, [floorFilter, qrFilter, search, tables]);
+  const previewTable = useMemo(
+    () => tables.find((table) => String(table.id) === String(previewTableId)) || null,
+    [previewTableId, tables],
+  );
 
   const readyCount = tables.filter((table) => getTableQrState(table) === "ready").length;
   const expiredCount = tables.filter((table) => getTableQrState(table) === "expired").length;
@@ -128,6 +134,7 @@ export default function TableQrManagementPage() {
     setBusyTableId(table.id);
     try {
       await revokeTableQr({ variables: { tableId: table.id } });
+      if (String(previewTableId) === String(table.id)) setPreviewTableId("");
       await refetch?.();
       showNotification("Đã thu hồi mã QR của bàn.", "success");
     } catch { showNotification("Chưa thể thu hồi mã QR. Vui lòng thử lại.", "error"); }
@@ -144,6 +151,7 @@ export default function TableQrManagementPage() {
     } catch { showNotification("Không thể tự sao chép. Hãy chọn và sao chép địa chỉ thủ công.", "warning"); }
   };
   const handleOpen = (table) => table?.tableAccessUrl && window.open(table.tableAccessUrl, "_blank", "noopener,noreferrer");
+  const handlePreview = (table) => table?.tableQrCodeDataUrl && setPreviewTableId(table.id);
   const handlePrint = (table) => {
     if (!table?.tableQrCodeDataUrl) return;
     const printWindow = window.open("", "_blank", "noopener,noreferrer,width=520,height=720");
@@ -155,7 +163,7 @@ export default function TableQrManagementPage() {
   return <div className="table-qr-page" aria-busy={loading}>
     <ManagementPageHeader className="table-qr-page-header" density="compact" statsPlacement="none" showTimeWidget={false}
       eyebrow="QUẢN LÝ MÃ QR" title="Mã QR tại bàn" subtitle="Tạo, tìm và kiểm tra mã QR theo tầng và từng bàn." icon="📱"
-      selectedRestaurant={selectedRestaurantId} onRestaurantChange={(value) => { setSelectedRestaurantId(value); setFloorFilter("all"); setSearch(""); }}
+      selectedRestaurant={selectedRestaurantId} onRestaurantChange={(value) => { setSelectedRestaurantId(value); setFloorFilter("all"); setQrFilter("all"); setSearch(""); setPreviewTableId(""); }}
       restaurantList={restaurantList.map((restaurant) => ({ id: String(restaurant.id || restaurant.restaurantId), name: restaurant.name }))}
       primaryAction={{ label: "Tải lại", icon: "↻", onClick: () => refetch?.(), disabled: !selectedRestaurantId || loading }} />
 
@@ -191,11 +199,12 @@ export default function TableQrManagementPage() {
           return <article className={`table-qr-card table-qr-card--${qrState}`} key={table.id}>
             <div className="table-qr-card__head"><div><p>Tầng {table.floorLevel || "?"}</p><h2>Bàn {table.code || "--"}</h2><small>{table.capacity || 0} chỗ · {table.status === "available" ? "Đang trống" : "Đang sử dụng"}</small></div><span>{getTableQrLabel(qrState)}</span></div>
             <div className="table-qr-card__body">
-              {table.tableQrCodeDataUrl ? <img src={table.tableQrCodeDataUrl} alt={`Mã QR truy cập bàn ${table.code || ""}`} width="128" height="128" loading="lazy" /> : <div className="table-qr-card__placeholder">QR</div>}
+              {table.tableQrCodeDataUrl ? <button type="button" className="table-qr-card__preview-trigger" onClick={() => handlePreview(table)} aria-label={`Mở rộng mã QR của ${tableLabel}`} title="Mở rộng mã QR"><img src={table.tableQrCodeDataUrl} alt={`Mã QR truy cập bàn ${table.code || ""}`} width="128" height="128" loading="lazy" /><span aria-hidden="true">Mở rộng</span></button> : <div className="table-qr-card__placeholder">QR</div>}
               <div className="table-qr-card__meta"><p><strong>Ngày tạo</strong><span>{formatDateTime(table.tableQrGeneratedAt)}</span></p><p><strong>Hết hạn</strong><span>{formatDateTime(table.tableQrExpiresAt)}</span></p>{table.tableAccessUrl && <code title={table.tableAccessUrl}>{table.tableAccessUrl}</code>}</div>
             </div>
             <div className="table-qr-card__actions">
               <button type="button" onClick={() => handleGenerate(table)} disabled={isMutating}>{isBusy ? "Đang xử lý…" : qrState === "ready" ? "Tạo lại" : "Tạo mã"}</button>
+              <button type="button" onClick={() => handlePreview(table)} disabled={!table.tableQrCodeDataUrl}>Mở rộng</button>
               <button type="button" onClick={() => handleOpen(table)} disabled={!table.tableAccessUrl}>Mở trang</button>
               <button type="button" onClick={() => handleCopy(table)} disabled={!table.tableAccessUrl}>{copiedTableId === table.id ? "Đã sao chép" : "Sao chép"}</button>
               <button type="button" onClick={() => handlePrint(table)} disabled={!table.tableQrCodeDataUrl}>In mã</button>
@@ -204,5 +213,14 @@ export default function TableQrManagementPage() {
           </article>;
         })}
       </section>}
+
+    <TableQrPreviewModal
+      table={previewTable}
+      copied={Boolean(previewTable && copiedTableId === previewTable.id)}
+      onClose={() => setPreviewTableId("")}
+      onCopy={handleCopy}
+      onOpen={handleOpen}
+      onPrint={handlePrint}
+    />
   </div>;
 }
