@@ -134,12 +134,15 @@ const updateConflictTitle = (card) => {
 
   const technicalPart = parts[parts.length - 1];
   if (SECTION_LABELS[technicalPart]) {
-    title.textContent = SECTION_LABELS[technicalPart];
+    if (title.textContent !== SECTION_LABELS[technicalPart]) {
+      title.textContent = SECTION_LABELS[technicalPart];
+    }
     return;
   }
 
   if (/^[a-z][A-Za-z0-9_.:-]+$/.test(technicalPart)) {
-    title.textContent = parts.slice(0, -1).join(" · ");
+    const next = parts.slice(0, -1).join(" · ");
+    if (title.textContent !== next) title.textContent = next;
   }
 };
 
@@ -148,7 +151,9 @@ const updateReason = (card) => {
   if (!reason) return;
   const next = friendlyReason(reason.textContent);
   if (reason.textContent !== next) reason.textContent = next;
-  reason.classList.add("backup-conflict-friendly-reason");
+  if (!reason.classList.contains("backup-conflict-friendly-reason")) {
+    reason.classList.add("backup-conflict-friendly-reason");
+  }
 };
 
 const updateChoice = (card) => {
@@ -156,13 +161,16 @@ const updateChoice = (card) => {
   if (!select) return;
 
   const label = select.closest("label");
-  if (label?.firstChild?.nodeType === Node.TEXT_NODE) {
+  if (
+    label?.firstChild?.nodeType === Node.TEXT_NODE &&
+    label.firstChild.nodeValue.trim() !== "Bạn muốn dùng dữ liệu nào?"
+  ) {
     label.firstChild.nodeValue = "Bạn muốn dùng dữ liệu nào? ";
   }
 
   Array.from(select.options).forEach((option) => {
     const replacement = TEXT_REPLACEMENTS.get(option.textContent.trim());
-    if (replacement) option.textContent = replacement;
+    if (replacement && option.textContent !== replacement) option.textContent = replacement;
   });
 
   let helper = label?.querySelector(".backup-conflict-choice-help");
@@ -173,7 +181,8 @@ const updateChoice = (card) => {
   }
 
   const refreshHelper = () => {
-    if (helper) helper.textContent = CHOICE_HELP[select.value] || "Chọn phương án phù hợp với dữ liệu bạn muốn giữ.";
+    const next = CHOICE_HELP[select.value] || "Chọn phương án phù hợp với dữ liệu bạn muốn giữ.";
+    if (helper && helper.textContent !== next) helper.textContent = next;
   };
   refreshHelper();
 
@@ -224,7 +233,9 @@ const updateDiffs = (card) => {
 
 const updateFilters = (root) => {
   root.querySelectorAll('input[placeholder="Tìm theo tên hoặc mã"]').forEach((input) => {
-    input.placeholder = "Tìm theo tên thông tin";
+    if (input.placeholder !== "Tìm theo tên thông tin") {
+      input.placeholder = "Tìm theo tên thông tin";
+    }
   });
 };
 
@@ -232,12 +243,16 @@ const enhanceBackupConflicts = () => {
   const section = document.querySelector(".backup-management__conflicts");
   if (!section) return;
 
-  section.classList.add("backup-management__conflicts--friendly");
+  if (!section.classList.contains("backup-management__conflicts--friendly")) {
+    section.classList.add("backup-management__conflicts--friendly");
+  }
   replaceExactText(section);
   updateFilters(section);
 
   section.querySelectorAll(".backup-management__conflict-list > article").forEach((card) => {
-    card.classList.add("backup-conflict-friendly-card");
+    if (!card.classList.contains("backup-conflict-friendly-card")) {
+      card.classList.add("backup-conflict-friendly-card");
+    }
     updateConflictTitle(card);
     updateReason(card);
     updateChoice(card);
@@ -247,7 +262,9 @@ const enhanceBackupConflicts = () => {
   const confirmation = document.querySelector(".backup-management__confirm span");
   if (confirmation) {
     const replacement = TEXT_REPLACEMENTS.get(confirmation.textContent.trim());
-    if (replacement) confirmation.textContent = replacement;
+    if (replacement && confirmation.textContent !== replacement) {
+      confirmation.textContent = replacement;
+    }
   }
 };
 
