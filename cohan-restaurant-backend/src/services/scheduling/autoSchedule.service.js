@@ -3,6 +3,10 @@ import { Shift, Staff, SchedulePublication } from "../../../models/index.js";
 import { validateShiftAssignment } from "./shiftAssignmentValidation.service.js";
 import { resolveScheduleLifecycleStatus } from "./scheduleLifecycle.service.js";
 import { getSchedulingPolicy } from "./schedulingPolicy.service.js";
+import {
+  computeAutoScheduleCandidateScore,
+  estimateHourlyCost,
+} from "./autoScheduleScoring.service.js";
 import { getStaffMembershipRestaurantFilter } from "../auth/restaurantScope.service.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -138,11 +142,14 @@ function getStaffRoleTokens(staff = {}) {
   ].map(normalizeRole).filter(Boolean));
 }
 
-function staffMatchesRole(staff, requiredRole) {
+function getRoleFitRatio(staff, requiredRole) {
   const role = normalizeRole(requiredRole);
-  if (!role) return true;
+  if (!role) return 1;
   const tokens = getStaffRoleTokens(staff);
-  return tokens.has(role) || [...tokens].some((token) => token.includes(role) || role.includes(token));
+  if (tokens.has(role)) return 1;
+  return [...tokens].some((token) => token.includes(role) || role.includes(token))
+    ? 0.7
+    : 0;
 }
 
 function normalizeRequiredRoles(input = {}) {
@@ -346,7 +353,6 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
   const respectAvailability = input.respectAvailability !== false;
   const weeklyHoursCap = Number(input.weeklyHoursCap || 0);
   const policy = await getSchedulingPolicy({ restaurantId });
-  const fairnessWeight = Math.max(0, Number(policy?.scoringWeights?.fairness || 0));
   const staffScopeFilter = await getStaffMembershipRestaurantFilter(restaurantId, {
     roles: ["staff", "manager"],
   });
@@ -386,8 +392,10 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
 
   for (const demand of demandItems) {
     const candidates = [];
+    const shiftHours = hoursBetween(demand.startTime, demand.endTime);
     for (const staff of staffRows) {
-      if (demand.requiredRole && !staffMatchesRole(staff, demand.requiredRole)) {
+      const roleFitRatio = getRoleFitRatio(staff, demand.requiredRole);
+      if (demand.requiredRole && roleFitRatio <= 0) {
         const issue = mapIssue({ code: "ROLE_MISMATCH", severity: "error", message: "Nhân viên không đúng role bắt buộc." });
         blockedCandidates.push({ shiftKey: demand.shiftKey, employeeId: String(staff._id), requiredRole: demand.requiredRole, issues: [issue] });
         continue;
@@ -409,11 +417,27 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
         blockedCandidates.push({ shiftKey: demand.shiftKey, employeeId: String(staff._id), requiredRole: demand.requiredRole, issues: normalizeIssueList(blocking) });
         continue;
       }
+      const employmentType = String(staff.employmentType || "full_time").toLowerCase();
+      const employmentPolicy =
+        policy.employmentTypePolicy?.[employmentType] ||
+        policy.employmentTypePolicy?.full_time ||
+        {};
+      const weeklyTarget = Number(
+        employmentPolicy.weeklyHoursTarget ??
+          policy.laborRules?.recommendedWeeklyHoursCap ??
+          40,
+      );
       candidates.push({
         staff,
         validation,
         afterPlanned,
+        roleFitRatio,
         rotationHours: Number(rotationHoursByEmployee.get(String(staff._id)) || 0),
+        estimatedHourlyCost: estimateHourlyCost({
+          staff,
+          shiftHours,
+          weeklyTarget,
+        }),
       });
     }
 
@@ -421,20 +445,39 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
       (max, candidate) => Math.max(max, candidate.rotationHours),
       0,
     );
+    const knownHourlyCosts = candidates
+      .map((candidate) => candidate.estimatedHourlyCost)
+      .filter((value) => Number.isFinite(Number(value)));
+    const minHourlyCost = knownHourlyCosts.length
+      ? Math.min(...knownHourlyCosts)
+      : null;
+    const maxHourlyCost = knownHourlyCosts.length
+      ? Math.max(...knownHourlyCosts)
+      : null;
+
     candidates.forEach((candidate) => {
-      const fairnessContribution =
-        maxRotationHours > 0
-          ? fairnessWeight * (1 - candidate.rotationHours / maxRotationHours)
-          : 0;
-      candidate.fairnessContribution = Number(fairnessContribution.toFixed(2));
-      candidate.rankScore = Number(
-        (Number(candidate.validation.score || 0) + candidate.fairnessContribution).toFixed(2),
-      );
+      const scoreResult = computeAutoScheduleCandidateScore({
+        policy,
+        staff: candidate.staff,
+        validation: candidate.validation,
+        afterPlanned: candidate.afterPlanned,
+        rotationHours: candidate.rotationHours,
+        maxRotationHours,
+        requiredRole: demand.requiredRole,
+        roleFitRatio: candidate.roleFitRatio,
+        estimatedHourlyCost: candidate.estimatedHourlyCost,
+        minHourlyCost,
+        maxHourlyCost,
+        shiftHours,
+      });
+      candidate.rankScore = scoreResult.score;
+      candidate.scoreBreakdown = scoreResult;
+      candidate.fairnessContribution = scoreResult.fairnessContribution;
     });
     candidates.sort(
       (a, b) =>
         Number(b.rankScore || 0) - Number(a.rankScore || 0) ||
-        Number(b.validation.score || 0) - Number(a.validation.score || 0) ||
+        Number(b.scoreBreakdown?.rawScore || 0) - Number(a.scoreBreakdown?.rawScore || 0) ||
         String(a.staff._id).localeCompare(String(b.staff._id)),
     );
     const selected = candidates[0] || null;
@@ -471,8 +514,10 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
       status: warnings.length ? "warning" : "ready",
       employeeId,
       employeeName: selected.staff.fullName || null,
-      score: selected.validation.score || 0,
-      selectionScore: selected.rankScore || selected.validation.score || 0,
+      score: selected.rankScore || 0,
+      validationScore: selected.validation.score || 0,
+      selectionScore: selected.rankScore || 0,
+      scoreBreakdown: selected.scoreBreakdown,
       fairnessContribution: selected.fairnessContribution || 0,
       warnings,
       validationIssues: warnings,
