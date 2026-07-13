@@ -1,4 +1,5 @@
 const DEFAULT_TIMEZONE = "Asia/Ho_Chi_Minh";
+const VIETNAM_UTC_OFFSET_HOURS = 7;
 const PART_TIME_TYPES = new Set(["part_time", "seasonal"]);
 
 export function normalizeEmploymentType(value) {
@@ -44,7 +45,17 @@ export function buildLocalShiftRange({ date, startTime, durationHours = 4 }) {
   }
   const [year, month, day] = date.split("-").map(Number);
   const [hour, minute] = startTime.split(":").map(Number);
-  const start = new Date(year, month - 1, day, hour, minute, 0, 0);
+  const start = new Date(
+    Date.UTC(
+      year,
+      month - 1,
+      day,
+      hour - VIETNAM_UTC_OFFSET_HOURS,
+      minute,
+      0,
+      0,
+    ),
+  );
   const end = new Date(start.getTime() + duration * 60 * 60 * 1000);
   return { startTime: start, endTime: end };
 }
