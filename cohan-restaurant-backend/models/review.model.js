@@ -113,6 +113,32 @@ const ReviewSchema = BaseSchemaModel({
   },
 });
 
+ReviewSchema.pre("validate", function enforceGroundedVerification(next) {
+  if (!this.verifiedPurchase) return next();
+
+  const source = String(this.verifiedSource || "none").toLowerCase();
+  const evidenceDate = this.orderCompletedAt || this.visitedAt;
+  const evidenceTime = evidenceDate ? new Date(evidenceDate).getTime() : NaN;
+  const hasTransactionalEvidence =
+    ["order", "payment"].includes(source) &&
+    Boolean(this.verifiedSourceId) &&
+    Number.isFinite(evidenceTime) &&
+    evidenceTime <= Date.now() + 5 * 60 * 1000;
+
+  if (!hasTransactionalEvidence) {
+    this.verifiedPurchase = false;
+    this.verifiedSource = "none";
+    this.verifiedSourceId = null;
+    this.visitedAt = null;
+    this.orderCompletedAt = null;
+    this.reliabilityScore = 35;
+    this.reliabilityLevel = "low";
+    this.reliabilitySignals = ["unverified_experience", "source:none"];
+  }
+
+  return next();
+});
+
 ReviewSchema.index({ customerId: 1, restaurantId: 1, targetType: 1, targetId: 1, createdAt: -1 });
 ReviewSchema.index({ restaurantId: 1, status: 1, createdAt: -1 });
 
