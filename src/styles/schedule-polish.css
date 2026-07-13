@@ -6,6 +6,7 @@
 @import "./shift-detail-polish.css";
 @import "./shift-detail-manager-polish.css";
 @import "./schedule-auto-modal-polish.css";
+@import "./schedule-auto-preview-simplify.css";
 @import "./schedule-rules-modal-polish.css";
 @import "./availability-snapshot-polish.css";
 @import "./schedule-board-polish.css";
@@ -24,6 +25,15 @@
 @import "./schedule-manager-accessibility-warm.css";
 @import "./schedule-manager-accessibility-fixes.css";
 @import "./schedule-admin-final-tuning.css";
+
+/* Keep simplified preview headings correct when optional sections are absent. */
+.auto-preview-section.assignment-block:first-of-type h4::after {
+  content: "Nhân viên được xếp" !important;
+}
+
+.auto-preview-section.assignment-alert-block:first-of-type h4::after {
+  content: "Việc cần kiểm tra" !important;
+}
 
 .schedule-readiness-focus-banner {
   position: relative;
