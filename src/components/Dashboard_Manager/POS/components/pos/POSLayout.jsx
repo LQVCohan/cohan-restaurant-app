@@ -14,6 +14,7 @@ import DiscountCouponDock from "./DiscountCouponDock";
 import PosDiscountSummaryOverlay from "./PosDiscountSummaryOverlay";
 import ThirdPartyShippingPanel from "./ThirdPartyShippingPanel";
 import TransferQueueBell from "./TransferQueueBell";
+import TableOrderSplitDock from "./TableOrderSplitDock";
 import PosProvider, { usePos } from "../../../../../context/PosContext";
 import { AuthContext } from "../../../../../context/AuthContext";
 import useManagerRestaurantSelection from "../../../../../hooks/useManagerRestaurantSelection";
@@ -50,6 +51,7 @@ function POSContent({ restaurantId }) {
           <TablePaymentRequestNotice />
           <EligibleGiftSuggestionPanel />
           <RightPanel />
+          <TableOrderSplitDock />
           <DiscountCouponDock />
           <ThirdPartyShippingPanel />
           <PosDiscountSummaryOverlay />

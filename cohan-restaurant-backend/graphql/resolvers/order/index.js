@@ -25,6 +25,10 @@ import {
   PublicTableOrderAccessMutation,
   PublicTableOrderAccessQuery,
 } from "./publicTableOrderAccess.js";
+import {
+  TableOrderSplitMutation,
+  TableOrderSplitQuery,
+} from "./tableOrderSplit.js";
 
 const PaymentGuardedOrderMutation = {
   ...OrderMutation,
@@ -66,6 +70,7 @@ export default {
     ...publicTableSessionQuery,
     ...CustomerOrderHistoryQuery,
     ...PublicTableOrderAccessQuery,
+    ...TableOrderSplitQuery,
   },
   Mutation: {
     ...GuardedOrderMutation,
@@ -73,6 +78,7 @@ export default {
     ...CustomerOrderHistoryMutation,
     ...publicTableOrderMutation,
     ...PublicTableOrderAccessMutation,
+    ...TableOrderSplitMutation,
   },
   Subscription: {
     ...OrderSubscription,

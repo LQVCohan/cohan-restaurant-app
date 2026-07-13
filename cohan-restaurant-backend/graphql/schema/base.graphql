@@ -13,3 +13,59 @@ type Mutation {
 type Subscription {
   _empty: String
 }
+
+input SplitTableOrderItemInput {
+  orderId: ID!
+  orderItemId: ID!
+}
+
+input SplitTableOrderInput {
+  restaurantId: ID!
+  sourceTableId: ID!
+  targetTableId: ID!
+  selectedItems: [SplitTableOrderItemInput!]!
+}
+
+input RevertTableOrderSplitInput {
+  restaurantId: ID!
+  splitId: ID!
+  reason: String
+}
+
+type TableOrderSplitTableRef {
+  id: ID!
+  code: String!
+}
+
+type TableOrderSplitSession {
+  id: ID!
+  status: String!
+  sourceTable: TableOrderSplitTableRef!
+  targetTable: TableOrderSplitTableRef!
+  movedItemCount: Int!
+  movedPartialItemCount: Int!
+  movedWholeOrderCount: Int!
+  canRevert: Boolean!
+  createdAt: DateTime
+  revertedAt: DateTime
+}
+
+type TableOrderSplitPayload {
+  ok: Boolean!
+  message: String
+  split: TableOrderSplitSession
+}
+
+extend type Query {
+  activeTableOrderSplit(
+    restaurantId: ID!
+    tableId: ID!
+  ): TableOrderSplitSession
+}
+
+extend type Mutation {
+  splitTableOrder(input: SplitTableOrderInput!): TableOrderSplitPayload!
+  revertTableOrderSplit(
+    input: RevertTableOrderSplitInput!
+  ): TableOrderSplitPayload!
+}
