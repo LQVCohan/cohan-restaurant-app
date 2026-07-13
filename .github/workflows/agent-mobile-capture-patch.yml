@@ -1,0 +1,38 @@
+name: Agent mobile capture patch
+
+on:
+  push:
+    branches:
+      - agent/stabilize-mobile-5-photo-capture
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !startsWith(github.event.head_commit.message, 'chore(agent): remove mobile capture patch helper') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/stabilize-mobile-5-photo-capture
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply patch
+        run: python scripts/agent_patch_mobile_capture.py
+      - name: Commit patched files
+        run: |
+          if git diff --quiet; then
+            echo "No patch changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.jsx \
+            src/components/Dashboard_Manager/Table/CustomTableModelBuilderModal.test.jsx \
+            src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.jsx \
+            scripts/start-mobile-dev.mjs vite.config.js vite.config.test.js
+          git commit -m "fix(table-3d): stabilize five-photo capture on mobile"
+          git push origin HEAD:agent/stabilize-mobile-5-photo-capture
