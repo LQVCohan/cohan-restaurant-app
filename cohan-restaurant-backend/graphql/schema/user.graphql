@@ -666,6 +666,7 @@ input CreateUserInput {
   refRestaurantIds: [ID!]
   customerType: CustomerType
   captchaToken: String
+  restaurantId: ID
 
   userType: UserType
   taxCode: String
@@ -775,6 +776,7 @@ type Query {
     includeGuests: Boolean = true
     customerKind: CustomerKindFilter = ALL
     customerRank: CustomerRankFilterInput
+    activityStatuses: [String!]
     sortBy: CustomerSortBy = CREATED_AT
     sortDirection: SortDirection = DESC
     limit: Int = 30
@@ -784,6 +786,7 @@ type Query {
   customerListSummaries(restaurantId: ID!, userIds: [ID!]!): [CustomerListSummary!]!
   customerAnalytics(restaurantId: ID!): CustomerAnalyticsSummary!
   customerRankSettings(restaurantId: ID!): CustomerRankSettings!
+  customerNote(restaurantId: ID!, userId: ID!): String!
   roleList(restaurantId: ID): [Role!]!
   staffPrivateProfile(id: ID!): StaffPrivateProfile!
   schedulePublications(restaurantId: ID!, periodStart: DateTime, periodEnd: DateTime): [SchedulePublication!]!

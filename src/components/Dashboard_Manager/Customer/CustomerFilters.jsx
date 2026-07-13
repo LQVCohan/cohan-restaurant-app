@@ -9,8 +9,6 @@ import {
   Sparkles,
   Check,
   Wifi,
-  Coffee,
-  LogOut,
   CircleSlash,
 } from "lucide-react";
 import "./CustomerFilters.scss";
@@ -24,22 +22,12 @@ const CATEGORY_META = {
 
 const STATUS_META = {
   online: {
-    label: "Đang hoạt động",
+    label: "Đang trực tuyến",
     color: "#22c55e",
     icon: <Wifi size={14} />,
   },
-  ordering: {
-    label: "Đang gọi món",
-    color: "#3b82f6",
-    icon: <Coffee size={14} />,
-  },
-  away: {
-    label: "Tạm vắng",
-    color: "#eab308",
-    icon: <LogOut size={14} />,
-  },
   offline: {
-    label: "Không hoạt động",
+    label: "Không trực tuyến",
     color: "#94a3b8",
     icon: <CircleSlash size={14} />,
   },
@@ -52,8 +40,6 @@ const CustomerFilters = ({ onClose, onApplyFilters }) => {
   const [category, setCategory] = useState("all");
   const [status, setStatus] = useState({
     online: true,
-    ordering: true,
-    away: true,
     offline: true,
   });
 
@@ -78,7 +64,7 @@ const CustomerFilters = ({ onClose, onApplyFilters }) => {
     setAllStatus(true);
     onApplyFilters?.({
       category: "all",
-      status: { online: true, ordering: true, away: true, offline: true },
+      status: { online: true, offline: true },
     });
   };
 

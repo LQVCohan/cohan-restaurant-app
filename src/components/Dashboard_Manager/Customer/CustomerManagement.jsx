@@ -228,6 +228,8 @@ const CustomerManagement = () => {
 
   const [showRightSidebar, setShowRightSidebar] = useState(false);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
+  const [campaignCustomers, setCampaignCustomers] = useState([]);
+  const [campaignLoading, setCampaignLoading] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportScope, setExportScope] = useState("current_list");
   const [exporting, setExporting] = useState(false);
@@ -239,6 +241,7 @@ const CustomerManagement = () => {
   const [customerPageCursors, setCustomerPageCursors] = useState([null]);
 
   const [activeFilter, setActiveFilter] = useState("all");
+  const [activeStatuses, setActiveStatuses] = useState(["online", "offline"]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
 
@@ -315,6 +318,7 @@ const CustomerManagement = () => {
         includeGuests: true,
         search: searchDebounced,
         customerRank: customerRankFilter,
+        activityStatuses: activeStatuses,
         limit: pageSize,
         cursor: cursor || undefined,
         append: false,
@@ -323,6 +327,7 @@ const CustomerManagement = () => {
     [
       customerPageSize,
       customerRankFilter,
+      activeStatuses,
       getCustomersPage,
       searchDebounced,
       selectedRestaurantId,
@@ -347,16 +352,45 @@ const CustomerManagement = () => {
 
   const handleSearch = (query) => setSearchQuery(query);
 
-  const handleFilter = (filterKey) => {
-    if (typeof filterKey === "object" && filterKey?.category) {
-      filterKey = filterKey.category;
+  const handleFilter = (filterValue) => {
+    if (typeof filterValue === "object" && filterValue?.category) {
+      setActiveFilter(filterValue.category);
+      const statuses = Object.entries(filterValue.status || {})
+        .filter(([, enabled]) => Boolean(enabled))
+        .map(([key]) => key)
+        .filter((key) => ["online", "offline"].includes(key));
+      setActiveStatuses(statuses);
+      return;
     }
-    setActiveFilter(filterKey);
+    setActiveFilter(filterValue);
+  };
+
+  const handleOpenPromotionModal = async () => {
+    if (!selectedRestaurantId || campaignLoading) return;
+    setCampaignLoading(true);
+    try {
+      const rows = await getCustomerExportRows({
+        restaurantId: selectedRestaurantId,
+        includeGuests: true,
+        limit: 2000,
+        sortBy: "CREATED_AT",
+        sortDirection: "DESC",
+      });
+      setCampaignCustomers(rows);
+      setShowPromotionModal(true);
+    } catch (error) {
+      console.error("Load campaign recipients failed", error);
+      setCampaignCustomers(customersVisible || []);
+      setShowPromotionModal(true);
+    } finally {
+      setCampaignLoading(false);
+    }
   };
 
   const handleRestaurantChange = (restaurantId) => {
     setSelectedRestaurantId(restaurantId);
     setActiveFilter("all");
+    setActiveStatuses(["online", "offline"]);
     setSelectedCustomer(null);
     setCustomerPageIndex(0);
     setCustomerPageCursors([null]);
@@ -575,21 +609,21 @@ const CustomerManagement = () => {
     {
       id: "online",
       icon: <Activity size={18} aria-hidden="true" />,
-      label: "Đang hoạt động",
+      label: "Hoạt động (trang)",
       value: onlineCount,
       tone: "online",
     },
     {
       id: "vip",
       icon: <Star size={18} fill="currentColor" aria-hidden="true" />,
-      label: "Khách VIP",
+      label: "VIP (trang)",
       value: quickFilters.find((f) => f.key === "vip")?.count || 0,
       tone: "vip",
     },
     {
       id: "new",
       icon: <Sparkles size={18} aria-hidden="true" />,
-      label: "Khách mới",
+      label: "Khách mới (trang)",
       value: quickFilters.find((f) => f.key === "new")?.count || 0,
       tone: "new",
     },
@@ -798,9 +832,10 @@ const CustomerManagement = () => {
             onClick: () => setShowExportModal(true),
           },
           {
-            label: "Gửi ưu đãi",
+            label: campaignLoading ? "Đang tải khách..." : "Gửi ưu đãi",
             icon: <Gift size={16} aria-hidden="true" />,
-            onClick: () => setShowPromotionModal(true),
+            onClick: handleOpenPromotionModal,
+            disabled: campaignLoading || !selectedRestaurantId,
           },
           {
             label: "Xem phân tích",
@@ -884,7 +919,8 @@ const CustomerManagement = () => {
       {showPromotionModal && (
         <PromotionModal
           onClose={() => setShowPromotionModal(false)}
-          customers={customersVisible}
+          customers={campaignCustomers}
+          rankSettings={rankSettings}
           restaurantId={selectedRestaurantId}
         />
       )}

@@ -109,11 +109,21 @@ const CustomerCard = ({ customer, onClick }) => {
   }, [customer?.recentOrders]);
 
   const stats = useMemo(() => {
-    const count = sortedRecentOrders.length;
-    const total = sortedRecentOrders.reduce(
+    const recentCount = sortedRecentOrders.length;
+    const recentTotal = sortedRecentOrders.reduce(
       (sum, entry) => sum + getEntryAmount(entry),
       0,
     );
+    const storedCount = Number(customer?.totalOrders);
+    const storedTotal = Number(customer?.totalSpending);
+    const count =
+      Number.isFinite(storedCount) && storedCount >= 0
+        ? storedCount
+        : recentCount;
+    const total =
+      Number.isFinite(storedTotal) && storedTotal >= 0
+        ? storedTotal
+        : recentTotal;
     const avg = count > 0 ? total / count : 0;
     return { count, total, avg };
   }, [sortedRecentOrders]);
@@ -235,7 +245,7 @@ const CustomerCard = ({ customer, onClick }) => {
         </div>
         <div className="cc-stat-box blue">
           <div className="val">{stats.count}</div>
-          <div className="lbl">Đơn gần đây</div>
+          <div className="lbl">Tổng đơn</div>
         </div>
         <div className="cc-stat-box purple">
           <div className="val">{formatMoney(stats.avg).replace("₫", "")}</div>

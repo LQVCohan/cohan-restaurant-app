@@ -74,13 +74,21 @@ const getCustomerStats = (customer) => {
       normalizeEpochToMs(b?.raw?.createdAt ?? b?.createdAt ?? b?.date) ?? 0;
     return bms - ams;
   });
-  const total = sortedOrders.reduce(
+  const recentTotal = sortedOrders.reduce(
     (sum, entry) => sum + getEntryAmount(entry),
     0,
   );
+  const storedOrderCount = Number(customer?.totalOrders);
+  const storedTotal = Number(customer?.totalSpending);
   return {
-    orderCount: sortedOrders.length,
-    total,
+    orderCount:
+      Number.isFinite(storedOrderCount) && storedOrderCount >= 0
+        ? storedOrderCount
+        : sortedOrders.length,
+    total:
+      Number.isFinite(storedTotal) && storedTotal >= 0
+        ? storedTotal
+        : recentTotal,
     lastOrder: sortedOrders[0],
   };
 };

@@ -32,6 +32,7 @@ import "./CustomerModalPremiumTune.scss";
 import CustomerAvatarMedia from "./CustomerAvatarMedia";
 import { getRankDisplayConfig } from "./customerRankUtils";
 import { navigateToManagerOrders } from "./customerOrderNavigation";
+import { toUserFacingErrorMessage } from "../../../utils/userFacingError";
 
 /* ===== Helpers & Utils ===== */
 const normalizeEpochToMs = (v) => {
@@ -72,6 +73,12 @@ const STATUS_CONFIG = {
   cancelled: { label: "Đã hủy", color: "#b91c1c", bg: "#fee2e2" },
   default: { label: "Khác", color: "#475569", bg: "#f1f5f9" },
 };
+
+const GET_CUSTOMER_NOTE = gql`
+  query GetCustomerNote($userId: ID!, $restaurantId: ID!) {
+    customerNote(userId: $userId, restaurantId: $restaurantId)
+  }
+`;
 
 const GET_CUSTOMER_DETAIL_ANALYTICS = gql`
   query GetCustomerDetailAnalytics($userId: ID!, $restaurantId: ID) {
@@ -157,6 +164,15 @@ const CustomerModal = ({
     },
   );
   const detailAnalytics = detailAnalyticsData?.customerDetailAnalytics || null;
+  const { data: noteData } = useQuery(GET_CUSTOMER_NOTE, {
+    skip: !isOpen || !customer?.id || !restaurantId,
+    variables: {
+      userId: String(customer?.id || ""),
+      restaurantId,
+    },
+    fetchPolicy: "network-only",
+    errorPolicy: "all",
+  });
 
   const rankConfig = useMemo(
     () =>
@@ -222,8 +238,11 @@ const CustomerModal = ({
   ]);
 
   const walletStatus = useMemo(() => {
-    const hasWallet = customer?.wallet?.id || customer?.hasWallet;
-    const isActive = customer?.wallet?.isActive ?? hasWallet;
+    const hasWallet = customer?.wallet || customer?.hasWallet;
+    const isActive =
+      customer?.wallet?.status === "active" ||
+      customer?.wallet?.isActive === true ||
+      customer?.hasWallet === true;
     if (isActive) return { label: "Đang hoạt động", cls: "active" };
     return { label: "Chưa kích hoạt", cls: "inactive" };
   }, [customer]);
@@ -256,11 +275,17 @@ const CustomerModal = ({
   }, [customer?.id]);
 
   useEffect(() => {
-    const incomingNotes = customer?.noteInternal || customer?.notes || "";
+    const incomingNotes =
+      noteData?.customerNote ?? customer?.noteInternal ?? customer?.notes ?? "";
     setNotes(incomingNotes);
     setTempNotes(incomingNotes);
     setIsEditingNotes(false);
-  }, [customer?.id, customer?.noteInternal, customer?.notes]);
+  }, [
+    customer?.id,
+    customer?.noteInternal,
+    customer?.notes,
+    noteData?.customerNote,
+  ]);
 
   const handleResendVerification = async (channel = "AUTO") => {
     if (!customer?.id) return;
@@ -296,7 +321,10 @@ const CustomerModal = ({
         console.warn("Refetch customer verification state failed:", refetchErr);
       }
     } catch (err) {
-      showNotification(err?.message || "Không thể gửi xác nhận.", "error");
+      showNotification(
+        toUserFacingErrorMessage(err, "Không thể gửi xác nhận."),
+        "error",
+      );
     }
   };
 
@@ -322,7 +350,7 @@ const CustomerModal = ({
       showNotification("Đã lưu ghi chú khách hàng.", "success");
     } catch (err) {
       showNotification(
-        err?.message || "Không thể lưu ghi chú khách hàng.",
+        toUserFacingErrorMessage(err, "Không thể lưu ghi chú khách hàng."),
         "error",
       );
     }
@@ -347,7 +375,7 @@ const CustomerModal = ({
           input: {
             restaurantId,
             channel: "support",
-            targetRole: "support",
+            participantIds: [customer.id],
             subject: `Khách hàng #${String(customer.id).padStart(4, "0")} - ${displayName || "Khách vãng lai"}`,
           },
         },
@@ -362,7 +390,9 @@ const CustomerModal = ({
       setChatThreadId(openedId);
       await loadThread({ variables: { id: openedId } });
     } catch (err) {
-      setChatError(err?.message || "Không thể mở hội thoại.");
+      setChatError(
+        toUserFacingErrorMessage(err, "Không thể mở hội thoại."),
+      );
     }
   };
 
@@ -378,7 +408,9 @@ const CustomerModal = ({
       });
       await loadThread({ variables: { id: chatThreadId } });
     } catch (err) {
-      setChatError(err?.message || "Gửi tin nhắn thất bại.");
+      setChatError(
+        toUserFacingErrorMessage(err, "Gửi tin nhắn thất bại."),
+      );
       throw err;
     }
   };

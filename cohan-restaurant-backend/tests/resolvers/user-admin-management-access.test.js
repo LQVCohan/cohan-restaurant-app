@@ -1,6 +1,7 @@
 import { GraphQLError } from "graphql";
 
 const requireRoleMock = vi.hoisted(() => vi.fn());
+const requireRestaurantAccessMock = vi.hoisted(() => vi.fn(async () => true));
 const requireRestaurantPermissionMock = vi.hoisted(() => vi.fn(async () => true));
 
 const createChain = (result) => ({
@@ -20,6 +21,7 @@ const CustomerMock = vi.hoisted(() => {
       return this;
     });
   });
+  ctor.findOne = vi.fn(() => ({ lean: vi.fn(async () => null) }));
   return ctor;
 });
 
@@ -38,6 +40,9 @@ const modelMocks = vi.hoisted(() => ({
 
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../utils/authz.js", () => ({ requireRole: requireRoleMock }));
+vi.mock("../../graphql/guards.js", () => ({
+  requireRestaurantAccess: requireRestaurantAccessMock,
+}));
 vi.mock("../../src/services/auth/authorization.service.js", () => ({
   requirePermission: vi.fn(async () => true),
   requireRestaurantPermission: requireRestaurantPermissionMock,
@@ -48,7 +53,11 @@ vi.mock("../../src/services/customerRankSetting.service.js", () => ({
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn((id) => /^valid-/.test(String(id))),
-    Types: { ObjectId: vi.fn((id) => ({ _mockObjectId: String(id) })) },
+    Types: {
+    ObjectId: function ObjectId(id) {
+      return { _mockObjectId: String(id), toString: () => String(id) };
+    },
+  },
   },
 }));
 vi.mock("../../lib/recaptcha.js", () => ({ verifyRecaptcha: vi.fn(async () => ({ ok: true })) }));
@@ -71,6 +80,8 @@ describe("user admin management access hardening", () => {
     vi.resetModules();
     vi.clearAllMocks();
     requireRoleMock.mockImplementation(() => {});
+    requireRestaurantAccessMock.mockResolvedValue(true);
+    CustomerMock.findOne.mockReturnValue({ lean: vi.fn(async () => null) });
   });
 
   it("roleList authorizes through the active restaurant for Brand Admin managers", async () => {
@@ -199,18 +210,30 @@ describe("user admin management access hardening", () => {
     expect(modelMocks.User.findByIdAndUpdate).toHaveBeenCalled();
   });
 
-  it("createGuestUser rejects manager before Customer save", async () => {
-    requireRoleMock.mockImplementation(() => {
-      throw new GraphQLError("FORBIDDEN");
+  it("createGuestUser allows a scoped manager", async () => {
+    modelMocks.User.findById.mockReturnValueOnce({
+      populate: () => ({ lean: async () => ({ _id: "valid-guest-1", isGuest: true }) }),
     });
+    const ctx = ctxFor("manager");
     const { UserMutation } = await import("../../graphql/resolvers/user/mutation.js");
 
-    await expect(
-      UserMutation.createGuestUser(null, { fullName: "G", phone: "090" }, ctxFor("manager")),
-    ).rejects.toThrow("FORBIDDEN");
+    const result = await UserMutation.createGuestUser(
+      null,
+      {
+        fullName: "G",
+        phone: "090",
+        restaurantId: "valid-restaurant",
+      },
+      ctx,
+    );
 
-    expect(requireRoleMock).toHaveBeenCalledWith(expect.anything(), ["admin"]);
-    expect(CustomerMock).not.toHaveBeenCalled();
+    expect(requireRoleMock).toHaveBeenCalledWith(ctx.user, ["admin", "manager"]);
+    expect(requireRestaurantAccessMock).toHaveBeenCalledWith(
+      ctx,
+      "valid-restaurant",
+    );
+    expect(CustomerMock).toHaveBeenCalled();
+    expect(result).toEqual(expect.objectContaining({ isGuest: true }));
   });
 
   it("createGuestUser allows admin", async () => {
@@ -221,11 +244,19 @@ describe("user admin management access hardening", () => {
 
     const result = await UserMutation.createGuestUser(
       null,
-      { fullName: "Guest", phone: "090" },
+      {
+        fullName: "Guest",
+        phone: "090",
+        restaurantId: "valid-restaurant",
+      },
       ctxFor("admin"),
     );
 
-    expect(requireRoleMock).toHaveBeenCalledWith(expect.anything(), ["admin"]);
+    expect(requireRoleMock).toHaveBeenCalledWith(expect.anything(), [
+      "admin",
+      "manager",
+    ]);
+    expect(requireRestaurantAccessMock).toHaveBeenCalled();
     expect(CustomerMock).toHaveBeenCalled();
     expect(result).toEqual(expect.objectContaining({ isGuest: true }));
   });

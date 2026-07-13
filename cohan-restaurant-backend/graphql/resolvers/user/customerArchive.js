@@ -35,7 +35,7 @@ const archivedScope = (restaurantId) => ({
 });
 
 const archivedCustomers = async (_, { restaurantId, limit = 100 }, ctx) => {
-  requireRole(ctx?.user, ["admin"]);
+  requireRole(ctx?.user, ["admin", "manager"]);
   await requirePermission(ctx, PERMISSIONS.CUSTOMER_READ);
 
   const rid = toObjectId(restaurantId, "restaurantId");
@@ -116,7 +116,7 @@ const restoreAllArchivedCustomers = async (
   { restaurantId },
   ctx,
 ) => {
-  requireRole(ctx?.user, ["admin"]);
+  requireRole(ctx?.user, ["admin", "manager"]);
   await requirePermission(ctx, PERMISSIONS.CUSTOMER_UPDATE);
 
   const rid = toObjectId(restaurantId, "restaurantId");

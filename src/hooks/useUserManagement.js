@@ -153,6 +153,7 @@ export const GET_CUSTOMER_LIST_PAGE = gql`
     $includeGuests: Boolean
     $customerKind: CustomerKindFilter
     $customerRank: CustomerRankFilterInput
+    $activityStatuses: [String!]
     $sortBy: CustomerSortBy
     $sortDirection: SortDirection
     $limit: Int
@@ -164,6 +165,7 @@ export const GET_CUSTOMER_LIST_PAGE = gql`
       includeGuests: $includeGuests
       customerKind: $customerKind
       customerRank: $customerRank
+      activityStatuses: $activityStatuses
       sortBy: $sortBy
       sortDirection: $sortDirection
       limit: $limit
@@ -189,6 +191,7 @@ export const GET_CUSTOMER_LIST_PAGE = gql`
         customerType
         totalOrders
         totalSpending
+        wallet { status provider currency balance }
         emailVerified
       phoneVerified
       verifiedAt
@@ -298,11 +301,13 @@ export const CREATE_GUEST_USER = gql`
     $fullName: String
     $phone: String
     $expiresInDays: Int
+    $restaurantId: ID!
   ) {
     createGuestUser(
       fullName: $fullName
       phone: $phone
       expiresInDays: $expiresInDays
+      restaurantId: $restaurantId
     ) {
       id
       fullName
@@ -541,7 +546,6 @@ const toISODateOrNull = (v) => {
 
 const statusToCardStatus = (status) => {
   const s = (status || "").toLowerCase();
-  if (s === "active") return "online";
   if (s === "pending") return "away";
   return "offline";
 };
@@ -710,6 +714,7 @@ const useUserManagement = () => {
       totalOrders: Number(u.totalOrders || 0),
       totalSpending: Number(u.totalSpending || 0),
       noteInternal: u.noteInternal || "",
+      wallet: u.wallet || null,
       isGuest: !!u.isGuest,
       refRestaurants: u.refRestaurants || [],
       joinDate: toISODateOrNull(u.createdAt),
@@ -729,9 +734,9 @@ const useUserManagement = () => {
     };
   }, []);
   const getCustomersPage = useCallback(async ({
-    restaurantId, search, includeGuests = true, customerKind = "ALL", customerRank, sortBy = "CREATED_AT", sortDirection = "DESC", limit = 30, cursor, append = false,
+    restaurantId, search, includeGuests = true, customerKind = "ALL", customerRank, activityStatuses, sortBy = "CREATED_AT", sortDirection = "DESC", limit = 30, cursor, append = false,
   } = {}) => {
-    const variables = { restaurantId, search: typeof search === "string" ? search : undefined, includeGuests, customerKind, customerRank, sortBy, sortDirection, limit, cursor };
+    const variables = { restaurantId, search: typeof search === "string" ? search : undefined, includeGuests, customerKind, customerRank, activityStatuses, sortBy, sortDirection, limit, cursor };
     const { data } = await fetchCustomerPage({ variables });
     const page = data?.customerListPage;
     const mapped = (page?.items || []).map(mapCustomerCard);
@@ -855,9 +860,10 @@ const useUserManagement = () => {
     fullName = "Guest",
     phone,
     expiresInDays = 30,
+    restaurantId,
   }) => {
     const result = await createGuestMut({
-      variables: { fullName, phone, expiresInDays },
+      variables: { fullName, phone, expiresInDays, restaurantId },
     });
     return result?.data?.createGuestUser || null;
   };

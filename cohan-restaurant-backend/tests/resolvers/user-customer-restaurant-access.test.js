@@ -190,6 +190,7 @@ describe("user/customer restaurant access guards", () => {
     expect(modelMocks.Order.find).toHaveBeenCalledWith({
       userId: expect.objectContaining({ _mockObjectId: "valid-u1" }),
       restaurantId: expect.objectContaining({ _mockObjectId: "valid-r1" }),
+      currentStatus: { $nin: ["cancelled", "failed", "draft"] },
     });
   });
 
@@ -211,6 +212,7 @@ describe("user/customer restaurant access guards", () => {
     await UserQuery.customerDetailAnalytics(null, { userId: "valid-u1" }, ctxFor("ADMIN"));
     expect(modelMocks.Order.find).toHaveBeenCalledWith({
       userId: expect.objectContaining({ _mockObjectId: "valid-u1" }),
+      currentStatus: { $nin: ["cancelled", "failed", "draft"] },
     });
   });
 
@@ -266,6 +268,7 @@ describe("user/customer restaurant access guards", () => {
           expect.objectContaining({ _mockObjectId: "valid-u2" }),
         ],
       },
+      currentStatus: { $nin: ["cancelled", "failed", "draft"] },
     });
     expect(result[0].recentOrders.map((x) => x.orderCode)).toEqual(["A5", "A4"]);
     expect(result[0].topDishes).toEqual([
@@ -340,7 +343,13 @@ describe("user/customer restaurant access guards", () => {
     const { UserMutation } = await import("../../graphql/resolvers/user/mutation.js");
     await UserMutation.upsertCustomerRankSettings(
       null,
-      { restaurantId: "valid-r1", ranks: [{ name: "VIP", minPoints: 10, benefits: "prio" }] },
+      {
+        restaurantId: "valid-r1",
+        ranks: [
+          { name: "Mới", minPoints: 0, benefits: "" },
+          { name: "VIP", minPoints: 10, benefits: "prio" },
+        ],
+      },
       ctxFor(),
     );
 
