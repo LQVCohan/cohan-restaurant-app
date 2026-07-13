@@ -1,5 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
+  BarChart3,
+  Building2,
+  CheckCircle2,
+  Info,
   LockKeyhole,
   Settings2,
   ShieldCheck,
@@ -15,6 +20,7 @@ import StaffPerformancePage, {
   resolveEffectivePerformanceRestaurantId,
 } from "./StaffPerformancePage";
 import "./StaffPerformancePolicyPage.scss";
+import "./StaffPerformanceExperience.scss";
 
 export const DEFAULT_POLICY_THRESHOLDS = Object.freeze({
   excellentMin: 90,
@@ -182,7 +188,7 @@ const PolicyModal = ({
     ? policy.lockedFields
     : DEFAULT_LOCKED_RULES;
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -202,7 +208,7 @@ const PolicyModal = ({
     }
   };
 
-  return (
+  return createPortal(
     <div
       className="performance-policy-backdrop"
       onMouseDown={(event) => {
@@ -218,12 +224,17 @@ const PolicyModal = ({
         aria-describedby="performance-policy-description"
       >
         <header className="performance-policy-modal__header">
-          <div>
-            <span className="performance-policy-eyebrow">Quy tắc theo nhà hàng</span>
-            <h2 id="performance-policy-title">Cấu hình đánh giá hiệu suất</h2>
-            <p id="performance-policy-description">
-              {restaurantName}. Chỉ các mốc xếp loại được phép điều chỉnh.
-            </p>
+          <div className="performance-policy-modal__heading">
+            <span className="performance-policy-modal__heading-icon" aria-hidden="true">
+              <Settings2 size={22} />
+            </span>
+            <div>
+              <span className="performance-policy-eyebrow">Quy tắc theo nhà hàng</span>
+              <h2 id="performance-policy-title">Cấu hình đánh giá hiệu suất</h2>
+              <p id="performance-policy-description">
+                {restaurantName}. Điều chỉnh mốc xếp loại mà không làm thay đổi công thức nền.
+              </p>
+            </div>
           </div>
           <button
             ref={closeButtonRef}
@@ -242,89 +253,119 @@ const PolicyModal = ({
           </div>
         ) : (
           <form className="performance-policy-form" onSubmit={handleSubmit}>
-            <section className="performance-policy-section">
-              <div className="performance-policy-section__title">
-                <ShieldCheck size={18} aria-hidden="true" />
-                <div>
-                  <h3>Công thức đang áp dụng</h3>
-                  <p>Tổng trọng số luôn bằng 100% và không thể sửa tại đây.</p>
-                </div>
+            <div className="performance-policy-modal__summary" aria-label="Tóm tắt cấu hình">
+              <div className="performance-policy-summary-card">
+                <span aria-hidden="true">
+                  <ShieldCheck size={18} />
+                </span>
+                <strong>100%</strong>
+                <small>Tổng trọng số đã khóa</small>
               </div>
-              <div className="performance-policy-weights">
-                {Object.entries(weights).map(([key, value]) => (
-                  <div key={key}>
-                    <span>{FORMULA_LABELS[key] || key}</span>
-                    <strong>{value}%</strong>
+              <div className="performance-policy-summary-card">
+                <span aria-hidden="true">
+                  <SlidersHorizontal size={18} />
+                </span>
+                <strong>4 mốc</strong>
+                <small>Có thể điều chỉnh</small>
+              </div>
+              <div className="performance-policy-summary-card">
+                <span aria-hidden="true">
+                  <Building2 size={18} />
+                </span>
+                <strong title={restaurantName}>{restaurantName}</strong>
+                <small>Phạm vi áp dụng</small>
+              </div>
+            </div>
+
+            <div className="performance-policy-workspace">
+              <div className="performance-policy-workspace__main">
+                <section className="performance-policy-section performance-policy-section--editable">
+                  <div className="performance-policy-section__title">
+                    <SlidersHorizontal size={18} aria-hidden="true" />
+                    <div>
+                      <h3>Được phép điều chỉnh</h3>
+                      <p>Các mốc phải là số nguyên và giảm nghiêm ngặt.</p>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </section>
+                  <div className="performance-policy-threshold-grid">
+                    {THRESHOLD_FIELDS.map((field) => (
+                      <label key={field.key}>
+                        <span>{field.label}</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="100"
+                          step="1"
+                          inputMode="numeric"
+                          value={form[field.key]}
+                          onChange={(event) => {
+                            setForm((current) => ({
+                              ...current,
+                              [field.key]: event.target.value,
+                            }));
+                            setActionError("");
+                          }}
+                        />
+                        <small>{field.help}</small>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="performance-policy-preview" aria-live="polite">
+                    <strong>Xem trước khoảng điểm</strong>
+                    <div>
+                      {(validation.valid
+                        ? rangePreview(validation.values)
+                        : [validation.message]
+                      ).map((item) => (
+                        <span key={item}>{item}</span>
+                      ))}
+                    </div>
+                  </div>
+                </section>
 
-            <section className="performance-policy-section performance-policy-section--editable">
-              <div className="performance-policy-section__title">
-                <SlidersHorizontal size={18} aria-hidden="true" />
-                <div>
-                  <h3>Được phép điều chỉnh</h3>
-                  <p>Các mốc phải là số nguyên và giảm nghiêm ngặt.</p>
+                <div className="performance-policy-impact-note">
+                  <strong>Phạm vi tác động</strong>
+                  <p>
+                    Mốc mới chỉ áp dụng khi tính lại hiệu suất. Snapshot và báo cáo lịch sử
+                    không bị sửa âm thầm.
+                  </p>
                 </div>
               </div>
-              <div className="performance-policy-threshold-grid">
-                {THRESHOLD_FIELDS.map((field) => (
-                  <label key={field.key}>
-                    <span>{field.label}</span>
-                    <input
-                      type="number"
-                      min="1"
-                      max="100"
-                      step="1"
-                      inputMode="numeric"
-                      value={form[field.key]}
-                      onChange={(event) => {
-                        setForm((current) => ({
-                          ...current,
-                          [field.key]: event.target.value,
-                        }));
-                        setActionError("");
-                      }}
-                    />
-                    <small>{field.help}</small>
-                  </label>
-                ))}
-              </div>
-              <div className="performance-policy-preview" aria-live="polite">
-                <strong>Xem trước khoảng điểm</strong>
-                <div>
-                  {(validation.valid
-                    ? rangePreview(validation.values)
-                    : [validation.message]
-                  ).map((item) => (
-                    <span key={item}>{item}</span>
-                  ))}
-                </div>
-              </div>
-            </section>
 
-            <section className="performance-policy-section performance-policy-section--locked">
-              <div className="performance-policy-section__title">
-                <LockKeyhole size={18} aria-hidden="true" />
-                <div>
-                  <h3>Được bảo vệ, không thể sửa</h3>
-                  <p>Các quy tắc này cần thay đổi bằng phiên bản nghiệp vụ có kiểm thử.</p>
-                </div>
-              </div>
-              <ul>
-                {lockedRules.map((rule) => (
-                  <li key={rule}>{rule}</li>
-                ))}
-              </ul>
-            </section>
+              <aside className="performance-policy-workspace__side">
+                <section className="performance-policy-section">
+                  <div className="performance-policy-section__title">
+                    <ShieldCheck size={18} aria-hidden="true" />
+                    <div>
+                      <h3>Công thức đang áp dụng</h3>
+                      <p>Tổng trọng số luôn bằng 100% và không thể sửa tại đây.</p>
+                    </div>
+                  </div>
+                  <div className="performance-policy-weights">
+                    {Object.entries(weights).map(([key, value]) => (
+                      <div key={key}>
+                        <span>{FORMULA_LABELS[key] || key}</span>
+                        <strong>{value}%</strong>
+                      </div>
+                    ))}
+                  </div>
+                </section>
 
-            <div className="performance-policy-impact-note">
-              <strong>Phạm vi tác động</strong>
-              <p>
-                Mốc mới chỉ áp dụng khi tính lại hiệu suất. Snapshot và báo cáo lịch sử
-                không bị sửa âm thầm.
-              </p>
+                <section className="performance-policy-section performance-policy-section--locked">
+                  <div className="performance-policy-section__title">
+                    <LockKeyhole size={18} aria-hidden="true" />
+                    <div>
+                      <h3>Được bảo vệ, không thể sửa</h3>
+                      <p>Các quy tắc nghiệp vụ cốt lõi được khóa để tránh sai lệch.</p>
+                    </div>
+                  </div>
+                  <ul>
+                    {lockedRules.map((rule) => (
+                      <li key={rule}>{rule}</li>
+                    ))}
+                  </ul>
+                </section>
+              </aside>
             </div>
 
             {error || actionError ? (
@@ -334,21 +375,28 @@ const PolicyModal = ({
             ) : null}
 
             <footer className="performance-policy-actions">
-              <button type="button" className="btn-secondary" onClick={onClose}>
-                Hủy
-              </button>
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={saving || !validation.valid || Boolean(error)}
-              >
-                {saving ? "Đang lưu…" : "Lưu mốc xếp loại"}
-              </button>
+              <div className="performance-policy-actions__copy">
+                <CheckCircle2 size={17} aria-hidden="true" />
+                <span>Thay đổi được kiểm tra trước khi lưu và chỉ áp dụng cho snapshot mới.</span>
+              </div>
+              <div>
+                <button type="button" className="btn-secondary" onClick={onClose}>
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={saving || !validation.valid || Boolean(error)}
+                >
+                  {saving ? "Đang lưu…" : "Lưu mốc xếp loại"}
+                </button>
+              </div>
             </footer>
           </form>
         )}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 };
 
@@ -362,7 +410,7 @@ const StaffPerformancePolicyPage = (props) => {
   const restaurantName =
     props.restaurantList?.find(
       (restaurant) => String(restaurant.id) === String(restaurantId),
-    )?.name || "Nhà hàng hiện tại";
+    )?.name || "Chưa chọn nhà hàng";
   const {
     policy,
     loading,
@@ -410,33 +458,72 @@ const StaffPerformancePolicyPage = (props) => {
 
   return (
     <div className="staff-performance-policy-shell">
-      <section className="performance-policy-launcher">
-        <div>
-          <span className="performance-policy-launcher__icon" aria-hidden="true">
-            <Settings2 size={18} />
+      <section className="performance-page-hero">
+        <div className="performance-page-hero__main">
+          <span className="performance-page-hero__icon" aria-hidden="true">
+            <BarChart3 size={25} />
           </span>
-          <div>
-            <strong>Quy tắc đánh giá</strong>
+          <div className="performance-page-hero__copy">
+            <span className="performance-page-hero__eyebrow">Quản trị hiệu suất</span>
+            <h2>Hiệu suất nhân viên</h2>
             <p>
-              Trọng số và công thức được khóa; quản lý chỉ điều chỉnh mốc xếp loại.
+              Theo dõi kết quả làm việc theo từng kỳ, so sánh xu hướng và sử dụng dữ liệu
+              minh bạch để hỗ trợ xếp lịch, đào tạo và ghi nhận nhân viên.
             </p>
+            <div className="performance-page-hero__meta">
+              <span title={restaurantName}>
+                <Building2 size={14} aria-hidden="true" />
+                {restaurantName}
+              </span>
+              <span>
+                <ShieldCheck size={14} aria-hidden="true" />
+                Công thức nghiệp vụ đã khóa
+              </span>
+              <span>
+                <SlidersHorizontal size={14} aria-hidden="true" />
+                4 mốc xếp loại có thể chỉnh
+              </span>
+            </div>
           </div>
         </div>
-        <button
-          type="button"
-          className="performance-policy-open-button"
-          onClick={() => setModalOpen(true)}
-          disabled={!restaurantId}
-          title={
-            restaurantId
-              ? "Mở cấu hình đánh giá hiệu suất"
-              : "Chọn một nhà hàng cụ thể trước khi cấu hình"
-          }
-        >
-          <Settings2 size={17} aria-hidden="true" />
-          Cấu hình đánh giá
-        </button>
+
+        <div className="performance-page-hero__aside">
+          <div className="performance-page-hero__policy">
+            <span aria-hidden="true">
+              <Settings2 size={19} />
+            </span>
+            <small>Quy tắc đánh giá</small>
+            <strong>25 / 25 / 20 / 20 / 10</strong>
+            <p>Giữ công thức nhất quán, chỉ thay đổi ranh giới xếp loại.</p>
+          </div>
+          <button
+            type="button"
+            className="performance-policy-open-button"
+            onClick={() => setModalOpen(true)}
+            disabled={!restaurantId}
+            title={
+              restaurantId
+                ? "Mở cấu hình đánh giá hiệu suất"
+                : "Chọn một nhà hàng cụ thể trước khi cấu hình"
+            }
+          >
+            <Settings2 size={17} aria-hidden="true" />
+            Cấu hình đánh giá
+          </button>
+        </div>
       </section>
+
+      <div className="performance-page-guidance" role="note">
+        <Info size={19} aria-hidden="true" />
+        <div>
+          <strong>Luồng làm việc đề xuất</strong>
+          <span>
+            Chọn kỳ và nhà hàng → kiểm tra dữ liệu → tính lại snapshot → đánh giá các trường
+            hợp cần chú ý.
+          </span>
+        </div>
+        <span className="performance-page-guidance__pill">Không tự động trừ điểm</span>
+      </div>
 
       {statusMessage ? (
         <p className="performance-policy-saved" role="status">
