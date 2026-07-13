@@ -56,4 +56,8 @@ runScript("seedScheduleCurrentAndPreviousWeek.js");
 // Verify the persisted database, not only the source definitions. This catches
 // partial writes, missing recipes, unsynchronised purchase costs and lost kg variants.
 runScript("verifyDefenseMenuCatalogDb.js");
+// Orders are created by the base seed before the expanded catalog reassigns dishes
+// to their final menus/categories. Refresh only these foreign-key references while
+// preserving the historical item name, quantity, price and serving snapshots.
+runScript("repairDefenseOrderMenuReferences.js");
 runScript("finalizeDefenseDemoDataset.js");
