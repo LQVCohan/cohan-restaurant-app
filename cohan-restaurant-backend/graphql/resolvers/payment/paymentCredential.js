@@ -9,6 +9,7 @@ import {
   normalizePaymentProvider,
   saveRestaurantPaymentCredential,
 } from "../../../src/services/payment/paymentCredential.service.js";
+import { listPaymentIntegrationReadiness } from "../../../src/services/payment/paymentIntegrationConfig.service.js";
 import { getProviderPublicConfig } from "../../../src/services/payment/paymentSession.service.js";
 
 const requireRestaurantId = (value) => {
@@ -24,6 +25,12 @@ export const PaymentCredentialQuery = {
     const rid = requireRestaurantId(restaurantId);
     await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
     return listRestaurantPaymentCredentialStatuses(rid);
+  },
+
+  async restaurantPaymentIntegrationReadiness(_, { restaurantId }, ctx) {
+    const rid = requireRestaurantId(restaurantId);
+    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
+    return listPaymentIntegrationReadiness();
   },
 
   async restaurantPaymentPublicConfig(_, { restaurantId }) {
