@@ -207,6 +207,23 @@ async function assertCanApplyIncident(user, restaurantId) {
   await assertRestaurantScope(user, restaurantId);
 }
 
+function getMonthlySnapshotPeriod(date) {
+  return {
+    periodStart: new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)),
+    periodEnd: new Date(
+      Date.UTC(
+        date.getUTCFullYear(),
+        date.getUTCMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999,
+      ),
+    ),
+  };
+}
+
 export async function applyPerformanceIncidentScore({ incidentId, actor, note }) {
   if (!actor) throw new Error("UNAUTHENTICATED");
   const session = await mongoose.startSession();
@@ -236,7 +253,7 @@ export async function applyPerformanceIncidentScore({ incidentId, actor, note })
 
       const occurredAt = new Date(incident.occurredAt);
       if (Number.isNaN(occurredAt.getTime())) throw new Error("PERFORMANCE_INCIDENT_DATE_INVALID");
-      const snapshot = await StaffPerformanceSnapshot.findOne(
+      let snapshot = await StaffPerformanceSnapshot.findOne(
         {
           employeeId: incident.employeeId,
           restaurantId: incident.restaurantId,
@@ -246,6 +263,19 @@ export async function applyPerformanceIncidentScore({ incidentId, actor, note })
         null,
         { session },
       );
+      if (!snapshot && allowDemoSeedAttendanceScoring()) {
+        const { periodStart, periodEnd } = getMonthlySnapshotPeriod(occurredAt);
+        snapshot = await StaffPerformanceSnapshot.findOneAndUpdate(
+          {
+            employeeId: incident.employeeId,
+            restaurantId: incident.restaurantId,
+            periodStart,
+            periodEnd,
+          },
+          { $setOnInsert: { finalPerformanceScore: 100 } },
+          { upsert: true, new: true, session },
+        );
+      }
       if (!snapshot) throw new Error("STAFF_PERFORMANCE_SNAPSHOT_NOT_FOUND");
 
       const previousScore = Number(snapshot.finalPerformanceScore);
