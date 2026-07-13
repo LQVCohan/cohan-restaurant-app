@@ -1,1 +1,408 @@
-/* SplitTableModal.module.scss - SCSS styles for SplitTableModal */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2400;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(15 23 42 / 62%);
+  backdrop-filter: blur(5px);
+}
+
+.modal {
+  display: flex;
+  width: min(940px, 96vw);
+  max-height: 92vh;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #d6e2dc;
+  border-radius: 22px;
+  background: #fbfdfc;
+  box-shadow: 0 30px 90px rgb(8 35 27 / 30%);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #dfe8e3;
+  background:
+    radial-gradient(circle at 95% 10%, rgb(255 255 255 / 84%), transparent 35%),
+    linear-gradient(135deg, #f4fbf7, #e5f2ec);
+
+  h3 {
+    margin: 3px 0 6px;
+    color: #183c32;
+    font-size: 24px;
+    letter-spacing: -.025em;
+  }
+
+  p {
+    max-width: 670px;
+    margin: 0;
+    color: #60736b;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+}
+
+.eyebrow {
+  color: #367b67;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.close {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #cbdad3;
+  border-radius: 12px;
+  color: #4d665c;
+  background: rgb(255 255 255 / 75%);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.content {
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid #dbe6e1;
+  border-radius: 15px;
+  background: #fff;
+
+  > span {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 11px;
+    color: #fff;
+    background: #2d7863;
+    font-size: 13px;
+    font-weight: 850;
+  }
+
+  label {
+    display: grid;
+    gap: 7px;
+    color: #3d554c;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  select {
+    width: 100%;
+    height: 40px;
+    border: 1px solid #cbd9d2;
+    border-radius: 10px;
+    color: #20372f;
+    background: #fff;
+    padding: 0 10px;
+  }
+}
+
+.state {
+  padding: 28px;
+  border: 1px dashed #c9d9d1;
+  border-radius: 15px;
+  color: #687a72;
+  background: #f8fbf9;
+  text-align: center;
+}
+
+.revertCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 18px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid #c8dbd1;
+  border-radius: 17px;
+  background: linear-gradient(135deg, #f0f9f4, #fffdf8);
+
+  strong,
+  p {
+    display: block;
+  }
+
+  strong {
+    margin-top: 5px;
+    color: #173e33;
+    font-size: 18px;
+  }
+
+  p {
+    margin: 5px 0 0;
+    color: #65776f;
+    font-size: 12px;
+  }
+
+  button {
+    min-height: 42px;
+    padding: 0 15px;
+    border: 1px solid #28705c;
+    border-radius: 11px;
+    color: #fff;
+    background: #28705c;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+  }
+
+  small {
+    grid-column: 1 / -1;
+    color: #9a6a1f;
+  }
+}
+
+.revertLabel {
+  color: #367b67;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.orderList {
+  display: grid;
+  gap: 12px;
+}
+
+.listHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: end;
+
+  strong,
+  small {
+    display: block;
+  }
+
+  strong {
+    color: #213d34;
+    font-size: 14px;
+  }
+
+  small,
+  > span {
+    margin-top: 3px;
+    color: #71817a;
+    font-size: 11px;
+  }
+}
+
+.batch {
+  overflow: hidden;
+  border: 1px solid #dbe5e0;
+  border-radius: 15px;
+  background: #fff;
+}
+
+.batchHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e4ebe7;
+  background: #f6faf8;
+
+  strong,
+  small {
+    display: block;
+  }
+
+  strong {
+    color: #28463c;
+    font-size: 13px;
+  }
+
+  small {
+    margin-top: 2px;
+    color: #77877f;
+    font-size: 10px;
+  }
+
+  > div:last-child {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  b {
+    color: #1d5c49;
+    font-size: 13px;
+  }
+
+  button {
+    min-height: 30px;
+    border: 1px solid #bfd2c9;
+    border-radius: 9px;
+    color: #315f51;
+    background: #fff;
+    font-size: 11px;
+    font-weight: 750;
+    cursor: pointer;
+  }
+}
+
+.item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  padding: 11px 14px;
+  border-bottom: 1px solid #edf1ef;
+  cursor: pointer;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  input {
+    width: 17px;
+    height: 17px;
+    accent-color: #2d7863;
+  }
+
+  strong,
+  small {
+    display: block;
+  }
+
+  strong {
+    color: #263d35;
+    font-size: 13px;
+  }
+
+  small {
+    margin-top: 3px;
+    color: #718079;
+    font-size: 11px;
+  }
+
+  > b {
+    color: #244d40;
+    font-size: 12px;
+  }
+}
+
+.disabled {
+  cursor: not-allowed;
+  opacity: .55;
+  background: #fafafa;
+}
+
+.error,
+.success {
+  margin-top: 14px;
+  padding: 11px 13px;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.error {
+  border: 1px solid #f0c4c4;
+  color: #a43c3c;
+  background: #fff3f3;
+}
+
+.success {
+  border: 1px solid #bfe0cd;
+  color: #246447;
+  background: #effaf4;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 15px 24px;
+  border-top: 1px solid #dfe8e3;
+  background: #fff;
+
+  button {
+    min-height: 42px;
+    padding: 0 17px;
+    border-radius: 11px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: .5;
+  }
+}
+
+.secondary {
+  border: 1px solid #cbd8d2;
+  color: #476158;
+  background: #fff;
+}
+
+.primary {
+  border: 1px solid #246c58;
+  color: #fff;
+  background: linear-gradient(135deg, #318269, #195443);
+}
+
+@media (max-width: 720px) {
+  .backdrop {
+    padding: 8px;
+  }
+
+  .modal {
+    width: 100%;
+    max-height: 96vh;
+    border-radius: 16px;
+  }
+
+  .steps {
+    grid-template-columns: 1fr;
+  }
+
+  .header,
+  .content,
+  .footer {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .revertCard {
+    grid-template-columns: 1fr;
+
+    button {
+      width: 100%;
+    }
+  }
+
+  .listHeader {
+    display: grid;
+  }
+}
