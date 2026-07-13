@@ -78,6 +78,22 @@ describe("StaffLayout", () => {
     expect(screen.getByRole("link", { name: "Hồ sơ" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Thông báo" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Liên lạc" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Về trang chủ" })).toHaveAttribute(
+      "href",
+      "/",
+    );
+  });
+
+  it("offers a manager shortcut only to accounts that can open the manager portal", () => {
+    const firstRender = renderStaffLayout();
+    expect(screen.queryByRole("link", { name: "Mở khu quản lý" })).not.toBeInTheDocument();
+    firstRender.unmount();
+
+    renderStaffLayout({ user: { ...baseUser, roleName: "manager" } });
+    expect(screen.getByRole("link", { name: "Mở khu quản lý" })).toHaveAttribute(
+      "href",
+      "/manager#dashboard",
+    );
   });
 
   it("opens the messenger from the header action without a nav or floating duplicate", () => {

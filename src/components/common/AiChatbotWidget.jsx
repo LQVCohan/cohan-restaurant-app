@@ -458,6 +458,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const [handoffRequested, setHandoffRequested] = useState(false);
   const [handoffClosed, setHandoffClosed] = useState(false);
   const [handoffConnecting, setHandoffConnecting] = useState(false);
+  const [handoffPromptEligible, setHandoffPromptEligible] = useState(false);
   const [staffReplyBaseline, setStaffReplyBaseline] = useState(0);
   const [latestStaffReplyAt, setLatestStaffReplyAt] = useState("");
   const [isSendInFlight, setIsSendInFlight] = useState(false);
@@ -923,6 +924,8 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     );
     sendInFlightRef.current = true;
     setIsSendInFlight(true);
+    setHandoffPromptEligible(false);
+    const requestStartedAt = Date.now();
 
     const nextMessages = [...messages, { role: "user", content }];
     setMessages(nextMessages);
@@ -1020,6 +1023,16 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       setLastContextSummary(response?.contextSummary || null);
       setLastIntent(response?.intent || "");
       setMenuSourceCards(nextMenuCards);
+      const responseDurationMs = Date.now() - requestStartedAt;
+      const handoffDelayMs = Number(testOverrides?.handoffDelayMs ?? 6000);
+      setHandoffPromptEligible(
+        Boolean(
+          response?.handoffSuggested ||
+          response?.isFallback ||
+          (response?.actions || []).some((action) => action?.type === "handoff") ||
+          responseDurationMs >= handoffDelayMs,
+        ),
+      );
     } catch (err) {
       const code = err?.graphQLErrors?.[0]?.extensions?.code;
       const msg = err?.graphQLErrors?.[0]?.message || err?.message || "";
@@ -1727,6 +1740,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
 
           {!selectedMenuItemSource &&
           handoffEnabled &&
+          handoffPromptEligible &&
           !handoffRequested &&
           !handoffConnecting ? (
             <div className="ai-chatbot-handoff-action">

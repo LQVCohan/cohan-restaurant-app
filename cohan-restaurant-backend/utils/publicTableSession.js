@@ -13,6 +13,7 @@ export const TABLE_IDENTITY_PURPOSE = "customer_table_identity";
 
 const ACTIVE_CUSTOMER_REQUEST_STATUSES = new Set(["PENDING", "ACKNOWLEDGED"]);
 const ORDERABLE_TABLE_STATUSES = new Set([
+  "available",
   "reserved",
   "occupied",
   "payment_pending",
@@ -257,9 +258,7 @@ export function getPublicTableOrderCapability({ tableStatus, session } = {}) {
   if (!ORDERABLE_TABLE_STATUSES.has(normalizedTableStatus)) {
     return {
       canOrder: false,
-      reason: normalizedTableStatus === "available"
-        ? "Bàn chưa được mở phục vụ. Vui lòng gọi nhân viên."
-        : "Bàn hiện chưa sẵn sàng nhận thêm món.",
+      reason: "Bàn hiện chưa sẵn sàng nhận thêm món.",
     };
   }
 

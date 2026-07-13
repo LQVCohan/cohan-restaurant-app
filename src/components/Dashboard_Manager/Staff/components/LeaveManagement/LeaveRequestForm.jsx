@@ -50,6 +50,20 @@ const formatDate = (value) => {
   return year && month && day ? `${day}/${month}/${year}` : "Chưa chọn";
 };
 
+const getSubmitErrorMessage = (error) => {
+  if (isForbiddenError(error)) {
+    return "Bạn không có quyền tạo đơn nghỉ phép cho nhân sự này.";
+  }
+  if (isUnauthenticatedError(error)) {
+    return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.";
+  }
+  const message = String(error?.message || "").toLowerCase();
+  if (message.includes("datetime") || message.includes("date range")) {
+    return "Thời gian nghỉ chưa hợp lệ. Vui lòng kiểm tra lại ngày bắt đầu và kết thúc.";
+  }
+  return "Chưa thể tạo đơn nghỉ phép. Vui lòng thử lại sau ít phút.";
+};
+
 const LeaveRequestForm = ({
   onSubmit,
   staffList = [],
@@ -81,6 +95,7 @@ const LeaveRequestForm = ({
   }));
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [errors, setErrors] = useState({});
+  const [submitFeedback, setSubmitFeedback] = useState("");
   const [currentStep, setCurrentStep] = useState(1);
   const stepHeadingRef = useRef(null);
 
@@ -191,6 +206,7 @@ const LeaveRequestForm = ({
     });
     setEmployeeSearch("");
     setErrors({});
+    setSubmitFeedback("");
     setCurrentStep(1);
   };
 
@@ -230,11 +246,12 @@ const LeaveRequestForm = ({
     const selectedRestaurantId = restaurantId || selectedEmployee?.restaurantId || "";
 
     if (!selectedRestaurantId) {
-      alert("Không xác định được nhà hàng của nhân sự.");
+      setSubmitFeedback("Không xác định được nhà hàng của nhân sự. Vui lòng đăng nhập lại.");
       return;
     }
 
     try {
+      setSubmitFeedback("");
       await onSubmit({
         employeeId: formData.employee,
         restaurantId: selectedRestaurantId,
@@ -245,19 +262,11 @@ const LeaveRequestForm = ({
         endSession: formData.endSession,
         reason: formData.reason.trim(),
       });
-      alert("Đã tạo đơn nghỉ phép và lưu database.");
       resetForm();
+      setSubmitFeedback("Đã gửi đơn nghỉ phép.");
       onSubmitted?.();
     } catch (submitError) {
-      if (isForbiddenError(submitError)) {
-        alert("Bạn không có quyền tạo đơn nghỉ phép cho nhân sự này.");
-        return;
-      }
-      if (isUnauthenticatedError(submitError)) {
-        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.");
-        return;
-      }
-      alert(`Tạo đơn thất bại: ${submitError?.message || "Unknown error"}`);
+      setSubmitFeedback(getSubmitErrorMessage(submitError));
     }
   };
 
@@ -548,6 +557,14 @@ const LeaveRequestForm = ({
             </div>
           </>
         )}
+        {submitFeedback ? (
+          <p
+            className={`leave-submit-feedback ${submitFeedback.startsWith("Đã gửi") ? "is-success" : "is-error"}`}
+            role={submitFeedback.startsWith("Đã gửi") ? "status" : "alert"}
+          >
+            {submitFeedback}
+          </p>
+        ) : null}
       </form>
     </div>
   );

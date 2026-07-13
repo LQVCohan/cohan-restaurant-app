@@ -671,6 +671,34 @@ $st-cancelled-text: #b91c1c;
   line-height: 1.45;
 }
 
+.itemCard__cancel {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 0 11px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #b91c1c;
+  background: #fff1f2;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.itemCard__cancel:hover {
+  border-color: #ef4444;
+  background: #ffe4e6;
+}
+
+.itemCard__cancel:focus-visible {
+  outline: 3px solid rgba(220, 38, 38, 0.2);
+  outline-offset: 2px;
+}
+
 .itemCard__header .metaTag.combo {
   background: #fff3e8;
   border: 1px solid rgba(255, 102, 0, 0.22);

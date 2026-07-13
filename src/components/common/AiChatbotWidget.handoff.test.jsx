@@ -122,6 +122,7 @@ beforeEach(() => {
         contextSummary: null,
         conversationId: "conv-1",
         resolvedRestaurantId: "resto-1",
+        handoffSuggested: true,
       },
     },
   });
@@ -186,13 +187,19 @@ afterEach(() => {
 });
 
 describe("handoff", () => {
-  it("creates a conversation and calls staff without requiring an AI message first", async () => {
+  it("offers staff support only after the AI answer has completed", async () => {
     render(
       <AiChatbotWidget
         testOverrides={{ disablePolling: true, socketFactory: makeSocketFactory }}
       />,
     );
     open();
+
+    expect(
+      screen.queryByRole("button", { name: /Gọi nhân viên hỗ trợ/i }),
+    ).not.toBeInTheDocument();
+    send("Tôi cần gặp nhân viên hỗ trợ");
+    await waitForAssistantAnswer();
 
     fireEvent.click(
       screen.getByRole("button", { name: /Gọi nhân viên hỗ trợ/i }),

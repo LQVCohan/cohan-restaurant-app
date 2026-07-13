@@ -292,7 +292,7 @@ describe("publicSubmitTableOrder transaction boundary", () => {
     eventMocks.emitOrderEvent.mockResolvedValue(undefined);
   });
 
-  it("persists tracking and table state before ending the Mongo session", async () => {
+  it("persists tracking while leaving table occupancy for POS acceptance", async () => {
     const createdOrder = createOrderDocument();
     modelMocks.Order.create.mockResolvedValue([createdOrder]);
 
@@ -308,11 +308,7 @@ describe("publicSubmitTableOrder transaction boundary", () => {
     expect(result.ok).toBe(true);
     expect(createdOrder.save).toHaveBeenCalledOnce();
     expect(createdOrder.save).toHaveBeenCalledWith({ session: sessionMocks });
-    expect(modelMocks.Table.updateOne).toHaveBeenCalledWith(
-      expect.objectContaining({ _id: expect.anything(), restaurantId: expect.anything() }),
-      { $set: { status: "occupied" } },
-      { session: sessionMocks },
-    );
+    expect(modelMocks.Table.updateOne).not.toHaveBeenCalled();
     expect(modelMocks.Order.updateOne).toHaveBeenCalledWith(
       expect.objectContaining({
         _id: activeSession._id,
@@ -327,9 +323,6 @@ describe("publicSubmitTableOrder transaction boundary", () => {
     );
 
     expect(createdOrder.save.mock.invocationCallOrder[0]).toBeLessThan(
-      sessionMocks.endSession.mock.invocationCallOrder[0],
-    );
-    expect(modelMocks.Table.updateOne.mock.invocationCallOrder[0]).toBeLessThan(
       sessionMocks.endSession.mock.invocationCallOrder[0],
     );
     expect(sessionMocks.endSession.mock.invocationCallOrder[0]).toBeLessThan(

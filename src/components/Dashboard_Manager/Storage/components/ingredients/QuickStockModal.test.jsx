@@ -36,6 +36,45 @@ const ingredient = {
 };
 
 describe("QuickStockModal", () => {
+  it("submits only the rows the user filled in", async () => {
+    const onSubmit = vi.fn(async () => undefined);
+
+    render(
+      <QuickStockModal
+        isOpen
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+        entries={[
+          ingredientEntry,
+          { ...ingredientEntry, id: "ingredient-2", name: "Muối" },
+        ]}
+        ingredients={[
+          ingredient,
+          { ...ingredient, id: "ingredient-2", name: "Muối" },
+        ]}
+      />,
+    );
+
+    const quantityInputs = await screen.findAllByLabelText(/Số lượng/);
+    const priceInputs = screen.getAllByLabelText(/Giá lô/);
+    fireEvent.change(quantityInputs[0], {
+      target: { value: "5" },
+    });
+    fireEvent.change(priceInputs[0], {
+      target: { value: "90000" },
+    });
+    expect(quantityInputs[0]).toHaveValue(5);
+    fireEvent.click(screen.getByRole("button", { name: "Nhập 1 mặt hàng" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0][0]).toHaveLength(1);
+    expect(onSubmit.mock.calls[0][0][0]).toMatchObject({
+      id: "ingredient-1",
+      qty: 5,
+      unitPrice: 90000,
+    });
+  });
+
   it("offers convertible units and keeps the selected unit in the receipt payload", async () => {
     const onSubmit = vi.fn(async () => undefined);
 

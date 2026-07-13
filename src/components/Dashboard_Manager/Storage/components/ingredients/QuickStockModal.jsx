@@ -41,6 +41,10 @@ const formatVietnamDateTimeDisplay = (value) => {
   return `${day}/${month}/${year}, ${timePart}`;
 };
 
+const isRowSelectedForStock = (row) =>
+  String(row?.qty ?? "").trim() !== "" ||
+  String(row?.unitPrice ?? "").trim() !== "";
+
 /**
  * QuickStockModal
  * - Dùng chung cho nguyên liệu và vật tư
@@ -182,6 +186,8 @@ const QuickStockModal = ({
 
   if (!isOpen) return null;
 
+  const selectedRowCount = formRows.filter(isRowSelectedForStock).length;
+
   const setFieldRef = (idx, field, node) => {
     const key = `${idx}:${field}`;
     if (node) fieldRefs.current.set(key, node);
@@ -294,7 +300,16 @@ const QuickStockModal = ({
   const validate = () => {
     const nextErrors = {};
     const nextReceiptErrors = {};
-    const usesSharedDatetime = formRows.some((row) => !row.datetime);
+    const selectedRows = formRows.filter(isRowSelectedForStock);
+    const usesSharedDatetime = selectedRows.some((row) => !row.datetime);
+
+    if (!selectedRows.length) {
+      setSubmitError("Nhập số lượng cho ít nhất một mặt hàng.");
+      setReceiptErrors({});
+      setErrors({});
+      window.setTimeout(() => focusField(0, "qty"), 0);
+      return false;
+    }
 
     if (usesSharedDatetime) {
       try {
@@ -307,6 +322,7 @@ const QuickStockModal = ({
     }
 
     formRows.forEach((row, idx) => {
+      if (!isRowSelectedForStock(row)) return;
       const rowErrors = {};
       const qtyNum = Number(row.qty);
       const priceNum = Number(row.unitPrice);
@@ -397,7 +413,7 @@ const QuickStockModal = ({
     if (!validate()) return;
 
     setSubmitError("");
-    const payload = formRows.map((row) => ({
+    const payload = formRows.filter(isRowSelectedForStock).map((row) => ({
       id: row.id,
       type: row.type,
       qty: Number(row.qty),
@@ -498,7 +514,7 @@ const QuickStockModal = ({
             </span>
             <div>
               <strong>Nhập số lượng và giá lô</strong>
-              <span>Đơn vị đã chọn sẵn. Các thông tin còn lại không bắt buộc.</span>
+              <span>Chỉ nhập những mặt hàng cần bổ sung; dòng để trống sẽ được bỏ qua.</span>
             </div>
             <span className="qsm-fast-start__count">
               {formRows.length} mặt hàng
@@ -866,7 +882,9 @@ const QuickStockModal = ({
             {submitting
               ? "Đang nhập…"
               : formRows.length > 1
-                ? `Nhập ${formRows.length} mặt hàng`
+                ? selectedRowCount > 0
+                  ? `Nhập ${selectedRowCount} mặt hàng`
+                  : "Chọn mặt hàng cần nhập"
                 : "Nhập kho ngay"}
           </button>
         </div>

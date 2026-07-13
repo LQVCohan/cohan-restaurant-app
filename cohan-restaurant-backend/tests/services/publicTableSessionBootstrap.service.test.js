@@ -144,9 +144,14 @@ describe("ensurePublicTableSessionForAccess", () => {
   });
 
   it.each(["available", "reserved"])(
-    "does not let a static QR open a %s table before staff starts service",
+    "creates a pre-service QR session for a %s table without changing table status",
     async (status) => {
       modelMocks.Order.findOne.mockReturnValue(activeSessionQuery(null));
+      const createdSession = { _id: "64b000000000000000000003" };
+      lifecycleMocks.ensureActiveTableSessionForDineInOrder.mockResolvedValue({
+        sessionOrder: createdSession,
+        created: true,
+      });
       modelMocks.Table.findOne.mockReturnValue(
         tableQuery({
           _id: tableId,
@@ -163,10 +168,31 @@ describe("ensurePublicTableSessionForAccess", () => {
 
       await expect(
         ensurePublicTableSessionForAccess({ restaurantId, tableId, token }),
-      ).rejects.toThrow(/trạng thái đang phục vụ/i);
+      ).resolves.toBe(createdSession);
       expect(
         lifecycleMocks.ensureActiveTableSessionForDineInOrder,
-      ).not.toHaveBeenCalled();
+      ).toHaveBeenCalledOnce();
     },
   );
+
+  it("still blocks a table that is unavailable for QR service", async () => {
+    modelMocks.Order.findOne.mockReturnValue(activeSessionQuery(null));
+    modelMocks.Table.findOne.mockReturnValue(
+      tableQuery({
+        _id: tableId,
+        restaurantId,
+        code: "A01",
+        status: "maintenance",
+        tableAccessToken: token,
+      }),
+    );
+
+    const { ensurePublicTableSessionForAccess } = await import(
+      "../../src/services/publicTableSessionBootstrap.service.js"
+    );
+
+    await expect(
+      ensurePublicTableSessionForAccess({ restaurantId, tableId, token }),
+    ).rejects.toThrow(/chưa sẵn sàng/i);
+  });
 });

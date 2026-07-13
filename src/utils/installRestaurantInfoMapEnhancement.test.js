@@ -56,6 +56,9 @@ import {
 const renderCoordinateFields = () => {
   document.body.innerHTML = `
     <div class="restaurant-management-container">
+      <div class="address-section-card">
+        <div class="ant-card-extra"><button type="button">Lấy vị trí hiện tại</button></div>
+      </div>
       <div class="ant-card-body">
         <div class="ant-row" data-address-row>
           <div class="ant-col">
@@ -111,6 +114,10 @@ describe("restaurant information location map enhancement", () => {
       [10.895109, 106.833394],
       { draggable: true, icon: leafletState.markerIcon },
     );
+    const sourceButton = document.querySelector(".ant-card-extra button");
+    const sourceClick = vi.spyOn(sourceButton, "click");
+    card.querySelector(".restaurant-location-map-card__locate").click();
+    expect(sourceClick).toHaveBeenCalledTimes(1);
 
     leafletState.mapHandlers.click({
       latlng: { lat: 10.9012344, lng: 106.8123456 },

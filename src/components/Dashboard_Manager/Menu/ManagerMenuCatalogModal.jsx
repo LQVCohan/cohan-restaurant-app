@@ -132,25 +132,24 @@ export default function ManagerMenuCatalogModal({
 
   const menuRows = useMemo(() => {
     const menus = data?.menus || [];
-    const menuBySlot = new Map(
-      menus.filter((menu) => menu?.timeSlot).map((menu) => [menu.timeSlot, menu]),
-    );
 
-    return SLOT_CONFIG.map((slot) => {
-      const menu = menuBySlot.get(slot.value) || null;
+    return SLOT_CONFIG.flatMap((slot) => {
+      const slotMenus = menus.filter((menu) => menu?.timeSlot === slot.value);
       const connection = data?.[CONNECTION_KEY_BY_SLOT[slot.value]];
-      const items = menu
-        ? getConnectionItems(connection).filter(
-            (item) => !item?.menuId || String(item.menuId) === String(menu.id),
-          )
-        : [];
+      const connectionItems = getConnectionItems(connection);
+      const rows = slotMenus.length ? slotMenus : [null];
 
-      return {
+      return rows.map((menu) => ({
         ...slot,
+        key: `${slot.value}:${menu?.id || "empty"}`,
         menu,
-        items,
+        items: menu
+          ? connectionItems.filter(
+              (item) => !item?.menuId || String(item.menuId) === String(menu.id),
+            )
+          : [],
         truncated: Boolean(connection?.pageInfo?.hasNextPage),
-      };
+      }));
     });
   }, [data]);
 
@@ -193,7 +192,7 @@ export default function ManagerMenuCatalogModal({
           <div className="manager-menu-catalog__state manager-menu-catalog__state--error" role="alert">
             <AlertCircle aria-hidden="true" />
             <strong>Không thể tải danh sách thực đơn</strong>
-            <p>{error.message || "Vui lòng thử lại."}</p>
+            <p>Kiểm tra kết nối rồi thử tải lại.</p>
             <button type="button" onClick={() => void refetch()}>
               <RefreshCw size={16} aria-hidden="true" /> Thử lại
             </button>
@@ -202,7 +201,7 @@ export default function ManagerMenuCatalogModal({
           <div className="manager-menu-catalog__grid">
             {menuRows.map((row) => (
               <article
-                key={row.value}
+                key={row.key}
                 className={`manager-menu-catalog__card ${row.menu?.isActive === false ? "is-hidden" : ""}`}
               >
                 <div className="manager-menu-catalog__card-heading">

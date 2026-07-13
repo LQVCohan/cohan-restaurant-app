@@ -210,6 +210,9 @@
 
   .manager-layout:not(.sidebar-open) .sidebar-nav {
     overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
   }
 
   .manager-layout:not(.sidebar-open) .nav-item {

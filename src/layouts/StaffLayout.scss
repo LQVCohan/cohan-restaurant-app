@@ -79,6 +79,40 @@
   gap: 10px;
 }
 
+.staff-shell__portal-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.staff-shell__portal-actions a {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 1px solid rgba(103, 119, 92, 0.2);
+  border-radius: 13px;
+  color: #364339;
+  background: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.staff-shell__portal-actions a:hover {
+  border-color: rgba(31, 111, 74, 0.36);
+  color: #165c3c;
+  background: #eaf5ee;
+}
+
+.staff-shell__portal-actions a:focus-visible {
+  outline: 3px solid rgba(31, 111, 74, 0.28);
+  outline-offset: 2px;
+}
+
 .staff-shell__identity {
   display: grid;
   min-width: 0;
@@ -345,6 +379,10 @@
     grid-area: account;
     width: 100%;
     justify-content: stretch;
+  }
+
+  .staff-shell__portal-actions span {
+    display: none;
   }
 
   .staff-shell__identity {

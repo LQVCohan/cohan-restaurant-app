@@ -21,6 +21,49 @@ const menuItems = [
 ];
 
 describe("PromotionModal", () => {
+  it("keeps the portalled dialog labelled and exposes form controls by name", async () => {
+    render(
+      <PromotionModal
+        defaultRestaurantId="restaurant-1"
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        restaurants={restaurants}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Tạo ưu đãi mới" });
+    await waitFor(() => expect(dialog).toHaveFocus());
+    expect(screen.getByLabelText(/Tên chương trình/)).toHaveAttribute(
+      "name",
+      "name",
+    );
+    expect(screen.getByLabelText(/Nhà hàng áp dụng/)).toHaveValue(
+      "restaurant-1",
+    );
+  });
+
+  it("derives enforceable conditions from configured fields", () => {
+    render(
+      <PromotionModal
+        defaultRestaurantId="restaurant-1"
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        restaurants={restaurants}
+      />,
+    );
+
+    fireEvent.change(document.querySelector('input[name="minOrderValue"]'), {
+      target: { name: "minOrderValue", value: "200000" },
+    });
+    fireEvent.change(document.querySelector('select[name="targetAudience"]'), {
+      target: { name: "targetAudience", value: "vip" },
+    });
+
+    expect(screen.getByText("Đơn hàng tối thiểu 200.000đ")).toBeInTheDocument();
+    expect(screen.getByText("Chỉ áp dụng cho nhóm: Khách VIP")).toBeInTheDocument();
+    expect(document.querySelector('textarea[name="conditions"]')).not.toBeInTheDocument();
+  });
+
   it("renders restaurant options from props and submits the selected restaurant id", async () => {
     const onSave = vi.fn();
 

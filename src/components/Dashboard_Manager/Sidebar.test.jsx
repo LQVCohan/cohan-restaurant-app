@@ -91,6 +91,7 @@ describe("Manager Sidebar", () => {
   });
 
   it("persists the selected manager page before invoking the navigation callback", () => {
+    const pushStateSpy = vi.spyOn(window.history, "pushState");
     const { onPageChange } = renderSidebar();
 
     fireEvent.click(screen.getByRole("button", { name: "Đơn hàng" }));
@@ -99,6 +100,11 @@ describe("Manager Sidebar", () => {
     expect(window.location.pathname).toBe("/manager");
     expect(window.location.search).toBe("?restaurantId=r1");
     expect(window.location.hash).toBe("#orders");
+    expect(pushStateSpy).toHaveBeenCalledWith(
+      { managerPage: "orders" },
+      "",
+      "/manager?restaurantId=r1#orders",
+    );
     expect(onPageChange).toHaveBeenCalledWith("orders");
   });
 });

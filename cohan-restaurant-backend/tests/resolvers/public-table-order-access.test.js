@@ -141,7 +141,7 @@ describe("PublicTableOrderAccess resolver boundary", () => {
     expect(result.session.orderCode).toBeNull();
   });
 
-  it("does not let a reserved table request verification before staff opens service", async () => {
+  it("lets a reserved table request verification before service starts", async () => {
     serviceMocks.hasValidPublicTableOrderSessionAccess.mockResolvedValue(false);
     baseMocks.publicActiveTableSessionOrders.mockResolvedValue({
       ...buildBaseResult(),
@@ -160,9 +160,9 @@ describe("PublicTableOrderAccess resolver boundary", () => {
       { request: { cookies: {} } },
     );
 
-    expect(result.canRequestOrderAccess).toBe(false);
+    expect(result.canRequestOrderAccess).toBe(true);
     expect(result.canOrder).toBe(false);
-    expect(result.orderAccessBlockedReason).toMatch(/đang phục vụ/i);
+    expect(result.orderAccessBlockedReason).toMatch(/xác nhận thiết bị/i);
     expect(
       serviceMocks.hasValidPublicTableOrderSessionAccess,
     ).not.toHaveBeenCalled();

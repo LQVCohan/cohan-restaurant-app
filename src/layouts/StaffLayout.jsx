@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { MessageCircle } from "lucide-react";
+import { Home, LayoutDashboard, MessageCircle } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 import useCommunication from "@/hooks/useCommunication";
 import StaffQrOrderRealtimeNotice from "@/components/Staff/StaffQrOrderRealtimeNotice";
@@ -17,6 +17,7 @@ import CustomerRequestQueuePanel from "@/components/Dashboard_Manager/POS/compon
 import "./StaffLayout.scss";
 import "./StaffWorkspaceOverrides.scss";
 import {
+  canAccessRoute,
   getStaffWorkspacePath,
   resolveUserRoleName,
   STAFF_KITCHEN_ROLES,
@@ -235,6 +236,7 @@ export default function StaffLayout({ children }) {
   const canReceiveOrderNotice =
     STAFF_ORDER_ROLES.includes(normalizedRole) ||
     hasAnyPermission(user, ORDER_NOTICE_PERMISSIONS);
+  const canOpenManagerPortal = canAccessRoute(user, "/manager");
   const isOrderWorkspace = location.pathname.startsWith("/staff/orders");
   const showIncomingOrderQueue =
     isOrderWorkspace &&
@@ -362,6 +364,25 @@ export default function StaffLayout({ children }) {
             </div>
 
             <div className="staff-shell__account-actions">
+              <nav
+                className="staff-shell__portal-actions"
+                aria-label="Chuyển khu vực"
+              >
+                <Link to="/" aria-label="Về trang chủ" title="Trang chủ">
+                  <Home size={19} aria-hidden="true" />
+                  <span>Trang chủ</span>
+                </Link>
+                {canOpenManagerPortal ? (
+                  <Link
+                    to="/manager#dashboard"
+                    aria-label="Mở khu quản lý"
+                    title="Khu quản lý"
+                  >
+                    <LayoutDashboard size={19} aria-hidden="true" />
+                    <span>Quản lý</span>
+                  </Link>
+                ) : null}
+              </nav>
               {!isOrderWorkspace ? (
                 <NotificationBell
                   restaurantId={orderNoticeRestaurantId}

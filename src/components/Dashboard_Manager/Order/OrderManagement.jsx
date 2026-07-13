@@ -224,6 +224,24 @@ const CREATE_TEMP_BILL_PRINT_JOB = gql`
   }
 `;
 
+const REQUEST_ORDER_ITEM_VOID = gql`
+  mutation ManagerRequestOrderItemVoid($input: RequestOrderItemVoidInput!) {
+    requestOrderItemVoid(input: $input) {
+      id
+      restaurantId
+      items {
+        _id
+        voidRequests {
+          requestId
+          quantity
+          reason
+          status
+        }
+      }
+    }
+  }
+`;
+
 const ACTIVE_ORDER_HIDDEN_STATUSES = new Set([
   "served",
   "completed",
@@ -541,6 +559,7 @@ const OrderManagement = () => {
   const [mutConfirmIncomingOrder] = useMutation(CONFIRM_INCOMING_ORDER);
   const [mutRejectIncomingOrder] = useMutation(REJECT_INCOMING_ORDER);
   const [mutCreateTempBillJob] = useMutation(CREATE_TEMP_BILL_PRINT_JOB);
+  const [mutRequestOrderItemVoid] = useMutation(REQUEST_ORDER_ITEM_VOID);
 
   const [timeSettings, setTimeSettings] = useState({
     warn: 10,
@@ -1297,6 +1316,59 @@ const OrderManagement = () => {
     [mergeSelectedOrderMetadata, refetchOrders, reviewOrderItemVoid],
   );
 
+  const handleCancelItemImmediately = useCallback(
+    async ({ orderId, orderItemId, quantity, reason }) => {
+      try {
+        const requestResult = await mutRequestOrderItemVoid({
+          variables: {
+            input: { orderId, orderItemId, quantity, reason },
+          },
+        });
+        const requestedOrder = requestResult?.data?.requestOrderItemVoid;
+        const requestedItem = (requestedOrder?.items || []).find(
+          (item) => String(item?._id) === String(orderItemId),
+        );
+        const pendingRequest = [...(requestedItem?.voidRequests || [])]
+          .reverse()
+          .find((request) => request?.status === "pending");
+        if (!pendingRequest?.requestId) {
+          throw new Error("Không tìm thấy yêu cầu vừa tạo.");
+        }
+
+        const updatedOrder = await reviewOrderItemVoid({
+          orderId,
+          orderItemId,
+          requestId: pendingRequest.requestId,
+          approve: true,
+          note: `Hủy ngay tại màn hình bếp/POS: ${reason}`,
+        });
+        if (updatedOrder) {
+          setSelectedOrder((previous) =>
+            mergeSelectedOrderMetadata(updatedOrder, previous),
+          );
+          await refetchOrders();
+        }
+        showNotification("Đã hủy món và cập nhật lại hóa đơn.", "success");
+        return updatedOrder;
+      } catch {
+        showNotification(
+          "Chưa thể hủy món. Kiểm tra quyền hủy đơn rồi thử lại.",
+          "error",
+        );
+        throw new Error(
+          "Chưa thể hủy món. Kiểm tra quyền hủy đơn rồi thử lại.",
+        );
+      }
+    },
+    [
+      mergeSelectedOrderMetadata,
+      mutRequestOrderItemVoid,
+      refetchOrders,
+      reviewOrderItemVoid,
+      showNotification,
+    ],
+  );
+
   const handleRequestItemReturn = useCallback(
     async (payload) => {
       const updatedOrder = await requestOrderItemReturn(payload);
@@ -1777,6 +1849,7 @@ const OrderManagement = () => {
             onUpdateItemStatus={handleUpdateItemStatus}
             onCreateTemporaryBill={handleCreateTemporaryBill}
             onReviewItemVoid={handleReviewItemVoid}
+            onCancelItem={handleCancelItemImmediately}
             onRequestItemReturn={handleRequestItemReturn}
             onReviewItemReturn={handleReviewItemReturn}
           />

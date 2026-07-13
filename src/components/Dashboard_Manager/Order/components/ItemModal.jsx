@@ -1,14 +1,8 @@
 // src/pages/OrderManagement/components/ItemModal.jsx
 import React from "react";
-import {
-  X,
-  ChefHat,
-  StickyNote,
-  BookOpen,
-  Loader2,
-  Receipt,
-} from "lucide-react";
+import { ChefHat, StickyNote } from "lucide-react";
 
+import Modal from "../../../common/Modal";
 import styles from "./ItemModal.module.scss";
 
 // 3. Main Component
@@ -41,7 +35,7 @@ const ItemModal = ({ item, onClose }) => {
     if (!ingredients.length) {
       return (
         <div className={styles.stateBox}>
-          <span>Chưa có snapshot nguyên liệu cho món này.</span>
+          <span>Chưa có thông tin nguyên liệu đã dùng cho món này.</span>
         </div>
       );
     }
@@ -54,7 +48,7 @@ const ItemModal = ({ item, onClose }) => {
             <span>
               {Number(ing.quantity || 0).toLocaleString("vi-VN")} {ing.unit}
               {" · "}
-              quy đổi:{" "}
+              tương đương:{" "}
               {Number(ing.baseUnitQuantity || 0).toLocaleString("vi-VN")}
             </span>
           </div>
@@ -63,88 +57,74 @@ const ItemModal = ({ item, onClose }) => {
     );
   };
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      {/* Ngăn click propagation để không đóng modal khi click vào nội dung */}
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className={styles.header}>
-          <h2>
-            <Receipt size={20} />
-            Chi tiết Order
-          </h2>
-          <button onClick={onClose} className={styles.closeBtn}>
-            <X size={24} />
-          </button>
-        </div>
+    <Modal
+      isOpen={Boolean(item)}
+      onClose={onClose}
+      title="Chi tiết món ăn"
+      size="md"
+      className={styles.modal}
+    >
+      <Modal.Body className={styles.body}>
+        <div className={styles.infoSection}>
+          <div className={styles.itemName}>{item.name}</div>
 
-        {/* Body */}
-        <div className={styles.body}>
-          {/* Section: Basic Info */}
-          <div className={styles.infoSection}>
-            <div className={styles.itemName}>{item.name}</div>
+          <div className={styles.gridInfo}>
+            <div className={styles.row}>
+              <span className={styles.label}>Số lượng</span>
+              <span>x{item.quantity}</span>
+            </div>
 
-            <div className={styles.gridInfo}>
-              <div className={styles.row}>
-                <label>Số lượng</label>
-                <span>x{item.quantity}</span>
-              </div>
+            <div className={styles.row}>
+              <span className={styles.label}>Đơn giá</span>
+              <span>{formatCurrency(item.price)}</span>
+            </div>
 
-              <div className={styles.row}>
-                <label>Đơn giá</label>
-                <span>{formatCurrency(item.price)}</span>
-              </div>
-
-              <div className={styles.row}>
-                <label>Trạng thái</label>
-                <div>
-                  <span
-                    className={`${styles.badge} ${styles[item.status] || ""}`}
-                  >
-                    {getStatusLabel(item.status)}
-                  </span>
-                </div>
-              </div>
-
-              <div className={styles.row}>
-                <label>Thành tiền</label>
-                <span className={styles.priceHighlight}>
-                  {formatCurrency(totalPrice)}
+            <div className={styles.row}>
+              <span className={styles.label}>Trạng thái</span>
+              <div>
+                <span
+                  className={`${styles.badge} ${styles[item.status] || ""}`}
+                >
+                  {getStatusLabel(item.status)}
                 </span>
               </div>
             </div>
-          </div>
 
-          {/* Section: Customer Note (Ghi chú từ khách/nhân viên) */}
-          {item.note && (
-            <div className={styles.noteBlock}>
-              <h4>
-                <StickyNote />
-                Ghi chú đặc biệt
-              </h4>
-              <div className={styles.noteContent}>"{item.note}"</div>
+            <div className={styles.row}>
+              <span className={styles.label}>Thành tiền</span>
+              <span className={styles.priceHighlight}>
+                {formatCurrency(totalPrice)}
+              </span>
             </div>
-          )}
-
-          {/* Section: Recipe (Dành cho bếp) */}
-          <div className={styles.recipeBlock}>
-            <h4>
-              <ChefHat />
-              Nguyên liệu đã trừ kho
-            </h4>
-            <IngredientSnapshotDetails
-              ingredients={item.ingredientsSnapshot || []}
-            />
           </div>
         </div>
 
-        {/* Footer */}
-        <div className={styles.footer}>
-          <button onClick={onClose} className={styles.btnAction}>
-            Đóng
-          </button>
+        {item.note && (
+          <div className={styles.noteBlock}>
+            <h4>
+              <StickyNote aria-hidden="true" />
+              Ghi chú đặc biệt
+            </h4>
+            <div className={styles.noteContent}>{item.note}</div>
+          </div>
+        )}
+
+        <div className={styles.recipeBlock}>
+          <h4>
+            <ChefHat aria-hidden="true" />
+            Nguyên liệu đã trừ kho
+          </h4>
+          <IngredientSnapshotDetails
+            ingredients={item.ingredientsSnapshot || []}
+          />
         </div>
-      </div>
-    </div>
+      </Modal.Body>
+      <Modal.Footer className={styles.footer}>
+        <button type="button" onClick={onClose} className={styles.btnAction}>
+          Đóng
+        </button>
+      </Modal.Footer>
+    </Modal>
   );
 };
 

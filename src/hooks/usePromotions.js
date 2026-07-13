@@ -123,12 +123,20 @@ const resolvePromotionStatus = (row) => {
 
 const getApolloErrorMessage = (error) => {
   if (!error) return "";
-  return (
+  const message = (
     error.graphQLErrors?.[0]?.message ||
     error.networkError?.message ||
     error.message ||
     "Không thể xử lý dữ liệu khuyến mãi."
   );
+  if (
+    /cannot return null|non-nullable|graphql|mutation|resolver/i.test(message)
+  ) {
+    return "Hệ thống chưa lưu được khuyến mãi. Kiểm tra dữ liệu bắt buộc rồi thử lại; nếu lỗi lặp lại, hãy liên hệ quản trị viên.";
+  }
+  return String(message)
+    .replace(/\b(categoryId|itemId|restaurantId|promotion id)\b/gi, "thông tin áp dụng")
+    .replace(/\blevel\b/gi, "độ ưu tiên");
 };
 
 const mountPromotionErrorBanner = ({ error, refetch, title }) => {

@@ -122,8 +122,8 @@ $pm-shadow-xl: 0 28px 76px rgba(30, 25, 18, 0.24);
 
   .btn-close {
     flex: 0 0 auto;
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
     display: inline-grid;
     place-items: center;
     border: 1px solid rgba($pm-border, 0.86);
@@ -254,7 +254,8 @@ $pm-shadow-xl: 0 28px 76px rgba(30, 25, 18, 0.24);
     flex-direction: column;
     gap: 6px;
 
-    label {
+    label,
+    .field-label {
       color: $pm-charcoal;
       font-size: 0.82rem;
       font-weight: 760;
@@ -331,6 +332,24 @@ $pm-shadow-xl: 0 28px 76px rgba(30, 25, 18, 0.24);
       font-weight: 800;
       letter-spacing: 0.045em;
       text-transform: uppercase;
+    }
+  }
+
+  .promotion-derived-conditions {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 10px 12px 10px 28px;
+    border: 1px solid rgba($pm-sage, 0.18);
+    border-radius: $pm-radius-md;
+    color: $pm-charcoal;
+    background: $pm-sage-mist;
+    font-size: 0.84rem;
+    line-height: 1.45;
+
+    &.is-empty {
+      padding-left: 12px;
+      list-style: none;
     }
   }
 

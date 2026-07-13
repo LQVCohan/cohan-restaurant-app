@@ -35,70 +35,10 @@ $st-cancelled-text: #b91c1c;
 }
 
 // --- Styles ---
-.overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba($charcoal, 0.6); // Darker backdrop
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
-  z-index: 1050;
-  @include flex-center;
-  animation: fadeIn 0.2s ease-out;
-  padding: 1rem;
-}
-
 .modal {
   width: 100%;
-  max-width: 550px; // Rộng hơn một chút để thoáng
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  max-height: 90vh;
-  border: 1px solid rgba($gold, 0.3); // Viền vàng tinh tế
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-// --- Header ---
-.header {
-  @include flex-between;
-  padding: 1.25rem 1.5rem;
-  background-color: #fff;
-  border-bottom: 1px solid $border-color;
-
-  h2 {
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: $charcoal;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-
-    svg {
-      color: $gold;
-    }
-  }
-}
-
-.closeBtn {
-  background: transparent;
-  border: none;
-  color: $text-sub;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 50%;
-  transition: all 0.2s;
-  @include flex-center;
-
-  &:hover {
-    background-color: $bg-body;
-    color: $charcoal;
-    transform: rotate(90deg);
-  }
+  max-width: 550px;
+  border: 1px solid rgba($gold, 0.3);
 }
 
 // --- Body ---
@@ -144,7 +84,7 @@ $st-cancelled-text: #b91c1c;
   flex-direction: column;
   gap: 0.25rem;
 
-  label {
+  .label {
     font-size: 0.75rem;
     color: $text-sub;
     font-weight: 600;

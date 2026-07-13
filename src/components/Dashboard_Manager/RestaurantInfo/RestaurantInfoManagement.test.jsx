@@ -12,6 +12,7 @@ const rewriteRestaurantProfileMock = vi.fn();
 const refetchRestaurantDetailMock = vi.fn();
 const refetchIndexesMock = vi.fn();
 const refetchCategoriesMock = vi.fn();
+const showNotificationMock = vi.fn();
 
 vi.mock("@apollo/client", () => ({
   gql: (strings) => strings,
@@ -77,6 +78,10 @@ vi.mock("antd", async (importOriginal) => {
 
 vi.mock("../../../hooks/useAvatarUploadLocal", () => ({
   useAvatarUploadLocal: () => ({ upload: vi.fn() }),
+}));
+
+vi.mock("../../../hooks/useNotification", () => ({
+  useNotification: () => ({ showNotification: showNotificationMock }),
 }));
 
 vi.mock("../shared/ManagementPageHeader", () => ({
@@ -521,12 +526,14 @@ describe("RestaurantInfoManagement", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
 
-    await waitFor(() => expect(message.warning).toHaveBeenCalledWith(
-      "Đã gửi yêu cầu lưu nhưng dữ liệu trả về chưa đồng bộ. Vui lòng tải lại trang hoặc kiểm tra lại API.",
+    await waitFor(() => expect(showNotificationMock).toHaveBeenCalledWith(
+      "Dữ liệu vừa lưu chưa hiển thị đầy đủ. Hãy tải lại trang rồi kiểm tra trước khi sửa tiếp.",
+      "warning",
     ));
     expect(screen.getByText("Có thay đổi chưa lưu")).toBeInTheDocument();
-    expect(message.success).not.toHaveBeenCalledWith(
-      "Cập nhật thông tin nhà hàng thành công",
+    expect(showNotificationMock).not.toHaveBeenCalledWith(
+      "Đã cập nhật thông tin nhà hàng.",
+      "success",
     );
   });
 
@@ -706,8 +713,9 @@ describe("RestaurantInfoManagement", () => {
     fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
 
     expect(updateRestaurantMock).not.toHaveBeenCalled();
-    expect(message.error).toHaveBeenCalledWith(
+    expect(showNotificationMock).toHaveBeenCalledWith(
       "Vui lòng nhập đầy đủ cả vĩ độ và kinh độ",
+      "error",
     );
   });
 
@@ -727,8 +735,9 @@ describe("RestaurantInfoManagement", () => {
     fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
 
     expect(updateRestaurantMock).not.toHaveBeenCalled();
-    expect(message.error).toHaveBeenCalledWith(
+    expect(showNotificationMock).toHaveBeenCalledWith(
       "Vĩ độ phải nằm trong khoảng -90 đến 90",
+      "error",
     );
   });
 
