@@ -31,6 +31,9 @@ import AppErrorBoundary from "./components/common/AppErrorBoundary";
 import Table3DPreviewLauncher from "./components/Dashboard_Manager/Table/Table3DPreviewLauncher";
 import StaffKitchenFocusLauncher from "./components/Staff/StaffKitchenFocusLauncher";
 
+const isFocusedQrRoute = (pathname) =>
+  pathname === "/scan-table" || pathname.startsWith("/table/");
+
 function ScopedAiChatbotWidget() {
   const location = useLocation();
   if (
@@ -39,12 +42,17 @@ function ScopedAiChatbotWidget() {
     location.pathname.startsWith("/manager") ||
     location.pathname.startsWith("/staff") ||
     location.pathname.startsWith("/preview/") ||
-    location.pathname === "/scan-table" ||
-    location.pathname.startsWith("/table/")
+    isFocusedQrRoute(location.pathname)
   ) {
     return null;
   }
   return <AiChatbotWidget />;
+}
+
+function ScopedMenuAvailabilityPrompt() {
+  const location = useLocation();
+  if (isFocusedQrRoute(location.pathname)) return null;
+  return <GlobalMenuAvailabilityPrompt />;
 }
 
 function App() {
@@ -61,7 +69,7 @@ function App() {
                   <AppRouter />
                   <Table3DPreviewLauncher />
                   <StaffKitchenFocusLauncher />
-                  <GlobalMenuAvailabilityPrompt />
+                  <ScopedMenuAvailabilityPrompt />
                   <ScopedAiChatbotWidget />
                 </CartProvider>
               </CustomerNotificationProvider>
