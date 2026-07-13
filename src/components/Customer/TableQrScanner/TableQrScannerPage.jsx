@@ -5,13 +5,13 @@ import {
   ArrowRight,
   Camera,
   ChevronDown,
-  ClipboardPaste,
-  Flashlight,
-  FlashlightOff,
+  Clipboard,
   Link as LinkIcon,
+  Moon,
   PauseCircle,
   ScanLine,
   ShieldCheck,
+  Sun,
 } from "lucide-react";
 
 import useIsMobile from "@/hooks/useIsMobile";
@@ -463,9 +463,9 @@ export default function TableQrScannerPage() {
                   aria-pressed={torchEnabled}
                 >
                   {torchEnabled ? (
-                    <FlashlightOff aria-hidden="true" />
+                    <Moon aria-hidden="true" />
                   ) : (
-                    <Flashlight aria-hidden="true" />
+                    <Sun aria-hidden="true" />
                   )}
                   {torchEnabled ? "Tắt đèn" : "Bật đèn"}
                 </button>
@@ -536,7 +536,7 @@ export default function TableQrScannerPage() {
             <div className="table-qr-scanner__manual-label-row">
               <label htmlFor="table-qr-address">Nội dung mã QR</label>
               <button type="button" onClick={handlePasteFromClipboard}>
-                <ClipboardPaste aria-hidden="true" />
+                <Clipboard aria-hidden="true" />
                 Dán mã
               </button>
             </div>
