@@ -20,6 +20,20 @@ import {
 
 const OriginalImage = globalThis.Image;
 const originalCreateElement = document.createElement.bind(document);
+const originalCreateObjectURL = globalThis.URL.createObjectURL;
+const originalRevokeObjectURL = globalThis.URL.revokeObjectURL;
+
+const restoreUrlMethod = (name, originalValue) => {
+  if (originalValue) {
+    Object.defineProperty(globalThis.URL, name, {
+      configurable: true,
+      writable: true,
+      value: originalValue,
+    });
+  } else {
+    delete globalThis.URL[name];
+  }
+};
 
 const mockImageDimensions = (width, height) => {
   globalThis.Image = class MockImage {
@@ -37,13 +51,23 @@ const mockImageDimensions = (width, height) => {
 describe("tableVrImageProcessing", () => {
   beforeEach(() => {
     localStorage.clear();
-    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:table-vr-test");
-    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    Object.defineProperty(globalThis.URL, "createObjectURL", {
+      configurable: true,
+      writable: true,
+      value: vi.fn(() => "blob:table-vr-test"),
+    });
+    Object.defineProperty(globalThis.URL, "revokeObjectURL", {
+      configurable: true,
+      writable: true,
+      value: vi.fn(),
+    });
   });
 
   afterEach(() => {
     globalThis.Image = OriginalImage;
     vi.restoreAllMocks();
+    restoreUrlMethod("createObjectURL", originalCreateObjectURL);
+    restoreUrlMethod("revokeObjectURL", originalRevokeObjectURL);
   });
 
   it("formats size, estimates data URLs and calculates savings", () => {
