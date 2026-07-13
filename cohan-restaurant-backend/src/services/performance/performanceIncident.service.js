@@ -18,6 +18,18 @@ const ATTENDANCE_EVENT_TYPES = new Set([
   "ATTENDANCE_MISSING_CHECKOUT",
   "ATTENDANCE_ABSENT",
 ]);
+const isProductionLike = () =>
+  [
+    process.env.NODE_ENV,
+    process.env.APP_ENV,
+    process.env.DEPLOY_ENV,
+    process.env.VERCEL_ENV,
+    process.env.RAILWAY_ENV,
+    process.env.RENDER_ENV,
+  ].some((value) => ["production", "prod", "live"].includes(String(value || "").trim().toLowerCase()));
+const allowDemoSeedAttendanceScoring = () =>
+  process.env.DEMO_SEED_ALLOW_ATTENDANCE_SCORING === "true" &&
+  !isProductionLike();
 
 export function isAttendancePerformanceIncident(incident) {
   return (
@@ -101,7 +113,8 @@ export async function reviewPerformanceIncident({ input, ctx }) {
   await assertCanReviewIncident(user, incident.restaurantId);
 
   const nextResponsibility = input.responsibilityStatus || incident.responsibilityStatus;
-  const attendanceIncident = isAttendancePerformanceIncident(incident);
+  const attendanceIncident =
+    isAttendancePerformanceIncident(incident) && !allowDemoSeedAttendanceScoring();
   let nextImpact = input.scoreImpactStatus || incident.scoreImpactStatus;
   if (nextImpact === "applied") throw new Error("SCORE_IMPACT_APPLIED_NOT_ALLOWED");
   if (attendanceIncident && nextImpact === "eligible") {
@@ -161,7 +174,10 @@ export async function markPerformanceIncidentEligible({ input, ctx }) {
   if (!user) throw new Error("UNAUTHENTICATED");
   const incident = await getPerformanceIncidentById(input.incidentId);
   await assertCanReviewIncident(user, incident.restaurantId);
-  if (isAttendancePerformanceIncident(incident)) {
+  if (
+    isAttendancePerformanceIncident(incident) &&
+    !allowDemoSeedAttendanceScoring()
+  ) {
     throw new Error(ATTENDANCE_SCORE_OWNED_BY_PUNCTUALITY);
   }
   if (["applied", "waived"].includes(incident.scoreImpactStatus)) throw new Error("INVALID_INCIDENT_STATE");
@@ -202,7 +218,10 @@ export async function applyPerformanceIncidentScore({ incidentId, actor, note })
       if (!incident) throw new Error("PERFORMANCE_INCIDENT_NOT_FOUND");
       await assertCanApplyIncident(actor, incident.restaurantId);
 
-      if (isAttendancePerformanceIncident(incident)) {
+      if (
+        isAttendancePerformanceIncident(incident) &&
+        !allowDemoSeedAttendanceScoring()
+      ) {
         throw new Error(ATTENDANCE_SCORE_OWNED_BY_PUNCTUALITY);
       }
       if (incident.scoreImpactStatus === "waived") throw new Error("PERFORMANCE_INCIDENT_WAIVED");
