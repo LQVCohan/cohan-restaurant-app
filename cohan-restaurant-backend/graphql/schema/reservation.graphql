@@ -19,9 +19,15 @@ type Reservation {
   customerEmail: String
   partySize: Int!
   note: String
+  linkedMenuSubtotal: Int
   depositAmount: Int!
+  tableDepositAmount: Int
+  menuDepositAmount: Int
   depositTxnId: ID
   depositStatus: String!
+  depositAppliedAmount: Int
+  depositAppliedAt: DateTime
+  depositAppliedInvoiceId: ID
   depositPaidAt: DateTime
   depositPaymentProvider: String
   depositPaymentMethod: String
