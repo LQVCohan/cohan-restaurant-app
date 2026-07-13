@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  assertProductionDisplayText,
   buildScopedDemoMembershipDefinitions,
+  containsProductionMarker,
   customerTypeFromSpending,
   resolveAssignedRestaurantIds,
 } from "../../scripts/finalizeDefenseDemoDataset.js";
@@ -104,5 +106,22 @@ describe("defense dataset finalization contract", () => {
     expect(customerTypeFromSpending(0)).toBe("NEW");
     expect(customerTypeFromSpending(5_000_000)).toBe("OFTEN");
     expect(customerTypeFromSpending(20_000_000)).toBe("VIP");
+  });
+
+  it("rejects internal seed markers from customer-facing text", () => {
+    expect(containsProductionMarker("Noodles [demo-menu-management-2026]")).toBe(true);
+    expect(containsProductionMarker("COHAN Defense Demo Restaurant")).toBe(true);
+    expect(containsProductionMarker("Nhà hàng COHAN Thủ Đức")).toBe(false);
+    expect(containsProductionMarker("Phở bò đặc biệt")).toBe(false);
+
+    expect(() =>
+      assertProductionDisplayText(
+        "Category.name",
+        "Noodles [demo-menu-management-2026]",
+      ),
+    ).toThrow(/DEFENSE_DATA_INTEGRITY_FAILED/);
+    expect(
+      assertProductionDisplayText("Category.name", "Món nước"),
+    ).toBe(true);
   });
 });
