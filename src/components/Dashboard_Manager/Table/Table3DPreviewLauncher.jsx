@@ -53,7 +53,6 @@ export default function Table3DPreviewLauncher() {
         ".manager-layout--tables .tm-container .mph-controls-row",
       );
       setPortalTarget((current) => (current === nextTarget ? current : nextTarget));
-      if (!nextTarget) setOpen(false);
     };
 
     findTarget();
