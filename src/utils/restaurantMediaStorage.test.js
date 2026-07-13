@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearRestaurantMedia,
+  getCompressionSavingsPercent,
   getRestaurantMediaStorageKey,
   getRestaurantMediaUsageBytes,
   normalizeRestaurantMedia,
@@ -12,6 +13,9 @@ const imageAsset = (id = "asset-1") => ({
   id,
   dataUrl: "data:image/jpeg;base64,QUJDRA==",
   name: `${id}.jpg`,
+  originalBytes: 18 * 1024 * 1024,
+  processedBytes: 1500 * 1024,
+  quality: 0.72,
   width: 1200,
   height: 600,
 });
@@ -35,8 +39,12 @@ describe("restaurantMediaStorage", () => {
     });
     const stored = readRestaurantMedia("restaurant-1");
     expect(stored.panorama.id).toBe("panorama");
+    expect(stored.panorama.processedBytes).toBe(1500 * 1024);
+    expect(stored.panorama.quality).toBe(0.72);
     expect(stored.gallery).toHaveLength(1);
-    expect(localStorage.getItem(getRestaurantMediaStorageKey("restaurant-1"))).toContain("space-1");
+    expect(
+      localStorage.getItem(getRestaurantMediaStorageKey("restaurant-1")),
+    ).toContain("space-1");
   });
 
   it("notifies the current tab after saving", () => {
@@ -57,9 +65,16 @@ describe("restaurantMediaStorage", () => {
   });
 
   it("normalizes malformed media and estimates stored bytes", () => {
-    const normalized = normalizeRestaurantMedia({ panorama: { dataUrl: "" }, gallery: [null, imageAsset()] });
+    const normalized = normalizeRestaurantMedia({
+      panorama: { dataUrl: "" },
+      gallery: [null, imageAsset()],
+    });
     expect(normalized.panorama).toBeNull();
     expect(normalized.gallery).toHaveLength(1);
     expect(getRestaurantMediaUsageBytes(normalized)).toBeGreaterThan(0);
+  });
+
+  it("reports the compression saving for a large panorama", () => {
+    expect(getCompressionSavingsPercent(imageAsset("panorama"))).toBe(92);
   });
 });
