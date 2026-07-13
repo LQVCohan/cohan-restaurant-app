@@ -38,4 +38,8 @@ function runScript(scriptName, args = []) {
 }
 
 runScript("seedDefenseDemo.js", process.argv.slice(2));
+// userType is the Mongoose discriminator key. Raw repair is required because
+// findOneAndUpdate strips discriminator-key changes by default, which can leave
+// manager/staff accounts stored as CUSTOMER after an upsert.
+runScript("repairDefenseAccountDiscriminators.js");
 runScript("finalizeDefenseDemoDataset.js");
