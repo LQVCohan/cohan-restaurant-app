@@ -75,6 +75,7 @@ import { installMergedTableLifecycleUi } from "./utils/installMergedTableLifecyc
 import { installTableEmptyStateEnhancement } from "./utils/installTableEmptyStateEnhancement";
 import { installGuidedAiCaptureCards } from "./utils/installGuidedAiCaptureCards";
 import { installAiChatbotMenuSuggestionLifecycle } from "./utils/installAiChatbotMenuSuggestionLifecycle";
+import { installMobileHomeVisualQc } from "./utils/installMobileHomeVisualQc";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 import "./styles/ResponsiveFoundation.css";
 import "./styles/CustomTableBuilderResponsiveFix.css";
@@ -117,6 +118,7 @@ installMergedTableLifecycleUi();
 installTableEmptyStateEnhancement();
 installGuidedAiCaptureCards();
 installAiChatbotMenuSuggestionLifecycle();
+installMobileHomeVisualQc();
 installAttendanceWordingTuning();
 
 createRoot(document.getElementById("root")).render(
