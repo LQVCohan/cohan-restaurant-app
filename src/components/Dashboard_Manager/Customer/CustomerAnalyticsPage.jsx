@@ -577,7 +577,7 @@ const CustomerAnalyticsPage = () => {
                   <p>Theo dõi nhóm khách lâu chưa quay lại để chăm sóc kịp thời.</p>
                 </div>
                 <button type="button" onClick={() => navigateManagerPage("customers")}>
-                  Lọc nhóm này <ArrowRight size={14} aria-hidden="true" />
+                  Mở danh sách khách <ArrowRight size={14} aria-hidden="true" />
                 </button>
               </div>
               {loading ? <div className="customer-panel__loading">Đang tải khách lâu chưa quay lại...</div> : churnRiskCustomers.length > 0 ? (
@@ -637,7 +637,7 @@ const CustomerAnalyticsPage = () => {
                   <p>Nhóm khách chi tiêu lớn cần duy trì trải nghiệm tốt.</p>
                 </div>
                 <button type="button" onClick={() => navigateManagerPage("customers")}>
-                  Xem nhóm giá trị cao <ArrowRight size={14} aria-hidden="true" />
+                  Mở danh sách khách <ArrowRight size={14} aria-hidden="true" />
                 </button>
               </div>
               {loading ? <div className="customer-panel__loading">Đang tải khách giá trị cao...</div> : topValueCustomers.length > 0 ? (
