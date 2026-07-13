@@ -76,6 +76,10 @@ const staffQueries = {
   ...(staff.Query || {}),
   ...guardPayrollOverviewQueries(staff.Query || {}),
 };
+const menuItemResolvers = {
+  ...(inventory.MenuItem || {}),
+  ...(menu.MenuItem || {}),
+};
 
 export default {
   ...baseResolvers,
@@ -192,10 +196,15 @@ export default {
   ...(inventory.IngredientsComponent
     ? { IngredientsComponent: inventory.IngredientsComponent }
     : {}),
+  ...(inventory.RecipeIngredientLine
+    ? { RecipeIngredientLine: inventory.RecipeIngredientLine }
+    : {}),
+  ...(inventory.Ingredient ? { Ingredient: inventory.Ingredient } : {}),
   ...(supply.Supply ? { Supply: supply.Supply } : {}),
   ...(order.Order ? { Order: order.Order } : {}),
-  ...(menu.MenuItem ? { MenuItem: menu.MenuItem } : {}),
-  ...(menu.Menu ? { Menu: menu.Menu } : {}),
+  ...(Object.keys(menuItemResolvers).length
+    ? { MenuItem: menuItemResolvers }
+    : {}),
   ...(cart.Cart ? { Cart: cart.Cart } : {}),
   ...(cart.CartItem ? { CartItem: cart.CartItem } : {}),
   ...(customerFavorite.CustomerFavorite
