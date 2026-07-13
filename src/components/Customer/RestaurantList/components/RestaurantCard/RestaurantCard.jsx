@@ -14,6 +14,7 @@ const RESTAURANT_FALLBACK_IMAGES = [
   "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=80",
   "https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=900&q=80",
 ];
+const LOCAL_RESTAURANT_FALLBACK = "/cohan_logo_icon.svg";
 
 const isPlaceholderImage = (url = "") => {
   const normalizedUrl = String(url || "").toLowerCase();
@@ -24,6 +25,16 @@ const resolveFallbackImage = (restaurantId = "") => {
   const source = String(restaurantId || "restaurant");
   const hash = source.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return RESTAURANT_FALLBACK_IMAGES[hash % RESTAURANT_FALLBACK_IMAGES.length];
+};
+
+const handleRestaurantImageError = (event) => {
+  const image = event.currentTarget;
+  if (image.dataset.cohanFallbackApplied === "true") return;
+
+  image.dataset.cohanFallbackApplied = "true";
+  image.classList.add("is-fallback");
+  image.alt = "Ảnh minh họa nhà hàng";
+  image.src = LOCAL_RESTAURANT_FALLBACK;
 };
 
 const getStatusTone = (status = "") => {
@@ -63,6 +74,7 @@ const RestaurantCard = ({
           alt={restaurant.name}
           className="restaurant-card__img"
           loading="lazy"
+          onError={handleRestaurantImageError}
         />
 
         {isRecent && (
@@ -78,6 +90,8 @@ const RestaurantCard = ({
             e.stopPropagation();
             onToggleFavorite?.(e, restaurant.id);
           }}
+          aria-label={isFavorited ? `Bỏ yêu thích ${restaurant.name}` : `Lưu yêu thích ${restaurant.name}`}
+          aria-pressed={Boolean(isFavorited)}
         >
           {isFavorited ? "❤️" : "🤍"}
         </button>

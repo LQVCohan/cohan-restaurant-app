@@ -91,6 +91,7 @@ import "./styles/AiChatbotConversationCalm.css";
 import "./styles/AiChatbotCompactMenuSuggestions.css";
 import "./styles/MobileHomeResponsivePolish.css";
 import "./styles/MobileHomeVisualQc.css";
+import "./styles/MobileCustomerExperienceQc.css";
 
 const normalizeLegacyManagerHash = () => {
   if (
