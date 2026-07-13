@@ -1,0 +1,228 @@
+/* Final responsive guardrails for the customer Home experience.
+   Keep header actions, quick-access icons and bottom navigation legible on
+   narrow phones without changing navigation or business logic. */
+
+@media (max-width: 760px) {
+  .mobile-customer-shell__header {
+    grid-template-columns: minmax(76px, 1fr) auto !important;
+    column-gap: clamp(4px, 1.5vw, 10px) !important;
+    padding-right: max(10px, env(safe-area-inset-right)) !important;
+    padding-left: max(10px, env(safe-area-inset-left)) !important;
+  }
+
+  .mobile-customer-shell .mobile-customer-shell__header .mobile-customer-shell__brand:has(.mobile-customer-shell__logo) {
+    flex: 0 1 auto !important;
+    width: clamp(92px, 29vw, 116px) !important;
+    min-width: 0 !important;
+    max-width: 116px !important;
+  }
+
+  .mobile-customer-shell__header:has(.mobile-customer-shell__header-actions > :nth-child(4))
+    .mobile-customer-shell__brand:has(.mobile-customer-shell__logo) {
+    width: clamp(86px, 25vw, 104px) !important;
+    max-width: 104px !important;
+  }
+
+  .mobile-customer-shell__header-actions {
+    flex: 0 0 auto !important;
+    min-width: max-content !important;
+    gap: clamp(3px, 1vw, 6px) !important;
+  }
+
+  .mobile-customer-shell__header-actions > *,
+  .mobile-customer-shell__header-actions .app-notification-bell {
+    flex: 0 0 38px !important;
+    width: 38px !important;
+    min-width: 38px !important;
+  }
+
+  .mobile-customer-shell__header-actions .mobile-customer-shell__cart,
+  .mobile-customer-shell__header-actions .app-notification-bell__trigger {
+    width: 38px !important;
+    min-width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 0 !important;
+    border-radius: 12px !important;
+    box-shadow: inset 0 0 0 1px rgba(86, 55, 35, 0.1) !important;
+  }
+
+  .mobile-customer-shell__header-actions .mobile-customer-shell__cart svg,
+  .mobile-customer-shell__header-actions .app-notification-bell__trigger svg {
+    flex: 0 0 auto !important;
+    width: 19px !important;
+    height: 19px !important;
+    max-width: none !important;
+  }
+
+  .mobile-home {
+    gap: 20px !important;
+    padding-right: max(clamp(12px, 4vw, 20px), env(safe-area-inset-right)) !important;
+    padding-left: max(clamp(12px, 4vw, 20px), env(safe-area-inset-left)) !important;
+  }
+
+  .mobile-home__intro {
+    padding: clamp(16px, 4vw, 22px) !important;
+  }
+
+  .mobile-home__search > svg,
+  .mobile-home__nearby > svg,
+  .mobile-home__quick-grid button > svg {
+    flex: 0 0 auto !important;
+    max-width: none !important;
+  }
+
+  .mobile-home__chips {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+    gap: 8px !important;
+    padding-bottom: 0 !important;
+  }
+
+  .mobile-home__chips button {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-home__quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .mobile-home__quick-grid button {
+    min-width: 0 !important;
+    min-height: 92px !important;
+    gap: 5px !important;
+    padding: 12px 8px !important;
+  }
+
+  .mobile-home__quick-grid button > svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .mobile-home__quick-grid button > strong {
+    max-width: 100%;
+    overflow: visible !important;
+    font-size: 0.82rem !important;
+    line-height: 1.2 !important;
+    text-align: center;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  .mobile-home__quick-grid button > small {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 0.68rem !important;
+    line-height: 1.2;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-customer-shell__nav {
+    min-height: 62px !important;
+  }
+
+  .mobile-customer-shell__nav-item {
+    min-width: 0 !important;
+    padding-inline: 2px;
+  }
+
+  .mobile-customer-shell__nav-item svg {
+    flex: 0 0 auto;
+    max-width: none !important;
+  }
+
+  .mobile-customer-shell__nav-item span {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 520px) and (max-width: 760px) {
+  .mobile-home__chips,
+  .mobile-home__quick-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .mobile-customer-shell__header {
+    column-gap: 3px !important;
+    padding-right: max(6px, env(safe-area-inset-right)) !important;
+    padding-left: max(6px, env(safe-area-inset-left)) !important;
+  }
+
+  .mobile-customer-shell .mobile-customer-shell__header .mobile-customer-shell__brand:has(.mobile-customer-shell__logo),
+  .mobile-customer-shell__header:has(.mobile-customer-shell__header-actions > :nth-child(4))
+    .mobile-customer-shell__brand:has(.mobile-customer-shell__logo) {
+    width: 82px !important;
+    max-width: 82px !important;
+  }
+
+  .mobile-customer-shell__header-actions {
+    gap: 2px !important;
+  }
+
+  .mobile-customer-shell__header-actions > *,
+  .mobile-customer-shell__header-actions .app-notification-bell {
+    flex-basis: 36px !important;
+    width: 36px !important;
+    min-width: 36px !important;
+  }
+
+  .mobile-customer-shell__header-actions .mobile-customer-shell__cart,
+  .mobile-customer-shell__header-actions .app-notification-bell__trigger {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+  }
+
+  .mobile-home {
+    padding-right: max(10px, env(safe-area-inset-right)) !important;
+    padding-left: max(10px, env(safe-area-inset-left)) !important;
+  }
+
+  .mobile-home__intro {
+    padding: 15px 12px !important;
+    border-radius: 20px !important;
+  }
+
+  .mobile-home h1 {
+    font-size: clamp(1.82rem, 9vw, 2.08rem) !important;
+  }
+
+  .mobile-home__search {
+    gap: 6px !important;
+    padding-left: 9px !important;
+  }
+
+  .mobile-home__search button {
+    min-width: 48px !important;
+    padding-inline: 10px !important;
+  }
+
+  .mobile-customer-shell__nav-item {
+    font-size: 0.52rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-customer-shell__header-actions *,
+  .mobile-home__quick-grid button,
+  .mobile-customer-shell__nav-item {
+    transition: none !important;
+  }
+}
