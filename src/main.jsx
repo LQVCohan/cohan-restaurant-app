@@ -81,6 +81,7 @@ import { installAuthRecoveryAndFacebook } from "./utils/installAuthRecoveryAndFa
 import { installHeroFoodVisualGuard } from "./utils/installHeroFoodVisualGuard";
 import { installReservationHistoryReportFixes } from "./utils/installReservationHistoryReportFixes";
 import { installReportPages26To29Ui } from "./utils/installReportPages26To29Ui";
+import { installCustomerReviewOwnerActions } from "./utils/installCustomerReviewOwnerActions";
 import { installBackupChecklistClarity } from "./utils/installBackupChecklistClarity";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 import "./styles/ResponsiveFoundation.css";
@@ -137,6 +138,7 @@ installAuthRecoveryAndFacebook();
 installHeroFoodVisualGuard();
 installReservationHistoryReportFixes();
 installReportPages26To29Ui();
+installCustomerReviewOwnerActions();
 installBackupChecklistClarity();
 installAttendanceWordingTuning();
 

@@ -3,6 +3,10 @@
 import reviewQuery from "./query.js";
 import reviewMutation from "./mutation.js";
 import {
+  resolveOwnerDeleteReview,
+  resolveOwnerUpdateReview,
+} from "./ownerMutation.js";
+import {
   hasGroundedVerification,
   presentedVerifiedSource,
   resolvePresentedReviews,
@@ -19,6 +23,22 @@ export default {
   },
   Mutation: {
     ...reviewMutation,
+    updateReview: (root, args, ctx, info) =>
+      resolveOwnerUpdateReview(
+        reviewMutation.updateReview,
+        root,
+        args,
+        ctx,
+        info,
+      ),
+    deleteReview: (root, args, ctx, info) =>
+      resolveOwnerDeleteReview(
+        reviewMutation.deleteReview,
+        root,
+        args,
+        ctx,
+        info,
+      ),
   },
   Review: {
     createdAt: (parent) =>
