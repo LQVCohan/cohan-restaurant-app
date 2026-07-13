@@ -42,6 +42,10 @@ runScript("seedDefenseDemo.js", process.argv.slice(2));
 // resolves the current primary restaurant dynamically, seeds portion/by-weight
 // variants and refreshes ingredient purchase costs and stock values.
 runScript("seedDefenseMenuCatalog.js");
+// The base seed still creates three legacy categories and two legacy ingredient
+// records. Remove them only after they are no longer referenced, so the final UI
+// does not expose empty or obsolete menu data.
+runScript("cleanupLegacyDefenseMenuData.js");
 // userType is the Mongoose discriminator key. Raw repair is required because
 // findOneAndUpdate strips discriminator-key changes by default, which can leave
 // manager/staff accounts stored as CUSTOMER after an upsert.
