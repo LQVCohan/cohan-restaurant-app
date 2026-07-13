@@ -1,0 +1,19 @@
+name: branch-write-test
+on:
+  push:
+    branches: [agent/fix-report-pages-16-20]
+permissions:
+  contents: write
+jobs:
+  mark:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          echo "automation-ran" > .trellis/tasks/07-13-report-pages-16-20/automation-marker.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .trellis/tasks/07-13-report-pages-16-20/automation-marker.txt
+          git commit -m "chore: record branch automation"
+          git push origin HEAD
