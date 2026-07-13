@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearRefreshPromise,
   refreshAccessTokenOnce,
+  STALE_AUTH_REFRESH_CODE,
 } from "./authRefresh";
 import { clearAuth, getToken, setAuth } from "./authStorage";
 
@@ -43,9 +44,8 @@ describe("auth refresh session isolation", () => {
     setAuth({ token: "new-login-token" });
     oldRefresh.resolve({ ok: false });
 
-    await expect(oldPromise).resolves.toMatchObject({
-      token: "new-login-token",
-      stale: true,
+    await expect(oldPromise).rejects.toMatchObject({
+      code: STALE_AUTH_REFRESH_CODE,
     });
     expect(getToken()).toBe("new-login-token");
   });
@@ -67,9 +67,8 @@ describe("auth refresh session isolation", () => {
       }),
     });
 
-    await expect(oldPromise).resolves.toMatchObject({
-      token: "new-login-token",
-      stale: true,
+    await expect(oldPromise).rejects.toMatchObject({
+      code: STALE_AUTH_REFRESH_CODE,
     });
     expect(getToken()).toBe("new-login-token");
   });
@@ -89,7 +88,9 @@ describe("auth refresh session isolation", () => {
     const activePromise = refreshAccessTokenOnce();
 
     oldRefresh.resolve({ ok: false });
-    await oldPromise;
+    await expect(oldPromise).rejects.toMatchObject({
+      code: STALE_AUTH_REFRESH_CODE,
+    });
 
     expect(refreshAccessTokenOnce()).toBe(activePromise);
     expect(fetch).toHaveBeenCalledTimes(2);
