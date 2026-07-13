@@ -28,7 +28,7 @@ const RANGE_LABELS = {
   month: "30 ngày gần nhất",
 };
 
-const Dashboard = () => {
+const Dashboard = ({ staffRoster = null }) => {
   const { user } = useContext(AuthContext);
   const {
     selectedRestaurant,
@@ -380,6 +380,11 @@ const Dashboard = () => {
               className="dashboard-side-stack"
               aria-label="Trạng thái vận hành và cảnh báo"
             >
+              {staffRoster ? (
+                <div className="dashboard-staff-roster-slot">
+                  {staffRoster}
+                </div>
+              ) : null}
               <DashboardSupportQueue
                 requests={safePendingSupportRequests}
                 count={pendingSupportRequestCount}

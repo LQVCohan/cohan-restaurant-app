@@ -136,7 +136,11 @@ const LeaveRequestsList = ({
         </div>
       </div>
 
-      {error && <div className="empty-row">❌ Không tải được dữ liệu nghỉ phép: {error.message}</div>}
+      {error && (
+        <div className="empty-row" role="alert">
+          Chưa thể tải dữ liệu nghỉ phép. Vui lòng thử lại.
+        </div>
+      )}
 
       <div className="table-container">
         <table className="leave-table">

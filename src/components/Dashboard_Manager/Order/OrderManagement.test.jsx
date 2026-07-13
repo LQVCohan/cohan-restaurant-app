@@ -1,10 +1,12 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { useState } from "react";
 import OrderManagement, { RejectOrderDialog } from "./OrderManagement";
 import { AuthContext } from "@/context/AuthContext";
 
 const apolloState = vi.hoisted(() => ({ edges: [] }));
+const fetchOrderByIdMock = vi.hoisted(() => vi.fn());
+const showNotificationMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@apollo/client", () => ({
   gql: (strings) => strings.join(""),
@@ -33,6 +35,7 @@ vi.mock("@apollo/client", () => ({
 vi.mock("../../../hooks/useOrderManagement", () => ({
   default: () => ({
     updateItemStatus: vi.fn(),
+    fetchOrderById: fetchOrderByIdMock,
     reviewOrderItemVoid: vi.fn(),
     requestOrderItemReturn: vi.fn(),
     reviewOrderItemReturn: vi.fn(),
@@ -40,7 +43,7 @@ vi.mock("../../../hooks/useOrderManagement", () => ({
 }));
 
 vi.mock("@/hooks/useNotification", () => ({
-  useNotification: () => ({ showNotification: vi.fn() }),
+  useNotification: () => ({ showNotification: showNotificationMock }),
 }));
 
 vi.mock("@/hooks/useSocketOrder", () => ({
@@ -160,7 +163,10 @@ const renderOrderManagement = () =>
 
 afterEach(() => {
   apolloState.edges = [];
+  fetchOrderByIdMock.mockReset();
+  showNotificationMock.mockReset();
   document.body.style.overflow = "";
+  window.history.replaceState(null, "", "/manager#orders");
 });
 
 describe("RejectOrderDialog", () => {
@@ -186,6 +192,29 @@ describe("RejectOrderDialog", () => {
 });
 
 describe("OrderManagement kitchen display", () => {
+  it("opens the exact historical order supplied by a customer deep-link", async () => {
+    fetchOrderByIdMock.mockResolvedValue({
+      success: true,
+      data: {
+        id: "historical-order-1",
+        orderCode: "ORD-2026-0042",
+        items: [],
+      },
+    });
+    window.history.replaceState(
+      null,
+      "",
+      "/manager?restaurantId=restaurant-1&orderId=historical-order-1#orders",
+    );
+
+    renderOrderManagement();
+
+    await waitFor(() =>
+      expect(fetchOrderByIdMock).toHaveBeenCalledWith("historical-order-1"),
+    );
+    expect(screen.getByText("Order modal")).toBeInTheDocument();
+  });
+
   it("renders fullscreen kitchen display and locks body scroll when focus mode is enabled", () => {
     renderOrderManagement();
 

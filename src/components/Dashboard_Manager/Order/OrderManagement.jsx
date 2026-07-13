@@ -603,10 +603,76 @@ const OrderManagement = () => {
 
   const {
     updateItemStatus,
+    fetchOrderById,
     reviewOrderItemVoid,
     requestOrderItemReturn,
     reviewOrderItemReturn,
   } = useOrderManagement();
+
+  const openOrderDetailById = useCallback(
+    async (orderId) => {
+      if (!orderId || typeof fetchOrderById !== "function") return;
+      const result = await fetchOrderById(orderId);
+      if (result?.success && result?.data) {
+        setSelectedOrder({
+          ...result.data,
+          actionOrderId: resolveKitchenActionOrderId(result.data, result.data.id),
+        });
+        return;
+      }
+      showNotification(
+        "Chưa thể mở chi tiết đơn hàng. Vui lòng kiểm tra quyền truy cập và thử lại.",
+        "error",
+      );
+    },
+    [fetchOrderById, showNotification],
+  );
+
+  useEffect(() => {
+    const openFromQuery = (query = {}) => {
+      const orderId = String(query?.orderId || "").trim();
+      const restaurantId = String(query?.restaurantId || "").trim();
+      if (!orderId) return;
+      if (
+        restaurantId &&
+        selectedRestaurantId &&
+        restaurantId !== String(selectedRestaurantId)
+      ) {
+        return;
+      }
+      void openOrderDetailById(orderId);
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    openFromQuery({
+      orderId: params.get("orderId"),
+      restaurantId: params.get("restaurantId"),
+    });
+
+    const handleNavigationQuery = (event) => {
+      if (event?.detail?.page !== "orders") return;
+      openFromQuery(event.detail.query);
+    };
+    window.addEventListener("manager:navigation-query", handleNavigationQuery);
+    return () =>
+      window.removeEventListener(
+        "manager:navigation-query",
+        handleNavigationQuery,
+      );
+  }, [openOrderDetailById, selectedRestaurantId]);
+
+  const closeSelectedOrder = useCallback(() => {
+    setSelectedOrder(null);
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("orderId")) return;
+    params.delete("orderId");
+    const search = params.toString() ? `?${params.toString()}` : "";
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${window.location.pathname}${search}${window.location.hash}`,
+    );
+  }, []);
 
   const refetchOrders = useCallback(
     (fetchPolicy = "network-only") => {
@@ -1845,7 +1911,7 @@ const OrderManagement = () => {
         {selectedOrder && (
           <OrderModal
             order={selectedOrder}
-            onClose={() => setSelectedOrder(null)}
+            onClose={closeSelectedOrder}
             onUpdateItemStatus={handleUpdateItemStatus}
             onCreateTemporaryBill={handleCreateTemporaryBill}
             onReviewItemVoid={handleReviewItemVoid}

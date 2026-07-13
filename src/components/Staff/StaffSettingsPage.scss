@@ -37,6 +37,8 @@
 }
 
 .staff-settings__profile-link,
+.staff-settings__home-link,
+.staff-settings__manager-link,
 .staff-settings-neutral-action,
 .staff-support-actions a,
 .staff-settings-savebar button {
@@ -51,6 +53,25 @@
   padding: 0 13px;
   font-weight: 800;
   text-decoration: none;
+}
+
+.staff-settings__intro-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.staff-settings__home-link {
+  background: #FFFFFF;
+  color: #1F2A24;
+}
+
+.staff-settings__manager-link {
+  border-color: rgba(31, 111, 74, 0.24);
+  background: #EDF6F1;
+  color: #185C3D;
 }
 
 .staff-settings__profile-link,
@@ -251,6 +272,10 @@
   .staff-settings-savebar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .staff-settings__intro-actions {
+    justify-content: flex-start;
   }
 
   .staff-settings__grid {

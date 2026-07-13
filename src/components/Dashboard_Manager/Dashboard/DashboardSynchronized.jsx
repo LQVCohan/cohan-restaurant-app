@@ -1,5 +1,4 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "@/context/AuthContext";
 import {
   DASHBOARD_RESTAURANT_CHANGED_EVENT,
@@ -17,8 +16,6 @@ const getRestaurantId = (restaurant) =>
   String(restaurant?.id ?? restaurant?._id ?? restaurant?.restaurantId ?? "");
 
 const DashboardSynchronized = () => {
-  const shellRef = useRef(null);
-  const [portalTarget, setPortalTarget] = useState(null);
   const { restaurants = [] } = useContext(AuthContext) || {};
   const accessibleRestaurantIds = useMemo(
     () =>
@@ -33,12 +30,16 @@ const DashboardSynchronized = () => {
     () => accessibleRestaurantIds.values().next().value || "",
     [accessibleRestaurantIds],
   );
-  const resolveAccessibleRestaurantId = (candidateRestaurantId) => {
-    const normalizedRestaurantId = String(candidateRestaurantId || "");
-    return normalizedRestaurantId && accessibleRestaurantIds.has(normalizedRestaurantId)
-      ? normalizedRestaurantId
-      : fallbackRestaurantId;
-  };
+  const resolveAccessibleRestaurantId = useCallback(
+    (candidateRestaurantId) => {
+      const normalizedRestaurantId = String(candidateRestaurantId || "");
+      return normalizedRestaurantId &&
+        accessibleRestaurantIds.has(normalizedRestaurantId)
+        ? normalizedRestaurantId
+        : fallbackRestaurantId;
+    },
+    [accessibleRestaurantIds, fallbackRestaurantId],
+  );
   const [restaurantId, setRestaurantId] = useState(() => readDashboardRestaurantId());
   const activeRestaurantId = resolveAccessibleRestaurantId(restaurantId);
 
@@ -49,7 +50,7 @@ const DashboardSynchronized = () => {
     if (nextRestaurantId !== restaurantId) {
       setRestaurantId(nextRestaurantId);
     }
-  }, [accessibleRestaurantIds, fallbackRestaurantId, restaurantId]);
+  }, [resolveAccessibleRestaurantId, restaurantId]);
 
   useEffect(() => {
     const handleRestaurantChanged = (event) => {
@@ -65,36 +66,7 @@ const DashboardSynchronized = () => {
         DASHBOARD_RESTAURANT_CHANGED_EVENT,
         handleRestaurantChanged,
       );
-  }, [accessibleRestaurantIds, fallbackRestaurantId]);
-
-  useEffect(() => {
-    setPortalTarget(null);
-    if (!activeRestaurantId) return undefined;
-
-    const shell = shellRef.current;
-    const sideStack = shell?.querySelector(".dashboard-side-stack");
-    if (!shell || !sideStack) return undefined;
-
-    const mountNode = document.createElement("div");
-    mountNode.className = "dashboard-staff-roster-portal-slot";
-    const ensureMounted = () => {
-      const currentSideStack = shell.querySelector(".dashboard-side-stack");
-      if (currentSideStack && mountNode.parentNode !== currentSideStack) {
-        currentSideStack.prepend(mountNode);
-      }
-    };
-
-    ensureMounted();
-    setPortalTarget(mountNode);
-    const observer = new MutationObserver(ensureMounted);
-    observer.observe(shell, { childList: true, subtree: true });
-
-    return () => {
-      observer.disconnect();
-      mountNode.remove();
-      setPortalTarget(null);
-    };
-  }, [activeRestaurantId]);
+  }, [resolveAccessibleRestaurantId]);
 
   const openStaffPage = () => {
     window.dispatchEvent(
@@ -108,17 +80,17 @@ const DashboardSynchronized = () => {
   };
 
   return (
-    <div ref={shellRef} className="dashboard-synchronized-shell">
-      <Dashboard />
-      {portalTarget && activeRestaurantId
-        ? createPortal(
+    <div className="dashboard-synchronized-shell">
+      <Dashboard
+        staffRoster={
+          activeRestaurantId ? (
             <DashboardStaffRoster
               restaurantId={activeRestaurantId}
               onOpenStaff={openStaffPage}
-            />,
-            portalTarget,
-          )
-        : null}
+            />
+          ) : null
+        }
+      />
     </div>
   );
 };

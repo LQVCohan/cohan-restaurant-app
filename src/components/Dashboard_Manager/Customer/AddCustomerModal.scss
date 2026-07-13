@@ -1,6 +1,19 @@
 /* AddCustomerModal — focused customer creation flow */
 
 .modal-container:has(.add-customer-modal) {
+  --acm-heading: #203532;
+  --acm-text: #455650;
+  --acm-muted: #71807b;
+  --acm-faint: #8d9893;
+  --acm-primary: #2d7066;
+  --acm-primary-dark: #214f49;
+  --acm-primary-soft: #e8f4ef;
+  --acm-surface: #fffefb;
+  --acm-panel: #ffffff;
+  --acm-border: #d7ddd6;
+  --acm-border-soft: #e7eae4;
+  --acm-danger: #b42318;
+
   width: min(840px, calc(100vw - 48px)) !important;
   max-height: min(860px, calc(100dvh - 40px)) !important;
   display: flex !important;
@@ -147,10 +160,16 @@
 
 .modal-container:has(.add-customer-modal) > .modal-footer .btn--primary,
 .modal-container:has(.add-customer-modal) > .modal-footer .btn-primary {
-  border: 1px solid var(--acm-primary-dark) !important;
-  background: var(--acm-primary-dark) !important;
+  border: 1px solid var(--acm-primary-dark, #214f49) !important;
+  background: var(--acm-primary-dark, #214f49) !important;
   color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
   box-shadow: 0 9px 20px rgba(33, 79, 73, 0.18) !important;
+}
+
+.modal-container:has(.add-customer-modal) > .modal-footer .btn--primary :is(span, svg),
+.modal-container:has(.add-customer-modal) > .modal-footer .btn-primary :is(span, svg) {
+  color: inherit !important;
 }
 
 .modal-container:has(.add-customer-modal) > .modal-footer .btn--primary:hover:not(:disabled),

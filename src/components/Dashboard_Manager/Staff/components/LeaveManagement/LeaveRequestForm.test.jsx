@@ -3,6 +3,14 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import LeaveRequestForm from "./LeaveRequestForm";
 
+const { showNotificationMock } = vi.hoisted(() => ({
+  showNotificationMock: vi.fn(),
+}));
+
+vi.mock("@/hooks/useNotification", () => ({
+  useNotification: () => ({ showNotification: showNotificationMock }),
+}));
+
 const staffList = [
   {
     id: "staff-1",
@@ -50,6 +58,7 @@ describe("LeaveRequestForm", () => {
   let alertSpy;
 
   beforeEach(() => {
+    showNotificationMock.mockClear();
     alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
   });
 
@@ -114,6 +123,35 @@ describe("LeaveRequestForm", () => {
       reason: "Need planned leave",
     });
     expect(payload).not.toHaveProperty("replacementManagerId");
+    expect(showNotificationMock).toHaveBeenCalledWith(
+      "Đã gửi đơn nghỉ phép.",
+      "success",
+    );
+  });
+
+  it("turns raw DateTime mutation failures into a friendly error toast", async () => {
+    const onSubmit = vi.fn().mockRejectedValue(
+      new Error(
+        'Variable "$input" got invalid value "2026-04-24" at "input.startDate"; DateTime cannot represent an invalid date-time-string.',
+      ),
+    );
+    const { container } = render(
+      <LeaveRequestForm onSubmit={onSubmit} staffList={staffList} />,
+    );
+
+    fireEvent.change(screen.getByTestId("leave-employee-select"), {
+      target: { value: "staff-1" },
+    });
+    fillBaseLeaveFields(container);
+    fireEvent.click(screen.getByRole("button", { name: /Gửi Đơn/i }));
+
+    await waitFor(() =>
+      expect(showNotificationMock).toHaveBeenCalledWith(
+        "Thời gian nghỉ chưa hợp lệ. Vui lòng kiểm tra lại ngày bắt đầu và kết thúc.",
+        "error",
+      ),
+    );
+    expect(screen.queryByText(/Variable|DateTime|input\.startDate/i)).not.toBeInTheDocument();
   });
 
   it("submits manager leave requests without replacementManagerId", async () => {

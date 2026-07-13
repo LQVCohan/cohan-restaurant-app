@@ -261,14 +261,14 @@
     align-self: stretch;
   }
 
-  .dashboard-synchronized-shell .dashboard-staff-roster-portal-slot {
+  .dashboard-synchronized-shell .dashboard-staff-roster-slot {
     grid-column: 9 / -1;
     grid-row: 1;
     min-width: 0;
   }
 
   .dashboard-synchronized-shell
-    .dashboard-staff-roster-portal-slot
+    .dashboard-staff-roster-slot
     > .dashboard-staff-roster {
     height: 100%;
   }
@@ -325,7 +325,7 @@
     align-self: stretch;
   }
 
-  .dashboard-synchronized-shell .dashboard-staff-roster-portal-slot {
+  .dashboard-synchronized-shell .dashboard-staff-roster-slot {
     min-width: 0;
     order: 2;
   }
@@ -353,7 +353,7 @@
   }
 
   .dashboard-synchronized-shell
-    .dashboard-staff-roster-portal-slot
+    .dashboard-staff-roster-slot
     > .dashboard-staff-roster,
   .dashboard-synchronized-shell .dashboard-card--support-queue,
   .dashboard-synchronized-shell .dashboard-card--alerts,
@@ -386,7 +386,7 @@
   }
 
   .dashboard-synchronized-shell .dashboard-card--recent-orders,
-  .dashboard-synchronized-shell .dashboard-staff-roster-portal-slot,
+  .dashboard-synchronized-shell .dashboard-staff-roster-slot,
   .dashboard-synchronized-shell .dashboard-card--support-queue,
   .dashboard-synchronized-shell .dashboard-card--alerts,
   .dashboard-synchronized-shell .dashboard-card--performance-summary,
@@ -402,7 +402,7 @@
     order: 1;
   }
 
-  .dashboard-synchronized-shell .dashboard-staff-roster-portal-slot {
+  .dashboard-synchronized-shell .dashboard-staff-roster-slot {
     order: 2;
   }
 
