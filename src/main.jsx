@@ -77,6 +77,7 @@ import { installAiChatbotMenuSuggestionLifecycle } from "./utils/installAiChatbo
 import { installAiChatbotQuestionAutoScroll } from "./utils/installAiChatbotQuestionAutoScroll";
 import { installMobileHomeVisualQc } from "./utils/installMobileHomeVisualQc";
 import { installAuthRecoveryAndFacebook } from "./utils/installAuthRecoveryAndFacebook";
+import { installHeroFoodVisualGuard } from "./utils/installHeroFoodVisualGuard";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 import "./styles/ResponsiveFoundation.css";
 import "./styles/CustomTableBuilderResponsiveFix.css";
@@ -122,6 +123,7 @@ installAiChatbotMenuSuggestionLifecycle();
 installAiChatbotQuestionAutoScroll();
 installMobileHomeVisualQc();
 installAuthRecoveryAndFacebook();
+installHeroFoodVisualGuard();
 installAttendanceWordingTuning();
 
 createRoot(document.getElementById("root")).render(
