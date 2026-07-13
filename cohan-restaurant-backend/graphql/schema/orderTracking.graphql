@@ -154,6 +154,14 @@ input UploadOrderItemProofInput {
   note: String
 }
 
+input SetOrderItemProofWaiverInput {
+  restaurantId: ID
+  orderId: ID!
+  orderItemId: ID!
+  waived: Boolean!
+  reason: String
+}
+
 type CustomerTrackingTimelineItem {
   status: String
   displayMessage: String
@@ -306,6 +314,7 @@ extend type Mutation {
   ): ActionResultPayload!
 
   uploadOrderItemProof(input: UploadOrderItemProofInput!): UpdateOrderItemStatusPayload!
+  setOrderItemProofWaiver(input: SetOrderItemProofWaiverInput!): UpdateOrderItemStatusPayload!
   cancelOrder(restaurantId: ID!, orderId: ID!, reason: String): CancelOrderPayload!
   createOrderForTable(input: CreateOrderForTableInput!): CreateOrderForTablePayload!
   createOffPremiseOrder(input: CreateOffPremiseOrderInput!): CreateOffPremiseOrderPayload!

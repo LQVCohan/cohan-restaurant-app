@@ -154,8 +154,19 @@ describe("customer review owner actions", () => {
         }),
       ),
     );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("alertdialog", { name: "Xóa đánh giá này?" }),
+      ).not.toBeInTheDocument(),
+    );
+    await waitFor(() => expect(apolloMocks.query).toHaveBeenCalledTimes(3));
     expect(apolloMocks.refetchQueries).toHaveBeenCalledWith({
       include: "active",
     });
+
+    await waitFor(
+      () => expect(screen.queryByRole("status")).not.toBeInTheDocument(),
+      { timeout: 4500 },
+    );
   });
 });

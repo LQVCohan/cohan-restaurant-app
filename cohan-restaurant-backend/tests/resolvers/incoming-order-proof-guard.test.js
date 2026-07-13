@@ -22,6 +22,7 @@ vi.mock("../../models/index.js", () => modelMocks);
 
 const restaurantId = "64b000000000000000000001";
 const orderId = "64b000000000000000000002";
+const itemId = "64b000000000000000000003";
 
 function mockOrder(order) {
   modelMocks.Order.findOne.mockReturnValue({
@@ -29,6 +30,19 @@ function mockOrder(order) {
       lean: vi.fn(async () => order),
     })),
   });
+}
+
+function weightedItem(overrides = {}) {
+  return {
+    _id: itemId,
+    name: "Cua cân ký",
+    status: "pending",
+    unit: "kg",
+    weightGrams: 850,
+    servingVariant: { mode: "BY_WEIGHT", sellUnit: "kg" },
+    proofImages: [],
+    ...overrides,
+  };
 }
 
 describe("withIncomingOrderProofGuard", () => {
@@ -39,17 +53,8 @@ describe("withIncomingOrderProofGuard", () => {
   it("blocks kitchen handoff when a by-weight item has no proof", async () => {
     mockOrder({
       currentStatus: "pending",
-      items: [
-        {
-          _id: "64b000000000000000000003",
-          name: "Cua cân ký",
-          status: "pending",
-          unit: "kg",
-          weightGrams: 850,
-          servingVariant: { mode: "BY_WEIGHT", sellUnit: "kg" },
-          proofImages: [],
-        },
-      ],
+      clientMeta: {},
+      items: [weightedItem()],
     });
     const original = vi.fn();
     const { withIncomingOrderProofGuard } = await import(
@@ -74,17 +79,8 @@ describe("withIncomingOrderProofGuard", () => {
   it("delegates after proof and weight are complete", async () => {
     mockOrder({
       currentStatus: "pending",
-      items: [
-        {
-          _id: "64b000000000000000000003",
-          name: "Cua cân ký",
-          status: "pending",
-          unit: "kg",
-          weightGrams: 850,
-          servingVariant: { mode: "BY_WEIGHT", sellUnit: "kg" },
-          proofImages: ["/uploads/proof.jpg"],
-        },
-      ],
+      clientMeta: {},
+      items: [weightedItem({ proofImages: ["/uploads/proof.jpg"] })],
     });
     const original = vi.fn(async () => ({ order: { id: orderId } }));
     const { withIncomingOrderProofGuard } = await import(
@@ -101,5 +97,64 @@ describe("withIncomingOrderProofGuard", () => {
       ),
     ).resolves.toEqual({ order: { id: orderId } });
     expect(original).toHaveBeenCalledOnce();
+  });
+
+  it("delegates without an image after an audited customer waiver", async () => {
+    mockOrder({
+      currentStatus: "pending",
+      clientMeta: {
+        proofWaivers: {
+          [itemId]: {
+            waived: true,
+            waivedBy: "staff-1",
+            waivedAt: "2026-07-14T02:00:00.000Z",
+            reason: "Khách hàng xác nhận không cần ảnh minh chứng.",
+          },
+        },
+      },
+      items: [weightedItem()],
+    });
+    const original = vi.fn(async () => ({ order: { id: orderId } }));
+    const { withIncomingOrderProofGuard } = await import(
+      "../../graphql/resolvers/order/incomingOrderProofGuard.js"
+    );
+    const guarded = withIncomingOrderProofGuard({ confirmIncomingOrder: original });
+
+    await expect(
+      guarded.confirmIncomingOrder(
+        null,
+        { input: { id: orderId, restaurantId } },
+        { user: { id: "staff-1" } },
+        {},
+      ),
+    ).resolves.toEqual({ order: { id: orderId } });
+    expect(original).toHaveBeenCalledOnce();
+  });
+
+  it("still blocks a waived item when its required weight is missing", async () => {
+    mockOrder({
+      currentStatus: "pending",
+      clientMeta: {
+        proofWaivers: {
+          [itemId]: { waived: true },
+        },
+      },
+      items: [weightedItem({ weightGrams: null })],
+    });
+    const original = vi.fn();
+    const { withIncomingOrderProofGuard } = await import(
+      "../../graphql/resolvers/order/incomingOrderProofGuard.js"
+    );
+    const guarded = withIncomingOrderProofGuard({ confirmIncomingOrder: original });
+
+    await expect(
+      guarded.confirmIncomingOrder(
+        null,
+        { input: { id: orderId, restaurantId } },
+        {},
+        {},
+      ),
+    ).rejects.toThrow("thiếu cân nặng");
+    expect(original).not.toHaveBeenCalled();
   });
 });

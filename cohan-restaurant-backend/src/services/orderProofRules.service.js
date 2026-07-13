@@ -5,6 +5,18 @@ export const normalizeOrderProofImages = (values = []) =>
     ? [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))]
     : [];
 
+const orderItemKey = (item = {}) => String(item?._id || item?.id || "");
+
+export const getOrderItemProofWaiver = (item = {}, proofWaivers = {}) => {
+  const key = orderItemKey(item);
+  if (!key || !proofWaivers || typeof proofWaivers !== "object") return null;
+  const waiver = proofWaivers[key];
+  return waiver?.waived === true ? waiver : null;
+};
+
+export const isOrderItemProofWaived = (item = {}, proofWaivers = {}) =>
+  Boolean(getOrderItemProofWaiver(item, proofWaivers));
+
 export const requiresOrderItemProofImage = (item = {}) => {
   const mode = String(
     item?.servingVariant?.mode || item?.variant?.mode || "",
@@ -29,24 +41,28 @@ export const hasValidOrderItemWeight = (item = {}) => {
   return Number.isInteger(grams) && grams > 0;
 };
 
-export const getOrderProofReadinessIssues = (items = []) =>
+export const getOrderProofReadinessIssues = (items = [], proofWaivers = {}) =>
   (Array.isArray(items) ? items : []).flatMap((item) => {
     const status = String(item?.status || "pending").toLowerCase();
     if (SKIPPED_ITEM_STATUSES.has(status)) return [];
 
     const requiresProof = requiresOrderItemProofImage(item);
+    const proofWaived = isOrderItemProofWaived(item, proofWaivers);
     const missingProof =
-      requiresProof && normalizeOrderProofImages(item?.proofImages).length === 0;
+      requiresProof &&
+      !proofWaived &&
+      normalizeOrderProofImages(item?.proofImages).length === 0;
     const missingWeight = !hasValidOrderItemWeight(item);
 
     if (!missingProof && !missingWeight) return [];
 
     return [
       {
-        itemId: String(item?._id || item?.id || ""),
+        itemId: orderItemKey(item),
         itemName: String(item?.name || "Món chưa đặt tên"),
         missingProof,
         missingWeight,
+        proofWaived,
       },
     ];
   });
