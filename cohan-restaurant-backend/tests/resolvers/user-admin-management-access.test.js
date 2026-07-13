@@ -21,7 +21,7 @@ const CustomerMock = vi.hoisted(() => {
       return this;
     });
   });
-  ctor.findOne = vi.fn(async () => null);
+  ctor.findOne = vi.fn(() => ({ lean: vi.fn(async () => null) }));
   return ctor;
 });
 
@@ -77,7 +77,7 @@ describe("user admin management access hardening", () => {
     vi.clearAllMocks();
     requireRoleMock.mockImplementation(() => {});
     requireRestaurantAccessMock.mockResolvedValue(true);
-    CustomerMock.findOne.mockResolvedValue(null);
+    CustomerMock.findOne.mockReturnValue({ lean: vi.fn(async () => null) });
   });
 
   it("roleList authorizes through the active restaurant for Brand Admin managers", async () => {
