@@ -37,15 +37,30 @@ const MAX_IMAGE_BYTES = 18 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 20_000;
 const SUPPORTED_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
 const USER_AGENT =
-  "COHAN-Restaurant-Defense-Seed/2.0 (menu photo materializer; local development dataset)";
+  "COHAN-Restaurant-Defense-Seed/2.1 (menu photo materializer; local development dataset)";
+const WIKIPEDIA_RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
+const WIKIPEDIA_MAX_ATTEMPTS = 3;
+const WIKIPEDIA_MIN_INTERVAL_MS = 450;
+const MAX_RETRY_DELAY_MS = 15_000;
+const EMERGENCY_RASTER_FALLBACK = {
+  type: "url",
+  url: "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=1400",
+  sourcePage: "https://www.pexels.com/photo/assorted-salads-on-bowls-1640777/",
+  label: "Pexels emergency food photograph",
+};
 
 const idString = (value) => String(value?._id || value?.id || value || "");
+const wikipediaResolutionCache = new Map();
+let lastWikipediaRequestAt = 0;
 
 function fail(message) {
   throw new Error(`DEFENSE_MENU_PHOTO_FAILED: ${message}`);
 }
 
-function extensionFromBuffer(buffer) {
+const sleep = (milliseconds) =>
+  new Promise((resolve) => setTimeout(resolve, Math.max(0, milliseconds)));
+
+export function extensionFromBuffer(buffer) {
   if (
     buffer.length >= 3 &&
     buffer[0] === 0xff &&
@@ -86,6 +101,36 @@ function assertPhotoBuffer(buffer, label) {
   return extension;
 }
 
+export function normalizeRasterImageUrl(value) {
+  const url = new URL(String(value || "").trim());
+  if (url.hostname === "images.unsplash.com") {
+    // `auto=format` lets the CDN negotiate AVIF. The rest of the app deliberately
+    // supports broadly compatible JPG/PNG/WebP assets, so force the documented
+    // Unsplash image endpoint to return JPEG.
+    url.searchParams.delete("auto");
+    url.searchParams.set("fm", "jpg");
+    if (!url.searchParams.has("q")) url.searchParams.set("q", "88");
+  }
+  return url.toString();
+}
+
+export function parseRetryAfterMilliseconds(value, attempt = 0) {
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.min(MAX_RETRY_DELAY_MS, Math.max(500, seconds * 1_000));
+  }
+
+  const dateValue = Date.parse(String(value || ""));
+  if (Number.isFinite(dateValue)) {
+    return Math.min(
+      MAX_RETRY_DELAY_MS,
+      Math.max(500, dateValue - Date.now()),
+    );
+  }
+
+  return Math.min(MAX_RETRY_DELAY_MS, 1_000 * 2 ** Math.max(0, attempt));
+}
+
 async function fetchWithTimeout(url, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -95,8 +140,10 @@ async function fetchWithTimeout(url, options = {}) {
       signal: controller.signal,
       headers: {
         "User-Agent": USER_AGENT,
+        // Do not advertise AVIF here. Some CDNs return AVIF even when the URL
+        // has fm=jpg, which made valid photographs fail the signature check.
         Accept:
-          "image/avif,image/webp,image/jpeg,image/png,application/json;q=0.9,*/*;q=0.5",
+          "image/jpeg,image/png,image/webp,application/json;q=0.9,*/*;q=0.5",
         ...(options.headers || {}),
       },
       redirect: "follow",
@@ -106,7 +153,15 @@ async function fetchWithTimeout(url, options = {}) {
   }
 }
 
-async function resolveWikipediaCandidate(candidate) {
+async function waitForWikipediaSlot() {
+  const elapsed = Date.now() - lastWikipediaRequestAt;
+  if (elapsed < WIKIPEDIA_MIN_INTERVAL_MS) {
+    await sleep(WIKIPEDIA_MIN_INTERVAL_MS - elapsed);
+  }
+  lastWikipediaRequestAt = Date.now();
+}
+
+async function resolveWikipediaCandidateUncached(candidate) {
   const lang = String(candidate.lang || "en").trim().toLowerCase();
   const title = String(candidate.title || "").trim();
   if (!title) throw new Error("Wikipedia title is empty");
@@ -121,34 +176,78 @@ async function resolveWikipediaCandidate(candidate) {
   api.searchParams.set("titles", title);
   api.searchParams.set("origin", "*");
 
-  const response = await fetchWithTimeout(api, {
-    headers: { Accept: "application/json" },
-  });
-  if (!response.ok) throw new Error(`Wikipedia API ${response.status}`);
+  for (let attempt = 0; attempt < WIKIPEDIA_MAX_ATTEMPTS; attempt += 1) {
+    await waitForWikipediaSlot();
+    const response = await fetchWithTimeout(api, {
+      headers: { Accept: "application/json" },
+    });
 
-  const payload = await response.json();
-  const page = payload?.query?.pages?.[0];
-  const imageUrl = page?.thumbnail?.source || page?.original?.source;
-  if (page?.missing || !imageUrl) {
-    throw new Error(`Wikipedia page has no raster lead image: ${lang}:${title}`);
+    if (response.ok) {
+      const payload = await response.json();
+      const page = payload?.query?.pages?.[0];
+      const imageUrl = page?.thumbnail?.source || page?.original?.source;
+      if (page?.missing || !imageUrl) {
+        throw new Error(
+          `Wikipedia page has no raster lead image: ${lang}:${title}`,
+        );
+      }
+
+      return {
+        imageUrl,
+        sourcePage: `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(
+          title.replaceAll(" ", "_"),
+        )}`,
+        sourceLabel: `Wikipedia ${lang}:${title}`,
+      };
+    }
+
+    const canRetry =
+      WIKIPEDIA_RETRY_STATUSES.has(response.status) &&
+      attempt + 1 < WIKIPEDIA_MAX_ATTEMPTS;
+    if (!canRetry) {
+      throw new Error(`Wikipedia ${lang}:${title} returned HTTP ${response.status}`);
+    }
+
+    const delay = parseRetryAfterMilliseconds(
+      response.headers.get("retry-after"),
+      attempt,
+    );
+    console.warn(
+      `  ↻ Wikipedia ${lang}:${title} returned ${response.status}; retrying in ${delay} ms`,
+    );
+    await sleep(delay);
   }
 
-  return {
-    imageUrl,
-    sourcePage: `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(
-      title.replaceAll(" ", "_"),
-    )}`,
-    sourceLabel: `Wikipedia ${lang}:${title}`,
-  };
+  throw new Error(`Wikipedia ${lang}:${title} exhausted retries`);
+}
+
+async function resolveWikipediaCandidate(candidate) {
+  const key = `${String(candidate.lang || "en").toLowerCase()}:${String(
+    candidate.title || "",
+  ).trim()}`;
+
+  if (wikipediaResolutionCache.has(key)) {
+    return wikipediaResolutionCache.get(key);
+  }
+
+  const pending = resolveWikipediaCandidateUncached(candidate).catch((error) => {
+    wikipediaResolutionCache.delete(key);
+    throw error;
+  });
+  wikipediaResolutionCache.set(key, pending);
+  return pending;
 }
 
 async function resolveSource(source) {
   if (source?.type === "wikipedia") return resolveWikipediaCandidate(source);
   if (source?.type === "url" && source.url) {
+    const imageUrl = normalizeRasterImageUrl(source.url);
     return {
-      imageUrl: source.url,
+      imageUrl,
       sourcePage: source.sourcePage || source.url,
-      sourceLabel: source.sourcePage || source.url,
+      sourceLabel:
+        source.label ||
+        `Direct raster image from ${new URL(imageUrl).hostname}`,
     };
   }
   throw new Error("Unsupported menu photo source");
@@ -156,7 +255,11 @@ async function resolveSource(source) {
 
 async function downloadRasterPhoto(source) {
   const resolved = await resolveSource(source);
-  const response = await fetchWithTimeout(resolved.imageUrl);
+  const response = await fetchWithTimeout(resolved.imageUrl, {
+    headers: {
+      Accept: "image/jpeg,image/png,image/webp,*/*;q=0.5",
+    },
+  });
   if (!response.ok) {
     throw new Error(`${resolved.sourceLabel} returned HTTP ${response.status}`);
   }
@@ -234,7 +337,11 @@ async function materializeOne(entry, previousAttribution) {
     }
   }
 
-  const attempts = [...entry.candidates, entry.fallback];
+  const attempts = [
+    ...entry.candidates,
+    entry.fallback,
+    EMERGENCY_RASTER_FALLBACK,
+  ].filter(Boolean);
   const errors = [];
   for (const source of attempts) {
     try {
