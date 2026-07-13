@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getExportReadinessState,
+  REQUIRED_EXPORT_CHECKLIST_KEYS,
   selectBackupRuns,
 } from "./backupChecklistState";
 
@@ -17,6 +18,14 @@ const completeChecklist = {
 };
 
 describe("backup checklist state", () => {
+  it("exposes exactly the three checks required before export", () => {
+    expect(REQUIRED_EXPORT_CHECKLIST_KEYS).toEqual([
+      "reportsChecked",
+      "transactionsReconciled",
+      "settingsReviewed",
+    ]);
+  });
+
   it("does not fall back to an older run while a newly created run is refetching", () => {
     const oldRun = { id: "old", status: "checklist_completed", checklist: completeChecklist };
     const result = selectBackupRuns({
@@ -53,6 +62,21 @@ describe("backup checklist state", () => {
 
     expect(state.viewingHistory).toBe(true);
     expect(state.canDownload).toBe(false);
+  });
+
+  it("blocks download when no active preparation run has been loaded", () => {
+    const state = getExportReadinessState({
+      latestRun: null,
+      selectedRun: null,
+      runDraft: { checklist: completeChecklist },
+    });
+
+    expect(state.canDownload).toBe(false);
+    expect(state.savedMissingKeys).toEqual([
+      "reportsChecked",
+      "transactionsReconciled",
+      "settingsReviewed",
+    ]);
   });
 
   it("allows download only when the latest planned run has the required saved checks", () => {
