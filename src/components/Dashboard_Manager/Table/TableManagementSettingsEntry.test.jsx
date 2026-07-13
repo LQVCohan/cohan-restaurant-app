@@ -14,6 +14,10 @@ vi.mock("./TableManagement", () => ({
   ),
 }));
 
+vi.mock("./TableReservationTimingOverlay", () => ({
+  default: () => null,
+}));
+
 describe("TableManagementSettingsEntry", () => {
   it("opens table settings from the table page header", () => {
     const onOpenTableSettings = vi.fn();
