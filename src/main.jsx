@@ -76,6 +76,7 @@ import { installMergedTableLifecycleUi } from "./utils/installMergedTableLifecyc
 import { installTableEmptyStateEnhancement } from "./utils/installTableEmptyStateEnhancement";
 import { installGuidedAiCaptureCards } from "./utils/installGuidedAiCaptureCards";
 import { installAiChatbotMenuSuggestionLifecycle } from "./utils/installAiChatbotMenuSuggestionLifecycle";
+import { installAiChatbotQuestionAutoScroll } from "./utils/installAiChatbotQuestionAutoScroll";
 import { installMobileHomeVisualQc } from "./utils/installMobileHomeVisualQc";
 import { installAuthRecoveryAndFacebook } from "./utils/installAuthRecoveryAndFacebook";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
@@ -121,6 +122,7 @@ installMergedTableLifecycleUi();
 installTableEmptyStateEnhancement();
 installGuidedAiCaptureCards();
 installAiChatbotMenuSuggestionLifecycle();
+installAiChatbotQuestionAutoScroll();
 installMobileHomeVisualQc();
 installAuthRecoveryAndFacebook();
 installAttendanceWordingTuning();
