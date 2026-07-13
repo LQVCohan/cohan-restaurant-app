@@ -1,13 +1,25 @@
-/* Compact, single-purpose presentation for AI menu recommendations.
- * The backend already orders bestseller responses by orderCounter + rating;
- * the lifecycle installer keeps only the first three ranked results visible.
+/* Ranked result stack for menu answers.
+ * The assistant response and its dishes read as one result, while duplicated
+ * action/quick-reply blocks are suppressed until the next non-menu response.
  */
+.ai-chatbot-panel[data-ai-menu-result-state="visible"] .ai-chatbot-action-cards,
+.ai-chatbot-panel[data-ai-menu-result-state="visible"] .ai-chatbot-quick-replies,
+.ai-chatbot-panel[data-ai-menu-result-state="waiting"] .ai-chatbot-action-cards,
+.ai-chatbot-panel[data-ai-menu-result-state="waiting"] .ai-chatbot-quick-replies {
+  display: none !important;
+}
+
 .ai-chatbot-menu-cards {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) !important;
-  gap: 8px !important;
-  margin: 0 !important;
-  padding: 0 12px 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  margin: 2px 10px 10px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 112, 24, 0.16) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  box-shadow: 0 10px 24px rgba(86, 43, 16, 0.07) !important;
 }
 
 .ai-chatbot-menu-cards[hidden],
@@ -16,67 +28,147 @@
   display: none !important;
 }
 
-.ai-chatbot-menu-card {
+.ai-chatbot-menu-results__header {
   display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto !important;
-  grid-template-areas:
-    "name price"
-    "restaurant price"
-    "status status"
-    "actions actions" !important;
+  grid-template-columns: 32px minmax(0, 1fr) !important;
   align-items: center !important;
-  gap: 3px 10px !important;
-  min-height: 0 !important;
-  padding: 10px 11px !important;
-  border: 1px solid rgba(255, 112, 24, 0.18) !important;
-  border-radius: 14px !important;
-  background: rgba(255, 255, 255, 0.97) !important;
-  box-shadow: 0 7px 18px rgba(91, 47, 18, 0.055) !important;
+  gap: 9px !important;
+  padding: 10px 11px 9px !important;
+  border-bottom: 1px solid rgba(255, 112, 24, 0.11) !important;
+  background:
+    radial-gradient(circle at 92% 15%, rgba(255, 137, 67, 0.14), transparent 38%),
+    linear-gradient(135deg, #fff9f4 0%, #fffdfb 100%) !important;
+}
+
+.ai-chatbot-menu-results__marker {
+  display: grid !important;
+  width: 32px !important;
+  height: 32px !important;
+  place-items: center !important;
+  border-radius: 10px !important;
+  background: #ff6a0a !important;
+  color: #fff !important;
+  font-size: 0.78rem !important;
+  box-shadow: 0 5px 12px rgba(255, 106, 10, 0.2) !important;
+}
+
+.ai-chatbot-menu-results__copy {
+  display: flex !important;
+  min-width: 0 !important;
+  flex-direction: column !important;
+  gap: 1px !important;
+}
+
+.ai-chatbot-menu-results__copy strong {
+  color: #2b1b12 !important;
+  font-size: 0.82rem !important;
+  font-weight: 850 !important;
+  line-height: 1.2 !important;
+}
+
+.ai-chatbot-menu-results__copy small {
+  overflow: hidden !important;
+  color: #8a776b !important;
+  font-size: 0.64rem !important;
+  font-weight: 600 !important;
+  line-height: 1.25 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.ai-chatbot-menu-card {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: 28px minmax(0, 1fr) auto !important;
+  grid-template-areas:
+    "rank name price"
+    "rank restaurant actions"
+    "rank status actions" !important;
+  align-items: center !important;
+  gap: 2px 8px !important;
+  min-height: 62px !important;
+  padding: 9px 10px !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(74, 49, 34, 0.07) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: background-color 140ms ease !important;
+}
+
+.ai-chatbot-menu-card.is-last-visible-ai-suggestion {
+  border-bottom: 0 !important;
+}
+
+.ai-chatbot-menu-card:hover {
+  background: #fffaf6 !important;
+}
+
+.ai-chatbot-menu-card::before {
+  grid-area: rank !important;
+  display: grid !important;
+  width: 25px !important;
+  height: 25px !important;
+  place-items: center !important;
+  border: 1px solid rgba(255, 106, 10, 0.2) !important;
+  border-radius: 9px !important;
+  background: #fff4ec !important;
+  color: #d65308 !important;
+  content: attr(data-ai-suggestion-rank) !important;
+  font-size: 0.68rem !important;
+  font-weight: 900 !important;
+}
+
+.ai-chatbot-menu-card[data-ai-suggestion-rank="1"]::before {
+  border-color: #ff6a0a !important;
+  background: #ff6a0a !important;
+  color: #fff !important;
+  box-shadow: 0 4px 10px rgba(255, 106, 10, 0.18) !important;
 }
 
 .ai-chatbot-menu-card > strong {
   grid-area: name !important;
-  min-width: 0;
-  overflow: hidden;
-  color: #2c1b12 !important;
-  font-size: 0.86rem !important;
-  font-weight: 800 !important;
-  line-height: 1.25 !important;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  color: #291a12 !important;
+  font-size: 0.8rem !important;
+  font-weight: 850 !important;
+  line-height: 1.2 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 .ai-chatbot-menu-card__restaurant {
   grid-area: restaurant !important;
-  min-width: 0;
-  overflow: hidden;
-  color: #8a776b !important;
-  font-size: 0.69rem !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  color: #8d7a6d !important;
+  font-size: 0.62rem !important;
   font-weight: 600 !important;
   line-height: 1.2 !important;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 .ai-chatbot-menu-card__price {
   grid-area: price !important;
   align-self: center !important;
   margin: 0 !important;
-  color: #f25a0a !important;
-  font-size: 0.8rem !important;
+  color: #ee5809 !important;
+  font-size: 0.72rem !important;
   font-weight: 900 !important;
-  white-space: nowrap;
+  white-space: nowrap !important;
 }
 
 .ai-chatbot-menu-card__status {
   grid-area: status !important;
-  width: fit-content;
-  margin-top: 2px !important;
-  padding: 2px 7px !important;
+  width: fit-content !important;
+  margin-top: 1px !important;
+  padding: 2px 6px !important;
   border-radius: 999px !important;
-  background: #fff3ed !important;
-  color: #b54708 !important;
-  font-size: 0.64rem !important;
+  background: #fff0e7 !important;
+  color: #aa430b !important;
+  font-size: 0.58rem !important;
   font-weight: 750 !important;
 }
 
@@ -84,68 +176,86 @@
   grid-area: actions !important;
   display: flex !important;
   align-items: center !important;
-  gap: 6px !important;
-  margin-top: 5px !important;
+  align-self: end !important;
+  justify-content: flex-end !important;
+  gap: 4px !important;
+  margin: 0 !important;
 }
 
 .ai-chatbot-menu-card__actions button {
   width: auto !important;
   min-width: 0 !important;
-  min-height: 31px !important;
-  padding: 6px 10px !important;
-  border-radius: 10px !important;
-  font-size: 0.7rem !important;
-  font-weight: 800 !important;
+  min-height: 27px !important;
+  padding: 5px 8px !important;
+  border-radius: 999px !important;
+  font-size: 0.62rem !important;
+  font-weight: 850 !important;
   line-height: 1 !important;
   box-shadow: none !important;
 }
 
-.ai-chatbot-menu-card__actions button:first-child {
+.ai-chatbot-menu-card__actions button[data-ai-menu-action="details"] {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: #8a5c42 !important;
+  text-decoration: underline !important;
+  text-decoration-color: rgba(138, 92, 66, 0.3) !important;
+  text-underline-offset: 2px !important;
+}
+
+.ai-chatbot-menu-card__actions button[data-ai-menu-action="select"] {
   border-color: #ff6a0a !important;
   background: #ff6a0a !important;
   color: #fff !important;
 }
 
-.ai-chatbot-menu-card__actions button:last-child:not(:first-child) {
-  border-color: rgba(255, 106, 10, 0.36) !important;
-  background: #fff !important;
-  color: #c94d05 !important;
+.ai-chatbot-menu-card__actions button:focus-visible {
+  outline: 2px solid rgba(255, 106, 10, 0.36) !important;
+  outline-offset: 2px !important;
 }
 
 .ai-chatbot-menu-cards.is-fresh-ai-menu-suggestions {
-  animation: aiMenuSuggestionsIn 160ms ease-out;
+  animation: aiMenuResultStackIn 180ms ease-out !important;
 }
 
-@keyframes aiMenuSuggestionsIn {
+@keyframes aiMenuResultStackIn {
   from {
     opacity: 0;
-    transform: translateY(5px);
+    transform: translateY(6px) scale(0.99);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
 @media (max-width: 420px) {
   .ai-chatbot-menu-cards {
-    gap: 7px !important;
-    padding-inline: 10px !important;
+    margin-inline: 8px !important;
+    border-radius: 14px !important;
+  }
+
+  .ai-chatbot-menu-results__header {
+    padding: 9px 10px 8px !important;
   }
 
   .ai-chatbot-menu-card {
-    padding: 9px 10px !important;
-    border-radius: 13px !important;
+    grid-template-columns: 26px minmax(0, 1fr) auto !important;
+    min-height: 59px !important;
+    padding: 8px 9px !important;
+    gap: 2px 6px !important;
   }
 
   .ai-chatbot-menu-card__actions button {
-    min-height: 30px !important;
-    padding-inline: 9px !important;
+    min-height: 26px !important;
+    padding-inline: 7px !important;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ai-chatbot-menu-cards.is-fresh-ai-menu-suggestions {
+  .ai-chatbot-menu-cards.is-fresh-ai-menu-suggestions,
+  .ai-chatbot-menu-card {
     animation: none !important;
+    transition: none !important;
   }
 }
