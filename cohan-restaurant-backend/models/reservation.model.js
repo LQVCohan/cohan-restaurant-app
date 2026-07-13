@@ -44,6 +44,8 @@ const ReservationSchema = BaseSchemaModel(
 
     linkedMenuSubtotal: { type: Number, default: 0, min: 0 },
     depositAmount: { type: Number, default: 0, min: 0 },
+    tableDepositAmount: { type: Number, default: 0, min: 0 },
+    menuDepositAmount: { type: Number, default: 0, min: 0 },
     depositTxnId: { type: Types.ObjectId, ref: "Transaction" },
     depositStatus: {
       type: String,
@@ -51,6 +53,9 @@ const ReservationSchema = BaseSchemaModel(
       default: "pending",
       index: true,
     },
+    depositAppliedAmount: { type: Number, default: 0, min: 0 },
+    depositAppliedAt: { type: Date, default: null, index: true },
+    depositAppliedInvoiceId: { type: Types.ObjectId, ref: "Invoice", default: null },
 
     paymentMethod: { type: String, default: "momo" },
     paymentReference: { type: String },
@@ -115,6 +120,22 @@ ReservationSchema.pre("validate", function (next) {
     this.pendingPaymentExpiresAt = null;
   }
 
+  const totalDeposit = Math.max(0, Number(this.depositAmount || 0));
+  const computedMenuDeposit = Math.min(
+    totalDeposit,
+    Math.max(0, Math.round(Number(this.linkedMenuSubtotal || 0) * 0.5)),
+  );
+  if (!Number.isFinite(Number(this.menuDepositAmount)) || Number(this.menuDepositAmount) <= 0) {
+    this.menuDepositAmount = computedMenuDeposit;
+  }
+  if (!Number.isFinite(Number(this.tableDepositAmount)) || Number(this.tableDepositAmount) <= 0) {
+    this.tableDepositAmount = Math.max(0, totalDeposit - Number(this.menuDepositAmount || 0));
+  }
+  if (Number(this.tableDepositAmount || 0) + Number(this.menuDepositAmount || 0) > totalDeposit) {
+    this.menuDepositAmount = computedMenuDeposit;
+    this.tableDepositAmount = Math.max(0, totalDeposit - computedMenuDeposit);
+  }
+
   next();
 });
 
@@ -152,6 +173,11 @@ export async function ensureNewCashReservationDeposit(reservation) {
         note: `Reservation deposit ${reservation.orderCode}`,
         createdBy: reservation.userId,
         paidAt: new Date(),
+        meta: {
+          reservationId: String(reservation._id),
+          tableDepositAmount: Number(reservation.tableDepositAmount || 0),
+          menuDepositAmount: Number(reservation.menuDepositAmount || 0),
+        },
       },
     ],
     session ? { session } : undefined,
@@ -174,6 +200,11 @@ ReservationSchema.index({
   userId: 1,
   hiddenFromCustomerUserIds: 1,
   createdAt: -1,
+});
+ReservationSchema.index({
+  restaurantId: 1,
+  depositStatus: 1,
+  depositAppliedAt: 1,
 });
 
 export const Reservation = mongoose.model("Reservation", ReservationSchema);
