@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import * as THREE from "three";
 import { loadTableVrImage } from "@/utils/vrStorage";
+import { getTableVrViewerNavigation } from "@/utils/tableVrNavigation";
 import "./VRViewer.scss";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -306,12 +307,22 @@ function SphericalPanorama({ imageUrl }) {
 
 const VRViewer = () => {
   const { tableId } = useParams();
+  const { search } = useLocation();
   const navigate = useNavigate();
   const [imageUrl, setImageUrl] = useState(null);
+  const { openedInNewTab, returnTo } = getTableVrViewerNavigation(search);
 
   useEffect(() => {
     setImageUrl(loadTableVrImage(tableId));
   }, [tableId]);
+
+  const navigateBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate(returnTo || "/", { replace: true });
+  };
 
   const handleCloseViewer = async () => {
     try {
@@ -319,7 +330,12 @@ const VRViewer = () => {
         await document.exitFullscreen?.();
       }
     } catch (error) {
-      console.warn("Không thể thoát toàn màn hình trước khi đóng trang.", error);
+      console.warn("Không thể thoát toàn màn hình trước khi rời trang.", error);
+    }
+
+    if (!openedInNewTab) {
+      navigateBack();
+      return;
     }
 
     try {
@@ -329,14 +345,9 @@ const VRViewer = () => {
     }
 
     window.close();
-
     window.setTimeout(() => {
       if (window.closed) return;
-      if (window.history.length > 1) {
-        navigate(-1);
-        return;
-      }
-      navigate("/manager#tables", { replace: true });
+      navigate(returnTo || "/", { replace: true });
     }, 120);
   };
 
@@ -347,10 +358,14 @@ const VRViewer = () => {
           type="button"
           className="vr-viewer__back"
           onClick={handleCloseViewer}
-          aria-label="Đóng trang xem không gian 360 độ"
-          title="Đóng trang hiện tại"
+          aria-label={
+            openedInNewTab
+              ? "Đóng trang xem không gian 360 độ"
+              : "Quay lại trang trước"
+          }
+          title={openedInNewTab ? "Đóng tab hiện tại" : "Quay lại trang trước"}
         >
-          × Đóng
+          {openedInNewTab ? "× Đóng" : "← Quay lại"}
         </button>
         <h1 className="vr-viewer__title" id="vr-viewer-title">
           Không gian 360° — Bàn {tableId}

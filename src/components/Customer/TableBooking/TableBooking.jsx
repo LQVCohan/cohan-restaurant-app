@@ -16,6 +16,11 @@ import { AuthContext } from "../../../context/AuthContext";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { getReservationActionErrorMessage } from "@/utils/commerceActionErrorMessages";
 import { mapCartItemToReservationOrderItemInput } from "@/utils/discountPreviewPayload";
+import { loadTableVrImage } from "@/utils/vrStorage";
+import {
+  getCurrentPageReturnTo,
+  openTableVrViewerInNewTab,
+} from "@/utils/tableVrNavigation";
 import "./TableBooking.scss";
 
 const ACQUIRE_TABLE_VIEW_LOCK = gql`
@@ -184,6 +189,18 @@ const TableBooking = () => {
   const bookingStage = selectedTable ? 3 : activeFloorData ? 2 : 1;
   const activeFloorDescription = String(activeFloorData?.description || "").trim()
     || "Khám phá sơ đồ, kéo để di chuyển và chọn bàn phù hợp với nhóm của bạn.";
+  const selectedTableVrUrl = (() => {
+    const configuredUrl = String(selectedTable?.vrUrl || "").trim();
+    if (configuredUrl) return configuredUrl;
+    if (!selectedTable?.id || !loadTableVrImage(selectedTable.id)) return "";
+    return `/vr/table/${encodeURIComponent(selectedTable.id)}`;
+  })();
+  const handleViewSelectedTable360 = () => {
+    if (!selectedTableVrUrl) return;
+    openTableVrViewerInNewTab(selectedTableVrUrl, {
+      returnTo: getCurrentPageReturnTo(),
+    });
+  };
 
   const canToggleWatching = (() => {
     const role = (user?.roleName || user?.role || "").toLowerCase();
@@ -574,6 +591,9 @@ const TableBooking = () => {
                   onConfirm={() => canReserve && selectedTable && setShowBookingModal(true)}
                   onCancel={() => setSelectedTable(null)}
                   onOrderDishes={() => navigate(`/cus-menu?restaurantId=${encodeURIComponent(restaurantId)}&returnTo=booking`)}
+                  onView360={
+                    selectedTableVrUrl ? handleViewSelectedTable360 : undefined
+                  }
                 />
               </div>
             </div>

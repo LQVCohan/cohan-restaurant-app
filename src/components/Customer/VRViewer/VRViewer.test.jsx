@@ -9,6 +9,16 @@ vi.mock("@/utils/vrStorage", () => ({
 
 import VRViewer from "./VRViewer";
 
+const renderViewer = (initialEntries, initialIndex) =>
+  render(
+    <MemoryRouter initialEntries={initialEntries} initialIndex={initialIndex}>
+      <Routes>
+        <Route path="/booking/:id" element={<div>Trang đặt bàn</div>} />
+        <Route path="/vr/table/:tableId" element={<VRViewer />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
 describe("VRViewer", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -21,14 +31,10 @@ describe("VRViewer", () => {
     vi.restoreAllMocks();
   });
 
-  it("closes the current tab when the close button is pressed", () => {
-    render(
-      <MemoryRouter initialEntries={["/vr/table/table-a1"]}>
-        <Routes>
-          <Route path="/vr/table/:tableId" element={<VRViewer />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+  it("closes the current tab only when the viewer was explicitly opened in a new tab", () => {
+    renderViewer([
+      "/vr/table/table-a1?openedInNewTab=1&returnTo=%2Fbooking%2Fr1",
+    ]);
 
     fireEvent.click(
       screen.getByRole("button", {
@@ -37,18 +43,19 @@ describe("VRViewer", () => {
     );
 
     expect(window.close).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("× Đóng")).toBeInTheDocument();
   });
 
-  it("shows an accurate close label instead of a misleading back action", () => {
-    render(
-      <MemoryRouter initialEntries={["/vr/table/table-a1"]}>
-        <Routes>
-          <Route path="/vr/table/:tableId" element={<VRViewer />} />
-        </Routes>
-      </MemoryRouter>,
+  it("goes back without closing when the viewer is being used in the current tab", () => {
+    renderViewer(["/booking/r1", "/vr/table/table-a1"], 1);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Quay lại trang trước",
+      }),
     );
 
-    expect(screen.getByText("× Đóng")).toBeInTheDocument();
-    expect(screen.queryByText("← Quay lại")).not.toBeInTheDocument();
+    expect(window.close).not.toHaveBeenCalled();
+    expect(screen.getByText("Trang đặt bàn")).toBeInTheDocument();
   });
 });

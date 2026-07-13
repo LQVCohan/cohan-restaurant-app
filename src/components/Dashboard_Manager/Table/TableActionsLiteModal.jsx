@@ -8,6 +8,10 @@ import {
   storeTableVrImage,
 } from "@/utils/vrStorage";
 import {
+  getCurrentPageReturnTo,
+  openTableVrViewerInNewTab,
+} from "@/utils/tableVrNavigation";
+import {
   MAX_TABLE_VR_SOURCE_BYTES,
   TABLE_VR_ACCEPT,
   TABLE_VR_TARGET_BYTES,
@@ -1138,7 +1142,9 @@ export default function TableActionsLiteModal({
                           setVrUploadError("Chưa có liên kết xem 360° để mở.");
                           return;
                         }
-                        window.open(vrUrl, "_blank", "noopener,noreferrer");
+                        openTableVrViewerInNewTab(vrUrl, {
+                          returnTo: getCurrentPageReturnTo(),
+                        });
                       }}
                       disabled={!vrUrl || vrUploading}
                     >
