@@ -99,4 +99,52 @@ describe("AddCustomerModal autofill boundary", () => {
     expectEmptyNoAutofill(getControl("new-guest-full-name"));
     expectEmptyNoAutofill(getControl("new-guest-phone"));
   });
+
+  it("passes the created guest to the list refresh callback", async () => {
+    const createdGuest = {
+      id: "guest-1",
+      fullName: "Khách nhanh",
+      phone: "0901234567",
+      isGuest: true,
+    };
+    mocks.createGuest.mockResolvedValueOnce(createdGuest);
+    const onCreated = vi.fn().mockResolvedValue({ visibleInCurrentList: true });
+    render(<AddCustomerModal onClose={vi.fn()} onCreated={onCreated} />);
+    fireEvent.click(screen.getByRole("button", { name: /Khách vãng lai/i }));
+    fireEvent.change(getControl("new-guest-full-name"), {
+      target: { value: "Khách nhanh" },
+    });
+    fireEvent.change(getControl("new-guest-phone"), {
+      target: { value: "0901234567" },
+    });
+    fireEvent.submit(document.querySelector("#add-customer-form"));
+    await vi.waitFor(() => expect(onCreated).toHaveBeenCalledWith(createdGuest));
+  });
+
+  it("does not let the client force a registered account active", async () => {
+    mocks.createUser.mockResolvedValueOnce({
+      data: { createUser: { user: { id: "customer-1" } } },
+    });
+    render(
+      <AddCustomerModal
+        onClose={vi.fn()}
+        onCreated={vi.fn().mockResolvedValue({})}
+      />,
+    );
+    fireEvent.change(getControl("new-customer-full-name"), {
+      target: { value: "Nguyễn An" },
+    });
+    fireEvent.change(getControl("new-customer-email"), {
+      target: { value: "an@example.com" },
+    });
+    fireEvent.change(getControl("new-customer-password"), {
+      target: { value: "Matkhau123" },
+    });
+    fireEvent.change(getControl("new-customer-password-confirmation"), {
+      target: { value: "Matkhau123" },
+    });
+    fireEvent.submit(document.querySelector("#add-customer-form"));
+    await vi.waitFor(() => expect(mocks.createUser).toHaveBeenCalled());
+    expect(mocks.createUser.mock.calls[0][0]).not.toHaveProperty("status");
+  });
 });

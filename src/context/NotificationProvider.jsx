@@ -121,8 +121,15 @@ const NotificationProvider = ({ children }) => {
 
     const nativeAlert = window.alert;
     const notifyAlert = (message) => {
+      const rawMessage =
+        message instanceof Error
+          ? message.message || ALERT_FALLBACK_MESSAGE
+          : String(message || ALERT_FALLBACK_MESSAGE);
       const alertMessage = toAlertMessage(message);
-      showNotification(alertMessage, getAlertNotificationType(alertMessage));
+      const type = TECHNICAL_ERROR_PATTERN.test(rawMessage)
+        ? "error"
+        : getAlertNotificationType(rawMessage);
+      showNotification(alertMessage, type);
     };
 
     window.alert = notifyAlert;

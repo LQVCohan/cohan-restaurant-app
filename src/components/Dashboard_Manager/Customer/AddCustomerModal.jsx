@@ -9,6 +9,7 @@ import Modal from "../../common/Modal";
 import useUserManagement from "../../../hooks/useUserManagement";
 import { useVnAddressLazy } from "../../../hooks/useVnAddressLazy";
 import { useNotification } from "../../../hooks/useNotification";
+import { toUserFacingErrorMessage } from "../../../utils/userFacingError";
 import "./AddCustomerModal.scss";
 
 const CUSTOMER_FORM_ID = "add-customer-form";
@@ -366,13 +367,15 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
 
     try {
       if (asGuest) {
-        await createGuest({
+        const createdGuest = await createGuest({
           fullName: form.fullName.trim(),
           phone: normalizePhoneVN(form.phone),
           expiresInDays: 30,
         });
         const syncResult =
-          typeof onCreated === "function" ? await onCreated() : null;
+          typeof onCreated === "function"
+            ? await onCreated(createdGuest)
+            : null;
         showNotification(
           syncResult?.visibleInCurrentList === false
             ? "Tạo khách vãng lai thành công. Bản ghi mới không thuộc bộ lọc hiện tại."
@@ -393,7 +396,6 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
         roleSlug: "customer",
         roleId: defaultCustomerRoleId || undefined,
         provider: "local",
-        status: "active",
         address: {
           line1: safeStr(form.addressDetail),
           line2: safeStr(previewAddress),
@@ -419,19 +421,18 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
       );
       onClose?.();
     } catch (err) {
-      const graphError = err?.graphQLErrors?.[0];
-      let msg =
-        graphError?.message ||
-        err?.message ||
-        "Không thể tạo khách hàng. Vui lòng thử lại.";
-      const lower = msg.toLowerCase();
-      if (
+      const rawMessage =
+        err?.graphQLErrors?.[0]?.message || err?.message || "";
+      const lower = rawMessage.toLowerCase();
+      const msg =
         lower.includes("already in use") ||
         lower.includes("duplicate") ||
         lower.includes("exists")
-      ) {
-        msg = "Email, số điện thoại hoặc tên đăng nhập đã được sử dụng.";
-      }
+          ? "Email, số điện thoại hoặc tên đăng nhập đã được sử dụng."
+          : toUserFacingErrorMessage(
+              err,
+              "Không thể tạo khách hàng. Vui lòng kiểm tra thông tin và thử lại.",
+            );
       setSubmitError(msg);
       showNotification(msg, "error");
     }

@@ -144,6 +144,15 @@ const PRIORITY_LABELS = {
   LOW: "Theo dõi",
 };
 
+export const scrollToCustomerInsight = (targetId) => {
+  if (typeof document === "undefined") return false;
+  const target = document.getElementById(targetId);
+  if (!target) return false;
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
+  target.focus?.({ preventScroll: true });
+  return true;
+};
+
 const navigateManagerPage = (page, query = {}) => {
   if (!["orders", "customers", "menu"].includes(page)) return;
 
@@ -282,7 +291,7 @@ const CustomerAnalyticsPage = () => {
         cta: "Mở danh sách khách",
         icon: AlertTriangle,
         tone: dormantCustomerCount > 0 ? "warning" : "calm",
-        onClick: () => navigateManagerPage("customers", { segment: "dormant" }),
+        onClick: () => scrollToCustomerInsight("customer-insight-dormant"),
       },
       {
         label: "Khách giá trị cao",
@@ -291,7 +300,7 @@ const CustomerAnalyticsPage = () => {
         cta: "Xem nhóm giá trị cao",
         icon: Wallet,
         tone: "premium",
-        onClick: () => navigateManagerPage("customers", { segment: "high-value" }),
+        onClick: () => scrollToCustomerInsight("customer-insight-high-value"),
       },
       {
         label: "Chu kỳ quay lại",
@@ -557,14 +566,18 @@ const CustomerAnalyticsPage = () => {
               ) : <EmptyState title="Chưa có dữ liệu phân khúc khách hàng" description="Khi có đủ đơn và hồ sơ khách, hệ thống sẽ chia nhóm tại đây." actionLabel="Mở quản lý khách" onAction={() => navigateManagerPage("customers")} />}
             </section>
 
-            <section className="customer-panel">
+            <section
+              id="customer-insight-dormant"
+              className="customer-panel"
+              tabIndex={-1}
+            >
               <div className="customer-panel__head">
                 <div>
                   <h3>Khách lâu chưa quay lại</h3>
                   <p>Theo dõi nhóm khách lâu chưa quay lại để chăm sóc kịp thời.</p>
                 </div>
-                <button type="button" onClick={() => navigateManagerPage("customers", { segment: "dormant" })}>
-                  Lọc nhóm này <ArrowRight size={14} aria-hidden="true" />
+                <button type="button" onClick={() => navigateManagerPage("customers")}>
+                  Mở danh sách khách <ArrowRight size={14} aria-hidden="true" />
                 </button>
               </div>
               {loading ? <div className="customer-panel__loading">Đang tải khách lâu chưa quay lại...</div> : churnRiskCustomers.length > 0 ? (
@@ -597,7 +610,12 @@ const CustomerAnalyticsPage = () => {
                           ) : (
                             <span className="customer-row-action customer-row-action--disabled">Thiếu SĐT</span>
                           )}
-                          <button type="button" onClick={() => navigateManagerPage("customers", { customerId: customer?.userId })}>
+                          <button type="button" onClick={() =>
+                              navigateManagerPage("customers", {
+                                search: customer?.fullName || customer?.phone || "",
+                                customerName: customer?.fullName || "",
+                              })
+                            }>
                             Hồ sơ
                           </button>
                         </div>
@@ -608,14 +626,18 @@ const CustomerAnalyticsPage = () => {
               ) : <EmptyState title="Chưa có khách lâu chưa quay lại" description="Hiện chưa có khách nào cần nhắc quay lại trong dữ liệu." />}
             </section>
 
-            <section className="customer-panel">
+            <section
+              id="customer-insight-high-value"
+              className="customer-panel"
+              tabIndex={-1}
+            >
               <div className="customer-panel__head">
                 <div>
                   <h3>Khách giá trị cao</h3>
                   <p>Nhóm khách chi tiêu lớn cần duy trì trải nghiệm tốt.</p>
                 </div>
-                <button type="button" onClick={() => navigateManagerPage("customers", { segment: "high-value" })}>
-                  Xem nhóm giá trị cao <ArrowRight size={14} aria-hidden="true" />
+                <button type="button" onClick={() => navigateManagerPage("customers")}>
+                  Mở danh sách khách <ArrowRight size={14} aria-hidden="true" />
                 </button>
               </div>
               {loading ? <div className="customer-panel__loading">Đang tải khách giá trị cao...</div> : topValueCustomers.length > 0 ? (
@@ -647,7 +669,13 @@ const CustomerAnalyticsPage = () => {
                           ) : (
                             <span className="customer-row-action customer-row-action--disabled">Thiếu SĐT</span>
                           )}
-                          <button type="button" onClick={() => navigateManagerPage("orders", { customerId: customer?.userId })}>
+                          <button type="button" onClick={() =>
+                              navigateManagerPage("orders", {
+                                customerId: customer?.userId,
+                                customerName: customer?.fullName || "",
+                                restaurantId: effectiveRestaurantId,
+                              })
+                            }>
                             Xem đơn
                           </button>
                         </div>

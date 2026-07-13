@@ -3,6 +3,7 @@ import { X, Eye, Loader, Calendar, Filter, DollarSign } from "lucide-react";
 import useOrderManagement from "../../../../hooks/useOrderManagement";
 import "./HistoryModal.scss";
 import { formatDiscountReasonLabel } from "@/utils/discountDisplay";
+import { toUserFacingErrorMessage } from "@/utils/userFacingError";
 /* --- Helpers --- */
 const toEpochMs = (v) => {
   if (v == null) return null;
@@ -72,7 +73,13 @@ const formatDate = (date) => {
 
 const VALID_HISTORY = new Set(["served", "completed", "cancelled"]);
 
-const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
+const HistoryModal = ({
+  restaurantId,
+  customerId = "",
+  customerName = "",
+  onClose,
+  onViewOrder,
+}) => {
   const { loadOrdersAll } = useOrderManagement();
 
   const [allOrders, setAllOrders] = useState([]);
@@ -120,7 +127,12 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
           hasNextPage: !!conn?.pageInfo?.hasNextPage,
         });
       } catch (err) {
-        setErrorMsg(err?.message || "Không tải được lịch sử đơn.");
+        setErrorMsg(
+        toUserFacingErrorMessage(
+          err,
+          "Chưa thể tải lịch sử đơn. Vui lòng thử lại.",
+        ),
+      );
       } finally {
         setLoading(false);
       }
@@ -140,21 +152,43 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
+  const customerOrders = useMemo(() => {
+    const normalizedCustomerId = String(customerId || "").trim();
+    const normalizedCustomerName = String(customerName || "")
+      .trim()
+      .toLocaleLowerCase("vi");
+    if (!normalizedCustomerId && !normalizedCustomerName) return allOrders;
+    return allOrders.filter((order) => {
+      const orderCustomerId = String(order?.user?.id || "").trim();
+      if (normalizedCustomerId && orderCustomerId === normalizedCustomerId) {
+        return true;
+      }
+      const orderCustomerName = String(order?.user?.fullName || "")
+        .trim()
+        .toLocaleLowerCase("vi");
+      return Boolean(
+        !normalizedCustomerId &&
+          normalizedCustomerName &&
+          orderCustomerName === normalizedCustomerName,
+      );
+    });
+  }, [allOrders, customerId, customerName]);
+
   const history = useMemo(() => {
-    if (statusFilter === "all") return allOrders;
-    return allOrders.filter((o) => o.currentStatus === statusFilter);
-  }, [allOrders, statusFilter]);
+    if (statusFilter === "all") return customerOrders;
+    return customerOrders.filter((o) => o.currentStatus === statusFilter);
+  }, [customerOrders, statusFilter]);
 
   const summary = useMemo(() => {
-    const served = allOrders.filter((o) => o.currentStatus === "served").length;
-    const completed = allOrders.filter(
+    const served = customerOrders.filter((o) => o.currentStatus === "served").length;
+    const completed = customerOrders.filter(
       (o) => o.currentStatus === "completed",
     ).length;
-    const cancelled = allOrders.filter(
+    const cancelled = customerOrders.filter(
       (o) => o.currentStatus === "cancelled",
     ).length;
-    return { served, completed, cancelled, total: allOrders.length };
-  }, [allOrders]);
+    return { served, completed, cancelled, total: customerOrders.length };
+  }, [customerOrders]);
 
   return (
     <div
@@ -175,7 +209,9 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
             <div>
               <h3 id="order-history-title" className="hm-header__title">Lịch sử đơn hàng</h3>
               <p className="hm-header__subtitle">
-                Xem lại các đơn đã hoàn thành hoặc hủy
+                {customerName
+                  ? `Đơn hàng của ${customerName}`
+                  : "Xem lại các đơn đã hoàn thành hoặc hủy"}
               </p>
             </div>
           </div>
