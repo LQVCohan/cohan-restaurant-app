@@ -79,6 +79,7 @@ import { installMobileHomeVisualQc } from "./utils/installMobileHomeVisualQc";
 import { installAuthRecoveryAndFacebook } from "./utils/installAuthRecoveryAndFacebook";
 import { installHeroFoodVisualGuard } from "./utils/installHeroFoodVisualGuard";
 import { installReservationHistoryReportFixes } from "./utils/installReservationHistoryReportFixes";
+import { installReportPages26To29Ui } from "./utils/installReportPages26To29Ui";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 import "./styles/ResponsiveFoundation.css";
 import "./styles/CustomTableBuilderResponsiveFix.css";
@@ -129,6 +130,7 @@ installMobileHomeVisualQc();
 installAuthRecoveryAndFacebook();
 installHeroFoodVisualGuard();
 installReservationHistoryReportFixes();
+installReportPages26To29Ui();
 installAttendanceWordingTuning();
 
 createRoot(document.getElementById("root")).render(
