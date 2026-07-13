@@ -1,0 +1,272 @@
+.part-time-shift-modal {
+  display: grid;
+  gap: 18px;
+  color: #26352f;
+}
+
+.part-time-shift-modal__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #dce7e1;
+  border-radius: 16px;
+  background: #f7faf8;
+}
+
+.part-time-shift-modal__summary > div {
+  display: grid;
+  gap: 5px;
+}
+
+.part-time-shift-modal__summary span,
+.part-time-shift-modal__section .eyebrow,
+.custom-duration-field > span,
+.part-time-shift-modal__section.compact label > span {
+  color: #718078;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.part-time-shift-modal__summary strong {
+  color: #18372c;
+  font-size: 14px;
+}
+
+.part-time-shift-modal__section {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #e2e9e5;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.part-time-shift-modal__section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.part-time-shift-modal__section-heading h4 {
+  margin: 3px 0 0;
+  color: #193a2f;
+  font-size: 15px;
+}
+
+.duration-result,
+.selected-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #edf5f0;
+  color: #286447;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.duration-presets {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.duration-presets button {
+  min-height: 38px;
+  border: 1px solid #dbe5df;
+  border-radius: 10px;
+  background: #fff;
+  color: #4b5f55;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.duration-presets button.active {
+  border-color: #4c8a68;
+  background: #eaf5ee;
+  color: #1f6844;
+  box-shadow: 0 0 0 2px rgba(76, 138, 104, 0.1);
+}
+
+.custom-duration-field,
+.part-time-shift-modal__section.compact label {
+  display: grid;
+  gap: 7px;
+}
+
+.custom-duration-field input,
+.part-time-shift-modal textarea,
+.part-time-staff-search input {
+  width: 100%;
+  border: 1px solid #d7e1dc;
+  border-radius: 11px;
+  background: #fff;
+  color: #243a31;
+  font: inherit;
+  outline: none;
+}
+
+.custom-duration-field input {
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.part-time-shift-modal textarea {
+  resize: vertical;
+  padding: 10px 12px;
+}
+
+.custom-duration-field input:focus,
+.part-time-shift-modal textarea:focus,
+.part-time-staff-search:focus-within {
+  border-color: #5f9475;
+  box-shadow: 0 0 0 3px rgba(95, 148, 117, 0.12);
+}
+
+.part-time-staff-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 11px;
+  border: 1px solid #d7e1dc;
+  border-radius: 11px;
+  color: #77857e;
+}
+
+.part-time-staff-search input {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.part-time-staff-list {
+  display: grid;
+  gap: 8px;
+  max-height: 250px;
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.part-time-staff-list > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #e1e7e4;
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.part-time-staff-list > button:hover,
+.part-time-staff-list > button.selected {
+  border-color: #74a086;
+  background: #f1f8f4;
+}
+
+.part-time-staff-list__identity {
+  display: grid;
+  gap: 3px;
+}
+
+.part-time-staff-list__identity strong {
+  color: #263a31;
+  font-size: 14px;
+}
+
+.part-time-staff-list__identity small {
+  color: #738078;
+  font-size: 12px;
+}
+
+.part-time-staff-list__check {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: #dfeee5;
+  color: #28704a;
+}
+
+.part-time-staff-list__empty {
+  padding: 18px;
+  border: 1px dashed #d7e1dc;
+  border-radius: 12px;
+  color: #77857e;
+  text-align: center;
+}
+
+.part-time-shift-modal__section.compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.part-time-shift-modal__error {
+  padding: 11px 13px;
+  border: 1px solid #efc5c5;
+  border-radius: 12px;
+  background: #fff4f4;
+  color: #a23d3d;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.part-time-shift-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  position: sticky;
+  bottom: 0;
+  padding-top: 4px;
+  background: #fff;
+}
+
+.part-time-shift-modal__footer button {
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.part-time-shift-modal__footer .secondary {
+  border: 1px solid #d5dfda;
+  background: #fff;
+  color: #506159;
+}
+
+.part-time-shift-modal__footer .primary {
+  border: 1px solid #2f7150;
+  background: #2f7150;
+  color: #fff;
+}
+
+.part-time-shift-modal__footer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@media (max-width: 720px) {
+  .part-time-shift-modal__summary,
+  .part-time-shift-modal__section.compact {
+    grid-template-columns: 1fr;
+  }
+
+  .duration-presets {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .part-time-shift-modal__section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

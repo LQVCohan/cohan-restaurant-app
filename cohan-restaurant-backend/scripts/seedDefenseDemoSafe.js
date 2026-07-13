@@ -53,6 +53,10 @@ runScript("repairDefenseAccountDiscriminators.js");
 // Resolve staff IDs by email after the account repair, then create a complete,
 // idempotent roster for the previous and current Vietnam calendar weeks.
 runScript("seedScheduleCurrentAndPreviousWeek.js");
+// The historical roster used the same six-hour blocks for every contract type.
+// Convert only seeded part-time/seasonal assignments to independent four-hour
+// rotating blocks and keep linked planned timesheets aligned.
+runScript("normalizeDefensePartTimeShiftBlocks.js");
 // Verify the persisted database, not only the source definitions. This catches
 // partial writes, missing recipes, unsynchronised purchase costs and lost kg variants.
 runScript("verifyDefenseMenuCatalogDb.js");
