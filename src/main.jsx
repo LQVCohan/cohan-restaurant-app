@@ -74,6 +74,7 @@ import { installMergedTableCustomerProfiles } from "./utils/installMergedTableCu
 import { installMergedTableLifecycleUi } from "./utils/installMergedTableLifecycleUi";
 import { installTableEmptyStateEnhancement } from "./utils/installTableEmptyStateEnhancement";
 import { installGuidedAiCaptureCards } from "./utils/installGuidedAiCaptureCards";
+import { installAiChatbotQuestionAutoScroll } from "./utils/installAiChatbotQuestionAutoScroll";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 import "./styles/ResponsiveFoundation.css";
 import "./styles/CustomTableBuilderResponsiveFix.css";
@@ -102,6 +103,7 @@ const normalizeLegacyManagerHash = () => {
 normalizeLegacyManagerHash();
 window.addEventListener("hashchange", normalizeLegacyManagerHash);
 
+installAiChatbotQuestionAutoScroll();
 installRbacVietnameseLabels();
 applyChatThreadToolbarStyle();
 installRestaurantHoursEnhancement();
