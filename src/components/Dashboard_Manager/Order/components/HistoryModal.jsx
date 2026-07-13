@@ -132,6 +132,14 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
     loadPage(null);
   }, [loadPage]);
 
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose?.();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   const history = useMemo(() => {
     if (statusFilter === "all") return allOrders;
     return allOrders.filter((o) => o.currentStatus === statusFilter);
@@ -151,96 +159,81 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
   return (
     <div
       className="hm-overlay"
-      role="dialog"
-      aria-modal="true"
       onClick={onClose}
     >
-      <div className="hm-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="hm-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="order-history-title"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* --- HEADER --- */}
         <header className="hm-header">
           <div className="hm-header__title-group">
-            <Calendar className="hm-header__icon" size={24} />
+            <Calendar className="hm-header__icon" size={24} aria-hidden="true" />
             <div>
-              <h3 className="hm-header__title">Lịch sử đơn hàng</h3>
+              <h3 id="order-history-title" className="hm-header__title">Lịch sử đơn hàng</h3>
               <p className="hm-header__subtitle">
                 Xem lại các đơn đã hoàn thành hoặc hủy
               </p>
             </div>
           </div>
-          <button className="hm-close-btn" onClick={onClose} aria-label="Đóng">
-            <X size={20} />
+          <button type="button" className="hm-close-btn" onClick={onClose} aria-label="Đóng lịch sử đơn hàng">
+            <X size={20} aria-hidden="true" />
           </button>
         </header>
 
         {/* --- STATS BAR --- */}
-        <div className="hm-stats">
-          <div className="hm-stat-item">
+        <div className="hm-stats" aria-label="Lọc lịch sử theo trạng thái">
+          <button
+            type="button"
+            className={`hm-stat-item ${statusFilter === "all" ? "is-active" : ""}`}
+            aria-pressed={statusFilter === "all"}
+            onClick={() => setStatusFilter("all")}
+          >
             <span className="hm-stat-label">Tổng</span>
             <span className="hm-stat-val">{summary.total}</span>
-          </div>
-          <div className="hm-stat-divider" />
-          <div className="hm-stat-item hm-text-served">
+          </button>
+          <button
+            type="button"
+            className={`hm-stat-item hm-text-served ${statusFilter === "served" ? "is-active" : ""}`}
+            aria-pressed={statusFilter === "served"}
+            onClick={() => setStatusFilter("served")}
+          >
             <span className="hm-stat-label">Đã phục vụ</span>
             <span className="hm-stat-val">{summary.served}</span>
-          </div>
-          <div className="hm-stat-item hm-text-completed">
+          </button>
+          <button
+            type="button"
+            className={`hm-stat-item hm-text-completed ${statusFilter === "completed" ? "is-active" : ""}`}
+            aria-pressed={statusFilter === "completed"}
+            onClick={() => setStatusFilter("completed")}
+          >
             <span className="hm-stat-label">Hoàn thành</span>
             <span className="hm-stat-val">{summary.completed}</span>
-          </div>
-          <div className="hm-stat-item hm-text-cancelled">
+          </button>
+          <button
+            type="button"
+            className={`hm-stat-item hm-text-cancelled ${statusFilter === "cancelled" ? "is-active" : ""}`}
+            aria-pressed={statusFilter === "cancelled"}
+            onClick={() => setStatusFilter("cancelled")}
+          >
             <span className="hm-stat-label">Đã hủy</span>
             <span className="hm-stat-val">{summary.cancelled}</span>
-          </div>
-        </div>
-
-        {/* --- FILTERS --- */}
-        <div className="hm-filters">
-          <div className="hm-filters__scroll">
-            <button
-              className={`hm-chip ${
-                statusFilter === "all" ? "hm-chip--active" : ""
-              }`}
-              onClick={() => setStatusFilter("all")}
-            >
-              Tất cả
-            </button>
-            <button
-              className={`hm-chip ${
-                statusFilter === "served" ? "hm-chip--active" : ""
-              }`}
-              onClick={() => setStatusFilter("served")}
-            >
-              Đã phục vụ
-            </button>
-            <button
-              className={`hm-chip ${
-                statusFilter === "completed" ? "hm-chip--active" : ""
-              }`}
-              onClick={() => setStatusFilter("completed")}
-            >
-              Hoàn thành
-            </button>
-            <button
-              className={`hm-chip ${
-                statusFilter === "cancelled" ? "hm-chip--active" : ""
-              }`}
-              onClick={() => setStatusFilter("cancelled")}
-            >
-              Đã hủy
-            </button>
-          </div>
+          </button>
         </div>
 
         {/* --- CONTENT --- */}
         <div className="hm-body custom-scrollbar">
           {errorMsg ? (
-            <div className="hm-empty">
+            <div className="hm-empty" role="alert">
               <p className="hm-empty__text hm-text-error">{errorMsg}</p>
             </div>
           ) : history.length === 0 && !loading ? (
             <div className="hm-empty">
               <div className="hm-empty__icon">
-                <Filter size={32} />
+                <Filter size={32} aria-hidden="true" />
               </div>
               <h3>Không tìm thấy đơn hàng</h3>
               <p>Thử thay đổi bộ lọc hoặc tải lại trang</p>
@@ -307,11 +300,11 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
                         <div className="hm-discount-tags">
                           {discountMeta.voucherCode && (
                             <span className="hm-discount-tag">
-                              Coupon {discountMeta.voucherCode}
+                              Mã ưu đãi {discountMeta.voucherCode}
                             </span>
                           )}
                           {discountMeta.promotionId && (
-                            <span className="hm-discount-tag">Promotion</span>
+                            <span className="hm-discount-tag">Ưu đãi tự động</span>
                           )}
                           {discountMeta.discount > 0 && (
                             <span className="hm-discount-tag hm-discount-tag--amount">
@@ -329,14 +322,15 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
                     {/* Footer */}
                     <div className="hm-card__footer">
                       <div className="hm-card__total">
-                        <DollarSign size={14} strokeWidth={3} />
+                        <DollarSign size={14} strokeWidth={3} aria-hidden="true" />
                         {formatCurrency(order?.totals?.grandTotal)}
                       </div>
                       <button
+                        type="button"
                         className="hm-btn-view"
                         onClick={() => onViewOrder?.(order)}
                       >
-                        <Eye size={16} /> Chi tiết
+                        <Eye size={16} aria-hidden="true" /> Chi tiết
                       </button>
                     </div>
                   </div>
@@ -348,12 +342,13 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
           {/* Loading / Load More */}
           <div className="hm-loader-area">
             {loading ? (
-              <div className="hm-loading">
-                <Loader className="animate-spin" size={20} /> Đang tải thêm...
+              <div className="hm-loading" role="status">
+                <Loader className="animate-spin" size={20} aria-hidden="true" /> Đang tải thêm…
               </div>
             ) : (
               pageInfo.hasNextPage && (
                 <button
+                  type="button"
                   className="hm-btn-loadmore"
                   onClick={() => loadPage(pageInfo.endCursor)}
                 >

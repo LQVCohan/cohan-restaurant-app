@@ -14,7 +14,6 @@ import {
   Clock,
   CheckCircle2,
   ChefHat,
-  MoreVertical,
   Utensils,
   Bike,
   Users,
@@ -58,6 +57,23 @@ const SYSTEM_NOTE_LABELS = {
   "Off-premise order created": "Tạo đơn mang về/giao hàng",
   "Order created": "Tạo đơn",
   "Order confirmed": "Xác nhận đơn",
+};
+
+const PAYMENT_STATUS_LABELS = {
+  pending: "Chưa thanh toán",
+  paid: "Đã thanh toán",
+  partially_paid: "Thanh toán một phần",
+  failed: "Thanh toán không thành công",
+  refunded: "Đã hoàn tiền",
+};
+
+const PAYMENT_METHOD_LABELS = {
+  cash: "Tiền mặt",
+  bank_transfer: "Chuyển khoản",
+  card: "Thẻ",
+  momo: "MoMo",
+  zalopay: "ZaloPay",
+  vnpay: "VNPay",
 };
 
 const getTimelineLabel = (event) =>
@@ -117,6 +133,12 @@ const ITEM_STATUS_CONFIG = {
     icon: X,
   },
 };
+const ITEM_STATUS_STEPS = ["pending", "preparing", "ready", "served"];
+const NEXT_ITEM_ACTION_LABELS = {
+  preparing: "Bắt đầu chế biến",
+  ready: "Báo món đã sẵn sàng",
+  served: "Xác nhận đã giao món",
+};
 export const ORDER_ITEM_ISSUE_REASON_OPTIONS = [
   { group: "kitchen", label: "Bếp", options: ["Món cháy / khét", "Món sống hoặc chưa chín", "Món nguội", "Món sai vị / không đạt chất lượng", "Bếp làm sai món", "Ra món quá lâu", "Hết món / hết nguyên liệu"] },
   { group: "service", label: "Phục vụ/Order", options: ["Nhân viên nhập sai món", "Order sai món", "Phục vụ nhập sai"] },
@@ -163,34 +185,15 @@ const OrderItemRow = React.memo(
     onOpenApproveReturn,
     onOpenRejectReturn,
   }) => {
-    const [menuOpen, setMenuOpen] = useState(false);
-    const menuRef = useRef(null);
-    const targetOrderId = item?.sourceOrderId || order?.actionOrderId || order?.id || order?._id;
-
-    useEffect(() => {
-      const handleClickOutside = (event) => {
-        if (menuRef.current && !menuRef.current.contains(event.target)) {
-          setMenuOpen(false);
-        }
-      };
-      document.addEventListener("mousedown", handleClickOutside);
-      return () =>
-        document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
     const lineDisplay = getOrderLineDisplay(item, { mode: "receipt" });
     const config = ITEM_STATUS_CONFIG[item.status] || ITEM_STATUS_CONFIG.pending;
-    const StatusIcon = config.icon;
 
     const allowedNextStatuses = getAllowedNextItemStatuses(
       item.status,
       orderStatus,
     );
-
-    const disabled =
-      ["completed", "cancelled"].includes(orderStatus) ||
-      ["cancelled", "returned", "served"].includes(item.status) ||
-      allowedNextStatuses.length === 0;
+    const nextStatus = allowedNextStatuses[0] || null;
+    const activeStepIndex = ITEM_STATUS_STEPS.indexOf(item.status);
     const pendingVoidRequests = (item.voidRequests || []).filter(
       (r) => r.status === "pending",
     );
@@ -213,11 +216,6 @@ const OrderItemRow = React.memo(
       !["served", "cancelled", "returned"].includes(item.status) &&
       pendingVoidRequests.length === 0 &&
       typeof onOpenCancelItem === "function";
-
-    const handleSelectStatus = (status) => {
-      onStatusChange(item, index, status);
-      setMenuOpen(false);
-    };
 
     return (
       <div className={`itemCard ${item.status} ${isSaving ? "saving" : ""}`}>
@@ -252,28 +250,13 @@ const OrderItemRow = React.memo(
           </div>
           {item.note && (
             <div className="itemCard__note">
-              <span>Note:</span> {item.note}
+              <span>Ghi chú:</span> {item.note}
             </div>
           )}
           <div className="itemCard__price">
             {formatCurrency(lineDisplay.totalPrice || item._lineTotal)}
             {lineDisplay.discountAmount > 0 && <small>Tiết kiệm {formatCurrency(lineDisplay.discountAmount)}</small>}
           </div>
-          {canCancelItem ? (
-            <button
-              type="button"
-              className="itemCard__cancel"
-              onClick={() =>
-                onOpenCancelItem({
-                  item,
-                  index,
-                  maxQuantity: Number(item.quantity || 1),
-                })
-              }
-            >
-              <X size={15} aria-hidden="true" /> Hủy món ngay
-            </button>
-          ) : null}
           {pendingVoidRequests.map((req) => (
             <div key={req.requestId} className="itemCard__note">
               <div>Yêu cầu hủy: {req.quantity} món</div>
@@ -343,36 +326,53 @@ const OrderItemRow = React.memo(
         </div>
         <div className="itemCard__actions">
           {isSaving ? (
-            <Loader2 className="spin text-gold" size={20} />
+            <span className="itemCard__saving" role="status">
+              <Loader2 className="spin" size={18} aria-hidden="true" /> Đang cập nhật
+            </span>
           ) : (
-            <div className="statusDropdown" ref={menuRef}>
-              <button
-                className={`statusBtn ${config.color}`}
-                onClick={() => !disabled && setMenuOpen(!menuOpen)}
-                disabled={disabled}
-              >
-                {StatusIcon && <StatusIcon size={14} />}
-                <span>{config.label}</span>
-                {!disabled && (
-                  <MoreVertical size={14} style={{ opacity: 0.5 }} />
-                )}
-              </button>
-              {menuOpen && (
-                <div className="statusMenu">
-                  {allowedNextStatuses.map((key) => {
-                    const cfg = ITEM_STATUS_CONFIG[key];
-                    return (
-                      <button
-                        key={key}
-                        className={`statusMenuItem ${cfg.color}`}
-                        onClick={() => handleSelectStatus(key)}
-                      >
-                        {cfg.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+            <div className="itemCard__workflow">
+              <div className="itemCard__workflowHead">
+                <span>Tình trạng món</span>
+                <strong className={`is-${config.color}`}>{config.label}</strong>
+              </div>
+              <ol className="itemCard__steps" aria-label={`Tiến độ món ${lineDisplay.displayName}`}>
+                {ITEM_STATUS_STEPS.map((step, stepIndex) => (
+                  <li
+                    key={step}
+                    className={`${stepIndex < activeStepIndex ? "is-done" : ""} ${stepIndex === activeStepIndex ? "is-current" : ""}`}
+                    aria-current={stepIndex === activeStepIndex ? "step" : undefined}
+                  >
+                    <span aria-hidden="true" />
+                    {ITEM_STATUS_CONFIG[step].label}
+                  </li>
+                ))}
+              </ol>
+              <div className="itemCard__workflowActions">
+                {nextStatus ? (
+                  <button
+                    type="button"
+                    className="itemCard__nextStatus"
+                    onClick={() => onStatusChange(item, index, nextStatus)}
+                  >
+                    {NEXT_ITEM_ACTION_LABELS[nextStatus]}
+                  </button>
+                ) : null}
+                {canCancelItem ? (
+                  <button
+                    type="button"
+                    className="itemCard__cancel"
+                    onClick={() =>
+                      onOpenCancelItem({
+                        item,
+                        index,
+                        maxQuantity: Number(item.quantity || 1),
+                      })
+                    }
+                  >
+                    <X size={15} aria-hidden="true" /> Hủy món
+                  </button>
+                ) : null}
+              </div>
             </div>
           )}
         </div>
@@ -560,6 +560,19 @@ const OrderModal = ({
     setActionError("");
   }, [actionSubmitting]);
 
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key !== "Escape") return;
+      if (actionDialog) {
+        closeActionDialog();
+        return;
+      }
+      handleClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [actionDialog, closeActionDialog, handleClose]);
+
   const submitActionDialog = useCallback(
     async (formState = {}) => {
       if (!actionDialog) return;
@@ -570,7 +583,7 @@ const OrderModal = ({
       try {
         if (actionDialog.type === "approveVoid") {
           if (typeof onReviewItemVoid !== "function") throw new Error("Chức năng này chưa khả dụng trong ngữ cảnh hiện tại.");
-          await onReviewItemVoid({ orderId: targetOrderId, orderItemId: actionDialog.item._id, requestId: actionDialog.request.requestId, approve: true, note: "POS duyệt yêu cầu hủy món" });
+          await onReviewItemVoid({ orderId: targetOrderId, orderItemId: actionDialog.item._id, requestId: actionDialog.request.requestId, approve: true, note: "Nhân viên duyệt yêu cầu hủy món" });
         } else if (actionDialog.type === "rejectVoid") {
           const note = String(formState.note || "").trim();
           if (!note) throw new Error("Vui lòng nhập lý do từ chối.");
@@ -625,7 +638,7 @@ const OrderModal = ({
         setActionSubmitting(false);
       }
     },
-    [actionDialog, actionOrderId, handleChangeStatus, items, onCancelItem, onRequestItemReturn, onReviewItemReturn, onReviewItemVoid, order?.id],
+    [actionDialog, actionOrderId, handleChangeStatus, items, onCancelItem, onRequestItemReturn, onReviewItemReturn, onReviewItemVoid, onUpdateItemStatus, order?.id],
   );
 
   const handleServeAll = async () => {
@@ -644,15 +657,21 @@ const OrderModal = ({
 
   return createPortal(
     <div className="om-overlay" onClick={handleClose}>
-      <div className="om-modal-box" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="om-modal-box"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="order-detail-title"
+        onClick={(e) => e.stopPropagation()}
+      >
         <header className="om-header">
           <div className="om-header__left">
             <div className="om-header__title-row">
-              <h2 className="title">
+              <h2 id="order-detail-title" className="title">
                 {order?.orderCode || `#${String(order?.id).slice(-4)}`}
               </h2>
               <span className={`status-badge ${order?.currentStatus}`}>
-                {ITEM_STATUS_CONFIG[order?.currentStatus]?.label ||
+                {ORDER_STATUS_LABELS[order?.currentStatus] ||
                   order?.currentStatus}
               </span>
             </div>
@@ -668,18 +687,22 @@ const OrderModal = ({
           </div>
           <div className="om-header__actions">
             <button
+              type="button"
               className="om-btn ghost icon-only"
               onClick={() => onCreateTemporaryBill?.(order)}
               title="In phiếu"
+              aria-label="In phiếu tạm tính"
             >
-              <Printer size={20} />
+              <Printer size={20} aria-hidden="true" />
             </button>
             <button
+              type="button"
               className="om-btn ghost icon-only"
               onClick={handleClose}
               title="Đóng"
+              aria-label="Đóng chi tiết đơn hàng"
             >
-              <X size={24} />
+              <X size={24} aria-hidden="true" />
             </button>
           </div>
         </header>
@@ -705,8 +728,9 @@ const OrderModal = ({
             <div className="info-row">
               <label>Thanh toán:</label>
               <strong>
-                {order?.payment?.status || "pending"} /{" "}
-                {order?.payment?.method || "cash"}
+                {PAYMENT_STATUS_LABELS[order?.payment?.status] || "Chưa thanh toán"}
+                {" · "}
+                {PAYMENT_METHOD_LABELS[order?.payment?.method] || "Tiền mặt"}
               </strong>
             </div>
             {(order?.shipping?.fullName || order?.shipping?.phone) && (
@@ -760,7 +784,7 @@ const OrderModal = ({
             order.statusTimeline.length > 0 && (
               <section className="om-section">
                 <div className="section-header">
-                  <h3>Timeline trạng thái</h3>
+                  <h3>Lịch sử xử lý</h3>
                 </div>
                 <div className="items-grid">
                   {order.statusTimeline
@@ -865,11 +889,11 @@ const OrderModal = ({
                 <div className="discount-meta-tags">
                   {totals.voucherCode && (
                     <span className="discount-meta-tag">
-                      Coupon {totals.voucherCode}
+                      Mã ưu đãi {totals.voucherCode}
                     </span>
                   )}
                   {totals.promotionId && (
-                    <span className="discount-meta-tag">Promotion</span>
+                    <span className="discount-meta-tag">Ưu đãi tự động</span>
                   )}
                   {totals.discountReason && (
                     <span className="discount-meta-tag muted">
@@ -895,13 +919,13 @@ const OrderModal = ({
             className="om-btn primary"
             onClick={() => onCreateTemporaryBill?.(order)}
           >
-            <Printer size={18} /> In tạm tính
+            <Printer size={18} /> In phiếu tạm tính
           </button>
         </footer>
         {actionDialog && (
           <div className="om-actionDialogOverlay" onClick={closeActionDialog}>
-            <div className="om-actionDialog" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-              <div className="om-actionDialog__header">{actionDialog.title}</div>
+            <div className="om-actionDialog" role="dialog" aria-modal="true" aria-labelledby="order-action-dialog-title" onClick={(e) => e.stopPropagation()}>
+              <div id="order-action-dialog-title" className="om-actionDialog__header">{actionDialog.title}</div>
               <div className="om-actionDialog__body">
                 {actionDialog.type === "approveVoid" && <p>Duyệt hủy x{actionDialog.request?.quantity} món {actionDialog.item?.name}. Tổng tiền sẽ được cập nhật, kho không được hoàn tự động.</p>}
                 {actionDialog.type === "approveReturn" && <p>Duyệt trả lại x{actionDialog.request?.quantity} món {actionDialog.item?.name}. Kho sẽ không được hoàn tự động.</p>}
@@ -952,7 +976,7 @@ const OrderModal = ({
                           placeholder={
                             actionForm.reasonPreset === "Khác"
                               ? `Nhập lý do ${actionDialog.type === "cancelItem" ? "hủy" : "trả lại"} món…`
-                              : "Có thể bổ sung chi tiết, ví dụ bàn/số lượng/tình trạng món..."
+                              : "Có thể bổ sung chi tiết, ví dụ bàn/số lượng/tình trạng món…"
                           }
                           onChange={(e) => setActionForm((prev) => ({ ...prev, reason: e.target.value }))}
                         />
@@ -976,12 +1000,12 @@ const OrderModal = ({
                     )}
                   </>
                 )}
-                {actionError && <div className="om-actionDialog__error">{actionError}</div>}
+                {actionError && <div className="om-actionDialog__error" role="alert">{actionError}</div>}
               </div>
               <div className="om-actionDialog__actions">
-                <button className="om-actionDialog__button om-actionDialog__button--secondary" onClick={closeActionDialog} disabled={actionSubmitting}>Hủy</button>
-                <button className={`om-actionDialog__button ${["approveVoid", "approveReturn", "serveAll", "cancelItem"].includes(actionDialog.type) ? "om-actionDialog__button--danger" : "om-actionDialog__button--primary"}`} onClick={() => submitActionDialog(actionForm)} disabled={actionSubmitting}>
-                  {actionSubmitting ? "Đang xử lý..." : "Xác nhận"}
+                <button type="button" className="om-actionDialog__button om-actionDialog__button--secondary" onClick={closeActionDialog} disabled={actionSubmitting}>Hủy</button>
+                <button type="button" className={`om-actionDialog__button ${["approveVoid", "approveReturn", "serveAll", "cancelItem"].includes(actionDialog.type) ? "om-actionDialog__button--danger" : "om-actionDialog__button--primary"}`} onClick={() => submitActionDialog(actionForm)} disabled={actionSubmitting}>
+                  {actionSubmitting ? "Đang xử lý…" : "Xác nhận"}
                 </button>
               </div>
             </div>
