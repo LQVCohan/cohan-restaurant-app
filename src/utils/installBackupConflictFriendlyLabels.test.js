@@ -69,6 +69,6 @@ describe("installBackupConflictFriendlyLabels", () => {
     expect(document.body.textContent).toContain("50.000 đ");
     expect(document.body.textContent).not.toContain("restaurantProfile");
     expect(document.body.textContent).not.toContain("Singleton configuration differs from target");
-    expect(document.querySelector("input").placeholder).toBe("Tìm theo tên thông tin");
+    expect(document.querySelector('input[placeholder="Tìm theo tên thông tin"]')).toBeInTheDocument();
   });
 });
