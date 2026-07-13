@@ -142,7 +142,7 @@ const Dashboard = ({ staffRoster = null }) => {
       >
         <div>
           <p className="dashboard-compact-header__greeting">{greetingText}</p>
-          <h1 id="dashboard-title">Dashboard quản lý</h1>
+          <h1 id="dashboard-title">Tổng quan quản lý</h1>
           <p className="dashboard-compact-header__subtitle">
             Theo dõi nhanh doanh thu, đơn hàng, tồn kho và hiệu suất trong ca.
           </p>
@@ -238,7 +238,7 @@ const Dashboard = ({ staffRoster = null }) => {
         <section className="dashboard-error" role="alert">
           <AlertTriangle size={18} />
           <div>
-            <h3>Không thể tải dữ liệu dashboard</h3>
+            <h3>Không thể tải dữ liệu tổng quan</h3>
             <p>{error?.message || "Vui lòng thử lại sau."}</p>
           </div>
           <button
@@ -264,12 +264,12 @@ const Dashboard = ({ staffRoster = null }) => {
               Cần hoàn tất chi nhánh
             </p>
             <h2 id="dashboard-no-restaurant-title">
-              Chưa tìm thấy nhà hàng trong Brand hiện tại
+              Chưa tìm thấy nhà hàng trong thương hiệu hiện tại
             </h2>
             <p>
               Chi nhánh chính là nhà hàng đang vận hành. Nếu bạn vừa đăng ký
               thương hiệu, hãy kiểm tra danh sách chi nhánh hoặc tạo chi nhánh
-              đầu tiên để dashboard có dữ liệu.
+              đầu tiên để trang tổng quan có dữ liệu.
             </p>
           </div>
           <div className="dashboard-no-restaurant__actions">
@@ -278,7 +278,7 @@ const Dashboard = ({ staffRoster = null }) => {
               className="dashboard-btn dashboard-btn--ghost"
               onClick={handleGoToBrands}
             >
-              Kiểm tra Brand
+              Kiểm tra thương hiệu
             </button>
             <button
               type="button"

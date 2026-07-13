@@ -3,6 +3,7 @@ import { gql, useQuery } from "@apollo/client";
 import { ArrowRight, UsersRound, Wifi } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 import { hasPermission } from "@/utils/frontendPermissionAccess";
+import { localizeDemoLabel } from "@/utils/vietnameseDemoLabels";
 import {
   STAFF_DATA_CHANGED_EVENT,
   isSameRestaurantEvent,
@@ -39,13 +40,19 @@ const DASHBOARD_STAFF_ROSTER_QUERY = gql`
 
 const ROLE_LABELS = {
   bartender: "Nhân viên pha chế",
+  "bar staff": "Nhân viên pha chế",
   cashier: "Thu ngân",
   chef: "Bếp trưởng",
   cleaner: "Nhân viên vệ sinh",
   cook: "Nhân viên bếp",
   host: "Nhân viên đón khách",
+  "kitchen helper": "Phụ bếp",
+  kitchen_helper: "Phụ bếp",
   manager: "Quản lý",
   server: "Nhân viên phục vụ",
+  shipper: "Nhân viên giao hàng",
+  storekeeper: "Thủ kho",
+  supervisor: "Giám sát",
   waiter: "Nhân viên phục vụ",
   waitress: "Nhân viên phục vụ",
 };
@@ -62,11 +69,11 @@ const getRoleLabel = (staff) => {
   return ROLE_LABELS[normalizedLabel] || rawLabel || "Chưa cập nhật chức danh";
 };
 
+const getStaffDisplayName = (staff) =>
+  localizeDemoLabel(staff?.fullName, "Chưa cập nhật tên");
+
 const compareByName = (left, right) =>
-  String(left?.fullName || "").localeCompare(
-    String(right?.fullName || ""),
-    "vi",
-  );
+  getStaffDisplayName(left).localeCompare(getStaffDisplayName(right), "vi");
 
 const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
   const { user } = useContext(AuthContext);
@@ -163,6 +170,7 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
           {visibleStaff.map((employee, index) => {
             const isFirstOffline =
               onlineCount > 0 && index === Math.min(onlineCount, 6);
+            const displayName = getStaffDisplayName(employee);
 
             return (
               <React.Fragment key={employee.id}>
@@ -175,7 +183,7 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
                   <div className="dashboard-staff-roster__avatar-wrap">
                     <StaffAvatarMedia
                       employee={employee}
-                      name={employee.fullName}
+                      name={displayName}
                       className="dashboard-staff-roster__avatar"
                       iconSize={18}
                     />
@@ -189,7 +197,7 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
                     />
                   </div>
                   <div className="dashboard-staff-roster__identity">
-                    <strong>{employee.fullName || "Chưa cập nhật tên"}</strong>
+                    <strong>{displayName}</strong>
                     <span>{getRoleLabel(employee)}</span>
                   </div>
                   {employee.isOnline ? (
@@ -221,5 +229,9 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
   );
 };
 
-export { DASHBOARD_STAFF_ROSTER_QUERY, getRoleLabel };
+export {
+  DASHBOARD_STAFF_ROSTER_QUERY,
+  getRoleLabel,
+  getStaffDisplayName,
+};
 export default DashboardStaffRoster;

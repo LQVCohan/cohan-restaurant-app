@@ -1,4 +1,5 @@
 import React from "react";
+import { localizeDemoLabel } from "@/utils/vietnameseDemoLabels";
 import "./TopDishes.scss";
 
 const formatCurrency = (amount) =>
@@ -53,6 +54,8 @@ const TopDishes = ({
               0,
               Math.min(100, (Number(dish?.quantity || 0) / maxQty) * 100),
             );
+            const dishName = localizeDemoLabel(dish?.dishName, "—");
+
             return (
               <div key={`${dish.dishName}-${index}`} className="dish-row">
                 <div className={`rank-badge ${index === 0 ? "rank-top" : ""}`}>
@@ -60,7 +63,7 @@ const TopDishes = ({
                 </div>
                 <div className="dish-content">
                   <div className="info-top">
-                    <h4 className="dish-name">{dish?.dishName || "—"}</h4>
+                    <h4 className="dish-name">{dishName}</h4>
                     <span className="dish-meta">
                       {Number(dish?.quantity || 0)} suất
                     </span>
@@ -73,7 +76,7 @@ const TopDishes = ({
                     min="0"
                     max="100"
                     value={progress}
-                    aria-label={`Tỷ lệ bán của ${dish?.dishName || "món"}`}
+                    aria-label={`Tỷ lệ bán của ${dishName || "món"}`}
                   />
                 </div>
               </div>

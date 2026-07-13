@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import useManagerRestaurantSelection from "./useManagerRestaurantSelection";
+import { localizeDemoLabel, localizeDemoLabelList } from "../utils/vietnameseDemoLabels";
 import {
   STAFF_DATA_CHANGED_EVENT,
   emitDashboardRestaurantChanged,
@@ -116,10 +117,24 @@ const getDashboardErrorMessage = (error) => {
     return "Tài khoản không có quyền xem chi nhánh đã chọn. Hãy chọn lại chi nhánh được phân công.";
   }
   if (error?.networkError) {
-    return "Không thể kết nối tới máy chủ. Vui lòng kiểm tra backend và thử lại.";
+    return "Không thể kết nối tới máy chủ. Vui lòng kiểm tra hệ thống và thử lại.";
   }
   return "Dữ liệu tổng quan chưa sẵn sàng. Vui lòng thử lại.";
 };
+
+const localizeRestaurant = (restaurant) =>
+  restaurant
+    ? {
+        ...restaurant,
+        name: localizeDemoLabel(restaurant.name, "Nhà hàng chưa cập nhật tên"),
+      }
+    : restaurant;
+
+const localizeOrder = (order) => ({
+  ...order,
+  customerName: localizeDemoLabel(order?.customerName, order?.customerName || ""),
+  itemNames: localizeDemoLabelList(order?.itemNames),
+});
 
 export const useDashboard = () => {
   const navigate = useNavigate();
@@ -187,6 +202,74 @@ export const useDashboard = () => {
     };
   }, [dashboard]);
 
+  const localizedRestaurants = useMemo(
+    () => (Array.isArray(restaurantOptions) ? restaurantOptions.map(localizeRestaurant) : []),
+    [restaurantOptions],
+  );
+  const localizedSelectedRestaurant = useMemo(
+    () => localizeRestaurant(selectedRestaurant),
+    [selectedRestaurant],
+  );
+  const localizedTopDishes = useMemo(
+    () =>
+      (Array.isArray(dashboard?.topDishes) ? dashboard.topDishes : []).map(
+        (dish) => ({
+          ...dish,
+          dishName: localizeDemoLabel(dish?.dishName, dish?.dishName || ""),
+        }),
+      ),
+    [dashboard?.topDishes],
+  );
+  const localizedRecentOrders = useMemo(
+    () =>
+      (Array.isArray(dashboard?.recentOrders) ? dashboard.recentOrders : []).map(
+        localizeOrder,
+      ),
+    [dashboard?.recentOrders],
+  );
+  const localizedLowStockItems = useMemo(
+    () =>
+      (Array.isArray(dashboard?.lowStockItems) ? dashboard.lowStockItems : []).map(
+        (item) => ({
+          ...item,
+          name: localizeDemoLabel(item?.name, item?.name || ""),
+        }),
+      ),
+    [dashboard?.lowStockItems],
+  );
+  const localizedPendingOrders = useMemo(
+    () =>
+      (Array.isArray(dashboard?.pendingOrders) ? dashboard.pendingOrders : []).map(
+        localizeOrder,
+      ),
+    [dashboard?.pendingOrders],
+  );
+  const localizedPendingReservations = useMemo(
+    () =>
+      (Array.isArray(dashboard?.pendingReservations)
+        ? dashboard.pendingReservations
+        : []
+      ).map((reservation) => ({
+        ...reservation,
+        customerName: localizeDemoLabel(
+          reservation?.customerName,
+          reservation?.customerName || "",
+        ),
+      })),
+    [dashboard?.pendingReservations],
+  );
+  const localizedPendingSupportRequests = useMemo(
+    () =>
+      (Array.isArray(dashboard?.pendingSupportRequests)
+        ? dashboard.pendingSupportRequests
+        : []
+      ).map((request) => ({
+        ...request,
+        message: localizeDemoLabel(request?.message, request?.message || ""),
+      })),
+    [dashboard?.pendingSupportRequests],
+  );
+
   useEffect(() => {
     if (
       !hasConfirmedRestaurantScope ||
@@ -242,8 +325,8 @@ export const useDashboard = () => {
   }, [hasConfirmedRestaurantScope, refetch, selectedRestaurantId, range]);
 
   return {
-    selectedRestaurant,
-    restaurants: restaurantOptions,
+    selectedRestaurant: localizedSelectedRestaurant,
+    restaurants: localizedRestaurants,
     selectedRestaurantId,
     stats,
     loading: dashboardLoading,
@@ -253,12 +336,12 @@ export const useDashboard = () => {
     setRange,
     revenueTrend: dashboard?.revenueTrend || [],
     orderTrend: dashboard?.orderTrend || [],
-    topDishes: dashboard?.topDishes || [],
-    recentOrders: dashboard?.recentOrders || [],
-    lowStockItems: dashboard?.lowStockItems || [],
-    pendingOrders: dashboard?.pendingOrders || [],
-    pendingReservations: dashboard?.pendingReservations || [],
-    pendingSupportRequests: dashboard?.pendingSupportRequests || [],
+    topDishes: localizedTopDishes,
+    recentOrders: localizedRecentOrders,
+    lowStockItems: localizedLowStockItems,
+    pendingOrders: localizedPendingOrders,
+    pendingReservations: localizedPendingReservations,
+    pendingSupportRequests: localizedPendingSupportRequests,
     pendingOrderCount: Number(dashboard?.pendingOrderCount || 0),
     pendingReservationCount: Number(dashboard?.pendingReservationCount || 0),
     pendingSupportRequestCount: Number(dashboard?.pendingSupportRequestCount || 0),

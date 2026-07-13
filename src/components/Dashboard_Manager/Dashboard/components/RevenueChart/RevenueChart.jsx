@@ -26,6 +26,22 @@ const formatCompactVND = (value) => {
   return `${Number.isInteger(m) ? m : m.toFixed(1).replace(".", ",")}tr`;
 };
 
+const formatChartDate = (value) => {
+  const text = String(value || "").trim();
+  const isoDate = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoDate) return `${isoDate[3]}/${isoDate[2]}/${isoDate[1]}`;
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(value);
+  }
+
+  return text;
+};
+
 const RevenueChartSkeleton = () => (
   <div className="revenue-chart-skeleton" role="status" aria-live="polite">
     <span className="revenue-chart-skeleton__amount" />
@@ -80,15 +96,43 @@ const RevenueChart = ({ data = [], loading, compact = false }) => {
       <ResponsiveContainer width="100%" height={compact ? 220 : 260}>
         <AreaChart data={safeData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee7dc" />
-          <XAxis dataKey="key" axisLine={false} tickLine={false} tick={{ fill: "#78716c", fontSize: 12 }} />
+          <XAxis
+            dataKey="key"
+            axisLine={false}
+            tickLine={false}
+            tickFormatter={formatChartDate}
+            tick={{ fill: "#78716c", fontSize: 12 }}
+          />
           <YAxis axisLine={false} tickLine={false} tickFormatter={formatCompactVND} width={54} tick={{ fill: "#78716c", fontSize: 12 }} />
-          <Tooltip formatter={(v) => formatCurrency(v)} labelStyle={{ color: "#1f2933" }} />
-          {summary.hasComparison ? <Area type="monotone" dataKey="previous" stroke="#a8a29e" fillOpacity={0} strokeWidth={2} /> : null}
-          <Area type="monotone" dataKey="current" stroke="#b45309" strokeWidth={2.5} fillOpacity={0.16} fill="#b45309" />
+          <Tooltip
+            formatter={(value, name) => [formatCurrency(value), name]}
+            labelFormatter={(label) => `Ngày ${formatChartDate(label)}`}
+            labelStyle={{ color: "#1f2933" }}
+          />
+          {summary.hasComparison ? (
+            <Area
+              type="monotone"
+              dataKey="previous"
+              name="Kỳ trước"
+              stroke="#a8a29e"
+              fillOpacity={0}
+              strokeWidth={2}
+            />
+          ) : null}
+          <Area
+            type="monotone"
+            dataKey="current"
+            name="Kỳ hiện tại"
+            stroke="#b45309"
+            strokeWidth={2.5}
+            fillOpacity={0.16}
+            fill="#b45309"
+          />
         </AreaChart>
       </ResponsiveContainer>
     </div>
   );
 };
 
+export { formatChartDate };
 export default RevenueChart;
