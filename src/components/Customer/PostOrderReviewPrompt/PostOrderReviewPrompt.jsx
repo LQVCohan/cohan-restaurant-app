@@ -5,6 +5,8 @@ import { AuthContext } from "@/context/AuthContext";
 import "./PostOrderReviewPrompt.scss";
 
 const REVIEWED_STORAGE_KEY = "cohan.reviewedCompletedOrders.v1";
+const REVIEW_PROMPT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const PAID_ORDER_STATUSES = new Set(["paid", "partially_refunded", "refunded"]);
 const DEFAULT_REVIEW_CONTENT =
   "Trải nghiệm tốt, mình sẽ tiếp tục ủng hộ nhà hàng.";
 
@@ -17,26 +19,15 @@ const ORDERS_BY_USER_FOR_REVIEW = gql`
           orderCode
           restaurantId
           currentStatus
+          orderPaymentStatus
           createdAt
-          items {
-            name
+          updatedAt
+          payment {
+            status
+            paidAt
           }
         }
       }
-    }
-  }
-`;
-
-const MY_RESERVATIONS_FOR_REVIEW = gql`
-  query MyReservationsForReviewPrompt($limit: Int = 12) {
-    myReservations(limit: $limit) {
-      id
-      orderCode
-      restaurantId
-      restaurantName
-      status
-      createdAt
-      timeTo
     }
   }
 `;
@@ -76,49 +67,48 @@ const getRoleName = (user) =>
     user?.roleName || user?.role?.slug || user?.role?.name || "",
   ).toLowerCase();
 
-const isReviewableStatus = (value) =>
-  ["completed", "seated"].includes(String(value || "").toLowerCase());
+const normalizeStatus = (value) => String(value || "").trim().toLowerCase();
 
-export const buildReviewTarget = ({ orders, reservations }) => {
+const getOrderCompletedAt = (order) =>
+  order?.payment?.paidAt || order?.updatedAt || order?.createdAt || null;
+
+export const isReviewableCompletedOrder = (order, now = Date.now()) => {
+  const orderStatus = normalizeStatus(order?.currentStatus);
+  const paymentStatus = normalizeStatus(
+    order?.orderPaymentStatus || order?.payment?.status,
+  );
+  const hasCompletedExperience =
+    orderStatus === "completed" || PAID_ORDER_STATUSES.has(paymentStatus);
+
+  if (!hasCompletedExperience || !order?.restaurantId) return false;
+
+  const completedAt = new Date(getOrderCompletedAt(order)).getTime();
+  if (!Number.isFinite(completedAt)) return false;
+
+  const age = now - completedAt;
+  return age >= 0 && age <= REVIEW_PROMPT_MAX_AGE_MS;
+};
+
+export const buildReviewTarget = ({ orders, now = Date.now() }) => {
   const reviewed = readReviewedIds();
-
   const completedOrder = (orders || []).find(
     (order) =>
-      isReviewableStatus(order?.currentStatus) &&
+      isReviewableCompletedOrder(order, now) &&
       !reviewed.has(`order:${order.id}`),
   );
-  if (completedOrder) {
-    return {
-      kind: "order",
-      storageId: `order:${completedOrder.id}`,
-      id: completedOrder.id,
-      code: completedOrder.orderCode || completedOrder.id,
-      restaurantId: completedOrder.restaurantId,
-      restaurantName: "Nhà hàng",
-      title: "Đơn hàng của bạn đã hoàn tất",
-      subtitle: "Chia sẻ trải nghiệm để nhà hàng phục vụ tốt hơn.",
-    };
-  }
 
-  const completedReservation = (reservations || []).find(
-    (reservation) =>
-      isReviewableStatus(reservation?.status) &&
-      !reviewed.has(`reservation:${reservation.id}`),
-  );
-  if (completedReservation) {
-    return {
-      kind: "reservation",
-      storageId: `reservation:${completedReservation.id}`,
-      id: completedReservation.id,
-      code: completedReservation.orderCode || completedReservation.id,
-      restaurantId: completedReservation.restaurantId,
-      restaurantName: completedReservation.restaurantName || "Nhà hàng",
-      title: "Bạn vừa hoàn tất trải nghiệm đặt bàn",
-      subtitle: "Đánh giá nhanh giúp khách sau chọn đúng nơi hơn.",
-    };
-  }
+  if (!completedOrder) return null;
 
-  return null;
+  return {
+    kind: "order",
+    storageId: `order:${completedOrder.id}`,
+    id: completedOrder.id,
+    code: completedOrder.orderCode || completedOrder.id,
+    restaurantId: completedOrder.restaurantId,
+    restaurantName: "Nhà hàng",
+    title: "Bạn vừa hoàn tất đơn hàng",
+    subtitle: "Đánh giá nhà hàng để giúp những khách sau chọn đúng nơi hơn.",
+  };
 };
 
 export default function PostOrderReviewPrompt() {
@@ -141,14 +131,6 @@ export default function PostOrderReviewPrompt() {
       fetchPolicy: "cache-and-network",
     },
   );
-  const { data: reservationsData, refetch: refetchReservations } = useQuery(
-    MY_RESERVATIONS_FOR_REVIEW,
-    {
-      variables: { limit: 12 },
-      skip: !isAuthenticated || !isCustomer || !userId,
-      fetchPolicy: "cache-and-network",
-    },
-  );
   const [createReview, { loading }] = useMutation(CREATE_REVIEW);
 
   const target = useMemo(() => {
@@ -156,11 +138,8 @@ export default function PostOrderReviewPrompt() {
     const orders = (ordersData?.ordersByUser?.edges || [])
       .map((edge) => edge?.node)
       .filter(Boolean);
-    return buildReviewTarget({
-      orders,
-      reservations: reservationsData?.myReservations || [],
-    });
-  }, [ordersData, reservationsData?.myReservations, submittedTargetId]);
+    return buildReviewTarget({ orders });
+  }, [ordersData, submittedTargetId]);
 
   if (!target || isHidden) return null;
 
@@ -179,10 +158,7 @@ export default function PostOrderReviewPrompt() {
             restaurantId: target.restaurantId,
             restaurantName: target.restaurantName,
             rating,
-            title:
-              target.kind === "order"
-                ? "Đánh giá sau đơn hàng"
-                : "Đánh giá sau đặt bàn",
+            title: "Đánh giá sau đơn hàng",
             content: trimmedContent,
             tags: [target.kind],
           },
@@ -197,7 +173,7 @@ export default function PostOrderReviewPrompt() {
       setSubmittedTargetId(target.storageId);
       setIsExpanded(false);
       setContent("");
-      await Promise.all([refetchOrders?.(), refetchReservations?.()]);
+      await refetchOrders?.();
     } catch (error) {
       setSubmitError(
         error?.message || "Không thể gửi đánh giá. Vui lòng thử lại.",
@@ -208,7 +184,7 @@ export default function PostOrderReviewPrompt() {
   return (
     <section
       className={`post-order-review ${isExpanded ? "is-expanded" : ""}`}
-      aria-label="Đánh giá sau đơn hoàn tất"
+      aria-label="Đánh giá nhà hàng sau đơn hoàn tất"
     >
       <button
         type="button"
@@ -270,7 +246,7 @@ export default function PostOrderReviewPrompt() {
             }}
             rows={3}
             maxLength={2000}
-            placeholder="Bạn thấy món ăn, phục vụ hoặc đặt bàn như thế nào?"
+            placeholder="Bạn thấy món ăn, phục vụ và không gian nhà hàng như thế nào?"
           />
           {submitError && (
             <p className="post-order-review__error" role="alert">
