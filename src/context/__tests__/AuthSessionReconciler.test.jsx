@@ -1,5 +1,12 @@
 import React, { useContext, useState } from "react";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "../AuthContext";
 import AuthSessionReconciler from "../AuthSessionReconciler";
@@ -41,7 +48,7 @@ function Consumer() {
   );
 }
 
-function Harness({ loginImplementation, onLogout = vi.fn() }) {
+function Harness({ loginImplementation, onLogout = () => {} }) {
   const [authState, setAuthState] = useState({
     token: null,
     user: null,
@@ -69,6 +76,14 @@ function Harness({ loginImplementation, onLogout = vi.fn() }) {
 
   return (
     <AuthContext.Provider value={value}>
+      <button
+        type="button"
+        onClick={() =>
+          setAuthState({ token: null, user: null, sessionState: "anonymous" })
+        }
+      >
+        parent-clear
+      </button>
       <AuthSessionReconciler>
         <Consumer />
       </AuthSessionReconciler>
@@ -127,7 +142,24 @@ describe("AuthSessionReconciler", () => {
     expect(screen.getByTestId("user-name")).toHaveTextContent("Khách đã khôi phục");
     expect(screen.getByTestId("session-state")).toHaveTextContent("authenticated");
 
-    await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("refreshed-token"));
+    await waitFor(() =>
+      expect(screen.getByTestId("token")).toHaveTextContent("refreshed-token"),
+    );
+  });
+
+  it("restores the last valid session when the parent clears it without an auth rejection", async () => {
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("login"));
+    await waitFor(() =>
+      expect(screen.getByTestId("token")).toHaveTextContent("login-token"),
+    );
+
+    fireEvent.click(screen.getByText("parent-clear"));
+
+    expect(screen.getByTestId("token")).toHaveTextContent("login-token");
+    expect(screen.getByTestId("user-name")).toHaveTextContent("Khách đăng nhập");
+    expect(screen.getByTestId("session-state")).toHaveTextContent("authenticated");
   });
 
   it("switches the UI to anonymous only after an explicit session rejection", async () => {
