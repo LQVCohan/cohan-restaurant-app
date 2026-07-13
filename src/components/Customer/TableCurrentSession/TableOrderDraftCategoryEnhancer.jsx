@@ -75,6 +75,19 @@ const getMenuRoot = () =>
     ".table-order-draft-modal--v2 .table-order-draft--v2",
   );
 
+const requestFrame = (callback) =>
+  typeof window.requestAnimationFrame === "function"
+    ? window.requestAnimationFrame(callback)
+    : window.setTimeout(callback, 0);
+
+const cancelFrame = (frame) => {
+  if (typeof window.cancelAnimationFrame === "function") {
+    window.cancelAnimationFrame(frame);
+  } else {
+    window.clearTimeout(frame);
+  }
+};
+
 export default function TableOrderDraftCategoryEnhancer() {
   const location = useLocation();
   const match = location.pathname.match(TABLE_PATH_PATTERN);
@@ -108,6 +121,8 @@ export default function TableOrderDraftCategoryEnhancer() {
     };
 
     syncPortalHost();
+    if (typeof MutationObserver === "undefined") return undefined;
+
     const observer = new MutationObserver(syncPortalHost);
     observer.observe(document.body, { childList: true, subtree: true });
 
@@ -229,7 +244,9 @@ export default function TableOrderDraftCategoryEnhancer() {
         if (matches) visibleCards += 1;
       });
 
-      const builtInState = menu.querySelector(":scope > .table-order-draft__state");
+      const builtInState = menu.querySelector(
+        ":scope > .table-order-draft__state:not(.table-order-draft-category-empty)",
+      );
       let customEmpty = menu.querySelector(
         ":scope > .table-order-draft-category-empty",
       );
@@ -273,17 +290,19 @@ export default function TableOrderDraftCategoryEnhancer() {
     };
 
     const schedule = () => {
-      if (frame != null) cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(applyEnhancements);
+      if (frame != null) cancelFrame(frame);
+      frame = requestFrame(applyEnhancements);
     };
 
     schedule();
+    if (typeof MutationObserver === "undefined") return undefined;
+
     const observer = new MutationObserver(schedule);
     observer.observe(root, { childList: true, subtree: true, characterData: true });
 
     return () => {
       observer.disconnect();
-      if (frame != null) cancelAnimationFrame(frame);
+      if (frame != null) cancelFrame(frame);
     };
   }, [itemMetaByName, portalHost, selectedCategory]);
 
