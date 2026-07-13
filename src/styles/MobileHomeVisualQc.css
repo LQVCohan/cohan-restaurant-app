@@ -1,0 +1,424 @@
+/* Mobile Home visual quality pass.
+   Loaded after legacy Home/chatbot styles so the final mobile layout remains
+   readable, does not cover the bottom navigation and degrades safely. */
+
+@media (max-width: 760px) {
+  /* Restaurant section hierarchy */
+  .mobile-home .restaurant-grid {
+    padding: 4px 0 8px !important;
+  }
+
+  .mobile-home .restaurant-grid__header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: end !important;
+    gap: 12px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .mobile-home .restaurant-grid__heading-copy {
+    min-width: 0 !important;
+  }
+
+  .mobile-home .restaurant-grid__badge {
+    display: inline-flex !important;
+    margin: 0 0 5px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #d85f22 !important;
+    font-size: 0.66rem !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.09em !important;
+    line-height: 1.2 !important;
+    text-transform: uppercase !important;
+  }
+
+  .mobile-home .restaurant-grid__title {
+    margin: 0 !important;
+    font-size: clamp(1.36rem, 6.5vw, 1.62rem) !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.045em !important;
+  }
+
+  .mobile-home .restaurant-grid__subtitle {
+    display: none !important;
+  }
+
+  .mobile-home .restaurant-grid__view-all {
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 38px !important;
+    margin: 0 !important;
+    padding: 8px 10px !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    border: 1px solid rgba(216, 95, 34, 0.15) !important;
+    border-radius: 999px !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: #c9551d !important;
+    box-shadow: 0 8px 20px rgba(92, 45, 12, 0.06) !important;
+    font-size: 0.72rem !important;
+    white-space: nowrap !important;
+  }
+
+  .mobile-home .restaurant-grid__view-all .arrow {
+    font-size: 0.9rem;
+  }
+
+  /* Horizontal restaurant rail */
+  .mobile-home .restaurant-grid__list {
+    grid-auto-columns: min(84vw, 336px) !important;
+    gap: 13px !important;
+    margin-inline: -2px;
+    padding: 2px 2px 12px !important;
+    scroll-padding-inline: 2px;
+  }
+
+  .mobile-home .res-card {
+    border: 1px solid rgba(89, 58, 37, 0.1) !important;
+    border-radius: 21px !important;
+    box-shadow: 0 14px 34px rgba(92, 45, 12, 0.09) !important;
+  }
+
+  .mobile-home .res-card__image-wrapper {
+    height: 150px !important;
+    background:
+      radial-gradient(circle at 50% 35%, rgba(235, 112, 45, 0.16), transparent 46%),
+      linear-gradient(145deg, #fff7ef, #f6e8da) !important;
+  }
+
+  .mobile-home .res-card__image-wrapper::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: url("/cohan_logo_icon.svg") center / 46px 46px no-repeat;
+    opacity: 0.32;
+    pointer-events: none;
+  }
+
+  .mobile-home .res-card__img {
+    position: relative;
+    z-index: 1;
+    display: block;
+    color: transparent;
+    font-size: 0;
+  }
+
+  .mobile-home .res-card__img.is-fallback {
+    padding: 40px !important;
+    object-fit: contain !important;
+    background:
+      radial-gradient(circle at center, rgba(255, 255, 255, 0.95), rgba(255, 247, 239, 0.82)),
+      linear-gradient(145deg, #fff7ef, #f6e8da) !important;
+  }
+
+  .mobile-home .res-card__scrim,
+  .mobile-home .res-card__overlay {
+    z-index: 2;
+  }
+
+  .mobile-home .res-card__overlay {
+    top: 10px !important;
+    right: 10px !important;
+    left: 10px !important;
+    gap: 7px !important;
+  }
+
+  .mobile-home .res-card__rating,
+  .mobile-home .res-card__status {
+    min-height: 31px;
+    padding: 6px 9px !important;
+    border-radius: 11px !important;
+    font-size: 0.7rem !important;
+    line-height: 1.15 !important;
+  }
+
+  .mobile-home .res-card__rating {
+    max-width: 58%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-home .res-card__rating svg {
+    width: 12px !important;
+    height: 12px !important;
+    flex: 0 0 12px !important;
+  }
+
+  .mobile-home .res-card__status {
+    max-width: 44% !important;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mobile-home .res-card__body {
+    padding: 14px !important;
+  }
+
+  .mobile-home .res-card__main-info {
+    margin-bottom: 8px !important;
+  }
+
+  .mobile-home .res-card__name-row {
+    align-items: center !important;
+    gap: 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .mobile-home .res-card__name {
+    min-width: 0;
+    font-size: 1rem !important;
+    line-height: 1.16 !important;
+  }
+
+  .mobile-home .res-card__price {
+    max-width: 46%;
+    overflow: hidden;
+    padding: 5px 8px !important;
+    border-radius: 10px !important;
+    font-size: 0.68rem !important;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-home .res-card__badges {
+    gap: 6px !important;
+    margin-bottom: 9px !important;
+  }
+
+  .mobile-home .res-card__badge {
+    min-height: 28px;
+    padding: 5px 8px !important;
+    border-radius: 999px !important;
+    font-size: 0.68rem !important;
+    line-height: 1 !important;
+  }
+
+  .mobile-home .res-card__address,
+  .mobile-home .res-card__distance {
+    font-size: 0.78rem !important;
+    line-height: 1.4 !important;
+  }
+
+  .mobile-home .res-card__divider {
+    margin-bottom: 10px !important;
+  }
+
+  .mobile-home .res-card__actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .mobile-home .res-card__btn {
+    min-height: 40px !important;
+    padding: 9px 8px !important;
+    border-radius: 12px !important;
+    font-size: 0.76rem !important;
+  }
+
+  /* Mobile chatbot behaves like a compact bottom sheet above the nav. */
+  .ai-chatbot-widget:has(> .ai-chatbot-panel) {
+    right: max(8px, env(safe-area-inset-right)) !important;
+    bottom: calc(78px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .ai-chatbot-widget > .ai-chatbot-panel,
+  .ai-chatbot-widget > .ai-chatbot-panel.is-expanded {
+    width: calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
+    height: min(
+      620px,
+      calc(100dvh - 104px - env(safe-area-inset-top) - env(safe-area-inset-bottom))
+    ) !important;
+    max-height: calc(
+      100dvh - 104px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    ) !important;
+    border-radius: 22px !important;
+    box-shadow: 0 22px 62px rgba(51, 32, 20, 0.2) !important;
+  }
+
+  .ai-chatbot-widget > .ai-chatbot-panel:has(
+      .ai-chatbot-messages > .ai-chatbot-message:only-child
+    ):not(.is-human-support) {
+    height: min(
+      548px,
+      calc(100dvh - 104px - env(safe-area-inset-top) - env(safe-area-inset-bottom))
+    ) !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-header {
+    min-height: 62px !important;
+    padding: 9px 10px 9px 12px !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-avatar {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    flex-basis: 38px !important;
+    border-radius: 13px !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-title {
+    gap: 9px !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-title strong {
+    font-size: 0.92rem !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-title small {
+    max-width: min(52vw, 210px) !important;
+    font-size: 0.68rem !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-header > button {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    flex-basis: 38px !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-body {
+    min-height: 0 !important;
+    background:
+      radial-gradient(circle at 100% 0%, rgba(235, 112, 45, 0.08), transparent 14rem),
+      #fffdf9 !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-messages {
+    padding: 12px 11px 14px !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-message {
+    margin-bottom: 10px !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-message.assistant:not(.loading):not(.ai-chatbot-streaming-message),
+  .ai-chatbot-widget .ai-chatbot-message.staff {
+    grid-template-columns: 28px minmax(0, 1fr) !important;
+    column-gap: 7px !important;
+    max-width: 98% !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-message.assistant:not(.loading):not(.ai-chatbot-streaming-message)::before,
+  .ai-chatbot-widget .ai-chatbot-message.staff::before {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-message p {
+    font-size: 0.84rem !important;
+    line-height: 1.48 !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-message.assistant p,
+  .ai-chatbot-widget .ai-chatbot-message.user p,
+  .ai-chatbot-widget .ai-chatbot-message.staff p {
+    padding: 10px 11px !important;
+    border-radius: 15px !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-panel > .ai-chatbot-quick-replies {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    max-height: none !important;
+    padding: 8px 10px !important;
+    overflow: visible !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-panel > .ai-chatbot-quick-replies > button {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 40px !important;
+    padding: 8px 9px !important;
+    justify-content: center !important;
+    border-radius: 13px !important;
+    font-size: 0.72rem !important;
+    line-height: 1.25 !important;
+    text-align: center !important;
+    white-space: normal !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-panel > .ai-chatbot-quick-replies > button:last-child:nth-child(odd) {
+    grid-column: 1 / -1 !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-input {
+    gap: 7px !important;
+    padding: 8px 9px calc(8px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-input input {
+    height: 42px !important;
+    padding-inline: 12px !important;
+    border-radius: 13px !important;
+    font-size: 16px !important;
+  }
+
+  .ai-chatbot-widget .ai-chatbot-input button {
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    min-height: 42px !important;
+    border-radius: 13px !important;
+  }
+
+  .ai-chatbot-toggle {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    border: 2px solid rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 12px 26px rgba(141, 63, 22, 0.24) !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .mobile-home .restaurant-grid__header {
+    gap: 8px !important;
+  }
+
+  .mobile-home .restaurant-grid__view-all {
+    min-height: 36px !important;
+    padding-inline: 8px !important;
+    font-size: 0.68rem !important;
+  }
+
+  .mobile-home .restaurant-grid__list {
+    grid-auto-columns: min(88vw, 310px) !important;
+  }
+
+  .mobile-home .res-card__image-wrapper {
+    height: 142px !important;
+  }
+
+  .ai-chatbot-widget > .ai-chatbot-panel,
+  .ai-chatbot-widget > .ai-chatbot-panel.is-expanded,
+  .ai-chatbot-widget > .ai-chatbot-panel:has(
+      .ai-chatbot-messages > .ai-chatbot-message:only-child
+    ):not(.is-human-support) {
+    height: calc(
+      100dvh - 96px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    ) !important;
+    max-height: calc(
+      100dvh - 96px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    ) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-home .res-card,
+  .mobile-home .res-card__img,
+  .ai-chatbot-widget .ai-chatbot-panel,
+  .ai-chatbot-widget .ai-chatbot-message {
+    transition: none !important;
+    animation: none !important;
+  }
+}
