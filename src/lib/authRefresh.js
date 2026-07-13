@@ -1,13 +1,15 @@
 import { getRefreshUrl } from "@/lib/apiBaseUrl";
-import { getToken } from "@/lib/authStorage";
+
+export const STALE_AUTH_REFRESH_CODE = "STALE_AUTH_REFRESH";
 
 let refreshPromise = null;
 let refreshAbortController = null;
 let refreshGeneration = 0;
 
-function getCurrentSessionPayload() {
-  const token = getToken();
-  return token ? { token, user: undefined, stale: true } : null;
+function createStaleAuthRefreshError() {
+  const error = new Error("Auth refresh belongs to an inactive session");
+  error.code = STALE_AUTH_REFRESH_CODE;
+  return error;
 }
 
 export async function refreshAccessToken({ signal } = {}) {
@@ -42,7 +44,7 @@ export function refreshAccessTokenOnce() {
     const pendingRefresh = refreshAccessToken({ signal: controller?.signal })
       .then((payload) => {
         if (generation !== refreshGeneration) {
-          return getCurrentSessionPayload();
+          throw createStaleAuthRefreshError();
         }
         return payload;
       })
