@@ -3,6 +3,8 @@
 import { ReservationQuery } from "./query.js";
 import { PaymentSession, PaymentTransaction } from "../../../models/index.js";
 import { ReservationMutation } from "./mutation.js";
+import { createManagerReservation } from "./managerCreateReservation.js";
+import { withManagerReservationCreation } from "./managerCreationPolicy.js";
 import { ReservationChangeReviewMutation } from "./changeReview.js";
 import {
   ReservationCustomerHistoryMutation,
@@ -54,8 +56,13 @@ const ReservationType = {
   },
 };
 
+const ManagerAwareReservationMutation = withManagerReservationCreation(
+  ReservationMutation,
+  createManagerReservation,
+);
+
 const ReviewReservationMutation = {
-  ...ReservationMutation,
+  ...ManagerAwareReservationMutation,
   ...ReservationChangeReviewMutation,
   ...ReservationCheckInMutation,
 };
