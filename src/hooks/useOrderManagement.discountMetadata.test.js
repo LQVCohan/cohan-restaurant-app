@@ -3,10 +3,13 @@ import path from "node:path";
 import process from "node:process";
 import { describe, expect, it } from "vitest";
 
-const source = fs.readFileSync(
-  path.resolve(process.cwd(), "src/hooks/useOrderManagement.js"),
-  "utf8",
-);
+const read = (relativePath) =>
+  fs.readFileSync(path.resolve(process.cwd(), relativePath), "utf8");
+
+const source = [
+  read("src/hooks/useOrderManagement.js"),
+  read("src/hooks/useOrderManagementLegacy.js"),
+].join("\n");
 
 describe("useOrderManagement discount metadata query coverage", () => {
   it("requests discount metadata in order totals selections", () => {
