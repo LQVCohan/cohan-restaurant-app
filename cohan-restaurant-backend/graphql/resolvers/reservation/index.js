@@ -10,6 +10,7 @@ import {
   ReservationCustomerHistoryMutation,
   ReservationCustomerHistoryQuery,
 } from "./customerHistory.js";
+import { ReservationCustomerHistoryEnhancedQuery } from "./customerHistoryQueryEnhanced.js";
 import {
   ReservationCheckInMutation,
   withSafeReservationStatusMutation,
@@ -79,6 +80,7 @@ export default {
   Query: {
     ...ReservationQuery,
     ...ReservationCustomerHistoryQuery,
+    ...ReservationCustomerHistoryEnhancedQuery,
   },
   Mutation: {
     ...ReservationMutationWithAliases,
