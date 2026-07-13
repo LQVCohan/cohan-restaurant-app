@@ -147,8 +147,10 @@ export function useAvatarUploadLocal() {
     });
   };
 
-  const upload = async (file, onProgress) => {
-    const uploadFile = await prepareUploadFile(file);
+  const upload = async (file, onProgress, options = {}) => {
+    const uploadFile = options?.skipCompression
+      ? file
+      : await prepareUploadFile(file);
 
     if (import.meta.env.VITE_UPLOAD_MODE === "local") {
       return uploadViaLocalApi(uploadFile, onProgress);
