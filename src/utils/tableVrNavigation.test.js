@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildTableVrViewerUrl,
   getTableVrViewerNavigation,
+  normalizeTableVrStoredUrl,
   openTableVrViewerInNewTab,
   sanitizeTableVrReturnTo,
 } from "./tableVrNavigation";
@@ -19,6 +20,14 @@ describe("tableVrNavigation", () => {
     ).toBe(
       "/vr/table/table-1?openedInNewTab=1&returnTo=%2Fbooking%2Frestaurant-1%3Ffloor%3D2%23map",
     );
+  });
+
+  it("stores backend upload paths without pinning the current ngrok domain", () => {
+    expect(
+      normalizeTableVrStoredUrl(
+        "https://temporary-subdomain.ngrok-free.dev/uploads/table-panorama.jpg",
+      ),
+    ).toBe("/uploads/table-panorama.jpg");
   });
 
   it("wraps a local backend panorama URL in the spherical viewer", () => {

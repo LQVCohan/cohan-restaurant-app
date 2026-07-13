@@ -36,6 +36,20 @@ export const sanitizeTableVrImageUrl = (value) => {
   }
 };
 
+export const normalizeTableVrStoredUrl = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw, getOrigin());
+    if (parsed.pathname === "/uploads" || parsed.pathname.startsWith("/uploads/")) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+    return raw;
+  } catch {
+    return raw;
+  }
+};
+
 export const isTableVrImageUrl = (value) => {
   const safeUrl = sanitizeTableVrImageUrl(value);
   if (!safeUrl) return false;

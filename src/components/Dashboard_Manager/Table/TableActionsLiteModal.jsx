@@ -9,6 +9,7 @@ import {
 } from "@/utils/vrStorage";
 import {
   getCurrentPageReturnTo,
+  normalizeTableVrStoredUrl,
   openTableVrViewerInNewTab,
 } from "@/utils/tableVrNavigation";
 import {
@@ -554,6 +555,7 @@ export default function TableActionsLiteModal({
           setVrUploadStatus(`Đang tải ảnh 360° lên máy chủ cục bộ... ${percent}%`),
         { skipCompression: true },
       );
+      const storedVrUrl = normalizeTableVrStoredUrl(uploadedUrl);
 
       const storedLocally = storeTableVrImage(
         table.id,
@@ -570,7 +572,7 @@ export default function TableActionsLiteModal({
       setVrFileName(panorama.name);
       setVrFileSizeLabel(getTableVrFileSummary(panorama));
       setVrPreviewUrl(panorama.dataUrl);
-      setVrUrl(uploadedUrl);
+      setVrUrl(storedVrUrl);
       setVrUploadStatus(
         `Đã nén ảnh còn ${formatTableVrBytes(panorama.processedBytes)}${panorama.savingsPercent ? `, giảm ${panorama.savingsPercent}%` : ""} và tải lên máy chủ. Bấm “Lưu thay đổi” để khách hàng xem được.`,
       );
