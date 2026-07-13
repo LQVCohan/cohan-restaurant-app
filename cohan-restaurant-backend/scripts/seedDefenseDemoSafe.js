@@ -42,4 +42,7 @@ runScript("seedDefenseDemo.js", process.argv.slice(2));
 // findOneAndUpdate strips discriminator-key changes by default, which can leave
 // manager/staff accounts stored as CUSTOMER after an upsert.
 runScript("repairDefenseAccountDiscriminators.js");
+// Resolve staff IDs by email after the account repair, then create a complete,
+// idempotent roster for the previous and current Vietnam calendar weeks.
+runScript("seedScheduleCurrentAndPreviousWeek.js");
 runScript("finalizeDefenseDemoDataset.js");
