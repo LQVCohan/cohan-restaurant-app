@@ -38,6 +38,14 @@ function runScript(scriptName, args = []) {
 }
 
 runScript("seedDefenseDemo.js", process.argv.slice(2));
+// Replace the four-item smoke menu with the full operating catalog. This step
+// resolves the current primary restaurant dynamically, seeds portion/by-weight
+// variants and refreshes ingredient purchase costs and stock values.
+runScript("seedDefenseMenuCatalog.js");
+// The base seed still creates three legacy categories and two legacy ingredient
+// records. Remove them only after they are no longer referenced, so the final UI
+// does not expose empty or obsolete menu data.
+runScript("cleanupLegacyDefenseMenuData.js");
 // userType is the Mongoose discriminator key. Raw repair is required because
 // findOneAndUpdate strips discriminator-key changes by default, which can leave
 // manager/staff accounts stored as CUSTOMER after an upsert.
@@ -45,4 +53,7 @@ runScript("repairDefenseAccountDiscriminators.js");
 // Resolve staff IDs by email after the account repair, then create a complete,
 // idempotent roster for the previous and current Vietnam calendar weeks.
 runScript("seedScheduleCurrentAndPreviousWeek.js");
+// Verify the persisted database, not only the source definitions. This catches
+// partial writes, missing recipes, unsynchronised purchase costs and lost kg variants.
+runScript("verifyDefenseMenuCatalogDb.js");
 runScript("finalizeDefenseDemoDataset.js");
