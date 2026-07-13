@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { reservationDepositPaymentInternals } from "../../graphql/resolvers/payment/reservationDepositPaymentMutation.js";
 
-const { allocateDepositCredit, availableDeposit } =
-  reservationDepositPaymentInternals;
+const {
+  allocateDepositCredit,
+  availableDeposit,
+  selectionCoversAllActiveOrders,
+} = reservationDepositPaymentInternals;
 
 describe("reservation deposit POS allocation", () => {
   it("subtracts both table and menu deposits from the gross order total", () => {
@@ -81,5 +84,32 @@ describe("reservation deposit POS allocation", () => {
     expect(allocation.totalCredit).toBe(130000);
     expect(allocation.breakdown).toHaveLength(2);
     expect(allocation.breakdown[1].appliedAmount).toBe(30000);
+  });
+
+  it("defers deposit when only some active order batches are selected", () => {
+    expect(
+      selectionCoversAllActiveOrders(
+        ["64b000000000000000000001"],
+        [
+          "64b000000000000000000001",
+          "64b000000000000000000002",
+        ],
+      ),
+    ).toBe(false);
+  });
+
+  it("applies deposit when the selected batches are the final active batches", () => {
+    expect(
+      selectionCoversAllActiveOrders(
+        [
+          "64b000000000000000000002",
+          "64b000000000000000000003",
+        ],
+        [
+          "64b000000000000000000002",
+          "64b000000000000000000003",
+        ],
+      ),
+    ).toBe(true);
   });
 });
