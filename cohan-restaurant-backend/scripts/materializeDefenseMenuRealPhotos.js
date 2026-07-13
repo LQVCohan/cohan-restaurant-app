@@ -10,13 +10,12 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import mongoose from "mongoose";
 
 import { MenuItem, Restaurant } from "../models/index.js";
 import { DISH_DEFS, SEED_KEY } from "./seedDefenseMenuCatalog.js";
 import {
-  DEFENSE_MENU_REAL_PHOTOS,
   REAL_MENU_PHOTO_DIRECTORY,
   getDefenseMenuPhotoSource,
   isManagedRealMenuPhotoPath,
@@ -31,7 +30,8 @@ const outputDir = path.join(repoRoot, "public", "images", "menu", "dishes");
 const attributionPath = path.join(outputDir, "attribution.json");
 const PRIMARY_RESTAURANT_NAME = "Nhà hàng COHAN Thủ Đức";
 const DEMO_RESTAURANT_ID = process.env.DEMO_RESTAURANT_ID?.trim() || "";
-const REFRESH = String(process.env.DEFENSE_MENU_PHOTO_REFRESH || "").toLowerCase() === "true";
+const REFRESH =
+  String(process.env.DEFENSE_MENU_PHOTO_REFRESH || "").toLowerCase() === "true";
 const MIN_IMAGE_BYTES = 8_000;
 const MAX_IMAGE_BYTES = 18 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 20_000;
@@ -95,7 +95,8 @@ async function fetchWithTimeout(url, options = {}) {
       signal: controller.signal,
       headers: {
         "User-Agent": USER_AGENT,
-        Accept: "image/avif,image/webp,image/jpeg,image/png,application/json;q=0.9,*/*;q=0.5",
+        Accept:
+          "image/avif,image/webp,image/jpeg,image/png,application/json;q=0.9,*/*;q=0.5",
         ...(options.headers || {}),
       },
       redirect: "follow",
@@ -123,9 +124,8 @@ async function resolveWikipediaCandidate(candidate) {
   const response = await fetchWithTimeout(api, {
     headers: { Accept: "application/json" },
   });
-  if (!response.ok) {
-    throw new Error(`Wikipedia API ${response.status}`);
-  }
+  if (!response.ok) throw new Error(`Wikipedia API ${response.status}`);
+
   const payload = await response.json();
   const page = payload?.query?.pages?.[0];
   const imageUrl = page?.thumbnail?.source || page?.original?.source;
@@ -162,7 +162,9 @@ async function downloadRasterPhoto(source) {
   }
   const contentType = String(response.headers.get("content-type") || "").toLowerCase();
   if (!contentType.startsWith("image/") || contentType.includes("svg")) {
-    throw new Error(`${resolved.sourceLabel} returned ${contentType || "unknown content"}`);
+    throw new Error(
+      `${resolved.sourceLabel} returned ${contentType || "unknown content"}`,
+    );
   }
   const buffer = Buffer.from(await response.arrayBuffer());
   const extension = assertPhotoBuffer(buffer, resolved.sourceLabel);
@@ -206,6 +208,7 @@ async function writePhotoAtomically(entry, downloaded) {
   await writeFile(tempPath, downloaded.buffer);
   const written = await readFile(tempPath);
   assertPhotoBuffer(written, `${entry.code} cached photo`);
+  await unlink(absolutePath).catch(() => {});
   await rename(tempPath, absolutePath);
   await removeOtherSlugFiles(entry.slug, absolutePath);
   return {
@@ -221,12 +224,11 @@ async function materializeOne(entry, previousAttribution) {
     if (cached) {
       return {
         ...cached,
-        attribution: previousAttribution || {
+        attribution: {
+          ...(previousAttribution || {}),
           code: entry.code,
           cachedPath: cached.publicPath,
-          sourcePage: null,
-          sourceImage: null,
-          sourceType: "existing-cache",
+          sourceType: previousAttribution?.sourceType || "existing-cache",
         },
       };
     }
@@ -309,7 +311,8 @@ export async function materializeDefenseMenuRealPhotos() {
       },
       { $set: { thumbImage: result.publicPath } },
     );
-    if (Number(update.matchedCount || 0) !== 1) {
+    const matchedCount = Number(update.matchedCount ?? update.n ?? 0);
+    if (matchedCount !== 1) {
       fail(`${result.entry.code} did not match exactly one seeded menu item`);
     }
   }
@@ -343,17 +346,15 @@ async function main() {
   try {
     const summary = await materializeDefenseMenuRealPhotos();
     console.table([summary]);
-    console.log(`✅ Real menu photographs materialized: ${summary.materialized}/${summary.photos}`);
+    console.log(
+      `✅ Real menu photographs materialized: ${summary.materialized}/${summary.photos}`,
+    );
   } finally {
     await mongoose.disconnect();
   }
 }
 
-const isMain =
-  process.argv[1] &&
-  pathToFileURL(path.resolve(process.argv[1])).href === pathToFileURL(scriptPath).href;
-
-if (isMain) {
+if (path.resolve(process.argv[1] || "") === scriptPath) {
   main().catch(async (error) => {
     console.error(error?.stack || error?.message || error);
     if (mongoose.connection.readyState !== 0) await mongoose.disconnect();
