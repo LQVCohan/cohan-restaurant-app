@@ -307,7 +307,8 @@ function SphericalPanorama({ imageUrl }) {
 
 const VRViewer = () => {
   const { tableId } = useParams();
-  const { search } = useLocation();
+  const location = useLocation();
+  const { search } = location;
   const navigate = useNavigate();
   const [imageUrl, setImageUrl] = useState(null);
   const { openedInNewTab, returnTo } = getTableVrViewerNavigation(search);
@@ -317,7 +318,7 @@ const VRViewer = () => {
   }, [tableId]);
 
   const navigateBack = () => {
-    if (window.history.length > 1) {
+    if (location.key !== "default" || window.history.length > 1) {
       navigate(-1);
       return;
     }

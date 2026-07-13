@@ -191,8 +191,13 @@ const TableBooking = () => {
     || "Khám phá sơ đồ, kéo để di chuyển và chọn bàn phù hợp với nhóm của bạn.";
   const selectedTableVrUrl = (() => {
     const configuredUrl = String(selectedTable?.vrUrl || "").trim();
-    if (configuredUrl) return configuredUrl;
-    if (!selectedTable?.id || !loadTableVrImage(selectedTable.id)) return "";
+    const storedImage = selectedTable?.id
+      ? loadTableVrImage(selectedTable.id)
+      : null;
+    const isInternalViewer = configuredUrl.startsWith("/vr/table/");
+
+    if (configuredUrl && (!isInternalViewer || storedImage)) return configuredUrl;
+    if (!selectedTable?.id || !storedImage) return "";
     return `/vr/table/${encodeURIComponent(selectedTable.id)}`;
   })();
   const handleViewSelectedTable360 = () => {
