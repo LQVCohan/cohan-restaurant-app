@@ -152,10 +152,6 @@ function getRoleFitRatio(staff, requiredRole) {
     : 0;
 }
 
-function staffMatchesRole(staff, requiredRole) {
-  return getRoleFitRatio(staff, requiredRole) > 0;
-}
-
 function normalizeRequiredRoles(input = {}) {
   const raw = input.mandatoryShiftRoles || input.requiredRoles || {};
   if (Array.isArray(raw)) return { default: raw.map(normalizeRole).filter(Boolean) };
