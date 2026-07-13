@@ -33,7 +33,42 @@ async function findDepositTransaction(reservation) {
   return PaymentTransaction.findById(reservation.depositTxnId).lean();
 }
 
+function deriveReservationDepositBreakdown(reservation = {}) {
+  const total = Math.max(0, Number(reservation.depositAmount || 0));
+  const storedMenu = Math.max(0, Number(reservation.menuDepositAmount || 0));
+  const storedTable = Math.max(0, Number(reservation.tableDepositAmount || 0));
+  const storedBreakdownIsComplete =
+    total === 0 || Math.abs(storedMenu + storedTable - total) < 0.5;
+
+  if (storedBreakdownIsComplete) {
+    return {
+      total,
+      table: Math.min(total, storedTable),
+      menu: Math.min(total, storedMenu),
+    };
+  }
+
+  const menu = Math.min(
+    total,
+    Math.max(0, Math.round(Number(reservation.linkedMenuSubtotal || 0) * 0.5)),
+  );
+  return {
+    total,
+    table: Math.max(0, total - menu),
+    menu,
+  };
+}
+
 const ReservationType = {
+  tableDepositAmount(parent) {
+    return deriveReservationDepositBreakdown(parent).table;
+  },
+  menuDepositAmount(parent) {
+    return deriveReservationDepositBreakdown(parent).menu;
+  },
+  depositAppliedAmount(parent) {
+    return Math.max(0, Number(parent?.depositAppliedAmount || 0));
+  },
   async depositPaidAt(parent) {
     const transaction = await findDepositTransaction(parent);
     if (transaction?.paidAt) return transaction.paidAt;

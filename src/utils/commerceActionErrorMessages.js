@@ -14,6 +14,8 @@ const RESERVATION_ERROR_MESSAGES = {
     "❌ Chỉ lịch đặt bàn đã được xác nhận mới có thể check-in.",
   RESERVATION_CHANGE_PENDING:
     "❌ Lịch đang chờ nhà hàng duyệt thay đổi nên chưa thể check-in.",
+  RESERVATION_CHECK_IN_TOO_EARLY:
+    "❌ Chưa đến thời gian nhận khách. Chỉ được check-in sớm tối đa 15 phút trước giờ đặt.",
   TABLE_SESSION_CONFLICT:
     "❌ Bàn đang có phiên phục vụ khác nên chưa thể check-in lịch này.",
   TABLE_UNAVAILABLE:

@@ -71,6 +71,141 @@
   border-color: rgba(187, 85, 85, 0.36);
 }
 
+.tm-arrival-choice__backdrop {
+  position: fixed;
+  z-index: 12000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(22, 35, 31, 0.62);
+  backdrop-filter: blur(7px);
+}
+
+.tm-arrival-choice {
+  width: min(520px, 100%);
+  max-height: min(760px, calc(100vh - 32px));
+  overflow: auto;
+  border: 1px solid rgba(67, 103, 91, 0.2);
+  border-radius: 24px;
+  background: #fffdf8;
+  padding: 26px;
+  color: #20342e;
+  box-shadow: 0 24px 80px rgba(20, 39, 33, 0.28);
+}
+
+.tm-arrival-choice__eyebrow {
+  margin-bottom: 7px;
+  color: #397562;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+
+.tm-arrival-choice h2 {
+  margin: 0;
+  font-size: clamp(1.45rem, 4vw, 2rem);
+  letter-spacing: -0.035em;
+}
+
+.tm-arrival-choice > p {
+  margin: 9px 0 18px;
+  color: #63706c;
+  line-height: 1.55;
+}
+
+.tm-arrival-choice__reservation {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 17px;
+  padding: 14px 16px;
+  border: 1px solid #dbe9e3;
+  border-radius: 15px;
+  background: #f3f8f5;
+}
+
+.tm-arrival-choice__reservation strong {
+  color: #235b49;
+}
+
+.tm-arrival-choice__reservation span {
+  color: #60736d;
+  font-size: 0.88rem;
+}
+
+.tm-arrival-choice__blocked {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid #e9b5ad;
+  border-radius: 13px;
+  background: #fff2ef;
+  color: #8f3e35;
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.tm-arrival-choice__options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.tm-arrival-choice__options button {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 130px;
+  padding: 17px;
+  border-radius: 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+
+.tm-arrival-choice__options button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.tm-arrival-choice__options button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.tm-arrival-choice__options strong {
+  font-size: 1rem;
+}
+
+.tm-arrival-choice__options span {
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.tm-arrival-choice__booked {
+  border: 1px solid #74b7a2;
+  background: linear-gradient(145deg, #edf9f5, #dff3ec);
+  color: #12624e;
+  box-shadow: 0 8px 22px rgba(36, 111, 88, 0.09);
+}
+
+.tm-arrival-choice__walkin {
+  border: 1px solid #e6b4ab;
+  background: #fff6f3;
+  color: #8f4439;
+}
+
+.tm-arrival-choice__cancel {
+  width: 100%;
+  margin-top: 14px;
+  padding: 11px 15px;
+  border: 0;
+  border-radius: 12px;
+  background: #eef1ef;
+  color: #42534d;
+  font-weight: 750;
+  cursor: pointer;
+}
+
 @media (max-width: 720px) {
   .tm-reservation-notice {
     margin-inline: 10px;
@@ -81,10 +216,32 @@
   .tm-reservation-notice strong {
     font-size: 0.84rem;
   }
+
+  .tm-arrival-choice__backdrop {
+    align-items: end;
+    padding: 0;
+  }
+
+  .tm-arrival-choice {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 22px 22px 0 0;
+    padding: 22px 18px calc(20px + env(safe-area-inset-bottom));
+  }
+
+  .tm-arrival-choice__options {
+    grid-template-columns: 1fr;
+  }
+
+  .tm-arrival-choice__options button {
+    min-height: auto;
+  }
 }
 
 @media (prefers-contrast: more) {
-  .tm-reservation-notice {
+  .tm-reservation-notice,
+  .tm-arrival-choice,
+  .tm-arrival-choice__options button {
     border-width: 2px;
     box-shadow: none;
   }

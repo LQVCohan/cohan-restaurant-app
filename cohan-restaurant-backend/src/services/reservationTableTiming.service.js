@@ -5,6 +5,7 @@ import {
   activeTableSessionLookupFilter,
 } from "../../utils/orderLifecycle.js";
 
+export const RESERVATION_EARLY_CHECK_IN_MINUTES = 15;
 export const RESERVATION_ARRIVAL_GRACE_MINUTES = 15;
 const ACTIVE_RESERVATION_STATUSES = [
   "pending_payment",
@@ -19,6 +20,19 @@ const validDate = (value) => {
   const date = value ? new Date(value) : null;
   return date && !Number.isNaN(date.getTime()) ? date : null;
 };
+
+export function getReservationEarliestCheckInAt(reservation) {
+  const arrivalAt = validDate(reservation?.timeTo);
+  if (!arrivalAt) return null;
+  return new Date(
+    arrivalAt.getTime() - RESERVATION_EARLY_CHECK_IN_MINUTES * 60_000,
+  );
+}
+
+export function isReservationCheckInOpen(reservation, now = new Date()) {
+  const earliestCheckInAt = getReservationEarliestCheckInAt(reservation);
+  return Boolean(earliestCheckInAt && now >= earliestCheckInAt);
+}
 
 const loadRegisteredModel = async (modelName, modulePath) => {
   // Focused resolver tests replace mongoose with a deliberately small mock.
@@ -73,20 +87,46 @@ export async function getTableReservationSnapshot(table, ctx, now = new Date()) 
   if (!reservation) return null;
 
   const arrivalAt = validDate(reservation.timeTo);
+  const earliestCheckInAt = getReservationEarliestCheckInAt(reservation);
   const graceEndsAt = new Date(
     arrivalAt.getTime() + RESERVATION_ARRIVAL_GRACE_MINUTES * 60_000,
   );
+  const depositAmount = Math.max(0, Number(reservation.depositAmount || 0));
+  const linkedMenuSubtotal = Math.max(
+    0,
+    Number(reservation.linkedMenuSubtotal || 0),
+  );
+  const menuDepositAmount = Math.min(
+    depositAmount,
+    Math.max(0, Math.round(linkedMenuSubtotal * 0.5)),
+  );
+  const tableDepositAmount = Math.max(0, depositAmount - menuDepositAmount);
+
   return {
     reservationId: String(reservation._id),
     reservationOrderCode: reservation.orderCode || null,
     reservationStatus: reservation.status || null,
     reservationPhase: getReservationTimingPhase(reservation, now),
     nextReservationAt: arrivalAt,
+    reservationEarliestCheckInAt: earliestCheckInAt,
+    reservationCanCheckIn: Boolean(
+      reservation.status === "confirmed" &&
+        earliestCheckInAt &&
+        now >= earliestCheckInAt,
+    ),
     reservationGraceEndsAt: graceEndsAt,
     reservationCustomerName: reservation.customerName || null,
     reservationCustomerPhone: reservation.customerPhone || null,
     reservationCustomerEmail: reservation.customerEmail || null,
     reservationPartySize: Number(reservation.partySize || 0) || null,
+    reservationDepositAmount: depositAmount,
+    reservationTableDepositAmount: tableDepositAmount,
+    reservationMenuDepositAmount: menuDepositAmount,
+    reservationDepositStatus: reservation.depositStatus || null,
+    reservationDepositAppliedAmount: Math.max(
+      0,
+      Number(reservation.depositAppliedAmount || 0),
+    ),
   };
 }
 
