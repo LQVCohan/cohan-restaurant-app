@@ -19,6 +19,7 @@ import LocalImageView from "../../../../common/LocalImageView";
 import AuditLogModal from "../AuditLogModal/AuditLogModal";
 import PrepStationControl from "./PrepStationControl";
 import "./MenuItemCard.scss";
+import "../../../../../styles/MenuManagerCompactListFix.css";
 
 const STATUS_OPTIONS = [
   { value: "available", label: "Sẵn sàng" },
@@ -106,6 +107,7 @@ const MenuItemCard = ({
   updatingStatus = false,
   selected = false,
   onSelectToggle,
+  viewMode = "grid",
 }) => {
   const auth = useContext(AuthContext);
   const [imgError, setImgError] = useState(false);
@@ -114,6 +116,7 @@ const MenuItemCard = ({
   const statusMenuRef = useRef(null);
 
   const availability = getMenuItemAvailability(item);
+  const isCompact = viewMode === "list";
 
   const canViewHistory = canAccessMenuManagementAction(
     auth?.user,
@@ -258,9 +261,9 @@ const MenuItemCard = ({
   return (
     <>
       <article
-        className={`menu-item-card ${selected ? "is-selected" : ""} ${
-          isStatusMenuOpen ? "is-status-menu-open" : ""
-        }`.trim()}
+        className={`menu-item-card ${isCompact ? "menu-item-card--compact" : ""} ${
+          selected ? "is-selected" : ""
+        } ${isStatusMenuOpen ? "is-status-menu-open" : ""}`.trim()}
       >
         {typeof onSelectToggle === "function" && (
           <label
@@ -279,28 +282,29 @@ const MenuItemCard = ({
           </label>
         )}
 
-        <div className="card-image-wrapper">
-          {renderImage()}
-          <div className="badge-wrapper">{renderStatusBadge()}</div>
-          {hasSoldCount && (
-            <div className="sales-overlay">
-              <div className="sales-stat">
-                <div className="stat-info">
-                  <span className="label">Đã bán</span>
-                  <span className="value">{soldCount} phần</span>
+        {!isCompact && (
+          <div className="card-image-wrapper">
+            {renderImage()}
+            <div className="badge-wrapper">{renderStatusBadge()}</div>
+            {hasSoldCount && (
+              <div className="sales-overlay">
+                <div className="sales-stat">
+                  <div className="stat-info">
+                    <span className="label">Đã bán</span>
+                    <span className="value">{soldCount} phần</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
-        <div className="card-body">
-          <div className="info-top">
-            <span className="category-name">{displayCategoryName}</span>
-            <h3 className="item-name" title={item.name}>
-              {item.name}
-            </h3>
-            <div className="menu-item-card__meta-row">
+        <div className={`card-body ${isCompact ? "card-body--compact" : ""}`}>
+          {isCompact ? (
+            <div className="menu-item-card__compact-row">
+              <h3 className="item-name" title={item.name}>
+                {item.name}
+              </h3>
               <strong className="menu-item-card__price">
                 {formatPrice(baseDisplayPrice)}
               </strong>
@@ -314,99 +318,126 @@ const MenuItemCard = ({
               >
                 {quickNote}
               </span>
-            </div>
-          </div>
-
-          <PrepStationControl item={item} canUpdate={canUpdateItem} />
-
-          {forYouMetadata?.status &&
-            (forYouMetadata.status === "missing" && canUpdateItem ? (
-              <button
-                type="button"
-                className={`menu-item-card__for-you-badge menu-item-card__for-you-badge--${forYouMetadata.status} menu-item-card__for-you-badge--actionable`}
-                title="Bổ sung thông tin khẩu vị và thành phần dị ứng"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onEditForYou?.(item);
-                }}
-              >
-                Thiếu thông tin tư vấn
-              </button>
-            ) : (
-              <span
-                className={`menu-item-card__for-you-badge menu-item-card__for-you-badge--${forYouMetadata.status}`}
-                title={forYouMetadata.label}
-              >
-                {forYouMetadata.status === "ready"
-                  ? "Đã đủ thông tin tư vấn"
-                  : "Thiếu thông tin tư vấn"}
-              </span>
-            ))}
-
-          {primaryWarning && (
-            <div className="availability-warning" title={primaryWarning}>
-              <AlertTriangle size={14} />
-              <span>{primaryWarning}</span>
-            </div>
-          )}
-
-          {warningCta && (
-            <div
-              className="menu-item-card__warning-cta"
-              title={warningCta.title}
-            >
-              <div className="menu-item-card__warning-cta-title">
-                {warningCta.title}
+              <div className="menu-item-card__compact-prep">
+                <PrepStationControl item={item} canUpdate={canUpdateItem} />
               </div>
-              <div className="menu-item-card__warning-cta-description">
-                {warningCta.description}
-              </div>
-              <button
-                type="button"
-                className="menu-item-card__warning-cta-button"
-                onClick={handleWarningCtaClick}
-              >
-                {warningCta.label}
-              </button>
             </div>
-          )}
-
-          <div className="variants-list">
-            <div className="list-header">
-              <span>Cách chế biến ({variants.length || 1})</span>
-              <span>Giá bán</span>
-            </div>
-
-            <div className="list-content">
-              {variants.length === 0 ? (
-                <div className="variant-row single">
-                  <span>Cách chế biến mặc định</span>
-                  <span className="price">
-                    {formatPrice(item.basePrice || 0)}
+          ) : (
+            <>
+              <div className="info-top">
+                <span className="category-name">{displayCategoryName}</span>
+                <h3 className="item-name" title={item.name}>
+                  {item.name}
+                </h3>
+                <div className="menu-item-card__meta-row">
+                  <strong className="menu-item-card__price">
+                    {formatPrice(baseDisplayPrice)}
+                  </strong>
+                  <span
+                    className={`menu-item-card__quick-note menu-item-card__quick-note--${quickNoteTone}`}
+                    title={
+                      remainingAvailable !== null
+                        ? "Tồn khả dụng theo cách chế biến mặc định"
+                        : quickNote
+                    }
+                  >
+                    {quickNote}
                   </span>
                 </div>
-              ) : (
-                visibleMethods.map((method) => (
-                  <div key={method.key || method.name} className="variant-row">
-                    <span className="v-name">
-                      {method.name || method.key}
-                    </span>
-                    <div className="dotted-line" />
-                    <span className="v-price">
-                      {formatPrice(method.price)}
-                    </span>
-                  </div>
-                ))
-              )}
+              </div>
 
-              {remainingCount > 0 && (
-                <div className="variant-more">
-                  <MoreHorizontal size={14} />
-                  <span>Còn {remainingCount} cách chế biến khác</span>
+              <PrepStationControl item={item} canUpdate={canUpdateItem} />
+
+              {forYouMetadata?.status &&
+                (forYouMetadata.status === "missing" && canUpdateItem ? (
+                  <button
+                    type="button"
+                    className={`menu-item-card__for-you-badge menu-item-card__for-you-badge--${forYouMetadata.status} menu-item-card__for-you-badge--actionable`}
+                    title="Bổ sung thông tin khẩu vị và thành phần dị ứng"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onEditForYou?.(item);
+                    }}
+                  >
+                    Thiếu thông tin tư vấn
+                  </button>
+                ) : (
+                  <span
+                    className={`menu-item-card__for-you-badge menu-item-card__for-you-badge--${forYouMetadata.status}`}
+                    title={forYouMetadata.label}
+                  >
+                    {forYouMetadata.status === "ready"
+                      ? "Đã đủ thông tin tư vấn"
+                      : "Thiếu thông tin tư vấn"}
+                  </span>
+                ))}
+
+              {primaryWarning && (
+                <div className="availability-warning" title={primaryWarning}>
+                  <AlertTriangle size={14} />
+                  <span>{primaryWarning}</span>
                 </div>
               )}
-            </div>
-          </div>
+
+              {warningCta && (
+                <div
+                  className="menu-item-card__warning-cta"
+                  title={warningCta.title}
+                >
+                  <div className="menu-item-card__warning-cta-title">
+                    {warningCta.title}
+                  </div>
+                  <div className="menu-item-card__warning-cta-description">
+                    {warningCta.description}
+                  </div>
+                  <button
+                    type="button"
+                    className="menu-item-card__warning-cta-button"
+                    onClick={handleWarningCtaClick}
+                  >
+                    {warningCta.label}
+                  </button>
+                </div>
+              )}
+
+              <div className="variants-list">
+                <div className="list-header">
+                  <span>Cách chế biến ({variants.length || 1})</span>
+                  <span>Giá bán</span>
+                </div>
+
+                <div className="list-content">
+                  {variants.length === 0 ? (
+                    <div className="variant-row single">
+                      <span>Cách chế biến mặc định</span>
+                      <span className="price">
+                        {formatPrice(item.basePrice || 0)}
+                      </span>
+                    </div>
+                  ) : (
+                    visibleMethods.map((method) => (
+                      <div key={method.key || method.name} className="variant-row">
+                        <span className="v-name">
+                          {method.name || method.key}
+                        </span>
+                        <div className="dotted-line" />
+                        <span className="v-price">
+                          {formatPrice(method.price)}
+                        </span>
+                      </div>
+                    ))
+                  )}
+
+                  {remainingCount > 0 && (
+                    <div className="variant-more">
+                      <MoreHorizontal size={14} />
+                      <span>Còn {remainingCount} cách chế biến khác</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {hasActions && (
