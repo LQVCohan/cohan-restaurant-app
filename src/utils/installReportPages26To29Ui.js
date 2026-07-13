@@ -20,6 +20,12 @@ function polishServingVariantSection(root) {
     const hint = document.createElement("p");
     hint.className = "report-single-serving-hint";
     hint.textContent = `Đã chọn tự động · ${mode}`;
+    Object.assign(hint.style, {
+      margin: "8px 0 0",
+      color: "#4f6a60",
+      fontSize: "0.78rem",
+      fontWeight: "700",
+    });
     section.append(hint);
   });
 }
