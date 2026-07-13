@@ -29,6 +29,21 @@ vi.mock("@/components/Staff/NotificationBell", () => ({
   ),
 }));
 
+vi.mock("lucide-react", async (importOriginal) => {
+  const icons = await importOriginal();
+  return {
+    ...icons,
+    MessageSquareText: ({ size = 24, className = "", ...props }) => (
+      <svg
+        {...props}
+        width={size}
+        height={size}
+        className={`lucide lucide-message-square-text ${className}`.trim()}
+      />
+    ),
+  };
+});
+
 vi.mock("@/hooks/useStaffPerformanceView", () => ({
   useStaffPerformanceView: vi.fn(() => mocks.viewState),
 }));

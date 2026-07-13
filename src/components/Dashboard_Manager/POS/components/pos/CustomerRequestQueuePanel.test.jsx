@@ -158,7 +158,7 @@ describe("CustomerRequestQueuePanel", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Đã hỗ trợ" }));
     await waitFor(() => {
       expect(
-        screen.queryByRole("button", { name: "Đã hỗ trợ" }),
+        screen.queryByRole("heading", { name: "Yêu cầu từ khách" }),
       ).not.toBeInTheDocument();
     });
   });

@@ -393,7 +393,7 @@ describe("AiChatbotWidget basic", () => {
 
     await waitFor(() => expect(screen.getByRole("button", { name: /Xem menu/i })).toBeInTheDocument(), { timeout: 1500 });
     const actionRegion = screen.getByLabelText("Hành động gợi ý");
-    expect(actionRegion.querySelectorAll("button")).toHaveLength(6);
+    expect(actionRegion.querySelectorAll("button")).toHaveLength(5);
     expect(actionRegion.querySelector("button strong")?.textContent).toBe("Xem menu");
     expect(screen.queryByRole("button", { name: /Xem menu trùng/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /javascript bad/i })).not.toBeInTheDocument();
@@ -402,6 +402,9 @@ describe("AiChatbotWidget basic", () => {
     expect(screen.queryByRole("button", { name: /tel bad/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /protocol bad/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Xóa đơn/i })).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: /Gọi nhân viên hỗ trợ/i }).length,
+    ).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: /Mở giỏ hàng/i }));
     expect(openCartSpy).toHaveBeenCalledTimes(1);
@@ -411,7 +414,9 @@ describe("AiChatbotWidget basic", () => {
     expect(mocks.navigateSpy).toHaveBeenCalledWith("/orders");
 
     open();
-    expect(screen.getAllByRole("button", { name: /Gặp nhân viên/i })[0]).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: /Gọi nhân viên hỗ trợ/i })[0],
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Tìm món chay/i }));
     await waitFor(() => expect(mocks.askMutationSpy).toHaveBeenCalledTimes(2), { timeout: 1500 });
     expect(mocks.askMutationSpy.mock.calls[1][0].variables.input.message).toBe("món chay không cay");
@@ -431,7 +436,7 @@ describe("AiChatbotWidget basic", () => {
     await waitFor(() => expect(mocks.askMutationSpy).toHaveBeenCalledTimes(1), {
       timeout: 1500,
     });
-    expect(screen.getByText("Trợ lý đã tiếp nhận.")).toBeInTheDocument();
+    expect(await screen.findByText("Trợ lý đã tiếp nhận.")).toBeInTheDocument();
   });
 
   it("shows friendly message when ask is rate limited", async () => {
@@ -647,7 +652,8 @@ describe("AiChatbotWidget basic", () => {
       screen.getByRole("button", { name: "Xem chi tiết món" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText("ChatBot A.I hỗ trợ nhà hàng").className,
+      screen.getByRole("region", { name: "Trợ lý A.I hỗ trợ nhà hàng" })
+        .className,
     ).toContain("is-expanded");
   });
 
@@ -916,7 +922,9 @@ describe("AiChatbotWidget basic", () => {
     await waitFor(
       () =>
         expect(
-          screen.getByLabelText("ChatBot A.I hỗ trợ nhà hàng"),
+          screen.getByRole("region", {
+            name: "Trợ lý A.I hỗ trợ nhà hàng",
+          }),
         ).toBeInTheDocument(),
       { timeout: 1500 },
     );

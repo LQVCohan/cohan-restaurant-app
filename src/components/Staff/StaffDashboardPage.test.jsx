@@ -14,6 +14,21 @@ vi.mock("@/components/Staff/NotificationBell", () => ({
   ),
 }));
 
+vi.mock("lucide-react", async (importOriginal) => {
+  const icons = await importOriginal();
+  return {
+    ...icons,
+    Fingerprint: ({ size = 24, className = "", ...props }) => (
+      <svg
+        {...props}
+        width={size}
+        height={size}
+        className={`lucide lucide-fingerprint ${className}`.trim()}
+      />
+    ),
+  };
+});
+
 const user = {
   id: "staff-1",
   fullName: "Nhân viên Test",
