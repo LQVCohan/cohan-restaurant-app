@@ -186,12 +186,13 @@ export const prepareTableVrImageFile = async (file) => {
   }
   if (compressed.processedBytes > TABLE_VR_HARD_LIMIT_BYTES) {
     throw new Error(
-      `Ảnh vẫn còn ${formatTableVrBytes(compressed.processedBytes)} sau khi nén và có thể làm đầy Local Storage. Hãy xuất JPG nhẹ hơn.`,
+      `Ảnh vẫn còn ${formatTableVrBytes(compressed.processedBytes)} sau khi nén và vượt giới hạn tải lên. Hãy xuất JPG nhẹ hơn.`,
     );
   }
 
   const dataUrl = await blobToDataUrl(compressed.blob);
   return {
+    blob: compressed.blob,
     dataUrl,
     name: String(file.name || "table-panorama.jpg").replace(/\.[^.]+$/, "") + ".jpg",
     mimeType: "image/jpeg",

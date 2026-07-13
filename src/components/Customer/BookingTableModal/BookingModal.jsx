@@ -70,6 +70,25 @@ export const GET_PUBLIC_BOOKING_TABLES = gql`
   }
 `;
 
+export const GET_PUBLIC_TABLE_RESERVATION_SLOTS = gql`
+  query PublicTableReservationSlots(
+    $restaurantId: ID!
+    $tableId: ID!
+    $from: DateTime!
+    $to: DateTime!
+  ) {
+    publicTableReservationSlots(
+      restaurantId: $restaurantId
+      tableId: $tableId
+      from: $from
+      to: $to
+    ) {
+      start
+      end
+    }
+  }
+`;
+
 const BASIC_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BASIC_PHONE_REGEX = /^(0|\+?84)\d{9,10}$/;
 const SPECIAL_REQUESTS = [
@@ -176,6 +195,112 @@ function nextDefaultTime(time, closingHours) {
   return formatClock(Math.min(start + 60, close));
 }
 
+export function getLocalBookingDayRange(date) {
+  if (!date) return null;
+  const start = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(start.getTime())) return null;
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { from: start.toISOString(), to: end.toISOString() };
+}
+
+function buildLocalRange(date, startTime, endTime) {
+  if (!date || !startTime || !endTime) return null;
+  const start = new Date(`${date}T${startTime}:00`);
+  const end = new Date(`${date}T${endTime}:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  if (end <= start) end.setDate(end.getDate() + 1);
+  return { start, end };
+}
+
+function normalizeBusySlots(slots = []) {
+  return slots
+    .map((slot) => {
+      const start = new Date(slot?.start);
+      const end = new Date(slot?.end);
+      if (
+        Number.isNaN(start.getTime()) ||
+        Number.isNaN(end.getTime()) ||
+        end <= start
+      ) {
+        return null;
+      }
+      return { start, end };
+    })
+    .filter(Boolean);
+}
+
+function overlapsBusyRange(range, busySlots = []) {
+  if (!range) return false;
+  return normalizeBusySlots(busySlots).some(
+    (slot) => slot.start < range.end && slot.end > range.start,
+  );
+}
+
+export function filterAvailableBookingStartSlots({
+  slots = [],
+  date,
+  busySlots = [],
+}) {
+  return slots.filter((slot) => {
+    const start = new Date(`${date}T${slot}:00`);
+    if (Number.isNaN(start.getTime())) return false;
+    const end = new Date(start.getTime() + 30 * 60 * 1000);
+    return !overlapsBusyRange({ start, end }, busySlots);
+  });
+}
+
+export function filterAvailableBookingEndSlots({
+  slots = [],
+  date,
+  startTime,
+  busySlots = [],
+}) {
+  return slots.filter((slot) => {
+    const range = buildLocalRange(date, startTime, slot);
+    return range && !overlapsBusyRange(range, busySlots);
+  });
+}
+
+function getAvailableEndSlotsForStart({
+  date,
+  startTime,
+  closingHours,
+  busySlots,
+}) {
+  const start = parseClock(startTime, null);
+  if (start == null) return [];
+  const candidates = generateSlots(
+    formatClock(start + 30),
+    closingHours,
+    null,
+    true,
+  );
+  return filterAvailableBookingEndSlots({
+    slots: candidates,
+    date,
+    startTime,
+    busySlots,
+  });
+}
+
+function getDefaultAvailableEndTime({
+  date,
+  startTime,
+  closingHours,
+  busySlots,
+}) {
+  const available = getAvailableEndSlotsForStart({
+    date,
+    startTime,
+    closingHours,
+    busySlots,
+  });
+  const preferred = nextDefaultTime(startTime, closingHours);
+  if (preferred && available.includes(preferred)) return preferred;
+  return available[0] || "";
+}
+
 const BookingModal = ({
   isOpen,
   onClose,
@@ -232,6 +357,31 @@ const BookingModal = ({
     fetchPolicy: "cache-first",
   });
 
+  const availabilityRange = useMemo(
+    () => getLocalBookingDayRange(formData.date),
+    [formData.date],
+  );
+  const {
+    data: availabilityData,
+    loading: availabilityLoading,
+    error: availabilityError,
+  } = useQuery(GET_PUBLIC_TABLE_RESERVATION_SLOTS, {
+    variables: {
+      restaurantId,
+      tableId,
+      from: availabilityRange?.from,
+      to: availabilityRange?.to,
+    },
+    skip:
+      !isOpen ||
+      !restaurantId ||
+      !tableId ||
+      !availabilityRange?.from ||
+      !availabilityRange?.to,
+    fetchPolicy: "network-only",
+    pollInterval: 30000,
+  });
+
   const restaurant = restaurantData?.publicRestaurant || null;
   const selectedTable = useMemo(() => {
     const publicTable = (tablesData?.publicTables || []).find(
@@ -281,8 +431,9 @@ const BookingModal = ({
   const menuDepositPercent = 50;
   const menuDeposit = Math.round(menuSubtotal * (menuDepositPercent / 100));
   const totalDeposit = deposit + menuDeposit;
+  const busySlots = availabilityData?.publicTableReservationSlots || [];
 
-  const timeSlots = useMemo(
+  const serviceTimeSlots = useMemo(
     () =>
       generateSlots(
         restaurant?.openingHours,
@@ -292,8 +443,18 @@ const BookingModal = ({
     [restaurant?.openingHours, restaurant?.closingHours, formData.date],
   );
 
-  const timeOutSlots = useMemo(() => {
-    if (!formData.time || formData.openEnded) return [];
+  const timeSlots = useMemo(
+    () =>
+      filterAvailableBookingStartSlots({
+        slots: serviceTimeSlots,
+        date: formData.date,
+        busySlots,
+      }),
+    [serviceTimeSlots, formData.date, busySlots],
+  );
+
+  const allTimeOutSlots = useMemo(() => {
+    if (!formData.time) return [];
     const start = parseClock(formData.time, null);
     if (start == null) return [];
     return generateSlots(
@@ -302,7 +463,24 @@ const BookingModal = ({
       null,
       true,
     );
-  }, [formData.time, formData.openEnded, restaurant?.closingHours]);
+  }, [formData.time, restaurant?.closingHours]);
+
+  const timeOutSlots = useMemo(
+    () =>
+      filterAvailableBookingEndSlots({
+        slots: allTimeOutSlots,
+        date: formData.date,
+        startTime: formData.time,
+        busySlots,
+      }),
+    [allTimeOutSlots, formData.date, formData.time, busySlots],
+  );
+
+  const openEndedAvailable = useMemo(() => {
+    if (!formData.time || !allTimeOutSlots.length) return false;
+    const closingTime = allTimeOutSlots[allTimeOutSlots.length - 1];
+    return timeOutSlots.includes(closingTime);
+  }, [formData.time, allTimeOutSlots, timeOutSlots]);
 
   const durationPreview = formData.openEnded
     ? 0
@@ -385,6 +563,67 @@ const BookingModal = ({
     });
   }, [capacity]);
 
+  useEffect(() => {
+    if (availabilityLoading || !formData.time) return;
+
+    if (!timeSlots.includes(formData.time)) {
+      setFormData((current) => ({
+        ...current,
+        time: "",
+        timeOut: "",
+        openEnded: false,
+      }));
+      setErrors((current) => ({
+        ...current,
+        time: "Khung giờ vừa được người khác đặt. Vui lòng chọn giờ khác.",
+      }));
+      setShowSummary(false);
+      return;
+    }
+
+    if (formData.openEnded && !openEndedAvailable) {
+      setFormData((current) => ({
+        ...current,
+        openEnded: false,
+        timeOut: getDefaultAvailableEndTime({
+          date: current.date,
+          startTime: current.time,
+          closingHours: restaurant?.closingHours,
+          busySlots,
+        }),
+      }));
+      setShowSummary(false);
+      return;
+    }
+
+    if (
+      !formData.openEnded &&
+      formData.timeOut &&
+      !timeOutSlots.includes(formData.timeOut)
+    ) {
+      setFormData((current) => ({
+        ...current,
+        timeOut: getDefaultAvailableEndTime({
+          date: current.date,
+          startTime: current.time,
+          closingHours: restaurant?.closingHours,
+          busySlots,
+        }),
+      }));
+      setShowSummary(false);
+    }
+  }, [
+    availabilityLoading,
+    formData.time,
+    formData.timeOut,
+    formData.openEnded,
+    timeSlots,
+    timeOutSlots,
+    openEndedAvailable,
+    restaurant?.closingHours,
+    busySlots,
+  ]);
+
   const clearError = (...keys) => {
     setErrors((current) => {
       const next = { ...current };
@@ -399,14 +638,26 @@ const BookingModal = ({
       if (field === "date") {
         next.time = "";
         next.timeOut = "";
+        next.openEnded = false;
       }
       if (field === "time") {
-        next.timeOut = nextDefaultTime(value, restaurant?.closingHours);
+        next.openEnded = false;
+        next.timeOut = getDefaultAvailableEndTime({
+          date: current.date,
+          startTime: value,
+          closingHours: restaurant?.closingHours,
+          busySlots,
+        });
       }
       if (field === "openEnded") {
         next.timeOut = value
           ? ""
-          : nextDefaultTime(current.time, restaurant?.closingHours);
+          : getDefaultAvailableEndTime({
+              date: current.date,
+              startTime: current.time,
+              closingHours: restaurant?.closingHours,
+              busySlots,
+            });
       }
       return next;
     });
@@ -449,6 +700,12 @@ const BookingModal = ({
     if (selectedTable?.status && selectedTable.status !== "available") {
       nextErrors.form = "Bàn này không còn ở trạng thái trống. Vui lòng chọn lại bàn.";
     }
+    if (availabilityLoading) {
+      nextErrors.form = "Hệ thống đang kiểm tra các khung giờ trống. Vui lòng chờ một chút.";
+    }
+    if (availabilityError) {
+      nextErrors.form = "Không thể kiểm tra lịch trống của bàn. Vui lòng thử lại.";
+    }
     if (!customerName) nextErrors.customerName = "Vui lòng nhập họ và tên.";
     if (!customerPhone && !customerEmail) {
       nextErrors.contact = "Nhập email hoặc số điện thoại để nhà hàng xác nhận.";
@@ -461,8 +718,18 @@ const BookingModal = ({
     }
     if (!formData.date) nextErrors.date = "Vui lòng chọn ngày.";
     if (!formData.time) nextErrors.time = "Vui lòng chọn giờ đến.";
+    if (formData.time && !timeSlots.includes(formData.time)) {
+      nextErrors.time = "Khung giờ này đã có người đặt. Vui lòng chọn giờ khác.";
+    }
     if (!formData.openEnded && !formData.timeOut) {
       nextErrors.timeOut = "Vui lòng chọn giờ kết thúc.";
+    }
+    if (
+      !formData.openEnded &&
+      formData.timeOut &&
+      !timeOutSlots.includes(formData.timeOut)
+    ) {
+      nextErrors.timeOut = "Khoảng thời gian này trùng với lịch đặt khác của bàn.";
     }
     if (selectedDateTime && selectedDateTime <= new Date()) {
       nextErrors.time = "Thời gian đặt bàn phải ở tương lai.";
@@ -476,6 +743,9 @@ const BookingModal = ({
     }
     if (formData.openEnded && !canUseUnlimitedTime) {
       nextErrors.openEnded = "Tùy chọn này chỉ dành cho thành viên Silver trở lên.";
+    }
+    if (formData.openEnded && !openEndedAvailable) {
+      nextErrors.openEnded = "Bàn đã có lịch đặt sau khung giờ này.";
     }
     if (!formData.openEnded && formData.time && formData.timeOut && durationPreview < 30) {
       nextErrors.timeOut = "Thời gian dùng bàn tối thiểu 30 phút.";
@@ -573,7 +843,12 @@ const BookingModal = ({
 
   if (!isOpen) return null;
 
-  const dataUnavailable = Boolean(restaurantError || tableError || (!restaurant && !restaurantLoading));
+  const dataUnavailable = Boolean(
+    restaurantError ||
+      tableError ||
+      availabilityError ||
+      (!restaurant && !restaurantLoading),
+  );
   const floorLabel = selectedTable?.floorLevel ?? tableFloor;
 
   return (
@@ -615,7 +890,9 @@ const BookingModal = ({
               <AlertCircle size={18} aria-hidden="true" />
               <span>
                 {errors.form ||
-                  "Không tải đủ dữ liệu đặt bàn. Vui lòng đóng cửa sổ và thử lại."}
+                  (availabilityError
+                    ? "Không thể kiểm tra lịch trống của bàn. Vui lòng thử lại."
+                    : "Không tải đủ dữ liệu đặt bàn. Vui lòng đóng cửa sổ và thử lại.")}
               </span>
             </div>
           )}
@@ -740,15 +1017,24 @@ const BookingModal = ({
                           id="bkm-time-in"
                           value={formData.time}
                           onChange={(event) => handleChange("time", event.target.value)}
-                          disabled={!formData.date || restaurantLoading}
+                          disabled={!formData.date || restaurantLoading || availabilityLoading}
                         >
-                          <option value="">Chọn giờ</option>
+                          <option value="">
+                            {availabilityLoading
+                              ? "Đang kiểm tra lịch bàn..."
+                              : timeSlots.length
+                                ? "Chọn giờ"
+                                : "Không còn giờ trống"}
+                          </option>
                           {timeSlots.map((slot) => (
                             <option key={slot} value={slot}>
                               {slot}
                             </option>
                           ))}
                         </select>
+                        {!availabilityLoading && busySlots.length > 0 && (
+                          <small>Các khung giờ đã có khách được tự động ẩn.</small>
+                        )}
                         {errors.time && <em>{errors.time}</em>}
                       </div>
 
@@ -760,7 +1046,7 @@ const BookingModal = ({
                           id="bkm-time-out"
                           value={formData.timeOut}
                           onChange={(event) => handleChange("timeOut", event.target.value)}
-                          disabled={!formData.time || formData.openEnded}
+                          disabled={!formData.time || formData.openEnded || availabilityLoading}
                         >
                           <option value="">Chọn giờ</option>
                           {timeOutSlots.map((slot) => (
@@ -777,7 +1063,12 @@ const BookingModal = ({
                       <input
                         type="checkbox"
                         checked={formData.openEnded}
-                        disabled={!canUseUnlimitedTime}
+                        disabled={
+                          !canUseUnlimitedTime ||
+                          !formData.time ||
+                          !openEndedAvailable ||
+                          availabilityLoading
+                        }
                         onChange={(event) =>
                           handleChange("openEnded", event.target.checked)
                         }
@@ -785,9 +1076,11 @@ const BookingModal = ({
                       <span>
                         <strong>Không giới hạn giờ kết thúc</strong>
                         <small>
-                          {canUseUnlimitedTime
-                            ? "Bàn được giữ đến khi nhà hàng kết thúc phiên phục vụ."
-                            : "Dành cho thành viên Silver, Gold và Platinum."}
+                          {!canUseUnlimitedTime
+                            ? "Dành cho thành viên Silver, Gold và Platinum."
+                            : formData.time && !openEndedAvailable
+                              ? "Bàn đã có lịch đặt sau khung giờ này."
+                              : "Bàn được giữ đến khi nhà hàng kết thúc phiên phục vụ."}
                         </small>
                       </span>
                     </label>
@@ -931,7 +1224,12 @@ const BookingModal = ({
               type="button"
               className="bkm-primary-btn"
               onClick={handleContinue}
-              disabled={restaurantLoading || tableLoading || dataUnavailable}
+              disabled={
+                restaurantLoading ||
+                tableLoading ||
+                availabilityLoading ||
+                dataUnavailable
+              }
             >
               Kiểm tra thông tin <ChevronRight size={18} aria-hidden="true" />
             </button>

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildTableVrViewerUrl,
   getTableVrViewerNavigation,
+  normalizeTableVrStoredUrl,
   openTableVrViewerInNewTab,
   sanitizeTableVrReturnTo,
 } from "./tableVrNavigation";
@@ -21,36 +22,58 @@ describe("tableVrNavigation", () => {
     );
   });
 
-  it("does not rewrite external 360 links", () => {
+  it("stores backend upload paths without pinning the current ngrok domain", () => {
+    expect(
+      normalizeTableVrStoredUrl(
+        "https://temporary-subdomain.ngrok-free.dev/uploads/table-panorama.jpg",
+      ),
+    ).toBe("/uploads/table-panorama.jpg");
+  });
+
+  it("wraps a local backend panorama URL in the spherical viewer", () => {
+    expect(
+      buildTableVrViewerUrl("/uploads/table-panorama.jpg", {
+        tableId: "table-2",
+        returnTo: "/booking/r1",
+      }),
+    ).toBe(
+      "/vr/table/table-2?openedInNewTab=1&returnTo=%2Fbooking%2Fr1&src=%2Fuploads%2Ftable-panorama.jpg",
+    );
+  });
+
+  it("does not rewrite external viewer links that are not image files", () => {
     expect(
       buildTableVrViewerUrl("https://example.com/panorama", {
+        tableId: "table-2",
         returnTo: "/manager#tables",
       }),
     ).toBe("https://example.com/panorama");
   });
 
-  it("opens the viewer in a new noopener tab", () => {
+  it("opens the image-backed viewer in a new noopener tab", () => {
     const openWindow = vi.fn();
-    openTableVrViewerInNewTab("/vr/table/table-2", {
+    openTableVrViewerInNewTab("/uploads/table-2.jpg", {
+      tableId: "table-2",
       returnTo: "/manager#tables",
       openWindow,
     });
 
     expect(openWindow).toHaveBeenCalledWith(
-      "/vr/table/table-2?openedInNewTab=1&returnTo=%2Fmanager%23tables",
+      "/vr/table/table-2?openedInNewTab=1&returnTo=%2Fmanager%23tables&src=%2Fuploads%2Ftable-2.jpg",
       "_blank",
       "noopener,noreferrer",
     );
   });
 
-  it("parses popup mode and rejects unsafe return locations", () => {
+  it("parses popup mode, image source and rejects unsafe return locations", () => {
     expect(
       getTableVrViewerNavigation(
-        "?openedInNewTab=1&returnTo=%2Fbooking%2Fr1%3Ffloor%3D1",
+        "?openedInNewTab=1&returnTo=%2Fbooking%2Fr1%3Ffloor%3D1&src=%2Fuploads%2Ftable.jpg",
       ),
     ).toEqual({
       openedInNewTab: true,
       returnTo: "/booking/r1?floor=1",
+      imageUrl: "/uploads/table.jpg",
     });
     expect(sanitizeTableVrReturnTo("//evil.example/path")).toBe("");
   });

@@ -192,11 +192,17 @@ export default {
     const q = buildTableFilter({ restaurantId, floorId, status, type });
     if (!status) q.status = { $ne: "offline" };
 
-    return Table.find(q)
+    const rows = await Table.find(q)
       .select(TABLE_SELECT)
       .sort({ floorLevel: 1, code: 1 })
       .limit(normalizeTableLimit(limit))
       .lean({ virtuals: true });
+
+    return rows.map((table) =>
+      table.status === "reserved"
+        ? { ...table, status: "available" }
+        : table,
+    );
   },
 
   tableByCode: async (_p, { restaurantId, floorId, code }, ctx) => {
