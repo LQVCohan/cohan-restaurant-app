@@ -203,6 +203,7 @@ const TableBooking = () => {
   const handleViewSelectedTable360 = () => {
     if (!selectedTableVrUrl) return;
     openTableVrViewerInNewTab(selectedTableVrUrl, {
+      tableId: selectedTable?.id,
       returnTo: getCurrentPageReturnTo(),
     });
   };

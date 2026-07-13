@@ -311,11 +311,12 @@ const VRViewer = () => {
   const { search } = location;
   const navigate = useNavigate();
   const [imageUrl, setImageUrl] = useState(null);
-  const { openedInNewTab, returnTo } = getTableVrViewerNavigation(search);
+  const { openedInNewTab, returnTo, imageUrl: sharedImageUrl } =
+    getTableVrViewerNavigation(search);
 
   useEffect(() => {
-    setImageUrl(loadTableVrImage(tableId));
-  }, [tableId]);
+    setImageUrl(sharedImageUrl || loadTableVrImage(tableId));
+  }, [sharedImageUrl, tableId]);
 
   const navigateBack = () => {
     if (location.key !== "default" || window.history.length > 1) {
@@ -381,8 +382,8 @@ const VRViewer = () => {
             panorama 360° lên để xem tại đây.
           </p>
           <p className="vr-viewer__hint">
-            Ảnh được lưu trong <b>Local Storage</b> của trình duyệt hiện tại, nên
-            chỉ xem được trên đúng máy đã upload.
+            Ảnh mới được lưu trên máy chủ cục bộ giống avatar. Ảnh cũ chỉ lưu
+            trong <b>Local Storage</b> vẫn cần mở bằng đúng trình duyệt đã upload.
           </p>
         </section>
       ) : (

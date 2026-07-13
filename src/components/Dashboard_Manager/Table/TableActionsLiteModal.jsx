@@ -9,6 +9,7 @@ import {
 } from "@/utils/vrStorage";
 import {
   getCurrentPageReturnTo,
+  normalizeTableVrStoredUrl,
   openTableVrViewerInNewTab,
 } from "@/utils/tableVrNavigation";
 import {
@@ -24,6 +25,7 @@ import { toApiUrl } from "@/lib/apiBaseUrl";
 import useModalDraft from "@/hooks/useModalDraft";
 import useModalClosePipeline from "@/hooks/useModalClosePipeline";
 import { useNotification } from "@/hooks/useNotification";
+import { useAvatarUploadLocal } from "@/hooks/useAvatarUploadLocal";
 import { mapTableMutationError } from "@/utils/tableMutationError";
 import { getTableActionDisabledReason, getTableGuardState } from "@/utils/tableGuardState";
 import {
@@ -237,6 +239,7 @@ export default function TableActionsLiteModal({
     showErrorBanner: false,
   });
   const { showNotification } = useNotification();
+  const { upload: uploadAsset } = useAvatarUploadLocal();
 
   const initialDraft = useMemo(
     () => ({
@@ -538,11 +541,29 @@ export default function TableActionsLiteModal({
 
     try {
       const panorama = await prepareTableVrImageFile(file);
-      const stored = storeTableVrImage(table.id, panorama.dataUrl, panorama);
-      if (!stored) {
-        throw new Error(
-          "Local Storage của trình duyệt đã đầy. Hãy xóa ảnh 360° cũ hoặc dữ liệu trang rồi thử lại.",
-        );
+      const uploadFile = new File([panorama.blob], panorama.name, {
+        type: panorama.mimeType,
+        lastModified: Date.now(),
+      });
+
+      setVrUploadStatus(
+        `Đã nén còn ${formatTableVrBytes(panorama.processedBytes)}. Đang tải ảnh lên máy chủ cục bộ...`,
+      );
+      const uploadedUrl = await uploadAsset(
+        uploadFile,
+        (percent) =>
+          setVrUploadStatus(`Đang tải ảnh 360° lên máy chủ cục bộ... ${percent}%`),
+        { skipCompression: true },
+      );
+      const storedVrUrl = normalizeTableVrStoredUrl(uploadedUrl);
+
+      const storedLocally = storeTableVrImage(
+        table.id,
+        panorama.dataUrl,
+        panorama,
+      );
+      if (!storedLocally) {
+        console.warn("Không thể lưu bản sao ảnh 360° vào Local Storage.");
       }
 
       if (vrPreviewUrl && vrPreviewUrl.startsWith("blob:")) {
@@ -551,9 +572,9 @@ export default function TableActionsLiteModal({
       setVrFileName(panorama.name);
       setVrFileSizeLabel(getTableVrFileSummary(panorama));
       setVrPreviewUrl(panorama.dataUrl);
-      setVrUrl(`/vr/table/${table.id}`);
+      setVrUrl(storedVrUrl);
       setVrUploadStatus(
-        `Đã nén ảnh còn ${formatTableVrBytes(panorama.processedBytes)}${panorama.savingsPercent ? `, giảm ${panorama.savingsPercent}%` : ""}. Bấm “Lưu thay đổi” để cập nhật cấu hình bàn.`,
+        `Đã nén ảnh còn ${formatTableVrBytes(panorama.processedBytes)}${panorama.savingsPercent ? `, giảm ${panorama.savingsPercent}%` : ""} và tải lên máy chủ. Bấm “Lưu thay đổi” để khách hàng xem được.`,
       );
       setVrUploadStatusTone("success");
     } catch (error) {
@@ -572,6 +593,7 @@ export default function TableActionsLiteModal({
       URL.revokeObjectURL(vrPreviewUrl);
     }
     setVrPreviewUrl("");
+    setVrUrl("");
     setVrFileName("");
     setVrFileSizeLabel("");
     setVrUploadError("");
@@ -1143,6 +1165,7 @@ export default function TableActionsLiteModal({
                           return;
                         }
                         openTableVrViewerInNewTab(vrUrl, {
+                          tableId: table?.id,
                           returnTo: getCurrentPageReturnTo(),
                         });
                       }}
