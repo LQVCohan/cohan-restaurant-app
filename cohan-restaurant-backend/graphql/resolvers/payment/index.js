@@ -15,6 +15,7 @@ import publicTablePaymentMutation from "./publicTablePaymentMutation.js";
 import PublicTableAccessGuardMutation from "./publicTableAccessGuardMutation.js";
 import withPaymentIdempotency from "./paymentIdempotencyMutation.js";
 import withWalletMoneyIdempotency from "./walletMoneyIdempotencyMutation.js";
+import withReservationDepositPayment from "./reservationDepositPaymentMutation.js";
 import {
   PaymentCredentialMutation,
   PaymentCredentialQuery,
@@ -44,7 +45,7 @@ const financeDashboard = async (parent, { input }, ctx, info) => {
   );
 };
 
-const paymentMutation = {
+const paymentMutation = withReservationDepositPayment({
   ...PaymentMutation,
   ...ReconciliationPaymentConfirmationMutation,
   ...FinanceOperationGuardMutation,
@@ -58,7 +59,7 @@ const paymentMutation = {
   ...TransactionManagementGuardMutation,
   // Keep this last so customer ownership is checked before the provider session is created.
   ...CustomerOrderPaymentMutation,
-};
+});
 
 export default {
   Query: {
