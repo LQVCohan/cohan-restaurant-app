@@ -1,12 +1,17 @@
 import mongoose from "mongoose";
 
-import { ACTIVE_RESERVATION_STATUSES } from "../../utils/tableStateGuards.js";
 import {
   ACTIVE_TABLE_SESSION_SORT,
   activeTableSessionLookupFilter,
 } from "../../utils/orderLifecycle.js";
 
 export const RESERVATION_ARRIVAL_GRACE_MINUTES = 15;
+const ACTIVE_RESERVATION_STATUSES = [
+  "pending_payment",
+  "confirmed",
+  "seated",
+  "pending_change",
+];
 const VISIBLE_STATUSES = ["pending_payment", "confirmed", "pending_change"];
 const RESERVATION_OWNED_TABLE_STATUSES = ["reserved", "payment_pending"];
 
