@@ -107,6 +107,8 @@ type Table {
   tableQrExpiresAt: DateTime
   status: TableStatus!
   nextReservationAt: DateTime
+  reservationEarliestCheckInAt: DateTime
+  reservationCanCheckIn: Boolean
   reservationGraceEndsAt: DateTime
   reservationPhase: String
   reservationId: ID
@@ -116,6 +118,11 @@ type Table {
   reservationCustomerPhone: String
   reservationCustomerEmail: String
   reservationPartySize: Int
+  reservationDepositAmount: Float
+  reservationTableDepositAmount: Float
+  reservationMenuDepositAmount: Float
+  reservationDepositStatus: String
+  reservationDepositAppliedAmount: Float
   floorLevel: Int
   deposit: Int
   tags: [String!]
