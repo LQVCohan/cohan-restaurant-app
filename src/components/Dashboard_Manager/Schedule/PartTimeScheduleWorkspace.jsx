@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import {
+  addDays,
   addWeeks,
   endOfWeek,
   format,
@@ -32,72 +33,40 @@ import "./PartTimeScheduleWorkspace.scss";
 
 const ME_QUERY = gql`
   query PartTimeScheduleMe {
-    me {
-      id
-      roleName
-      refRestaurants { id name }
-    }
+    me { id roleName refRestaurants { id name } }
   }
 `;
-
 const GET_ALL_RESTAURANTS = gql`
   query PartTimeScheduleRestaurants($limit: Int = 100, $cursor: ID) {
-    restaurants(limit: $limit, cursor: $cursor) {
-      edges { node { id name } }
-    }
+    restaurants(limit: $limit, cursor: $cursor) { edges { node { id name } } }
   }
 `;
-
 const GET_SCOPED_RESTAURANTS = gql`
   query PartTimeScheduleScopedRestaurants($limit: Int = 100, $cursor: ID) {
-    scopedRestaurants(limit: $limit, cursor: $cursor) {
-      edges { node { id name } }
-    }
+    scopedRestaurants(limit: $limit, cursor: $cursor) { edges { node { id name } } }
   }
 `;
-
 const GET_STAFF_LIST = gql`
   query PartTimeScheduleStaff($restaurantId: ID, $search: String) {
     staffList(restaurantId: $restaurantId, search: $search) {
-      id
-      fullName
-      employeeCode
-      department
-      roleName
-      positionTitle
-      employmentStatus
-      employmentType
-      workingDays
+      id fullName employeeCode department roleName positionTitle
+      employmentStatus employmentType workingDays
       role { id slug name department }
     }
   }
 `;
-
 const GET_STAFF_SHIFTS = gql`
-  query PartTimeScheduleShifts(
-    $restaurantId: ID
-    $startDate: DateTime
-    $endDate: DateTime
-  ) {
+  query PartTimeScheduleShifts($restaurantId: ID, $startDate: DateTime, $endDate: DateTime) {
     staffShifts(
       restaurantId: $restaurantId
       startDate: $startDate
       endDate: $endDate
       limit: 1000
     ) {
-      id
-      employeeId
-      employeeName
-      restaurantId
-      shiftType
-      startTime
-      endTime
-      status
-      notes
+      id employeeId employeeName restaurantId shiftType startTime endTime status notes
     }
   }
 `;
-
 const GET_SCHEDULE_PUBLICATION = gql`
   query PartTimeSchedulePublication(
     $restaurantId: ID!
@@ -109,20 +78,16 @@ const GET_SCHEDULE_PUBLICATION = gql`
       periodStart: $periodStart
       periodEnd: $periodEnd
     ) {
-      id
-      status
-      effectiveStatus
+      id status effectiveStatus
       permissions { canEditDraftSchedule isReadOnly }
     }
   }
 `;
-
 const CREATE_STAFF_SHIFT = gql`
   mutation CreatePartTimeStaffShift($input: CreateStaffShiftInput!) {
     createStaffShift(input: $input) { id }
   }
 `;
-
 const DELETE_STAFF_SHIFT = gql`
   mutation DeletePartTimeStaffShift(
     $shiftId: ID!
@@ -162,15 +127,12 @@ const PartTimeScheduleWorkspace = () => {
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
-  const weekDays = Array.from({ length: 7 }, (_, index) => {
-    const day = new Date(weekStart);
-    day.setDate(weekStart.getDate() + index);
-    return day;
-  });
+  const weekDays = useMemo(
+    () => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)),
+    [weekStart],
+  );
 
-  const { data: meData } = useQuery(ME_QUERY, {
-    fetchPolicy: "cache-and-network",
-  });
+  const { data: meData } = useQuery(ME_QUERY, { fetchPolicy: "cache-and-network" });
   const me = meData?.me;
   const { data: allRestaurantsData } = useQuery(GET_ALL_RESTAURANTS, {
     variables: { limit: 100 },
@@ -184,32 +146,27 @@ const PartTimeScheduleWorkspace = () => {
   });
 
   const restaurantOptions = useMemo(() => {
-    if (me?.roleName === "admin") {
-      return (allRestaurantsData?.restaurants?.edges || [])
-        .map((edge) => edge.node)
-        .filter(Boolean);
-    }
-    return (scopedRestaurantsData?.scopedRestaurants?.edges || [])
-      .map((edge) => edge.node)
-      .filter(Boolean);
+    const edges =
+      me?.roleName === "admin"
+        ? allRestaurantsData?.restaurants?.edges
+        : scopedRestaurantsData?.scopedRestaurants?.edges;
+    return (edges || []).map((edge) => edge.node).filter(Boolean);
   }, [allRestaurantsData, scopedRestaurantsData, me?.roleName]);
 
   useEffect(() => {
-    if (selectedRestaurantId || !restaurantOptions.length) return;
-    setSelectedRestaurantId(restaurantOptions[0].id);
+    if (!selectedRestaurantId && restaurantOptions.length) {
+      setSelectedRestaurantId(restaurantOptions[0].id);
+    }
   }, [restaurantOptions, selectedRestaurantId]);
 
-  const {
-    policy: schedulingPolicy,
-    validateShiftAssignment,
-  } = useSchedulingPolicy({ restaurantId: selectedRestaurantId });
+  const { policy: schedulingPolicy, validateShiftAssignment } =
+    useSchedulingPolicy({ restaurantId: selectedRestaurantId });
 
   const { data: staffData, loading: staffLoading } = useQuery(GET_STAFF_LIST, {
     variables: { restaurantId: selectedRestaurantId },
     skip: !selectedRestaurantId,
     fetchPolicy: "cache-and-network",
   });
-
   const {
     data: shiftsData,
     loading: shiftsLoading,
@@ -224,7 +181,6 @@ const PartTimeScheduleWorkspace = () => {
     skip: !selectedRestaurantId,
     fetchPolicy: "network-only",
   });
-
   const { data: publicationData } = useQuery(GET_SCHEDULE_PUBLICATION, {
     variables: {
       restaurantId: selectedRestaurantId,
@@ -234,18 +190,8 @@ const PartTimeScheduleWorkspace = () => {
     skip: !selectedRestaurantId,
     fetchPolicy: "network-only",
   });
-
   const [createShift] = useMutation(CREATE_STAFF_SHIFT);
   const [deleteShift] = useMutation(DELETE_STAFF_SHIFT);
-  const [validateAssignment] = useLazyQuery(gql`
-    query PartTimeValidateShiftAssignment($input: ValidateShiftAssignmentInput!) {
-      validateShiftAssignment(input: $input) {
-        ok
-        blockingErrors { code message suggestedAction }
-        warnings { code message suggestedAction }
-      }
-    }
-  `, { fetchPolicy: "network-only" });
 
   const partTimeStaff = useMemo(
     () =>
@@ -262,33 +208,25 @@ const PartTimeScheduleWorkspace = () => {
         })),
     [staffData?.staffList],
   );
-
   const staffById = useMemo(
     () => new Map(partTimeStaff.map((person) => [String(person.id), person])),
     [partTimeStaff],
   );
-
   const blocks = useMemo(
     () => groupPartTimeShiftRows(shiftsData?.staffShifts || [], staffById),
     [shiftsData?.staffShifts, staffById],
   );
 
   const publication = publicationData?.schedulePublication;
-  const lifecycleStatus =
-    publication?.effectiveStatus || publication?.status || "draft";
+  const lifecycleStatus = publication?.effectiveStatus || publication?.status || "draft";
   const canEdit = ["draft", "revision_draft"].includes(lifecycleStatus);
   const defaultStartTime = useMemo(() => {
-    const enabledStarts = (schedulingPolicy?.shiftTemplates || [])
+    const starts = (schedulingPolicy?.shiftTemplates || [])
       .filter((template) => template.enabled !== false && template.startTime)
       .map((template) => template.startTime)
       .sort();
-    return enabledStarts[0] || "08:00";
+    return starts[0] || "08:00";
   }, [schedulingPolicy?.shiftTemplates]);
-
-  const weekLabel = `${format(weekStart, "dd/MM")} - ${format(
-    weekEnd,
-    "dd/MM/yyyy",
-  )}`;
 
   const openCreateModal = (day) => {
     if (!canEdit) {
@@ -299,19 +237,16 @@ const PartTimeScheduleWorkspace = () => {
       return;
     }
     const date = format(day, "yyyy-MM-dd");
-    const nextStart = getNextPartTimeStart(blocks, date, defaultStartTime);
-    if (!nextStart) {
-      showNotification(
-        "Block cuối của ngày đã kết thúc sang ngày kế tiếp. Không thể nối thêm ca trong ngày này.",
-        "warning",
-      );
+    const startTime = getNextPartTimeStart(blocks, date, defaultStartTime);
+    if (!startTime) {
+      showNotification("Block cuối đã kết thúc sang ngày kế tiếp.", "warning");
       return;
     }
-    setModalContext({ date, startTime: nextStart });
+    setModalContext({ date, startTime });
   };
 
   const validateEmployee = async ({ employeeId, startTime, endTime, overrideReason }) => {
-    const result = await validateAssignment({
+    const response = await validateShiftAssignment({
       variables: {
         input: {
           employeeId,
@@ -324,22 +259,17 @@ const PartTimeScheduleWorkspace = () => {
         },
       },
     });
-    const validation = result?.data?.validateShiftAssignment;
+    const validation = response?.data?.validateShiftAssignment;
     if (!validation) throw new Error("Không nhận được kết quả kiểm tra xếp ca.");
     if (!validation.ok) {
       throw new Error(
-        (validation.blockingErrors || [])
-          .map((issue) => issue.message)
-          .filter(Boolean)
-          .join("\n") || "Nhân viên không đủ điều kiện nhận ca.",
+        (validation.blockingErrors || []).map((issue) => issue.message).join("\n") ||
+          "Nhân viên không đủ điều kiện nhận ca.",
       );
     }
-    if ((validation.warnings || []).length && !overrideReason) {
+    if (validation.warnings?.length && !overrideReason) {
       throw new Error(
-        `${(validation.warnings || [])
-          .map((issue) => issue.message)
-          .filter(Boolean)
-          .join("; ")} Vui lòng nhập lý do ghi đè để tiếp tục.`,
+        `${validation.warnings.map((issue) => issue.message).join("; ")} Vui lòng nhập lý do ghi đè để tiếp tục.`,
       );
     }
     return validation;
@@ -389,10 +319,7 @@ const PartTimeScheduleWorkspace = () => {
           );
         }
       }
-
-      if (!successCount) {
-        throw new Error(failures.join("\n") || "Không tạo được ca nào.");
-      }
+      if (!successCount) throw new Error(failures.join("\n") || "Không tạo được ca nào.");
       await refetchShifts();
       setModalContext(null);
       showNotification(
@@ -408,10 +335,7 @@ const PartTimeScheduleWorkspace = () => {
 
   const handleDeleteBlock = async (block) => {
     if (!canEdit || !block?.records?.length) return;
-    const confirmed = window.confirm(
-      `Xóa block ${block.startLabel} - ${block.endLabel} và toàn bộ ${block.records.length} phân công?`,
-    );
-    if (!confirmed) return;
+    if (!window.confirm(`Xóa block ${block.startLabel} - ${block.endLabel}?`)) return;
     setDeletingBlockId(block.id);
     try {
       await Promise.all(
@@ -441,8 +365,8 @@ const PartTimeScheduleWorkspace = () => {
           <span className="part-time-schedule-header__eyebrow">Lịch bán thời gian</span>
           <h2>Block ca linh hoạt theo khung giờ</h2>
           <p>
-            Ca mặc định 4 giờ. Block mới tự nối từ giờ kết thúc của block trước,
-            nhưng quản lý vẫn có thể chọn thời lượng khác theo quy định doanh nghiệp.
+            Ca mặc định 4 giờ. Block mới tự nối từ giờ kết thúc của block trước;
+            quản lý có thể chọn thời lượng khác theo quy định doanh nghiệp.
           </p>
         </div>
         <div className="part-time-schedule-header__status">
@@ -458,9 +382,7 @@ const PartTimeScheduleWorkspace = () => {
         >
           <option value="" disabled>Chọn nhà hàng</option>
           {restaurantOptions.map((restaurant) => (
-            <option key={restaurant.id} value={restaurant.id}>
-              {restaurant.name}
-            </option>
+            <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>
           ))}
         </select>
         <div className="part-time-week-navigation">
@@ -468,7 +390,7 @@ const PartTimeScheduleWorkspace = () => {
             <ChevronLeft size={17} /> Trước
           </button>
           <button type="button" onClick={() => setCurrentDate(new Date())}>Hôm nay</button>
-          <strong>{weekLabel}</strong>
+          <strong>{format(weekStart, "dd/MM")} - {format(weekEnd, "dd/MM/yyyy")}</strong>
           <button type="button" onClick={() => setCurrentDate((date) => addWeeks(date, 1))}>
             Sau <ChevronRight size={17} />
           </button>
@@ -477,8 +399,7 @@ const PartTimeScheduleWorkspace = () => {
 
       {!canEdit ? (
         <div className="part-time-schedule-notice">
-          Lịch đã công bố hoặc đang vận hành. Chuyển lịch về bản chỉnh sửa để thêm,
-          xóa hoặc thay đổi block ca.
+          Lịch đã công bố hoặc đang vận hành. Chuyển lịch về bản chỉnh sửa để thay đổi block ca.
         </div>
       ) : null}
 
@@ -534,7 +455,6 @@ const PartTimeScheduleWorkspace = () => {
                       ) : null}
                     </div>
                   ))}
-
                   {canEdit ? (
                     <button
                       type="button"
@@ -545,13 +465,10 @@ const PartTimeScheduleWorkspace = () => {
                       <Plus size={17} />
                       <span>
                         Thêm block
-                        <small>
-                          {nextStart ? `Bắt đầu tự động lúc ${nextStart}` : "Đã kín ngày"}
-                        </small>
+                        <small>{nextStart ? `Bắt đầu tự động lúc ${nextStart}` : "Đã kín ngày"}</small>
                       </span>
                     </button>
                   ) : null}
-
                   {!dayBlocks.length && !canEdit ? (
                     <div className="part-time-day-empty">Chưa có ca bán thời gian</div>
                   ) : null}
@@ -565,8 +482,7 @@ const PartTimeScheduleWorkspace = () => {
       <footer className="part-time-schedule-footer-note">
         <CalendarDays size={17} />
         <span>
-          Nhân viên part-time chỉ được xếp khi lịch rảnh và quy tắc giờ làm cho phép.
-          Mỗi phân công vẫn đi qua bộ kiểm tra overlap, giờ tuần và availability của hệ thống.
+          Mọi phân công vẫn đi qua kiểm tra trùng ca, giờ tuần và lịch rảnh chính thức của hệ thống.
         </span>
       </footer>
 
