@@ -1,3 +1,5 @@
+import "./staffScheduleDomLocalization";
+
 const DEFAULT_POLICY = {
   availabilityRegistrationMode: "manual",
   availabilityOpenDayOffset: -7,
