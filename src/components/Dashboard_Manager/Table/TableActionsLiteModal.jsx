@@ -3,9 +3,17 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   loadTableVrImage,
+  loadTableVrImageMetadata,
   removeTableVrImage,
   storeTableVrImage,
 } from "@/utils/vrStorage";
+import {
+  MAX_TABLE_VR_SOURCE_BYTES,
+  TABLE_VR_ACCEPT,
+  TABLE_VR_TARGET_BYTES,
+  formatTableVrBytes,
+  prepareTableVrImageFile,
+} from "@/utils/tableVrImageProcessing";
 import { usePromotions } from "@/hooks/usePromotions";
 import { getToken } from "@/lib/authStorage";
 import { toApiUrl } from "@/lib/apiBaseUrl";
@@ -76,6 +84,23 @@ const getUniqueDisplayLabels = (values = []) => {
 
 const joinUniqueLabels = (values = [], separator = " · ") =>
   getUniqueDisplayLabels(values).join(separator);
+
+const getTableVrFileSummary = (metadata) => {
+  if (!metadata) return "";
+  const originalBytes = Number(metadata.originalBytes || 0);
+  const processedBytes = Number(metadata.processedBytes || 0);
+  const dimensions =
+    metadata.width && metadata.height
+      ? `${metadata.width} × ${metadata.height}`
+      : "";
+  const compression =
+    originalBytes > processedBytes && processedBytes
+      ? `${formatTableVrBytes(originalBytes)} → ${formatTableVrBytes(processedBytes)}${metadata.savingsPercent ? ` (giảm ${metadata.savingsPercent}%)` : ""}`
+      : processedBytes
+        ? formatTableVrBytes(processedBytes)
+        : "";
+  return [dimensions, compression].filter(Boolean).join(" • ");
+};
 
 const DEFAULT_TABLE_POSITION = { x: 80, y: 80 };
 const TABLE_POSITION_STEP = 40;
@@ -317,13 +342,14 @@ export default function TableActionsLiteModal({
     setTags(joinUniqueLabels(table?.tags || [], ", "));
     setStatusLocal(table?.status || "available");
     const storedImage = loadTableVrImage(table?.id);
+    const storedMetadata = loadTableVrImageMetadata(table?.id);
     const fallbackVrUrl =
       !table?.vrUrl && storedImage ? `/vr/table/${table?.id}` : "";
     setVrUrl(table?.vrUrl || fallbackVrUrl);
     setVrUploadStatus("");
     setVrUploadError("");
-    setVrFileName("");
-    setVrFileSizeLabel("");
+    setVrFileName(storedMetadata?.name || "");
+    setVrFileSizeLabel(getTableVrFileSummary(storedMetadata));
     setVrPreviewUrl(storedImage || "");
     setMoveLevel(table?.floorLevel ?? null);
     setSwapWithCode("");
@@ -494,50 +520,45 @@ export default function TableActionsLiteModal({
     }
   };
 
-  const handleVrFileChange = (event) => {
-    const file = event.target.files?.[0];
+  const handleVrFileChange = async (event) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
     if (!file || !table?.id) return;
+
     setVrUploadError("");
-    setVrUploadStatus("");
+    setVrUploadStatus(
+      `Đang kiểm tra và nén ${formatTableVrBytes(file.size)}. Vui lòng không đóng cửa sổ...`,
+    );
     setVrUploadStatusTone("info");
-    if (!file.type.startsWith("image/")) {
-      setVrUploadError("Vui lòng chọn file ảnh hợp lệ để làm ảnh 360.");
-      return;
-    }
-    const maxSizeMb = 4;
-    if (file.size > maxSizeMb * 1024 * 1024) {
-      setVrUploadError(`Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn ${maxSizeMb}MB.`);
-      return;
-    }
-    if (vrPreviewUrl && vrPreviewUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(vrPreviewUrl);
-    }
-    setVrFileName(file.name || "");
-    setVrFileSizeLabel(`${(file.size / (1024 * 1024)).toFixed(2)} MB`);
-    setVrPreviewUrl(URL.createObjectURL(file));
     setVrUploading(true);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      if (typeof dataUrl !== "string") return;
-      const stored = storeTableVrImage(table.id, dataUrl);
+
+    try {
+      const panorama = await prepareTableVrImageFile(file);
+      const stored = storeTableVrImage(table.id, panorama.dataUrl, panorama);
       if (!stored) {
-        setVrUploadError("Không thể lưu ảnh 360. Vui lòng thử ảnh nhỏ hơn.");
-        setVrUploading(false);
-        return;
+        throw new Error(
+          "Local Storage của trình duyệt đã đầy. Hãy xóa ảnh 360° cũ hoặc dữ liệu trang rồi thử lại.",
+        );
       }
+
+      if (vrPreviewUrl && vrPreviewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(vrPreviewUrl);
+      }
+      setVrFileName(panorama.name);
+      setVrFileSizeLabel(getTableVrFileSummary(panorama));
+      setVrPreviewUrl(panorama.dataUrl);
       setVrUrl(`/vr/table/${table.id}`);
       setVrUploadStatus(
-        "Ảnh đã nạp vào phiên làm việc. Bấm “Lưu thay đổi” để lưu cấu hình chính thức."
+        `Đã nén ảnh còn ${formatTableVrBytes(panorama.processedBytes)}${panorama.savingsPercent ? `, giảm ${panorama.savingsPercent}%` : ""}. Bấm “Lưu thay đổi” để cập nhật cấu hình bàn.`,
       );
-      setVrUploadStatusTone("info");
+      setVrUploadStatusTone("success");
+    } catch (error) {
+      setVrUploadError(error?.message || "Không thể xử lý ảnh 360°.");
+      setVrUploadStatus("");
+    } finally {
       setVrUploading(false);
-    };
-    reader.onerror = () => {
-      setVrUploadError("Không thể đọc file ảnh.");
-      setVrUploading(false);
-    };
-    reader.readAsDataURL(file);
+      input.value = "";
+    }
   };
 
   const handleRemoveVrImage = () => {
@@ -1043,8 +1064,8 @@ export default function TableActionsLiteModal({
                     <div>
                       <label className="talite-label">Tải ảnh 360°</label>
                       <p className="hint">
-                        Chọn ảnh panorama để đại diện cho bàn này. Khuyến nghị
-                        tỉ lệ ngang rộng, dung lượng dưới 4MB.
+                        Chọn ảnh cầu equirectangular gần tỷ lệ 2:1, không phải
+                        panorama ngang thông thường. Nhận JPG/PNG/WebP/AVIF đến {formatTableVrBytes(MAX_TABLE_VR_SOURCE_BYTES)} và tự nén xuống khoảng {formatTableVrBytes(TABLE_VR_TARGET_BYTES)}.
                       </p>
                     </div>
                     <span className="talite-step-chip">Bước 1</span>
@@ -1053,25 +1074,25 @@ export default function TableActionsLiteModal({
                     <input
                       className="talite-file-input"
                       type="file"
-                      accept="image/*"
+                      accept={TABLE_VR_ACCEPT}
                       onChange={handleVrFileChange}
                       disabled={vrUploading}
                     />
                     <span className="btn ghost">
-                      Chọn ảnh 360
+                      {vrUploading ? "Đang nén ảnh..." : "Chọn ảnh 360"}
                     </span>
                     <span className="talite-file-name">
                       {vrFileName || "Chưa chọn tệp nào"}
                     </span>
                   </label>
                   {!!vrFileSizeLabel && (
-                    <div className="hint">Dung lượng tệp: {vrFileSizeLabel}</div>
+                    <div className="hint">Thông tin ảnh: {vrFileSizeLabel}</div>
                   )}
                   {vrPreviewUrl ? (
                     <div className="talite-vr-preview-wrap">
                       <div className="talite-vr-preview-head">
                         <span className="talite-step-chip">Bước 2</span>
-                        <span>Xem trước ảnh 360 đã chọn</span>
+                        <span>Xem trước ảnh 360 sau khi nén</span>
                       </div>
                       <img
                         className="talite-vr-preview"
