@@ -84,7 +84,7 @@ export function estimateHourlyCost({ staff = {}, shiftHours = 0, weeklyTarget = 
   if (hourlyRate > 0) return round2(hourlyRate);
 
   const baseSalary = finiteNumber(staff.baseSalary, 0);
-  if (baseSalary <= 0) return null;
+  if (baseSalary <= 0) return Number.NaN;
 
   const salaryType = String(staff.salaryType || "monthly").toLowerCase();
   if (salaryType === "shift") {
@@ -97,14 +97,18 @@ export function estimateHourlyCost({ staff = {}, shiftHours = 0, weeklyTarget = 
     return round2(baseSalary / monthlyHours);
   }
 
-  return null;
+  return Number.NaN;
 }
 
 const getCostRatio = ({ estimatedHourlyCost, minHourlyCost, maxHourlyCost }) => {
-  const cost = Number(estimatedHourlyCost);
+  if (minHourlyCost === null || minHourlyCost === undefined) return null;
+  if (maxHourlyCost === null || maxHourlyCost === undefined) return null;
+
   const min = Number(minHourlyCost);
   const max = Number(maxHourlyCost);
   if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+
+  const cost = Number(estimatedHourlyCost);
   if (!Number.isFinite(cost)) return 0;
   if (max <= min) return 1;
   return clamp((max - cost) / (max - min));
@@ -225,8 +229,9 @@ export function computeAutoScheduleCandidateScore({
     positiveComponents,
     penaltyComponents,
     fairnessContribution: positiveComponents.fairness,
-    estimatedHourlyCost:
-      Number.isFinite(Number(estimatedHourlyCost)) ? round2(estimatedHourlyCost) : null,
+    estimatedHourlyCost: Number.isFinite(Number(estimatedHourlyCost))
+      ? round2(estimatedHourlyCost)
+      : null,
     shiftHours: round2(shiftHours),
   };
 }
