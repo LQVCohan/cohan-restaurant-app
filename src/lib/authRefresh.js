@@ -50,8 +50,8 @@ export async function refreshAccessToken({ signal } = {}) {
 
   if (!response.ok) {
     throw createTransientAuthRefreshError(
-      `Dịch vụ xác thực tạm thời phản hồi lỗi ${response.status}.`,
-      response.status,
+      `Dịch vụ xác thực tạm thời phản hồi lỗi ${response.status || "không xác định"}.`,
+      response.status || null,
     );
   }
 
@@ -95,6 +95,12 @@ export function refreshAccessTokenOnce() {
         if (payload?.token) publishAuthenticatedSession(payload);
         else publishAnonymousSession("refresh_rejected");
         return payload;
+      })
+      .catch((error) => {
+        if (generation !== refreshGeneration) {
+          throw createStaleAuthRefreshError();
+        }
+        throw error;
       })
       .finally(() => {
         if (refreshPromise === pendingRefresh) {
