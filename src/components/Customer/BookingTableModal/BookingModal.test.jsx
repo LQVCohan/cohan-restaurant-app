@@ -1,12 +1,14 @@
 import React from "react";
 import { MockedProvider } from "@apollo/client/testing";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "../../../context/AuthContext";
 import BookingModal, {
   GET_PUBLIC_BOOKING_RESTAURANT,
   GET_PUBLIC_BOOKING_TABLES,
+  GET_PUBLIC_TABLE_RESERVATION_SLOTS,
+  getLocalBookingDayRange,
 } from "./BookingModal";
 
 const { createBookingMock, showNotificationMock } = vi.hoisted(() => ({
@@ -67,24 +69,58 @@ const publicTable = {
   cancelPolicy: "Liên hệ nhà hàng trước khi thay đổi lịch.",
 };
 
-const apolloMocks = [
-  {
-    request: {
-      query: GET_PUBLIC_BOOKING_RESTAURANT,
-      variables: { id: restaurantId },
-    },
-    result: { data: { publicRestaurant } },
-  },
-  {
-    request: {
-      query: GET_PUBLIC_BOOKING_TABLES,
-      variables: { restaurantId, limit: 200 },
-    },
-    result: { data: { publicTables: [publicTable] } },
-  },
-];
+function tomorrowDate() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  return date.toLocaleDateString("en-CA");
+}
 
-function renderModal({ user, onBookingConfirmed = vi.fn() } = {}) {
+function availabilityMock(date, slots = []) {
+  const range = getLocalBookingDayRange(date);
+  return {
+    request: {
+      query: GET_PUBLIC_TABLE_RESERVATION_SLOTS,
+      variables: {
+        restaurantId,
+        tableId,
+        from: range.from,
+        to: range.to,
+      },
+    },
+    result: {
+      data: { publicTableReservationSlots: slots },
+    },
+  };
+}
+
+function buildApolloMocks(tomorrowSlots = []) {
+  const today = new Date().toLocaleDateString("en-CA");
+  const tomorrow = tomorrowDate();
+  return [
+    {
+      request: {
+        query: GET_PUBLIC_BOOKING_RESTAURANT,
+        variables: { id: restaurantId },
+      },
+      result: { data: { publicRestaurant } },
+    },
+    {
+      request: {
+        query: GET_PUBLIC_BOOKING_TABLES,
+        variables: { restaurantId, limit: 200 },
+      },
+      result: { data: { publicTables: [publicTable] } },
+    },
+    availabilityMock(today),
+    availabilityMock(tomorrow, tomorrowSlots),
+  ];
+}
+
+function renderModal({
+  user,
+  onBookingConfirmed = vi.fn(),
+  tomorrowSlots = [],
+} = {}) {
   const resolvedUser = user || {
     id: "customer-1",
     fullName: "Lê Hoàng Vương",
@@ -94,7 +130,7 @@ function renderModal({ user, onBookingConfirmed = vi.fn() } = {}) {
   };
 
   render(
-    <MockedProvider mocks={apolloMocks} addTypename={false}>
+    <MockedProvider mocks={buildApolloMocks(tomorrowSlots)} addTypename={false}>
       <MemoryRouter>
         <AuthContext.Provider value={{ user: resolvedUser }}>
           <BookingModal
@@ -113,12 +149,6 @@ function renderModal({ user, onBookingConfirmed = vi.fn() } = {}) {
   );
 
   return { onBookingConfirmed };
-}
-
-function tomorrowDate() {
-  const date = new Date();
-  date.setDate(date.getDate() + 1);
-  return date.toLocaleDateString("en-CA");
 }
 
 describe("BookingModal", () => {
@@ -153,6 +183,56 @@ describe("BookingModal", () => {
     expect(screen.getByText("Tối đa 2 khách")).toBeInTheDocument();
   });
 
+  it("hides arrival slots that overlap an existing booking", async () => {
+    const tomorrow = tomorrowDate();
+    renderModal({
+      tomorrowSlots: [
+        {
+          start: new Date(`${tomorrow}T12:00:00`).toISOString(),
+          end: new Date(`${tomorrow}T13:00:00`).toISOString(),
+        },
+      ],
+    });
+    await screen.findByText("Cohan Riverside");
+
+    fireEvent.change(screen.getByLabelText("Ngày"), {
+      target: { value: tomorrow },
+    });
+
+    const arrivalSelect = screen.getByLabelText("Giờ đến");
+    await waitFor(() => expect(arrivalSelect).not.toBeDisabled());
+    expect(within(arrivalSelect).queryByRole("option", { name: "12:00" })).not.toBeInTheDocument();
+    expect(within(arrivalSelect).queryByRole("option", { name: "12:30" })).not.toBeInTheDocument();
+    expect(within(arrivalSelect).getByRole("option", { name: "11:30" })).toBeInTheDocument();
+    expect(within(arrivalSelect).getByRole("option", { name: "13:00" })).toBeInTheDocument();
+    expect(screen.getByText(/khung giờ đã có khách được tự động ẩn/i)).toBeInTheDocument();
+  });
+
+  it("limits the end time so the booking cannot cross into the next occupied slot", async () => {
+    const tomorrow = tomorrowDate();
+    renderModal({
+      tomorrowSlots: [
+        {
+          start: new Date(`${tomorrow}T12:00:00`).toISOString(),
+          end: new Date(`${tomorrow}T13:00:00`).toISOString(),
+        },
+      ],
+    });
+    await screen.findByText("Cohan Riverside");
+
+    fireEvent.change(screen.getByLabelText("Ngày"), {
+      target: { value: tomorrow },
+    });
+    const arrivalSelect = screen.getByLabelText("Giờ đến");
+    await waitFor(() => expect(arrivalSelect).not.toBeDisabled());
+    fireEvent.change(arrivalSelect, { target: { value: "11:30" } });
+
+    const endSelect = screen.getByLabelText("Giờ kết thúc");
+    expect(within(endSelect).getByRole("option", { name: "12:00" })).toBeInTheDocument();
+    expect(within(endSelect).queryByRole("option", { name: "12:30" })).not.toBeInTheDocument();
+    expect(within(endSelect).queryByRole("option", { name: "13:00" })).not.toBeInTheDocument();
+  });
+
   it("submits unlimited time as a boolean for an eligible customer", async () => {
     const onBookingConfirmed = vi.fn();
     renderModal({
@@ -170,7 +250,9 @@ describe("BookingModal", () => {
     fireEvent.change(screen.getByLabelText("Ngày"), {
       target: { value: tomorrowDate() },
     });
-    fireEvent.change(screen.getByLabelText("Giờ đến"), {
+    const arrivalSelect = screen.getByLabelText("Giờ đến");
+    await waitFor(() => expect(arrivalSelect).not.toBeDisabled());
+    fireEvent.change(arrivalSelect, {
       target: { value: "11:00" },
     });
 

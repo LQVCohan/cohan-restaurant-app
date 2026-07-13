@@ -43,6 +43,11 @@ type Reservation {
   updatedAt: DateTime!
 }
 
+type PublicTableReservationSlot {
+  start: DateTime!
+  end: DateTime!
+}
+
 input CreateReservationInput {
   restaurantId: ID!
   tableId: ID!
@@ -120,6 +125,12 @@ extend type Query {
   pendingReservationChanges(restaurantId: ID!, limit: Int = 50): [Reservation!]!
   confirmedReservationByTable(restaurantId: ID!, tableId: ID!): Reservation
   activeReservationByTable(restaurantId: ID!, tableId: ID!): Reservation
+  publicTableReservationSlots(
+    restaurantId: ID!
+    tableId: ID!
+    from: DateTime!
+    to: DateTime!
+  ): [PublicTableReservationSlot!]!
 }
 
 extend type Mutation {
