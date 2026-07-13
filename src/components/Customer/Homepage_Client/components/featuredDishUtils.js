@@ -60,6 +60,12 @@ const enrichDish = (dish, restaurantNameById) => {
   };
 };
 
+const buildDishDedupeKey = (dish) => {
+  const restaurantId = String(dish?.restaurantId || "");
+  const normalizedName = normalizeFeaturedDishName(dish?.name);
+  return `${restaurantId}:${normalizedName}`;
+};
+
 export const selectFeaturedDishes = (
   dishes,
   {
@@ -83,21 +89,21 @@ export const selectFeaturedDishes = (
 
   const selected = [];
   const selectedIds = new Set();
-  const selectedNames = new Set();
+  const selectedDishKeys = new Set();
   const restaurantCounts = new Map();
 
   const trySelect = (dish, enforceRestaurantCap) => {
     const id = String(dish.id);
     const restaurantId = String(dish.restaurantId);
-    const normalizedName = normalizeFeaturedDishName(dish.name);
-    if (selectedIds.has(id) || selectedNames.has(normalizedName)) return;
+    const dishKey = buildDishDedupeKey(dish);
+    if (selectedIds.has(id) || selectedDishKeys.has(dishKey)) return;
 
     const restaurantCount = restaurantCounts.get(restaurantId) || 0;
     if (enforceRestaurantCap && restaurantCount >= safePerRestaurant) return;
 
     selected.push(dish);
     selectedIds.add(id);
-    selectedNames.add(normalizedName);
+    selectedDishKeys.add(dishKey);
     restaurantCounts.set(restaurantId, restaurantCount + 1);
   };
 
