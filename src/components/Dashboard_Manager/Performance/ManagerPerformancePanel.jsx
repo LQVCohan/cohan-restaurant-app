@@ -1,5 +1,4 @@
 import React, { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { useManagerPerformanceDashboard } from "@/hooks/useManagerPerformanceDashboard";
 import "./ManagerPerformancePanel.scss";
 
@@ -23,7 +22,6 @@ const ManagerPerformancePanel = ({
   showViewAll = false,
   compactWhenHealthy = false,
 }) => {
-  const navigate = useNavigate();
   const { dashboard, loading, error, isEmpty } =
     useManagerPerformanceDashboard({ restaurantId });
 
@@ -55,6 +53,23 @@ const ManagerPerformancePanel = ({
     (appealOverview.pendingCount !== undefined ||
       appealOverview.acceptedCount !== undefined);
 
+  const handleViewDetails = () => {
+    if (typeof window === "undefined") return;
+
+    window.dispatchEvent(
+      new CustomEvent("manager:navigate", {
+        detail: {
+          page: "staff",
+          query: {
+            staffPage: "performance",
+            ...(restaurantId ? { restaurantId } : {}),
+          },
+          source: "manager-performance-dashboard",
+        },
+      }),
+    );
+  };
+
   const renderPanelHeader = () => (
     <div className="performance-panel__header">
       <h3>Hiệu suất nhân viên</h3>
@@ -62,7 +77,8 @@ const ManagerPerformancePanel = ({
         <button
           type="button"
           className="btn-link"
-          onClick={() => navigate("/manager#staff")}
+          onClick={handleViewDetails}
+          aria-label="Xem chi tiết hiệu suất nhân viên"
         >
           Xem chi tiết
         </button>
