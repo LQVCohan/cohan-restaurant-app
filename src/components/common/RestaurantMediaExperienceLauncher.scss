@@ -1,0 +1,147 @@
+.restaurant-media-launcher {
+  position: fixed;
+  z-index: 1050;
+  right: 24px;
+  bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 238px;
+  padding: 12px 16px 12px 12px;
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 18px;
+  background: linear-gradient(135deg,#172554,#1d4ed8 55%,#0ea5e9);
+  color: #fff;
+  box-shadow: 0 18px 45px rgba(15,23,42,.26);
+  cursor: pointer;
+  text-align: left;
+  transition: transform .16s ease, box-shadow .16s ease, opacity .16s ease;
+}
+.restaurant-media-launcher:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 22px 52px rgba(15,23,42,.34); }
+.restaurant-media-launcher:disabled { cursor: not-allowed; opacity: .58; }
+.restaurant-media-launcher.is-customer { right: 28px; background: linear-gradient(135deg,#7c2d12,#ea580c 55%,#f59e0b); }
+.restaurant-media-launcher__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: 15px;
+  background: rgba(255,255,255,.18);
+  font-size: 14px;
+  font-weight: 800;
+}
+.restaurant-media-launcher strong,.restaurant-media-launcher small { display: block; }
+.restaurant-media-launcher strong { font-size: 14px; line-height: 1.35; }
+.restaurant-media-launcher small { margin-top: 3px; color: rgba(255,255,255,.78); font-size: 11px; }
+
+.restaurant-media-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2,6,23,.74);
+  backdrop-filter: blur(12px);
+}
+.restaurant-media-modal {
+  width: min(1080px,100%);
+  max-height: min(880px,calc(100vh - 48px));
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(148,163,184,.25);
+  border-radius: 28px;
+  background: #f8fafc;
+  color: #0f172a;
+  box-shadow: 0 32px 90px rgba(2,6,23,.44);
+}
+.restaurant-media-modal__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 28px 20px;
+  background: linear-gradient(135deg,#0f172a,#1e3a8a 65%,#0369a1);
+  color: #fff;
+}
+.restaurant-media-modal__eyebrow { display:block; margin-bottom:8px; color:#7dd3fc; font-size:11px; font-weight:800; letter-spacing:.14em; }
+.restaurant-media-modal__header h2 { margin:0; color:inherit; font-size:clamp(22px,3vw,32px); line-height:1.15; }
+.restaurant-media-modal__header p { margin:8px 0 0; color:rgba(255,255,255,.72); font-size:13px; }
+.restaurant-media-modal__close {
+  width:42px; height:42px; flex:0 0 42px; border:1px solid rgba(255,255,255,.24);
+  border-radius:14px; background:rgba(255,255,255,.12); color:#fff; font-size:28px; cursor:pointer;
+}
+.restaurant-media-tabs { display:flex; gap:8px; padding:14px 20px; border-bottom:1px solid #e2e8f0; background:#fff; }
+.restaurant-media-tabs button {
+  display:flex; align-items:center; gap:8px; padding:10px 14px; border:0; border-radius:12px;
+  background:transparent; color:#475569; font-weight:700; cursor:pointer;
+}
+.restaurant-media-tabs button span { display:grid; place-items:center; min-width:22px; height:22px; padding:0 6px; border-radius:999px; background:#e2e8f0; font-size:11px; }
+.restaurant-media-tabs button.is-active { background:#dbeafe; color:#1d4ed8; }
+.restaurant-media-notice { margin:14px 20px 0; padding:11px 14px; border-radius:12px; font-size:13px; font-weight:650; }
+.restaurant-media-notice.is-success { background:#dcfce7; color:#166534; }
+.restaurant-media-notice.is-error { background:#fee2e2; color:#991b1b; }
+.restaurant-media-modal__body { min-height:300px; overflow-y:auto; padding:20px; }
+.restaurant-media-panel { display:grid; gap:18px; }
+.restaurant-media-gallery { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+.restaurant-media-gallery__item { overflow:hidden; border:1px solid #e2e8f0; border-radius:18px; background:#fff; box-shadow:0 8px 24px rgba(15,23,42,.06); }
+.restaurant-media-gallery__item img { width:100%; aspect-ratio:4/3; display:block; object-fit:cover; }
+.restaurant-media-gallery__caption { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; }
+.restaurant-media-gallery__caption span { overflow:hidden; color:#334155; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+.restaurant-media-gallery__caption button,.restaurant-media-file-meta button { border:0; background:transparent; color:#dc2626; font-weight:700; cursor:pointer; }
+.restaurant-media-upload-card {
+  display:flex; align-items:center; justify-content:space-between; gap:18px; padding:16px 18px;
+  border:1px dashed #93c5fd; border-radius:18px; background:#eff6ff;
+}
+.restaurant-media-upload-card strong,.restaurant-media-upload-card span { display:block; }
+.restaurant-media-upload-card strong { color:#1e3a8a; font-size:14px; }
+.restaurant-media-upload-card span { margin-top:3px; color:#64748b; font-size:12px; }
+.restaurant-media-upload-card>button { flex:0 0 auto; padding:10px 16px; border:0; border-radius:12px; background:#1d4ed8; color:#fff; font-weight:750; cursor:pointer; }
+.restaurant-media-upload-card>button:disabled { cursor:not-allowed; opacity:.55; }
+.restaurant-media-empty {
+  min-height:230px; display:grid; place-content:center; gap:8px; padding:24px; border:1px dashed #cbd5e1;
+  border-radius:20px; background:#fff; text-align:center;
+}
+.restaurant-media-empty strong { font-size:18px; }
+.restaurant-media-empty span { color:#64748b; font-size:13px; }
+.restaurant-media-empty--panorama { min-height:340px; background:radial-gradient(circle at center,#e0f2fe,#f8fafc 65%); }
+.restaurant-media-panorama { position:relative; min-height:440px; overflow:hidden; border-radius:22px; background:#0f172a; cursor:grab; outline:none; }
+.restaurant-media-panorama:active { cursor:grabbing; }
+.restaurant-media-panorama:focus-visible { box-shadow:0 0 0 4px rgba(59,130,246,.3); }
+.restaurant-media-panorama__image {
+  position:absolute; inset:0; background-repeat:repeat-x; background-size:auto 100%; background-position-y:center;
+  transition:background-position-x 40ms linear;
+}
+.restaurant-media-panorama__hint {
+  position:absolute; left:50%; bottom:18px; transform:translateX(-50%); padding:8px 12px;
+  border:1px solid rgba(255,255,255,.28); border-radius:999px; background:rgba(15,23,42,.72);
+  color:#fff; font-size:12px; backdrop-filter:blur(8px);
+}
+.restaurant-media-file-meta { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 16px; border:1px solid #e2e8f0; border-radius:16px; background:#fff; }
+.restaurant-media-file-meta strong,.restaurant-media-file-meta span { display:block; }
+.restaurant-media-file-meta strong { font-size:13px; }
+.restaurant-media-file-meta span { margin-top:3px; color:#64748b; font-size:11px; }
+.restaurant-media-modal__footer { display:flex; align-items:center; justify-content:space-between; gap:22px; padding:16px 20px 18px; border-top:1px solid #e2e8f0; background:#fff; }
+.restaurant-media-storage { flex:1; }
+.restaurant-media-storage>div:first-child { display:flex; justify-content:space-between; gap:12px; color:#334155; font-size:12px; }
+.restaurant-media-storage__track { height:7px; margin:7px 0; overflow:hidden; border-radius:999px; background:#e2e8f0; }
+.restaurant-media-storage__track span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#2563eb,#06b6d4); }
+.restaurant-media-storage small { color:#64748b; font-size:11px; }
+.restaurant-media-danger { flex:0 0 auto; padding:10px 14px; border:1px solid #fecaca; border-radius:12px; background:#fff1f2; color:#be123c; font-weight:750; cursor:pointer; }
+
+@media (max-width:780px) {
+  .restaurant-media-launcher { right:14px; bottom:14px; min-width:0; max-width:calc(100vw - 28px); }
+  .restaurant-media-modal__backdrop { align-items:end; padding:0; }
+  .restaurant-media-modal { max-height:94vh; border-radius:24px 24px 0 0; }
+  .restaurant-media-modal__header { padding:20px; }
+  .restaurant-media-gallery { grid-template-columns:1fr 1fr; }
+  .restaurant-media-panorama { min-height:330px; }
+  .restaurant-media-upload-card,.restaurant-media-modal__footer { align-items:stretch; flex-direction:column; }
+}
+@media (max-width:480px) {
+  .restaurant-media-launcher { width:calc(100vw - 28px); }
+  .restaurant-media-gallery { grid-template-columns:1fr; }
+  .restaurant-media-tabs { overflow-x:auto; }
+  .restaurant-media-tabs button { flex:0 0 auto; }
+}
