@@ -5,6 +5,8 @@ import TableOrderAccessGate from "./TableOrderAccessGate";
 import TableOrderExperience from "./TableOrderExperience";
 import TableProofUpdateNotifier from "./TableProofUpdateNotifier";
 
+import "./TableOrderResponsiveLayout.scss";
+
 const TABLE_PATH_PATTERN = /^\/table\/([a-f\d]{24})\/([a-f\d]{24})\/?$/i;
 const IDENTITY_CHOICE_PREFIX = "cohan:table-order:identity-choice";
 const IDENTITY_TOKEN_PREFIX = "cohan:table-order:identity-token";
