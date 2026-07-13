@@ -6,6 +6,7 @@ import HomeForYouSection from "./components/HomeForYouSection";
 import DishGrid from "./components/DishGrid";
 import HowItWorks from "./components/HowItWorks";
 import TableBooking from "./components/TableBooking";
+import HomeSidebar from "./components/HomeSidebar";
 import MobileHome from "./MobileHome";
 import useGsapHomeMotion from "./hooks/useGsapHomeMotion";
 import useIsMobile from "../../../hooks/useIsMobile";
@@ -15,6 +16,7 @@ import "../../../styles/Homepage/HomeMotion.scss";
 import "../../../styles/Homepage/HomePremiumPolish.scss";
 import "../../../styles/Homepage/HomeA11yPolish.scss";
 import "../../../styles/Homepage/HomeResponsiveFix.scss";
+import "../../../styles/Homepage/HomeDashboardRedesign.scss";
 
 const getCurrentTimeSlot = () => {
   const hour = new Date().getHours();
@@ -74,36 +76,40 @@ const DesktopHome = () => {
   };
 
   return (
-    <div className="home" ref={homeMotionRef}>
-      <main className="home__main-content">
-        <HeroSection onSearch={handleSearch} />
+    <div className="home home--dashboard" ref={homeMotionRef}>
+      <HomeSidebar />
 
-        {bookingNotice && (
-          <div className="home__booking-notice" role="status" aria-live="polite">
-            {bookingNotice}
-          </div>
-        )}
+      <div className="home-dashboard__workspace">
+        <main className="home__main-content">
+          <HeroSection onSearch={handleSearch} />
 
-        <Categories
-          onCategorySelect={handleCategorySelect}
-          timeSlot={timeSlot}
-        />
+          {bookingNotice && (
+            <div className="home__booking-notice" role="status" aria-live="polite">
+              {bookingNotice}
+            </div>
+          )}
 
-        <RestaurantGrid
-          restaurantFilter={filterState}
-          onBookingClick={handleOpenBooking}
-        />
+          <HomeForYouSection timeSlot={timeSlot} />
 
-        <HomeForYouSection timeSlot={timeSlot} />
+          <Categories
+            onCategorySelect={handleCategorySelect}
+            timeSlot={timeSlot}
+          />
 
-        <DishGrid
-          selectedCategoryId={filterState.categoryId}
-          selectedCategoryName={filterState.categoryName}
-          timeSlot={timeSlot}
-        />
+          <RestaurantGrid
+            restaurantFilter={filterState}
+            onBookingClick={handleOpenBooking}
+          />
 
-        <HowItWorks />
-      </main>
+          <DishGrid
+            selectedCategoryId={filterState.categoryId}
+            selectedCategoryName={filterState.categoryName}
+            timeSlot={timeSlot}
+          />
+
+          <HowItWorks />
+        </main>
+      </div>
 
       <TableBooking
         restaurant={selectedRestaurant}
