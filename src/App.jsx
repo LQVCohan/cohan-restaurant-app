@@ -26,6 +26,7 @@ import { CartProvider } from "./context/CartProvider";
 import { CustomerNotificationProvider } from "./context/CustomerNotificationContext";
 import AiChatbotWidget from "./components/common/AiChatbotWidget";
 import "./components/common/AiChatbotHandoffPolish.scss";
+import "./components/common/AiChatbotConversationLayout.scss";
 import AppErrorBoundary from "./components/common/AppErrorBoundary";
 import Table3DPreviewLauncher from "./components/Dashboard_Manager/Table/Table3DPreviewLauncher";
 import StaffKitchenFocusLauncher from "./components/Staff/StaffKitchenFocusLauncher";
