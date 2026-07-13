@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { AuthContext } from "./AuthContext";
-import { subscribeAuthSession } from "@/lib/authStorage";
+import { setAuth, subscribeAuthSession } from "@/lib/authStorage";
 
 function normalizeLoginUser(roleOrUser, fallbackUser = null) {
   if (typeof roleOrUser === "string") {
@@ -20,6 +20,15 @@ function normalizeLoginUser(roleOrUser, fallbackUser = null) {
   return fallbackUser;
 }
 
+function buildAuthenticatedSession(token, user) {
+  if (!token) return null;
+  return {
+    status: "authenticated",
+    token,
+    user: user || null,
+  };
+}
+
 /**
  * Keeps consumers of AuthContext synchronized with auth changes triggered by
  * Apollo refreshes and applies a login result to the UI immediately, even when
@@ -28,42 +37,59 @@ function normalizeLoginUser(roleOrUser, fallbackUser = null) {
 export default function AuthSessionReconciler({ children }) {
   const parentAuth = useContext(AuthContext) || {};
   const parentAuthRef = useRef(parentAuth);
-  const anonymousHandledRef = useRef(false);
+  const explicitAnonymousRef = useRef(false);
+  const lastAuthenticatedRef = useRef(null);
+  const parentWasAuthenticatedRef = useRef(false);
+  const recoveryScheduledRef = useRef(false);
   const [externalSession, setExternalSession] = useState(null);
 
   useEffect(() => {
     parentAuthRef.current = parentAuth;
   }, [parentAuth]);
 
+  const syncParentSession = useCallback((session) => {
+    if (!session?.token || recoveryScheduledRef.current) return;
+    recoveryScheduledRef.current = true;
+
+    window.setTimeout(() => {
+      recoveryScheduledRef.current = false;
+      const latestAuth = parentAuthRef.current || {};
+      if (
+        explicitAnonymousRef.current ||
+        latestAuth.token === session.token ||
+        !latestAuth.login
+      ) {
+        return;
+      }
+
+      Promise.resolve(
+        latestAuth.login(session.token, session.user || latestAuth.user),
+      ).catch(() => {
+        // The nested provider still exposes the valid session while the parent
+        // retries its own cache and account synchronization.
+      });
+    }, 0);
+  }, []);
+
   useEffect(
     () =>
       subscribeAuthSession((change) => {
         if (change?.status === "authenticated" && change.token) {
-          anonymousHandledRef.current = false;
+          explicitAnonymousRef.current = false;
           const currentAuth = parentAuthRef.current || {};
-          const nextUser = change.user || currentAuth.user || null;
-          setExternalSession({
-            status: "authenticated",
-            token: change.token,
-            user: nextUser,
-          });
-
-          // The notification is emitted while the shared refresh promise is
-          // resolving. Sync the parent on the next task so clearRefreshPromise
-          // cannot invalidate the refresh that just succeeded.
-          window.setTimeout(() => {
-            const latestAuth = parentAuthRef.current || {};
-            if (latestAuth.token === change.token || !latestAuth.login) return;
-            Promise.resolve(
-              latestAuth.login(change.token, nextUser || latestAuth.user),
-            ).catch(() => {
-              // The nested provider still exposes the valid refreshed session.
-            });
-          }, 0);
+          const nextSession = buildAuthenticatedSession(
+            change.token,
+            change.user || currentAuth.user || lastAuthenticatedRef.current?.user,
+          );
+          lastAuthenticatedRef.current = nextSession;
+          setExternalSession(nextSession);
+          syncParentSession(nextSession);
           return;
         }
 
         if (change?.status === "anonymous") {
+          explicitAnonymousRef.current = true;
+          lastAuthenticatedRef.current = null;
           setExternalSession({
             status: "anonymous",
             token: null,
@@ -71,8 +97,6 @@ export default function AuthSessionReconciler({ children }) {
             reason: change.reason || "session_expired",
           });
 
-          if (anonymousHandledRef.current) return;
-          anonymousHandledRef.current = true;
           window.setTimeout(() => {
             const latestAuth = parentAuthRef.current || {};
             if (!latestAuth.token || !latestAuth.logout) return;
@@ -80,8 +104,44 @@ export default function AuthSessionReconciler({ children }) {
           }, 0);
         }
       }),
-    [],
+    [syncParentSession],
   );
+
+  useEffect(() => {
+    const parentAuthenticated = Boolean(parentAuth.token && parentAuth.user);
+
+    if (parentAuthenticated) {
+      const parentSession = buildAuthenticatedSession(
+        parentAuth.token,
+        parentAuth.user,
+      );
+      lastAuthenticatedRef.current = parentSession;
+      parentWasAuthenticatedRef.current = true;
+      explicitAnonymousRef.current = false;
+      return;
+    }
+
+    const parentDroppedAuthenticatedSession =
+      parentWasAuthenticatedRef.current &&
+      !parentAuth.token &&
+      !parentAuth.user;
+
+    if (
+      parentDroppedAuthenticatedSession &&
+      !explicitAnonymousRef.current &&
+      lastAuthenticatedRef.current?.token
+    ) {
+      const recoverableSession = lastAuthenticatedRef.current;
+      setAuth({ token: recoverableSession.token });
+      setExternalSession(recoverableSession);
+      syncParentSession(recoverableSession);
+      return;
+    }
+
+    if (explicitAnonymousRef.current && !parentAuth.token && !parentAuth.user) {
+      parentWasAuthenticatedRef.current = false;
+    }
+  }, [parentAuth.token, parentAuth.user, syncParentSession]);
 
   useEffect(() => {
     if (!externalSession) return;
@@ -104,30 +164,35 @@ export default function AuthSessionReconciler({ children }) {
     }
   }, [externalSession, parentAuth.token, parentAuth.user]);
 
-  const login = useCallback((newToken, roleOrUser, avatar = null, options = {}) => {
-    const currentAuth = parentAuthRef.current || {};
-    const nextUser = normalizeLoginUser(roleOrUser, currentAuth.user);
-    anonymousHandledRef.current = false;
+  const login = useCallback(
+    (newToken, roleOrUser, avatar = null, options = {}) => {
+      const currentAuth = parentAuthRef.current || {};
+      const nextUser = normalizeLoginUser(roleOrUser, currentAuth.user);
+      const nextSession = buildAuthenticatedSession(newToken, nextUser);
+      explicitAnonymousRef.current = false;
+      parentWasAuthenticatedRef.current = true;
+      lastAuthenticatedRef.current = nextSession;
 
-    // Update Header, routes and login redirect immediately. The parent login
-    // can still safely wait for an old account cache to finish clearing.
-    setExternalSession({
-      status: "authenticated",
-      token: newToken,
-      user: nextUser,
-    });
+      // Update Header, routes and login redirect immediately. The parent login
+      // can still safely wait for an old account cache to finish clearing.
+      setAuth({ token: newToken });
+      setExternalSession(nextSession);
 
-    if (!currentAuth.login) return Promise.resolve(false);
-    return Promise.resolve(
-      currentAuth.login(newToken, roleOrUser, avatar, options),
-    )
-      .then(() => true)
-      .catch(() => false);
-  }, []);
+      if (!currentAuth.login) return Promise.resolve(false);
+      return Promise.resolve(
+        currentAuth.login(newToken, roleOrUser, avatar, options),
+      )
+        .then(() => true)
+        .catch(() => false);
+    },
+    [],
+  );
 
   const logout = useCallback(() => {
     const currentAuth = parentAuthRef.current || {};
-    anonymousHandledRef.current = true;
+    explicitAnonymousRef.current = true;
+    parentWasAuthenticatedRef.current = false;
+    lastAuthenticatedRef.current = null;
     setExternalSession({
       status: "anonymous",
       token: null,
