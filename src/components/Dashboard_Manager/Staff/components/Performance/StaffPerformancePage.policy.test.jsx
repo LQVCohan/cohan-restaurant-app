@@ -84,15 +84,20 @@ describe("StaffPerformancePolicyPage", () => {
     });
   });
 
-  it("opens a modal that separates editable thresholds from locked rules", () => {
-    renderPage();
+  it("opens a viewport-level modal that separates editable thresholds from locked rules", () => {
+    const { container } = renderPage();
     fireEvent.click(
       screen.getByRole("button", { name: "Cấu hình đánh giá" }),
     );
 
+    const dialog = screen.getByRole("dialog", {
+      name: "Cấu hình đánh giá hiệu suất",
+    });
+    expect(dialog).toBeInTheDocument();
+    expect(container).not.toContainElement(dialog);
     expect(
-      screen.getByRole("dialog", { name: "Cấu hình đánh giá hiệu suất" }),
-    ).toBeInTheDocument();
+      dialog.closest(".performance-policy-backdrop")?.parentElement,
+    ).toBe(document.body);
     expect(screen.getByText("Được phép điều chỉnh")).toBeInTheDocument();
     expect(screen.getByText("Được bảo vệ, không thể sửa")).toBeInTheDocument();
     expect(screen.getByText("Trọng số 25/25/20/20/10")).toBeInTheDocument();
