@@ -57,6 +57,7 @@ export default function MobileCustomerShell({
   const location = useLocation();
   const { user } = useContext(AuthContext) || {};
   const isHome = location.pathname === "/";
+  const isScannerRoute = location.pathname === "/scan-table";
   const hasManagerAccess = Boolean(user && canAccessRoute(user, "/manager"));
   const canOpenProfile = Boolean(user && canAccessRoute(user, "/profile"));
   const accountPath = !user
@@ -74,11 +75,14 @@ export default function MobileCustomerShell({
   );
   const navItemCount = visibleNavItems.length + 1;
   const isTableQrFlow =
-    location.pathname === "/scan-table" ||
-    location.pathname.startsWith("/table/");
+    isScannerRoute || location.pathname.startsWith("/table/");
 
   return (
-    <div className="mobile-customer-shell">
+    <div
+      className={`mobile-customer-shell${
+        isScannerRoute ? " mobile-customer-shell--scanner" : ""
+      }`}
+    >
       <header className="mobile-customer-shell__header">
         <button
           type="button"
@@ -87,81 +91,89 @@ export default function MobileCustomerShell({
           aria-label={isHome ? "Về trang chủ" : "Quay lại"}
         >
           {isHome ? (
-            <span className="mobile-customer-shell__logo" aria-hidden="true">🍽️</span>
+            <span className="mobile-customer-shell__logo" aria-hidden="true">
+              🍽️
+            </span>
           ) : (
             <ChevronLeft aria-hidden="true" />
           )}
           <span>{resolveTitle(location.pathname)}</span>
         </button>
 
-        <div className="mobile-customer-shell__header-actions">
-          {showManagerShortcut && (
+        {!isScannerRoute && (
+          <div className="mobile-customer-shell__header-actions">
+            {showManagerShortcut && (
+              <button
+                type="button"
+                className="mobile-customer-shell__cart"
+                onClick={() => navigate("/manager")}
+                aria-label="Mở trang quản lý"
+                title="Trang quản lý"
+              >
+                <LayoutDashboard aria-hidden="true" />
+              </button>
+            )}
+            <button
+              type="button"
+              className={`mobile-customer-shell__cart mobile-customer-shell__scan${isTableQrFlow ? " is-active" : ""}`}
+              onClick={() => navigate("/scan-table")}
+              aria-label="Quét mã QR tại bàn"
+              title="Quét mã QR tại bàn"
+            >
+              <ScanLine aria-hidden="true" />
+            </button>
+            <CustomerNotificationBell />
             <button
               type="button"
               className="mobile-customer-shell__cart"
-              onClick={() => navigate("/manager")}
-              aria-label="Mở trang quản lý"
-              title="Trang quản lý"
+              onClick={onCartToggle}
+              aria-label={`Mở giỏ hàng${cartItemCount ? `, ${cartItemCount} món` : ""}`}
             >
-              <LayoutDashboard aria-hidden="true" />
+              <ShoppingCart aria-hidden="true" />
+              {cartItemCount > 0 && (
+                <span className="mobile-customer-shell__cart-count">
+                  {cartItemCount > 99 ? "99+" : cartItemCount}
+                </span>
+              )}
             </button>
-          )}
-          <button
-            type="button"
-            className={`mobile-customer-shell__cart mobile-customer-shell__scan${isTableQrFlow ? " is-active" : ""}`}
-            onClick={() => navigate("/scan-table")}
-            aria-label="Quét mã QR tại bàn"
-            title="Quét mã QR tại bàn"
-          >
-            <ScanLine aria-hidden="true" />
-          </button>
-          <CustomerNotificationBell />
-          <button
-            type="button"
-            className="mobile-customer-shell__cart"
-            onClick={onCartToggle}
-            aria-label={`Mở giỏ hàng${cartItemCount ? `, ${cartItemCount} món` : ""}`}
-          >
-            <ShoppingCart aria-hidden="true" />
-            {cartItemCount > 0 && (
-              <span className="mobile-customer-shell__cart-count">
-                {cartItemCount > 99 ? "99+" : cartItemCount}
-              </span>
-            )}
-          </button>
-        </div>
+          </div>
+        )}
       </header>
 
       <main className="mobile-customer-shell__main">{children}</main>
 
-      <nav
-        className="mobile-customer-shell__nav"
-        aria-label="Điều hướng khách hàng"
-        style={{ gridTemplateColumns: `repeat(${navItemCount}, minmax(0, 1fr))` }}
-      >
-        {visibleNavItems.map(({ to, label, icon: Icon, end }) => (
+      {!isScannerRoute && (
+        <nav
+          className="mobile-customer-shell__nav"
+          aria-label="Điều hướng khách hàng"
+          style={{
+            gridTemplateColumns: `repeat(${navItemCount}, minmax(0, 1fr))`,
+          }}
+        >
+          {visibleNavItems.map(({ to, label, icon: Icon, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                `mobile-customer-shell__nav-item${isActive ? " is-active" : ""}`
+              }
+            >
+              <Icon aria-hidden="true" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
           <NavLink
-            key={to}
-            to={to}
-            end={end}
+            to={accountPath}
             className={({ isActive }) =>
               `mobile-customer-shell__nav-item${isActive ? " is-active" : ""}`
             }
           >
-            <Icon aria-hidden="true" />
-            <span>{label}</span>
+            <AccountIcon aria-hidden="true" />
+            <span>{accountLabel}</span>
           </NavLink>
-        ))}
-        <NavLink
-          to={accountPath}
-          className={({ isActive }) =>
-            `mobile-customer-shell__nav-item${isActive ? " is-active" : ""}`
-          }
-        >
-          <AccountIcon aria-hidden="true" />
-          <span>{accountLabel}</span>
-        </NavLink>
-      </nav>
+        </nav>
+      )}
     </div>
   );
 }
