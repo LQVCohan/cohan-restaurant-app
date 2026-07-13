@@ -8,6 +8,7 @@ import {
   Brand,
   BrandMembership,
   Category,
+  CategoryMenu,
   Coupon,
   Customer,
   Menu,
@@ -29,14 +30,16 @@ import {
   safeDbInfo,
 } from "./lib/scriptSafety.js";
 
-const DEFAULT_BRAND_SLUG = "cohan-demo-business";
-const DEFAULT_RESTAURANT_NAME = "COHAN Defense Demo Restaurant";
-const SECONDARY_RESTAURANT_NAME =
-  "COHAN Defense Demo Restaurant - Quận 1";
+const BRAND_SLUG = "cohan-hospitality";
+const PRIMARY_RESTAURANT_NAME = "Nhà hàng COHAN Thủ Đức";
+const SECONDARY_RESTAURANT_NAME = "Nhà hàng COHAN Nguyễn Huệ";
 const DEFENSE_CUSTOMER_EMAIL = "customer.demo@cohan.local";
 const SOURCE_CUSTOMER_EMAIL = /@customer-demo\.cohan\.local$/i;
 const SCOPED_DEMO_EMAIL = /\.demo@cohan\.local$/i;
-const CUSTOMER_DEMO_TAG = "customer-manager-demo";
+const CUSTOMER_ORDER_SEED_KEY = "customer-manager-demo";
+const MENU_SEED_KEY = "cohan-menu-catalog-v1";
+const PRODUCTION_MARKER_PATTERN =
+  /\b(?:demo|defen[cs]e|seed(?:ed|ing)?)\b|\[(?:demo|defen[cs]e)[^\]]*\]|PR\d+|MM-DEMO|CMD-/i;
 const scriptPath = fileURLToPath(import.meta.url);
 
 const idString = (value) => String(value?._id || value?.id || value || "");
@@ -51,6 +54,18 @@ function integrityError(message) {
 
 function ensure(condition, message) {
   if (!condition) throw integrityError(message);
+}
+
+export function containsProductionMarker(value) {
+  return PRODUCTION_MARKER_PATTERN.test(String(value || ""));
+}
+
+export function assertProductionDisplayText(label, value, { required = true } = {}) {
+  const text = String(value || "").trim();
+  if (required) ensure(text, `${label} is empty`);
+  if (!text) return true;
+  ensure(!containsProductionMarker(text), `${label} contains an internal seed marker: ${text}`);
+  return true;
 }
 
 export function customerTypeFromSpending(totalSpending) {
@@ -104,30 +119,108 @@ export function buildScopedDemoMembershipDefinitions({
 }
 
 async function resolveDefenseContext() {
-  const [brand, primary, secondary] = await Promise.all([
-    Brand.findOne({ slug: DEFAULT_BRAND_SLUG }),
-    Restaurant.findOne({ name: DEFAULT_RESTAURANT_NAME }),
-    Restaurant.findOne({ name: SECONDARY_RESTAURANT_NAME }),
+  const brand = await Brand.findOne({ slug: BRAND_SLUG });
+  ensure(brand, `missing Brand ${BRAND_SLUG}`);
+
+  const [primary, secondary] = await Promise.all([
+    Restaurant.findOne({ name: PRIMARY_RESTAURANT_NAME, brandId: brand._id }),
+    Restaurant.findOne({ name: SECONDARY_RESTAURANT_NAME, brandId: brand._id }),
   ]);
-
-  ensure(brand, `missing Brand ${DEFAULT_BRAND_SLUG}`);
-  ensure(primary, `missing primary restaurant ${DEFAULT_RESTAURANT_NAME}`);
-  ensure(
-    secondary,
-    `missing secondary restaurant ${SECONDARY_RESTAURANT_NAME}`,
-  );
-
+  ensure(primary, `missing primary restaurant ${PRIMARY_RESTAURANT_NAME}`);
+  ensure(secondary, `missing secondary restaurant ${SECONDARY_RESTAURANT_NAME}`);
   return { brand, primary, secondary };
+}
+
+function orderCodeFor(order) {
+  const createdAt = new Date(order.createdAt || Date.now());
+  const date = Number.isNaN(createdAt.getTime())
+    ? new Date().toISOString().slice(0, 10).replaceAll("-", "")
+    : createdAt.toISOString().slice(0, 10).replaceAll("-", "");
+  return `COHAN-${date}-${idString(order._id).slice(-6).toUpperCase()}`;
+}
+
+function normalizeStatusHistory(history = []) {
+  return history.map((entry) => ({
+    ...entry,
+    displayMessage:
+      String(entry.status || "").toUpperCase() === "PAID"
+        ? "Đơn hàng đã được thanh toán"
+        : "Nhà hàng đã tiếp nhận đơn hàng",
+  }));
+}
+
+function normalizeStatusTimeline(timeline = []) {
+  return timeline.map((entry) => ({
+    ...entry,
+    note:
+      String(entry.status || "").toLowerCase() === "completed"
+        ? "Đơn hàng đã hoàn tất"
+        : "Đơn hàng đang được xử lý",
+  }));
+}
+
+async function normalizeCustomerOrders(primaryRestaurantId) {
+  const orders = await Order.find({
+    restaurantId: primaryRestaurantId,
+    "clientMeta.demoTag": CUSTOMER_ORDER_SEED_KEY,
+  })
+    .sort({ createdAt: 1, _id: 1 })
+    .select("_id createdAt statusHistory statusTimeline")
+    .lean();
+
+  for (const order of orders) {
+    await Order.updateOne(
+      { _id: order._id },
+      {
+        $set: {
+          orderCode: orderCodeFor(order),
+          note: "Khách dùng bữa tại nhà hàng",
+          statusHistory: normalizeStatusHistory(order.statusHistory),
+          statusTimeline: normalizeStatusTimeline(order.statusTimeline),
+        },
+      },
+    );
+  }
+  return orders.length;
+}
+
+async function normalizeGuestCustomerNames(primaryRestaurantId) {
+  const guests = await Customer.find({
+    refRestaurants: primaryRestaurantId,
+    isGuest: true,
+    fullName: /^Guest\b/i,
+  })
+    .select("_id fullName")
+    .lean();
+
+  for (const guest of guests) {
+    await Customer.updateOne(
+      { _id: guest._id },
+      { $set: { fullName: String(guest.fullName).replace(/^Guest\b/i, "Khách") } },
+    );
+  }
+  return guests.length;
 }
 
 async function normalizeDefenseCustomer(primaryRestaurantId) {
   const passwordHash = await bcrypt.hash(getDemoPassword(), 10);
   let target = await Customer.findOne({ email: DEFENSE_CUSTOMER_EMAIL });
-  const source = await Customer.findOne({
-    email: SOURCE_CUSTOMER_EMAIL,
-    refRestaurants: primaryRestaurantId,
-    totalOrders: { $gt: 0 },
-  }).sort({ totalSpending: -1, totalOrders: -1, createdAt: 1 });
+  let targetOrderCount = target
+    ? await Order.countDocuments({
+        restaurantId: primaryRestaurantId,
+        userId: target._id,
+        "clientMeta.demoTag": CUSTOMER_ORDER_SEED_KEY,
+      })
+    : 0;
+
+  const source =
+    targetOrderCount > 0
+      ? null
+      : await Customer.findOne({
+          email: SOURCE_CUSTOMER_EMAIL,
+          refRestaurants: primaryRestaurantId,
+          totalOrders: { $gt: 0 },
+        }).sort({ totalSpending: -1, totalOrders: -1, createdAt: 1 });
 
   ensure(
     target || source,
@@ -142,11 +235,12 @@ async function normalizeDefenseCustomer(primaryRestaurantId) {
       {
         restaurantId: primaryRestaurantId,
         userId: source._id,
-        "clientMeta.demoTag": CUSTOMER_DEMO_TAG,
+        "clientMeta.demoTag": CUSTOMER_ORDER_SEED_KEY,
       },
       { $set: { userId: target._id } },
     );
     reassignedOrders = result.modifiedCount || 0;
+    targetOrderCount += reassignedOrders;
 
     const remainingOrders = await Order.countDocuments({ userId: source._id });
     if (!remainingOrders) await Customer.deleteOne({ _id: source._id });
@@ -158,7 +252,7 @@ async function normalizeDefenseCustomer(primaryRestaurantId) {
       $match: {
         restaurantId: objectId(primaryRestaurantId),
         userId: objectId(targetId),
-        "clientMeta.demoTag": CUSTOMER_DEMO_TAG,
+        "clientMeta.demoTag": CUSTOMER_ORDER_SEED_KEY,
       },
     },
     {
@@ -170,16 +264,21 @@ async function normalizeDefenseCustomer(primaryRestaurantId) {
     },
   ]);
 
-  ensure(stats?.totalOrders > 0, `${DEFENSE_CUSTOMER_EMAIL} has no demo orders`);
+  ensure(stats?.totalOrders > 0, `${DEFENSE_CUSTOMER_EMAIL} has no linked orders`);
   const loyaltyPoints = Math.floor(Number(stats.totalSpending || 0) / 1_000_000);
   const verifiedAt = new Date();
+  const fullName = String(target.fullName || "Nguyễn Minh An")
+    .replace(/\bDemo\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim() || "Nguyễn Minh An";
+
   target = await Customer.findByIdAndUpdate(
     targetId,
     {
       $set: {
         email: DEFENSE_CUSTOMER_EMAIL,
         username: "customer.demo",
-        fullName: "COHAN Demo Customer",
+        fullName,
         provider: "local",
         passwordHash,
         status: "active",
@@ -246,7 +345,6 @@ async function upsertScopedDemoMemberships({ brand, primary, secondary }) {
       { upsert: true, new: true, setDefaultsOnInsert: true },
     );
   }
-
   return memberships;
 }
 
@@ -256,16 +354,101 @@ function membershipIncludes(membership, restaurantId) {
   );
 }
 
+async function verifyProductionFacingContent({ brand, primary, secondary }) {
+  [
+    ["brand.name", brand.name],
+    ["brand.description", brand.description],
+    ["brand.businessName", brand.businessName],
+    ["primaryRestaurant.name", primary.name],
+    ["primaryRestaurant.description", primary.description],
+    ["secondaryRestaurant.name", secondary.name],
+    ["secondaryRestaurant.description", secondary.description],
+  ].forEach(([label, value]) => assertProductionDisplayText(label, value));
+
+  const [categoryMenus, menus, categories, menuItems, coupons, promotions] =
+    await Promise.all([
+      CategoryMenu.find({ restaurantId: primary._id }).select("name description").lean(),
+      Menu.find({ restaurantId: primary._id }).select("name description").lean(),
+      Category.find({ restaurantId: primary._id }).select("name").lean(),
+      MenuItem.find({ restaurantId: primary._id }).select(
+        "name description thumbImage status notes menuId categoryId",
+      ).lean(),
+      Coupon.find({ restaurantId: primary._id }).select("name description code").lean(),
+      Promotion.find({ restaurantId: primary._id }).select("name description code").lean(),
+    ]);
+
+  for (const item of categoryMenus) {
+    assertProductionDisplayText("CategoryMenu.name", item.name);
+    assertProductionDisplayText("CategoryMenu.description", item.description);
+  }
+  for (const item of menus) {
+    assertProductionDisplayText("Menu.name", item.name);
+    assertProductionDisplayText("Menu.description", item.description);
+  }
+  for (const item of categories) {
+    assertProductionDisplayText("Category.name", item.name);
+  }
+  for (const item of menuItems) {
+    assertProductionDisplayText("MenuItem.name", item.name);
+    assertProductionDisplayText("MenuItem.description", item.description);
+    if (item.status === "available") {
+      ensure(String(item.thumbImage || "").trim(), `${item.name} has no thumbImage`);
+      ensure(
+        String(item.thumbImage).startsWith("/images/menu/"),
+        `${item.name} does not use a managed local menu image`,
+      );
+    }
+  }
+  for (const item of coupons) {
+    assertProductionDisplayText("Coupon.name", item.name);
+    assertProductionDisplayText("Coupon.description", item.description);
+    assertProductionDisplayText("Coupon.code", item.code);
+  }
+  for (const item of promotions) {
+    assertProductionDisplayText("Promotion.name", item.name);
+    assertProductionDisplayText("Promotion.description", item.description);
+    assertProductionDisplayText("Promotion.code", item.code);
+  }
+
+  const customer = await Customer.findOne({ email: DEFENSE_CUSTOMER_EMAIL })
+    .select("fullName")
+    .lean();
+  ensure(customer, `missing ${DEFENSE_CUSTOMER_EMAIL}`);
+  assertProductionDisplayText("Customer.fullName", customer.fullName);
+
+  const orders = await Order.find({
+    restaurantId: primary._id,
+    "clientMeta.demoTag": CUSTOMER_ORDER_SEED_KEY,
+  })
+    .select("orderCode note statusHistory statusTimeline items")
+    .lean();
+  for (const order of orders) {
+    assertProductionDisplayText("Order.orderCode", order.orderCode);
+    assertProductionDisplayText("Order.note", order.note);
+    for (const entry of order.statusHistory || []) {
+      assertProductionDisplayText("Order.statusHistory.displayMessage", entry.displayMessage);
+    }
+    for (const entry of order.statusTimeline || []) {
+      assertProductionDisplayText("Order.statusTimeline.note", entry.note);
+    }
+    for (const item of order.items || []) {
+      assertProductionDisplayText("Order.items.name", item.name);
+    }
+  }
+
+  return { menuItems, orders };
+}
+
 export async function verifyDefenseDataset(context = null) {
   const { brand, primary, secondary } = context || (await resolveDefenseContext());
 
   ensure(
     idString(primary.brandId) === idString(brand._id),
-    "primary restaurant is not linked to the defense Brand",
+    "primary restaurant is not linked to the Brand",
   );
   ensure(
     idString(secondary.brandId) === idString(brand._id),
-    "secondary restaurant is not linked to the defense Brand",
+    "secondary restaurant is not linked to the Brand",
   );
 
   const coreRequirements = [
@@ -293,7 +476,7 @@ export async function verifyDefenseDataset(context = null) {
 
   for (const [email, role, restaurantId] of coreRequirements) {
     const user = coreUserByEmail.get(email);
-    ensure(user, `missing core defense account ${email}`);
+    ensure(user, `missing core account ${email}`);
     const membership = coreMembershipByUser.get(idString(user._id));
     ensure(membership, `missing active BrandMembership for ${email}`);
     ensure(
@@ -319,7 +502,7 @@ export async function verifyDefenseDataset(context = null) {
   })
     .select("_id email restaurantForStaff refRestaurants")
     .lean();
-  ensure(scopedUsers.length > 0, "no scoped demo staff accounts were found");
+  ensure(scopedUsers.length > 0, "no scoped staff accounts were found");
   const scopedMemberships = await BrandMembership.find({
     brandId: brand._id,
     userId: { $in: scopedUsers.map((user) => user._id) },
@@ -351,7 +534,7 @@ export async function verifyDefenseDataset(context = null) {
   const customerOrderCount = await Order.countDocuments({
     restaurantId: primary._id,
     userId: customer._id,
-    "clientMeta.demoTag": CUSTOMER_DEMO_TAG,
+    "clientMeta.demoTag": CUSTOMER_ORDER_SEED_KEY,
   });
   ensure(customerOrderCount > 0, `${DEFENSE_CUSTOMER_EMAIL} has no linked orders`);
   ensure(
@@ -359,15 +542,17 @@ export async function verifyDefenseDataset(context = null) {
     `${DEFENSE_CUSTOMER_EMAIL} totalOrders does not match linked orders`,
   );
 
-  const menuItems = await MenuItem.find({
-    restaurantId: primary._id,
-    status: "available",
-    menuId: { $ne: null },
-    categoryId: { $ne: null },
-  })
-    .select("_id menuId categoryId")
-    .lean();
-  ensure(menuItems.length > 0, "primary restaurant has no available linked menu items");
+  const { menuItems, orders } = await verifyProductionFacingContent({
+    brand,
+    primary,
+    secondary,
+  });
+  ensure(menuItems.length > 0, "primary restaurant has no menu items");
+  const availableMenuItems = menuItems.filter((item) => item.status === "available");
+  ensure(availableMenuItems.length >= 3, "primary restaurant needs at least 3 available menu items");
+  const managedMenuItems = menuItems.filter((item) => item.notes === MENU_SEED_KEY);
+  ensure(managedMenuItems.length >= 4, "managed menu catalog is incomplete");
+
   const menuIds = uniqueIds(menuItems.map((item) => item.menuId));
   const categoryIds = uniqueIds(menuItems.map((item) => item.categoryId));
   const [menuCount, categoryCount] = await Promise.all([
@@ -380,20 +565,14 @@ export async function verifyDefenseDataset(context = null) {
     "one or more MenuItem.categoryId values are dangling",
   );
 
-  const orders = await Order.find({
-    restaurantId: primary._id,
-    "clientMeta.demoTag": CUSTOMER_DEMO_TAG,
-  })
-    .select("userId items")
-    .lean();
-  ensure(orders.length > 0, "primary restaurant has no customer demo orders");
+  ensure(orders.length > 0, "primary restaurant has no customer orders");
   const orderCustomerIds = uniqueIds(orders.map((order) => order.userId));
   const orderCustomerCount = await Customer.countDocuments({
     _id: { $in: orderCustomerIds },
   });
   ensure(
     orderCustomerCount === orderCustomerIds.length,
-    "one or more demo orders reference a missing customer",
+    "one or more orders reference a missing customer",
   );
   const menuItemById = new Map(menuItems.map((item) => [idString(item._id), item]));
   for (const order of orders) {
@@ -470,14 +649,25 @@ export async function finalizeDefenseDataset({ verifyOnly = false } = {}) {
   const context = await resolveDefenseContext();
   let customerResult = null;
   let memberships = [];
+  let normalizedOrders = 0;
+  let normalizedGuests = 0;
 
   if (!verifyOnly) {
+    normalizedOrders = await normalizeCustomerOrders(context.primary._id);
+    normalizedGuests = await normalizeGuestCustomerNames(context.primary._id);
     customerResult = await normalizeDefenseCustomer(context.primary._id);
     memberships = await upsertScopedDemoMemberships(context);
   }
 
   const verification = await verifyDefenseDataset(context);
-  return { context, customerResult, memberships, verification };
+  return {
+    context,
+    customerResult,
+    memberships,
+    normalizedOrders,
+    normalizedGuests,
+    verification,
+  };
 }
 
 async function main() {
@@ -504,11 +694,17 @@ async function main() {
   );
   if (result.customerResult) {
     console.log(
-      `Customer demo linked orders: ${result.verification.customerDemoOrders}; reassigned this run: ${result.customerResult.reassignedOrders}`,
+      `Customer linked orders: ${result.verification.customerDemoOrders}; reassigned this run: ${result.customerResult.reassignedOrders}`,
     );
   }
+  if (result.normalizedOrders) {
+    console.log(`Customer-facing orders normalized: ${result.normalizedOrders}`);
+  }
+  if (result.normalizedGuests) {
+    console.log(`Guest customer names normalized: ${result.normalizedGuests}`);
+  }
   if (result.memberships.length) {
-    console.log(`Scoped demo memberships normalized: ${result.memberships.length}`);
+    console.log(`Scoped memberships normalized: ${result.memberships.length}`);
   }
   console.table(result.verification);
 }
