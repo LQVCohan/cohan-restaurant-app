@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { Buffer } from "node:buffer";
 import process from "node:process";
 
-const DEFAULT_TIMEOUT = Number(process.env.PAYMENT_PROVIDER_TIMEOUT_MS || 15000);
+const DEFAULT_TIMEOUT = Number(process.env.PAYMENT_PROVIDER_TIMEOUT_MS || 30000);
 const DEFAULT_VNPAY_TTL_MINUTES = Number(process.env.PAYMENT_SESSION_TTL_MINUTES || 10);
 const CALLBACK_CREDENTIAL_TTL_MS = 60_000;
 const paymentCredentialContexts = new Map();
