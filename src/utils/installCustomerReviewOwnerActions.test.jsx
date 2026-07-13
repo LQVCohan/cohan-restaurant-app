@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apolloMocks = vi.hoisted(() => ({
   query: vi.fn(),
@@ -58,9 +58,18 @@ function renderStaticReviewCard() {
   `;
 }
 
+class StableMutationObserver {
+  observe() {}
+  disconnect() {}
+  takeRecords() {
+    return [];
+  }
+}
+
 describe("customer review owner actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal("MutationObserver", StableMutationObserver);
     window.history.replaceState({}, "", "/restaurant/restaurant-1#reviews");
     window.requestAnimationFrame = (callback) => window.setTimeout(callback, 0);
     window.cancelAnimationFrame = (id) => window.clearTimeout(id);
@@ -87,6 +96,10 @@ describe("customer review owner actions", () => {
       }
       return Promise.resolve({ data: {} });
     });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("shows edit/delete only on the owner's card and calls both owner mutations", async () => {
