@@ -4,13 +4,17 @@ on:
   push:
     branches:
       - agent/stabilize-mobile-5-photo-capture
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: ${{ !startsWith(github.event.head_commit.message, 'chore(agent): remove mobile capture patch helper') }}
+    if: ${{ github.head_ref == 'agent/stabilize-mobile-5-photo-capture' || github.ref_name == 'agent/stabilize-mobile-5-photo-capture' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
