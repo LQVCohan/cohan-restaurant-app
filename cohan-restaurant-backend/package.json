@@ -22,6 +22,7 @@
     "test:watch": "vitest",
     "check:user-email": "node scripts/check-user-by-email.js",
     "seed:demo:scheduling": "node scripts/seedSchedulingAttendanceDemo.js",
+    "seed:demo:schedule-weeks": "node scripts/seedScheduleCurrentAndPreviousWeek.js",
     "seed:demo:brand-staff-workforce": "node scripts/seedBrandStaffWorkforceDemo.js",
     "verify:demo:performance": "node scripts/verifyStaffPerformanceDemoRegression.js",
     "repair:demo:operator-account-types": "node scripts/repairDemoOperatorAccountTypes.js",
@@ -92,23 +93,11 @@
     "mime": "^4.0.7",
     "mongodb": "^6.17.0",
     "mongoose": "^8.16.2",
-    "mongoose-lean-virtuals": "^2.0.0",
+    "mongoose-lean-virtuals": "^0.8.0",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
     "nodemailer": "^8.0.10",
     "process": "^0.11.10",
-    "qrcode": "^1.5.4",
-    "sharp": "^0.34.5",
-    "socket.io": "^4.8.1",
-    "zxcvbn": "^4.2.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.10",
-    "pino": "^10.0.0",
-    "pino-pretty": "^13.1.1",
-    "vitest": "^4.1.8"
-  },
-  "overrides": {
-    "fast-uri": "3.1.2"
+    "qrcode": "^1.5.4"
   }
 }
