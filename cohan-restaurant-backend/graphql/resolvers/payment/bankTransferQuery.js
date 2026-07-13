@@ -5,7 +5,14 @@ import { requireRestaurantPermission } from "../../../src/services/auth/authoriz
 import { sanitizePaymentSessionForClient } from "../../../src/services/payment/paymentSession.service.js";
 import { expireStaleTransferPayments } from "../../../src/services/payment/transferExpiry.service.js";
 
-const DEFAULT_QUEUE_STATUSES = ["SUBMITTED", "VERIFYING", "REJECTED", "VERIFIED"];
+const AWAITING_PROOF_STATUS = "INSTRUCTIONS_SHOWN";
+const ACTIONABLE_QUEUE_STATUSES = ["SUBMITTED", "VERIFYING"];
+const DEFAULT_QUEUE_STATUSES = [
+  AWAITING_PROOF_STATUS,
+  ...ACTIONABLE_QUEUE_STATUSES,
+  "REJECTED",
+  "VERIFIED",
+];
 const REVIEW_QUEUE_STATUSES = [...DEFAULT_QUEUE_STATUSES, "FAILED", "EXPIRED"];
 
 const toObjectId = (value) =>
@@ -18,19 +25,40 @@ async function requirePaymentReadScope(restaurantId, ctx) {
   return rid;
 }
 
+export function normalizeTransferQueueStatuses({ status, statuses } = {}) {
+  if (Array.isArray(statuses) && statuses.length) {
+    const normalized = Array.from(
+      new Set(statuses.map((value) => String(value || "").toUpperCase()).filter(Boolean)),
+    );
+    const isManagerOpenQueue = ACTIONABLE_QUEUE_STATUSES.every((value) =>
+      normalized.includes(value),
+    );
+
+    // The manager screen historically asks for SUBMITTED + VERIFYING for its
+    // default queue and for the broader all-status queue. A newly created bank
+    // transfer is still INSTRUCTIONS_SHOWN until the customer uploads proof, so
+    // include it in those open queues instead of making the payment disappear.
+    if (isManagerOpenQueue && !normalized.includes(AWAITING_PROOF_STATUS)) {
+      normalized.unshift(AWAITING_PROOF_STATUS);
+    }
+    return normalized;
+  }
+
+  if (status) return [String(status).toUpperCase()];
+  return [...DEFAULT_QUEUE_STATUSES];
+}
+
 export const BankTransferPaymentQuery = {
   async transferPaymentQueue(_parent, { restaurantId, status, statuses, limit = 50 }, ctx) {
     const rid = await requirePaymentReadScope(restaurantId, ctx);
 
     await expireStaleTransferPayments({ now: new Date(), limit: 100, io: ctx?.io }).catch(() => {});
-    const filter = { restaurantId: rid, provider: "bank_transfer" };
-    if (Array.isArray(statuses) && statuses.length) {
-      filter["transfer.status"] = { $in: statuses.map((value) => String(value).toUpperCase()) };
-    } else if (status) {
-      filter["transfer.status"] = String(status).toUpperCase();
-    } else {
-      filter["transfer.status"] = { $in: DEFAULT_QUEUE_STATUSES };
-    }
+    const requestedStatuses = normalizeTransferQueueStatuses({ status, statuses });
+    const filter = {
+      restaurantId: rid,
+      provider: "bank_transfer",
+      "transfer.status": { $in: requestedStatuses },
+    };
 
     const safeLimit = Math.min(Math.max(Number(limit || 50), 1), 100);
     const rows = await PaymentSession.find(filter)
@@ -57,6 +85,7 @@ export const BankTransferPaymentQuery = {
     const counts = Object.fromEntries(
       grouped.map(({ _id, count }) => [String(_id || "").toUpperCase(), Number(count || 0)]),
     );
+    const awaitingProof = counts.INSTRUCTIONS_SHOWN || 0;
     const submitted = counts.SUBMITTED || 0;
     const verifying = counts.VERIFYING || 0;
     const rejected = counts.REJECTED || 0;
@@ -65,8 +94,8 @@ export const BankTransferPaymentQuery = {
     const expired = counts.EXPIRED || 0;
 
     return {
-      total: submitted + verifying + rejected + verified + failed + expired,
-      actionable: submitted + verifying,
+      total: awaitingProof + submitted + verifying + rejected + verified + failed + expired,
+      actionable: awaitingProof + submitted + verifying,
       submitted,
       verifying,
       rejected,
