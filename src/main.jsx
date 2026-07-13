@@ -98,6 +98,7 @@ import "./styles/MobileCustomerExperienceQc.css";
 import "./styles/ReservationHistoryReportFixes.css";
 import "./components/Customer/TableQrScanner/TableQrScannerPage.refinements.scss";
 import "./styles/MobileQrScannerShell.css";
+import "./styles/ShiftDetailModalWorkspace.css";
 
 const normalizeLegacyManagerHash = () => {
   if (
