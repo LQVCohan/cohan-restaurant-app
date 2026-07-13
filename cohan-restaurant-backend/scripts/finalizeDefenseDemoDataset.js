@@ -1,5 +1,6 @@
 import "dotenv/config.js";
 import bcrypt from "bcryptjs";
+import { access } from "node:fs/promises";
 import mongoose from "mongoose";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -41,6 +42,7 @@ const MENU_SEED_KEY = "cohan-menu-catalog-v1";
 const PRODUCTION_MARKER_PATTERN =
   /\b(?:demo|defen[cs]e|seed(?:ed|ing)?)\b|\[(?:demo|defen[cs]e)[^\]]*\]|PR\d+|MM-DEMO|CMD-/i;
 const scriptPath = fileURLToPath(import.meta.url);
+const publicDir = path.resolve(path.dirname(scriptPath), "../../public");
 
 const idString = (value) => String(value?._id || value?.id || value || "");
 const uniqueIds = (values = []) => [
@@ -64,7 +66,10 @@ export function assertProductionDisplayText(label, value, { required = true } = 
   const text = String(value || "").trim();
   if (required) ensure(text, `${label} is empty`);
   if (!text) return true;
-  ensure(!containsProductionMarker(text), `${label} contains an internal seed marker: ${text}`);
+  ensure(
+    !containsProductionMarker(text),
+    `${label} contains an internal seed marker: ${text}`,
+  );
   return true;
 }
 
@@ -196,7 +201,11 @@ async function normalizeGuestCustomerNames(primaryRestaurantId) {
   for (const guest of guests) {
     await Customer.updateOne(
       { _id: guest._id },
-      { $set: { fullName: String(guest.fullName).replace(/^Guest\b/i, "Khách") } },
+      {
+        $set: {
+          fullName: String(guest.fullName).replace(/^Guest\b/i, "Khách"),
+        },
+      },
     );
   }
   return guests.length;
@@ -205,7 +214,7 @@ async function normalizeGuestCustomerNames(primaryRestaurantId) {
 async function normalizeDefenseCustomer(primaryRestaurantId) {
   const passwordHash = await bcrypt.hash(getDemoPassword(), 10);
   let target = await Customer.findOne({ email: DEFENSE_CUSTOMER_EMAIL });
-  let targetOrderCount = target
+  const targetOrderCount = target
     ? await Order.countDocuments({
         restaurantId: primaryRestaurantId,
         userId: target._id,
@@ -240,7 +249,6 @@ async function normalizeDefenseCustomer(primaryRestaurantId) {
       { $set: { userId: target._id } },
     );
     reassignedOrders = result.modifiedCount || 0;
-    targetOrderCount += reassignedOrders;
 
     const remainingOrders = await Order.countDocuments({ userId: source._id });
     if (!remainingOrders) await Customer.deleteOne({ _id: source._id });
@@ -267,10 +275,11 @@ async function normalizeDefenseCustomer(primaryRestaurantId) {
   ensure(stats?.totalOrders > 0, `${DEFENSE_CUSTOMER_EMAIL} has no linked orders`);
   const loyaltyPoints = Math.floor(Number(stats.totalSpending || 0) / 1_000_000);
   const verifiedAt = new Date();
-  const fullName = String(target.fullName || "Nguyễn Minh An")
-    .replace(/\bDemo\b/gi, "")
-    .replace(/\s{2,}/g, " ")
-    .trim() || "Nguyễn Minh An";
+  const fullName =
+    String(target.fullName || "Nguyễn Minh An")
+      .replace(/\bDemo\b/gi, "")
+      .replace(/\s{2,}/g, " ")
+      .trim() || "Nguyễn Minh An";
 
   target = await Customer.findByIdAndUpdate(
     targetId,
@@ -354,6 +363,21 @@ function membershipIncludes(membership, restaurantId) {
   );
 }
 
+async function verifyLocalMenuImage(menuItem) {
+  const image = String(menuItem.thumbImage || "").trim();
+  ensure(image, `${menuItem.name} has no thumbImage`);
+  ensure(
+    image.startsWith("/images/menu/"),
+    `${menuItem.name} does not use a managed local menu image`,
+  );
+  const assetPath = path.join(publicDir, image.replace(/^\/+/, ""));
+  try {
+    await access(assetPath);
+  } catch {
+    throw integrityError(`${menuItem.name} image asset is missing: ${image}`);
+  }
+}
+
 async function verifyProductionFacingContent({ brand, primary, secondary }) {
   [
     ["brand.name", brand.name],
@@ -365,17 +389,35 @@ async function verifyProductionFacingContent({ brand, primary, secondary }) {
     ["secondaryRestaurant.description", secondary.description],
   ].forEach(([label, value]) => assertProductionDisplayText(label, value));
 
-  const [categoryMenus, menus, categories, menuItems, coupons, promotions] =
-    await Promise.all([
-      CategoryMenu.find({ restaurantId: primary._id }).select("name description").lean(),
-      Menu.find({ restaurantId: primary._id }).select("name description").lean(),
-      Category.find({ restaurantId: primary._id }).select("name").lean(),
-      MenuItem.find({ restaurantId: primary._id }).select(
-        "name description thumbImage status notes menuId categoryId",
-      ).lean(),
-      Coupon.find({ restaurantId: primary._id }).select("name description code").lean(),
-      Promotion.find({ restaurantId: primary._id }).select("name description code").lean(),
-    ]);
+  const [
+    categoryMenus,
+    menus,
+    categories,
+    menuItems,
+    coupons,
+    promotions,
+    customers,
+  ] = await Promise.all([
+    CategoryMenu.find({ restaurantId: primary._id })
+      .select("name description")
+      .lean(),
+    Menu.find({ restaurantId: primary._id })
+      .select("name description")
+      .lean(),
+    Category.find({ restaurantId: primary._id }).select("name").lean(),
+    MenuItem.find({ restaurantId: primary._id })
+      .select("name description thumbImage status notes menuId categoryId")
+      .lean(),
+    Coupon.find({ restaurantId: primary._id })
+      .select("name description code")
+      .lean(),
+    Promotion.find({ restaurantId: primary._id })
+      .select("name description code")
+      .lean(),
+    Customer.find({ refRestaurants: primary._id })
+      .select("fullName")
+      .lean(),
+  ]);
 
   for (const item of categoryMenus) {
     assertProductionDisplayText("CategoryMenu.name", item.name);
@@ -391,13 +433,7 @@ async function verifyProductionFacingContent({ brand, primary, secondary }) {
   for (const item of menuItems) {
     assertProductionDisplayText("MenuItem.name", item.name);
     assertProductionDisplayText("MenuItem.description", item.description);
-    if (item.status === "available") {
-      ensure(String(item.thumbImage || "").trim(), `${item.name} has no thumbImage`);
-      ensure(
-        String(item.thumbImage).startsWith("/images/menu/"),
-        `${item.name} does not use a managed local menu image`,
-      );
-    }
+    if (item.status === "available") await verifyLocalMenuImage(item);
   }
   for (const item of coupons) {
     assertProductionDisplayText("Coupon.name", item.name);
@@ -409,24 +445,32 @@ async function verifyProductionFacingContent({ brand, primary, secondary }) {
     assertProductionDisplayText("Promotion.description", item.description);
     assertProductionDisplayText("Promotion.code", item.code);
   }
+  for (const customer of customers) {
+    assertProductionDisplayText("Customer.fullName", customer.fullName);
+  }
 
-  const customer = await Customer.findOne({ email: DEFENSE_CUSTOMER_EMAIL })
+  const defenseCustomer = await Customer.findOne({
+    email: DEFENSE_CUSTOMER_EMAIL,
+  })
     .select("fullName")
     .lean();
-  ensure(customer, `missing ${DEFENSE_CUSTOMER_EMAIL}`);
-  assertProductionDisplayText("Customer.fullName", customer.fullName);
+  ensure(defenseCustomer, `missing ${DEFENSE_CUSTOMER_EMAIL}`);
+  assertProductionDisplayText("Customer.fullName", defenseCustomer.fullName);
 
   const orders = await Order.find({
     restaurantId: primary._id,
     "clientMeta.demoTag": CUSTOMER_ORDER_SEED_KEY,
   })
-    .select("orderCode note statusHistory statusTimeline items")
+    .select("userId orderCode note statusHistory statusTimeline items")
     .lean();
   for (const order of orders) {
     assertProductionDisplayText("Order.orderCode", order.orderCode);
     assertProductionDisplayText("Order.note", order.note);
     for (const entry of order.statusHistory || []) {
-      assertProductionDisplayText("Order.statusHistory.displayMessage", entry.displayMessage);
+      assertProductionDisplayText(
+        "Order.statusHistory.displayMessage",
+        entry.displayMessage,
+      );
     }
     for (const entry of order.statusTimeline || []) {
       assertProductionDisplayText("Order.statusTimeline.note", entry.note);
@@ -440,7 +484,8 @@ async function verifyProductionFacingContent({ brand, primary, secondary }) {
 }
 
 export async function verifyDefenseDataset(context = null) {
-  const { brand, primary, secondary } = context || (await resolveDefenseContext());
+  const { brand, primary, secondary } =
+    context || (await resolveDefenseContext());
 
   ensure(
     idString(primary.brandId) === idString(brand._id),
@@ -548,9 +593,16 @@ export async function verifyDefenseDataset(context = null) {
     secondary,
   });
   ensure(menuItems.length > 0, "primary restaurant has no menu items");
-  const availableMenuItems = menuItems.filter((item) => item.status === "available");
-  ensure(availableMenuItems.length >= 3, "primary restaurant needs at least 3 available menu items");
-  const managedMenuItems = menuItems.filter((item) => item.notes === MENU_SEED_KEY);
+  const availableMenuItems = menuItems.filter(
+    (item) => item.status === "available",
+  );
+  ensure(
+    availableMenuItems.length >= 3,
+    "primary restaurant needs at least 3 available menu items",
+  );
+  const managedMenuItems = menuItems.filter(
+    (item) => item.notes === MENU_SEED_KEY,
+  );
   ensure(managedMenuItems.length >= 4, "managed menu catalog is incomplete");
 
   const menuIds = uniqueIds(menuItems.map((item) => item.menuId));
@@ -559,7 +611,10 @@ export async function verifyDefenseDataset(context = null) {
     Menu.countDocuments({ _id: { $in: menuIds } }),
     Category.countDocuments({ _id: { $in: categoryIds } }),
   ]);
-  ensure(menuCount === menuIds.length, "one or more MenuItem.menuId values are dangling");
+  ensure(
+    menuCount === menuIds.length,
+    "one or more MenuItem.menuId values are dangling",
+  );
   ensure(
     categoryCount === categoryIds.length,
     "one or more MenuItem.categoryId values are dangling",
@@ -574,7 +629,9 @@ export async function verifyDefenseDataset(context = null) {
     orderCustomerCount === orderCustomerIds.length,
     "one or more orders reference a missing customer",
   );
-  const menuItemById = new Map(menuItems.map((item) => [idString(item._id), item]));
+  const menuItemById = new Map(
+    menuItems.map((item) => [idString(item._id), item]),
+  );
   for (const order of orders) {
     for (const item of order.items || []) {
       const menuItem = menuItemById.get(idString(item.dishId));
