@@ -78,21 +78,29 @@ export async function repairDefenseAccountDiscriminators() {
     });
   }
 
-  const invalid = await User.collection
-    .find({
-      email: { $in: repaired.map((item) => item.email) },
-      $or: repaired.map((item) => ({
-        email: item.email,
-        userType: { $ne: item.userType },
-      })),
-    })
+  if (!repaired.length) return repaired;
+
+  const persistedAccounts = await User.collection
+    .find({ email: { $in: repaired.map((item) => item.email) } })
     .project({ email: 1, userType: 1 })
     .toArray();
+  const persistedTypeByEmail = new Map(
+    persistedAccounts.map((item) => [String(item.email).toLowerCase(), item.userType]),
+  );
+  const invalid = repaired.filter(
+    (item) =>
+      persistedTypeByEmail.get(String(item.email).toLowerCase()) !== item.userType,
+  );
 
   if (invalid.length) {
     throw new Error(
       `DEFENSE_ACCOUNT_TYPE_REPAIR_FAILED: ${invalid
-        .map((item) => `${item.email}:${item.userType}`)
+        .map(
+          (item) =>
+            `${item.email}:${persistedTypeByEmail.get(
+              String(item.email).toLowerCase(),
+            )}`,
+        )
         .join(", ")}`,
     );
   }
