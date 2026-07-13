@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Súp bí đỏ kem tươi</title>
+  <desc id="desc">Bát súp bí đỏ kem tươi dùng với bánh mì nướng</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f8ead5"/>
+      <stop offset="1" stop-color="#d7a363"/>
+    </linearGradient>
+    <linearGradient id="bowl" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#fffefb"/>
+      <stop offset="1" stop-color="#d8d2c8"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="20" stdDeviation="18" flood-opacity=".26"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)"/>
+  <ellipse cx="590" cy="653" rx="360" ry="68" fill="#7c4c26" opacity=".18"/>
+  <g filter="url(#shadow)">
+    <path d="M270 340h650c-24 230-130 345-325 345S294 570 270 340Z" fill="url(#bowl)"/>
+    <ellipse cx="595" cy="340" rx="325" ry="111" fill="#fff"/>
+    <ellipse cx="595" cy="350" rx="292" ry="88" fill="#e88928"/>
+  </g>
+  <path d="M484 337c51-47 168-48 222 0-55-1-78 44-109 44-32 0-59-43-113-44Z" fill="#fff7e8" opacity=".92"/>
+  <path d="M520 335c34-28 115-27 151 1-35 0-52 27-74 27-20 0-38-27-77-28Z" fill="#ffffff"/>
+  <g fill="#6b8d3f">
+    <ellipse cx="491" cy="387" rx="28" ry="12" transform="rotate(-25 491 387)"/>
+    <ellipse cx="697" cy="386" rx="29" ry="12" transform="rotate(20 697 386)"/>
+  </g>
+  <g fill="#6b4828">
+    <ellipse cx="545" cy="404" rx="12" ry="6" transform="rotate(25 545 404)"/>
+    <ellipse cx="651" cy="403" rx="12" ry="6" transform="rotate(-22 651 403)"/>
+    <ellipse cx="602" cy="421" rx="12" ry="6"/>
+  </g>
+  <g transform="translate(835 445) rotate(-12)" filter="url(#shadow)">
+    <rect x="0" y="0" width="210" height="118" rx="20" fill="#d99a48"/>
+    <rect x="20" y="18" width="170" height="82" rx="14" fill="#f3c77e"/>
+    <path d="M55 20v80M105 20v80M155 20v80" stroke="#c68338" stroke-width="9" opacity=".65"/>
+  </g>
+</svg>
