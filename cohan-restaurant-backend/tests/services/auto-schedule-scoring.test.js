@@ -143,6 +143,26 @@ describe("auto schedule scoring weights", () => {
     expect(expensive.score).toBe(0);
   });
 
+  it("does not treat missing salary data as the cheapest candidate", () => {
+    const weights = { ...ZERO_WEIGHTS, costEfficiency: 20 };
+    const missing = buildScore({
+      weights,
+      estimatedHourlyCost: Number.NaN,
+      minHourlyCost: 30_000,
+      maxHourlyCost: 60_000,
+    });
+    const unavailableForEveryone = buildScore({
+      weights,
+      estimatedHourlyCost: Number.NaN,
+      minHourlyCost: null,
+      maxHourlyCost: null,
+    });
+
+    expect(missing.score).toBe(0);
+    expect(missing.estimatedHourlyCost).toBeNull();
+    expect(unavailableForEveryone.positiveCapacity).toBe(0);
+  });
+
   it("prioritizes the employee with fewer accumulated hours when fairness is enabled", () => {
     const weights = { ...ZERO_WEIGHTS, fairness: 10 };
     const rested = buildScore({
@@ -182,5 +202,14 @@ describe("auto schedule scoring weights", () => {
         weeklyTarget: 40,
       }),
     ).toBe(50_000);
+    expect(
+      Number.isNaN(
+        estimateHourlyCost({
+          staff: {},
+          shiftHours: 8,
+          weeklyTarget: 40,
+        }),
+      ),
+    ).toBe(true);
   });
 });
