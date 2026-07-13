@@ -66,8 +66,6 @@ import "./styles/Table3DModalContentSafety.css";
 import "./styles/AuthRecoveryAndFacebook.css";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
-import { installRestaurantHoursEnhancement } from "./utils/installRestaurantHoursEnhancement";
-import { installRestaurantInfoMapEnhancement } from "./utils/installRestaurantInfoMapEnhancement";
 import { installTablePromotionSearch } from "./utils/installTablePromotionSearch";
 import { installTableMergePickerTrigger } from "./utils/installTableMergePickerTrigger";
 import { installTableDetailModalTabs } from "./utils/installTableDetailModalTabs";
@@ -112,8 +110,6 @@ window.addEventListener("hashchange", normalizeLegacyManagerHash);
 
 installRbacVietnameseLabels();
 applyChatThreadToolbarStyle();
-installRestaurantHoursEnhancement();
-installRestaurantInfoMapEnhancement();
 installTablePromotionSearch();
 installTableMergePickerTrigger();
 installTableDetailModalTabs();

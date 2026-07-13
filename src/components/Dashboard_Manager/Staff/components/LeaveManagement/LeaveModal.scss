@@ -89,8 +89,9 @@
 }
 
 .modal-container.leave-request-modal {
-  width: min(100%, 920px);
-  max-height: min(92dvh, 880px);
+  width: min(100%, 720px);
+  max-height: min(90dvh, 760px);
+  overscroll-behavior: contain;
   border-color: rgba(83, 108, 97, 0.24);
   color: #24312c;
   background:
@@ -134,7 +135,7 @@
 
 .leave-request-modal__intro {
   margin: 0;
-  padding: 12px 20px;
+  padding: 10px 18px;
   border-bottom: 1px solid rgba(83, 108, 97, 0.16);
   color: #607069;
   background: rgba(229, 240, 235, 0.6);
@@ -154,15 +155,42 @@
 }
 
 .leave-request-modal .leave-form-container--compact .main-form {
-  padding: 1rem 1.25rem 0;
+  padding: 0.85rem 1.1rem 0;
 }
 
 .leave-request-modal .leave-form-container--compact .form-section {
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .leave-request-modal .leave-form-container--compact .form-group {
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.65rem;
+}
+
+.leave-request-modal .leave-form-container--compact .section-title {
+  margin-bottom: 0.7rem;
+  padding-bottom: 0.4rem;
+  color: #536c61;
+  font-size: 0.76rem;
+  letter-spacing: 0.035em;
+}
+
+.leave-request-modal .leave-form-container--compact .leave-type-select-group {
+  max-width: none;
+}
+
+.leave-request-modal .leave-form-container--compact .leave-type-select-group select {
+  min-height: 44px;
+  border-color: rgba(83, 108, 97, 0.24);
+  color: #24312c;
+  background: rgba(249, 252, 250, 0.96);
+}
+
+.leave-request-modal .leave-form-container--compact .form-row.two-col > .form-group {
+  min-width: 0;
+}
+
+.leave-request-modal .leave-form-container--compact :is(input, select) {
+  min-height: 42px;
 }
 
 .leave-request-modal .leave-form-container--compact .leave-types-grid {
@@ -195,7 +223,10 @@
 }
 
 .leave-request-modal .leave-form-container--compact .total-days-bar {
-  padding: 0.65rem 0.8rem;
+  padding: 0.6rem 0.75rem;
+  border-color: rgba(47, 125, 104, 0.2);
+  color: #40584e;
+  background: #edf6f1;
 }
 
 .leave-request-modal .leave-form-container--compact .form-footer {
@@ -254,7 +285,7 @@
   }
 
   .leave-request-modal .leave-form-container--compact .main-form {
-    padding: 0.9rem 1rem 0;
+    padding: 0.8rem 0.9rem 0;
   }
 
   .leave-request-modal .leave-form-container--compact .form-footer {

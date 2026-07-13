@@ -100,9 +100,16 @@ export const pickNamingPattern = (codes, fallbackPrefix = "AI") => {
     if (!match) return;
     const [, prefix, separator, numText] = match;
     const key = `${prefix}|${separator || ""}`;
-    const entry = stats.get(key) || { prefix, separator: separator || "", count: 0, maxNumber: 0 };
+    const entry = stats.get(key) || {
+      prefix,
+      separator: separator || "",
+      count: 0,
+      maxNumber: 0,
+      padding: 0,
+    };
     entry.count += 1;
     entry.maxNumber = Math.max(entry.maxNumber, Number(numText) || 0);
+    entry.padding = Math.max(entry.padding, numText.length);
     stats.set(key, entry);
     if (!best || entry.count > best.count || (entry.count === best.count && entry.maxNumber > best.maxNumber)) best = entry;
   });
@@ -112,24 +119,49 @@ export const pickNamingPattern = (codes, fallbackPrefix = "AI") => {
     separator: "-",
     count: 0,
     maxNumber: 0,
+    padding: 0,
   };
 };
 
 export const generateSequentialCode = (usedCodes, pattern, offset = 0) => {
-  let candidateNumber = pattern.maxNumber + 1 + offset;
-  let candidate = `${pattern.prefix}${pattern.separator}${candidateNumber}`;
+  let candidateNumber = (pattern.startNumber ?? pattern.maxNumber + 1) + offset;
+  const formatCandidate = () =>
+    `${pattern.prefix}${pattern.separator}${String(candidateNumber).padStart(pattern.padding || 0, "0")}`;
+  let candidate = formatCandidate();
   while (usedCodes.has(candidate.toUpperCase())) {
     candidateNumber += 1;
-    candidate = `${pattern.prefix}${pattern.separator}${candidateNumber}`;
+    candidate = formatCandidate();
   }
   usedCodes.add(candidate.toUpperCase());
   return candidate;
 };
 
-export const applySmartLayoutToItems = ({ previousItems, generatedTables, generatedDecor, startX, startY, now = Date.now() }) => {
+export const getFloorTableNamingPattern = (codes, floorLevel) => {
+  const normalizedLevel = String(floorLevel ?? "").trim();
+  if (!normalizedLevel) return pickNamingPattern(codes, "T");
+
+  const prefix = `T${normalizedLevel}`;
+  const floorCodePattern = new RegExp(`^${prefix}(\\d{2,})$`, "i");
+  const floorCodes = codes.filter((code) =>
+    floorCodePattern.test(String(code || "").trim()),
+  );
+  if (floorCodes.length === 0 && codes.length > 0) {
+    return pickNamingPattern(codes, prefix);
+  }
+  return {
+    prefix,
+    separator: "",
+    count: floorCodes.length,
+    maxNumber: 0,
+    startNumber: 1,
+    padding: 2,
+  };
+};
+
+export const applySmartLayoutToItems = ({ previousItems, generatedTables, generatedDecor, startX, startY, floorLevel, now = Date.now() }) => {
   const existingRealTables = previousItems.filter((item) => item.isRealTable && !item.isLocalOnly).sort(sortTablesByCode);
   const existingCodes = existingRealTables.map((item) => String(item.code || item.label || "").trim()).filter(Boolean);
-  const namingPattern = pickNamingPattern(existingCodes, "AI");
+  const namingPattern = getFloorTableNamingPattern(existingCodes, floorLevel);
   const usedCodes = new Set(previousItems.filter((item) => item.isRealTable).map((item) => String(item.code || item.label || "").trim().toUpperCase()).filter(Boolean));
   const sourceTables = Array.isArray(generatedTables) ? generatedTables : [];
   const mappedTableCount = Math.min(sourceTables.length, existingRealTables.length);
@@ -1101,6 +1133,7 @@ const FloorPlanDesigner = () => {
       generatedDecor: layoutPayload?.decor || [],
       startX,
       startY,
+      floorLevel: floors.find((floor) => floor.id === activeFloorId)?.level,
     });
     pushHistory(items);
     setItems(nextItems);

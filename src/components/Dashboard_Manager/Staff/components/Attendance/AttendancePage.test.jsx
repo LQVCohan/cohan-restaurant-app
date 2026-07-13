@@ -42,7 +42,9 @@ vi.mock("./OvertimePanel", () => ({
 }));
 
 vi.mock("@/hooks/useAttendanceManagement", () => ({
-  default: (...args) => useAttendanceManagementMock(...args),
+  default: function useAttendanceManagement(...args) {
+    return useAttendanceManagementMock(...args);
+  },
   toAttendanceIsoStartOfDay: vi.fn(),
 }));
 
@@ -251,9 +253,16 @@ describe("AttendancePage readiness navigation", () => {
     render(<AttendancePage />);
     fireEvent.click(await screen.findByRole("button", { name: "Tạo yêu cầu chỉnh công" }));
     expect(
-      await screen.findByText("Kiểm tra lại giờ vào/ra trước khi gửi yêu cầu chỉnh công."),
+      await screen.findByText((_content, element) =>
+        element?.id === "attendance-correction-desc" &&
+        element.textContent.includes("Lan Manager") &&
+        element.textContent.includes("Kiểm tra giờ đề xuất trước khi gửi duyệt"),
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Yêu cầu này cần được duyệt trước khi ảnh hưởng đến dữ liệu công.")).toBeInTheDocument();
+    const evidenceSummary = screen.getByText("Thêm bằng chứng (không bắt buộc)");
+    expect(evidenceSummary.closest("details")).not.toHaveAttribute("open");
+    fireEvent.click(evidenceSummary);
+    expect(evidenceSummary.closest("details")).toHaveAttribute("open");
   });
 
   it("shows pending correction summary and opens correction view from context action", async () => {

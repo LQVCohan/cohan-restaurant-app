@@ -9,6 +9,8 @@ import {
   applySmartLayoutToItems,
   buildAutoLayoutComponentsForRequest,
   getItemZIndex,
+  getFloorTableNamingPattern,
+  generateSequentialCode,
   getAuthHeaders,
   isSmartLayoutGeneratedItem,
   resolveInitialFloorId,
@@ -157,6 +159,31 @@ describe("FloorPlanDesigner helpers", () => {
     expect(nextItems.filter((i) => i.isRealTable)).toHaveLength(8);
     expect(nextItems.filter((i) => String(i.id).startsWith("tmp_ai_"))).toHaveLength(2);
     expect(stats.createdLocalTableCount).toBe(2);
+  });
+
+  it("uses the first available floor-local table code for generated tables", () => {
+    const previousItems = [
+      { id: "r2", isRealTable: true, code: "T302", x: 0, y: 0 },
+      { id: "r3", isRealTable: true, code: "T303", x: 0, y: 0 },
+    ];
+    const { nextItems } = applySmartLayoutToItems({
+      previousItems,
+      generatedTables: [{ x: 10, y: 10 }, { x: 20, y: 20 }, { x: 30, y: 30 }],
+      generatedDecor: [],
+      startX: 0,
+      startY: 0,
+      floorLevel: 3,
+      now: 5,
+    });
+
+    expect(nextItems.find((item) => item.id === "tmp_ai_5_0")?.code).toBe("T301");
+  });
+
+  it("keeps a restaurant's custom naming pattern when the floor already uses one", () => {
+    const pattern = getFloorTableNamingPattern(["VIP-01", "VIP-02"], 3);
+    const usedCodes = new Set(["VIP-01", "VIP-02"]);
+
+    expect(generateSequentialCode(usedCodes, pattern)).toBe("VIP-03");
   });
 
   it("does not delete real tables when generated fewer", () => {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   User,
   Phone,
@@ -13,6 +13,11 @@ import {
   History,
   ShieldCheck,
   Camera,
+  Umbrella,
+  CircleCheck,
+  LogOut,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import {
   getStaffActionAvailability,
@@ -41,12 +46,17 @@ const ACCOUNT_STATUS_LABELS = {
   pending: "Chờ xác minh",
 };
 
+const DETAIL_TABS = [
+  { id: "contact", label: "Liên hệ", icon: User },
+  { id: "work", label: "Công việc", icon: Briefcase },
+  { id: "account", label: "Tài khoản", icon: ShieldCheck },
+];
+
 const EmployeeDetail = ({
   employee,
   onEdit,
   onEditAvatar,
   onViewHistory,
-  onCalculateSalary,
   onDelete,
   onSetOnLeave,
   onSetWorking,
@@ -56,6 +66,11 @@ const EmployeeDetail = ({
   onResendVerification,
 }) => {
   const [verificationChannel, setVerificationChannel] = useState("AUTO");
+  const [activeTab, setActiveTab] = useState("contact");
+
+  useEffect(() => {
+    setActiveTab("contact");
+  }, [employee?.id]);
 
   if (!employee) {
     return (
@@ -91,6 +106,22 @@ const EmployeeDetail = ({
     employee.accountStatus ||
     "Đang hoạt động";
 
+  const handleTabKeyDown = (event, index) => {
+    let nextIndex = index;
+    if (event.key === "ArrowRight") nextIndex = (index + 1) % DETAIL_TABS.length;
+    else if (event.key === "ArrowLeft") nextIndex = (index - 1 + DETAIL_TABS.length) % DETAIL_TABS.length;
+    else if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = DETAIL_TABS.length - 1;
+    else return;
+
+    event.preventDefault();
+    const nextTab = DETAIL_TABS[nextIndex];
+    setActiveTab(nextTab.id);
+    event.currentTarget.parentElement
+      ?.querySelector(`#employee-detail-tab-${nextTab.id}`)
+      ?.focus();
+  };
+
   return (
     <div className="employee-detail-card fade-in">
       <div className="detail-header">
@@ -121,92 +152,175 @@ const EmployeeDetail = ({
       </div>
 
       <div className="detail-body custom-scrollbar">
-        <div className="section">
-          <h4 className="section-title">Thông tin liên hệ</h4>
-          <div className="info-list">
-            <InfoRow icon={User} label="Mã NV" value={employee.code} />
-            <InfoRow icon={Phone} label="Điện thoại" value={employee.phone} linkType="tel" />
-            <InfoRow icon={Mail} label="Email" value={employee.email} linkType="mailto" />
-            <InfoRow icon={User} label="Xác minh" value={employee.verificationLabel || "Chưa xác minh"} />
-            <InfoRow icon={MapPin} label="Địa chỉ" value={employee.address} />
-          </div>
+        <div
+          className="employee-detail-tabs"
+          role="tablist"
+          aria-label="Nhóm thông tin nhân viên"
+        >
+          {DETAIL_TABS.map((tab, index) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                id={`employee-detail-tab-${tab.id}`}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`employee-detail-panel-${tab.id}`}
+                tabIndex={isActive ? 0 : -1}
+                className={isActive ? "is-active" : ""}
+                onClick={() => setActiveTab(tab.id)}
+                onKeyDown={(event) => handleTabKeyDown(event, index)}
+              >
+                <Icon size={15} aria-hidden="true" />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="divider" />
-
-        <div className="section">
-          <h4 className="section-title">Vai trò & hồ sơ lao động</h4>
-          <div className="info-list">
-            <InfoRow
-              icon={Briefcase}
-              label="Vai trò hệ thống"
-              value={employee.roleName || employee.roleSlug || "Chưa gán"}
-            />
-            <InfoRow
-              icon={Briefcase}
-              label="Chức danh"
-              value={employee.positionTitle || employee.role}
-            />
-            <InfoRow
-              icon={Briefcase}
-              label="Bộ phận"
-              value={getDepartmentLabel(employee.department)}
-            />
-            <InfoRow
-              icon={CalendarDays}
-              label="Ngày vào làm"
-              value={employee.startDate}
-            />
-            <InfoRow
-              icon={Clock}
-              label="Loại ca"
-              value={employee.shift || "Ca xoay"}
-            />
-            <InfoRow
-              icon={DollarSign}
-              label="Lương cơ bản"
-              value={salaryDisplay}
-              isHighlight
-            />
-          </div>
-        </div>
-
-        <div className="account-status-panel">
-          <div className="widget-header">
-            <div className="title-box">
-              <ShieldCheck size={18} className="icon-award" />
-              <span>Trạng thái & xác minh tài khoản</span>
+        {activeTab === "contact" && (
+          <section
+            id="employee-detail-panel-contact"
+            className="section employee-detail-panel"
+            role="tabpanel"
+            aria-labelledby="employee-detail-tab-contact"
+          >
+            <h4 className="section-title">Thông tin liên hệ</h4>
+            <div className="info-list">
+              <InfoRow icon={User} label="Mã NV" value={employee.code} />
+              <InfoRow
+                icon={Phone}
+                label="Điện thoại"
+                value={employee.phone}
+                linkType="tel"
+              />
+              <InfoRow
+                icon={Mail}
+                label="Email"
+                value={employee.email}
+                linkType="mailto"
+              />
+              <InfoRow
+                icon={User}
+                label="Xác minh"
+                value={employee.verificationLabel || "Chưa xác minh"}
+              />
+              <InfoRow icon={MapPin} label="Địa chỉ" value={employee.address} />
             </div>
-            <span className={`status-chip ${statusInfo.color}`}>{statusInfo.label}</span>
-          </div>
-          <div className="account-status-grid">
-            <InfoRow icon={User} label="Trạng thái lao động" value={employmentStatusLabel} />
-            <InfoRow icon={User} label="Trạng thái tài khoản" value={accountStatusLabel} />
-            <InfoRow icon={Mail} label="Email" value={employee.emailVerified ? "Đã xác minh" : "Chưa xác minh"} />
-            <InfoRow icon={Phone} label="SĐT" value={employee.phoneVerified ? "Đã xác minh" : "Chưa xác minh"} />
-          </div>
-          <div className="verification-action-row">
-            <select
-              value={verificationChannel}
-              onChange={(event) => setVerificationChannel(event.target.value)}
-              disabled={!employee.canResendVerification}
-              aria-label="Kênh gửi xác minh"
-            >
-              <option value="AUTO">Tự động</option>
-              <option value="EMAIL">Email</option>
-              <option value="SMS">SMS</option>
-            </select>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => onResendVerification?.(employee, verificationChannel)}
-              disabled={!employee.canResendVerification || !onResendVerification}
-            >
-              <Mail size={16} />
-              <span>Gửi lại xác minh</span>
-            </button>
-          </div>
-        </div>
+          </section>
+        )}
+
+        {activeTab === "work" && (
+          <section
+            id="employee-detail-panel-work"
+            className="section employee-detail-panel"
+            role="tabpanel"
+            aria-labelledby="employee-detail-tab-work"
+          >
+            <h4 className="section-title">Vai trò & hồ sơ lao động</h4>
+            <div className="info-list">
+              <InfoRow
+                icon={Briefcase}
+                label="Vai trò hệ thống"
+                value={employee.roleName || employee.roleSlug || "Chưa gán"}
+              />
+              <InfoRow
+                icon={Briefcase}
+                label="Chức danh"
+                value={employee.positionTitle || employee.role}
+              />
+              <InfoRow
+                icon={Briefcase}
+                label="Bộ phận"
+                value={getDepartmentLabel(employee.department)}
+              />
+              <InfoRow
+                icon={CalendarDays}
+                label="Ngày vào làm"
+                value={employee.startDate}
+              />
+              <InfoRow
+                icon={Clock}
+                label="Loại ca"
+                value={employee.shift || "Ca xoay"}
+              />
+              <InfoRow
+                icon={DollarSign}
+                label="Lương cơ bản"
+                value={salaryDisplay}
+                isHighlight
+              />
+            </div>
+          </section>
+        )}
+
+        {activeTab === "account" && (
+          <section
+            id="employee-detail-panel-account"
+            className="account-status-panel employee-detail-panel"
+            role="tabpanel"
+            aria-labelledby="employee-detail-tab-account"
+          >
+            <div className="widget-header">
+              <div className="title-box">
+                <ShieldCheck size={18} className="icon-award" />
+                <span>Trạng thái & xác minh tài khoản</span>
+              </div>
+              <span className={`status-chip ${statusInfo.color}`}>
+                {statusInfo.label}
+              </span>
+            </div>
+            <div className="account-status-grid">
+              <InfoRow
+                icon={User}
+                label="Trạng thái lao động"
+                value={employmentStatusLabel}
+              />
+              <InfoRow
+                icon={User}
+                label="Trạng thái tài khoản"
+                value={accountStatusLabel}
+              />
+              <InfoRow
+                icon={Mail}
+                label="Email"
+                value={employee.emailVerified ? "Đã xác minh" : "Chưa xác minh"}
+              />
+              <InfoRow
+                icon={Phone}
+                label="SĐT"
+                value={employee.phoneVerified ? "Đã xác minh" : "Chưa xác minh"}
+              />
+            </div>
+            <div className="verification-action-row">
+              <select
+                value={verificationChannel}
+                onChange={(event) => setVerificationChannel(event.target.value)}
+                disabled={!employee.canResendVerification}
+                aria-label="Kênh gửi xác minh"
+              >
+                <option value="AUTO">Tự động</option>
+                <option value="EMAIL">Email</option>
+                <option value="SMS">SMS</option>
+              </select>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() =>
+                  onResendVerification?.(employee, verificationChannel)
+                }
+                disabled={
+                  !employee.canResendVerification || !onResendVerification
+                }
+              >
+                <Mail size={16} />
+                <span>Gửi lại xác minh</span>
+              </button>
+            </div>
+          </section>
+        )}
       </div>
 
       <div className="detail-footer">
@@ -237,6 +351,7 @@ const EmployeeDetail = ({
             onClick={onViewHistory}
             disabled={!onViewHistory}
             title="Lịch sử"
+            aria-label="Xem lịch sử nhân viên"
           >
             <History size={18} />
           </button>
@@ -249,8 +364,9 @@ const EmployeeDetail = ({
             onClick={() => onSetOnLeave?.(employee.id)}
             disabled={!canSetOnLeave || !onSetOnLeave}
             title="Chuyển sang tạm nghỉ"
+            aria-label="Chuyển nhân viên sang tạm nghỉ"
           >
-            <span>🏖️</span>
+            <Umbrella size={17} aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -258,8 +374,9 @@ const EmployeeDetail = ({
             onClick={() => onSetWorking?.(employee.id)}
             disabled={!canSetWorking || !onSetWorking}
             title="Chuyển sang đang làm việc"
+            aria-label="Chuyển nhân viên sang đang làm việc"
           >
-            <span>✅</span>
+            <CircleCheck size={17} aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -267,8 +384,9 @@ const EmployeeDetail = ({
             onClick={() => onSetResigned?.(employee.id)}
             disabled={!canSetResigned || !onSetResigned}
             title="Chuyển sang nghỉ việc"
+            aria-label="Chuyển nhân viên sang nghỉ việc"
           >
-            <span>🚪</span>
+            <LogOut size={17} aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -276,8 +394,9 @@ const EmployeeDetail = ({
             onClick={() => onLockAccount?.(employee.id)}
             disabled={!canLock || !onLockAccount}
             title="Khóa tài khoản"
+            aria-label="Khóa tài khoản nhân viên"
           >
-            <span>🔒</span>
+            <Lock size={17} aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -285,8 +404,9 @@ const EmployeeDetail = ({
             onClick={() => onUnlockAccount?.(employee.id)}
             disabled={!canUnlock || !onUnlockAccount}
             title="Mở khóa tài khoản"
+            aria-label="Mở khóa tài khoản nhân viên"
           >
-            <span>🔓</span>
+            <Unlock size={17} aria-hidden="true" />
           </button>
         </div>
 

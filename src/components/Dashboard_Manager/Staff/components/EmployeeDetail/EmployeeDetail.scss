@@ -470,3 +470,101 @@ $warning: #f59e0b;
     }
   }
 }
+
+.employee-detail-card {
+  .detail-body {
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .employee-detail-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 5px;
+    border: 1px solid rgba(83, 108, 97, 0.2);
+    border-radius: 13px;
+    background: rgba(229, 240, 235, 0.66);
+
+    button {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 8px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      color: #607069;
+      background: transparent;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 760;
+      cursor: pointer;
+      transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+
+      &:hover {
+        color: #40584e;
+        background: rgba(255, 255, 255, 0.7);
+      }
+
+      &.is-active {
+        border-color: rgba(83, 108, 97, 0.24);
+        color: #2f5d4e;
+        background: #fff;
+        box-shadow: 0 5px 14px rgba(48, 72, 61, 0.09);
+      }
+
+      &:focus-visible {
+        outline: 3px solid rgba(47, 125, 104, 0.2);
+        outline-offset: 2px;
+      }
+    }
+  }
+
+  .employee-detail-panel {
+    min-height: 250px;
+    padding: 4px 2px;
+  }
+
+  .account-status-panel.employee-detail-panel {
+    margin-top: 0;
+    padding: 14px;
+  }
+
+  .detail-footer {
+    gap: 8px;
+    padding: 12px 16px;
+
+    .main-actions {
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      min-width: 44px;
+      min-height: 44px;
+    }
+  }
+}
+
+@media (max-width: 520px) {
+  .employee-detail-card {
+    .employee-detail-tabs button {
+      font-size: 0.72rem;
+    }
+
+    .account-status-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .verification-action-row {
+      flex-direction: column;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .employee-detail-card .employee-detail-tabs button {
+    transition: none;
+  }
+}

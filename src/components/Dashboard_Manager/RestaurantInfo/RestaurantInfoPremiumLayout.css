@@ -420,7 +420,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 15px 16px;
+  padding: 11px 12px;
   border-bottom: 1px solid var(--ri-qc-line);
   background: linear-gradient(135deg, rgba(248, 252, 249, 0.98), var(--ri-qc-soft));
 }
@@ -458,7 +458,7 @@
 }
 
 .manager-layout .restaurant-management-container .restaurant-location-map-card__locate {
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 12px;
   border: 1px solid rgba(31, 111, 74, 0.28);
   border-radius: 10px;
@@ -504,7 +504,7 @@
 
 .manager-layout .restaurant-management-container .restaurant-location-map-card__canvas {
   width: 100%;
-  height: clamp(200px, 24vw, 240px);
+  height: clamp(170px, 18vw, 190px);
   background: #dfe9e3;
 }
 
@@ -667,7 +667,7 @@
   }
 
   .manager-layout .restaurant-management-container .restaurant-location-map-card__canvas {
-    height: 260px;
+    height: 200px;
   }
 
   .manager-layout .restaurant-management-container .restaurant-location-map-card__coordinates > span {
