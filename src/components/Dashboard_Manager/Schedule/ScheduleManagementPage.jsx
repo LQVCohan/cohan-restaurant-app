@@ -1,4 +1,5 @@
-import React, { useLayoutEffect, useEffect, useState, memo } from "react";
+import React, { memo, useEffect, useLayoutEffect, useState } from "react";
+import { BriefcaseBusiness, TimerReset } from "lucide-react";
 import { apolloClient } from "@/apollo/client";
 import "@/styles/schedule-manager-experience.css";
 import "@/styles/schedule-action-center.css";
@@ -9,6 +10,11 @@ import { installScheduleApolloPerformancePatch } from "@/utils/scheduleApolloPer
 import { initScheduleManagerDomPolish } from "@/utils/scheduleManagerDomPolish.js";
 import { initScheduleManagerAdminPolish } from "@/utils/scheduleManagerAdminPolish.js";
 import ScheduleManagement from "./ScheduleManagement";
+import PartTimeScheduleWorkspace from "./PartTimeScheduleWorkspace";
+import {
+  ScheduleEmploymentScopeProvider,
+  SCHEDULE_EMPLOYMENT_SCOPES,
+} from "./ScheduleEmploymentScope";
 import "@/styles/schedule-manager-workspace-final.css";
 import "@/styles/schedule-manager-drawer-workspace.css";
 import "@/styles/schedule-storage-alignment.css";
@@ -19,6 +25,7 @@ import "@/styles/schedule-manager-visual-redesign.css";
 import "@/styles/schedule-manager-final-alignment.css";
 import "@/styles/schedule-availability-action-buttons.css";
 import "@/styles/schedule-manager-sage-upgrade.css";
+import "./ScheduleEmploymentTabs.scss";
 
 function getAvailabilityActionErrorMessage(reason) {
   const raw = String(reason?.message || reason || "");
@@ -47,6 +54,9 @@ function getAvailabilityActionErrorMessage(reason) {
 const ScheduleManagementPage = memo(function ScheduleManagementPage() {
   const [readinessFocus, setReadinessFocus] = useState("");
   const [availabilityActionError, setAvailabilityActionError] = useState("");
+  const [employmentView, setEmploymentView] = useState(
+    SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME,
+  );
 
   useEffect(() => {
     const applyFocus = () => {
@@ -54,14 +64,11 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
       const focus = params.get("focus");
       if (focus) setReadinessFocus(focus);
     };
-
     applyFocus();
-
     const handleNavigationQuery = (event) => {
       if (event?.detail?.page !== "schedules") return;
       applyFocus();
     };
-
     window.addEventListener("manager:navigation-query", handleNavigationQuery);
     return () =>
       window.removeEventListener("manager:navigation-query", handleNavigationQuery);
@@ -74,7 +81,6 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
       event.preventDefault();
       setAvailabilityActionError(message);
     };
-
     window.addEventListener("unhandledrejection", handleUnhandledRejection);
     return () =>
       window.removeEventListener("unhandledrejection", handleUnhandledRejection);
@@ -87,8 +93,6 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
         document.querySelector(".manager-page-shell--schedules") ||
         document.querySelector(".schedule-container");
       if (scheduleRoot) {
-        // React owns the registration panel collapse state. Prevent legacy DOM
-        // polish from clicking the control and racing the component state.
         scheduleRoot.dataset.optionalPanelsInitialCollapsed = "true";
       }
       window.__scheduleDomPolishCleanup = initScheduleManagerDomPolish?.();
@@ -107,15 +111,15 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
         window.__scheduleAdminPolishCleanup = null;
       }
     };
-  }, []);
+  }, [employmentView]);
 
   return (
     <>
-      {readinessFocus && (
+      {readinessFocus ? (
         <div className="schedule-readiness-focus-banner" role="status">
           Đang mở lịch làm việc để xử lý lỗi từ kiểm tra bảng lương: {readinessFocus}
         </div>
-      )}
+      ) : null}
       {availabilityActionError ? (
         <div className="schedule-availability-action-error" role="alert">
           <div>
@@ -131,7 +135,47 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
           </button>
         </div>
       ) : null}
-      <ScheduleManagement />
+
+      <nav className="schedule-employment-tabs" aria-label="Chọn loại lịch nhân sự">
+        <button
+          type="button"
+          className={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME ? "active" : ""}
+          aria-pressed={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME}
+          onClick={() => setEmploymentView(SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME)}
+        >
+          <BriefcaseBusiness size={18} />
+          <span>
+            <strong>Lịch toàn thời gian</strong>
+            <small>Ca cố định và nhân sự theo ngày làm việc</small>
+          </span>
+        </button>
+        <button
+          type="button"
+          className={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME ? "active" : ""}
+          aria-pressed={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME}
+          onClick={() => setEmploymentView(SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME)}
+        >
+          <TimerReset size={18} />
+          <span>
+            <strong>Lịch bán thời gian</strong>
+            <small>Block 4 giờ, tự nối giờ và kiểm tra availability</small>
+          </span>
+        </button>
+      </nav>
+
+      {employmentView === SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME ? (
+        <div className="schedule-employment-view schedule-employment-view--full-time">
+          <ScheduleEmploymentScopeProvider scope={SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME}>
+            <ScheduleManagement />
+          </ScheduleEmploymentScopeProvider>
+        </div>
+      ) : (
+        <div className="schedule-employment-view schedule-employment-view--part-time">
+          <ScheduleEmploymentScopeProvider scope={SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME}>
+            <PartTimeScheduleWorkspace />
+          </ScheduleEmploymentScopeProvider>
+        </div>
+      )}
     </>
   );
 });
