@@ -23,7 +23,10 @@ const readiness = (provider, mode, overrides = {}) => ({
   webBaseUrl: "https://cohan.vn",
   returnUrl: `https://api.cohan.vn/api/payments/return/${provider}`,
   ipnUrl: `https://api.cohan.vn/api/payments/webhooks/${provider}`,
-  gatewayUrl: provider === "momo" ? "https://test-payment.momo.vn/v2/gateway/api/create" : "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
+  gatewayUrl:
+    provider === "momo"
+      ? "https://test-payment.momo.vn/v2/gateway/api/create"
+      : "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
   paymentChannel: provider === "vnpay" ? "VNPAYQR" : "captureWallet",
   encryptionReady: true,
   callbackReady: true,
@@ -83,8 +86,24 @@ describe("PaymentProviderSettingsPage", () => {
         restaurantPaymentPublicConfig: {
           defaultProvider: "vnpay",
           providers: [
-            { provider: "momo", label: "MoMo", active: true, priority: 1, mode: "sandbox", configured: true, credentialSource: "restaurant" },
-            { provider: "vnpay", label: "VNPAY", active: true, priority: 2, mode: "sandbox", configured: true, credentialSource: "platform" },
+            {
+              provider: "momo",
+              label: "MoMo",
+              active: true,
+              priority: 1,
+              mode: "sandbox",
+              configured: true,
+              credentialSource: "restaurant",
+            },
+            {
+              provider: "vnpay",
+              label: "VNPAY",
+              active: true,
+              priority: 2,
+              mode: "sandbox",
+              configured: true,
+              credentialSource: "platform",
+            },
           ],
         },
       },
@@ -93,7 +112,9 @@ describe("PaymentProviderSettingsPage", () => {
     disconnectCredentialMock.mockResolvedValue({ data: {} });
     updateSettingsMock.mockResolvedValue({ data: {} });
     useMutationMock.mockImplementation((document) => {
-      const operation = Array.isArray(document) ? document.join("") : String(document || "");
+      const operation = Array.isArray(document)
+        ? document.join("")
+        : String(document || "");
       if (operation.includes("SaveRestaurantPaymentCredential")) {
         return [saveCredentialMock, { loading: false }];
       }
@@ -108,9 +129,16 @@ describe("PaymentProviderSettingsPage", () => {
   });
 
   it("shows only masked identifiers and never rehydrates secrets", () => {
-    render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
+    render(
+      <PaymentProviderSettingsPage
+        restaurantId="restaurant-1"
+        restaurantName="COHAN One"
+      />,
+    );
 
-    expect(screen.getByRole("heading", { name: "Kết nối MoMo và VNPAY" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Kết nối MoMo và VNPAY" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("MOM••••1234")).toBeInTheDocument();
     expect(screen.getByText("VNP••••5678")).toBeInTheDocument();
     expect(screen.queryByDisplayValue(/secret/i)).not.toBeInTheDocument();
@@ -118,34 +146,63 @@ describe("PaymentProviderSettingsPage", () => {
     expect(screen.getByLabelText("Khóa bảo mật (Hash Secret)")).toHaveValue("");
   });
 
-  it("shows platform-owned callback and QR configuration without asking the restaurant to enter it", () => {
-    render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
+  it("hides platform technical details from restaurant users", () => {
+    render(
+      <PaymentProviderSettingsPage
+        restaurantId="restaurant-1"
+        restaurantName="COHAN One"
+      />,
+    );
 
-    expect(screen.getAllByText("https://api.cohan.vn/api/payments/return/vnpay").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("VNPAY-QR").length).toBeGreaterThan(0);
+    expect(
+      screen.queryByText("https://api.cohan.vn/api/payments/return/vnpay"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/IPN|Webhook/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("VNPAY-QR")).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Cách thanh toán ưu tiên/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Tiền được đối soát về tài khoản ngân hàng/i)).toBeInTheDocument();
   });
 
   it("links managers to the official provider setup guides", () => {
-    render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
+    render(
+      <PaymentProviderSettingsPage
+        restaurantId="restaurant-1"
+        restaurantName="COHAN One"
+      />,
+    );
 
-    expect(screen.getByRole("link", { name: /Hướng dẫn lấy bộ mã từ MoMo/i })).toHaveAttribute(
+    expect(
+      screen.getByRole("link", { name: /Hướng dẫn lấy bộ mã từ MoMo/i }),
+    ).toHaveAttribute(
       "href",
       "https://developers.momo.vn/v3/vi/docs/payment/onboarding/integration-process/",
     );
-    expect(screen.getByRole("link", { name: /Hướng dẫn lấy bộ mã từ VNPAY/i })).toHaveAttribute(
+    expect(
+      screen.getByRole("link", { name: /Hướng dẫn lấy bộ mã từ VNPAY/i }),
+    ).toHaveAttribute(
       "href",
       "https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html",
     );
   });
 
   it("saves a complete MoMo credential payload for the selected restaurant", async () => {
-    render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
+    render(
+      <PaymentProviderSettingsPage
+        restaurantId="restaurant-1"
+        restaurantName="COHAN One"
+      />,
+    );
 
-    fireEvent.change(screen.getByLabelText("Mã đối tác (Partner Code)"), { target: { value: "PARTNER_NEW" } });
-    fireEvent.change(screen.getByLabelText("Khóa truy cập (Access Key)"), { target: { value: "ACCESS_NEW" } });
-    fireEvent.change(screen.getByLabelText("Khóa bảo mật (Secret Key)"), { target: { value: "SECRET_NEW" } });
-    fireEvent.click(screen.getByRole("button", { name: /Cập nhật bộ mã/i }));
+    fireEvent.change(screen.getByLabelText("Mã đối tác (Partner Code)"), {
+      target: { value: "PARTNER_NEW" },
+    });
+    fireEvent.change(screen.getByLabelText("Khóa truy cập (Access Key)"), {
+      target: { value: "ACCESS_NEW" },
+    });
+    fireEvent.change(screen.getByLabelText("Khóa bảo mật (Secret Key)"), {
+      target: { value: "SECRET_NEW" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Cập nhật kết nối/i }));
 
     await waitFor(() => {
       expect(saveCredentialMock).toHaveBeenCalledWith({
@@ -168,11 +225,21 @@ describe("PaymentProviderSettingsPage", () => {
   });
 
   it("sends only the restaurant-specific VNPAY credentials", async () => {
-    render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
+    render(
+      <PaymentProviderSettingsPage
+        restaurantId="restaurant-1"
+        restaurantName="COHAN One"
+      />,
+    );
 
-    fireEvent.change(screen.getByLabelText("Mã website hoặc điểm bán (TmnCode)"), { target: { value: "TMNCODE1" } });
-    fireEvent.change(screen.getByLabelText("Khóa bảo mật (Hash Secret)"), { target: { value: "HASH_SECRET" } });
-    fireEvent.click(screen.getAllByRole("button", { name: /Lưu bộ mã merchant/i })[0]);
+    fireEvent.change(
+      screen.getByLabelText("Mã website hoặc điểm bán (TmnCode)"),
+      { target: { value: "TMNCODE1" } },
+    );
+    fireEvent.change(screen.getByLabelText("Khóa bảo mật (Hash Secret)"), {
+      target: { value: "HASH_SECRET" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: /Lưu kết nối/i })[0]);
 
     await waitFor(() => {
       expect(saveCredentialMock).toHaveBeenCalledWith({
@@ -192,9 +259,14 @@ describe("PaymentProviderSettingsPage", () => {
   });
 
   it("does not persist an unsaved mode when only toggling provider visibility", async () => {
-    render(<PaymentProviderSettingsPage restaurantId="restaurant-1" restaurantName="COHAN One" />);
+    render(
+      <PaymentProviderSettingsPage
+        restaurantId="restaurant-1"
+        restaurantName="COHAN One"
+      />,
+    );
 
-    fireEvent.click(screen.getAllByLabelText(/Tài khoản chính thức/)[1]);
+    fireEvent.click(screen.getAllByLabelText(/Chính thức/)[1]);
     fireEvent.click(screen.getAllByRole("checkbox")[1]);
 
     await waitFor(() => expect(updateSettingsMock).toHaveBeenCalledTimes(1));
