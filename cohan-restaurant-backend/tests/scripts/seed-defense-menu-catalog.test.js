@@ -9,6 +9,12 @@ import {
   recipeCost,
   validateDefenseMenuCatalog,
 } from "../../scripts/seedDefenseMenuCatalog.js";
+import {
+  DEFENSE_MENU_REAL_PHOTOS,
+  getDefenseMenuPhotoSource,
+  isManagedRealMenuPhotoPath,
+  validateDefenseMenuPhotoCatalog,
+} from "../../scripts/data/defenseMenuRealPhotos.js";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "../../..");
@@ -56,7 +62,7 @@ describe("defense production menu catalog", () => {
     }
   });
 
-  it("ships every referenced menu image as a local managed asset", () => {
+  it("keeps baseline category illustrations available before photo materialization", () => {
     const images = new Set(DISH_DEFS.map((dish) => dish.thumbImage));
     expect(images.size).toBe(10);
 
@@ -66,6 +72,31 @@ describe("defense production menu catalog", () => {
         true,
       );
     }
+  });
+
+  it("defines a unique real photograph cache target for all 36 dishes", () => {
+    const expectedCodes = DISH_DEFS.map((dish) => dish.code);
+    expect(validateDefenseMenuPhotoCatalog(expectedCodes)).toEqual({
+      photos: 36,
+      uniqueCodes: 36,
+      uniqueSlugs: 36,
+    });
+    expect(DEFENSE_MENU_REAL_PHOTOS).toHaveLength(36);
+
+    for (const dish of DISH_DEFS) {
+      const photo = getDefenseMenuPhotoSource(dish.code);
+      expect(photo, dish.code).toBeTruthy();
+      expect(photo.slug, dish.code).toMatch(/^[a-z0-9-]+$/);
+      expect(photo.candidates.length, dish.code).toBeGreaterThan(0);
+      expect(photo.fallback.url, dish.code).toMatch(/^https:\/\/images\.unsplash\.com\//);
+    }
+  });
+
+  it("accepts only local raster photo paths after materialization", () => {
+    expect(isManagedRealMenuPhotoPath("/images/menu/dishes/pho-bo.jpg")).toBe(true);
+    expect(isManagedRealMenuPhotoPath("/images/menu/dishes/pho-bo.webp")).toBe(true);
+    expect(isManagedRealMenuPhotoPath("/images/menu/category-breakfast.svg")).toBe(false);
+    expect(isManagedRealMenuPhotoPath("https://images.unsplash.com/photo.jpg")).toBe(false);
   });
 
   it("does not expose internal fixture wording in menu display copy", () => {
