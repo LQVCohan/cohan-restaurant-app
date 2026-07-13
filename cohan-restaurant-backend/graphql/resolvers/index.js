@@ -80,6 +80,11 @@ const menuItemResolvers = {
   ...(inventory.MenuItem || {}),
   ...(menu.MenuItem || {}),
 };
+const paymentTypeResolvers = Object.fromEntries(
+  Object.entries(payment || {}).filter(
+    ([typeName]) => !["Query", "Mutation", "Subscription"].includes(typeName),
+  ),
+);
 
 export default {
   ...baseResolvers,
@@ -180,6 +185,7 @@ export default {
     ...guardedBrandMemberMutations,
   },
 
+  ...paymentTypeResolvers,
   ...(role.Role ? { Role: role.Role } : {}),
   ...(role.ParentRole ? { ParentRole: role.ParentRole } : {}),
   ...(restaurant.Restaurant ? { Restaurant: restaurant.Restaurant } : {}),
