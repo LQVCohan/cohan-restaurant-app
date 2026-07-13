@@ -9,14 +9,6 @@ input UploadOrderItemProofInput {
   note: String
 }
 
-input SetOrderItemProofWaiverInput {
-  restaurantId: ID
-  orderId: ID!
-  orderItemId: ID!
-  waived: Boolean!
-  reason: String
-}
-
 type CustomerTrackingTimelineItem {
   status: String
   displayMessage: String
@@ -166,7 +158,6 @@ extend type Mutation {
 
   # Order proof/status operations
   uploadOrderItemProof(input: UploadOrderItemProofInput!): UpdateOrderItemStatusPayload!
-  setOrderItemProofWaiver(input: SetOrderItemProofWaiverInput!): UpdateOrderItemStatusPayload!
   updateOrderStatus(input: UpdateOrderStatusInput!): Order!
   updateOrderItemStatus(input: UpdateOrderItemStatusInput!): UpdateOrderItemStatusPayload!
   updateOrderItemPriority(input: UpdateOrderItemPriorityInput!): UpdateOrderItemPriorityPayload!
