@@ -6,15 +6,21 @@ import { resolveTableMergeDetails } from "./mergeDetails.js";
 import moveTable from "./moveTable.js";
 import { CustomerPublicTableMutation } from "./publicCustomer.js";
 import TableAccessQrMutation, { TableAccessQrQuery } from "./tableAccessQr.js";
+import { getCachedTableReservationSnapshot } from "../../../src/services/reservationTableTiming.service.js";
 
 import { TableCustomerQuery, TableCustomerMutation } from "./tableCustomer.js";
+
+const reservationField = (name) => async (parent, _args, ctx) => {
+  const snapshot = await getCachedTableReservationSnapshot(parent, ctx);
+  return snapshot?.[name] ?? null;
+};
 
 export default {
   Query: {
     ...tableQueries,
     ...TableAccessQrQuery,
 
-    ...TableCustomerQuery, // ✅ thêm
+    ...TableCustomerQuery,
   },
   Mutation: {
     ...tableMutations,
@@ -23,7 +29,7 @@ export default {
     moveTable,
     ...TableAccessQrMutation,
 
-    ...TableCustomerMutation, // ✅ thêm
+    ...TableCustomerMutation,
     ...CustomerPublicTableMutation,
   },
   Table: {
@@ -39,5 +45,15 @@ export default {
       const exp = p?.viewLock?.expiresAt ? new Date(p.viewLock.expiresAt) : null;
       return !!(exp && exp > new Date());
     },
+    nextReservationAt: reservationField("nextReservationAt"),
+    reservationGraceEndsAt: reservationField("reservationGraceEndsAt"),
+    reservationPhase: reservationField("reservationPhase"),
+    reservationId: reservationField("reservationId"),
+    reservationOrderCode: reservationField("reservationOrderCode"),
+    reservationStatus: reservationField("reservationStatus"),
+    reservationCustomerName: reservationField("reservationCustomerName"),
+    reservationCustomerPhone: reservationField("reservationCustomerPhone"),
+    reservationCustomerEmail: reservationField("reservationCustomerEmail"),
+    reservationPartySize: reservationField("reservationPartySize"),
   },
 };
