@@ -15,6 +15,11 @@ import {
   isManagedRealMenuPhotoPath,
   validateDefenseMenuPhotoCatalog,
 } from "../../scripts/data/defenseMenuRealPhotos.js";
+import {
+  extensionFromBuffer,
+  normalizeRasterImageUrl,
+  parseRetryAfterMilliseconds,
+} from "../../scripts/materializeDefenseMenuRealPhotos.js";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "../../..");
@@ -97,6 +102,36 @@ describe("defense production menu catalog", () => {
     expect(isManagedRealMenuPhotoPath("/images/menu/dishes/pho-bo.webp")).toBe(true);
     expect(isManagedRealMenuPhotoPath("/images/menu/category-breakfast.svg")).toBe(false);
     expect(isManagedRealMenuPhotoPath("https://images.unsplash.com/photo.jpg")).toBe(false);
+  });
+
+  it("forces Unsplash fallbacks to broadly supported JPEG responses", () => {
+    const normalized = new URL(
+      normalizeRasterImageUrl(
+        "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=1400&q=88&fm=jpg",
+      ),
+    );
+
+    expect(normalized.hostname).toBe("images.unsplash.com");
+    expect(normalized.searchParams.get("auto")).toBeNull();
+    expect(normalized.searchParams.get("fm")).toBe("jpg");
+    expect(normalized.searchParams.get("fit")).toBe("crop");
+  });
+
+  it("recognizes only the supported raster signatures", () => {
+    expect(extensionFromBuffer(Buffer.from([0xff, 0xd8, 0xff, 0x00]))).toBe("jpg");
+    expect(
+      extensionFromBuffer(
+        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      ),
+    ).toBe("png");
+    expect(extensionFromBuffer(Buffer.from("RIFF0000WEBP", "ascii"))).toBe("webp");
+    expect(extensionFromBuffer(Buffer.from("<!doctype html>"))).toBeNull();
+  });
+
+  it("honors Wikipedia Retry-After and caps unreasonable waits", () => {
+    expect(parseRetryAfterMilliseconds("2", 0)).toBe(2_000);
+    expect(parseRetryAfterMilliseconds("999", 0)).toBe(15_000);
+    expect(parseRetryAfterMilliseconds(null, 1)).toBe(2_000);
   });
 
   it("does not expose internal fixture wording in menu display copy", () => {
