@@ -42,6 +42,10 @@ runScript("seedDefenseDemo.js", process.argv.slice(2));
 // resolves the current primary restaurant dynamically, seeds portion/by-weight
 // variants and refreshes ingredient purchase costs and stock values.
 runScript("seedDefenseMenuCatalog.js");
+// Category SVG files are only structural fallbacks. Download and cache a real
+// raster photograph for every catalog dish, then replace each MenuItem image
+// with its local /images/menu/dishes path before any integrity verification.
+runScript("materializeDefenseMenuRealPhotos.js");
 // The base seed still creates three legacy categories and two legacy ingredient
 // records. Remove them only after they are no longer referenced, so the final UI
 // does not expose empty or obsolete menu data.
