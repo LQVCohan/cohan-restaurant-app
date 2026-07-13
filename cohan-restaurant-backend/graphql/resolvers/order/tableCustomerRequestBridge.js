@@ -3,6 +3,26 @@ import { Table } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
+if (!Table.schema.path("customerRequests")) {
+  Table.schema.add({
+    customerRequests: {
+      type: [
+        {
+          requestId: { type: String, required: true },
+          type: { type: String, required: true },
+          status: { type: String, default: "PENDING" },
+          message: { type: String, trim: true, maxlength: 200 },
+          source: { type: String, default: "CUSTOMER_TABLE_QR" },
+          createdAt: { type: Date, default: Date.now },
+          acknowledgedAt: { type: Date, default: null },
+          resolvedAt: { type: Date, default: null },
+        },
+      ],
+      default: [],
+    },
+  });
+}
+
 const objectId = (value) =>
   value && mongoose.isValidObjectId(value)
     ? new mongoose.Types.ObjectId(value)
