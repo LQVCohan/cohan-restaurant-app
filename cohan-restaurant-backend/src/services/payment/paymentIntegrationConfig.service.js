@@ -37,6 +37,10 @@ function isPublicHttpsUrl(value) {
   }
 }
 
+function runtimeIsProduction(env) {
+  return String(env.NODE_ENV || "development").toLowerCase() === "production";
+}
+
 function requestOrigin(request) {
   const host = request?.headers?.["x-forwarded-host"] || request?.headers?.host;
   const proto = request?.headers?.["x-forwarded-proto"] || request?.protocol || "http";
@@ -49,16 +53,18 @@ export function getPaymentPublicBaseUrl({ env = process.env, request = null } = 
   );
   if (explicit) return explicit;
 
-  if (String(env.NODE_ENV || "development").toLowerCase() !== "production") {
+  if (!runtimeIsProduction(env)) {
     return requestOrigin(request) || `http://localhost:${env.PORT || 4000}`;
   }
   return "";
 }
 
 export function getPaymentWebBaseUrl({ env = process.env } = {}) {
-  return normalizeUrl(
+  const explicit = normalizeUrl(
     env.PAYMENT_WEB_RETURN_URL || env.PUBLIC_WEB_URL || env.APP_PUBLIC_URL || "",
   );
+  if (explicit) return explicit;
+  return runtimeIsProduction(env) ? "" : "http://localhost:5173";
 }
 
 export function getPlatformVnpayBankCode({ env = process.env } = {}) {
@@ -117,9 +123,11 @@ function readinessFor(provider, mode, options = {}) {
   const callbacks = buildPaymentCallbackUrls(provider, options);
   const webBaseUrl = getPaymentWebBaseUrl(options);
   const gatewayUrl = getProviderGatewayUrl(provider, mode, options);
-  const encryptionReady = Boolean(
+  const hasStableEncryptionKey = Boolean(
     String(env.PAYMENT_CREDENTIAL_ENCRYPTION_KEY || "").trim(),
   );
+  const encryptionReady =
+    hasStableEncryptionKey || (mode === "sandbox" && !runtimeIsProduction(env));
   const callbackReady = mode === "production"
     ? isPublicHttpsUrl(callbacks.publicBaseUrl)
     : Boolean(callbacks.publicBaseUrl);
