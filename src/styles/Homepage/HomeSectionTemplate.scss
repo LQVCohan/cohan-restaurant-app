@@ -1,0 +1,315 @@
+// Unified visual template for customer homepage sections.
+// Keeps each section's content/cards intact while standardizing the section shell,
+// heading hierarchy, spacing and calls to action.
+
+$primary: #ff6600;
+$primary-dark: #d94f00;
+$ink: #171717;
+$muted: #6f6258;
+$line: rgba(92, 64, 51, 0.12);
+$focus: rgba(255, 102, 0, 0.24);
+$container: 1080px;
+
+.home {
+  .categories,
+  .restaurant-grid,
+  .home-for-you,
+  .dish-grid,
+  .how-it-works {
+    padding: 36px 0 44px;
+    background: transparent;
+  }
+
+  .restaurant-grid {
+    margin-top: 0;
+
+    &::before {
+      display: none;
+    }
+  }
+
+  .categories__container,
+  .restaurant-grid__container,
+  .home-for-you__container,
+  .dish-grid__container,
+  .how-it-works__container {
+    width: min(#{$container}, calc(100% - 40px));
+    max-width: none;
+    margin-inline: auto;
+    padding-inline: 0;
+  }
+
+  // The personalized section previously used a large standalone panel.
+  // Flatten it so all homepage sections share the same page rhythm.
+  .home-for-you__surface {
+    overflow: visible;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+
+    &::after {
+      display: none;
+    }
+  }
+
+  .categories__header,
+  .restaurant-grid__header,
+  .home-for-you__header,
+  .dish-grid__header,
+  .how-it-works__header {
+    width: 100%;
+    max-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 24px;
+    margin: 0 0 22px;
+  }
+
+  .categories__heading-copy,
+  .restaurant-grid__heading-copy,
+  .home-for-you__copy,
+  .dish-grid__header > div:first-child,
+  .how-it-works__heading-copy {
+    min-width: 0;
+    max-width: 680px;
+  }
+
+  .categories__badge,
+  .restaurant-grid__badge,
+  .home-for-you__eyebrow,
+  .dish-grid__badge,
+  .how-it-works__badge {
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0 0 9px;
+    padding: 5px 10px;
+    border: 1px solid rgba(255, 102, 0, 0.13);
+    border-radius: 999px;
+    background: #fff1e6;
+    color: #c94f02;
+    font-size: 0.7rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-transform: uppercase;
+    box-shadow: none;
+  }
+
+  .categories__title,
+  .restaurant-grid__title,
+  .home-for-you__title,
+  .dish-grid__title,
+  .how-it-works__title {
+    margin: 0;
+    color: $ink;
+    font-size: clamp(1.75rem, 2.8vw, 2.25rem);
+    font-weight: 950;
+    letter-spacing: -0.05em;
+    line-height: 1.06;
+    text-wrap: balance;
+  }
+
+  .categories__subtitle,
+  .restaurant-grid__subtitle,
+  .home-for-you__subtitle,
+  .dish-grid__subtitle,
+  .how-it-works__subtitle {
+    display: block;
+    max-width: 58ch;
+    margin: 8px 0 0;
+    color: $muted;
+    font-size: 0.95rem;
+    font-weight: 620;
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+
+  .categories__view-all,
+  .restaurant-grid__view-all,
+  .home-for-you__cta,
+  .dish-grid__view-all {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    align-self: end;
+    padding: 0 16px;
+    border: 1px solid $line;
+    border-radius: 14px;
+    background: #ffffff;
+    color: $ink;
+    font-size: 0.88rem;
+    font-weight: 900;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 10px 24px rgba(92, 45, 12, 0.06);
+    transition:
+      transform 0.2s ease,
+      color 0.2s ease,
+      border-color 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
+
+    span,
+    svg,
+    .arrow {
+      color: $primary;
+      transition: transform 0.2s ease;
+    }
+
+    &:hover {
+      color: $primary-dark;
+      border-color: rgba(255, 102, 0, 0.3);
+      background: #fff8f2;
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px rgba(92, 45, 12, 0.1);
+
+      span,
+      svg,
+      .arrow {
+        transform: translateX(3px);
+      }
+    }
+
+    &:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    &:focus-visible {
+      outline: 3px solid $focus;
+      outline-offset: 3px;
+    }
+  }
+
+  .home-for-you__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+  }
+
+  .home-for-you__profile-cta {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 7px;
+    border-radius: 10px;
+    color: #7c4a2d;
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-decoration: none;
+
+    &:hover {
+      color: $primary-dark;
+      background: rgba(255, 102, 0, 0.06);
+    }
+  }
+
+  .categories__grid,
+  .restaurant-grid__list,
+  .home-for-you__grid,
+  .dish-grid__list,
+  .how-it-works__grid {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .home {
+    .categories__header,
+    .restaurant-grid__header,
+    .home-for-you__header,
+    .dish-grid__header,
+    .how-it-works__header {
+      grid-template-columns: 1fr;
+      align-items: start;
+      gap: 16px;
+    }
+
+    .categories__view-all,
+    .restaurant-grid__view-all,
+    .home-for-you__cta,
+    .dish-grid__view-all {
+      justify-self: start;
+      align-self: start;
+    }
+
+    .home-for-you__actions {
+      align-items: flex-start;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .home {
+    .categories,
+    .restaurant-grid,
+    .home-for-you,
+    .dish-grid,
+    .how-it-works {
+      padding: 24px 0 30px;
+    }
+
+    .categories__container,
+    .restaurant-grid__container,
+    .home-for-you__container,
+    .dish-grid__container,
+    .how-it-works__container {
+      width: calc(100% - 24px);
+    }
+
+    .categories__header,
+    .restaurant-grid__header,
+    .home-for-you__header,
+    .dish-grid__header,
+    .how-it-works__header {
+      margin-bottom: 18px;
+    }
+
+    .categories__title,
+    .restaurant-grid__title,
+    .home-for-you__title,
+    .dish-grid__title,
+    .how-it-works__title {
+      font-size: clamp(1.6rem, 8vw, 2rem);
+    }
+
+    .home-for-you__actions {
+      width: 100%;
+      align-items: stretch;
+    }
+
+    .categories__view-all,
+    .restaurant-grid__view-all,
+    .home-for-you__cta,
+    .dish-grid__view-all {
+      width: fit-content;
+      max-width: 100%;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home {
+    .categories__view-all,
+    .restaurant-grid__view-all,
+    .home-for-you__cta,
+    .dish-grid__view-all {
+      transition: none;
+
+      &:hover,
+      &:active {
+        transform: none;
+      }
+    }
+  }
+}
