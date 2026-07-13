@@ -89,7 +89,8 @@ export default function TableOrderDraftCategoryEnhancer() {
     const syncPortalHost = () => {
       const root = getMenuRoot();
       if (!root) {
-        if (portalHost) setPortalHost(null);
+        slotRef.current = null;
+        setPortalHost((current) => (current ? null : current));
         return;
       }
 
@@ -115,7 +116,7 @@ export default function TableOrderDraftCategoryEnhancer() {
       if (slotRef.current?.isConnected) slotRef.current.remove();
       slotRef.current = null;
     };
-  }, [portalHost]);
+  }, []);
 
   useEffect(() => {
     if (!portalHost) setSelectedCategory(ALL_CATEGORIES);
@@ -246,7 +247,9 @@ export default function TableOrderDraftCategoryEnhancer() {
       }
 
       root.querySelectorAll(".table-order-draft__line").forEach((line) => {
-        const title = normalizeText(line.querySelector(":scope > span > strong")?.textContent);
+        const title = normalizeText(
+          line.querySelector(":scope > span > strong")?.textContent,
+        );
         const meta = itemMetaByName.get(title);
         line.classList.add("is-enhanced-card");
         line.classList.toggle(
@@ -261,16 +264,10 @@ export default function TableOrderDraftCategoryEnhancer() {
 
         const details = line.querySelector(":scope > span");
         details?.querySelectorAll("small").forEach((small, index) => {
+          const note = normalizeText(small.textContent).startsWith("ghi chú:");
           small.classList.toggle("is-serving-meta", index === 0);
-          small.classList.toggle(
-            "is-note-meta",
-            normalizeText(small.textContent).startsWith("ghi chú:"),
-          );
-          small.classList.toggle(
-            "is-option-meta",
-            index > 0 &&
-              !normalizeText(small.textContent).startsWith("ghi chú:"),
-          );
+          small.classList.toggle("is-note-meta", note);
+          small.classList.toggle("is-option-meta", index > 0 && !note);
         });
       });
     };
