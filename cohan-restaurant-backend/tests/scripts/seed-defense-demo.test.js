@@ -4,6 +4,10 @@ import {
   buildDefenseAccountDefinitions,
   buildDefenseBrandMembershipDefinitions,
   buildSeedSteps,
+  DEFENSE_BRAND_NAME,
+  DEFENSE_BRAND_SLUG,
+  DEFENSE_PRIMARY_RESTAURANT_NAME,
+  DEFENSE_SECONDARY_RESTAURANT_NAME,
 } from "../../scripts/seedDefenseDemo.js";
 
 describe("defense demo seed contract", () => {
@@ -25,6 +29,24 @@ describe("defense demo seed contract", () => {
       "--confirm",
       `--restaurantId=${restaurantId}`,
     ]);
+  });
+
+  it("uses production-facing brand and restaurant identities", () => {
+    expect(DEFENSE_BRAND_NAME).toBe("COHAN Hospitality");
+    expect(DEFENSE_BRAND_SLUG).toBe("cohan-hospitality");
+    expect(DEFENSE_PRIMARY_RESTAURANT_NAME).toBe("Nhà hàng COHAN Thủ Đức");
+    expect(DEFENSE_SECONDARY_RESTAURANT_NAME).toBe(
+      "Nhà hàng COHAN Nguyễn Huệ",
+    );
+
+    for (const value of [
+      DEFENSE_BRAND_NAME,
+      DEFENSE_BRAND_SLUG,
+      DEFENSE_PRIMARY_RESTAURANT_NAME,
+      DEFENSE_SECONDARY_RESTAURANT_NAME,
+    ]) {
+      expect(value).not.toMatch(/demo|defen[cs]e/i);
+    }
   });
 
   it("builds active verified accounts for the business and both branches", () => {
@@ -71,6 +93,10 @@ describe("defense demo seed contract", () => {
       accounts.find((account) => account.email === "customer.demo@cohan.local")
         ?.payload.refRestaurants,
     ).toEqual([primaryRestaurantId]);
+    expect(
+      accounts.find((account) => account.email === "customer.demo@cohan.local")
+        ?.payload.fullName,
+    ).toBe("Nguyễn Minh An");
   });
 
   it("assigns owner/admin business scope and one manager per restaurant", () => {
