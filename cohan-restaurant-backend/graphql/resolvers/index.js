@@ -5,6 +5,7 @@ import role from "./role/index.js";
 import restaurant from "./restaurant/index.js";
 import brand from "./brand/index.js";
 import brandInvitationFlow from "./brand/invitationFlow.js";
+import brandMemberPagination from "./brand/memberPagination.js";
 import { guardBrandMemberRoleMutations } from "./brand/memberRoleConsistency.js";
 import user from "./user/index.js";
 import wallet from "./wallet/index.js";
@@ -84,6 +85,7 @@ export default {
     ...(restaurant.Query || {}),
     ...(brand.Query || {}),
     ...(brandInvitationFlow.Query || {}),
+    ...(brandMemberPagination.Query || {}),
     ...(user.Query || {}),
     ...(wallet.Query || {}),
     ...(permission.Query || {}),
