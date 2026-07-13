@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { AiChatConversation } from "../../../models/index.js";
 import { AI_CHATBOT_RATE_LIMIT_CODE } from "../../../src/services/ai/restaurantChatbotRateLimit.service.js";
-import { handleRestaurantChatbotMessage } from "../../../src/services/ai/restaurantChatbotRoutingGuard.service.js";
+import { handleRestaurantChatbotMessage } from "../../../src/services/ai/restaurantChatbotTone.service.js";
 import { resolveUniqueKnowledgeRestaurantOptions } from "../../../src/services/ai/restaurantChatbotKnowledgeScope.service.js";
 import { requestRestaurantChatbotHandoff } from "../../../src/services/ai/restaurantChatbotHandoff.service.js";
 import { getRestaurantChatbotGuestReplies, sendRestaurantChatbotGuestMessage } from "../../../src/services/ai/restaurantChatbotGuestReplies.service.js";
