@@ -4,9 +4,11 @@ const REQUIRED_EXPORT_VALIDATION_KEYS = [
   "settingsReviewed",
 ];
 
-// Required items are named in the export status message instead of being
-// appended to each label, so the existing concise accessible labels stay stable.
-export const REQUIRED_EXPORT_CHECKLIST_KEYS = [];
+// These are the only user-confirmed checks required before creating a file.
+// The remaining checklist items are completed after export or by the server.
+export const REQUIRED_EXPORT_CHECKLIST_KEYS = [
+  ...REQUIRED_EXPORT_VALIDATION_KEYS,
+];
 
 export function selectBackupRuns({ runs = [], selectedRunId = "", currentLastRun = null }) {
   const latestRun = runs[0] || currentLastRun || null;
@@ -36,7 +38,12 @@ export function getExportReadinessState({ latestRun, selectedRun, runDraft }) {
       && !viewingHistory
       && savedMissingKeys.length > 0
       && draftMissingKeys.length === 0,
-    // The resolver remains the canonical guard when no run has been loaded yet.
-    canDownload: !latestRun || (latestIsPlanned && savedMissingKeys.length === 0),
+    // The download button must match the backend guard: an active preparation
+    // run must exist and its three pre-export checks must already be saved.
+    canDownload: Boolean(
+      latestRun
+        && latestIsPlanned
+        && savedMissingKeys.length === 0,
+    ),
   };
 }
