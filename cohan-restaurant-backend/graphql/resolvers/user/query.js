@@ -42,14 +42,14 @@ function normalizeIdKey(value) {
 function buildSearchCond(search) {
   if (!search || !search.trim()) return null;
   const q = search.trim();
-  return {
-    $or: [
-      { fullName: new RegExp(q, "i") },
-      { email: new RegExp(q, "i") },
-      { phone: new RegExp(q, "i") },
-      { username: new RegExp(q, "i") },
-    ],
-  };
+  const clauses = [
+    { fullName: new RegExp(q, "i") },
+    { email: new RegExp(q, "i") },
+    { phone: new RegExp(q, "i") },
+    { username: new RegExp(q, "i") },
+  ];
+  if (mongoose.isValidObjectId(q)) clauses.push({ _id: toObjectId(q) });
+  return { $or: clauses };
 }
 const CUSTOMER_PAGE_LIMIT_DEFAULT = 30;
 const CUSTOMER_PAGE_LIMIT_MAX = 100;
@@ -77,6 +77,7 @@ function buildCustomerQueryCondition({
   customerKind = "ALL",
   customerRoleId = null,
   customerRank = null,
+  activityStatuses = null,
 }) {
   const activeCond = { deletedAt: null };
   const restaurantScopeCond = { customerRestaurants: { $in: [toObjectId(restaurantId)] } };
@@ -97,7 +98,27 @@ function buildCustomerQueryCondition({
   const rankClauses = [];
   if (typeof customerRank?.minPoints === "number") rankClauses.push({ loyaltyPoints: { $gte: customerRank.minPoints } });
   if (typeof customerRank?.maxPointsExclusive === "number") rankClauses.push({ loyaltyPoints: { $lt: customerRank.maxPointsExclusive } });
-  const clauses = [activeCond, restaurantScopeCond, kindClause, searchCond, ...rankClauses].filter(Boolean);
+  const normalizedStatuses = new Set(
+    (Array.isArray(activityStatuses) ? activityStatuses : [])
+      .map((status) => String(status || "").toLowerCase())
+      .filter((status) => ["online", "offline"].includes(status)),
+  );
+  let activityClause = null;
+  if (normalizedStatuses.size === 1 && normalizedStatuses.has("online")) {
+    activityClause = { isOnline: true };
+  } else if (normalizedStatuses.size === 1 && normalizedStatuses.has("offline")) {
+    activityClause = { $or: [{ isOnline: false }, { isOnline: { $exists: false } }] };
+  } else if (Array.isArray(activityStatuses) && normalizedStatuses.size === 0) {
+    return { finalCond: { _id: { $exists: false } }, empty: true };
+  }
+  const clauses = [
+    activeCond,
+    restaurantScopeCond,
+    kindClause,
+    searchCond,
+    activityClause,
+    ...rankClauses,
+  ].filter(Boolean);
   return { finalCond: clauses.length === 1 ? clauses[0] : { $and: clauses }, empty: false };
 }
 
@@ -361,6 +382,7 @@ export const UserQuery = {
       includeGuests = true,
       customerKind = "ALL",
       customerRank,
+      activityStatuses,
       sortBy = "CREATED_AT",
       sortDirection = "DESC",
       limit = CUSTOMER_PAGE_LIMIT_DEFAULT,
@@ -382,7 +404,13 @@ export const UserQuery = {
     const offset = decodeOffsetCursor(cursor);
     const customerRole = await Role.findOne({ slug: "customer" }).lean();
     const { finalCond, empty } = buildCustomerQueryCondition({
-      restaurantId, search, includeGuests, customerKind, customerRoleId: customerRole?._id, customerRank,
+      restaurantId,
+      search,
+      includeGuests,
+      customerKind,
+      customerRoleId: customerRole?._id,
+      customerRank,
+      activityStatuses,
     });
     if (empty) return { items: [], totalCount: 0, pageInfo: { hasNextPage: false, endCursor: null, limit: normalizedLimit } };
     const dir = String(sortDirection).toUpperCase() === "ASC" ? 1 : -1;
@@ -497,6 +525,33 @@ export const UserQuery = {
     }));
   },
 
+  async customerNote(_, { userId, restaurantId }, ctx) {
+    requireRole(ctx?.user, ["admin", "manager", "staff"]);
+    await requirePermission(ctx, PERMISSIONS.CUSTOMER_READ);
+    if (!mongoose.isValidObjectId(userId) || !mongoose.isValidObjectId(restaurantId)) {
+      throw new GraphQLError("Invalid customer note scope", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    await requireRestaurantAccess(ctx, restaurantId);
+    const customer = await Customer.findOne({
+      _id: toObjectId(userId),
+      customerRestaurants: { $in: [toObjectId(restaurantId)] },
+      deletedAt: null,
+    })
+      .select("customerNotes noteInternal")
+      .lean();
+    if (!customer) {
+      throw new GraphQLError("User not found", {
+        extensions: { code: "NOT_FOUND" },
+      });
+    }
+    const scopedNote = (customer.customerNotes || []).find(
+      (entry) => String(entry?.restaurantId || "") === String(restaurantId),
+    );
+    return scopedNote?.noteInternal || customer.noteInternal || "";
+  },
+
   async customerDetailAnalytics(_, { userId, restaurantId }, ctx) {
     const authUser = ctx?.user;
     requireRole(authUser, ["admin", "manager", "staff"]);
@@ -527,7 +582,10 @@ export const UserQuery = {
       }
     }
 
-    const orders = await Order.find(cond)
+    const orders = await Order.find({
+      ...cond,
+      currentStatus: { $nin: ["cancelled", "failed", "draft"] },
+    })
       .sort({ createdAt: -1 })
       .limit(30)
       .lean();
@@ -593,6 +651,7 @@ export const UserQuery = {
     const orders = await Order.find({
       restaurantId: rid,
       userId: { $in: validUserIds },
+      currentStatus: { $nin: ["cancelled", "failed", "draft"] },
     })
       .sort({ createdAt: -1 })
       .lean();
@@ -661,7 +720,13 @@ export const UserQuery = {
     const oneDayMs = 1000 * 60 * 60 * 24;
 
     for (const o of orders) {
-      const grandTotal = Number(o?.totals?.grandTotal || 0);
+      const paymentStatus = String(
+        o?.payment?.status || o?.orderPaymentStatus || "",
+      ).toLowerCase();
+      const grandTotal =
+        paymentStatus === "refunded"
+          ? 0
+          : Number(o?.totals?.grandTotal || 0);
       if (Number.isFinite(grandTotal) && grandTotal >= 0) {
         totalCustomerSpend += grandTotal;
       }

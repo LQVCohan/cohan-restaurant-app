@@ -488,7 +488,22 @@ export const UserMutation = {
       password,
       customerType,
       captchaToken,
+      restaurantId,
     } = input;
+
+    const isManagedCustomerCreate = Boolean(restaurantId);
+    let managedRestaurantObjectId = null;
+    if (isManagedCustomerCreate) {
+      requireRole(ctx?.user, ["admin", "manager"]);
+      await requirePermission(ctx, PERMISSIONS.CUSTOMER_UPDATE);
+      if (!mongoose.isValidObjectId(restaurantId)) {
+        throw new GraphQLError("Invalid restaurantId", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      await requireRestaurantAccess(ctx, restaurantId);
+      managedRestaurantObjectId = new mongoose.Types.ObjectId(restaurantId);
+    }
 
     if (!fullName?.trim()) {
       throw new GraphQLError("fullName is required", {
@@ -509,7 +524,7 @@ export const UserMutation = {
     // Allow disabling reCAPTCHA in dev by env flag
     const recaptchaEnabled =
       String(process.env.ENABLE_RECAPTCHA ?? "true").toLowerCase() === "true";
-    if (recaptchaEnabled) {
+    if (recaptchaEnabled && !isManagedCustomerCreate) {
       const recaptcha = await verifyRecaptcha(captchaToken, ctx);
       if (!recaptcha.ok) {
         throw new GraphQLError(
@@ -611,6 +626,24 @@ export const UserMutation = {
         totalSpending: 0,
       });
       await doc.setPassword(password);
+      await doc.save();
+    }
+
+    if (managedRestaurantObjectId) {
+      const membershipIds = (doc.customerRestaurants || []).map(String);
+      if (!membershipIds.includes(String(managedRestaurantObjectId))) {
+        doc.customerRestaurants = [
+          ...(doc.customerRestaurants || []),
+          managedRestaurantObjectId,
+        ];
+      }
+      const recentIds = (doc.refRestaurants || [])
+        .map(String)
+        .filter((id) => id !== String(managedRestaurantObjectId));
+      doc.refRestaurants = [
+        managedRestaurantObjectId,
+        ...recentIds.slice(0, 11).map((id) => new mongoose.Types.ObjectId(id)),
+      ];
       await doc.save();
     }
 
@@ -940,12 +973,37 @@ export const UserMutation = {
   },
 
   // ========== Guest nhanh ==========
-  async createGuestUser(_, { fullName, phone, expiresInDays = 30 }, { user }) {
-    requireRole(user, ["admin"]);
+  async createGuestUser(
+    _,
+    { fullName, phone, expiresInDays = 30, restaurantId },
+    ctx,
+  ) {
+    requireRole(ctx?.user, ["admin", "manager"]);
+    await requirePermission(ctx, PERMISSIONS.CUSTOMER_UPDATE);
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new GraphQLError("Invalid restaurantId", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    await requireRestaurantAccess(ctx, restaurantId);
 
+    const normalizedPhone = phone ? normalizePhone(phone) : undefined;
+    if (normalizedPhone) {
+      const existing = await Customer.findOne({
+        phone: normalizedPhone,
+        deletedAt: null,
+      }).lean();
+      if (existing) {
+        throw new GraphQLError("Phone already in use", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+    }
+
+    const rid = new mongoose.Types.ObjectId(restaurantId);
     const doc = new Customer({
       fullName: (fullName || "Guest").trim(),
-      phone: phone ? normalizePhone(phone) : undefined,
+      phone: normalizedPhone,
       status: "active",
       isGuest: true,
       guestExpiresAt: dayjs().add(expiresInDays, "day").toDate(),
@@ -953,6 +1011,8 @@ export const UserMutation = {
       loyaltyPoints: 0,
       totalOrders: 0,
       totalSpending: 0,
+      customerRestaurants: [rid],
+      refRestaurants: [rid],
     });
 
     await doc.save();
@@ -1168,8 +1228,21 @@ export const UserMutation = {
       });
     }
 
-    customer.noteInternal =
+    const normalizedNote =
       typeof noteInternal === "string" ? noteInternal.trim() : "";
+    const noteIndex = (customer.customerNotes || []).findIndex(
+      (entry) => String(entry?.restaurantId || "") === String(rid),
+    );
+    const noteEntry = {
+      restaurantId: rid,
+      noteInternal: normalizedNote,
+      updatedAt: new Date(),
+      updatedBy: ctx?.user?.id
+        ? new mongoose.Types.ObjectId(ctx.user.id)
+        : undefined,
+    };
+    if (noteIndex >= 0) customer.customerNotes[noteIndex] = noteEntry;
+    else customer.customerNotes.push(noteEntry);
     await customer.save();
 
     return loadUserForGraph(customer._id);
@@ -1292,6 +1365,24 @@ export const UserMutation = {
 
     if (!normalizedRanks.length) {
       throw new GraphQLError("Ranks cannot be empty", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+
+    const normalizedNames = normalizedRanks.map((rank) => rank.name.toLowerCase());
+    const thresholds = normalizedRanks.map((rank) => rank.minPoints);
+    if (new Set(normalizedNames).size !== normalizedNames.length) {
+      throw new GraphQLError("Rank names must be unique", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    if (new Set(thresholds).size !== thresholds.length) {
+      throw new GraphQLError("Rank thresholds must be unique", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    if (!thresholds.includes(0)) {
+      throw new GraphQLError("The lowest rank must start at 0 points", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }

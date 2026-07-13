@@ -60,23 +60,44 @@ const isCurrentOffer = (offer, restaurantId) => {
   return true;
 };
 
-const getCustomerTier = (customer) => {
+const getCustomerTier = (customer, rankSettings = []) => {
+  const sorted = [...(rankSettings || [])]
+    .filter((rank) => Number.isFinite(Number(rank?.minPoints)))
+    .sort((a, b) => Number(a.minPoints) - Number(b.minPoints));
+  if (!sorted.length) {
+    const legacy = String(customer?.customerType || customer?.rankName || "").toLowerCase();
+    if (legacy.includes("vip")) return "vip";
+    if (legacy.includes("thân") || legacy.includes("often")) return "frequent";
+    return "new";
+  }
   const points = Number(customer?.loyaltyPoints || 0);
-  if (points > 15000) return "vip";
-  if (points > 5000) return "frequent";
+  const matched = [...sorted]
+    .reverse()
+    .find((rank) => points >= Number(rank.minPoints));
+  const top = sorted[sorted.length - 1];
+  const middle = sorted.length > 2 ? sorted[sorted.length - 2] : sorted[1];
+  if (matched?.name === top?.name) return "vip";
+  if (middle && matched?.name === middle.name) return "frequent";
   return "new";
 };
 
-const buildRecipientSet = (customers, targetMode, manualIds, segment) => {
+const buildRecipientSet = (
+  customers,
+  targetMode,
+  manualIds,
+  segment,
+  rankSettings,
+) => {
   if (targetMode === "all") return customers;
   if (targetMode === "manual") {
     const picked = new Set(manualIds);
     return customers.filter((c) => picked.has(String(c.id)));
   }
   return customers.filter((c) => {
-    if (segment === "vip") return getCustomerTier(c) === "vip";
-    if (segment === "frequent") return getCustomerTier(c) === "frequent";
-    if (segment === "new") return getCustomerTier(c) === "new";
+    if (segment === "vip") return getCustomerTier(c, rankSettings) === "vip";
+    if (segment === "frequent")
+      return getCustomerTier(c, rankSettings) === "frequent";
+    if (segment === "new") return getCustomerTier(c, rankSettings) === "new";
     if (segment === "inactive") return !c.online;
     return true;
   });
@@ -136,7 +157,12 @@ const parseCampaignHistory = (messages = []) =>
     .filter(Boolean)
     .sort((a, b) => new Date(b.sentAt || b.createdAt || 0) - new Date(a.sentAt || a.createdAt || 0));
 
-const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdProp = null }) => {
+const PromotionModal = ({
+  onClose,
+  customers = [],
+  rankSettings = [],
+  restaurantId: restaurantIdProp = null,
+}) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedOfferId, setSelectedOfferId] = useState("");
   const [targetMode, setTargetMode] = useState("all");
@@ -184,8 +210,15 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
   );
 
   const recipients = useMemo(
-    () => buildRecipientSet(customers, targetMode, manualRecipientIds, segmentKey),
-    [customers, targetMode, manualRecipientIds, segmentKey]
+    () =>
+      buildRecipientSet(
+        customers,
+        targetMode,
+        manualRecipientIds,
+        segmentKey,
+        rankSettings,
+      ),
+    [customers, targetMode, manualRecipientIds, segmentKey, rankSettings]
   );
 
   const campaignHistory = useMemo(() => parseCampaignHistory(thread?.messages || []), [thread?.messages]);
@@ -235,9 +268,9 @@ const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdPro
         input: {
           restaurantId,
           channel: "support",
-          targetRole: "support",
+          participantIds: [customer.id],
           subject: `Khách hàng #${String(customer.id).padStart(4, "0")} - ${
-            customer?.name || "Khách hàng"
+            customer?.name || customer?.fullName || "Khách hàng"
           }`,
         },
       },

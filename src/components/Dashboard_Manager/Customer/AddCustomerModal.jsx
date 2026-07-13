@@ -24,13 +24,6 @@ const NEW_PASSWORD_PROPS = {
   "data-1p-ignore": "true",
 };
 
-/* ===== Map VN label -> enum BE ===== */
-const VN_TO_ENUM = (v) => {
-  if (v === "VIP") return "VIP";
-  if (v === "Thường xuyên") return "OFTEN";
-  return "NEW";
-};
-
 /* ===== Validators ===== */
 const isEmail = (v) =>
   !!v && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).trim());
@@ -100,7 +93,7 @@ const Section = ({ title, children, badge }) => (
   </section>
 );
 
-const AddCustomerModal = ({ onClose, onCreated }) => {
+const AddCustomerModal = ({ onClose, onCreated, restaurantId }) => {
   const { roleList, createUser, createGuest, creating, creatingGuest } =
     useUserManagement();
   const { showNotification } = useNotification();
@@ -122,7 +115,6 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
     phone: "",
     password: "",
     confirmPassword: "",
-    customerTypeVN: "Mới",
     addressDetail: "",
     provinceKey: "",
     districtKey: "",
@@ -371,6 +363,7 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
           fullName: form.fullName.trim(),
           phone: normalizePhoneVN(form.phone),
           expiresInDays: 30,
+          restaurantId,
         });
         const syncResult =
           typeof onCreated === "function"
@@ -392,7 +385,8 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
         email: form.email.trim() || undefined,
         phone: normalizePhoneVN(form.phone) || undefined,
         password: form.password,
-        customerType: VN_TO_ENUM(form.customerTypeVN),
+        customerType: "NEW",
+        restaurantId,
         roleSlug: "customer",
         roleId: defaultCustomerRoleId || undefined,
         provider: "local",
@@ -626,23 +620,10 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
             </Section>
 
             <Section title="Phân loại khách hàng">
-              <div className="acm-grid acm-grid--single">
-                <Input label="Loại khách hàng">
-                  <select
-                    {...NO_AUTOFILL_PROPS}
-                    className="acm-input"
-                    name="new-customer-type"
-                    value={form.customerTypeVN}
-                    onChange={(event) =>
-                      onChange("customerTypeVN", event.target.value)
-                    }
-                  >
-                    <option value="Mới">Mới</option>
-                    <option value="Thường xuyên">Thường xuyên</option>
-                    <option value="VIP">VIP</option>
-                  </select>
-                </Input>
-              </div>
+              <p className="text-sm text-slate-600">
+                Hạng khách được hệ thống tự động xác định theo điểm và ngưỡng của
+                nhà hàng. Khách mới bắt đầu từ hạng thấp nhất.
+              </p>
             </Section>
 
             <Section title="Địa chỉ">

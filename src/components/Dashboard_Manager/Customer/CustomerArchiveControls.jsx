@@ -5,6 +5,7 @@ import Modal from "../../common/Modal";
 import { AuthContext } from "../../../context/AuthContext";
 import useManagerRestaurantSelection from "../../../hooks/useManagerRestaurantSelection";
 import { useNotification } from "../../../hooks/useNotification";
+import { toUserFacingErrorMessage } from "../../../utils/userFacingError";
 import {
   isAdminRole,
   isManagerRole,
@@ -58,11 +59,12 @@ const CustomerArchiveControlsInner = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const isAdmin = isAdminRole(user);
+  const canManageArchive = isAdmin || isManagerRole(user);
 
   const { data, loading, error, refetch } = useQuery(
     GET_ARCHIVED_CUSTOMERS,
     {
-      skip: !isOpen || !isAdmin || !selectedRestaurantId,
+      skip: !isOpen || !canManageArchive || !selectedRestaurantId,
       variables: {
         restaurantId: selectedRestaurantId,
         limit: 100,
@@ -111,10 +113,13 @@ const CustomerArchiveControlsInner = ({ user }) => {
         `Đã ẩn ${count.toLocaleString("vi-VN")} khách hàng khỏi ${restaurantName}.`,
         "success",
       );
-      if (isAdmin) setIsOpen(true);
+      if (canManageArchive) setIsOpen(true);
     } catch (archiveError) {
       showNotification(
-        archiveError?.message || "Không thể ẩn danh sách khách hàng.",
+        toUserFacingErrorMessage(
+          archiveError,
+          "Không thể ẩn danh sách khách hàng.",
+        ),
         "error",
       );
     }
@@ -150,7 +155,10 @@ const CustomerArchiveControlsInner = ({ user }) => {
       );
     } catch (restoreError) {
       showNotification(
-        restoreError?.message || "Không thể khôi phục khách hàng.",
+        toUserFacingErrorMessage(
+          restoreError,
+          "Không thể khôi phục khách hàng.",
+        ),
         "error",
       );
     }
@@ -168,7 +176,7 @@ const CustomerArchiveControlsInner = ({ user }) => {
           <Archive size={14} />
           {archiving ? "Đang ẩn..." : "Ẩn toàn bộ"}
         </button>
-        {isAdmin ? (
+        {canManageArchive ? (
           <button
             type="button"
             onClick={() => setIsOpen(true)}
@@ -180,7 +188,7 @@ const CustomerArchiveControlsInner = ({ user }) => {
         ) : null}
       </div>
 
-      {isAdmin ? (
+      {canManageArchive ? (
         <Modal
           isOpen={isOpen}
           onClose={() => setIsOpen(false)}
@@ -200,7 +208,10 @@ const CustomerArchiveControlsInner = ({ user }) => {
                 </p>
               ) : error ? (
                 <div className="text-sm text-red-600" role="alert">
-                  {error.message || "Không thể tải danh sách đã ẩn."}
+                  {toUserFacingErrorMessage(
+                    error,
+                    "Không thể tải danh sách đã ẩn.",
+                  )}
                 </div>
               ) : totalArchived === 0 ? (
                 <div className="cl-empty-state">

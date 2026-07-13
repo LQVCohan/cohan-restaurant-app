@@ -80,7 +80,7 @@ input AdminUpdateUserInput {
 
 extend type Mutation {
   assignRoleToUser(input: AssignRoleToUserInput!): User
-  createGuestUser(fullName: String, phone: String, expiresInDays: Int): User
+  createGuestUser(fullName: String, phone: String, expiresInDays: Int, restaurantId: ID!): User
   adminUpdateUser(userId: ID!, input: AdminUpdateUserInput!): User
   updateCustomerMetrics(id: ID!, restaurantId: ID!, loyaltyPoints: Int!, customerType: CustomerType!): User
   resendUserVerification(userId: ID!, channel: VerificationChannel = AUTO): VerificationResult

@@ -35,6 +35,20 @@ const archivedRestaurantSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const customerNoteSchema = new mongoose.Schema(
+  {
+    restaurantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Restaurant",
+      required: true,
+    },
+    noteInternal: { type: String, default: "" },
+    updatedAt: { type: Date, default: Date.now },
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  },
+  { _id: false },
+);
+
 const customerSchema = new mongoose.Schema(
   {
     loyaltyPoints: { type: Number, default: 0 },
@@ -60,6 +74,10 @@ const customerSchema = new mongoose.Schema(
       type: [archivedRestaurantSchema],
       default: [],
     },
+    customerNotes: {
+      type: [customerNoteSchema],
+      default: [],
+    },
     foodPreferences: {
       type: foodPreferencesSchema,
       default: () => ({
@@ -79,6 +97,7 @@ customerSchema.index(
 );
 customerSchema.index({ "archivedRestaurants.restaurantId": 1 });
 customerSchema.index({ customerRestaurants: 1 });
+customerSchema.index({ "customerNotes.restaurantId": 1 });
 
 export const Customer =
   mongoose.models.Customer ||
