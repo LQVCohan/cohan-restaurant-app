@@ -9,6 +9,10 @@ export { parseDurationMs };
 
 export const REFRESH_TOKEN_INVALID_MESSAGE = "Authentication failed";
 
+const REFRESH_COOKIE_SAME_SITE_VALUES = new Set(["lax", "strict", "none"]);
+const DEFAULT_REFRESH_REUSE_GRACE_MS = 5000;
+const MAX_REFRESH_REUSE_GRACE_MS = 30000;
+
 export function getRefreshTokenTtlMs({ persistent = true } = {}) {
   return parseDurationMs(
     persistent
@@ -20,6 +24,26 @@ export function getRefreshTokenTtlMs({ persistent = true } = {}) {
 
 export function getRefreshCookieMaxAgeSeconds(options = {}) {
   return Math.floor(getRefreshTokenTtlMs(options) / 1000);
+}
+
+export function getRefreshTokenReuseGraceMs() {
+  const configured = Number(
+    process.env.REFRESH_TOKEN_REUSE_GRACE_MS ?? DEFAULT_REFRESH_REUSE_GRACE_MS,
+  );
+  if (!Number.isFinite(configured) || configured < 0) {
+    return DEFAULT_REFRESH_REUSE_GRACE_MS;
+  }
+  return Math.min(Math.floor(configured), MAX_REFRESH_REUSE_GRACE_MS);
+}
+
+export function isRefreshTokenWithinReuseGrace(existing, nowMs = Date.now()) {
+  const revokedAtMs = existing?.revokedAt
+    ? new Date(existing.revokedAt).getTime()
+    : Number.NaN;
+  if (!Number.isFinite(revokedAtMs)) return false;
+
+  const ageMs = nowMs - revokedAtMs;
+  return ageMs >= 0 && ageMs <= getRefreshTokenReuseGraceMs();
 }
 
 export function hashRefreshToken(rawToken) {
@@ -42,13 +66,24 @@ export function isRefreshTokenRotationEnabled() {
   return String(process.env.AUTH_REFRESH_TOKEN_ROTATION_ENABLED ?? "true").toLowerCase() !== "false";
 }
 
+function getRefreshCookieSameSite() {
+  const fallback = process.env.NODE_ENV === "production" ? "none" : "lax";
+  const configured = String(
+    process.env.REFRESH_TOKEN_COOKIE_SAMESITE || fallback,
+  )
+    .trim()
+    .toLowerCase();
+  return REFRESH_COOKIE_SAME_SITE_VALUES.has(configured) ? configured : fallback;
+}
+
 export function refreshCookieOptions({ persistent = true } = {}) {
   const isProduction = process.env.NODE_ENV === "production";
+  const sameSite = getRefreshCookieSameSite();
   const options = {
     path: "/api/auth",
     httpOnly: true,
-    secure: isProduction,
-    sameSite: String(process.env.REFRESH_TOKEN_COOKIE_SAMESITE || "lax").toLowerCase(),
+    secure: isProduction || sameSite === "none",
+    sameSite,
   };
 
   if (persistent) {
@@ -115,36 +150,84 @@ export async function handleRefreshTokenReuse(existing, logger) {
   await revokeRefreshTokenFamilyFromHash(existing?.replacedByTokenHash || null);
 }
 
+async function buildActiveRefreshPayload(userId) {
+  const user = await User.findById(userId).populate("role").lean({ virtuals: true });
+  if (!user || user.status !== "active") return null;
+
+  const roleName = (user.role?.slug || user.role?.name || "").toLowerCase();
+  return {
+    token: signAccessToken({ ...user, roleName }),
+    user: sanitizeUserForClient({ ...user, roleName }),
+  };
+}
+
+async function recoverRecentRefreshCollision(existing, logger) {
+  const payload = await buildActiveRefreshPayload(existing?.userId);
+  if (!payload) return null;
+
+  logger?.debug?.(
+    {
+      userId: existing?.userId ? String(existing.userId) : null,
+      rotationAgeMs: Math.max(0, Date.now() - new Date(existing.revokedAt).getTime()),
+    },
+    "concurrent refresh rotation detected; preserving the active session",
+  );
+  return payload;
+}
+
 export async function rotateRefreshToken({ currentRawToken, reply, userAgent, ip, logger }) {
   const currentHash = hashRefreshToken(currentRawToken);
   const existing = await RefreshToken.findOne({ tokenHash: currentHash });
   if (!existing) return null;
   if (existing.revokedAt) {
+    if (isRefreshTokenWithinReuseGrace(existing)) {
+      return recoverRecentRefreshCollision(existing, logger);
+    }
     await handleRefreshTokenReuse(existing, logger);
     return null;
   }
   if (existing.expiresAt.getTime() <= Date.now()) return null;
 
-  const user = await User.findById(existing.userId).populate("role").lean({ virtuals: true });
-  if (!user || user.status !== "active") return null;
-
-  const roleName = (user.role?.slug || user.role?.name || "").toLowerCase();
-  const safeUser = sanitizeUserForClient({ ...user, roleName });
-
   if (!isRefreshTokenRotationEnabled()) {
-    logger?.debug?.(
-      { userId: String(existing.userId) },
-      "refresh token rotation disabled for non-production environment",
-    );
-    return { token: signAccessToken({ ...user, roleName }), user: safeUser };
+    return buildActiveRefreshPayload(existing.userId);
   }
 
-  const persistent = existing.persistent !== false;
-  const issued = await issueRefreshToken({ userId: existing.userId, reply, userAgent, ip, persistent });
-  existing.revokedAt = new Date();
-  existing.replacedByTokenHash = issued.tokenHash;
-  await existing.save();
-  return { token: signAccessToken({ ...user, roleName }), user: safeUser };
+  const claimedAt = new Date();
+  const claimed = await RefreshToken.findOneAndUpdate(
+    {
+      tokenHash: currentHash,
+      revokedAt: null,
+      expiresAt: { $gt: claimedAt },
+    },
+    { $set: { revokedAt: claimedAt } },
+    { new: true },
+  );
+
+  if (!claimed) {
+    const latest = await RefreshToken.findOne({ tokenHash: currentHash });
+    if (latest?.revokedAt && isRefreshTokenWithinReuseGrace(latest)) {
+      return recoverRecentRefreshCollision(latest, logger);
+    }
+    if (latest?.revokedAt) {
+      await handleRefreshTokenReuse(latest, logger);
+    }
+    return null;
+  }
+
+  const payload = await buildActiveRefreshPayload(claimed.userId);
+  if (!payload) return null;
+
+  const persistent = claimed.persistent !== false;
+  const issued = await issueRefreshToken({
+    userId: claimed.userId,
+    reply,
+    userAgent,
+    ip,
+    persistent,
+  });
+  claimed.replacedByTokenHash = issued.tokenHash;
+  await claimed.save();
+  return payload;
 }
 
 export async function revokeRefreshToken(rawToken) {
