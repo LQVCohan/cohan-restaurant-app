@@ -39,6 +39,10 @@ junit-results.xml
 *.mp4
 *.har
 
+# Generated real menu photographs are downloaded by seed:defense and served locally.
+# They are intentionally not committed as binary repository assets.
+public/images/menu/dishes/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
