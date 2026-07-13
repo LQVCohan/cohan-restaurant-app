@@ -25,6 +25,10 @@ export const DEFENSE_BRAND_NAME = "COHAN Hospitality";
 export const DEFENSE_BRAND_SLUG = "cohan-hospitality";
 export const DEFENSE_PRIMARY_RESTAURANT_NAME = "Nhà hàng COHAN Thủ Đức";
 export const DEFENSE_SECONDARY_RESTAURANT_NAME = "Nhà hàng COHAN Nguyễn Huệ";
+const LEGACY_BRAND_SLUG = "cohan-demo-business";
+const LEGACY_PRIMARY_RESTAURANT_NAME = "COHAN Defense Demo Restaurant";
+const LEGACY_SECONDARY_RESTAURANT_NAME =
+  "COHAN Defense Demo Restaurant - Quận 1";
 const scriptPath = fileURLToPath(import.meta.url);
 const scriptsDir = path.dirname(scriptPath);
 const backendDir = path.dirname(scriptsDir);
@@ -237,7 +241,14 @@ const commonRestaurantPayload = {
 
 async function resolveDefenseRestaurants() {
   const primary = await Restaurant.findOneAndUpdate(
-    { name: DEFENSE_PRIMARY_RESTAURANT_NAME },
+    {
+      name: {
+        $in: [
+          DEFENSE_PRIMARY_RESTAURANT_NAME,
+          LEGACY_PRIMARY_RESTAURANT_NAME,
+        ],
+      },
+    },
     {
       $set: {
         ...commonRestaurantPayload,
@@ -262,7 +273,14 @@ async function resolveDefenseRestaurants() {
   );
 
   const secondary = await Restaurant.findOneAndUpdate(
-    { name: DEFENSE_SECONDARY_RESTAURANT_NAME },
+    {
+      name: {
+        $in: [
+          DEFENSE_SECONDARY_RESTAURANT_NAME,
+          LEGACY_SECONDARY_RESTAURANT_NAME,
+        ],
+      },
+    },
     {
       $set: {
         ...commonRestaurantPayload,
@@ -320,7 +338,7 @@ async function normalizeDefenseBrand({ primary, secondary, accounts }) {
   const userIdByEmail = new Map(accounts.map((account) => [account.email, account.userId]));
   const ownerId = userIdByEmail.get("business.owner.demo@cohan.local");
   const brand = await Brand.findOneAndUpdate(
-    { slug: DEFENSE_BRAND_SLUG },
+    { slug: { $in: [DEFENSE_BRAND_SLUG, LEGACY_BRAND_SLUG] } },
     {
       $set: {
         name: DEFENSE_BRAND_NAME,
