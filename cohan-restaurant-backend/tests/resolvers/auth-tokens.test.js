@@ -15,6 +15,7 @@ vi.mock("../../models/index.js", () => mocks);
 
 import { RefreshToken, User } from "../../models/index.js";
 import {
+  clearRefreshCookie,
   getRefreshCookieMaxAgeSeconds,
   getRefreshTokenReuseGraceMs,
   getRefreshTokenTtlMs,
@@ -50,6 +51,7 @@ describe("auth tokens", () => {
     process.env.JWT_SECRET = "secret";
     process.env.ACCESS_TOKEN_EXPIRES_IN = "15m";
     delete process.env.REFRESH_TOKEN_COOKIE_SAMESITE;
+    delete process.env.REFRESH_TOKEN_COOKIE_PARTITIONED;
     delete process.env.REFRESH_TOKEN_REUSE_GRACE_MS;
     delete process.env.AUTH_REFRESH_TOKEN_ROTATION_ENABLED;
   });
@@ -67,14 +69,24 @@ describe("auth tokens", () => {
     expect(opts.maxAge).toBe(604800);
     expect(opts.sameSite).toBe("lax");
     expect(opts.secure).toBe(false);
+    expect(opts.partitioned).toBeUndefined();
     expect(getRefreshCookieMaxAgeSeconds()).toBe(604800);
   });
 
-  it("defaults production refresh cookies to cross-site safe delivery", () => {
+  it("defaults production refresh cookies to cross-site and partitioned delivery", () => {
     process.env.NODE_ENV = "production";
     const opts = refreshCookieOptions();
     expect(opts.sameSite).toBe("none");
     expect(opts.secure).toBe(true);
+    expect(opts.partitioned).toBe(true);
+  });
+
+  it("allows partitioned cookies to be disabled explicitly", () => {
+    process.env.NODE_ENV = "production";
+    process.env.REFRESH_TOKEN_COOKIE_PARTITIONED = "false";
+    const opts = refreshCookieOptions();
+    expect(opts.sameSite).toBe("none");
+    expect(opts.partitioned).toBeUndefined();
   });
 
   it("honors an explicit production same-site policy", () => {
@@ -83,6 +95,26 @@ describe("auth tokens", () => {
     const opts = refreshCookieOptions();
     expect(opts.sameSite).toBe("strict");
     expect(opts.secure).toBe(true);
+    expect(opts.partitioned).toBeUndefined();
+  });
+
+  it("does not let a stale logout response delete a newer login cookie", () => {
+    const logoutReply = {
+      request: { routeOptions: { url: "/api/auth/logout" } },
+      clearCookie: vi.fn(),
+    };
+    clearRefreshCookie(logoutReply);
+    expect(logoutReply.clearCookie).not.toHaveBeenCalled();
+
+    const refreshReply = {
+      request: { routeOptions: { url: "/api/auth/refresh" } },
+      clearCookie: vi.fn(),
+    };
+    clearRefreshCookie(refreshReply);
+    expect(refreshReply.clearCookie).toHaveBeenCalledWith(
+      "refresh_token",
+      expect.objectContaining({ path: "/api/auth", maxAge: 0 }),
+    );
   });
 
   it("DB expiresAt uses milliseconds", async () => {
