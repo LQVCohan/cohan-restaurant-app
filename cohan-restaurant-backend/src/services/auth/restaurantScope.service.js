@@ -18,6 +18,26 @@ const roleName = (user) => {
 const toObjectId = (id) => (mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null);
 const idString = (value) => String(value?._id || value?.id || value || "");
 const uniqueIds = (ids) => [...new Map(ids.filter(Boolean).map((id) => [String(id), id])).values()];
+const isProductionLike = () =>
+  [
+    process.env.NODE_ENV,
+    process.env.APP_ENV,
+    process.env.DEPLOY_ENV,
+    process.env.VERCEL_ENV,
+    process.env.RAILWAY_ENV,
+    process.env.RENDER_ENV,
+  ].some((value) => ["production", "prod", "live"].includes(String(value || "").trim().toLowerCase()));
+const allowLegacyDemoSeedScope = () =>
+  process.env.DEMO_SEED_ALLOW_LEGACY_SCOPE === "true" && !isProductionLike();
+const legacyRestaurantIds = (user = {}) =>
+  uniqueIds([
+    user.restaurantId,
+    user.restaurantForStaff,
+    user.primaryRestaurant,
+    ...(Array.isArray(user.refRestaurants) ? user.refRestaurants : []),
+    ...(Array.isArray(user.restaurantIds) ? user.restaurantIds : []),
+    ...(Array.isArray(user.restaurants) ? user.restaurants : []),
+  ]);
 
 export const getUserId = (user) => idString(user);
 export const isSystemAdmin = (user) => {
@@ -60,6 +80,9 @@ export async function canAccessRestaurant(user, restaurantId) {
 
   const rid = toObjectId(restaurantId);
   if (!rid) return false;
+  if (allowLegacyDemoSeedScope() && includesId(legacyRestaurantIds(user), rid)) {
+    return true;
+  }
   const scopedFilter = await getScopedRestaurantFilter(user);
 
   if (typeof Restaurant?.exists === "function") {
