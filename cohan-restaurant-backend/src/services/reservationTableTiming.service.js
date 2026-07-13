@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 
-import Order from "../../models/order.model.js";
 import Reservation from "../../models/reservation.model.js";
 import Table from "../../models/table.model.js";
 import { ACTIVE_RESERVATION_STATUSES } from "../../utils/tableStateGuards.js";
@@ -86,6 +85,10 @@ export function getCachedTableReservationSnapshot(table, ctx) {
 }
 
 async function hasActiveSession({ restaurantId, tableId, tableCode }) {
+  // Order pulls in shipping/transaction sub-models. Load it only for the
+  // mutation-side synchronization path so read-only table queries and their
+  // focused mocks do not initialize the entire order model graph.
+  const { default: Order } = await import("../../models/order.model.js");
   const session = await Order.findOne(
     activeTableSessionLookupFilter({
       restaurantId,
