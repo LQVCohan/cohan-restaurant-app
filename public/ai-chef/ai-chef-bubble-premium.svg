@@ -20,6 +20,9 @@
       <stop offset="0" stop-color="#ffb15f" stop-opacity=".32"/>
       <stop offset="1" stop-color="#ffb15f" stop-opacity="0"/>
     </radialGradient>
+    <clipPath id="panelClip">
+      <path d="M76 18h562c26 0 46 20 46 46v212c0 26-20 46-46 46H80c-24 0-44-18-46-42L8 302l24-62V64c0-26 20-46 44-46Z"/>
+    </clipPath>
     <filter id="shadow" x="-20%" y="-30%" width="150%" height="180%">
       <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#8d3e0b" flood-opacity=".18"/>
     </filter>
@@ -31,7 +34,7 @@
   <g filter="url(#shadow)">
     <path d="M76 18h562c26 0 46 20 46 46v212c0 26-20 46-46 46H80c-24 0-44-18-46-42L8 302l24-62V64c0-26 20-46 44-46Z" fill="url(#panel)" stroke="#ff8a2a" stroke-width="3"/>
     <path d="M76 20h560c24 0 44 19 44 43v7H32v-7c0-24 20-43 44-43Z" fill="#ffffff" opacity=".72"/>
-    <ellipse cx="610" cy="52" rx="154" ry="112" fill="url(#glow)"/>
+    <ellipse cx="610" cy="52" rx="154" ry="112" fill="url(#glow)" clip-path="url(#panelClip)"/>
   </g>
 
   <g transform="translate(72 42)">
