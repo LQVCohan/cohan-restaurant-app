@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   LockKeyhole,
   Settings2,
@@ -182,7 +183,7 @@ const PolicyModal = ({
     ? policy.lockedFields
     : DEFAULT_LOCKED_RULES;
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -202,7 +203,7 @@ const PolicyModal = ({
     }
   };
 
-  return (
+  return createPortal(
     <div
       className="performance-policy-backdrop"
       onMouseDown={(event) => {
@@ -348,7 +349,8 @@ const PolicyModal = ({
           </form>
         )}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 };
 
