@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { gql, useApolloClient, useMutation, useQuery } from "@apollo/client";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { useLocation } from "react-router-dom";
@@ -10,6 +10,9 @@ import {
 } from "@/utils/tableOrderAccessSession";
 
 import "./TableOrderAccessGate.scss";
+
+export const TABLE_ORDER_ACCESS_REQUIRED_EVENT =
+  "cohan:table-order-access-required";
 
 const TABLE_ORDER_ACCESS_CONTEXT = gql`
   query PublicTableOrderAccessGate(
@@ -60,11 +63,16 @@ const CONFIRM_TABLE_ORDER_ACCESS = gql`
   }
 `;
 
-const getErrorMessage = (error, fallback) =>
-  error?.graphQLErrors?.[0]?.message ||
-  error?.networkError?.result?.errors?.[0]?.message ||
-  error?.message ||
-  fallback;
+const getErrorMessage = (error, fallback) => {
+  const code = error?.graphQLErrors?.[0]?.extensions?.code;
+  if (code === "TABLE_CONFIRMATION_RATE_LIMITED") {
+    return "Bạn đã nhập sai nhiều lần. Hãy tạo mã xác nhận mới và nhờ nhân viên hỗ trợ.";
+  }
+  if (code === "FORBIDDEN") {
+    return "Yêu cầu chưa được nhân viên xác nhận. Vui lòng gọi nhân viên tại bàn.";
+  }
+  return fallback;
+};
 
 export default function TableOrderAccessGate() {
   const location = useLocation();
@@ -89,9 +97,8 @@ export default function TableOrderAccessGate() {
   const [requestLabel, setRequestLabel] = useState("");
   const [confirmationCode, setConfirmationCode] = useState("");
   const [error, setError] = useState("");
-  const openedOnceRef = useRef(false);
 
-  const { data, loading, refetch } = useQuery(TABLE_ORDER_ACCESS_CONTEXT, {
+  const { data, refetch } = useQuery(TABLE_ORDER_ACCESS_CONTEXT, {
     variables: { restaurantId, tableId, token: tableToken },
     skip: !restaurantId || !tableId || !tableToken,
     fetchPolicy: "cache-and-network",
@@ -110,19 +117,33 @@ export default function TableOrderAccessGate() {
   const busy = requesting || confirming;
 
   useEffect(() => {
-    if (confirmed) {
-      setIsOpen(false);
-      setRequestToken("");
-      setRequestLabel("");
-      setConfirmationCode("");
-      setError("");
-      return;
-    }
-    if (!loading && canRequest && !openedOnceRef.current) {
-      openedOnceRef.current = true;
-      setIsOpen(true);
-    }
-  }, [canRequest, confirmed, loading]);
+    if (!confirmed) return;
+    setIsOpen(false);
+    setRequestToken("");
+    setRequestLabel("");
+    setConfirmationCode("");
+    setError("");
+  }, [confirmed]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const openFromCustomerAction = () => {
+      if (!confirmed && canRequest) {
+        setError("");
+        setIsOpen(true);
+      }
+    };
+    window.addEventListener(
+      TABLE_ORDER_ACCESS_REQUIRED_EVENT,
+      openFromCustomerAction,
+    );
+    return () => {
+      window.removeEventListener(
+        TABLE_ORDER_ACCESS_REQUIRED_EVENT,
+        openFromCustomerAction,
+      );
+    };
+  }, [canRequest, confirmed]);
 
   const handleRequestAccess = async () => {
     if (!restaurantId || !tableId || !tableToken || !deviceId || busy) return;
@@ -146,7 +167,7 @@ export default function TableOrderAccessGate() {
       setError(
         getErrorMessage(
           requestError,
-          "Không thể tạo yêu cầu xác nhận. Vui lòng nhờ nhân viên hỗ trợ.",
+          "Không thể gửi yêu cầu xác nhận. Vui lòng gọi nhân viên tại bàn.",
         ),
       );
     }
@@ -167,7 +188,7 @@ export default function TableOrderAccessGate() {
         },
       });
       if (!result?.data?.publicConfirmTableOrderAccess?.ok) {
-        throw new Error("Không thể xác nhận thiết bị tại bàn.");
+        throw new Error("confirmation_failed");
       }
       await refetch();
       await client.refetchQueries({
@@ -178,11 +199,14 @@ export default function TableOrderAccessGate() {
         ],
       });
       setIsOpen(false);
+      window.dispatchEvent(
+        new CustomEvent("cohan:table-order-access-confirmed"),
+      );
     } catch (confirmError) {
       setError(
         getErrorMessage(
           confirmError,
-          "Mã xác nhận không đúng hoặc đã hết hạn.",
+          "Mã xác nhận không đúng hoặc đã hết hạn. Vui lòng kiểm tra lại với nhân viên.",
         ),
       );
     }
@@ -198,19 +222,19 @@ export default function TableOrderAccessGate() {
         type="button"
         className="table-order-access-launcher"
         onClick={() => setIsOpen(true)}
-        aria-label={`Xác nhận tại ${access?.tableCode ? `bàn ${access.tableCode}` : "bàn này"} để gọi món`}
+        aria-label={`Nhờ nhân viên xác nhận tại ${access?.tableCode ? `bàn ${access.tableCode}` : "bàn này"}`}
       >
         <ShieldCheck aria-hidden="true" />
         <span>
-          <strong>Xác nhận tại bàn</strong>
-          <small>Nhân viên kiểm tra một lần trước khi gọi món</small>
+          <strong>Nhờ nhân viên xác nhận</strong>
+          <small>Chỉ cần làm khi bạn chuẩn bị gửi món</small>
         </span>
       </button>
 
       <Modal
         isOpen={isOpen}
         onClose={() => !busy && setIsOpen(false)}
-        title="Xác nhận thiết bị tại bàn"
+        title="Xác nhận gọi món tại bàn"
         size="sm"
         className="table-order-access-modal"
         zIndex={1210}
@@ -220,15 +244,16 @@ export default function TableOrderAccessGate() {
             <ShieldCheck />
           </div>
           <p className="table-order-access-gate__lead">
-            Để người ngoài không thể quét QR rồi gọi món cho bàn của bạn, nhân viên cần xác nhận thiết bị này một lần trong phiên phục vụ.
+            Bạn đã chọn món. Nhân viên cần xác nhận thiết bị này một lần trước
+            khi món được gửi vào hệ thống của nhà hàng.
           </p>
 
           {!requestToken ? (
             <>
               <ol className="table-order-access-gate__steps">
-                <li>Nhấn yêu cầu mã xác nhận.</li>
-                <li>Nhân viên tới đúng bàn và đối chiếu mã yêu cầu.</li>
-                <li>Nhập 6 số nhân viên đọc để mở quyền gọi món.</li>
+                <li>Gửi yêu cầu xác nhận cho nhân viên.</li>
+                <li>Cho nhân viên xem mã yêu cầu tại đúng bàn.</li>
+                <li>Nhập 6 số nhân viên đọc để tiếp tục gửi món.</li>
               </ol>
               {access?.orderAccessBlockedReason ? (
                 <p className="table-order-access-gate__hint">
@@ -242,17 +267,18 @@ export default function TableOrderAccessGate() {
                 disabled={busy}
               >
                 <KeyRound aria-hidden="true" />
-                {requesting ? "Đang tạo yêu cầu…" : "Yêu cầu mã từ nhân viên"}
+                {requesting ? "Đang gửi yêu cầu…" : "Gửi yêu cầu cho nhân viên"}
               </button>
             </>
           ) : (
             <form onSubmit={handleConfirm} className="table-order-access-gate__form">
               <div className="table-order-access-gate__request">
-                <span>Mã yêu cầu của thiết bị</span>
+                <span>Mã yêu cầu của bàn</span>
                 <strong>#{requestLabel}</strong>
               </div>
               <p className="table-order-access-gate__hint">
-                Hãy cho nhân viên xem mã yêu cầu này. Nhân viên chỉ đọc mã 6 số khi đang đứng tại đúng bàn.
+                Cho nhân viên xem mã này. Sau khi đối chiếu đúng bàn, nhân viên
+                sẽ đọc mã xác nhận gồm 6 số.
               </p>
               <label htmlFor="table-order-confirmation-code">
                 Mã xác nhận gồm 6 số
@@ -279,7 +305,7 @@ export default function TableOrderAccessGate() {
                   className="table-order-access-gate__primary"
                   disabled={busy || confirmationCode.length !== 6}
                 >
-                  {confirming ? "Đang xác nhận…" : "Xác nhận và mở gọi món"}
+                  {confirming ? "Đang xác nhận…" : "Xác nhận và gửi món"}
                 </button>
                 <button
                   type="button"
@@ -292,7 +318,7 @@ export default function TableOrderAccessGate() {
                   }}
                   disabled={busy}
                 >
-                  Yêu cầu mã mới
+                  Tạo yêu cầu mới
                 </button>
               </div>
             </form>
