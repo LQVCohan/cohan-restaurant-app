@@ -1,0 +1,384 @@
+/*
+ * Responsive layout polish for the public table session.
+ * This file intentionally loads after the individual component styles so the
+ * two independent launchers behave like one coherent action dock.
+ */
+
+.table-order-draft-launcher,
+.table-order-access-launcher {
+  min-width: 0;
+  min-height: 66px;
+  width: min(330px, calc(50vw - 36px));
+  padding: 12px 16px;
+  border-radius: 18px;
+  box-sizing: border-box;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+.table-order-draft-launcher {
+  right: 390px;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(145deg, #2f715f, #245746);
+  box-shadow: 0 18px 44px rgba(25, 70, 57, 0.28);
+}
+
+.table-order-access-launcher {
+  right: max(24px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  width: min(350px, calc(50vw - 36px));
+  background: rgba(250, 253, 250, 0.98);
+  box-shadow: 0 18px 44px rgba(35, 73, 53, 0.18);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.table-order-draft-launcher:hover,
+.table-order-access-launcher:hover {
+  transform: translateY(-2px);
+}
+
+.table-order-draft-launcher > svg,
+.table-order-access-launcher > svg {
+  width: 24px;
+  height: 24px;
+}
+
+.table-order-draft-launcher span,
+.table-order-access-launcher span {
+  min-width: 0;
+  gap: 3px;
+}
+
+.table-order-draft-launcher strong,
+.table-order-access-launcher strong {
+  font-size: 0.98rem;
+  line-height: 1.25;
+}
+
+.table-order-draft-launcher small,
+.table-order-access-launcher small {
+  overflow: hidden;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-table-session-page {
+  padding-bottom: calc(124px + env(safe-area-inset-bottom));
+}
+
+.customer-table-session-page__header {
+  padding: clamp(20px, 2.8vw, 28px);
+  border: 1px solid rgba(81, 59, 42, 0.12);
+  border-radius: 28px;
+  background: rgba(255, 253, 249, 0.9);
+  box-shadow: 0 18px 44px rgba(74, 48, 28, 0.075);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.customer-table-session-page__header-actions {
+  max-width: 420px;
+}
+
+.customer-table-session-page__refresh-btn {
+  min-width: 132px;
+}
+
+.customer-table-session-page__empty {
+  min-height: 210px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 250px);
+  align-content: center;
+  align-items: center;
+  column-gap: clamp(24px, 5vw, 64px);
+  text-align: left;
+}
+
+.customer-table-session-page__empty h2,
+.customer-table-session-page__empty p {
+  max-width: 620px;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.customer-table-session-page__empty h2 {
+  align-self: end;
+  font-size: clamp(1.45rem, 2.4vw, 2rem);
+}
+
+.customer-table-session-page__empty p {
+  align-self: start;
+  margin-top: 10px;
+}
+
+.customer-table-session-page__empty-cta {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  width: 100%;
+  max-width: none;
+  min-height: 52px;
+  margin: 0;
+}
+
+.table-order-draft {
+  gap: 20px;
+}
+
+.table-order-draft__menu article {
+  min-width: 0;
+}
+
+.table-order-draft__menu article > div,
+.table-order-draft__line > span {
+  min-width: 0;
+}
+
+.table-order-draft__menu article strong,
+.table-order-draft__line strong {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1040px) {
+  .table-order-draft-launcher {
+    right: 374px;
+    width: 316px;
+  }
+
+  .table-order-access-launcher {
+    width: 338px;
+  }
+}
+
+@media (max-width: 860px) {
+  .table-order-draft-launcher,
+  .table-order-access-launcher {
+    right: max(18px, env(safe-area-inset-right));
+    width: min(360px, calc(100vw - 36px));
+  }
+
+  .table-order-access-launcher {
+    bottom: max(22px, env(safe-area-inset-bottom));
+  }
+
+  .table-order-draft-launcher {
+    bottom: calc(100px + env(safe-area-inset-bottom));
+  }
+
+  .customer-table-session-page {
+    padding-bottom: calc(202px + env(safe-area-inset-bottom));
+  }
+
+  .customer-table-session-page__empty {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    text-align: center;
+  }
+
+  .customer-table-session-page__empty h2,
+  .customer-table-session-page__empty p {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .customer-table-session-page__empty-cta {
+    grid-column: 1;
+    grid-row: auto;
+    width: min(100%, 300px);
+    margin: 20px auto 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .customer-table-session-page {
+    padding: 14px max(12px, env(safe-area-inset-right))
+      calc(244px + env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+  }
+
+  .customer-table-session-page__container {
+    gap: 14px;
+  }
+
+  .customer-table-session-page__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 16px;
+    border-radius: 22px;
+  }
+
+  .customer-table-session-page__header h1 {
+    margin-top: 4px;
+    font-size: clamp(1.8rem, 9vw, 2.35rem);
+    line-height: 1.04;
+  }
+
+  .customer-table-session-page__eyebrow {
+    font-size: 0.67rem;
+  }
+
+  .customer-table-session-page__live-note {
+    gap: 4px;
+    margin-top: 8px;
+    font-size: 0.78rem;
+    line-height: 1.45;
+  }
+
+  .customer-table-session-page__live-note span {
+    display: none;
+  }
+
+  .customer-table-session-page__header-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .customer-table-session-page__badge {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .customer-table-session-page__live-pill,
+  .customer-table-session-page__refresh-btn {
+    min-height: 42px;
+    padding: 8px 12px;
+    border-radius: 13px;
+    font-size: 0.82rem;
+  }
+
+  .customer-table-session-page__refresh-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .customer-table-session-page__feedback,
+  .customer-table-session-page__request-card,
+  .customer-table-session-page__status-summary {
+    border-radius: 18px;
+  }
+
+  .customer-table-session-page__empty {
+    display: block;
+    min-height: 0;
+    padding: 26px 18px;
+    border-radius: 22px;
+    text-align: center;
+  }
+
+  .customer-table-session-page__empty h2 {
+    font-size: 1.28rem;
+  }
+
+  .customer-table-session-page__empty p {
+    margin-top: 9px;
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  .customer-table-session-page__empty-cta {
+    width: 100%;
+    max-width: none;
+    min-height: 50px;
+    margin-top: 17px;
+  }
+
+  .table-order-draft-launcher,
+  .table-order-access-launcher {
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    width: auto;
+    max-width: none;
+    min-height: 64px;
+    padding: 10px 13px;
+    border-radius: 18px;
+  }
+
+  .table-order-access-launcher {
+    bottom: calc(78px + env(safe-area-inset-bottom));
+  }
+
+  .table-order-draft-launcher {
+    bottom: calc(150px + env(safe-area-inset-bottom));
+  }
+
+  .table-order-draft-launcher strong,
+  .table-order-access-launcher strong {
+    font-size: 0.94rem;
+  }
+
+  .table-order-draft-launcher small,
+  .table-order-access-launcher small {
+    font-size: 0.72rem;
+  }
+
+  .table-order-draft-launcher > svg,
+  .table-order-access-launcher > svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .table-order-draft-launcher b {
+    min-width: 24px;
+    height: 24px;
+  }
+
+  .table-order-draft {
+    min-height: 0;
+    gap: 12px;
+  }
+
+  .table-order-draft__menu {
+    max-height: min(42dvh, 350px);
+    padding-right: 0;
+  }
+
+  .table-order-draft__menu article {
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    padding: 9px;
+  }
+
+  .table-order-draft__menu img {
+    width: 58px;
+    height: 58px;
+  }
+
+  .table-order-draft__cart {
+    max-height: min(36dvh, 310px);
+    padding: 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .customer-table-session-page__header-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-table-session-page__live-pill,
+  .customer-table-session-page__badge {
+    justify-self: stretch;
+  }
+
+  .table-order-draft-launcher small,
+  .table-order-access-launcher small {
+    white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table-order-draft-launcher,
+  .table-order-access-launcher {
+    transition: none;
+  }
+}
