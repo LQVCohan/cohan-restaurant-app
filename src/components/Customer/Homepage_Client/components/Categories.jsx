@@ -45,8 +45,6 @@ const suggestedCategories = [
   { key: "suggestion-drinks", name: "Đồ uống", helperText: "Trà, cà phê", __isSuggestion: true },
   { key: "suggestion-healthy", name: "Healthy", helperText: "Nhẹ bụng", __isSuggestion: true },
   { key: "suggestion-dessert", name: "Tráng miệng", helperText: "Ngọt nhẹ", __isSuggestion: true },
-  { key: "suggestion-vegetarian", name: "Món chay", helperText: "Thanh nhẹ", __isSuggestion: true },
-  { key: "suggestion-fast", name: "Ăn nhanh", helperText: "Tiện lợi", __isSuggestion: true },
 ];
 
 const normalizeCategoryName = (value = "") =>
@@ -83,10 +81,10 @@ const dedupeCategories = (items = []) => {
 };
 
 const buildDisplayCategories = (realItems = []) => {
-  const real = dedupeCategories(realItems).slice(0, 8);
+  const real = dedupeCategories(realItems).slice(0, 6);
   const names = new Set(real.map((item) => normalizeCategoryName(getDisplayCategoryName(item.name))));
   const fillers = suggestedCategories.filter((item) => !names.has(normalizeCategoryName(item.name)));
-  return [...real, ...fillers].slice(0, 8);
+  return [...real, ...fillers].slice(0, real.length >= 4 ? real.length : 4);
 };
 
 const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
@@ -129,13 +127,13 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
       <div className="categories__container">
         <div className="categories__header">
           <div>
-            <span className="categories__badge">Khám phá theo khẩu vị</span>
+            <span className="categories__badge">Khám phá nhanh</span>
             <h3 className="categories__title">
-              {isGlobal ? "Danh mục món ăn" : "Thực đơn nhà hàng"}
+              {isGlobal ? "Danh mục phổ biến" : "Thực đơn nhà hàng"}
             </h3>
           </div>
           <button type="button" className="categories__view-all" onClick={() => navigate("/restaurants")}>
-            Xem thêm <span>›</span>
+            Xem tất cả <span>›</span>
           </button>
         </div>
 
@@ -144,7 +142,7 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
 
         <div className="categories__grid">
           {loading && !hasData
-            ? Array.from({ length: 8 }).map((_, idx) => (
+            ? Array.from({ length: 6 }).map((_, idx) => (
                 <div key={`skeleton-${idx}`} className="categories__card categories__card--skeleton">
                   <div className="skeleton-icon" />
                   <div className="skeleton-text-lg" />

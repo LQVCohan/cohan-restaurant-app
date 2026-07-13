@@ -12,7 +12,7 @@ import "@/styles/Homepage/HomeForYouSection.scss";
 
 const priceFormatter = new Intl.NumberFormat("vi-VN");
 const fallbackImage = "https://placehold.co/640x420/fff1e6/c94f02?text=Mon+an";
-const skeletonItems = [0, 1];
+const skeletonItems = [0, 1, 2];
 
 const formatPrice = (price) => priceFormatter.format(Number(price || 0));
 
@@ -60,7 +60,7 @@ export default function HomeForYouSection({ timeSlot = null }) {
 
   const displayItems = useMemo(() => {
     const source = recommendedItems.length > 0 ? recommendedItems : fallbackItems;
-    return source.slice(0, 2);
+    return source.slice(0, 6);
   }, [fallbackItems, recommendedItems]);
 
   useEffect(() => {
@@ -188,9 +188,6 @@ export default function HomeForYouSection({ timeSlot = null }) {
                       </div>
 
                       <h4 className="home-for-you-card__name">{item.name}</h4>
-                      <p className="home-for-you-card__description">
-                        {item.description || "Một lựa chọn ngon miệng được nhiều thực khách quan tâm."}
-                      </p>
 
                       <div className="home-for-you-card__footer">
                         <span className="home-for-you-card__price">
