@@ -3,6 +3,10 @@ import { GraphQLError } from "graphql";
 import { EventLog, Order, Reservation, Table } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import {
+  getReservationEarliestCheckInAt,
+  isReservationCheckInOpen,
+} from "../../../src/services/reservationTableTiming.service.js";
 import generateOrderCode from "../../../utils/generateOrderCode.js";
 import {
   ACTIVE_SESSION_STATUSES,
@@ -57,7 +61,26 @@ async function findActiveTableSession({ restaurantId, tableId, tableCode, sessio
   return query;
 }
 
-function assertCheckInAllowed(reservation) {
+export function assertReservationArrivalWindow(reservation, now = new Date()) {
+  if (String(reservation?.status || "") === "seated") return;
+  if (isReservationCheckInOpen(reservation, now)) return;
+
+  const earliestCheckInAt = getReservationEarliestCheckInAt(reservation);
+  throw new GraphQLError(
+    "Chưa đến thời gian nhận khách. Chỉ được check-in sớm tối đa 15 phút trước giờ đặt.",
+    {
+      extensions: {
+        code: "RESERVATION_CHECK_IN_TOO_EARLY",
+        earliestCheckInAt: earliestCheckInAt?.toISOString?.() || null,
+        reservationTime: reservation?.timeTo
+          ? new Date(reservation.timeTo).toISOString()
+          : null,
+      },
+    },
+  );
+}
+
+function assertCheckInAllowed(reservation, now = new Date()) {
   const status = String(reservation.status || "");
   if (!["confirmed", "seated"].includes(status)) {
     throw new GraphQLError("Chỉ có reservation đã xác nhận mới được check-in.", {
@@ -69,6 +92,7 @@ function assertCheckInAllowed(reservation) {
       extensions: { code: "RESERVATION_CHANGE_PENDING" },
     });
   }
+  assertReservationArrivalWindow(reservation, now);
 }
 
 function isSameReservationSession(activeSession, reservation) {
@@ -189,6 +213,37 @@ async function openTableSessionForReservation({ reservation, table, ctx, note, s
   return { sessionOrderId: created._id, reused: false };
 }
 
+async function attachReservationOrdersToSession({
+  reservation,
+  table,
+  sessionOrderId,
+  session,
+}) {
+  const tableCode = normalizeTableCode(table.code);
+  const result = await Order.updateMany(
+    {
+      _id: { $ne: sessionOrderId },
+      restaurantId: reservation.restaurantId,
+      reservationId: reservation._id,
+      orderKind: { $ne: ORDER_KIND.TABLE_SESSION },
+      currentStatus: { $nin: ["completed", "cancelled", "failed"] },
+    },
+    {
+      $set: {
+        parentOrderId: sessionOrderId,
+        rootOrderId: sessionOrderId,
+        parentOrderCode: null,
+        tableId: reservation.tableId,
+        tableCode,
+        tableName: table.name || table.code || tableCode,
+        userId: reservation.userId,
+      },
+    },
+    { session },
+  );
+  return Number(result?.modifiedCount || 0);
+}
+
 async function checkInReservationCore({ input, ctx }) {
   const session = await mongoose.startSession();
   try {
@@ -227,6 +282,12 @@ async function checkInReservationCore({ input, ctx }) {
         note: input.note,
         session,
       });
+      const attachedOrderCount = await attachReservationOrdersToSession({
+        reservation,
+        table,
+        sessionOrderId: sessionState.sessionOrderId,
+        session,
+      });
 
       reservation.status = "seated";
       reservation.note = appendNote(reservation.note, input.note);
@@ -247,6 +308,8 @@ async function checkInReservationCore({ input, ctx }) {
             tableId: String(reservation.tableId),
             sessionOrderId: String(sessionState.sessionOrderId),
             reusedSession: sessionState.reused,
+            attachedReservationOrders: attachedOrderCount,
+            depositAmount: Number(reservation.depositAmount || 0),
           },
         },
         { session },
