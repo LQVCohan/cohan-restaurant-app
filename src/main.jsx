@@ -79,6 +79,7 @@ import { installAiChatbotQuestionAutoScroll } from "./utils/installAiChatbotQues
 import { installMobileHomeVisualQc } from "./utils/installMobileHomeVisualQc";
 import { installAuthRecoveryAndFacebook } from "./utils/installAuthRecoveryAndFacebook";
 import { installHeroFoodVisualGuard } from "./utils/installHeroFoodVisualGuard";
+import { installFoodDetailVietnameseCopy } from "./utils/installFoodDetailVietnameseCopy";
 import { installReservationHistoryReportFixes } from "./utils/installReservationHistoryReportFixes";
 import { installReportPages26To29Ui } from "./utils/installReportPages26To29Ui";
 import { installCustomerReviewOwnerActions } from "./utils/installCustomerReviewOwnerActions";
@@ -138,6 +139,7 @@ installAiChatbotQuestionAutoScroll();
 installMobileHomeVisualQc();
 installAuthRecoveryAndFacebook();
 installHeroFoodVisualGuard();
+installFoodDetailVietnameseCopy();
 installReservationHistoryReportFixes();
 installReportPages26To29Ui();
 installCustomerReviewOwnerActions();
