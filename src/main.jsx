@@ -78,6 +78,7 @@ import { installAiChatbotQuestionAutoScroll } from "./utils/installAiChatbotQues
 import { installMobileHomeVisualQc } from "./utils/installMobileHomeVisualQc";
 import { installAuthRecoveryAndFacebook } from "./utils/installAuthRecoveryAndFacebook";
 import { installHeroFoodVisualGuard } from "./utils/installHeroFoodVisualGuard";
+import { installReservationHistoryReportFixes } from "./utils/installReservationHistoryReportFixes";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 import "./styles/ResponsiveFoundation.css";
 import "./styles/CustomTableBuilderResponsiveFix.css";
@@ -93,6 +94,7 @@ import "./styles/AiChatbotCompactMenuSuggestions.css";
 import "./styles/MobileHomeResponsivePolish.css";
 import "./styles/MobileHomeVisualQc.css";
 import "./styles/MobileCustomerExperienceQc.css";
+import "./styles/ReservationHistoryReportFixes.css";
 
 const normalizeLegacyManagerHash = () => {
   if (
@@ -124,6 +126,7 @@ installAiChatbotQuestionAutoScroll();
 installMobileHomeVisualQc();
 installAuthRecoveryAndFacebook();
 installHeroFoodVisualGuard();
+installReservationHistoryReportFixes();
 installAttendanceWordingTuning();
 
 createRoot(document.getElementById("root")).render(

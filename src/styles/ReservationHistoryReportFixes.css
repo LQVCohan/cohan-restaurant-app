@@ -1,0 +1,228 @@
+.orders-page .reservation-qc-cell .value {
+  color: var(--color-primary, #2f6f5e);
+  font-weight: 700;
+}
+
+.orders-page .reservation-overlap-warning {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(185, 65, 65, 0.3);
+  border-radius: 12px;
+  background: rgba(185, 65, 65, 0.08);
+  color: #8d2f2f;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.orders-page .btn-checkin-qr {
+  white-space: nowrap;
+}
+
+.reservation-checkin-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20050;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(16, 28, 24, 0.62);
+  backdrop-filter: blur(6px);
+}
+
+.reservation-checkin-dialog {
+  position: relative;
+  width: min(390px, 100%);
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  padding: 24px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.24);
+  text-align: center;
+}
+
+.reservation-checkin-dialog h2 {
+  margin: 0 32px 8px;
+  font-size: 1.25rem;
+}
+
+.reservation-checkin-dialog p {
+  margin: 0 0 16px;
+  color: #5b665f;
+}
+
+.reservation-checkin-dialog img {
+  display: block;
+  width: min(280px, 100%);
+  height: auto;
+  margin: 0 auto 14px;
+  border: 1px solid #dfe8e3;
+  border-radius: 16px;
+}
+
+.reservation-checkin-meta {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f3f7f5;
+  color: #29483e;
+  font-weight: 700;
+}
+
+.reservation-checkin-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: #edf3f0;
+  color: #29483e;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.reservation-receipt-modal {
+  display: grid;
+  gap: 12px;
+}
+
+.reservation-receipt-modal .receipt-summary-card {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f3f7f5;
+}
+
+.reservation-receipt-modal .detail-items {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #e2e9e5;
+  border-radius: 14px;
+}
+
+.reservation-receipt-modal .detail-row {
+  padding: 6px 0;
+}
+
+.time-modal {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.time-modal .change-time-review {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid #dfe8e3;
+  border-radius: 14px;
+  background: #f3f7f5;
+}
+
+.time-modal .change-time-review span,
+.time-modal .change-time-review small {
+  color: #68736d;
+}
+
+.time-modal .change-time-review.is-error {
+  border-color: rgba(185, 65, 65, 0.35);
+  background: rgba(185, 65, 65, 0.07);
+}
+
+.changetable {
+  max-height: min(68dvh, 620px);
+  overflow: hidden;
+}
+
+.changetable--compact {
+  display: grid;
+  gap: 12px;
+}
+
+.changetable__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.changetable__summary > div {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid #e2e9e5;
+  border-radius: 12px;
+  background: #f7faf8;
+}
+
+.changetable__summary span,
+.changetable__toolbar label > span {
+  color: #68736d;
+  font-size: 0.78rem;
+}
+
+.changetable__toolbar {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.55fr) minmax(190px, 1.5fr) minmax(150px, 0.9fr);
+  gap: 10px;
+}
+
+.changetable__toolbar label {
+  display: grid;
+  gap: 5px;
+}
+
+.changetable__toolbar input,
+.changetable__toolbar select {
+  min-height: 42px;
+}
+
+.changetable__list {
+  overflow: auto;
+  min-height: 150px;
+}
+
+.changetable__review {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #edf5f1;
+  color: #29483e;
+}
+
+.changetable .table-card .meta strong[data-free="true"] {
+  color: #2f6f5e;
+}
+
+@media (max-width: 720px) {
+  .orders-page .action-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .orders-page .action-group .btn-action {
+    width: 100%;
+  }
+
+  .time-modal {
+    grid-template-columns: 1fr;
+  }
+
+  .time-modal .change-time-review {
+    grid-column: auto;
+  }
+
+  .changetable {
+    max-height: calc(100dvh - 180px);
+    overflow: auto;
+  }
+
+  .changetable__summary,
+  .changetable__toolbar {
+    grid-template-columns: 1fr;
+  }
+}

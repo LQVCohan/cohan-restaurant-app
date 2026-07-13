@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { gql, useMutation } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -10,21 +11,54 @@ import {
 } from "lucide-react";
 
 import { parseTableAccessQr } from "@/utils/tableQrAccess";
+import { getReservationActionErrorMessage } from "@/utils/commerceActionErrorMessages";
 
 import "./TableQrScannerPage.scss";
 
 const DETECTION_INTERVAL_MS = 420;
 
+const CHECK_IN_RESERVATION = gql`
+  mutation ScanReservationCheckIn($input: CheckInReservationInput!) {
+    checkInReservation(input: $input) {
+      id
+      orderCode
+      tableId
+      tableCode
+      tableName
+      status
+    }
+  }
+`;
+
 const getCameraErrorMessage = (error) => {
   if (error?.name === "NotAllowedError") {
-    return "Bạn chưa cho phép dùng camera. Hãy cấp quyền trong trình duyệt hoặc dán địa chỉ QR bên dưới.";
+    return "Bạn chưa cho phép dùng camera. Hãy cấp quyền trong trình duyệt hoặc dán nội dung QR bên dưới.";
   }
 
   if (error?.name === "NotFoundError") {
-    return "Không tìm thấy camera trên thiết bị này. Bạn vẫn có thể dán địa chỉ QR bên dưới.";
+    return "Không tìm thấy camera trên thiết bị này. Bạn vẫn có thể dán nội dung QR bên dưới.";
   }
 
-  return "Không thể mở camera lúc này. Hãy thử lại hoặc dán địa chỉ QR bên dưới.";
+  return "Không thể mở camera lúc này. Hãy thử lại hoặc dán nội dung QR bên dưới.";
+};
+
+const parseReservationCheckInQr = (rawValue) => {
+  try {
+    const payload = JSON.parse(String(rawValue || "").trim());
+    if (
+      payload?.type === "COHAN_RESERVATION_CHECK_IN" &&
+      typeof payload?.reservationId === "string" &&
+      payload.reservationId.trim()
+    ) {
+      return {
+        reservationId: payload.reservationId.trim(),
+        orderCode: payload.orderCode || null,
+      };
+    }
+  } catch {
+    // A normal table QR is a signed URL rather than JSON.
+  }
+  return null;
 };
 
 export default function TableQrScannerPage() {
@@ -33,9 +67,11 @@ export default function TableQrScannerPage() {
   const streamRef = useRef(null);
   const frameRef = useRef(null);
   const lastDetectionRef = useRef(0);
+  const handlingPayloadRef = useRef(false);
   const [cameraState, setCameraState] = useState("idle");
   const [manualValue, setManualValue] = useState("");
   const [feedback, setFeedback] = useState(null);
+  const [checkInReservation] = useMutation(CHECK_IN_RESERVATION);
 
   const stopCamera = useCallback(() => {
     if (frameRef.current != null) {
@@ -55,12 +91,51 @@ export default function TableQrScannerPage() {
     );
   }, []);
 
-  const openTableFromPayload = useCallback(
-    (payload) => {
-      const result = parseTableAccessQr(payload);
+  const openFromPayload = useCallback(
+    async (payload) => {
+      if (handlingPayloadRef.current) return false;
 
+      const reservationPayload = parseReservationCheckInQr(payload);
+      if (reservationPayload) {
+        handlingPayloadRef.current = true;
+        stopCamera();
+        setFeedback({ type: "warning", message: "Đã nhận diện lịch đặt bàn. Đang xác nhận check-in…" });
+        try {
+          const { data } = await checkInReservation({
+            variables: {
+              input: {
+                reservationId: reservationPayload.reservationId,
+                note: "Nhân viên check-in bằng mã QR đặt bàn.",
+              },
+            },
+          });
+          const checkedIn = data?.checkInReservation;
+          setFeedback({
+            type: "success",
+            message: `Đã check-in ${checkedIn?.orderCode || reservationPayload.orderCode || "lịch đặt bàn"}${checkedIn?.tableCode || checkedIn?.tableName ? ` tại ${checkedIn.tableName || checkedIn.tableCode}` : ""}.`,
+          });
+          setManualValue("");
+          return true;
+        } catch (error) {
+          setFeedback({
+            type: "error",
+            message: getReservationActionErrorMessage(
+              error,
+              "Không thể check-in lịch đặt bàn. Hãy kiểm tra quyền nhân viên và trạng thái đặt bàn.",
+            ),
+          });
+          return false;
+        } finally {
+          handlingPayloadRef.current = false;
+        }
+      }
+
+      const result = parseTableAccessQr(payload);
       if (!result.ok) {
-        setFeedback({ type: "error", message: result.message });
+        setFeedback({
+          type: "error",
+          message: "Mã QR không phải mã bàn hoặc mã check-in đặt bàn hợp lệ.",
+        });
         return false;
       }
 
@@ -69,7 +144,7 @@ export default function TableQrScannerPage() {
       navigate(result.path);
       return true;
     },
-    [navigate, stopCamera],
+    [checkInReservation, navigate, stopCamera],
   );
 
   const startCamera = useCallback(async () => {
@@ -83,7 +158,7 @@ export default function TableQrScannerPage() {
       setFeedback({
         type: "warning",
         message:
-          "Trình duyệt này chưa hỗ trợ quét QR trực tiếp. Hãy dùng camera của điện thoại hoặc dán địa chỉ QR bên dưới.",
+          "Trình duyệt này chưa hỗ trợ quét QR trực tiếp. Hãy dùng camera của điện thoại hoặc dán nội dung QR bên dưới.",
       });
       return;
     }
@@ -122,7 +197,7 @@ export default function TableQrScannerPage() {
           try {
             const codes = await detector.detect(videoRef.current);
             const rawValue = codes.find((code) => code?.rawValue)?.rawValue;
-            if (rawValue && openTableFromPayload(rawValue)) return;
+            if (rawValue && await openFromPayload(rawValue)) return;
           } catch {
             // A transient detector failure should not stop the live camera preview.
           }
@@ -137,13 +212,13 @@ export default function TableQrScannerPage() {
       setCameraState(error?.name === "NotSupportedError" ? "unsupported" : "error");
       setFeedback({ type: "warning", message: getCameraErrorMessage(error) });
     }
-  }, [openTableFromPayload, stopCamera]);
+  }, [openFromPayload, stopCamera]);
 
   useEffect(() => stopCamera, [stopCamera]);
 
-  const handleManualSubmit = (event) => {
+  const handleManualSubmit = async (event) => {
     event.preventDefault();
-    openTableFromPayload(manualValue);
+    await openFromPayload(manualValue);
   };
 
   const isCameraRunning = cameraState === "scanning";
@@ -154,11 +229,11 @@ export default function TableQrScannerPage() {
       <div className="table-qr-scanner__ambient" aria-hidden="true" />
       <div className="table-qr-scanner__container">
         <header className="table-qr-scanner__intro">
-          <p className="table-qr-scanner__eyebrow">Dùng tại nhà hàng</p>
-          <h1 id="table-qr-scanner-title">Quét mã trên bàn</h1>
+          <p className="table-qr-scanner__eyebrow">Quét mã COHAN</p>
+          <h1 id="table-qr-scanner-title">Quét mã bàn hoặc check-in đặt bàn</h1>
           <p>
-            Đưa mã QR vào khung để xem các món đang phục vụ, gọi nhân viên và
-            yêu cầu thanh toán tại đúng bàn của bạn.
+            Khách có thể quét mã trên bàn. Nhân viên có quyền đặt bàn có thể quét
+            mã check-in trong lịch sử đặt bàn của khách.
           </p>
         </header>
 
@@ -176,7 +251,7 @@ export default function TableQrScannerPage() {
               {!isCameraRunning && (
                 <div className="table-qr-scanner__camera-placeholder">
                   <span aria-hidden="true"><ScanLine /></span>
-                  <strong>Sẵn sàng nhận diện mã bàn</strong>
+                  <strong>Sẵn sàng nhận diện mã COHAN</strong>
                   <p>Camera chỉ bật sau khi bạn cho phép.</p>
                 </div>
               )}
@@ -215,20 +290,20 @@ export default function TableQrScannerPage() {
             </div>
           </section>
 
-          <aside className="table-qr-scanner__guide" aria-label="Hướng dẫn quét mã tại bàn">
+          <aside className="table-qr-scanner__guide" aria-label="Hướng dẫn quét mã COHAN">
             <div className="table-qr-scanner__guide-icon" aria-hidden="true">
               <ShieldCheck />
             </div>
             <p className="table-qr-scanner__guide-kicker">Truy cập an toàn</p>
-            <h2>Chỉ mở đúng bàn của bạn</h2>
+            <h2>Nhận đúng loại mã</h2>
             <p>
-              COHAN kiểm tra mã bàn và chữ ký truy cập trước khi mở. Mã không
-              hợp lệ sẽ không chuyển bạn sang website khác.
+              COHAN phân biệt mã truy cập bàn và mã check-in đặt bàn. Việc check-in
+              chỉ thành công với tài khoản nhân viên có quyền phù hợp.
             </p>
             <ol>
-              <li><span>1</span> Tìm mã QR đặt trên bàn.</li>
-              <li><span>2</span> Giữ điện thoại cách mã khoảng 15–25&nbsp;cm.</li>
-              <li><span>3</span> Chờ trang thông tin bàn tự mở.</li>
+              <li><span>1</span> Đưa mã QR vào giữa khung.</li>
+              <li><span>2</span> Giữ thiết bị cách mã khoảng 15–25&nbsp;cm.</li>
+              <li><span>3</span> Chờ thông báo mở bàn hoặc check-in thành công.</li>
             </ol>
           </aside>
         </div>
@@ -248,32 +323,31 @@ export default function TableQrScannerPage() {
             <LinkIcon aria-hidden="true" />
             <div>
               <h2 id="table-qr-manual-title">Không dùng được camera?</h2>
-              <p>Dán địa chỉ có dưới mã QR để mở bàn thủ công.</p>
+              <p>Dán đường dẫn mã bàn hoặc nội dung mã check-in để xử lý thủ công.</p>
             </div>
           </div>
 
           <form onSubmit={handleManualSubmit} noValidate>
-            <label htmlFor="table-qr-address">Địa chỉ truy cập bàn</label>
+            <label htmlFor="table-qr-address">Nội dung mã QR</label>
             <div className="table-qr-scanner__input-row">
               <input
                 id="table-qr-address"
                 name="tableQrAddress"
-                type="url"
-                inputMode="url"
+                type="text"
                 autoComplete="off"
                 spellCheck={false}
                 value={manualValue}
                 onChange={(event) => setManualValue(event.target.value)}
-                placeholder="Ví dụ: https://…/table/…?token=…"
+                placeholder="Dán đường dẫn bàn hoặc nội dung QR check-in"
                 aria-describedby="table-qr-address-help"
               />
               <button type="submit">
-                Mở bàn
+                Xử lý mã
                 <ArrowRight aria-hidden="true" />
               </button>
             </div>
             <p id="table-qr-address-help">
-              Bạn chỉ cần dán đường dẫn đầy đủ; COHAN sẽ tự kiểm tra mã.
+              COHAN sẽ tự xác định loại mã và kiểm tra quyền trước khi thực hiện.
             </p>
           </form>
         </section>
