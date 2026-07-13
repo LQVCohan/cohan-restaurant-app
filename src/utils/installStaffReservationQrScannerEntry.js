@@ -1,5 +1,11 @@
+import React from "react";
+import { createRoot } from "react-dom/client";
+import StaffReservationQrScanner from "@/components/Staff/StaffReservationQrScanner";
+
 const STAFF_SCAN_URL = "/scan-table?source=staff";
-const STAFF_ORDER_URL = "/staff/orders";
+const STAFF_SCANNER_HOST_ID = "cohan-staff-reservation-scanner-root";
+
+let scannerRoot = null;
 
 const qrIcon = (size = 20) => `
   <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -13,6 +19,13 @@ const arrowIcon = `
     <path d="m9 18 6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>
 `;
+
+function isStaffScannerRoute() {
+  const params = new URLSearchParams(window.location.search);
+  return (
+    window.location.pathname === "/scan-table" && params.get("source") === "staff"
+  );
+}
 
 function createLink({ className, href, label, title, iconSize = 20 }) {
   const link = document.createElement("a");
@@ -63,70 +76,43 @@ function addStaffDashboardCard(root) {
   grid.prepend(card);
 }
 
-function decorateStaffScanner(root) {
-  const params = new URLSearchParams(window.location.search);
-  const isStaffScanner =
-    window.location.pathname === "/scan-table" && params.get("source") === "staff";
-
+function mountStaffScanner() {
+  const active = isStaffScannerRoute();
   document.documentElement.classList.toggle(
     "staff-reservation-qr-scanner-mode",
-    isStaffScanner,
+    active,
   );
-  if (!isStaffScanner) return;
 
-  const container = root.querySelector(".table-qr-scanner__container");
-  if (!container) return;
+  const customerScanner = document.querySelector("#root .table-qr-scanner");
 
-  if (!container.querySelector(".staff-reservation-qr-returnbar")) {
-    const returnBar = document.createElement("div");
-    returnBar.className = "staff-reservation-qr-returnbar";
-    returnBar.innerHTML = `
-      <a href="${STAFF_ORDER_URL}" aria-label="Quay lại khu vực order nhân viên">
-        <span aria-hidden="true">←</span>
-        Quay lại khu nhân viên
-      </a>
-      <span>Tiếp nhận khách đặt bàn</span>
-    `;
-    container.prepend(returnBar);
-  }
-
-  const intro = container.querySelector(".table-qr-scanner__intro");
-  if (intro && intro.dataset.staffReservationQrCopy !== "1") {
-    intro.dataset.staffReservationQrCopy = "1";
-    const eyebrow = intro.querySelector(".table-qr-scanner__eyebrow");
-    const title = intro.querySelector("h1");
-    const description = intro.querySelector("p:not(.table-qr-scanner__eyebrow)");
-    if (eyebrow) eyebrow.textContent = "Tiếp nhận khách đặt bàn";
-    if (title) title.textContent = "Quét QR đặt bàn của khách";
-    if (description) {
-      description.textContent =
-        "Đưa mã QR khách cung cấp vào khung. Hệ thống sẽ kiểm tra lịch đặt, nhận khách và mở phiên bàn theo đúng quyền nhân viên.";
+  if (!active) {
+    customerScanner?.removeAttribute("aria-hidden");
+    if (scannerRoot) {
+      scannerRoot.unmount();
+      scannerRoot = null;
     }
+    document.getElementById(STAFF_SCANNER_HOST_ID)?.remove();
+    return;
   }
 
-  const successFeedback = container.querySelector(
-    ".table-qr-scanner__feedback--success",
-  );
-  if (
-    successFeedback &&
-    !successFeedback.nextElementSibling?.classList.contains(
-      "staff-reservation-qr-success-actions",
-    )
-  ) {
-    const actions = document.createElement("div");
-    actions.className = "staff-reservation-qr-success-actions";
-    actions.innerHTML = `
-      <a class="is-primary" href="${STAFF_ORDER_URL}">Mở khu order</a>
-      <a href="${STAFF_SCAN_URL}">Quét mã tiếp theo</a>
-    `;
-    successFeedback.insertAdjacentElement("afterend", actions);
+  customerScanner?.setAttribute("aria-hidden", "true");
+  let host = document.getElementById(STAFF_SCANNER_HOST_ID);
+  if (!host) {
+    host = document.createElement("div");
+    host.id = STAFF_SCANNER_HOST_ID;
+    document.body.append(host);
+  }
+
+  if (!scannerRoot) {
+    scannerRoot = createRoot(host);
+    scannerRoot.render(React.createElement(StaffReservationQrScanner));
   }
 }
 
 function applyStaffReservationQrUi() {
   addStaffHeaderLauncher(document);
   addStaffDashboardCard(document);
-  decorateStaffScanner(document);
+  mountStaffScanner();
 }
 
 export function installStaffReservationQrScannerEntry() {
