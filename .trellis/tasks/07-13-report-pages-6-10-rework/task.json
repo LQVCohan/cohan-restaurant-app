@@ -1,0 +1,36 @@
+{
+  "id": "07-13-report-pages-6-10-rework",
+  "name": "07-13-report-pages-6-10-rework",
+  "title": "Fix report pages 6-10",
+  "description": "Correct floor-plan table naming, stabilize and compact the restaurant profile, and polish the reported staff detail, attendance, and leave-request interfaces.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "manager-report-pages-6-10",
+  "priority": "P1",
+  "creator": "Codex",
+  "assignee": "Codex",
+  "createdAt": "2026-07-13",
+  "branch": "agent/fix-report-pages-6-10",
+  "base_branch": "main",
+  "relatedFiles": [
+    "src/main.jsx",
+    "src/components/Dashboard_Manager/Table/FloorPlanDesigner.jsx",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx",
+    "src/components/Dashboard_Manager/Staff/components/EmployeeDetail/EmployeeDetail.jsx",
+    "src/components/Dashboard_Manager/Staff/components/Attendance/AttendancePage.jsx",
+    "src/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestForm.jsx"
+  ],
+  "meta": {
+    "reportPages": [6, 7, 8, 9, 10],
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "redesign-existing-projects",
+      "taste-ui-redesign",
+      "ui-ux-pro-max",
+      "wcag-ui-audit",
+      "web-design-guidelines",
+      "react-ui-performance"
+    ]
+  }
+}

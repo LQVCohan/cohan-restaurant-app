@@ -2128,6 +2128,199 @@ $border: #e2e8f0;
   font-size: 0.78rem;
 }
 
+/* Report pages 8–9: compact correction and review workflow. */
+.attendance-management-page {
+  .attendance-reconciliation-issues {
+    h4 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 8px;
+      color: var(--att-text, #24312c);
+      font-size: 0.82rem;
+      font-weight: 820;
+
+      span {
+        min-width: 22px;
+        height: 22px;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 7px;
+        color: #7a4b10;
+        background: #fff2d8;
+        font-variant-numeric: tabular-nums;
+      }
+    }
+
+    ul {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    li {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      min-height: 64px;
+      padding: 9px 10px;
+      border-color: rgba(83, 108, 97, 0.18);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.76);
+    }
+
+    .issue-employee {
+      font-size: 0.82rem;
+    }
+
+    .issue-reasons {
+      color: #7a4b10;
+      font-weight: 720;
+    }
+
+    .issue-time {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .issue-filter-btn {
+      min-height: 40px;
+      padding-inline: 10px;
+      border-color: rgba(47, 125, 104, 0.24);
+      color: #2f6554;
+      background: #edf6f1;
+      font-size: 0.75rem;
+    }
+  }
+
+  .attendance-correction-modal:not(.review-modal):not(.overtime-review-modal) {
+    width: min(760px, 100%);
+  }
+
+  .attendance-correction-modal {
+    max-height: min(90dvh, 780px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    overscroll-behavior: contain;
+
+    .modal-header {
+      flex: 0 0 auto;
+      padding: 1rem 1.2rem;
+
+      .modal-eyebrow {
+        display: block;
+        margin-bottom: 3px;
+        color: #2f7d68;
+        font-size: 0.68rem;
+        font-weight: 820;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      p {
+        max-width: 62ch;
+        line-height: 1.45;
+      }
+    }
+
+    .correction-form {
+      min-height: 0;
+      padding: 1rem 1.2rem 0;
+      overflow-y: auto;
+    }
+
+    .current-record-box {
+      gap: 7px;
+      margin-bottom: 1rem;
+
+      > div {
+        padding: 0.7rem;
+
+        .label {
+          margin-bottom: 0.22rem;
+          font-size: 0.66rem;
+        }
+      }
+    }
+
+    .form-grid {
+      gap: 0.8rem 0.9rem;
+    }
+
+    .correction-evidence-disclosure {
+      grid-column: 1 / -1;
+      border: 1px solid rgba(83, 108, 97, 0.2);
+      border-radius: 12px;
+      background: rgba(241, 247, 243, 0.72);
+
+      summary {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        color: #40584e;
+        font-size: 0.82rem;
+        font-weight: 760;
+        cursor: pointer;
+      }
+
+      summary:focus-visible {
+        outline: 3px solid rgba(47, 125, 104, 0.2);
+        outline-offset: 2px;
+      }
+    }
+
+    .correction-evidence-fields {
+      display: grid;
+      gap: 12px;
+      padding: 0 12px 12px;
+    }
+
+    .modal-actions {
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
+      margin: 1rem -1.2rem 0;
+      padding: 0.85rem 1.2rem;
+      border-top: 1px solid rgba(83, 108, 97, 0.18);
+      background: rgba(249, 252, 250, 0.96);
+      box-shadow: 0 -8px 20px rgba(48, 72, 61, 0.07);
+      backdrop-filter: blur(10px);
+    }
+  }
+}
+
+@media (max-width: 760px) {
+  .attendance-management-page {
+    .attendance-reconciliation-issues ul {
+      grid-template-columns: 1fr;
+    }
+
+    .attendance-correction-modal {
+      max-height: calc(100dvh - 16px);
+
+      .current-record-box,
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .current-record-box {
+        > div {
+          min-height: 0;
+        }
+      }
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .attendance-management-page .attendance-correction-modal {
+    scroll-behavior: auto;
+  }
+}
+
 .attendance-management-page .attendance-reconciliation-metrics {
   margin-top: 14px;
   display: grid;

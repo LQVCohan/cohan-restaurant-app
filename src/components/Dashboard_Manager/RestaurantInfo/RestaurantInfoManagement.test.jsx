@@ -4,6 +4,41 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { message } from "antd";
 import RestaurantInfoManagement from "./RestaurantInfoManagement";
 
+const leafletState = vi.hoisted(() => {
+  const mapHandlers = {};
+  const markerHandlers = {};
+  const map = {
+    setView: vi.fn(),
+    getZoom: vi.fn(() => 16),
+    on: vi.fn((name, handler) => {
+      mapHandlers[name] = handler;
+      return map;
+    }),
+    invalidateSize: vi.fn(),
+    removeLayer: vi.fn(),
+    remove: vi.fn(),
+  };
+  map.setView.mockImplementation(() => map);
+  const marker = {
+    addTo: vi.fn(() => marker),
+    on: vi.fn((name, handler) => {
+      markerHandlers[name] = handler;
+      return marker;
+    }),
+    setLatLng: vi.fn(),
+  };
+  return { map, marker, mapHandlers, markerHandlers };
+});
+
+vi.mock("leaflet", () => ({
+  default: {
+    divIcon: vi.fn(() => ({ kind: "restaurant-marker" })),
+    map: vi.fn(() => leafletState.map),
+    marker: vi.fn(() => leafletState.marker),
+    tileLayer: vi.fn(() => ({ addTo: vi.fn() })),
+  },
+}));
+
 const useQueryMock = vi.fn();
 const useMutationMock = vi.fn();
 const updateRestaurantMock = vi.fn();
@@ -247,7 +282,7 @@ const openLocationTab = async () => {
   fireEvent.click(
     screen.getByRole("tab", { name: /Địa chỉ & giờ hoạt động/i }),
   );
-  await screen.findByRole("button", { name: /Lấy vị trí hiện tại/i });
+  await screen.findByRole("button", { name: /Vị trí hiện tại/i });
 };
 
 const installBrowserLayoutMocks = () => {
@@ -436,7 +471,7 @@ describe("RestaurantInfoManagement", () => {
       ...initialCapabilities,
       acceptsOrders: false,
     });
-    expect(refetchRestaurantDetailMock).toHaveBeenCalledTimes(1);
+    expect(refetchRestaurantDetailMock).not.toHaveBeenCalled();
   });
 
   it("reflects queried order policy on the outside-hours switch", async () => {
@@ -505,7 +540,7 @@ describe("RestaurantInfoManagement", () => {
     ).toBeDisabled();
   });
 
-  it("keeps the form dirty and warns when refetch returns a different outside-hours policy", async () => {
+  it("accepts the saved mutation payload without a stale read-after-write warning", async () => {
     updateRestaurantMock.mockResolvedValueOnce({
       data: { updateRestaurant: savedRestaurantWithOutsideHours },
     });
@@ -527,14 +562,11 @@ describe("RestaurantInfoManagement", () => {
     fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
 
     await waitFor(() => expect(showNotificationMock).toHaveBeenCalledWith(
-      "Dữ liệu vừa lưu chưa hiển thị đầy đủ. Hãy tải lại trang rồi kiểm tra trước khi sửa tiếp.",
-      "warning",
-    ));
-    expect(screen.getByText("Có thay đổi chưa lưu")).toBeInTheDocument();
-    expect(showNotificationMock).not.toHaveBeenCalledWith(
       "Đã cập nhật thông tin nhà hàng.",
       "success",
-    );
+    ));
+    expect(screen.getByText("Đã lưu")).toBeInTheDocument();
+    expect(refetchRestaurantDetailMock).not.toHaveBeenCalled();
   });
 
   it("saves paused operational status without sending legacy status", async () => {
@@ -565,7 +597,7 @@ describe("RestaurantInfoManagement", () => {
     const input = updateRestaurantMock.mock.calls[0][0].variables.input;
     expect(input.operationalStatus).toBe("paused");
     expect(input).not.toHaveProperty("status");
-    expect(refetchRestaurantDetailMock).toHaveBeenCalledTimes(1);
+    expect(refetchRestaurantDetailMock).not.toHaveBeenCalled();
   });
 
   it("reverse-geocodes current coordinates into the address form and saves numbers", async () => {
@@ -633,7 +665,7 @@ describe("RestaurantInfoManagement", () => {
     });
 
     await openLocationTab();
-    fireEvent.click(screen.getByRole("button", { name: /Lấy vị trí hiện tại/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Vị trí hiện tại/i }));
 
     await waitFor(() => {
       expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.895109);
@@ -688,7 +720,7 @@ describe("RestaurantInfoManagement", () => {
     });
 
     await openLocationTab();
-    fireEvent.click(screen.getByRole("button", { name: /Lấy vị trí hiện tại/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Vị trí hiện tại/i }));
 
     await waitFor(() => {
       expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.895109);
@@ -753,7 +785,7 @@ describe("RestaurantInfoManagement", () => {
     });
 
     await openLocationTab();
-    fireEvent.click(screen.getByRole("button", { name: /Lấy vị trí hiện tại/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Vị trí hiện tại/i }));
 
     expect(message.error).toHaveBeenCalledWith(
       "Trình duyệt không hỗ trợ định vị",
@@ -774,14 +806,14 @@ describe("RestaurantInfoManagement", () => {
     });
 
     await openLocationTab();
-    fireEvent.click(screen.getByRole("button", { name: /Lấy vị trí hiện tại/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Vị trí hiện tại/i }));
 
     await waitFor(() => {
       expect(message.error).toHaveBeenCalledWith(
         "Bạn đã từ chối quyền vị trí. Hãy cấp quyền trong cài đặt trình duyệt rồi thử lại.",
       );
       expect(
-        screen.getByRole("button", { name: /Lấy vị trí hiện tại/i }),
+        screen.getByRole("button", { name: /Vị trí hiện tại/i }),
       ).not.toBeDisabled();
     });
   });

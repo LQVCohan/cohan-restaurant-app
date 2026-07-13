@@ -499,7 +499,6 @@ const AttendancePage = ({ restaurantId: scopedRestaurantId = "" } = {}) => {
   const [quickNote, setQuickNote] = useState("");
   const [quickFeedback, setQuickFeedback] = useState(null);
   const [activeView, setActiveView] = useState("attendance");
-  const [readinessFocus, setReadinessFocus] = useState(null);
   const [scheduleAttendanceFocus, setScheduleAttendanceFocus] = useState(null);
   const [selectedCorrectionRecord, setSelectedCorrectionRecord] =
     useState(null);
@@ -521,15 +520,6 @@ const AttendancePage = ({ restaurantId: scopedRestaurantId = "" } = {}) => {
     const search = params.get("search");
 
     if (attendanceTab || status || employeeId) {
-      setReadinessFocus({
-        attendanceTab,
-        status,
-        employeeId,
-        correctionStatus: params.get("correctionStatus"),
-        offScheduleStatus: params.get("offScheduleStatus"),
-        overtimeStatus: params.get("overtimeStatus"),
-      });
-
       if (attendanceTab === "corrections") {
         setActiveView("corrections");
       } else if (attendanceTab === "off_schedule") {
@@ -650,11 +640,6 @@ const AttendancePage = ({ restaurantId: scopedRestaurantId = "" } = {}) => {
     search: searchQuery,
     restaurantId: queryRestaurantId || userRestaurantId,
   });
-
-  const selectedEmployee = useMemo(
-    () => employees.find((emp) => emp.id === quickId),
-    [employees, quickId],
-  );
 
   const reconciliationSummary = useMemo(
     () => buildAttendanceReconciliationSummary(records),
@@ -1268,7 +1253,7 @@ const AttendancePage = ({ restaurantId: scopedRestaurantId = "" } = {}) => {
           >
             <header className="attendance-reconciliation-header">
               <div>
-                <h3>Đối chiếu lịch & công thực tế</h3>
+                <h3>Đối chiếu lịch làm và chấm công</h3>
                 <p>
                   So sánh ca dự kiến với giờ vào/ra thực tế trong ngày đã chọn.
                 </p>
@@ -1298,7 +1283,10 @@ const AttendancePage = ({ restaurantId: scopedRestaurantId = "" } = {}) => {
                 </div>
                 {reconciliationSummary.reviewItems.length > 0 && (
                   <div className="attendance-reconciliation-issues">
-                    <h4>Điểm cần rà soát nhanh</h4>
+                    <h4>
+                      Trường hợp cần kiểm tra
+                      <span>{reconciliationSummary.reviewItems.length}</span>
+                    </h4>
                     <ul>
                       {reconciliationSummary.reviewItems.map((item) => (
                         <li
@@ -1309,10 +1297,10 @@ const AttendancePage = ({ restaurantId: scopedRestaurantId = "" } = {}) => {
                               {item.employeeName}{" "}
                               <span>({item.employeeCode})</span>
                             </p>
-                            <p className="issue-meta">
+                            <p className="issue-meta issue-reasons">
                               {item.reasonLabels.join(" • ")}
                             </p>
-                            <p className="issue-meta">
+                            <p className="issue-meta issue-time">
                               Ca dự kiến: {item.plannedTimeLabel} • Thực tế:{" "}
                               {item.actualTimeLabel}
                             </p>
@@ -1323,7 +1311,7 @@ const AttendancePage = ({ restaurantId: scopedRestaurantId = "" } = {}) => {
                             onClick={() => handleReviewFilter(item)}
                             aria-label={`Lọc bảng công để xem ${item.reasonLabels.join(", ")} của ${item.employeeName}`}
                           >
-                            Lọc để xem
+                            Xem bản ghi
                           </button>
                         </li>
                       ))}
@@ -1726,13 +1714,10 @@ const AttendancePage = ({ restaurantId: scopedRestaurantId = "" } = {}) => {
           >
             <div className="modal-header">
               <div>
+                <span className="modal-eyebrow">Chỉnh công</span>
                 <h3 id="attendance-correction-title">Tạo yêu cầu chỉnh công</h3>
                 <p id="attendance-correction-desc">
-                  Kiểm tra lại giờ vào/ra trước khi gửi yêu cầu chỉnh công.
-                </p>
-                <p>
-                  Yêu cầu này cần được duyệt trước khi ảnh hưởng đến dữ liệu
-                  công.
+                  {selectedCorrectionRecord.employeeName || "Nhân viên"} • {formatDate(selectedCorrectionRecord.workDate)}. Kiểm tra giờ đề xuất trước khi gửi duyệt.
                 </p>
               </div>
               <button
@@ -1857,9 +1842,7 @@ const AttendancePage = ({ restaurantId: scopedRestaurantId = "" } = {}) => {
                   </div>
                 )}
 
-                <div className="form-section-heading full-width">
-                  Lý do & bằng chứng
-                </div>
+                <div className="form-section-heading full-width">Lý do</div>
                 <div className="form-group full-width">
                   <label htmlFor="correction-reason">Lý do chỉnh công</label>
                   <textarea
@@ -1884,31 +1867,42 @@ const AttendancePage = ({ restaurantId: scopedRestaurantId = "" } = {}) => {
                   )}
                 </div>
 
-                <div className="form-group full-width">
-                  <label>Ghi chú bằng chứng</label>
-                  <input
-                    type="text"
-                    value={correctionForm.evidenceNote}
-                    onChange={(event) =>
-                      updateCorrectionForm("evidenceNote", event.target.value)
-                    }
-                    placeholder="VD: Camera khu vực bếp, xác nhận từ trưởng ca..."
-                  />
-                </div>
+                <details className="correction-evidence-disclosure full-width">
+                  <summary>Thêm bằng chứng (không bắt buộc)</summary>
+                  <div className="correction-evidence-fields">
+                    <div className="form-group full-width">
+                      <label htmlFor="correction-evidence-note">Ghi chú bằng chứng</label>
+                      <input
+                        id="correction-evidence-note"
+                        name="evidenceNote"
+                        type="text"
+                        autoComplete="off"
+                        value={correctionForm.evidenceNote}
+                        onChange={(event) =>
+                          updateCorrectionForm("evidenceNote", event.target.value)
+                        }
+                        placeholder="VD: Camera khu vực bếp, xác nhận từ trưởng ca…"
+                      />
+                    </div>
 
-                <div className="form-group full-width">
-                  <label>Link bằng chứng, mỗi dòng một link</label>
-                  <textarea
-                    value={correctionForm.evidenceUrlsText}
-                    onChange={(event) =>
-                      updateCorrectionForm(
-                        "evidenceUrlsText",
-                        event.target.value,
-                      )
-                    }
-                    placeholder="https://..."
-                  />
-                </div>
+                    <div className="form-group full-width">
+                      <label htmlFor="correction-evidence-urls">Link bằng chứng, mỗi dòng một link</label>
+                      <textarea
+                        id="correction-evidence-urls"
+                        name="evidenceUrls"
+                        autoComplete="off"
+                        value={correctionForm.evidenceUrlsText}
+                        onChange={(event) =>
+                          updateCorrectionForm(
+                            "evidenceUrlsText",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="https://example.com/…"
+                      />
+                    </div>
+                  </div>
+                </details>
               </div>
 
               <div className="modal-actions">

@@ -28,10 +28,6 @@ import CartPage from "@/pages/CartPage.jsx";
 import WalletPage from "@/pages/WalletPage.jsx";
 import TableCurrentSessionPage from "@/components/Customer/TableCurrentSession/TableCurrentSessionPage";
 import ReservationChangeReviewPage from "@/components/Dashboard_Manager/Reservations/ReservationChangeReviewPage";
-import {
-  AdminRestaurantInfoManagement,
-  ManagerRestaurantInfoManagement,
-} from "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx";
 
 import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
 import ManagerLayout from "../layouts/ManagerLayout";
@@ -79,6 +75,16 @@ const FoodDetail = lazy(() =>
 );
 const TableQrScannerPage = lazy(() =>
   import("@/components/Customer/TableQrScanner/TableQrScannerPage"),
+);
+const ManagerRestaurantInfoManagement = lazy(() =>
+  import(
+    "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx"
+  ).then((module) => ({ default: module.ManagerRestaurantInfoManagement })),
+);
+const AdminRestaurantInfoManagement = lazy(() =>
+  import(
+    "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx"
+  ).then((module) => ({ default: module.AdminRestaurantInfoManagement })),
 );
 
 const useAuth = () => {
@@ -384,14 +390,17 @@ const AppRouter = () => (
     />
     <Route
       path="/manager/restaurants/categories"
-      element={withPrivateRoute(<ManagerRestaurantInfoManagement />, [
-        "manager",
-        "admin",
-      ])}
+      element={withPrivateRoute(
+        withLazyRoute(<ManagerRestaurantInfoManagement />),
+        ["manager", "admin"],
+      )}
     />
     <Route
       path="/admin/restaurants/categories"
-      element={withPrivateRoute(<AdminRestaurantInfoManagement />, ["admin"])}
+      element={withPrivateRoute(
+        withLazyRoute(<AdminRestaurantInfoManagement />),
+        ["admin"],
+      )}
     />
     <Route
       path="/admin/dashboard"

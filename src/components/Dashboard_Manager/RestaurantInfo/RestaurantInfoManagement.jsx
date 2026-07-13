@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import {
   Card,
   Select,
@@ -42,6 +44,7 @@ import { useAvatarUploadLocal } from "../../../hooks/useAvatarUploadLocal";
 import { useNotification } from "../../../hooks/useNotification";
 import { reverseGeocodeCoordinates } from "../../../lib/reverseGeocode";
 import "./RestaurantInfoManagement.scss";
+import "./RestaurantChefMapPolish.css";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 
 const { Title, Text, Paragraph } = Typography;
@@ -457,6 +460,129 @@ const getRestaurantSaveErrorMessage = (error) => {
   return "Chưa thể lưu thông tin nhà hàng. Bản nháp đã được giữ trên thiết bị để bạn thử lại.";
 };
 
+const RESTAURANT_MAP_CENTER = { lat: 10.7769, lng: 106.7009 };
+const RESTAURANT_MARKER_ICON = L.divIcon({
+  className: "restaurant-location-marker",
+  html: '<span class="restaurant-location-marker__pin" aria-hidden="true"><span></span></span>',
+  iconSize: [38, 46],
+  iconAnchor: [19, 44],
+  popupAnchor: [0, -40],
+});
+
+const getRestaurantCoordinatePair = (latValue, lngValue) => {
+  if (getCoordinateValidationError(latValue, lngValue)) return null;
+  const lat = parseOptionalNumber(latValue);
+  const lng = parseOptionalNumber(lngValue);
+  return lat === null || lng === null ? null : { lat, lng };
+};
+
+const RestaurantLocationMap = ({ lat, lng, locating, onLocate, onChange }) => {
+  const canvasRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
+  const onChangeRef = useRef(onChange);
+  const initialPairRef = useRef(getRestaurantCoordinatePair(lat, lng));
+  const pair = useMemo(
+    () => getRestaurantCoordinatePair(lat, lng),
+    [lat, lng],
+  );
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    if (!canvasRef.current || mapRef.current) return undefined;
+    const initialPair = initialPairRef.current;
+    const center = initialPair || RESTAURANT_MAP_CENTER;
+    const map = L.map(canvasRef.current, {
+      scrollWheelZoom: false,
+      zoomControl: true,
+    }).setView([center.lat, center.lng], initialPair ? 16 : 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(map);
+    map.on("click", ({ latlng }) => {
+      onChangeRef.current?.({
+        lat: Number(latlng.lat).toFixed(6),
+        lng: Number(latlng.lng).toFixed(6),
+      });
+    });
+    mapRef.current = map;
+    requestAnimationFrame(() => map.invalidateSize());
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      markerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!pair) {
+      if (markerRef.current) {
+        map.removeLayer(markerRef.current);
+        markerRef.current = null;
+      }
+      return;
+    }
+
+    if (!markerRef.current) {
+      const marker = L.marker([pair.lat, pair.lng], {
+        draggable: true,
+        icon: RESTAURANT_MARKER_ICON,
+      }).addTo(map);
+      marker.on("dragend", (event) => {
+        const next = event.target.getLatLng();
+        onChangeRef.current?.({
+          lat: Number(next.lat).toFixed(6),
+          lng: Number(next.lng).toFixed(6),
+        });
+      });
+      markerRef.current = marker;
+    } else {
+      markerRef.current.setLatLng([pair.lat, pair.lng]);
+    }
+    map.setView([pair.lat, pair.lng], map.getZoom());
+  }, [pair]);
+
+  return (
+    <section className="restaurant-location-map-card" aria-label="Chọn vị trí nhà hàng trên bản đồ">
+      <div className="restaurant-location-map-card__header">
+        <div>
+          <strong>Vị trí trên bản đồ</strong>
+          <span>Nhấp vào bản đồ hoặc kéo ghim để cập nhật tọa độ.</span>
+        </div>
+        <div className="restaurant-location-map-card__controls">
+          <div className="restaurant-location-map-card__coordinates" aria-label="Tọa độ đang chọn">
+            <span>Vĩ độ <b>{pair ? pair.lat.toFixed(6) : "Chưa đặt"}</b></span>
+            <span>Kinh độ <b>{pair ? pair.lng.toFixed(6) : "Chưa đặt"}</b></span>
+          </div>
+          <button
+            type="button"
+            className="restaurant-location-map-card__locate"
+            onClick={onLocate}
+            disabled={locating}
+            aria-busy={locating}
+          >
+            <EnvironmentOutlined aria-hidden="true" />
+            {locating ? "Đang định vị" : "Vị trí hiện tại"}
+          </button>
+        </div>
+      </div>
+      <div
+        ref={canvasRef}
+        className="restaurant-location-map-card__canvas"
+        role="region"
+        aria-label="Bản đồ vị trí nhà hàng"
+      />
+    </section>
+  );
+};
+
 const RestaurantInfoManagement = ({ role = "manager", restaurantId = "" }) => {
   const { upload: uploadAsset } = useAvatarUploadLocal();
   const { showNotification } = useNotification();
@@ -623,7 +749,6 @@ const RestaurantInfoManagement = ({ role = "manager", restaurantId = "" }) => {
     data: restaurantDetailData,
     loading: restaurantDetailLoading,
     error: restaurantDetailError,
-    refetch: refetchRestaurantDetail,
   } = useQuery(GET_RESTAURANT_DETAIL, {
     variables: { id: selectedRestaurantId },
     skip: !selectedRestaurantId,
@@ -1151,91 +1276,7 @@ const RestaurantInfoManagement = ({ role = "manager", restaurantId = "" }) => {
         throw new Error(gqlError || "Mutation updateRestaurant không trả về dữ liệu");
       }
 
-      const latest = await refetchRestaurantDetail();
-      const latestRestaurant = latest?.data?.restaurant;
-      const expectedNotes = JSON.stringify(normalizedCustomerInfo);
-      const expectedAmenities = Array.from(new Set(amenityList)).sort();
-      const actualAmenities = Array.isArray(latestRestaurant?.amenities)
-        ? Array.from(new Set(latestRestaurant.amenities)).sort()
-        : [];
-      const hasMismatch = latestRestaurant
-        ? [
-            ["name", restaurantForm.name?.trim(), latestRestaurant.name || ""],
-            ["phone", restaurantForm.phone?.trim() || "", latestRestaurant.phone || ""],
-            ["email", restaurantForm.email?.trim() || "", latestRestaurant.email || ""],
-            [
-              "description",
-              normalizedCustomerInfo.story || "",
-              latestRestaurant.description || "",
-            ],
-            ["openingHours", restaurantForm.openingHours || "", latestRestaurant.openingHours || ""],
-            ["closingHours", restaurantForm.closingHours || "", latestRestaurant.closingHours || ""],
-            ["notesOnHours", restaurantForm.notesOnHours || "", latestRestaurant.notesOnHours || ""],
-            ["cuisineType", restaurantForm.cuisineType || "", latestRestaurant.cuisineType || ""],
-            ["priceRange", restaurantForm.priceRange || "", latestRestaurant.priceRange || ""],
-            [
-              "operationalStatus",
-              restaurantForm.operationalStatus || "normal",
-              latestRestaurant.operationalStatus || "normal",
-            ],
-            [
-              "capabilities.acceptsOrders",
-              String(capabilities.acceptsOrders),
-              String(
-                latestRestaurant.capabilities?.acceptsOrders ??
-                  DEFAULT_RESTAURANT_CAPABILITIES.acceptsOrders,
-              ),
-            ],
-            [
-              "orderPolicy.allowWhenClosed",
-              String(orderPolicy.allowWhenClosed),
-              String(
-                latestRestaurant.orderPolicy?.allowWhenClosed ??
-                  DEFAULT_ORDER_POLICY.allowWhenClosed,
-              ),
-            ],
-            ["avatar", restaurantForm.avatar || "", latestRestaurant.avatar || ""],
-            ["coverImage", restaurantForm.coverImage || "", latestRestaurant.coverImage || ""],
-            [
-              "seatingCapacity",
-              String(Number(restaurantForm.seatingCapacity || 0)),
-              String(Number(latestRestaurant.seatingCapacity || 0)),
-            ],
-            ["address.line1", restaurantForm.line1 || "", latestRestaurant.address?.line1 || ""],
-            ["address.line2", restaurantForm.line2 || "", latestRestaurant.address?.line2 || ""],
-            ["address.ward", restaurantForm.ward || "", latestRestaurant.address?.ward || ""],
-            ["address.district", restaurantForm.district || "", latestRestaurant.address?.district || ""],
-            ["address.city", restaurantForm.city || "", latestRestaurant.address?.city || ""],
-            ["address.country", restaurantForm.country || "", latestRestaurant.address?.country || ""],
-            ["address.postalCode", restaurantForm.postalCode || "", latestRestaurant.address?.postalCode || ""],
-            [
-              "address.lat",
-              parseOptionalNumber(restaurantForm.lat) == null
-                ? ""
-                : String(parseOptionalNumber(restaurantForm.lat)),
-              latestRestaurant.address?.lat == null ? "" : String(latestRestaurant.address.lat),
-            ],
-            [
-              "address.lng",
-              parseOptionalNumber(restaurantForm.lng) == null
-                ? ""
-                : String(parseOptionalNumber(restaurantForm.lng)),
-              latestRestaurant.address?.lng == null ? "" : String(latestRestaurant.address.lng),
-            ],
-            ["notesOnAmenities", expectedNotes, latestRestaurant.notesOnAmenities || ""],
-            ["amenities", JSON.stringify(expectedAmenities), JSON.stringify(actualAmenities)],
-          ].some(([, expected, actual]) => (expected || "") !== (actual || ""))
-        : false;
-
-      if (hasMismatch) {
-        showNotification(
-          "Dữ liệu vừa lưu chưa hiển thị đầy đủ. Hãy tải lại trang rồi kiểm tra trước khi sửa tiếp.",
-          "warning",
-        );
-        setIsDirty(true);
-        return;
-      }
-
+      baselineRef.current = JSON.stringify(restaurantForm);
       setIsDirty(false);
       showNotification("Đã cập nhật thông tin nhà hàng.", "success");
     } catch (error) {
@@ -1587,20 +1628,8 @@ const RestaurantInfoManagement = ({ role = "manager", restaurantId = "" }) => {
                     className="profile-section-card address-section-card"
                     size="small"
                     title="Địa chỉ nhà hàng"
-                    extra={
-                      <Button
-                        type="link"
-                        size="small"
-                        icon={<EnvironmentOutlined />}
-                        onClick={fillCurrentLocation}
-                        loading={locating}
-                        disabled={locating}
-                      >
-                        {locating ? "Đang lấy vị trí" : "Lấy vị trí hiện tại"}
-                      </Button>
-                    }
                   >
-                    <Row gutter={16}>
+                    <Row gutter={16} className="restaurant-address-grid">
                       <Col span={12}>
                         <Form.Item label="Số nhà / Đường">
                           <Input
@@ -1698,7 +1727,7 @@ const RestaurantInfoManagement = ({ role = "manager", restaurantId = "" }) => {
                           />
                         </Form.Item>
                       </Col>
-                      <Col span={4}>
+                      <Col span={4} className="restaurant-coordinate-field">
                         <Form.Item label="Vĩ độ">
                           <Input
                             aria-label="Vĩ độ"
@@ -1717,7 +1746,7 @@ const RestaurantInfoManagement = ({ role = "manager", restaurantId = "" }) => {
                           />
                         </Form.Item>
                       </Col>
-                      <Col span={4}>
+                      <Col span={4} className="restaurant-coordinate-field">
                         <Form.Item label="Kinh độ">
                           <Input
                             aria-label="Kinh độ"
@@ -1737,6 +1766,19 @@ const RestaurantInfoManagement = ({ role = "manager", restaurantId = "" }) => {
                         </Form.Item>
                       </Col>
                     </Row>
+                    <RestaurantLocationMap
+                      lat={restaurantForm.lat}
+                      lng={restaurantForm.lng}
+                      locating={locating}
+                      onLocate={fillCurrentLocation}
+                      onChange={(coordinates) => {
+                        setRestaurantForm((previous) => ({
+                          ...previous,
+                          ...coordinates,
+                        }));
+                        setIsDirty(true);
+                      }}
+                    />
                   </Card>
 
                   <div style={{ marginTop: 20 }}>
@@ -1744,6 +1786,8 @@ const RestaurantInfoManagement = ({ role = "manager", restaurantId = "" }) => {
                       <Col span={8}>
                         <Form.Item label="Giờ mở cửa">
                           <Input
+                            type="time"
+                            step={1800}
                             prefix={<ClockCircleOutlined />}
                             value={restaurantForm.openingHours}
                             onChange={(e) =>
@@ -1758,6 +1802,8 @@ const RestaurantInfoManagement = ({ role = "manager", restaurantId = "" }) => {
                       <Col span={8}>
                         <Form.Item label="Giờ đóng cửa">
                           <Input
+                            type="time"
+                            step={1800}
                             prefix={<ClockCircleOutlined />}
                             value={restaurantForm.closingHours}
                             onChange={(e) =>

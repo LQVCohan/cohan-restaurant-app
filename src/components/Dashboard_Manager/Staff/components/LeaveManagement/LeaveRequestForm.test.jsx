@@ -71,6 +71,16 @@ describe("LeaveRequestForm", () => {
     expect(screen.queryByRole("option", { name: /\[NV002\] Lan Manager/i })).not.toBeInTheDocument();
   });
 
+  it("uses a concise native leave-type selector in the compact manager modal", () => {
+    const { container } = render(
+      <LeaveRequestForm onSubmit={vi.fn()} staffList={staffList} compact />,
+    );
+
+    expect(screen.getByRole("combobox", { name: "Loại nghỉ *" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Nghỉ bệnh" })).toBeInTheDocument();
+    expect(container.querySelector(".leave-types-grid")).not.toBeInTheDocument();
+  });
+
   it("does not show replacement manager selection for manager leave requests", () => {
     render(<LeaveRequestForm onSubmit={vi.fn()} staffList={staffList} />);
 

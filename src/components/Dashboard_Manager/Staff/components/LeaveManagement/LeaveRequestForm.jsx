@@ -74,9 +74,9 @@ const LeaveRequestForm = ({
   selfServiceEmployeeId = "",
   compact = false,
   stepByStep = false,
-  title = "📝 Tạo Đơn Xin Nghỉ Phép",
+  title = "Tạo đơn xin nghỉ phép",
   subtitle = "",
-  submitLabel = "Gửi Đơn",
+  submitLabel = "Gửi đơn",
   onCancel,
   onSubmitted,
 }) => {
@@ -320,7 +320,31 @@ const LeaveRequestForm = ({
     </div>
   );
 
-  const leaveTypeFields = (
+  const leaveTypeFields = compact && !stepByStep ? (
+    <div className="form-group leave-type-select-group">
+      <label htmlFor="leave-type-select">Loại nghỉ *</label>
+      <select
+        id="leave-type-select"
+        name="leaveType"
+        value={formData.leaveType}
+        onChange={handleChange}
+        aria-invalid={Boolean(errors.leaveType)}
+        aria-describedby={errors.leaveType ? "leave-type-error" : undefined}
+      >
+        <option value="">Chọn loại nghỉ</option>
+        {leaveTypes.map((type) => (
+          <option key={type.value} value={type.value}>
+            {type.label}
+          </option>
+        ))}
+      </select>
+      {errors.leaveType && (
+        <span id="leave-type-error" className="err-msg">
+          {errors.leaveType}
+        </span>
+      )}
+    </div>
+  ) : (
     <>
       <div className="leave-types-grid">
         {leaveTypes.map((type) => (
@@ -348,10 +372,22 @@ const LeaveRequestForm = ({
     <>
       <div className="form-row two-col date-row">
         <div className="form-group">
-          <label>Từ ngày *</label>
+          <label htmlFor="leave-start-date">Từ ngày *</label>
           <div className="date-input-group">
-            <input type="date" name="startDate" value={formData.startDate} onChange={handleChange} />
-            <select name="startSession" value={formData.startSession} onChange={handleChange}>
+            <input
+              id="leave-start-date"
+              type="date"
+              name="startDate"
+              value={formData.startDate}
+              onChange={handleChange}
+            />
+            <select
+              aria-label="Buổi bắt đầu"
+              className="session-select"
+              name="startSession"
+              value={formData.startSession}
+              onChange={handleChange}
+            >
               <option value="FULL">Cả ngày</option>
               <option value="MORNING">Sáng</option>
               <option value="AFTERNOON">Chiều</option>
@@ -361,16 +397,23 @@ const LeaveRequestForm = ({
         </div>
 
         <div className="form-group">
-          <label>Đến ngày *</label>
+          <label htmlFor="leave-end-date">Đến ngày *</label>
           <div className="date-input-group">
             <input
+              id="leave-end-date"
               type="date"
               name="endDate"
               value={formData.endDate}
               onChange={handleChange}
               min={formData.startDate}
             />
-            <select name="endSession" value={formData.endSession} onChange={handleChange}>
+            <select
+              aria-label="Buổi kết thúc"
+              className="session-select"
+              name="endSession"
+              value={formData.endSession}
+              onChange={handleChange}
+            >
               <option value="FULL">Cả ngày</option>
               <option value="MORNING">Sáng</option>
               <option value="AFTERNOON">Chiều</option>
