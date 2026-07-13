@@ -1,3 +1,29 @@
+.shift-rules-modal .scoring-guide-trigger {
+  flex: 0 0 auto;
+  align-self: center;
+  border: 1px solid #a5b4fc;
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+  background: #ffffff;
+  color: #4338ca;
+  font-size: 0.78rem;
+  font-weight: 850;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: 0.18s ease;
+
+  &:hover {
+    border-color: #6366f1;
+    background: #eef2ff;
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(79, 70, 229, 0.2);
+    outline-offset: 2px;
+  }
+}
+
 .scoring-guide-modal {
   .modal-header {
     padding-block: 14px;
@@ -213,6 +239,16 @@
     color: #0c4a6e;
     font-size: 0.78rem;
     line-height: 1.5;
+  }
+}
+
+@media (max-width: 640px) {
+  .shift-rules-modal .scoring-help-banner {
+    flex-wrap: wrap;
+  }
+
+  .shift-rules-modal .scoring-guide-trigger {
+    width: 100%;
   }
 }
 
