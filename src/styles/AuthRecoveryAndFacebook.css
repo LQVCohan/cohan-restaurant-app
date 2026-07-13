@@ -109,27 +109,29 @@
 
 .auth-recovery-form__submit,
 .facebook-login-button {
-  min-height: 48px;
+  min-height: 44px;
   border: 0;
-  border-radius: 14px;
-  font-size: 14px;
-  font-weight: 850;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
   transition:
     transform 160ms ease,
     box-shadow 160ms ease,
+    border-color 160ms ease,
     opacity 160ms ease;
 }
 
 .auth-recovery-form__submit {
   margin-top: 4px;
+  min-height: 48px;
+  border-radius: 14px;
   background: linear-gradient(135deg, #f97316, #ea580c);
   color: #fff;
   box-shadow: 0 12px 26px rgba(234, 88, 12, 0.22);
 }
 
-.auth-recovery-form__submit:hover:not(:disabled),
-.facebook-login-button:hover:not(:disabled) {
+.auth-recovery-form__submit:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
@@ -157,34 +159,56 @@
 }
 
 .google-login-row .facebook-login-button {
-  width: min(100%, 300px);
+  width: 100%;
+  max-width: none;
+  min-height: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 11px;
-  padding: 0 18px;
-  border: 1px solid #1877f2;
+  gap: 9px;
+  padding: 0 16px;
+  border: 1px solid rgba(24, 119, 242, 0.78);
+  border-radius: 12px;
   background: #1877f2;
   color: #fff;
-  box-shadow: 0 8px 20px rgba(24, 119, 242, 0.2);
+  line-height: 1;
+  box-shadow: 0 5px 14px rgba(24, 119, 242, 0.18);
+}
+
+.google-login-row .facebook-login-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #0f6ce5;
+  box-shadow: 0 8px 18px rgba(24, 119, 242, 0.23);
+}
+
+.google-login-row .facebook-login-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 3px 10px rgba(24, 119, 242, 0.18);
+}
+
+.google-login-row .facebook-login-button:focus-visible {
+  outline: 3px solid rgba(24, 119, 242, 0.2);
+  outline-offset: 2px;
 }
 
 .facebook-login-button__icon {
   display: grid;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
   place-items: center;
   border-radius: 50%;
   background: #fff;
   color: #1877f2;
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 900;
   line-height: 1;
 }
 
 .facebook-login-status {
-  width: min(100%, 300px);
+  width: 100%;
   min-height: 18px;
   color: #6b7280;
   font-size: 12px;
