@@ -93,6 +93,10 @@ export const compactAiMenuSuggestionList = (
     const shouldShow = index < safeLimit;
     card.hidden = !shouldShow;
     card.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+    card.classList.toggle(
+      "is-last-visible-ai-suggestion",
+      shouldShow && index === visibleCount - 1,
+    );
     polishSuggestionCard(card, index);
   });
 
@@ -148,7 +152,10 @@ const preparePanel = (panel) => {
   let visibleCount = 0;
   panel.querySelectorAll(MENU_LIST_SELECTOR).forEach((menuList) => {
     const count = compactAiMenuSuggestionList(menuList);
-    if (!menuList.hidden && !menuList.classList.contains("is-stale-ai-menu-suggestions")) {
+    if (
+      !menuList.hidden &&
+      !menuList.classList.contains("is-stale-ai-menu-suggestions")
+    ) {
       visibleCount += count;
     }
   });
