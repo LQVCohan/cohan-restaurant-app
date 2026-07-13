@@ -84,6 +84,7 @@ import "./styles/AiChatbotMenuSelectionPolish.css";
 import "./styles/StaffKitchenCompactHeader.css";
 import "./styles/StaffHeaderProfessional.css";
 import "./styles/TodayMealAiLauncherPremium.css";
+import "./styles/AiChatbotConversationCalm.css";
 
 const normalizeLegacyManagerHash = () => {
   if (
