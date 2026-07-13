@@ -36,6 +36,8 @@ import "./components/common/RestaurantMediaExperienceLauncherPositionFix.scss";
 const isFocusedQrRoute = (pathname) =>
   pathname === "/scan-table" || pathname.startsWith("/table/");
 
+const isImmersiveVrRoute = (pathname) => pathname.startsWith("/vr/");
+
 function ScopedAiChatbotWidget() {
   const location = useLocation();
   if (
@@ -44,7 +46,8 @@ function ScopedAiChatbotWidget() {
     location.pathname.startsWith("/manager") ||
     location.pathname.startsWith("/staff") ||
     location.pathname.startsWith("/preview/") ||
-    isFocusedQrRoute(location.pathname)
+    isFocusedQrRoute(location.pathname) ||
+    isImmersiveVrRoute(location.pathname)
   ) {
     return null;
   }
