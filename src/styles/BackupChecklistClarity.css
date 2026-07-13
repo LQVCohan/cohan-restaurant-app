@@ -1,0 +1,60 @@
+/* Clarifies the difference between saving partial progress and being ready to export. */
+
+.backup-management .backup-management__checklist-help,
+.backup-management .backup-management__scope-help {
+  margin: 4px 0 8px;
+  padding: 9px 10px;
+  border: 1px solid rgba(62, 96, 82, 0.14);
+  border-radius: 9px;
+  color: var(--backup-muted);
+  background: rgba(255, 255, 255, 0.64);
+  font-size: 0.7rem;
+  font-weight: 620;
+  line-height: 1.45;
+}
+
+.backup-management .backup-management__checklist-help {
+  border-left: 4px solid rgba(139, 100, 31, 0.65);
+  background: linear-gradient(135deg, #fffdf7, var(--backup-warning-soft));
+}
+
+.backup-management .backup-management__scope-help {
+  border-left: 4px solid rgba(63, 118, 100, 0.56);
+}
+
+.backup-management .backup-management__check-scope-grid label.is-required-before-export {
+  border-color: rgba(139, 100, 31, 0.24);
+  background: rgba(255, 250, 236, 0.92);
+}
+
+.backup-management .backup-management__check-scope-grid label.is-required-before-export input {
+  accent-color: #8b641f;
+}
+
+.backup-management .backup-management__check-scope-grid label.is-managed {
+  color: var(--backup-muted);
+  border-style: dashed;
+  background: rgba(247, 244, 236, 0.86);
+  cursor: not-allowed;
+}
+
+.backup-management .backup-management__check-scope-grid label.is-managed input {
+  cursor: not-allowed;
+}
+
+.backup-management .backup-checklist-required-note {
+  color: #745114 !important;
+  font-weight: 700 !important;
+}
+
+.backup-management .backup-checklist-managed-note,
+.backup-management .backup-checklist-post-export-note {
+  color: var(--backup-muted) !important;
+}
+
+@media (max-width: 760px) {
+  .backup-management .backup-management__checklist-help,
+  .backup-management .backup-management__scope-help {
+    font-size: 0.72rem;
+  }
+}
