@@ -26,6 +26,15 @@
 @import "./schedule-manager-accessibility-fixes.css";
 @import "./schedule-admin-final-tuning.css";
 
+/* Keep simplified preview headings correct when optional sections are absent. */
+.auto-preview-section.assignment-block:first-of-type h4::after {
+  content: "Nhân viên được xếp" !important;
+}
+
+.auto-preview-section.assignment-alert-block:first-of-type h4::after {
+  content: "Việc cần kiểm tra" !important;
+}
+
 .schedule-readiness-focus-banner {
   position: relative;
   display: flex;
