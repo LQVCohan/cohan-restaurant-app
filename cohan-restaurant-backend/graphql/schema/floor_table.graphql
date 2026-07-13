@@ -109,6 +109,16 @@ type Table {
   tableQrGeneratedAt: DateTime
   tableQrExpiresAt: DateTime
   status: TableStatus!
+  nextReservationAt: DateTime
+  reservationGraceEndsAt: DateTime
+  reservationPhase: String
+  reservationId: ID
+  reservationOrderCode: String
+  reservationStatus: String
+  reservationCustomerName: String
+  reservationCustomerPhone: String
+  reservationCustomerEmail: String
+  reservationPartySize: Int
   floorLevel: Int
   deposit: Int
   tags: [String!]
