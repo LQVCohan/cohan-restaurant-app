@@ -6,6 +6,7 @@ import { AuthProvider } from "./context/AuthProvider";
 import { ApolloProvider } from "@apollo/client/react";
 import { apolloClient } from "./apollo/client";
 import ManagerMenuSelectionSync from "./apollo/ManagerMenuSelectionSync";
+import { isImmersiveVrRoute } from "./utils/immersiveRouteScope";
 import "./styles/Globals.scss";
 import "./components/LoginPolish.scss";
 import "./components/LoginAudiencePolish.scss";
@@ -44,7 +45,8 @@ function ScopedAiChatbotWidget() {
     location.pathname.startsWith("/manager") ||
     location.pathname.startsWith("/staff") ||
     location.pathname.startsWith("/preview/") ||
-    isFocusedQrRoute(location.pathname)
+    isFocusedQrRoute(location.pathname) ||
+    isImmersiveVrRoute(location.pathname)
   ) {
     return null;
   }
