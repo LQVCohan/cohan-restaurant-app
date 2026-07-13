@@ -2,7 +2,8 @@
   overflow: hidden;
 }
 
-.auth-recovery-modal[hidden] {
+.auth-recovery-modal[hidden],
+.auth-recovery-form[hidden] {
   display: none;
 }
 
