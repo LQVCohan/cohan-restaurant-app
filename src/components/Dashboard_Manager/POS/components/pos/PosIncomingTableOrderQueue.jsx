@@ -5,7 +5,9 @@ import {
   Check,
   ChevronDown,
   ClipboardList,
+  ImageOff,
   KeyRound,
+  RotateCcw,
   ShieldCheck,
   X,
 } from "lucide-react";
@@ -16,6 +18,7 @@ import useSocketOrder from "@/hooks/useSocketOrder";
 import { useNotification } from "@/hooks/useNotification";
 import { hasAnyPermission } from "@/utils/frontendPermissionAccess";
 import {
+  isProofImageWaived,
   normalizeProofImages,
   requiresProofImage,
 } from "@/utils/orderProofRules";
@@ -24,6 +27,7 @@ import styles from "./PosIncomingTableOrderQueue.module.scss";
 
 const QR_ORDER_SOURCE = "customer_table_qr";
 const REJECT_PERMISSIONS = ["order.cancel", "payment.write"];
+const CUSTOMER_WAIVER_REASON = "Khách hàng xác nhận không cần ảnh minh chứng.";
 
 const POS_INCOMING_TABLE_ORDERS = gql`
   query PosIncomingTableOrders($restaurantId: ID!, $limit: Int) {
@@ -79,6 +83,14 @@ const REJECT_POS_TABLE_ORDER = gql`
   }
 `;
 
+const SET_POS_ORDER_ITEM_PROOF_WAIVER = gql`
+  mutation SetPosOrderItemProofWaiver($input: SetOrderItemProofWaiverInput!) {
+    setOrderItemProofWaiver(input: $input) {
+      order { id clientMeta updatedAt }
+    }
+  }
+`;
+
 const formatMoney = (value) =>
   `${Number(value || 0).toLocaleString("vi-VN")}đ`;
 
@@ -108,11 +120,40 @@ const getErrorMessage = (error, fallback) =>
   error?.message ||
   fallback;
 
-const getMissingProofItems = (order) =>
-  (order?.items || []).filter(
+const requiresWeight = (item) =>
+  String(item?.servingVariant?.mode || "").toUpperCase() === "BY_WEIGHT";
+
+const hasValidWeight = (item) => {
+  if (!requiresWeight(item)) return true;
+  const grams = Number(item?.weightGrams);
+  return Number.isInteger(grams) && grams > 0;
+};
+
+const getProofIssues = (order) => {
+  const proofWaivers = order?.clientMeta?.proofWaivers || {};
+  return (order?.items || []).flatMap((item) => {
+    const proofRequired = requiresProofImage(item);
+    const proofWaived = isProofImageWaived(item, proofWaivers);
+    const missingProof =
+      proofRequired &&
+      !proofWaived &&
+      normalizeProofImages(item?.proofImages).length === 0;
+    const missingWeight = !hasValidWeight(item);
+    return missingProof || missingWeight
+      ? [{ item, missingProof, missingWeight, proofWaived }]
+      : [];
+  });
+};
+
+const getWaivedProofItems = (order) => {
+  const proofWaivers = order?.clientMeta?.proofWaivers || {};
+  return (order?.items || []).filter(
     (item) =>
-      requiresProofImage(item) && normalizeProofImages(item?.proofImages).length === 0,
+      requiresProofImage(item) &&
+      isProofImageWaived(item, proofWaivers) &&
+      normalizeProofImages(item?.proofImages).length === 0,
   );
+};
 
 export default function PosIncomingTableOrderQueue({
   restaurantId,
@@ -125,6 +166,7 @@ export default function PosIncomingTableOrderQueue({
       ? allowReject
       : hasAnyPermission(user, REJECT_PERMISSIONS);
   const [busyOrderId, setBusyOrderId] = useState("");
+  const [waiverBusyItemId, setWaiverBusyItemId] = useState("");
   const [rejectOrderId, setRejectOrderId] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [revealedRequestId, setRevealedRequestId] = useState("");
@@ -140,6 +182,7 @@ export default function PosIncomingTableOrderQueue({
   });
   const [confirmOrder] = useMutation(CONFIRM_POS_TABLE_ORDER);
   const [rejectOrder] = useMutation(REJECT_POS_TABLE_ORDER);
+  const [setProofWaiver] = useMutation(SET_POS_ORDER_ITEM_PROOF_WAIVER);
 
   useSocketOrder(restaurantId, {
     onAny: (event) => {
@@ -190,6 +233,7 @@ export default function PosIncomingTableOrderQueue({
   );
 
   const pendingCount = accessRequests.length + pendingOrders.length;
+  const actionBusy = Boolean(busyOrderId || waiverBusyItemId);
 
   useEffect(() => {
     if (
@@ -215,18 +259,65 @@ export default function PosIncomingTableOrderQueue({
     });
   };
 
-  const handleConfirm = async (order) => {
-    if (!order?.id || busyOrderId) return;
+  const handleSetProofWaiver = async (order, item, waived) => {
+    if (!order?.id || !item?._id || actionBusy) return;
+    const message = waived
+      ? `Xác nhận khách hàng không cần ảnh minh chứng cho món ${item.name}? Thao tác này sẽ được ghi lại.`
+      : `Yêu cầu lại ảnh minh chứng cho món ${item.name}?`;
+    if (!window.confirm(message)) return;
 
-    const missingProofItems = getMissingProofItems(order);
-    if (missingProofItems.length) {
-      const names = missingProofItems
-        .slice(0, 3)
-        .map((item) => item.name)
-        .join(", ");
-      setActionError(
-        `Chưa thể chuyển bếp. Các món cần ảnh minh chứng: ${names}.`,
+    setWaiverBusyItemId(item._id);
+    setActionError("");
+    try {
+      await setProofWaiver({
+        variables: {
+          input: {
+            restaurantId,
+            orderId: order.id,
+            orderItemId: item._id,
+            waived,
+            reason: waived ? CUSTOMER_WAIVER_REASON : undefined,
+          },
+        },
+      });
+      showNotification(
+        waived
+          ? `Đã ghi nhận khách không cần ảnh cho ${item.name}.`
+          : `Đã yêu cầu lại ảnh minh chứng cho ${item.name}.`,
+        waived ? "warning" : "success",
       );
+      await refetch?.();
+    } catch (error) {
+      const errorMessage = getErrorMessage(
+        error,
+        "Không thể cập nhật lựa chọn ảnh minh chứng.",
+      );
+      setActionError(errorMessage);
+      showNotification(errorMessage, "error");
+      await refetch?.();
+    } finally {
+      setWaiverBusyItemId("");
+    }
+  };
+
+  const handleConfirm = async (order) => {
+    if (!order?.id || actionBusy) return;
+
+    const issues = getProofIssues(order);
+    if (issues.length) {
+      const details = issues
+        .slice(0, 3)
+        .map(({ item, missingProof, missingWeight }) => {
+          const missing = [
+            missingWeight ? "cân nặng" : null,
+            missingProof ? "ảnh minh chứng" : null,
+          ]
+            .filter(Boolean)
+            .join(" và ");
+          return `${item.name}: thiếu ${missing}`;
+        })
+        .join("; ");
+      setActionError(`Chưa thể chuyển bếp. ${details}.`);
       return;
     }
 
@@ -253,7 +344,7 @@ export default function PosIncomingTableOrderQueue({
 
   const handleReject = async (order) => {
     const reason = rejectReason.trim();
-    if (!canReject || !order?.id || busyOrderId) return;
+    if (!canReject || !order?.id || actionBusy) return;
     if (reason.length < 3) {
       setActionError("Vui lòng nhập lý do từ chối rõ ràng.");
       return;
@@ -364,8 +455,12 @@ export default function PosIncomingTableOrderQueue({
           {pendingOrders.map((order) => {
             const isBusy = busyOrderId === order.id;
             const isRejecting = canReject && rejectOrderId === order.id;
-            const missingProofItems = getMissingProofItems(order);
-            const firstMissingProofItem = missingProofItems[0] || null;
+            const issues = getProofIssues(order);
+            const firstMissingProofItem =
+              issues.find((issue) => issue.missingProof)?.item || null;
+            const firstWaivedProofItem = getWaivedProofItems(order)[0] || null;
+            const proofWaivers = order?.clientMeta?.proofWaivers || {};
+
             return (
               <article className={styles.card} key={order.id}>
                 <header className={styles.cardHeader}>
@@ -383,6 +478,8 @@ export default function PosIncomingTableOrderQueue({
                   {(order.items || []).map((item) => {
                     const proofImages = normalizeProofImages(item?.proofImages);
                     const proofRequired = requiresProofImage(item);
+                    const proofWaived = isProofImageWaived(item, proofWaivers);
+                    const weightMissing = !hasValidWeight(item);
                     return (
                       <li key={item._id || `${order.id}-${item.name}`}>
                         <div>
@@ -392,8 +489,13 @@ export default function PosIncomingTableOrderQueue({
                             <small>
                               {proofImages.length
                                 ? `Đã có ${proofImages.length} ảnh minh chứng`
-                                : "Cần ảnh minh chứng trước khi chuyển bếp"}
+                                : proofWaived
+                                  ? "Khách đã xác nhận không cần ảnh minh chứng"
+                                  : "Cần ảnh minh chứng trước khi chuyển bếp"}
                             </small>
+                          ) : null}
+                          {weightMissing ? (
+                            <small>Thiếu cân nặng thực tế, chưa thể chuyển bếp</small>
                           ) : null}
                         </div>
                         <span>{formatQuantity(item)}</span>
@@ -446,21 +548,49 @@ export default function PosIncomingTableOrderQueue({
                 ) : (
                   <div className={styles.actions}>
                     {firstMissingProofItem ? (
+                      <>
+                        <button
+                          type="button"
+                          className={styles.secondary}
+                          onClick={() => openProofCapture(order, firstMissingProofItem)}
+                          disabled={actionBusy}
+                        >
+                          <Camera size={16} aria-hidden="true" />
+                          Bổ sung ảnh {firstMissingProofItem.name}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.secondary}
+                          onClick={() =>
+                            void handleSetProofWaiver(order, firstMissingProofItem, true)
+                          }
+                          disabled={actionBusy}
+                        >
+                          <ImageOff size={16} aria-hidden="true" />
+                          {waiverBusyItemId === firstMissingProofItem._id
+                            ? "Đang ghi nhận…"
+                            : `Khách không cần ảnh ${firstMissingProofItem.name}`}
+                        </button>
+                      </>
+                    ) : null}
+                    {!firstMissingProofItem && firstWaivedProofItem ? (
                       <button
                         type="button"
                         className={styles.secondary}
-                        onClick={() => openProofCapture(order, firstMissingProofItem)}
-                        disabled={Boolean(busyOrderId)}
+                        onClick={() =>
+                          void handleSetProofWaiver(order, firstWaivedProofItem, false)
+                        }
+                        disabled={actionBusy}
                       >
-                        <Camera size={16} aria-hidden="true" />
-                        Bổ sung ảnh {firstMissingProofItem.name}
+                        <RotateCcw size={16} aria-hidden="true" />
+                        Yêu cầu lại ảnh {firstWaivedProofItem.name}
                       </button>
                     ) : null}
                     <button
                       type="button"
                       className={styles.accept}
                       onClick={() => void handleConfirm(order)}
-                      disabled={Boolean(busyOrderId) || missingProofItems.length > 0}
+                      disabled={actionBusy || issues.length > 0}
                     >
                       <Check size={16} aria-hidden="true" />
                       {isBusy ? "Đang nhận…" : "Nhận & chuyển bếp"}
@@ -474,7 +604,7 @@ export default function PosIncomingTableOrderQueue({
                           setRejectReason("");
                           setActionError("");
                         }}
-                        disabled={Boolean(busyOrderId)}
+                        disabled={actionBusy}
                       >
                         Từ chối
                       </button>
