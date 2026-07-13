@@ -51,6 +51,7 @@ localIps.forEach((ip) => console.log(`Phone:   http://${ip}:${PORT}`));
 console.log(`API:     /graphql (same origin) → http://127.0.0.1:${BACKEND_PORT}/graphql`);
 console.log("\nĐiện thoại và máy tính phải chung Wi-Fi khi dùng địa chỉ Phone.");
 console.log("Backend phải đang chạy trên máy tính trước khi mở trang trên điện thoại.");
+console.log("HMR đã tắt để camera native không làm tải lại trang khi quay về trình duyệt.");
 console.log("AR HTTPS: chạy `ngrok http 5173`; hostname ngrok được chấp nhận tự động.\n");
 
 const child = spawn(
@@ -67,6 +68,7 @@ const child = spawn(
       VITE_DEV_HOST: primaryIp,
       VITE_DEV_ALLOWED_HOSTS: allowedHosts,
       VITE_DEV_INFER_REQUEST_HOST: "true",
+      VITE_DEV_HMR: "false",
     },
   },
 );

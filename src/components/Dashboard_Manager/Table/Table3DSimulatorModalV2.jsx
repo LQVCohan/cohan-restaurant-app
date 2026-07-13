@@ -10,6 +10,11 @@ import {
   getModelAssetSummary,
 } from "@/config/table3dCatalog";
 import {
+  clearTable3DBuilderSessionState,
+  getTable3DBuilderSessionState,
+  setTable3DBuilderSessionState,
+} from "@/utils/aiTableCaptureDraft";
+import {
   deleteCustomTableModel,
   loadCustomTableModels,
   mergeCatalogWithCustomModels,
@@ -63,7 +68,9 @@ export default function Table3DSimulatorModalV2({
   const [modelLoading, setModelLoading] = useState(false);
   const [modelLoadProgress, setModelLoadProgress] = useState(0);
   const [modelViewerCanActivateAr, setModelViewerCanActivateAr] = useState(null);
-  const [showCustomBuilder, setShowCustomBuilder] = useState(false);
+  const [showCustomBuilder, setShowCustomBuilder] = useState(
+    () => getTable3DBuilderSessionState().open,
+  );
   const [customModels, setCustomModels] = useState([]);
   const [isOpeningAr, setIsOpeningAr] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
@@ -72,6 +79,16 @@ export default function Table3DSimulatorModalV2({
   const [capabilities, setCapabilities] = useState(getCapabilities);
   const viewerRef = useRef(null);
   const customModelScope = restaurantName || restaurantId || "default";
+
+  const openCustomBuilder = () => {
+    setTable3DBuilderSessionState({ open: true });
+    setShowCustomBuilder(true);
+  };
+
+  const closeCustomBuilder = () => {
+    clearTable3DBuilderSessionState();
+    setShowCustomBuilder(false);
+  };
 
   useEffect(() => {
     if (
@@ -548,7 +565,7 @@ export default function Table3DSimulatorModalV2({
           loading={loading}
           error={error}
           onReload={reload}
-          onCreateCustomModel={() => setShowCustomBuilder(true)}
+          onCreateCustomModel={openCustomBuilder}
           pendingDeleteModelKey={pendingDeleteModelKey}
           onDeleteCustomModel={handleDeleteCustomModel}
           isSelectedModelHiddenByFilters={isSelectedModelHiddenByFilters}
@@ -568,7 +585,7 @@ export default function Table3DSimulatorModalV2({
           </div>
 
           <div className="table-3d-stage">
-            {selectedModel?.modelUrl && !modelError ? (
+            {!showCustomBuilder && selectedModel?.modelUrl && !modelError ? (
               <model-viewer
                 ref={viewerRef}
                 src={selectedModel.modelUrl}
@@ -610,7 +627,7 @@ export default function Table3DSimulatorModalV2({
               </div>
             )}
 
-            {modelLoading && selectedModel?.modelUrl && (
+            {!showCustomBuilder && modelLoading && selectedModel?.modelUrl && (
               <div className="table-3d-model-loading" role="status">
                 <Loader2 size={24} className="spin" aria-hidden="true" />
                 <strong>Đang tải mô hình 3D</strong>
@@ -673,13 +690,14 @@ export default function Table3DSimulatorModalV2({
 
       <CustomTableModelBuilderModal
         open={showCustomBuilder}
-        onClose={() => setShowCustomBuilder(false)}
+        onClose={closeCustomBuilder}
+        draftScope={customModelScope}
         onApply={(customItem) => {
           const saved = upsertCustomTableModel(customItem, customModelScope);
           setCustomModels(saved);
           setTableType(getCustomModelCatalogTableType(customItem));
           setSelectedModelKey(customItem.key);
-          setShowCustomBuilder(false);
+          closeCustomBuilder();
         }}
       />
     </Modal>

@@ -3,6 +3,15 @@ import createViteConfig from "./vite.config.js";
 
 afterEach(() => {
   vi.unstubAllEnvs();
+
+  it("disables HMR for the stable mobile camera profile", () => {
+    vi.stubEnv("VITE_DEV_HMR", "false");
+    vi.stubEnv("VITE_DEV_INFER_REQUEST_HOST", "true");
+
+    const config = createViteConfig({ mode: "test" });
+
+    expect(config.server.hmr).toBe(false);
+  });
 });
 
 describe("Vite development proxy", () => {

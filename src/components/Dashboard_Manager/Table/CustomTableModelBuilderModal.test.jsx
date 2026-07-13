@@ -16,6 +16,21 @@ vi.mock("@/lib/apiBaseUrl", () => ({
   toBackendRootUrl: (path) => `/api${path}`,
 }));
 
+vi.mock("@/utils/aiTableCaptureDraft", () => ({
+  clearAiTableCaptureDraft: vi.fn().mockResolvedValue(undefined),
+  getTable3DBuilderSessionState: () => ({ open: false, mode: "parametric" }),
+  loadAiTableCaptureDraft: vi.fn().mockResolvedValue({
+    images: Array(5).fill(null),
+    metadata: Array(5).fill(null),
+  }),
+  processAiTableCapture: vi.fn(async (file) => ({
+    file,
+    metadata: { originalSize: file.size, outputSize: file.size },
+  })),
+  saveAiTableCaptureDraftSlot: vi.fn().mockResolvedValue(undefined),
+  setTable3DBuilderSessionState: vi.fn(),
+}));
+
 const CAPTURE_LABELS = [
   "Ảnh 1: Chính diện",
   "Ảnh 2: Góc trái 45°",
@@ -60,10 +75,7 @@ describe("CustomTableModelBuilderModal guided AI capture", () => {
     expect(inputs).toHaveLength(5);
     inputs.forEach((input) => {
       expect(input).toHaveAttribute("capture", "environment");
-      expect(input).toHaveAttribute(
-        "accept",
-        "image/png,image/jpeg,image/webp",
-      );
+      expect(input).toHaveAttribute("accept", "image/*");
     });
 
     const generateButton = screen.getByRole("button", {
@@ -79,8 +91,10 @@ describe("CustomTableModelBuilderModal guided AI capture", () => {
       return file;
     });
 
-    expect(screen.getByText(/Đã chụp 5\/5 ảnh/i)).toBeInTheDocument();
-    expect(generateButton).toBeEnabled();
+    await waitFor(() => {
+      expect(screen.getByText(/Đã chụp 5\/5 ảnh/i)).toBeInTheDocument();
+      expect(generateButton).toBeEnabled();
+    });
     fireEvent.click(generateButton);
 
     await waitFor(() => {
