@@ -1,0 +1,214 @@
+// Compact visual treatment for the homepage personalized recommendations.
+// Scoped to the desktop homepage so other For You screens keep their own layout.
+
+$primary: #ff6600;
+$primary-dark: #d94f00;
+$ink: #171717;
+$muted: #6f6258;
+$line: rgba(92, 64, 51, 0.12);
+
+.home .home-for-you {
+  &__surface {
+    padding: 26px 28px 28px;
+    border-color: rgba(92, 64, 51, 0.09);
+    border-radius: 24px;
+    background:
+      radial-gradient(circle at 96% 0%, rgba(255, 150, 75, 0.12), transparent 18rem),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 250, 245, 0.94));
+    box-shadow: 0 16px 42px rgba(92, 45, 12, 0.075);
+
+    &::after {
+      width: 150px;
+      height: 150px;
+      right: -76px;
+      bottom: -88px;
+      border-width: 26px;
+      opacity: 0.72;
+    }
+  }
+
+  &__header {
+    align-items: center;
+    gap: 24px;
+  }
+
+  &__copy {
+    max-width: 610px;
+  }
+
+  &__eyebrow {
+    min-height: 27px;
+    margin-bottom: 7px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #fff1e6;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+  }
+
+  &__title {
+    font-size: clamp(1.7rem, 2.5vw, 2.15rem);
+    letter-spacing: -0.048em;
+  }
+
+  &__subtitle {
+    margin-top: 7px;
+    font-size: 0.94rem;
+  }
+
+  &__actions {
+    gap: 4px;
+  }
+
+  &__cta {
+    min-height: 42px;
+    padding: 0 15px;
+    border: 1px solid rgba(92, 64, 51, 0.13);
+    background: #fff;
+    color: $ink;
+    box-shadow: 0 8px 22px rgba(92, 45, 12, 0.06);
+
+    svg {
+      color: $primary;
+    }
+
+    &:hover {
+      border-color: rgba(255, 102, 0, 0.3);
+      background: #fff8f2;
+      color: $primary-dark;
+      box-shadow: 0 12px 26px rgba(92, 45, 12, 0.09);
+    }
+  }
+
+  &__profile-cta {
+    min-height: 34px;
+    font-size: 0.84rem;
+  }
+
+  &__grid,
+  &__skeleton-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 20rem));
+    justify-content: center;
+    gap: 16px;
+    margin-top: 22px;
+  }
+
+  &__skeleton-card {
+    width: 100%;
+    border-radius: 18px;
+  }
+
+  &__skeleton-image {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+.home .home-for-you-card {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 18px;
+  box-shadow: 0 10px 28px rgba(92, 45, 12, 0.065);
+
+  &:hover,
+  &:focus-within {
+    transform: translateY(-3px);
+    box-shadow: 0 17px 36px rgba(92, 45, 12, 0.11);
+  }
+
+  &__media {
+    aspect-ratio: 16 / 9;
+  }
+
+  &__badges {
+    inset: 10px 10px auto;
+    gap: 6px;
+  }
+
+  &__body {
+    min-height: 132px;
+    padding: 14px 15px 15px;
+  }
+
+  &__meta {
+    gap: 8px;
+  }
+
+  &__restaurant,
+  &__rating {
+    gap: 5px;
+    font-size: 0.76rem;
+
+    svg {
+      width: 13px;
+      height: 13px;
+    }
+  }
+
+  &__name {
+    margin: 8px 0 14px;
+    font-size: 1.05rem;
+    line-height: 1.18;
+  }
+
+  &__footer {
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(92, 64, 51, 0.075);
+  }
+
+  &__price {
+    font-size: 1.05rem;
+  }
+
+  &__view {
+    gap: 5px;
+    font-size: 0.8rem;
+  }
+}
+
+.home .home-for-you-badge {
+  min-height: 26px;
+  padding: 4px 8px;
+  border-radius: 9px;
+  font-size: 0.68rem;
+}
+
+@media (max-width: 900px) {
+  .home .home-for-you {
+    &__surface {
+      padding: 24px;
+    }
+
+    &__grid,
+    &__skeleton-grid {
+      grid-template-columns: repeat(2, minmax(0, 20rem));
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .home .home-for-you {
+    &__surface {
+      padding: 20px;
+      border-radius: 22px;
+    }
+
+    &__grid,
+    &__skeleton-grid {
+      grid-template-columns: minmax(0, 1fr);
+      margin-top: 18px;
+    }
+  }
+
+  .home .home-for-you-card {
+    max-width: 24rem;
+    margin-inline: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home .home-for-you-card,
+  .home .home-for-you__cta {
+    transition: none;
+  }
+}
