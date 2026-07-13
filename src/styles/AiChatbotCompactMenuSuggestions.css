@@ -96,8 +96,7 @@
   transition: background-color 140ms ease !important;
 }
 
-.ai-chatbot-menu-card:last-child,
-.ai-chatbot-menu-card:nth-last-child(1 of :not([hidden])) {
+.ai-chatbot-menu-card.is-last-visible-ai-suggestion {
   border-bottom: 0 !important;
 }
 
