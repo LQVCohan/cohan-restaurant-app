@@ -76,7 +76,6 @@ async function resolveSearchUserIds(search) {
     $or: conditions,
   })
     .select("_id")
-    .limit(500)
     .lean();
 
   return users.map((user) => user._id);
