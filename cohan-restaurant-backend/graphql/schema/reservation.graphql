@@ -3,6 +3,13 @@ type Reservation {
   restaurantId: ID!
   restaurantName: String
   tableId: ID!
+  tableCode: String
+  tableName: String
+  hasUserOverlap: Boolean
+  overlapReservationCodes: [String!]
+  checkInQrDataUrl: String
+  checkInQrPayload: String
+  canCheckIn: Boolean
   userId: ID!
   orderCode: String
 
