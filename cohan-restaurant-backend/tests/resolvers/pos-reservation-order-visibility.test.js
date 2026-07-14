@@ -4,6 +4,7 @@ import { orderCoreRecoveryInternals } from "../../graphql/resolvers/order/queryC
 const {
   classifyOrdersByReservationSchedule,
   filterActiveOrders,
+  getOrderReservationId,
   isDetachedReservationPreorder,
   isFutureReservationOrder,
 } = orderCoreRecoveryInternals;
@@ -24,6 +25,47 @@ describe("POS reservation preorder visibility", () => {
     };
     expect(isDetachedReservationPreorder(preorder)).toBe(true);
     expect(filterActiveOrders([preorder])).toEqual([]);
+  });
+
+  it("resolves reservation add-on orders that stored reservationId in clientMeta", () => {
+    const reservationId = "64b000000000000000000009";
+    const order = {
+      id: "legacy-reservation-addon",
+      parentOrderId: "64b000000000000000000010",
+      rootOrderId: "64b000000000000000000010",
+      currentStatus: "pending",
+      clientMeta: {
+        source: "reservation_cart_addon",
+        reservationId,
+      },
+    };
+    const reservation = {
+      _id: reservationId,
+      status: "confirmed",
+      timeTo: new Date("2026-07-14T13:00:00.000Z"),
+      customerName: "Khách đặt món cùng bàn",
+    };
+
+    expect(getOrderReservationId(order)).toBe(reservationId);
+    const result = classifyOrdersByReservationSchedule(
+      [order],
+      reservationMap(reservation),
+      NOW,
+    );
+
+    expect(result.activeOrders).toEqual([]);
+    expect(result.futureOrders).toHaveLength(1);
+    expect(result.futureOrders[0]).toMatchObject({
+      reservationId,
+      customerInfo: {
+        name: "Khách đặt món cùng bàn",
+        timeTo: "2026-07-14T13:00:00.000Z",
+      },
+      clientMeta: {
+        source: "reservation_cart_addon",
+        reservationId,
+      },
+    });
   });
 
   it("keeps a future preorder out of POS even when legacy data attached it early", () => {
