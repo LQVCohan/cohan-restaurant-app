@@ -8,6 +8,7 @@ import {
   StockItem,
   Table,
 } from "../../../models/index.js";
+import { orderBatchOrLegacyFilter } from "../../../utils/orderLifecycle.js";
 import {
   requireAuth,
   requireRestaurantAccess,
@@ -18,6 +19,10 @@ const DEFAULT_RANGE_DAYS = 7;
 const MAX_RECENT_ORDERS = 6;
 const MAX_PENDING_ITEMS = 8;
 const MAX_LOW_STOCK_ITEMS = 8;
+
+const buildDashboardOrderFilter = (baseFilter = {}) => ({
+  $and: [baseFilter, orderBatchOrLegacyFilter()],
+});
 
 const toObjectId = (value) => {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -224,7 +229,12 @@ const managerDashboard = async (_, { restaurantId, range = "week" }, ctx) => {
     workingStaff,
     lowStockItems,
   ] = await Promise.all([
-    Order.find({ restaurantId: rid, createdAt: currentDateFilter })
+    Order.find(
+      buildDashboardOrderFilter({
+        restaurantId: rid,
+        createdAt: currentDateFilter,
+      }),
+    )
       .select({
         orderCode: 1,
         trackingCode: 1,
@@ -246,13 +256,21 @@ const managerDashboard = async (_, { restaurantId, range = "week" }, ctx) => {
       .populate("userId", "fullName")
       .sort({ createdAt: -1 })
       .lean(),
-    Order.find({ restaurantId: rid, createdAt: previousDateFilter })
+    Order.find(
+      buildDashboardOrderFilter({
+        restaurantId: rid,
+        createdAt: previousDateFilter,
+      }),
+    )
       .select({ currentStatus: 1, orderPaymentStatus: 1, payment: 1, totals: 1, createdAt: 1 })
       .lean(),
-    Order.find({
-      restaurantId: rid,
-      currentStatus: { $in: ["pending", "customer_attached"] },
-    })
+    Order.find(
+      buildDashboardOrderFilter({
+        restaurantId: rid,
+        currentStatus: { $in: ["pending", "customer_attached"] },
+        "items.0": { $exists: true },
+      }),
+    )
       .select({
         orderCode: 1,
         userId: 1,
@@ -278,12 +296,14 @@ const managerDashboard = async (_, { restaurantId, range = "week" }, ctx) => {
       .sort({ createdAt: 1 })
       .limit(MAX_PENDING_ITEMS)
       .lean(),
-    Order.find({
-      restaurantId: rid,
-      customerRequests: {
-        $elemMatch: { status: { $in: ["PENDING", "ACKNOWLEDGED"] } },
-      },
-    })
+    Order.find(
+      buildDashboardOrderFilter({
+        restaurantId: rid,
+        customerRequests: {
+          $elemMatch: { status: { $in: ["PENDING", "ACKNOWLEDGED"] } },
+        },
+      }),
+    )
       .select({ orderCode: 1, trackingCode: 1, tableCode: 1, customerRequests: 1 })
       .sort({ "customerRequests.createdAt": 1 })
       .limit(MAX_PENDING_ITEMS)
@@ -376,6 +396,7 @@ const managerDashboard = async (_, { restaurantId, range = "week" }, ctx) => {
 };
 
 export {
+  buildDashboardOrderFilter,
   buildStatusCounts,
   buildTopDishes,
   buildTrend,

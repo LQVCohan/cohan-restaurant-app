@@ -1,7 +1,10 @@
 import Order from "../models/order.model.js";
 import Reservation from "../models/reservation.model.js";
 import {
+  ACTIVE_SESSION_STATUSES,
   INACTIVE_ORDER_STATUSES,
+  KITCHEN_STATUS,
+  SESSION_STATUS,
   activeTableSessionLookupFilter,
   withOrderBatchOrLegacyFilter,
   childOrdersForSessionFilter,
@@ -50,8 +53,10 @@ export async function hasActiveReservationsForTable({ restaurantId, tableId }) {
 }
 
 const SERVED_ITEM_STATUSES = new Set(["served", "cancelled", "returned"]);
+const NON_BILLABLE_ITEM_STATUSES = new Set(["cancelled", "returned"]);
 const hasUnservedItems = (items = []) =>
-  (items || []).some((item) => !SERVED_ITEM_STATUSES.has(String(item?.status || "").toLowerCase()));
+  (items || []).some((item) =>
+    !SERVED_ITEM_STATUSES.has(String(item?.status || "").toLowerCase()));
 
 const isPaymentRequested = (order = {}) =>
   String(order?.orderPaymentStatus || "").toLowerCase() === "payment_requested" ||
@@ -65,6 +70,73 @@ const hasUnpaidAmount = (order = {}) => {
 
 const activeOrderStatus = (order = {}) =>
   !INACTIVE_ORDER_STATUSES.includes(String(order?.currentStatus || "").toLowerCase());
+
+export async function closeEmptyTableSessionForTable({
+  restaurantId,
+  tableId,
+  tableCode,
+  now = new Date(),
+}) {
+  const activeSession = await Order.findOne(
+    activeTableSessionLookupFilter({ restaurantId, tableId, tableCode }),
+  )
+    .select({
+      _id: 1,
+      items: 1,
+      totals: 1,
+      orderPaymentStatus: 1,
+      payment: 1,
+      sessionStatus: 1,
+    })
+    .lean();
+
+  if (!activeSession?._id) return false;
+
+  const activeChildOrder = await Order.findOne({
+    ...childOrdersForSessionFilter({
+      restaurantId,
+      parentOrderId: activeSession._id,
+    }),
+    currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
+  })
+    .select({ _id: 1 })
+    .lean();
+
+  const hasBillableItems = (activeSession.items || []).some(
+    (item) =>
+      !NON_BILLABLE_ITEM_STATUSES.has(
+        String(item?.status || "").toLowerCase(),
+      ),
+  );
+  const hasAmount = Number(activeSession?.totals?.grandTotal || 0) > 0;
+
+  if (
+    activeChildOrder?._id ||
+    hasBillableItems ||
+    hasAmount ||
+    isPaymentRequested(activeSession)
+  ) {
+    return false;
+  }
+
+  const result = await Order.updateOne(
+    {
+      _id: activeSession._id,
+      sessionStatus: { $in: ACTIVE_SESSION_STATUSES },
+    },
+    {
+      $set: {
+        sessionStatus: SESSION_STATUS.CANCELLED,
+        kitchenStatus: KITCHEN_STATUS.CANCELLED,
+        currentStatus: KITCHEN_STATUS.CANCELLED,
+        closedAt: now,
+      },
+      $unset: { activeSessionKey: 1 },
+    },
+  );
+
+  return Number(result?.modifiedCount || 0) > 0;
+}
 
 export async function getTableAvailabilityBlockReason({ restaurantId, tableId, tableCode }) {
   const relatedOrders = [];
