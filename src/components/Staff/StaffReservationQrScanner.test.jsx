@@ -23,10 +23,10 @@ describe("StaffReservationQrScanner", () => {
     mutate.mockReset();
   });
 
-  it("asks for confirmation when the guest arrives early, then checks in", async () => {
+  it("asks for confirmation when Apollo returns an early-arrival combined error, then checks in", async () => {
     mutate
       .mockRejectedValueOnce({
-        graphQLErrors: [
+        errors: [
           {
             extensions: {
               code: "RESERVATION_CHECK_IN_TOO_EARLY",
@@ -64,7 +64,9 @@ describe("StaffReservationQrScanner", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Kiểm tra mã" }));
 
-    expect(await screen.findByRole("heading", { name: "Khách đến sớm" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Khách đến sớm" }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/đến sớm khoảng 30 phút/i)).toBeInTheDocument();
     expect(screen.getByText("Nguyễn Minh Anh")).toBeInTheDocument();
     expect(screen.getByText("T101")).toBeInTheDocument();
@@ -74,7 +76,9 @@ describe("StaffReservationQrScanner", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Đã nhận khách RSV-001 tại Bàn cửa sổ/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Đã nhận khách RSV-001 tại Bàn cửa sổ/i),
+      ).toBeInTheDocument();
     });
 
     expect(mutate).toHaveBeenCalledTimes(2);
@@ -88,9 +92,9 @@ describe("StaffReservationQrScanner", () => {
     });
   });
 
-  it("shows the real permission error only when the account truly cannot operate the reservation", async () => {
+  it("shows the real permission error from Apollo combined errors", async () => {
     mutate.mockRejectedValueOnce({
-      graphQLErrors: [{ extensions: { code: "FORBIDDEN" } }],
+      errors: [{ extensions: { code: "FORBIDDEN" } }],
     });
 
     render(<StaffReservationQrScanner />);
@@ -100,7 +104,9 @@ describe("StaffReservationQrScanner", () => {
     fireEvent.click(screen.getByRole("button", { name: "Kiểm tra mã" }));
 
     expect(
-      await screen.findByText(/Bạn không có quyền thực hiện thao tác đặt bàn này/i),
+      await screen.findByText(
+        /Bạn không có quyền thực hiện thao tác đặt bàn này/i,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "Khách đến sớm" }),
