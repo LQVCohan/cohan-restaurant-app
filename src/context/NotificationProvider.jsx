@@ -34,7 +34,7 @@ const USER_FACING_EVENT_CODE_LABELS = {
   MENU_ITEM_AVAILABLE_AGAIN: "món đã có thể bán lại",
 };
 
-const RAW_EVENT_CODE_PATTERN = /\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+){2,}\b/g;
+const RAW_EVENT_CODE_PATTERN = /\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+){1,}\b/g;
 const REALTIME_EVENT_TOAST_PATTERN =
   /^\s*(?:realtime|cập nhật mới)\s*:\s*([A-Z][A-Z0-9_]+)(?:\s*\(([^)]+)\))?\s*[.!]?\s*$/i;
 
@@ -44,7 +44,6 @@ const buildRealtimeEventCopy = (message) => {
 
   const eventCode = String(match[1] || "").toUpperCase();
   const tableCode = String(match[2] || "").trim();
-  const tableSubject = tableCode ? `bàn ${tableCode}` : "đơn hàng";
   const orderSubject = tableCode ? `Đơn tại bàn ${tableCode}` : "Đơn hàng";
 
   switch (eventCode) {
@@ -57,7 +56,9 @@ const buildRealtimeEventCopy = (message) => {
     case "ORDER_UPDATED":
       return `${orderSubject} vừa được cập nhật.`;
     case "ORDER_STATUS_CHANGED":
-      return `Trạng thái đơn tại ${tableSubject} vừa thay đổi.`;
+      return tableCode
+        ? `Trạng thái đơn tại bàn ${tableCode} vừa thay đổi.`
+        : "Trạng thái đơn hàng vừa thay đổi.";
     case "ORDER_CANCELLED":
       return `${orderSubject} đã bị hủy.`;
     case "ORDER_ITEM_UPDATED":
