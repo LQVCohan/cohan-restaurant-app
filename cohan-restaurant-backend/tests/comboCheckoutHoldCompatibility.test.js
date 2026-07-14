@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import {
   getSyntheticComboHoldExpiry,
   isComboCheckoutItem,
+  normalizeComboCheckoutItem,
   withComboCheckoutHoldCompatibility,
 } from "../graphql/resolvers/order/comboCheckoutHoldCompatibility.js";
 
@@ -18,6 +19,49 @@ describe("combo checkout cart-hold compatibility", () => {
     expect(getSyntheticComboHoldExpiry(now).toISOString()).toBe(
       "2026-07-14T00:05:00.000Z",
     );
+  });
+
+  it("builds a schema-valid order snapshot for a combo cart item", () => {
+    const normalized = normalizeComboCheckoutItem(
+      {
+        itemType: "COMBO",
+        comboId: "507f1f77bcf86cd799439011",
+        restaurantId: "507f1f77bcf86cd799439012",
+        quantity: 1,
+      },
+      {
+        itemType: "COMBO",
+        comboId: "507f1f77bcf86cd799439011",
+        restaurantId: "507f1f77bcf86cd799439012",
+        menuItemId: "507f191e810c19729de860ea",
+        name: "Combo sáng",
+        price: 89000,
+        quantity: 1,
+        comboSnapshot: {
+          comboPrice: 89000,
+          items: [{ menuItemId: "507f191e810c19729de860ea" }],
+        },
+      },
+      {
+        cartId: "507f1f77bcf86cd799439013",
+        cartItemId: "507f1f77bcf86cd799439014",
+      },
+      {
+        _id: "507f191e810c19729de860ea",
+        categoryId: "507f1f77bcf86cd799439015",
+      },
+    );
+
+    expect(normalized.categoryId).toBe("507f1f77bcf86cd799439015");
+    expect(normalized.basePrice).toBe(89000);
+    expect(normalized.servingVariant).toEqual({
+      key: "portion",
+      name: "Combo",
+      mode: "PORTION",
+      price: 89000,
+      sellQty: 1,
+      sellUnit: "portion",
+    });
   });
 
   it("does not touch the database for a checkout containing only regular menu items", async () => {
@@ -66,6 +110,8 @@ describe("combo checkout cart-hold compatibility", () => {
     expect(source).toContain(
       "comboSnapshot: cloneSnapshot(cartItem.comboSnapshot)",
     );
+    expect(source).toContain("categoryId: String(categoryId)");
+    expect(source).toContain("servingVariant: {");
     expect(source).toContain("await restoreComboHoldExpiries(prepared)");
     expect(resolverIndex).toContain(
       "withComboCheckoutHoldCompatibility(CanonicalCheckoutOrderMutation)",
