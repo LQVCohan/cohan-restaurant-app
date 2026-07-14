@@ -294,7 +294,7 @@ const OrderCard = ({
   };
 
   const renderActions = () => {
-    const status = order?.currentStatus;
+    const status = normalizeStatus(order?.currentStatus);
     if (isActionLoading) {
       return (
         <div className="oc-loading-bar">
@@ -376,6 +376,16 @@ const OrderCard = ({
               <Check size={16} /> Nhận đơn
             </button>
           </div>
+        );
+      case "confirmed":
+        return (
+          <button
+            type="button"
+            className="oc-btn primary"
+            onClick={(e) => handleAction(e, "preparing")}
+          >
+            <ChefHat size={16} /> Bắt đầu chế biến
+          </button>
         );
       case "preparing":
         return (
