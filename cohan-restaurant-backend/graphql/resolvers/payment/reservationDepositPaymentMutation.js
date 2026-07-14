@@ -222,10 +222,10 @@ function getDepositDisposition(reservation) {
     total,
     Math.max(0, Number(reservation?.depositAppliedAmount || 0)),
   );
-  const tablePreviouslyApplied = Math.min(table, alreadyApplied);
-  const menuPreviouslyApplied = Math.min(
-    menu,
-    Math.max(0, alreadyApplied - tablePreviouslyApplied),
+  const menuPreviouslyApplied = Math.min(menu, alreadyApplied);
+  const tablePreviouslyApplied = Math.min(
+    table,
+    Math.max(0, alreadyApplied - menuPreviouslyApplied),
   );
   const tableRemaining = Math.max(0, table - tablePreviouslyApplied);
   const menuRemaining = Math.max(0, menu - menuPreviouslyApplied);
@@ -258,13 +258,13 @@ function allocateDepositCredit(reservations, grossTotal) {
     if (!(available > 0) && !(disposition.tableDepositRetained > 0)) continue;
 
     const appliedAmount = Math.min(available, remaining);
-    const tableApplied = Math.min(
-      appliedAmount,
-      disposition.tableCreditAvailable,
-    );
     const menuApplied = Math.min(
-      Math.max(0, appliedAmount - tableApplied),
+      appliedAmount,
       disposition.menuCreditAvailable,
+    );
+    const tableApplied = Math.min(
+      Math.max(0, appliedAmount - menuApplied),
+      disposition.tableCreditAvailable,
     );
 
     breakdown.push({
