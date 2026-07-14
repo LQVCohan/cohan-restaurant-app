@@ -4,12 +4,9 @@ import styles from "./POSLayout.module.scss";
 import LeftPanel from "./LeftPanel";
 import CenterPanel from "./CenterPanel";
 import RightPanel from "./RightPanel";
-import TablePaymentRequestNotice from "./TablePaymentRequestNotice";
 import PosMenuAvailabilityRealtimeNotice from "./PosMenuAvailabilityRealtimeNotice";
 import PosReservationRealtimeNotice from "./PosReservationRealtimeNotice";
-import PosIncomingTableOrderQueue from "./PosIncomingTableOrderQueue";
-import CustomerRequestQueuePanel from "./CustomerRequestQueuePanel";
-import EligibleGiftSuggestionPanel from "./EligibleGiftSuggestionPanel";
+import PosNotificationCenter from "./PosNotificationCenter";
 import DiscountCouponDock from "./DiscountCouponDock";
 import PosDiscountSummaryOverlay from "./PosDiscountSummaryOverlay";
 import ThirdPartyShippingPanel from "./ThirdPartyShippingPanel";
@@ -19,14 +16,7 @@ import PosProvider, { usePos } from "../../../../../context/PosContext";
 import { AuthContext } from "../../../../../context/AuthContext";
 import useManagerRestaurantSelection from "../../../../../hooks/useManagerRestaurantSelection";
 
-function POSContent({ restaurantId }) {
-  const { loadPaymentRequestToPOS } = usePos();
-
-  const handleOpenPayment = async (orderId) => {
-    if (!orderId) return;
-    await loadPaymentRequestToPOS?.({ orderId, orderType: "dine_in" });
-  };
-
+function POSContent() {
   return (
     <div className={styles.shell}>
       <div className={styles.leftCol}>
@@ -43,13 +33,6 @@ function POSContent({ restaurantId }) {
 
       <div className={styles.rightCol}>
         <div className={styles.card} style={{ position: "relative" }}>
-          <PosIncomingTableOrderQueue restaurantId={restaurantId} />
-          <CustomerRequestQueuePanel
-            restaurantId={restaurantId}
-            onOpenPayment={handleOpenPayment}
-          />
-          <TablePaymentRequestNotice />
-          <EligibleGiftSuggestionPanel />
           <RightPanel />
           <DiscountCouponDock />
           <ThirdPartyShippingPanel />
@@ -70,6 +53,7 @@ function RestaurantBar({
   onRestaurantChange,
   onToggleLock,
   showSplitAction = false,
+  notificationCenter = null,
 }) {
   return (
     <div className={styles.restaurantBar}>
@@ -121,6 +105,7 @@ function RestaurantBar({
         }}
       >
         <TransferQueueBell restaurantId={restaurantId} />
+        {notificationCenter}
         {showSplitAction && <TableOrderSplitDock />}
         <button
           type="button"
@@ -133,6 +118,28 @@ function RestaurantBar({
         </button>
       </div>
     </div>
+  );
+}
+
+function ActiveRestaurantBar({ restaurantBarProps, restaurantId }) {
+  const { loadPaymentRequestToPOS } = usePos();
+
+  const handleOpenPayment = async (orderId) => {
+    if (!orderId) return;
+    await loadPaymentRequestToPOS?.({ orderId, orderType: "dine_in" });
+  };
+
+  return (
+    <RestaurantBar
+      {...restaurantBarProps}
+      showSplitAction
+      notificationCenter={
+        <PosNotificationCenter
+          restaurantId={restaurantId}
+          onOpenPayment={handleOpenPayment}
+        />
+      }
+    />
   );
 }
 
@@ -263,10 +270,13 @@ export default function POSLayout() {
     <PosProvider key={restaurantId} restaurantId={restaurantId}>
       <div className={styles.page}>
         <style>{`[class*="transferReviewPanel"]{display:none!important;}`}</style>
-        <RestaurantBar {...restaurantBarProps} showSplitAction />
+        <ActiveRestaurantBar
+          restaurantBarProps={restaurantBarProps}
+          restaurantId={restaurantId}
+        />
         <PosMenuAvailabilityRealtimeNotice restaurantId={restaurantId} />
         <PosReservationRealtimeNotice restaurantId={restaurantId} />
-        <POSContent restaurantId={restaurantId} />
+        <POSContent />
       </div>
     </PosProvider>
   );

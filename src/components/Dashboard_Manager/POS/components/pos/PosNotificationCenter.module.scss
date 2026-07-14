@@ -1,0 +1,143 @@
+.notificationCenter {
+  position: relative;
+  z-index: 70;
+}
+
+.trigger {
+  min-height: 38px;
+  border: 1px solid #d7e0ea;
+  border-radius: 999px;
+  padding: 0.48rem 0.78rem;
+  background: #fff;
+  color: #334155;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 850;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+
+  &:hover,
+  &:focus-visible,
+  &.triggerOpen {
+    border-color: #fdba74;
+    background: #fff7ed;
+    color: #c2410c;
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(249, 115, 22, 0.18);
+    outline-offset: 2px;
+  }
+}
+
+.chevron,
+.chevronOpen {
+  transition: transform 160ms ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.popover {
+  position: absolute;
+  top: calc(100% + 9px);
+  right: 0;
+  width: min(470px, calc(100vw - 24px));
+  max-height: min(72vh, 720px);
+  border: 1px solid #dce4ed;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #f8fafc;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.2);
+  z-index: 120;
+}
+
+.popover[hidden] {
+  display: none;
+}
+
+.popoverHeader {
+  min-height: 64px;
+  padding: 0.8rem 0.9rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+
+  div {
+    min-width: 0;
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  strong {
+    color: #172033;
+    font-size: 0.95rem;
+  }
+
+  span {
+    color: #64748b;
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+}
+
+.closeButton {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    border-color: #cbd5e1;
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+}
+
+.popoverBody {
+  max-height: calc(min(72vh, 720px) - 65px);
+  padding: 0.75rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #f8fafc;
+
+  > * {
+    width: 100%;
+  }
+
+  > *:last-child {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .popover {
+    width: min(470px, calc(100vw - 1.2rem));
+    max-height: 68vh;
+  }
+
+  .popoverBody {
+    max-height: calc(68vh - 65px);
+  }
+}
