@@ -7,6 +7,13 @@ import {
   filterKitchenVisibleOrders,
   isStaffKitchenWorkspacePath,
 } from "@/utils/kitchenOrderVisibility";
+import {
+  getDineInDraftStorageKeys,
+  getExplicitDineInDraftItems,
+  getSubmittedDraftKeys,
+  markSubmittedDineInDraftsPersisted,
+  normalizeDineInOrderItemsForPersistence,
+} from "@/utils/posDineInDraftLifecycle";
 
 const PAY_SELECTED_TABLE_ORDERS = gql`
   mutation PaySelectedTableOrders($input: PayOrdersByOrderIdsInput!) {
@@ -75,7 +82,20 @@ const selectionMatchesContext = (selection, { restaurantId, tableId } = {}) => {
 };
 
 export default function useOrderManagement(pos = null) {
-  const legacy = useOrderManagementLegacy(pos);
+  const isDineIn =
+    !pos?.currentOrderType || pos.currentOrderType === "dine_in";
+  const normalizedCurrentOrder = useMemo(
+    () =>
+      isDineIn
+        ? normalizeDineInOrderItemsForPersistence(pos?.currentOrder)
+        : pos?.currentOrder,
+    [isDineIn, pos?.currentOrder],
+  );
+  const legacyPos = useMemo(
+    () => (pos ? { ...pos, currentOrder: normalizedCurrentOrder } : pos),
+    [normalizedCurrentOrder, pos],
+  );
+  const legacy = useOrderManagementLegacy(legacyPos);
   const [paySelectedOrders, { loading: paySelectedOrdersLoading }] =
     useMutation(PAY_SELECTED_TABLE_ORDERS);
   const kitchenWorkspace = isStaffKitchenWorkspacePath(
@@ -89,6 +109,51 @@ export default function useOrderManagement(pos = null) {
     [kitchenWorkspace, legacy.ordersNow],
   );
 
+  const saveOrder = useCallback(
+    async (options = {}) => {
+      if (!isDineIn) return legacy.saveOrder(options);
+
+      const drafts = getExplicitDineInDraftItems(normalizedCurrentOrder);
+      if (!drafts.length) {
+        return {
+          success: true,
+          message: "Không có món mới (draft) để lưu.",
+          skipped: [],
+          data: null,
+        };
+      }
+
+      const submittedKeys = getSubmittedDraftKeys(drafts);
+      const result = await legacy.saveOrder(options);
+      if (!result?.success) return result;
+
+      if (typeof localStorage !== "undefined") {
+        getDineInDraftStorageKeys({
+          restaurantId: options.restaurantId || pos?.restaurantId,
+          table: pos?.currentTable,
+        }).forEach((key) => {
+          try {
+            localStorage.removeItem(key);
+          } catch {}
+        });
+      }
+
+      pos?.setCurrentOrder?.((items) =>
+        markSubmittedDineInDraftsPersisted(items, submittedKeys),
+      );
+
+      return result;
+    },
+    [
+      isDineIn,
+      legacy.saveOrder,
+      normalizedCurrentOrder,
+      pos?.currentTable,
+      pos?.restaurantId,
+      pos?.setCurrentOrder,
+    ],
+  );
+
   const confirmPayment = useCallback(
     async ({
       restaurantId,
@@ -100,13 +165,13 @@ export default function useOrderManagement(pos = null) {
       promotionIds = [],
     } = {}) => {
       const currentOrderType = pos?.currentOrderType;
-      const isDineIn = !currentOrderType || currentOrderType === "dine_in";
+      const isDineInPayment = !currentOrderType || currentOrderType === "dine_in";
       const tableId =
         pos?.currentTable?.id || pos?.currentTable?._id || null;
       const selection = getPartialTablePaymentSelection();
 
       if (
-        !isDineIn ||
+        !isDineInPayment ||
         !selectionMatchesContext(selection, { restaurantId, tableId })
       ) {
         return legacy.confirmPayment({
@@ -219,6 +284,7 @@ export default function useOrderManagement(pos = null) {
 
   return {
     ...legacy,
+    saveOrder,
     ordersNow: visibleOrdersNow,
     confirmPayment,
     resolvePayableOrderIds,
