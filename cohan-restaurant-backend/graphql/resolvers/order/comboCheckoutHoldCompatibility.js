@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Cart } from "../../../models/index.js";
+import { Cart, MenuItem } from "../../../models/index.js";
 
 const COMBO_HOLD_TTL_MS = 5 * 60 * 1000;
 const CART_HOLD_CHECKOUT_ERROR =
@@ -41,20 +41,54 @@ function cloneSnapshot(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function normalizeComboCheckoutItem(rawItem, cartItem, refs) {
-  const menuItemId = cartItem.menuItemId || rawItem.dishId || rawItem.menuId;
+function getComboPrice(cartItem = {}) {
+  const price = Number(
+    cartItem?.comboSnapshot?.comboPrice ?? cartItem?.price ?? 0,
+  );
+  return Number.isFinite(price) && price >= 0 ? price : 0;
+}
+
+export function normalizeComboCheckoutItem(
+  rawItem,
+  cartItem,
+  refs,
+  menuItem,
+) {
+  const menuItemId =
+    cartItem.menuItemId ||
+    cartItem.comboSnapshot?.items?.[0]?.menuItemId ||
+    rawItem.dishId ||
+    rawItem.menuId;
+  const categoryId = menuItem?.categoryId || rawItem.categoryId;
+  if (!menuItemId || !categoryId) throwInvalidCartHold();
+
+  const servingKey =
+    rawItem.servingKey || cartItem.servingKey || rawItem.servingVariant?.key || "portion";
+  const comboPrice = getComboPrice(cartItem);
+
   return {
     ...rawItem,
     itemType: "COMBO",
     comboId: String(cartItem.comboId),
     comboSnapshot: cloneSnapshot(cartItem.comboSnapshot),
     restaurantId: String(cartItem.restaurantId),
-    dishId: menuItemId ? String(menuItemId) : rawItem.dishId,
-    menuId: menuItemId ? String(menuItemId) : rawItem.menuId,
+    dishId: String(menuItemId),
+    menuId: String(menuItemId),
+    categoryId: String(categoryId),
     name: cartItem.name || rawItem.name,
+    unit: rawItem.unit || "combo",
     image: cartItem.thumbImage || rawItem.image,
     quantity: Number(cartItem.quantity || 1),
-    servingKey: rawItem.servingKey || "portion",
+    basePrice: comboPrice,
+    servingKey,
+    servingVariant: {
+      key: servingKey,
+      name: cartItem.servingName || "Combo",
+      mode: "PORTION",
+      price: comboPrice,
+      sellQty: 1,
+      sellUnit: "portion",
+    },
     cartId: refs.cartId,
     cartItemId: refs.cartItemId,
   };
@@ -119,6 +153,20 @@ async function prepareComboCheckoutItems({ items = [], ctx }) {
           throwInvalidCartHold();
         }
 
+        const comboMenuItemId =
+          cartItem.menuItemId || cartItem.comboSnapshot?.items?.[0]?.menuItemId;
+        const menuItemObjectId = toObjectId(comboMenuItemId);
+        if (!menuItemObjectId) throwInvalidCartHold();
+
+        const menuItem = await MenuItem.findOne({
+          _id: menuItemObjectId,
+          restaurantId: cartItem.restaurantId,
+        })
+          .select("_id categoryId")
+          .session(session)
+          .lean();
+        if (!menuItem?.categoryId) throwInvalidCartHold();
+
         const previousHoldExpiresAt = cartItem.holdExpiresAt || null;
         const expiry = previousHoldExpiresAt
           ? new Date(previousHoldExpiresAt)
@@ -135,7 +183,12 @@ async function prepareComboCheckoutItems({ items = [], ctx }) {
           cartItemId: String(cartItem._id),
           previousHoldExpiresAt,
         });
-        nextItems[index] = normalizeComboCheckoutItem(rawItem, cartItem, refs);
+        nextItems[index] = normalizeComboCheckoutItem(
+          rawItem,
+          cartItem,
+          refs,
+          menuItem,
+        );
       }
     });
   } finally {
