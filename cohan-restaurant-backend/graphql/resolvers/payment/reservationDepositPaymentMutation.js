@@ -192,24 +192,28 @@ function isTableDepositCreditEligible(reservation) {
 
 function deriveDepositComponents(reservation) {
   const total = Math.max(0, Number(reservation?.depositAmount || 0));
+  const storedMenu = Math.max(0, Number(reservation?.menuDepositAmount || 0));
+  const storedTable = Math.max(0, Number(reservation?.tableDepositAmount || 0));
+  const storedBreakdownIsComplete =
+    total === 0 || Math.abs(storedMenu + storedTable - total) < 0.5;
+
+  if (storedBreakdownIsComplete) {
+    return {
+      total,
+      menu: Math.min(total, storedMenu),
+      table: Math.min(total, storedTable),
+    };
+  }
+
   const menu = Math.min(
     total,
-    Math.max(
-      0,
-      Number(
-        reservation?.menuDepositAmount ??
-          Math.round(Number(reservation?.linkedMenuSubtotal || 0) * 0.5),
-      ),
-    ),
+    Math.max(0, Math.round(Number(reservation?.linkedMenuSubtotal || 0) * 0.5)),
   );
-  const table = Math.min(
-    Math.max(0, total - menu),
-    Math.max(
-      0,
-      Number(reservation?.tableDepositAmount ?? total - menu),
-    ),
-  );
-  return { total, menu, table };
+  return {
+    total,
+    menu,
+    table: Math.max(0, total - menu),
+  };
 }
 
 function getDepositDisposition(reservation) {
