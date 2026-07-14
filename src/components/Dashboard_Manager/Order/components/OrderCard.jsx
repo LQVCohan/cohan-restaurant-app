@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   StickyNote,
 } from "lucide-react";
+import { isTableQrOrderAwaitingStaffConfirmation } from "@/utils/kitchenOrderVisibility";
 import "./OrderCard.scss";
 
 /* --- HELPERS --- */
@@ -267,7 +268,11 @@ const OrderCard = ({
         ? "Mang về"
         : order?.tableCode || "Tại bàn";
 
-  const statusLabel = getOrderStatusLabel(order?.currentStatus);
+  const awaitingStaffConfirmation =
+    isTableQrOrderAwaitingStaffConfirmation(order);
+  const statusLabel = awaitingStaffConfirmation
+    ? "Chờ nhân viên nhận"
+    : getOrderStatusLabel(order?.currentStatus);
   const batchTitle = getBatchTitle(order);
   const progressStep = Math.max(0, Math.min(100, Math.round(progress / 10) * 10));
   const orderDisplayCode = order?.orderCode || order?.id || "Chưa có mã";
@@ -305,6 +310,18 @@ const OrderCard = ({
 
     switch (status) {
       case "pending":
+        if (awaitingStaffConfirmation) {
+          return (
+            <button
+              type="button"
+              className="oc-btn secondary"
+              disabled
+              title="Đơn có món cần ảnh minh chứng và phải được nhân viên/POS xác nhận trước."
+            >
+              <Clock size={16} /> Chờ nhân viên nhận
+            </button>
+          );
+        }
         if (isRemoteStaffPending) {
           return (
             <div className="oc-actions-grid">

@@ -15,6 +15,23 @@ const baseOrder = {
   totals: { grandTotal: 120000 },
 };
 
+const proofRequiredQrOrder = {
+  ...baseOrder,
+  orderCode: "QR-20260714-T106-PROOF",
+  tableCode: "T106",
+  clientMeta: { source: "customer_table_qr" },
+  items: [
+    {
+      dishId: "dish-weighted",
+      name: "Cua Cà Mau sốt me",
+      quantity: 1,
+      status: "pending",
+      unit: "kg",
+      servingVariant: { mode: "BY_WEIGHT", sellUnit: "kg" },
+    },
+  ],
+};
+
 describe("OrderCard operations UI", () => {
   it("renders orderCode instead of the raw id when orderCode is available", () => {
     render(<OrderCard order={baseOrder} />);
@@ -40,12 +57,50 @@ describe("OrderCard operations UI", () => {
     );
   });
 
-  it("starts preparation from a confirmed order using its action order id", async () => {
+  it("shows a locked waiting state for a proof-required pending QR order", () => {
+    const onUpdateStatus = vi.fn();
+    render(
+      <OrderCard
+        order={proofRequiredQrOrder}
+        onUpdateStatus={onUpdateStatus}
+        isFocusMode
+      />,
+    );
+
+    expect(screen.getAllByText("Chờ nhân viên nhận")).toHaveLength(2);
+    const waitingButton = screen.getByRole("button", {
+      name: /chờ nhân viên nhận/i,
+    });
+    expect(waitingButton).toBeDisabled();
+    fireEvent.click(waitingButton);
+    expect(onUpdateStatus).not.toHaveBeenCalled();
+  });
+
+  it("allows a pending QR order without proof-required items to be received", async () => {
     const onUpdateStatus = vi.fn().mockResolvedValue(undefined);
     render(
       <OrderCard
         order={{
           ...baseOrder,
+          clientMeta: { source: "customer_table_qr" },
+        }}
+        onUpdateStatus={onUpdateStatus}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /nhận đơn/i }));
+
+    await waitFor(() =>
+      expect(onUpdateStatus).toHaveBeenCalledWith(baseOrder.id, "preparing"),
+    );
+  });
+
+  it("starts preparation from a confirmed order using its action order id", async () => {
+    const onUpdateStatus = vi.fn().mockResolvedValue(undefined);
+    render(
+      <OrderCard
+        order={{
+          ...proofRequiredQrOrder,
           currentStatus: "confirmed",
           actionOrderId: "confirmed-action-order-7",
         }}
@@ -53,6 +108,7 @@ describe("OrderCard operations UI", () => {
       />,
     );
 
+    expect(screen.getByText("Đã nhận")).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", { name: /bắt đầu chế biến/i }),
     );

@@ -45,12 +45,24 @@ function weightedItem(overrides = {}) {
   };
 }
 
+function regularItem(overrides = {}) {
+  return {
+    _id: itemId,
+    name: "Phở bò đặc biệt",
+    status: "pending",
+    unit: "phần",
+    servingVariant: { mode: "FIXED", sellUnit: "phần" },
+    proofImages: [],
+    ...overrides,
+  };
+}
+
 describe("withIncomingOrderProofGuard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("blocks kitchen handoff when a by-weight item has no proof", async () => {
+  it("blocks staff confirmation when a by-weight item has no proof", async () => {
     mockOrder({
       currentStatus: "pending",
       clientMeta: {},
@@ -76,7 +88,7 @@ describe("withIncomingOrderProofGuard", () => {
     expect(original).not.toHaveBeenCalled();
   });
 
-  it("delegates after proof and weight are complete", async () => {
+  it("delegates staff confirmation after proof and weight are complete", async () => {
     mockOrder({
       currentStatus: "pending",
       clientMeta: {},
@@ -156,5 +168,113 @@ describe("withIncomingOrderProofGuard", () => {
       ),
     ).rejects.toThrow("thiếu cân nặng");
     expect(original).not.toHaveBeenCalled();
+  });
+
+  it("blocks an order-level kitchen pickup for a pending QR order that requires proof", async () => {
+    mockOrder({
+      currentStatus: "pending",
+      clientMeta: { source: "customer_table_qr" },
+      items: [weightedItem({ proofImages: ["/uploads/proof.jpg"] })],
+    });
+    const original = vi.fn();
+    const { withIncomingOrderProofGuard } = await import(
+      "../../graphql/resolvers/order/incomingOrderProofGuard.js"
+    );
+    const guarded = withIncomingOrderProofGuard({ updateOrderStatus: original });
+
+    await expect(
+      guarded.updateOrderStatus(
+        null,
+        { input: { id: orderId, restaurantId, status: "preparing" } },
+        {},
+        {},
+      ),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining("chờ nhân viên/POS xác nhận"),
+      extensions: expect.objectContaining({
+        code: "ORDER_STAFF_CONFIRMATION_REQUIRED",
+      }),
+    });
+    expect(original).not.toHaveBeenCalled();
+  });
+
+  it("blocks an item-level kitchen pickup for a pending QR order that requires proof", async () => {
+    mockOrder({
+      currentStatus: "pending",
+      clientMeta: { source: "customer_table_qr" },
+      items: [weightedItem()],
+    });
+    const original = vi.fn();
+    const { withIncomingOrderProofGuard } = await import(
+      "../../graphql/resolvers/order/incomingOrderProofGuard.js"
+    );
+    const guarded = withIncomingOrderProofGuard({ updateOrderItemStatus: original });
+
+    await expect(
+      guarded.updateOrderItemStatus(
+        null,
+        {
+          input: {
+            orderId,
+            itemKey: itemId,
+            restaurantId,
+            status: "preparing",
+          },
+        },
+        {},
+        {},
+      ),
+    ).rejects.toMatchObject({
+      extensions: expect.objectContaining({
+        code: "ORDER_STAFF_CONFIRMATION_REQUIRED",
+      }),
+    });
+    expect(original).not.toHaveBeenCalled();
+  });
+
+  it("allows the kitchen to receive a pending QR order without proof-required items", async () => {
+    mockOrder({
+      currentStatus: "pending",
+      clientMeta: { source: "customer_table_qr" },
+      items: [regularItem()],
+    });
+    const original = vi.fn(async () => ({ id: orderId, currentStatus: "preparing" }));
+    const { withIncomingOrderProofGuard } = await import(
+      "../../graphql/resolvers/order/incomingOrderProofGuard.js"
+    );
+    const guarded = withIncomingOrderProofGuard({ updateOrderStatus: original });
+
+    await expect(
+      guarded.updateOrderStatus(
+        null,
+        { input: { id: orderId, restaurantId, status: "preparing" } },
+        {},
+        {},
+      ),
+    ).resolves.toEqual({ id: orderId, currentStatus: "preparing" });
+    expect(original).toHaveBeenCalledOnce();
+  });
+
+  it("allows kitchen pickup after staff confirmation changed the order status", async () => {
+    mockOrder({
+      currentStatus: "confirmed",
+      clientMeta: { source: "customer_table_qr" },
+      items: [weightedItem({ proofImages: ["/uploads/proof.jpg"] })],
+    });
+    const original = vi.fn(async () => ({ id: orderId, currentStatus: "preparing" }));
+    const { withIncomingOrderProofGuard } = await import(
+      "../../graphql/resolvers/order/incomingOrderProofGuard.js"
+    );
+    const guarded = withIncomingOrderProofGuard({ updateOrderStatus: original });
+
+    await expect(
+      guarded.updateOrderStatus(
+        null,
+        { input: { id: orderId, restaurantId, status: "preparing" } },
+        {},
+        {},
+      ),
+    ).resolves.toEqual({ id: orderId, currentStatus: "preparing" });
+    expect(original).toHaveBeenCalledOnce();
   });
 });
