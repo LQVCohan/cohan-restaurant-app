@@ -1,8 +1,5 @@
 import { getRefreshUrl } from "@/lib/apiBaseUrl";
-import {
-  publishAnonymousSession,
-  publishAuthenticatedSession,
-} from "@/lib/authStorage";
+import { publishAuthenticatedSession } from "@/lib/authStorage";
 
 export const STALE_AUTH_REFRESH_CODE = "STALE_AUTH_REFRESH";
 export const TRANSIENT_AUTH_REFRESH_CODE = "TRANSIENT_AUTH_REFRESH";
@@ -92,8 +89,12 @@ export function refreshAccessTokenOnce() {
           throw createStaleAuthRefreshError();
         }
 
+        // A rejected refresh cookie does not prove that the access token stored
+        // by this tab is invalid. Private/mobile browsers may block a cross-site
+        // cookie while the bearer token is still valid after reload. The caller
+        // that receives an actual UNAUTHENTICATED response is responsible for
+        // publishing an anonymous session.
         if (payload?.token) publishAuthenticatedSession(payload);
-        else publishAnonymousSession("refresh_rejected");
         return payload;
       })
       .catch((error) => {
