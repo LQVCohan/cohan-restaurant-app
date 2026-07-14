@@ -245,33 +245,19 @@ const PartTimeScheduleWorkspace = () => {
     setModalContext({ date, startTime });
   };
 
-  const validateEmployee = async ({ employeeId, startTime, endTime, overrideReason }) => {
+  const validateEmployee = async ({ employeeId, startTime, endTime }) => {
     const response = await validateShiftAssignment({
       variables: {
         input: {
           employeeId,
           restaurantId: selectedRestaurantId,
-          shiftType: "ROTATING",
           startTime: startTime.toISOString(),
           endTime: endTime.toISOString(),
-          allowOverride: true,
-          overrideReason: "__PART_TIME_SHIFT_PRECHECK__",
         },
       },
     });
     const validation = response?.data?.validateShiftAssignment;
     if (!validation) throw new Error("Không nhận được kết quả kiểm tra xếp ca.");
-    if (!validation.ok) {
-      throw new Error(
-        (validation.blockingErrors || []).map((issue) => issue.message).join("\n") ||
-          "Nhân viên không đủ điều kiện nhận ca.",
-      );
-    }
-    if (validation.warnings?.length && !overrideReason) {
-      throw new Error(
-        `${validation.warnings.map((issue) => issue.message).join("; ")} Vui lòng nhập lý do ghi đè để tiếp tục.`,
-      );
-    }
     return validation;
   };
 
@@ -294,9 +280,27 @@ const PartTimeScheduleWorkspace = () => {
             employeeId,
             startTime: range.startTime,
             endTime: range.endTime,
-            overrideReason: payload.overrideReason,
           });
-          const hasWarnings = Boolean(validation.warnings?.length);
+          const blockingMessages = (validation.blockingErrors || [])
+            .map((issue) => issue.message)
+            .filter(Boolean);
+          const warningMessages = (validation.warnings || [])
+            .map((issue) => issue.message)
+            .filter(Boolean);
+          const hasOverrideReason = Boolean(payload.overrideReason);
+          const needsOverride = !validation.ok || warningMessages.length > 0;
+
+          if (!validation.ok && !hasOverrideReason) {
+            throw new Error(
+              blockingMessages.join("\n") || "Nhân viên không đủ điều kiện nhận ca.",
+            );
+          }
+          if (warningMessages.length && !hasOverrideReason) {
+            throw new Error(
+              `${warningMessages.join("; ")} Vui lòng nhập lý do ghi đè để tiếp tục.`,
+            );
+          }
+
           await createShift({
             variables: {
               input: {
@@ -307,8 +311,11 @@ const PartTimeScheduleWorkspace = () => {
                 endTime: range.endTime.toISOString(),
                 status: "scheduled",
                 notes: payload.notes || "Ca bán thời gian",
-                allowOverride: hasWarnings,
-                overrideReason: hasWarnings ? payload.overrideReason : undefined,
+                allowOverride: needsOverride && hasOverrideReason,
+                overrideReason:
+                  needsOverride && hasOverrideReason
+                    ? payload.overrideReason
+                    : undefined,
               },
             },
           });
