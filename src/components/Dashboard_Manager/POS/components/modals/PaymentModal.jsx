@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import PaymentModalLegacy from "./PaymentModalLegacy";
+import ReservationDepositPaymentModal from "./ReservationDepositPaymentModal";
 import { usePos } from "@/context/PosContext";
 import useOrderManagement from "@/hooks/useOrderManagement";
 import { groupItemsByBatch } from "@/utils/orderBatchGrouping";
@@ -351,13 +352,17 @@ export default function PaymentModal(props) {
     String(reservationDeposit.depositStatus || "").toLowerCase() === "paid" &&
     Number(reservationDeposit.depositAmount || 0) > 0;
 
+  const PaymentComponent = reservationSettlement
+    ? ReservationDepositPaymentModal
+    : PaymentModalLegacy;
+
   return (
     <>
-      <PaymentModalLegacy
+      <PaymentComponent
         {...props}
         order={legacyDisplayItems}
         totalAmount={selectedTotalAmount}
-        reservationSettlement={reservationSettlement}
+        {...(reservationSettlement ? { reservationSettlement } : {})}
         onComplete={handleComplete}
       />
 
