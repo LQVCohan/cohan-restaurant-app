@@ -10,6 +10,7 @@ const DEFAULT_MONGO_URI = "mongodb://127.0.0.1:27017/RestaurantDB";
 
 const LEGACY_MISALIGNED_COMBO_NAMES = [
   "Combo sáng Phở & Trà đào",
+  "Combo thanh nhẹ",
   "Combo tối Bò lúc lắc",
 ];
 
