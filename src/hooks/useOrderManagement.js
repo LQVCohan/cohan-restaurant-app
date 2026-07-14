@@ -1,6 +1,7 @@
 import { gql, useMutation } from "@apollo/client";
 import { useCallback, useMemo } from "react";
 import useOrderManagementLegacy from "./useOrderManagementLegacy";
+import { getGraphQLErrorMessage } from "@/utils/graphqlErrorUtils";
 import { getPartialTablePaymentSelection } from "@/utils/partialTablePaymentSelection";
 import {
   filterKitchenVisibleOrders,
@@ -189,17 +190,17 @@ export default function useOrderManagement(pos = null) {
         return {
           success: true,
           data: result,
-          partialPayment: true,
+          partialPayment: selection.isPartial,
           paidOrderIds: orderIds,
         };
       } catch (error) {
-        const message =
-          error?.graphQLErrors?.[0]?.message ||
-          error?.networkError?.result?.errors?.[0]?.message ||
-          error?.message ||
-          "Thanh toán theo đợt thất bại.";
-
-        return { success: false, message };
+        return {
+          success: false,
+          message: getGraphQLErrorMessage(
+            error,
+            "Thanh toán theo đợt thất bại.",
+          ),
+        };
       }
     },
     [legacy, paySelectedOrders, pos?.currentOrderType, pos?.currentTable],
