@@ -16,6 +16,21 @@ describe("graphqlErrorUtils", () => {
     expect(isForbiddenError(error)).toBe(true);
   });
 
+  it("reads business codes from Apollo CombinedGraphQLErrors.errors", () => {
+    const error = {
+      errors: [
+        {
+          message: "Khách đến sớm",
+          extensions: { code: "RESERVATION_CHECK_IN_TOO_EARLY" },
+        },
+      ],
+    };
+
+    expect(getGraphQLErrorCode(error)).toBe(
+      "RESERVATION_CHECK_IN_TOO_EARLY",
+    );
+  });
+
   it("reads UNAUTHENTICATED from network error payload", () => {
     const error = {
       networkError: {
@@ -27,6 +42,16 @@ describe("graphqlErrorUtils", () => {
 
     expect(getGraphQLErrorCode(error)).toBe("UNAUTHENTICATED");
     expect(isUnauthenticatedError(error)).toBe(true);
+  });
+
+  it("reads codes nested under cause", () => {
+    const error = {
+      cause: {
+        errors: [{ extensions: { code: "TABLE_SESSION_CONFLICT" } }],
+      },
+    };
+
+    expect(getGraphQLErrorCode(error)).toBe("TABLE_SESSION_CONFLICT");
   });
 
   it("returns empty code for non-graphql errors", () => {
