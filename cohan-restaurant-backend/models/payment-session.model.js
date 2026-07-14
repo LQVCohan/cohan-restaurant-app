@@ -109,6 +109,7 @@ const PaymentSessionSchema = BaseSchemaModel({
   providerCredentialId: { type: Types.ObjectId, ref: "PaymentProviderCredential", index: true },
   providerCredentialSource: { type: String, enum: ["restaurant", "platform"] },
   providerCredentialMode: { type: String, enum: ["sandbox", "production"] },
+  callbackCredentialCiphertext: { type: String, select: false },
   payUrl: { type: String },
   deeplink: { type: String },
   qrCodeUrl: { type: String },
@@ -131,6 +132,7 @@ const PaymentSessionSchema = BaseSchemaModel({
 PaymentSessionSchema.pre("save", async function attachRestaurantCredential() {
   if (!this.isNew || !this.restaurantId || !EXTERNAL_PROVIDERS.has(String(this.provider))) return;
   const {
+    encryptPaymentCredential,
     getRestaurantProviderMode,
     resolvePaymentProviderCredential,
   } = await import("../src/services/payment/paymentCredential.service.js");
@@ -150,11 +152,24 @@ PaymentSessionSchema.pre("save", async function attachRestaurantCredential() {
   this.providerCredentialId = resolved.credentialId || undefined;
   this.providerCredentialSource = resolved.source;
   this.providerCredentialMode = resolved.mode;
+  this.callbackCredentialCiphertext = encryptPaymentCredential({
+    provider: String(this.provider || "").toLowerCase(),
+    mode: resolved.mode,
+    credentials: resolved.credentials,
+  });
   this.$locals.paymentProviderCredentials = resolved.credentials;
+
+  // Prime the exact key at creation time as well. The callback query hook below
+  // remains the durable recovery path after a backend restart.
+  const { primePaymentCredentialContext } = await import(
+    "../src/services/payment/providers.js"
+  );
+  primePaymentCredentialContext(this.provider, this.reference, resolved.credentials);
 });
 
 export async function resolveCallbackCredentialsForPayment(payment) {
   const {
+    decryptPaymentCredential,
     getPlatformPaymentCredentials,
     hasCompletePaymentCredentials,
     resolvePaymentProviderCredential,
@@ -164,9 +179,21 @@ export async function resolveCallbackCredentialsForPayment(payment) {
   const mode = payment.providerCredentialMode || "sandbox";
   const source = String(payment.providerCredentialSource || "").toLowerCase();
 
-  // The callback must use the same credential source that created the payment.
-  // Falling back to the restaurant's current active credential can break an
-  // already-open VNPAY session after credential rotation or configuration edits.
+  if (payment.callbackCredentialCiphertext) {
+    const snapshot = decryptPaymentCredential(payment.callbackCredentialCiphertext);
+    const snapshotProvider = String(snapshot?.provider || provider).toLowerCase();
+    const credentials = snapshot?.credentials || snapshot;
+    if (snapshotProvider !== provider) {
+      throw new Error("PAYMENT_CALLBACK_CREDENTIAL_PROVIDER_MISMATCH");
+    }
+    if (!hasCompletePaymentCredentials(provider, credentials)) {
+      throw new Error("PAYMENT_CALLBACK_CREDENTIAL_SNAPSHOT_INCOMPLETE");
+    }
+    return credentials;
+  }
+
+  // Compatibility for payment sessions created before encrypted callback
+  // credential snapshots were introduced.
   if (source === "platform") {
     const credentials = getPlatformPaymentCredentials(provider);
     if (!hasCompletePaymentCredentials(provider, credentials)) {
@@ -188,8 +215,6 @@ export async function resolveCallbackCredentialsForPayment(payment) {
     return resolved.credentials;
   }
 
-  // Compatibility for payment sessions created before credential provenance was
-  // persisted. New sessions always take one of the explicit branches above.
   const resolved = await resolvePaymentProviderCredential({
     restaurantId: payment.restaurantId,
     provider,
@@ -208,6 +233,14 @@ PaymentSessionSchema.post("findOne", async function primeCallbackCredential(paym
     !EXTERNAL_PROVIDERS.has(String(payment.provider))
   ) return;
   try {
+    if (!payment.callbackCredentialCiphertext) {
+      const stored = await this.model.collection.findOne(
+        { _id: payment._id },
+        { projection: { callbackCredentialCiphertext: 1 } },
+      );
+      payment.callbackCredentialCiphertext = stored?.callbackCredentialCiphertext;
+    }
+
     const { primePaymentCredentialContext } = await import("../src/services/payment/providers.js");
     const credentials = await resolveCallbackCredentialsForPayment(payment);
     payment.$locals.paymentProviderCredentials = credentials;
