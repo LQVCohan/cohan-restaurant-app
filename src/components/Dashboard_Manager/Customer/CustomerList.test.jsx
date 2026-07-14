@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import CustomerList from "./CustomerList";
 
 vi.mock("./CustomerCard", () => ({
@@ -54,6 +54,16 @@ const customers = [
 ];
 
 describe("CustomerList manager workflow", () => {
+  beforeEach(() => {
+    // Scrolling is not part of these component assertions. Prevent jsdom from
+    // creating its persistent requestAnimationFrame interval after pager clicks.
+    vi.spyOn(window, "requestAnimationFrame").mockReturnValue(1);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("renders the empty state with backend pagination summary", () => {
     const pagination = makePagination();
 
