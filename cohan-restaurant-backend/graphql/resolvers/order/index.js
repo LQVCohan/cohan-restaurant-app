@@ -16,6 +16,7 @@ import { withMergedTableOrderLifecycle } from "./mergedTableLifecycle.js";
 import { withTableCustomerOrderLifecycle } from "./tableCustomerOrderLifecycle.js";
 import { withTablePaymentRequestLifecycle } from "./tablePaymentRequestLifecycle.js";
 import { withOrderConflictHardening } from "./orderConflictHardening.js";
+import { withComboCheckoutHoldCompatibility } from "./comboCheckoutHoldCompatibility.js";
 import { withCheckoutIdempotency } from "./checkoutIdempotency.js";
 import { withCheckoutContactGuard } from "./checkoutContactGuard.js";
 import { withDeferredOnlineCheckout } from "./deferredOnlineCheckout.js";
@@ -50,8 +51,10 @@ const CanonicalCheckoutOrderMutation = {
   // ponytail: the canonical checkout resolver owns cart-hold validation and release.
   createCheckoutOrders: LifecycleOrderMutation.createCheckoutOrders,
 };
+const ComboCompatibleCheckoutOrderMutation =
+  withComboCheckoutHoldCompatibility(CanonicalCheckoutOrderMutation);
 const DeferredOnlineOrderMutation = withDeferredOnlineCheckout(
-  CanonicalCheckoutOrderMutation,
+  ComboCompatibleCheckoutOrderMutation,
 );
 const ContactGuardedOrderMutation = withCheckoutContactGuard(
   DeferredOnlineOrderMutation,
