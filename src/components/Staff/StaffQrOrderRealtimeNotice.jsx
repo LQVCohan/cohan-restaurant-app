@@ -15,7 +15,7 @@ export default function StaffQrOrderRealtimeNotice({ restaurantId, enabled = tru
         ? `Bàn ${order.tableCode}`
         : "Một bàn";
       showNotification(
-        `${tableLabel} có order mới từ QR đang chờ nhân viên/POS kiểm tra.`,
+        `${tableLabel} có order mới từ QR. Đang chờ xác nhận từ nhân viên trước khi chuyển bếp.`,
         "warning",
       );
     },
