@@ -52,10 +52,17 @@ export function hashRefreshToken(rawToken) {
 
 export function signAccessToken(user) {
   return jwt.sign(
-    { id: String(user._id), email: user.email, role: String(user.roleName || "").toLowerCase() },
+    {
+      id: String(user._id),
+      email: user.email,
+      role: String(user.roleName || "").toLowerCase(),
+    },
     process.env.JWT_SECRET,
     {
-      expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || process.env.JWT_EXPIRES_IN || "15m",
+      expiresIn:
+        process.env.ACCESS_TOKEN_EXPIRES_IN ||
+        process.env.JWT_EXPIRES_IN ||
+        "15m",
       issuer: process.env.JWT_ISSUER || "cohan-system",
     },
   );
@@ -63,20 +70,50 @@ export function signAccessToken(user) {
 
 export function isRefreshTokenRotationEnabled() {
   if (process.env.NODE_ENV === "production") return true;
-  return String(process.env.AUTH_REFRESH_TOKEN_ROTATION_ENABLED ?? "true").toLowerCase() !== "false";
+  return (
+    String(
+      process.env.AUTH_REFRESH_TOKEN_ROTATION_ENABLED ?? "true",
+    ).toLowerCase() !== "false"
+  );
 }
 
-function getRefreshCookieSameSite() {
-  const fallback = process.env.NODE_ENV === "production" ? "none" : "lax";
+function isSecureBrowserRequest(reply) {
+  const request = reply?.request;
+  const forwardedProto = String(
+    request?.headers?.["x-forwarded-proto"] ||
+      request?.raw?.headers?.["x-forwarded-proto"] ||
+      "",
+  )
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+  const protocol = String(request?.protocol || "").trim().toLowerCase();
+
+  return (
+    forwardedProto === "https" ||
+    protocol === "https" ||
+    Boolean(request?.raw?.socket?.encrypted)
+  );
+}
+
+function getRefreshCookieSameSite({ secureRequest = false } = {}) {
+  const fallback =
+    process.env.NODE_ENV === "production" || secureRequest ? "none" : "lax";
   const configured = String(
     process.env.REFRESH_TOKEN_COOKIE_SAMESITE || fallback,
   )
     .trim()
     .toLowerCase();
-  return REFRESH_COOKIE_SAME_SITE_VALUES.has(configured) ? configured : fallback;
+  return REFRESH_COOKIE_SAME_SITE_VALUES.has(configured)
+    ? configured
+    : fallback;
 }
 
-function shouldUsePartitionedRefreshCookie({ sameSite, isProduction }) {
+function shouldUsePartitionedRefreshCookie({
+  sameSite,
+  isProduction,
+  secureRequest,
+}) {
   if (sameSite !== "none") return false;
   const configured = String(
     process.env.REFRESH_TOKEN_COOKIE_PARTITIONED || "",
@@ -85,20 +122,27 @@ function shouldUsePartitionedRefreshCookie({ sameSite, isProduction }) {
     .toLowerCase();
   if (configured === "true") return true;
   if (configured === "false") return false;
-  return isProduction;
+  return isProduction || secureRequest;
 }
 
-export function refreshCookieOptions({ persistent = true } = {}) {
+export function refreshCookieOptions({ persistent = true, reply = null } = {}) {
   const isProduction = process.env.NODE_ENV === "production";
-  const sameSite = getRefreshCookieSameSite();
+  const secureRequest = isSecureBrowserRequest(reply);
+  const sameSite = getRefreshCookieSameSite({ secureRequest });
   const options = {
     path: "/api/auth",
     httpOnly: true,
-    secure: isProduction || sameSite === "none",
+    secure: isProduction || secureRequest || sameSite === "none",
     sameSite,
   };
 
-  if (shouldUsePartitionedRefreshCookie({ sameSite, isProduction })) {
+  if (
+    shouldUsePartitionedRefreshCookie({
+      sameSite,
+      isProduction,
+      secureRequest,
+    })
+  ) {
     options.partitioned = true;
   }
 
@@ -127,16 +171,24 @@ export function clearRefreshCookie(reply) {
   if (isLogoutCookieClear(reply)) return;
 
   reply.clearCookie(process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token", {
-    ...refreshCookieOptions(),
+    ...refreshCookieOptions({ reply }),
     maxAge: 0,
   });
 }
 
-export async function issueRefreshToken({ userId, reply, userAgent, ip, persistent = true }) {
+export async function issueRefreshToken({
+  userId,
+  reply,
+  userAgent,
+  ip,
+  persistent = true,
+}) {
   const raw = crypto.randomBytes(48).toString("base64url");
   const tokenHash = hashRefreshToken(raw);
   const isPersistent = persistent !== false;
-  const expiresAt = new Date(Date.now() + getRefreshTokenTtlMs({ persistent: isPersistent }));
+  const expiresAt = new Date(
+    Date.now() + getRefreshTokenTtlMs({ persistent: isPersistent }),
+  );
   await RefreshToken.create({
     userId,
     tokenHash,
@@ -148,7 +200,7 @@ export async function issueRefreshToken({ userId, reply, userAgent, ip, persiste
   reply.setCookie(
     process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token",
     raw,
-    refreshCookieOptions({ persistent: isPersistent }),
+    refreshCookieOptions({ persistent: isPersistent, reply }),
   );
   return { raw, tokenHash };
 }
@@ -170,7 +222,9 @@ export async function revokeRefreshTokenFamilyFromHash(tokenHash) {
 
 export async function handleRefreshTokenReuse(existing, logger) {
   const tokenHashPrefix = String(existing?.tokenHash || "").slice(0, 12);
-  const replacedByTokenHashPrefix = String(existing?.replacedByTokenHash || "").slice(0, 12);
+  const replacedByTokenHashPrefix = String(
+    existing?.replacedByTokenHash || "",
+  ).slice(0, 12);
   logger?.warn?.(
     {
       userId: existing?.userId ? String(existing.userId) : null,
@@ -179,11 +233,15 @@ export async function handleRefreshTokenReuse(existing, logger) {
     },
     "refresh token reuse detected; revoking token family",
   );
-  await revokeRefreshTokenFamilyFromHash(existing?.replacedByTokenHash || null);
+  await revokeRefreshTokenFamilyFromHash(
+    existing?.replacedByTokenHash || null,
+  );
 }
 
 async function buildActiveRefreshPayload(userId) {
-  const user = await User.findById(userId).populate("role").lean({ virtuals: true });
+  const user = await User.findById(userId)
+    .populate("role")
+    .lean({ virtuals: true });
   if (!user || user.status !== "active") return null;
 
   const roleName = (user.role?.slug || user.role?.name || "").toLowerCase();
@@ -200,14 +258,23 @@ async function recoverRecentRefreshCollision(existing, logger) {
   logger?.debug?.(
     {
       userId: existing?.userId ? String(existing.userId) : null,
-      rotationAgeMs: Math.max(0, Date.now() - new Date(existing.revokedAt).getTime()),
+      rotationAgeMs: Math.max(
+        0,
+        Date.now() - new Date(existing.revokedAt).getTime(),
+      ),
     },
     "concurrent refresh rotation detected; preserving the active session",
   );
   return payload;
 }
 
-export async function rotateRefreshToken({ currentRawToken, reply, userAgent, ip, logger }) {
+export async function rotateRefreshToken({
+  currentRawToken,
+  reply,
+  userAgent,
+  ip,
+  logger,
+}) {
   const currentHash = hashRefreshToken(currentRawToken);
   const existing = await RefreshToken.findOne({ tokenHash: currentHash });
   if (!existing) return null;
