@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import s from "./PrintModal.module.scss";
 import useModalKeyboardClose from "./useModalKeyboardClose";
 
@@ -21,6 +21,25 @@ export function PrintModal({
   onClose,
 }) {
   useModalKeyboardClose({ isOpen, onClose });
+
+  const tempPrinters = useMemo(() => {
+    const cashierPrinters = printers.filter(
+      (printer) =>
+        String(printer?.location || "")
+          .trim()
+          .toLowerCase() === "cashier",
+    );
+    return cashierPrinters.length ? cashierPrinters : printers;
+  }, [printers]);
+
+  useEffect(() => {
+    if (!isOpen || mode !== "temp" || !tempPrinters.length) return;
+    const selectedIsAvailable = tempPrinters.some(
+      (printer) => String(printer?.id) === String(selectedPrinter?.id),
+    );
+    if (!selectedIsAvailable) onPickPrinter?.(tempPrinters[0]);
+  }, [isOpen, mode, onPickPrinter, selectedPrinter?.id, tempPrinters]);
+
   if (!isOpen) return null;
 
   return (
@@ -63,7 +82,7 @@ export function PrintModal({
             <div>
               <div className={s.sectionTitle}>Chọn máy in tạm tính</div>
               <div className={s.printers}>
-                {printers.map((p) => (
+                {tempPrinters.map((p) => (
                   <div
                     key={p.id}
                     className={`${s.card} ${
@@ -78,15 +97,15 @@ export function PrintModal({
                           p.status === "online"
                             ? s.online
                             : p.status === "busy"
-                            ? s.busy
-                            : s.offline
+                              ? s.busy
+                              : s.offline
                         }`}
                       >
                         {p.status === "online"
                           ? "Sẵn sàng"
                           : p.status === "busy"
-                          ? "Đang in"
-                          : "Ngoại tuyến"}
+                            ? "Đang in"
+                            : "Ngoại tuyến"}
                       </span>
                     </div>
                     <div className={s.cardMeta}>
@@ -94,6 +113,9 @@ export function PrintModal({
                     </div>
                   </div>
                 ))}
+                {!tempPrinters.length && (
+                  <div className={s.preview}>Chưa cấu hình máy in thu ngân.</div>
+                )}
               </div>
             </div>
 
