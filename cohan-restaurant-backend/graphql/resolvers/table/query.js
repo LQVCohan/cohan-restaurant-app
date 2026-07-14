@@ -5,6 +5,11 @@ import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import * as authorizationService from "../../../src/services/auth/authorization.service.js";
 import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 import { getTableReservationSnapshot } from "../../../src/services/reservationTableTiming.service.js";
+import {
+  ACTIVE_SESSION_STATUSES,
+  ORDER_KIND,
+  ORDER_PAYMENT_STATUS,
+} from "../../../utils/orderLifecycle.js";
 
 const TABLE_LIST_READ_PERMISSIONS = [
   PERMISSIONS.TABLE_READ,
@@ -44,6 +49,11 @@ export const TABLE_SELECT = {
 const getRestaurantModel = async () => {
   const module = await import("../../../models/restaurant.model.js");
   return module.default || module.Restaurant;
+};
+
+const getOrderModel = async () => {
+  const module = await import("../../../models/order.model.js");
+  return module.default || module.Order;
 };
 
 async function requireTableListAccess(ctx, restaurantId) {
@@ -135,26 +145,81 @@ export function buildTableFilter({ restaurantId, floorId, status, type, search }
   return q;
 }
 
+export function resolveManagerTableStatus({
+  storedStatus,
+  reservationPhase,
+  hasActiveSession,
+}) {
+  const status = String(storedStatus || "available");
+  const phase = String(reservationPhase || "");
+
+  if (["cleaning", "offline", "payment_pending"].includes(status)) {
+    return status;
+  }
+  if (status === "occupied" && hasActiveSession) return status;
+  if (phase === "waiting") return "reserved";
+  if (
+    ["upcoming", "expired"].includes(phase) &&
+    ["reserved", "occupied"].includes(status)
+  ) {
+    return "available";
+  }
+  return status;
+}
+
+const tableScopeIds = (table) => [
+  table?._id || table?.id,
+  ...(Array.isArray(table?.mergedFromTableIds)
+    ? table.mergedFromTableIds
+    : []),
+];
+
+async function loadActiveSessionTableIds(rows = []) {
+  const ids = [
+    ...new Map(
+      rows
+        .flatMap(tableScopeIds)
+        .filter(Boolean)
+        .map((id) => [String(id), id]),
+    ).values(),
+  ];
+  if (!ids.length) return new Set();
+
+  try {
+    const Order = await getOrderModel();
+    if (!Order) return null;
+    const sessions = await Order.find({
+      tableId: { $in: ids },
+      orderKind: ORDER_KIND.TABLE_SESSION,
+      sessionStatus: { $in: ACTIVE_SESSION_STATUSES },
+      orderPaymentStatus: { $ne: ORDER_PAYMENT_STATUS.PAID },
+    })
+      .select({ tableId: 1 })
+      .lean();
+    return new Set(sessions.map((session) => String(session.tableId)));
+  } catch {
+    // If session lookup is unavailable, preserve stored occupied states rather
+    // than incorrectly presenting a genuinely active table as free.
+    return null;
+  }
+}
+
 async function enrichManagerTables(rows, ctx) {
+  const activeSessionTableIds = await loadActiveSessionTableIds(rows);
   return Promise.all(
     rows.map(async (table) => {
       const snapshot = await getTableReservationSnapshot(table, ctx);
       if (!snapshot) return table;
       const storedStatus = String(table.status || "available");
-      const canUseReservationStatus = ![
-        "occupied",
-        "cleaning",
-        "offline",
-        "payment_pending",
-      ].includes(storedStatus);
-      const effectiveStatus =
-        canUseReservationStatus && snapshot.reservationPhase === "waiting"
-          ? "reserved"
-          : canUseReservationStatus &&
-              ["upcoming", "expired"].includes(snapshot.reservationPhase) &&
-              storedStatus === "reserved"
-            ? "available"
-            : storedStatus;
+      const scopeIds = tableScopeIds(table).map(String);
+      const hasActiveSession = activeSessionTableIds
+        ? scopeIds.some((id) => activeSessionTableIds.has(id))
+        : storedStatus === "occupied";
+      const effectiveStatus = resolveManagerTableStatus({
+        storedStatus,
+        reservationPhase: snapshot.reservationPhase,
+        hasActiveSession,
+      });
       return {
         ...table,
         ...snapshot,

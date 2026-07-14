@@ -4,11 +4,12 @@ import { reservationDepositPaymentInternals } from "../../graphql/resolvers/paym
 const {
   allocateDepositCredit,
   availableDeposit,
+  isTableDepositCreditEligible,
   selectionCoversAllActiveOrders,
 } = reservationDepositPaymentInternals;
 
 describe("reservation deposit POS allocation", () => {
-  it("subtracts both table and menu deposits from the gross order total", () => {
+  it("subtracts both table and menu deposits when the guest arrived on time", () => {
     const allocation = allocateDepositCredit(
       [
         {
@@ -19,6 +20,7 @@ describe("reservation deposit POS allocation", () => {
           menuDepositAmount: 50000,
           linkedMenuSubtotal: 100000,
           depositAppliedAmount: 0,
+          tableDepositRefundEligible: true,
         },
       ],
       500000,
@@ -26,13 +28,60 @@ describe("reservation deposit POS allocation", () => {
 
     expect(allocation.totalCredit).toBe(150000);
     expect(allocation.breakdown[0]).toMatchObject({
+      tableDepositEligible: true,
       tableDepositApplied: 100000,
       menuDepositApplied: 50000,
+      tableDepositRetained: 0,
       appliedAmount: 150000,
     });
   });
 
-  it("caps the deposit credit at the invoice gross total", () => {
+  it("always subtracts the 50 percent menu deposit but retains a late-arrival table deposit", () => {
+    const allocation = allocateDepositCredit(
+      [
+        {
+          _id: "64b000000000000000000001",
+          orderCode: "RSV-001",
+          depositAmount: 150000,
+          tableDepositAmount: 100000,
+          menuDepositAmount: 50000,
+          tableDepositRefundEligible: false,
+        },
+      ],
+      500000,
+    );
+
+    expect(allocation.totalCredit).toBe(50000);
+    expect(allocation.totalTableDepositRetained).toBe(100000);
+    expect(allocation.breakdown[0]).toMatchObject({
+      tableDepositEligible: false,
+      tableDepositApplied: 0,
+      menuDepositApplied: 50000,
+      tableDepositRetained: 100000,
+      appliedAmount: 50000,
+    });
+  });
+
+  it("settles a retained table-only deposit even when no credit is applied", () => {
+    const allocation = allocateDepositCredit(
+      [
+        {
+          _id: "64b000000000000000000001",
+          depositAmount: 100000,
+          tableDepositAmount: 100000,
+          menuDepositAmount: 0,
+          tableDepositRefundEligible: false,
+        },
+      ],
+      500000,
+    );
+
+    expect(allocation.totalCredit).toBe(0);
+    expect(allocation.breakdown).toHaveLength(1);
+    expect(allocation.breakdown[0].tableDepositRetained).toBe(100000);
+  });
+
+  it("caps the deposit credit at the invoice gross total while prioritizing menu prepayment", () => {
     const allocation = allocateDepositCredit(
       [
         {
@@ -41,6 +90,7 @@ describe("reservation deposit POS allocation", () => {
           tableDepositAmount: 100000,
           menuDepositAmount: 50000,
           depositAppliedAmount: 0,
+          tableDepositRefundEligible: true,
         },
       ],
       120000,
@@ -48,8 +98,8 @@ describe("reservation deposit POS allocation", () => {
 
     expect(allocation.totalCredit).toBe(120000);
     expect(allocation.breakdown[0]).toMatchObject({
-      tableDepositApplied: 100000,
-      menuDepositApplied: 20000,
+      tableDepositApplied: 70000,
+      menuDepositApplied: 50000,
     });
   });
 
@@ -60,6 +110,20 @@ describe("reservation deposit POS allocation", () => {
     expect(
       availableDeposit({ depositAmount: 150000, depositAppliedAmount: 40000 }),
     ).toBe(110000);
+  });
+
+  it("derives punctual table-deposit eligibility from the existing grace window", () => {
+    const reservation = {
+      timeTo: "2026-07-14T10:00:00.000Z",
+      checkedInAt: "2026-07-14T10:15:00.000Z",
+    };
+    expect(isTableDepositCreditEligible(reservation)).toBe(true);
+    expect(
+      isTableDepositCreditEligible({
+        ...reservation,
+        checkedInAt: "2026-07-14T10:15:00.001Z",
+      }),
+    ).toBe(false);
   });
 
   it("allocates multiple reservation credits only until the invoice is covered", () => {

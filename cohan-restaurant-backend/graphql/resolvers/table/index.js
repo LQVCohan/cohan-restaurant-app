@@ -6,8 +6,12 @@ import { resolveTableMergeDetails } from "./mergeDetails.js";
 import moveTable from "./moveTable.js";
 import { CustomerPublicTableMutation } from "./publicCustomer.js";
 import TableAccessQrMutation, { TableAccessQrQuery } from "./tableAccessQr.js";
+import { withReservationAwareTableStatus } from "./reservationStatusGuard.js";
 
 import { TableCustomerQuery, TableCustomerMutation } from "./tableCustomer.js";
+
+const reservationAwareTableMutations =
+  withReservationAwareTableStatus(tableMutations);
 
 export default {
   Query: {
@@ -17,7 +21,7 @@ export default {
     ...TableCustomerQuery, // ✅ thêm
   },
   Mutation: {
-    ...tableMutations,
+    ...reservationAwareTableMutations,
     ...tableIntegrityMutations,
     ...mergeTableMutations,
     moveTable,

@@ -34,6 +34,8 @@ const ReservationSchema = BaseSchemaModel(
     timeTo: { type: Date, required: true, index: true },
     durationMinutes: { type: Number, default: 60, min: 0 },
     isUnlimitedTime: { type: Boolean, default: false },
+    checkedInAt: { type: Date, default: null, index: true },
+    tableDepositRefundEligible: { type: Boolean, default: null },
 
     customerName: { type: String, trim: true },
     customerPhone: { type: String, trim: true },

@@ -16,6 +16,7 @@ import {
   ReservationCheckInMutation,
   withSafeReservationStatusMutation,
 } from "./checkIn.js";
+import { withReservationArrivalAudit } from "./arrivalAudit.js";
 import { withReservationRealtimeEvents } from "./realtimeEvents.js";
 import { withReservationTableTimingPolicy } from "../../../src/services/reservationTableTiming.service.js";
 
@@ -109,9 +110,10 @@ const SafeReservationMutation = withSafeReservationStatusMutation(ReviewReservat
 const CustomerSafeReservationMutation = withCustomerReservationPolicy(SafeReservationMutation);
 const RealtimeReservationMutation = withReservationRealtimeEvents(CustomerSafeReservationMutation);
 const TimedReservationMutation = withReservationTableTimingPolicy(RealtimeReservationMutation);
+const AuditedReservationMutation = withReservationArrivalAudit(TimedReservationMutation);
 const ReservationMutationWithAliases = {
-  ...TimedReservationMutation,
-  markReservationNoShow: TimedReservationMutation.deleteReservation,
+  ...AuditedReservationMutation,
+  markReservationNoShow: AuditedReservationMutation.deleteReservation,
 };
 
 export default {
