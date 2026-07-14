@@ -22,6 +22,14 @@ import {
 
 const { allocateDepositCredit } = reservationDepositPaymentInternals;
 
+const TERMINAL_RESERVATION_STATUSES = new Set([
+  "cancelled",
+  "completed",
+  "no_show",
+]);
+const NON_SERVICEABLE_RESERVATION_STATUSES = new Set(["pending_payment"]);
+const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
+
 const toId = (value) =>
   value && mongoose.isValidObjectId(value)
     ? new mongoose.Types.ObjectId(value)
@@ -54,6 +62,67 @@ function selectedSessionIds(orders = []) {
   return uniqueIds(
     orders.flatMap((order) => [order?.parentOrderId, order?.rootOrderId]),
   );
+}
+
+function hasBillableItems(order) {
+  return (Array.isArray(order?.items) ? order.items : []).some((item) => {
+    if (EXCLUDED_ITEM_STATUSES.has(normalizeStatus(item?.status))) return false;
+    return (
+      Number(item?.quantity || 0) > 0 || Number(item?.lineSubtotal || 0) > 0
+    );
+  });
+}
+
+async function filterOrdersAvailableForCurrentService(
+  orders = [],
+  { restaurantId = null, now = new Date() } = {},
+) {
+  const source = (Array.isArray(orders) ? orders : []).filter(hasBillableItems);
+  if (!source.length) return [];
+
+  const parentIds = selectedSessionIds(source);
+  const parents = parentIds.length
+    ? await Order.find({
+        _id: { $in: parentIds },
+        ...(restaurantId ? { restaurantId } : {}),
+      })
+        .select({ _id: 1, reservationId: 1 })
+        .lean()
+    : [];
+  const parentReservationById = new Map(
+    parents.map((parent) => [String(parent._id), parent.reservationId]),
+  );
+  const reservationIdForOrder = (order) =>
+    order?.reservationId ||
+    parentReservationById.get(String(order?.parentOrderId || "")) ||
+    parentReservationById.get(String(order?.rootOrderId || "")) ||
+    null;
+
+  const reservationIds = uniqueIds(source.map(reservationIdForOrder));
+  if (!reservationIds.length) return source;
+
+  const reservations = await Reservation.find({ _id: { $in: reservationIds } })
+    .select({ _id: 1, status: 1, timeTo: 1 })
+    .lean();
+  const reservationById = new Map(
+    reservations.map((reservation) => [String(reservation._id), reservation]),
+  );
+  const nowAt = new Date(now).getTime();
+
+  return source.filter((order) => {
+    const reservationId = reservationIdForOrder(order);
+    if (!reservationId) return true;
+    const reservation = reservationById.get(String(reservationId));
+    if (!reservation) return true;
+
+    const status = normalizeStatus(reservation.status);
+    if (TERMINAL_RESERVATION_STATUSES.has(status)) return false;
+    if (NON_SERVICEABLE_RESERVATION_STATUSES.has(status)) return false;
+    if (status === "seated") return true;
+
+    const scheduledAt = new Date(reservation.timeTo).getTime();
+    return !Number.isFinite(scheduledAt) || scheduledAt <= nowAt;
+  });
 }
 
 async function loadActiveOrdersInSelectionScope({
@@ -145,10 +214,14 @@ async function loadCorrectedDepositContext(input = {}) {
   }).lean();
   if (!selectedOrders.length) return null;
 
-  const activeOrders = await loadActiveOrdersInSelectionScope({
+  const scopedOrders = await loadActiveOrdersInSelectionScope({
     restaurantId,
     selectedOrders,
   });
+  const activeOrders = await filterOrdersAvailableForCurrentService(
+    scopedOrders,
+    { restaurantId },
+  );
   if (
     !selectionCoversAllActiveOrders(
       orderIds,
@@ -430,5 +503,7 @@ export default function withReservationDepositPaymentScopeCorrection(
 
 export const reservationDepositPaymentScopeCorrectionInternals = {
   assertCashCoversNetAmount,
+  filterOrdersAvailableForCurrentService,
+  hasBillableItems,
   selectedSessionIds,
 };
