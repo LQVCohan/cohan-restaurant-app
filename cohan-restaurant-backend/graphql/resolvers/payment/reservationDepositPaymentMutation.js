@@ -12,6 +12,7 @@ import {
   INACTIVE_ORDER_STATUSES,
   orderBatchOrLegacyFilter,
 } from "../../../utils/orderLifecycle.js";
+import { RESERVATION_ARRIVAL_GRACE_MINUTES } from "../../../src/services/reservationTableTiming.service.js";
 
 const toId = (value) =>
   value && mongoose.isValidObjectId(value)
@@ -164,12 +165,82 @@ async function loadFinalSelectionDepositContext(input = {}) {
   return { restaurantId, reservations, isFinalSelection: true };
 }
 
-function availableDeposit(reservation) {
-  return Math.max(
-    0,
-    Number(reservation?.depositAmount || 0) -
-      Number(reservation?.depositAppliedAmount || 0),
+const toValidDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date : null;
+};
+
+function isTableDepositCreditEligible(reservation) {
+  if (typeof reservation?.tableDepositRefundEligible === "boolean") {
+    return reservation.tableDepositRefundEligible;
+  }
+
+  const checkedInAt = toValidDate(reservation?.checkedInAt);
+  const reservationAt = toValidDate(reservation?.timeTo);
+  if (checkedInAt && reservationAt) {
+    const graceEndsAt = new Date(
+      reservationAt.getTime() + RESERVATION_ARRIVAL_GRACE_MINUTES * 60 * 1000,
+    );
+    return checkedInAt.getTime() <= graceEndsAt.getTime();
+  }
+
+  // Legacy reservations created before arrival auditing existed should not lose
+  // a deposit credit solely because they do not have the new audit fields.
+  return true;
+}
+
+function deriveDepositComponents(reservation) {
+  const total = Math.max(0, Number(reservation?.depositAmount || 0));
+  const menu = Math.min(
+    total,
+    Math.max(
+      0,
+      Number(
+        reservation?.menuDepositAmount ??
+          Math.round(Number(reservation?.linkedMenuSubtotal || 0) * 0.5),
+      ),
+    ),
   );
+  const table = Math.min(
+    Math.max(0, total - menu),
+    Math.max(
+      0,
+      Number(reservation?.tableDepositAmount ?? total - menu),
+    ),
+  );
+  return { total, menu, table };
+}
+
+function getDepositDisposition(reservation) {
+  const { total, menu, table } = deriveDepositComponents(reservation);
+  const alreadyApplied = Math.min(
+    total,
+    Math.max(0, Number(reservation?.depositAppliedAmount || 0)),
+  );
+  const tablePreviouslyApplied = Math.min(table, alreadyApplied);
+  const menuPreviouslyApplied = Math.min(
+    menu,
+    Math.max(0, alreadyApplied - tablePreviouslyApplied),
+  );
+  const tableRemaining = Math.max(0, table - tablePreviouslyApplied);
+  const menuRemaining = Math.max(0, menu - menuPreviouslyApplied);
+  const tableDepositEligible = isTableDepositCreditEligible(reservation);
+
+  return {
+    total,
+    table,
+    menu,
+    tableDepositEligible,
+    tableCreditAvailable: tableDepositEligible ? tableRemaining : 0,
+    menuCreditAvailable: menuRemaining,
+    tableDepositRetained: tableDepositEligible ? 0 : tableRemaining,
+  };
+}
+
+function availableDeposit(reservation) {
+  const disposition = getDepositDisposition(reservation);
+  return disposition.tableCreditAvailable + disposition.menuCreditAvailable;
 }
 
 function allocateDepositCredit(reservations, grossTotal) {
@@ -177,40 +248,29 @@ function allocateDepositCredit(reservations, grossTotal) {
   const breakdown = [];
 
   for (const reservation of reservations || []) {
-    if (!(remaining > 0)) break;
-    const available = availableDeposit(reservation);
-    if (!(available > 0)) continue;
+    const disposition = getDepositDisposition(reservation);
+    const available =
+      disposition.tableCreditAvailable + disposition.menuCreditAvailable;
+    if (!(available > 0) && !(disposition.tableDepositRetained > 0)) continue;
 
     const appliedAmount = Math.min(available, remaining);
-    const menuDeposit = Math.min(
-      available,
-      Math.max(
-        0,
-        Number(
-          reservation.menuDepositAmount ??
-            Math.round(Number(reservation.linkedMenuSubtotal || 0) * 0.5),
-        ),
-      ),
+    const tableApplied = Math.min(
+      appliedAmount,
+      disposition.tableCreditAvailable,
     );
-    const tableDeposit = Math.max(
-      0,
-      Number(
-        reservation.tableDepositAmount ??
-          Number(reservation.depositAmount || 0) - menuDeposit,
-      ),
-    );
-    const tableApplied = Math.min(appliedAmount, tableDeposit);
     const menuApplied = Math.min(
       Math.max(0, appliedAmount - tableApplied),
-      menuDeposit,
+      disposition.menuCreditAvailable,
     );
 
     breakdown.push({
       reservationId: String(reservation._id),
       orderCode: reservation.orderCode || null,
-      depositAmount: Number(reservation.depositAmount || 0),
-      tableDepositAmount: tableDeposit,
-      menuDepositAmount: menuDeposit,
+      depositAmount: disposition.total,
+      tableDepositAmount: disposition.table,
+      menuDepositAmount: disposition.menu,
+      tableDepositEligible: disposition.tableDepositEligible,
+      tableDepositRetained: disposition.tableDepositRetained,
       tableDepositApplied: tableApplied,
       menuDepositApplied: menuApplied,
       appliedAmount,
@@ -221,6 +281,10 @@ function allocateDepositCredit(reservations, grossTotal) {
   return {
     totalCredit: breakdown.reduce(
       (sum, item) => sum + Number(item.appliedAmount || 0),
+      0,
+    ),
+    totalTableDepositRetained: breakdown.reduce(
+      (sum, item) => sum + Number(item.tableDepositRetained || 0),
       0,
     ),
     breakdown,
@@ -237,7 +301,7 @@ async function persistDepositApplication({
   ctx,
 }) {
   const invoiceId = toId(result?.invoice?._id || result?.invoice?.id);
-  if (!invoiceId || !(totalCredit > 0)) return result;
+  if (!invoiceId || !breakdown.length) return result;
 
   const transactionId = toId(
     result?.transaction?._id || result?.transaction?.id,
@@ -248,6 +312,18 @@ async function persistDepositApplication({
   const meta = {
     grossTotal: Number(grossTotal || 0),
     depositCredit: totalCredit,
+    menuDepositCredit: breakdown.reduce(
+      (sum, item) => sum + Number(item.menuDepositApplied || 0),
+      0,
+    ),
+    tableDepositCredit: breakdown.reduce(
+      (sum, item) => sum + Number(item.tableDepositApplied || 0),
+      0,
+    ),
+    tableDepositRetained: breakdown.reduce(
+      (sum, item) => sum + Number(item.tableDepositRetained || 0),
+      0,
+    ),
     amountCollectedNow: netAmount,
     requestedPaidAmount:
       requestedPaidAmount == null ? null : Number(requestedPaidAmount),
@@ -325,7 +401,12 @@ async function persistDepositApplication({
             {
               $set: {
                 amount: netAmount,
-                note: `Thanh toán order sau khi trừ cọc ${totalCredit.toLocaleString("vi-VN")}đ`,
+                ...(totalCredit > 0
+                  ? {
+                      note: `Thanh toán order sau khi trừ cọc ${totalCredit.toLocaleString("vi-VN")}đ`,
+                    }
+                  : {}),
+                "meta.reservationDepositCredit": meta,
               },
             },
             { session },
@@ -369,7 +450,13 @@ async function persistDepositApplication({
         reservationDepositCredit: meta,
       };
     }
-    if (result.cashflow) result.cashflow.amount = netAmount;
+    if (result.cashflow) {
+      result.cashflow.amount = netAmount;
+      result.cashflow.meta = {
+        ...(result.cashflow.meta || {}),
+        reservationDepositCredit: meta,
+      };
+    }
   } else {
     result.transaction = null;
     result.cashflow = null;
@@ -413,7 +500,7 @@ async function settleWithReservationDeposit({
 
   const grossTotal = Number(result.invoice?.totals?.grandTotal || 0);
   const allocation = allocateDepositCredit(reservations, grossTotal);
-  if (!(allocation.totalCredit > 0)) return result;
+  if (!allocation.breakdown.length) return result;
 
   return persistDepositApplication({
     result,
@@ -484,6 +571,9 @@ export function withReservationDepositPayment(mutation = {}) {
 export const reservationDepositPaymentInternals = {
   availableDeposit,
   allocateDepositCredit,
+  deriveDepositComponents,
+  getDepositDisposition,
+  isTableDepositCreditEligible,
   selectionCoversAllActiveOrders,
 };
 
