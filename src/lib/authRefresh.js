@@ -1,6 +1,11 @@
 import { getRefreshUrl } from "@/lib/apiBaseUrl";
+import {
+  publishAnonymousSession,
+  publishAuthenticatedSession,
+} from "@/lib/authStorage";
 
 export const STALE_AUTH_REFRESH_CODE = "STALE_AUTH_REFRESH";
+export const TRANSIENT_AUTH_REFRESH_CODE = "TRANSIENT_AUTH_REFRESH";
 
 let refreshPromise = null;
 let refreshAbortController = null;
@@ -12,26 +17,66 @@ function createStaleAuthRefreshError() {
   return error;
 }
 
+function createTransientAuthRefreshError(message, status = null, cause = null) {
+  const error = new Error(message || "Authentication service is temporarily unavailable");
+  error.code = TRANSIENT_AUTH_REFRESH_CODE;
+  error.status = status;
+  if (cause) error.cause = cause;
+  return error;
+}
+
+export function isTransientAuthRefreshError(error) {
+  return error?.code === TRANSIENT_AUTH_REFRESH_CODE;
+}
+
 export async function refreshAccessToken({ signal } = {}) {
+  let response;
   try {
-    const response = await fetch(getRefreshUrl(), {
+    response = await fetch(getRefreshUrl(), {
       method: "POST",
       credentials: "include",
       signal,
     });
-
-    if (!response.ok) return null;
-
-    const payload = await response.json();
-    if (!payload?.token) return null;
-
-    return {
-      token: payload.token,
-      user: payload.user,
-    };
-  } catch {
-    return null;
+  } catch (error) {
+    if (error?.name === "AbortError") throw error;
+    throw createTransientAuthRefreshError(
+      "Không thể kết nối dịch vụ xác thực. Phiên hiện tại được giữ nguyên.",
+      null,
+      error,
+    );
   }
+
+  if (response.status === 401 || response.status === 403) return null;
+
+  if (!response.ok) {
+    throw createTransientAuthRefreshError(
+      `Dịch vụ xác thực tạm thời phản hồi lỗi ${response.status || "không xác định"}.`,
+      response.status || null,
+    );
+  }
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (error) {
+    throw createTransientAuthRefreshError(
+      "Phản hồi khôi phục phiên không hợp lệ. Phiên hiện tại được giữ nguyên.",
+      response.status,
+      error,
+    );
+  }
+
+  if (!payload?.token) {
+    throw createTransientAuthRefreshError(
+      "Dịch vụ xác thực chưa trả về token mới. Phiên hiện tại được giữ nguyên.",
+      response.status,
+    );
+  }
+
+  return {
+    token: payload.token,
+    user: payload.user,
+  };
 }
 
 export function refreshAccessTokenOnce() {
@@ -46,7 +91,16 @@ export function refreshAccessTokenOnce() {
         if (generation !== refreshGeneration) {
           throw createStaleAuthRefreshError();
         }
+
+        if (payload?.token) publishAuthenticatedSession(payload);
+        else publishAnonymousSession("refresh_rejected");
         return payload;
+      })
+      .catch((error) => {
+        if (generation !== refreshGeneration) {
+          throw createStaleAuthRefreshError();
+        }
+        throw error;
       })
       .finally(() => {
         if (refreshPromise === pendingRefresh) {
