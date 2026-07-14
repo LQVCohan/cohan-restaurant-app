@@ -200,11 +200,13 @@ export default function useCommunication({
     if (!token) return undefined;
 
     const socket = io(SOCKET_URL, {
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
       auth: { token },
       reconnection: true,
       reconnectionDelay: 2000,
-      reconnectionAttempts: 10,
+      reconnectionDelayMax: 10000,
+      reconnectionAttempts: Infinity,
+      timeout: 10000,
     });
     notificationSocketRef.current = socket;
 

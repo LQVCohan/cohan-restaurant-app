@@ -34,10 +34,13 @@ vi.mock("../models/index.js", () => ({
   },
 }));
 
-import { emitRestaurantEvent } from "../graphql/resolvers/order/helper/emitOrderEvent.js";
+import {
+  emitOrderEvent,
+  emitRestaurantEvent,
+} from "../graphql/resolvers/order/helper/emitOrderEvent.js";
 import { setNotificationSocketServer } from "../src/services/notification/notificationWorkflow.service.js";
 
-describe("customer request notification fan-out", () => {
+describe("customer request and kitchen-ready notification fan-out", () => {
   let emit;
   let io;
 
@@ -111,12 +114,100 @@ describe("customer request notification fan-out", () => {
         }),
       }),
     );
+    expect(io.to).toHaveBeenCalledWith("user_manager-1");
+    expect(io.to).toHaveBeenCalledWith("user_staff-1");
     expect(io.to).toHaveBeenCalledWith("restaurant_res-1");
     expect(emit).toHaveBeenCalledWith(
       "orderEvents",
       expect.objectContaining({
         type: "CUSTOMER_STAFF_CALL_REQUESTED",
       }),
+    );
+  });
+
+  it("creates and pushes a staff bell notification when a dish becomes ready", async () => {
+    await emitOrderEvent(
+      { io },
+      "res-1",
+      "ORDER_ITEM_STATUS_CHANGED",
+      {
+        order: {
+          _id: "order-1",
+          orderCode: "QR-20260714-T101-BXDZEV",
+          tableCode: "T101",
+          items: [
+            {
+              _id: "item-1",
+              name: "Phở bò đặc biệt",
+              station: "kitchen",
+              status: "ready",
+            },
+          ],
+        },
+        meta: {
+          itemId: "item-1",
+          itemName: "Phở bò đặc biệt",
+          statusFrom: "preparing",
+          statusTo: "ready",
+        },
+      },
+    );
+
+    expect(mocks.notificationCreate).toHaveBeenCalledTimes(1);
+    expect(mocks.notificationCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        toUserId: "staff-1",
+        toRole: "STAFF",
+        restaurantId: "res-1",
+        type: "KITCHEN_ITEM_READY",
+        readAt: null,
+        payload: expect.objectContaining({
+          title: "Món đã sẵn sàng phục vụ",
+          message: "Bàn T101 • Phở bò đặc biệt đã sẵn sàng từ bếp.",
+          orderId: "order-1",
+          orderCode: "QR-20260714-T101-BXDZEV",
+          itemId: "item-1",
+          tableCode: "T101",
+          actionUrl: "/staff/orders",
+        }),
+      }),
+    );
+    expect(io.to).toHaveBeenCalledWith("user_staff-1");
+    expect(emit).toHaveBeenCalledWith(
+      "notificationCreated",
+      expect.objectContaining({
+        toUserId: "staff-1",
+        type: "KITCHEN_ITEM_READY",
+      }),
+    );
+    expect(io.to).toHaveBeenCalledWith("restaurant_res-1");
+  });
+
+  it("does not create a kitchen-ready bell item for other item transitions", async () => {
+    await emitOrderEvent(
+      { io },
+      "res-1",
+      "ORDER_ITEM_STATUS_CHANGED",
+      {
+        order: {
+          _id: "order-1",
+          orderCode: "QR-20260714-T101-BXDZEV",
+          tableCode: "T101",
+          items: [{ _id: "item-1", name: "Phở bò đặc biệt", status: "preparing" }],
+        },
+        meta: {
+          itemId: "item-1",
+          itemName: "Phở bò đặc biệt",
+          statusFrom: "pending",
+          statusTo: "preparing",
+        },
+      },
+    );
+
+    expect(mocks.notificationCreate).not.toHaveBeenCalled();
+    expect(emit).toHaveBeenCalledWith(
+      "orderEvents",
+      expect.objectContaining({ type: "ORDER_ITEM_STATUS_CHANGED" }),
     );
   });
 

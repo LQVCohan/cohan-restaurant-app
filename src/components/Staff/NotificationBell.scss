@@ -84,12 +84,16 @@ $noti-danger: #b42318;
   animation: staffNotificationSlideDown 180ms ease-out both;
 
   .noti-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
     gap: 12px;
     padding: 15px;
     border-bottom: 1px solid $noti-border;
+
+    > div {
+      min-width: 0;
+    }
 
     h3 {
       margin: 0;
@@ -97,6 +101,7 @@ $noti-danger: #b42318;
       font-size: 0.98rem;
       font-weight: 850;
       letter-spacing: -0.02em;
+      overflow-wrap: anywhere;
     }
 
     p {
@@ -104,13 +109,18 @@ $noti-danger: #b42318;
       color: $noti-muted;
       font-size: 0.72rem;
       font-weight: 650;
+      overflow-wrap: anywhere;
     }
 
     .btn-mark-read {
       display: inline-flex;
+      width: auto !important;
+      min-width: 0;
       min-height: 36px;
+      max-width: max-content;
       flex: 0 0 auto;
       align-items: center;
+      justify-content: center;
       gap: 5px;
       padding: 0 10px;
       border: 1px solid $noti-border;
@@ -119,6 +129,8 @@ $noti-danger: #b42318;
       color: $noti-green;
       font-size: 0.72rem;
       font-weight: 800;
+      line-height: 1.2;
+      white-space: nowrap;
       cursor: pointer;
 
       &:hover:not(:disabled) {
@@ -324,14 +336,63 @@ $noti-danger: #b42318;
 }
 
 @media (max-width: 560px) {
+  .notification-overlay {
+    background: rgba(21, 31, 26, 0.28);
+    backdrop-filter: blur(2px);
+  }
+
   .notification-dropdown {
     position: fixed;
-    top: calc(68px + env(safe-area-inset-top));
-    right: max(12px, env(safe-area-inset-right));
-    left: max(12px, env(safe-area-inset-left));
+    top: auto;
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: max(8px, env(safe-area-inset-left));
     width: auto;
-    max-height: calc(100dvh - 88px - env(safe-area-inset-top));
-    border-radius: 16px;
+    max-height: min(78dvh, 640px);
+    border-radius: 22px;
+    box-shadow: 0 28px 70px rgba(21, 31, 26, 0.3);
+    animation-name: staffNotificationSlideUp;
+
+    .noti-header {
+      align-items: center;
+      padding: 16px;
+    }
+
+    .noti-list {
+      .noti-empty {
+        min-height: 180px;
+        padding: 28px 20px;
+      }
+
+      .noti-item {
+        padding: 13px 14px;
+
+        .noti-title {
+          display: -webkit-box;
+          white-space: normal;
+          text-overflow: clip;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 2;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 360px) {
+  .notification-dropdown {
+    right: max(6px, env(safe-area-inset-right));
+    bottom: max(6px, env(safe-area-inset-bottom));
+    left: max(6px, env(safe-area-inset-left));
+
+    .noti-header {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+
+      .btn-mark-read {
+        justify-self: start;
+      }
+    }
   }
 }
 
@@ -352,5 +413,16 @@ $noti-danger: #b42318;
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes staffNotificationSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }

@@ -4,6 +4,7 @@ const REVIEWER_TYPES = ["MANAGER", "ADMIN", "HR"];
 const STAFF_ATTENDANCE_REVIEW_SOURCES = new Set(["attendance_correction", "overtime_request"]);
 const STAFF_ATTENDANCE_REVIEW_URL = "/manager?staffPage=attendance#staff";
 const CUSTOMER_SERVICE_SOURCE = "customer_service_request";
+const KITCHEN_READY_SOURCE = "kitchen_item_ready";
 const uniq = (arr = []) => [...new Set(arr.map(String).filter(Boolean))];
 
 let notificationIo = null;
@@ -129,6 +130,58 @@ export async function notifyUser({ userId, restaurantId, type, payload, sourceTy
   return createNotificationOnce({ toUserId: userId, restaurantId, type, payload: { ...payload, actionUrl }, sourceType, sourceId });
 }
 
+export async function notifyReadyOrderItem({
+  restaurantId,
+  order,
+  item,
+  io = null,
+}) {
+  const orderId = String(order?._id || order?.id || "").trim();
+  const itemId = String(item?._id || item?.id || "").trim();
+  if (!restaurantId || !orderId || !itemId) return [];
+
+  const staffIds = await activeRestaurantStaffIds(restaurantId);
+  if (!staffIds.length) return [];
+
+  const orderCode = String(order?.orderCode || "").trim() || null;
+  const tableCode = String(order?.tableCode || order?.table?.code || "").trim() || null;
+  const itemName = String(item?.name || "Món").trim() || "Món";
+  const station = String(item?.station || item?.workItemStation || "").trim().toLowerCase() || null;
+  const stationLabel = station === "bar" ? "quầy bar" : station === "kitchen" ? "bếp" : null;
+  const locationLabel = tableCode
+    ? `Bàn ${tableCode}`
+    : orderCode
+      ? `Đơn ${orderCode}`
+      : "Đơn nội bộ";
+  const stationSuffix = stationLabel ? ` từ ${stationLabel}` : "";
+  const sourceId = `${orderId}:${itemId}:ready`;
+
+  return Promise.all(
+    staffIds.map((userId) =>
+      createNotificationOnce({
+        toUserId: userId,
+        toRole: "STAFF",
+        restaurantId,
+        type: "KITCHEN_ITEM_READY",
+        payload: {
+          title: "Món đã sẵn sàng phục vụ",
+          message: `${locationLabel} • ${itemName} đã sẵn sàng${stationSuffix}.`,
+          orderId,
+          orderCode,
+          itemId,
+          itemName,
+          tableCode,
+          station,
+          actionUrl: "/staff/orders",
+        },
+        sourceType: KITCHEN_READY_SOURCE,
+        sourceId,
+        io,
+      }),
+    ),
+  );
+}
+
 export async function notifyCustomerServiceRequest({
   restaurantId,
   eventType,
@@ -136,6 +189,7 @@ export async function notifyCustomerServiceRequest({
   tableCode = null,
   orderCode = null,
   message = null,
+  io = null,
 }) {
   const requestId = String(request?.requestId || "").trim();
   if (!restaurantId || !requestId) return [];
@@ -172,6 +226,7 @@ export async function notifyCustomerServiceRequest({
       payload: { ...payload, actionUrl: managerActionUrl },
       sourceType: CUSTOMER_SERVICE_SOURCE,
       sourceId: requestId,
+      io,
     })),
     ...staffIds
       .filter((userId) => !managerSet.has(userId))
@@ -183,6 +238,7 @@ export async function notifyCustomerServiceRequest({
         payload: { ...payload, actionUrl: "/staff/orders" },
         sourceType: CUSTOMER_SERVICE_SOURCE,
         sourceId: requestId,
+        io,
       })),
   ]);
 }
