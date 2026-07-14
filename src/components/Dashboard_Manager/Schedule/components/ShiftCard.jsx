@@ -3,6 +3,7 @@ import ShiftCardBase from "./ShiftCardBase";
 import {
   filterStaffForScheduleScope,
   useScheduleEmploymentScope,
+  useScheduleStaffShiftTypes,
 } from "../ScheduleEmploymentScope";
 
 export { getEmploymentMixMeta, getShiftDurationMeta } from "./ShiftCardBase";
@@ -11,9 +12,15 @@ const idString = (value) => String(value?.id || value?._id || value || "");
 
 const ShiftCard = ({ shift, staffList = [], onClick }) => {
   const employmentScope = useScheduleEmploymentScope();
+  const shiftTypeByStaffId = useScheduleStaffShiftTypes();
   const scopedStaff = useMemo(
-    () => filterStaffForScheduleScope(staffList, employmentScope),
-    [staffList, employmentScope],
+    () =>
+      filterStaffForScheduleScope(
+        staffList,
+        employmentScope,
+        shiftTypeByStaffId,
+      ),
+    [staffList, employmentScope, shiftTypeByStaffId],
   );
   const scopedStaffIds = useMemo(
     () => new Set(scopedStaff.map((person) => idString(person.id))),
