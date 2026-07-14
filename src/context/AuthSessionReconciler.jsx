@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { AuthContext } from "./AuthContext";
-import { setAuth, subscribeAuthSession } from "@/lib/authStorage";
+import { getToken, setAuth, subscribeAuthSession } from "@/lib/authStorage";
 
 function normalizeLoginUser(roleOrUser, fallbackUser = null) {
   if (typeof roleOrUser === "string") {
@@ -125,16 +125,30 @@ export default function AuthSessionReconciler({ children }) {
       parentWasAuthenticatedRef.current &&
       !parentAuth.token &&
       !parentAuth.user;
+    const lastAuthenticatedToken = lastAuthenticatedRef.current?.token || null;
+    const persistedToken = getToken();
 
     if (
       parentDroppedAuthenticatedSession &&
       !explicitAnonymousRef.current &&
-      lastAuthenticatedRef.current?.token
+      lastAuthenticatedToken &&
+      persistedToken === lastAuthenticatedToken
     ) {
       const recoverableSession = lastAuthenticatedRef.current;
       setAuth({ token: recoverableSession.token });
       setExternalSession(recoverableSession);
       syncParentSession(recoverableSession);
+      return;
+    }
+
+    // When Apollo or the parent provider deliberately cleared auth storage after
+    // an actual UNAUTHENTICATED response, do not resurrect the last UI snapshot.
+    // Temporary React state resets still recover because their token remains in
+    // session storage.
+    if (parentDroppedAuthenticatedSession && !persistedToken) {
+      lastAuthenticatedRef.current = null;
+      parentWasAuthenticatedRef.current = false;
+      setExternalSession(null);
       return;
     }
 
