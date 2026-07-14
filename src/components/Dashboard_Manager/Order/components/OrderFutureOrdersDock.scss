@@ -1,0 +1,55 @@
+.order-future-orders-dock {
+  position: fixed;
+  top: 108px;
+  right: 28px;
+  z-index: 260;
+
+  &__button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 16px;
+    border: 1px solid #fdba74;
+    border-radius: 12px;
+    color: #9a3412;
+    background: #fff7ed;
+    box-shadow: 0 8px 24px rgba(154, 52, 18, 0.14);
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    transition:
+      transform 0.16s ease,
+      box-shadow 0.16s ease,
+      background 0.16s ease;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      color: #fff;
+      background: #ea580c;
+      box-shadow: 0 10px 28px rgba(234, 88, 12, 0.26);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+  }
+}
+
+.om-container--focus + .order-future-orders-dock {
+  display: none;
+}
+
+@media (max-width: 980px) {
+  .order-future-orders-dock {
+    top: auto;
+    right: 18px;
+    bottom: 18px;
+
+    &__button {
+      min-height: 46px;
+      border-radius: 999px;
+    }
+  }
+}
