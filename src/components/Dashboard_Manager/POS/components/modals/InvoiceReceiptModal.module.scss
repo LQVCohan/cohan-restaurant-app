@@ -218,3 +218,94 @@
     flex: 1;
   }
 }
+
+@media print {
+  :global(body) {
+    margin: 0;
+    background: #ffffff;
+  }
+
+  :global(body > *) {
+    visibility: hidden;
+  }
+
+  .backdrop,
+  .backdrop * {
+    visibility: visible;
+  }
+
+  .backdrop {
+    position: static;
+    inset: auto;
+    display: block;
+    padding: 0;
+    background: #ffffff;
+  }
+
+  .modal {
+    width: 80mm;
+    max-height: none;
+    overflow: visible;
+    margin: 0 auto;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .closeButton,
+  .actions,
+  .printMessage {
+    display: none !important;
+  }
+
+  .header {
+    padding-right: 0;
+    margin-bottom: 12px;
+  }
+
+  .header h3 {
+    font-size: 18px;
+  }
+
+  .status {
+    padding: 3px 7px;
+    font-size: 10px;
+  }
+
+  .metaGrid {
+    grid-template-columns: 1fr;
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+
+  .metaGrid > div,
+  .lines,
+  .summary {
+    border-radius: 0;
+  }
+
+  .metaGrid > div {
+    padding: 5px 0;
+    border: 0;
+    border-bottom: 1px dashed #cbd5e1;
+    background: transparent;
+  }
+
+  .lines {
+    margin-bottom: 10px;
+  }
+
+  .lineRow {
+    padding: 7px 5px;
+  }
+
+  .summary {
+    margin-bottom: 0;
+    padding: 8px 5px;
+    background: transparent;
+  }
+
+  .totalRow b {
+    font-size: 17px;
+  }
+}

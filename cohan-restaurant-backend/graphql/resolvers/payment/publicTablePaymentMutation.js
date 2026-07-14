@@ -22,6 +22,8 @@ const ACTIVE_CUSTOMER_REQUEST_STATUSES = new Set(["PENDING", "ACKNOWLEDGED"]);
 const DEFAULT_TABLE_STAFF_CALL_MESSAGE = "Khách cần hỗ trợ tại bàn.";
 const DEFAULT_TABLE_PAYMENT_REQUEST_MESSAGE = "Khách yêu cầu thanh toán";
 const CUSTOMER_REQUEST_MESSAGE_MAX_LENGTH = 200;
+const PAYMENT_BLOCKED_MESSAGE =
+  "Bàn còn món chưa phục vụ xong hoặc còn yêu cầu hủy/trả món đang chờ duyệt.";
 
 function toId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -39,14 +41,17 @@ function hasPendingItemWork(order) {
 function hasPendingAdjustmentRequests(order) {
   return (order?.items || []).some(
     (item) =>
-      (item?.voidRequests || []).some((request) => request?.status === "pending") ||
-      (item?.returnRequests || []).some((request) => request?.status === "pending"),
+      (item?.voidRequests || []).some(
+        (request) => String(request?.status || "").toLowerCase() === "pending",
+      ) ||
+      (item?.returnRequests || []).some(
+        (request) => String(request?.status || "").toLowerCase() === "pending",
+      ),
   );
 }
 
 function isReadyForPayment(order) {
   const status = String(order?.currentStatus || "").toLowerCase();
-
   return (
     ["served", "completed"].includes(status) &&
     !hasPendingItemWork(order) &&
@@ -56,7 +61,6 @@ function isReadyForPayment(order) {
 
 function applyRequestPaymentState(order, requestedAt, requestNote) {
   if (!order) return null;
-
   return {
     ...order,
     orderPaymentStatus: ORDER_PAYMENT_STATUS.PAYMENT_REQUESTED,
@@ -71,7 +75,12 @@ function applyRequestPaymentState(order, requestedAt, requestNote) {
   };
 }
 
-function assertTableAccessTokenMatches({ verifiedToken, restaurantId, tableId, tableCode }) {
+function assertTableAccessTokenMatches({
+  verifiedToken,
+  restaurantId,
+  tableId,
+  tableCode,
+}) {
   if (
     !verifiedToken ||
     verifiedToken.restaurantId !== String(restaurantId) ||
@@ -90,13 +99,18 @@ function assertTableAccessTokenMatches({ verifiedToken, restaurantId, tableId, t
 }
 
 function assertStoredTableAccessToken(table, token) {
-  if (!table?.tableAccessToken || table.tableAccessToken !== String(token || "").trim()) {
+  if (
+    !table?.tableAccessToken ||
+    table.tableAccessToken !== String(token || "").trim()
+  ) {
     throw new Error(TABLE_ACCESS_TOKEN_ERROR);
   }
 }
 
 function normalizeCustomerRequestMessage(value, fallback) {
-  const normalized = String(value || "").trim().replace(/\s+/g, " ");
+  const normalized = String(value || "")
+    .trim()
+    .replace(/\s+/g, " ");
   return (normalized || fallback).slice(0, CUSTOMER_REQUEST_MESSAGE_MAX_LENGTH);
 }
 
@@ -115,12 +129,16 @@ function findActiveCustomerRequest(order, type) {
   return (order?.customerRequests || []).find(
     (request) =>
       request?.type === type &&
-      ACTIVE_CUSTOMER_REQUEST_STATUSES.has(String(request?.status || "").toUpperCase()),
+      ACTIVE_CUSTOMER_REQUEST_STATUSES.has(
+        String(request?.status || "").toUpperCase(),
+      ),
   );
 }
 
-
-async function emitTableCustomerRequestEvent(ctx, { eventType, restaurantId, tableId, tableCode, request }) {
+async function emitTableCustomerRequestEvent(
+  ctx,
+  { eventType, restaurantId, tableId, tableCode, request },
+) {
   try {
     await emitRestaurantEvent(ctx, restaurantId, eventType, {
       restaurantId: String(restaurantId),
@@ -129,10 +147,15 @@ async function emitTableCustomerRequestEvent(ctx, { eventType, restaurantId, tab
       requestType: request?.type || null,
       requestStatus: request?.status || null,
       requestId: request?.requestId || null,
-      createdAt: request?.createdAt ? new Date(request.createdAt).toISOString() : null,
+      createdAt: request?.createdAt
+        ? new Date(request.createdAt).toISOString()
+        : null,
     });
   } catch (error) {
-    console.warn("[SOCKET.IO] Failed to emit table customer request event", error?.message || error);
+    console.warn(
+      "[SOCKET.IO] Failed to emit table customer request event",
+      error?.message || error,
+    );
   }
 }
 
@@ -142,11 +165,18 @@ function serializeCustomerRequestResult(request, message) {
     message,
     requestId: request?.requestId || null,
     status: request?.status || null,
-    requestedAt: request?.createdAt ? new Date(request.createdAt).toISOString() : null,
+    requestedAt: request?.createdAt
+      ? new Date(request.createdAt).toISOString()
+      : null,
   };
 }
 
-async function loadPublicTableSessionAccess({ restaurantId, tableId, tableCode, token }) {
+async function loadPublicTableSessionAccess({
+  restaurantId,
+  tableId,
+  tableCode,
+  token,
+}) {
   const rid = toId(restaurantId);
   const tid = toId(tableId);
   const normalizedInputTableCode = normalizePublicTableCode(tableCode);
@@ -166,13 +196,10 @@ async function loadPublicTableSessionAccess({ restaurantId, tableId, tableCode, 
     .select({ _id: 1, code: 1, tableAccessToken: 1 })
     .lean();
 
-  if (!table) {
-    throw new Error("Table not found");
-  }
+  if (!table) throw new Error("Table not found");
   assertStoredTableAccessToken(table, token);
 
   const safeCode = normalizePublicTableCode(table.code);
-
   if (normalizedInputTableCode && normalizedInputTableCode !== safeCode) {
     throw new Error(TABLE_ACCESS_TOKEN_ERROR);
   }
@@ -197,10 +224,24 @@ async function loadPublicTableSessionAccess({ restaurantId, tableId, tableCode, 
   return { rid, tid, safeCode, activeSession };
 }
 
+function buildPaymentBlockedResult({ activeSession, childOrders, pendingOrderCodes }) {
+  return buildPublicRequestTablePaymentResult({
+    ok: false,
+    warning: true,
+    readyForPayment: false,
+    message: PAYMENT_BLOCKED_MESSAGE,
+    pendingOrderCodes,
+    requestedAt: null,
+    session: activeSession,
+    orders: childOrders,
+  });
+}
+
 export async function publicRequestTablePayment(_parent, { input }, ctx) {
   const { note } = input || {};
   const requestNote = String(note || "").trim() || null;
-  const { rid, tid, safeCode, activeSession } = await loadPublicTableSessionAccess(input || {});
+  const { rid, tid, safeCode, activeSession } =
+    await loadPublicTableSessionAccess(input || {});
 
   if (!activeSession) {
     return buildPublicRequestTablePaymentResult({
@@ -247,15 +288,27 @@ export async function publicRequestTablePayment(_parent, { input }, ctx) {
     .filter((order) => !isReadyForPayment(order))
     .map((order) => order.orderCode || String(order._id));
 
-  const readyForPayment = pendingOrderCodes.length === 0;
-  const warning = !readyForPayment;
+  if (pendingOrderCodes.length) {
+    return buildPaymentBlockedResult({
+      activeSession,
+      childOrders,
+      pendingOrderCodes,
+    });
+  }
+
   const requestedAt = new Date();
-  const existingPaymentRequest = findActiveCustomerRequest(activeSession, "PAYMENT_REQUEST");
+  const existingPaymentRequest = findActiveCustomerRequest(
+    activeSession,
+    "PAYMENT_REQUEST",
+  );
   const paymentRequest =
     existingPaymentRequest ||
     buildCustomerRequest(
       "PAYMENT_REQUEST",
-      normalizeCustomerRequestMessage(requestNote, DEFAULT_TABLE_PAYMENT_REQUEST_MESSAGE),
+      normalizeCustomerRequestMessage(
+        requestNote,
+        DEFAULT_TABLE_PAYMENT_REQUEST_MESSAGE,
+      ),
       requestedAt,
     );
 
@@ -323,51 +376,50 @@ export async function publicRequestTablePayment(_parent, { input }, ctx) {
           requestSource: "customer_table",
           requestedBy: null,
           requestNote,
-          pendingOrderCodes,
-          readyForPayment,
+          pendingOrderCodes: [],
+          readyForPayment: true,
         },
       },
       { session: transaction },
     );
 
     await transaction.commitTransaction();
-    transaction.endSession();
-
-    await emitTableCustomerRequestEvent(ctx, {
-      eventType: "TABLE_PAYMENT_REQUESTED",
-      restaurantId: rid,
-      tableId: tid,
-      tableCode: safeCode,
-      request: paymentRequest,
-    });
-
-    return buildPublicRequestTablePaymentResult({
-      ok: true,
-      warning,
-      readyForPayment,
-      message: warning
-        ? "Bàn còn món chưa sẵn sàng thanh toán."
-        : "Đã ghi nhận yêu cầu thanh toán.",
-      pendingOrderCodes,
-      requestedAt,
-      session: {
-        ...applyRequestPaymentState(activeSession, requestedAt, requestNote),
-        sessionStatus: SESSION_STATUS.READY_TO_PAY,
-      },
-      orders: childOrders.map((order) =>
-        applyRequestPaymentState(order, requestedAt, requestNote),
-      ),
-    });
   } catch (error) {
     await transaction.abortTransaction().catch(() => {});
-    transaction.endSession();
     throw error;
+  } finally {
+    transaction.endSession();
   }
+
+  await emitTableCustomerRequestEvent(ctx, {
+    eventType: "TABLE_PAYMENT_REQUESTED",
+    restaurantId: rid,
+    tableId: tid,
+    tableCode: safeCode,
+    request: paymentRequest,
+  });
+
+  return buildPublicRequestTablePaymentResult({
+    ok: true,
+    warning: false,
+    readyForPayment: true,
+    message: "Đã ghi nhận yêu cầu thanh toán.",
+    pendingOrderCodes: [],
+    requestedAt,
+    session: {
+      ...applyRequestPaymentState(activeSession, requestedAt, requestNote),
+      sessionStatus: SESSION_STATUS.READY_TO_PAY,
+    },
+    orders: childOrders.map((order) =>
+      applyRequestPaymentState(order, requestedAt, requestNote),
+    ),
+  });
 }
 
 export async function publicCallStaffForTable(_parent, { input }, ctx) {
   const { note } = input || {};
-  const { rid, tid, safeCode, activeSession } = await loadPublicTableSessionAccess(input || {});
+  const { rid, tid, safeCode, activeSession } =
+    await loadPublicTableSessionAccess(input || {});
 
   if (!activeSession) {
     return {
@@ -379,7 +431,10 @@ export async function publicCallStaffForTable(_parent, { input }, ctx) {
     };
   }
 
-  const existingStaffCall = findActiveCustomerRequest(activeSession, "STAFF_CALL");
+  const existingStaffCall = findActiveCustomerRequest(
+    activeSession,
+    "STAFF_CALL",
+  );
   if (existingStaffCall) {
     return serializeCustomerRequestResult(
       existingStaffCall,
