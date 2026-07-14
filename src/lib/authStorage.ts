@@ -51,13 +51,18 @@ function safelyRead(storage: Storage | null, key: string): string | null {
   }
 }
 
-function safelyWrite(storage: Storage | null, key: string, value: string | null) {
-  if (!storage) return;
+function safelyWrite(
+  storage: Storage | null,
+  key: string,
+  value: string | null,
+): boolean {
+  if (!storage) return false;
   try {
     if (value) storage.setItem(key, value);
     else storage.removeItem(key);
+    return true;
   } catch {
-    // The in-memory token remains available when browser storage is blocked.
+    return false;
   }
 }
 
@@ -88,7 +93,26 @@ export function subscribeAuthSession(
 
 export function setAuth({ token }: AuthPayload) {
   accessToken = token || null;
-  safelyWrite(getSessionStorage(), SESSION_ACCESS_TOKEN_KEY, accessToken);
+  const sessionStorage = getSessionStorage();
+  const localStorage = getLocalStorage();
+
+  if (!accessToken) {
+    safelyRemove(sessionStorage, SESSION_ACCESS_TOKEN_KEY);
+    safelyRemove(localStorage, SESSION_ACCESS_TOKEN_KEY);
+    return;
+  }
+
+  if (safelyWrite(sessionStorage, SESSION_ACCESS_TOKEN_KEY, accessToken)) {
+    // localStorage is only a privacy-mode fallback. Do not leave a longer-lived
+    // copy when normal tab-scoped sessionStorage is working.
+    safelyRemove(localStorage, SESSION_ACCESS_TOKEN_KEY);
+    return;
+  }
+
+  // Some embedded/mobile/private browser modes expose sessionStorage but reject
+  // writes. Their private localStorage is still cleared with the private session
+  // and gives the current login a reload-safe fallback.
+  safelyWrite(localStorage, SESSION_ACCESS_TOKEN_KEY, accessToken);
 }
 
 export function publishAuthenticatedSession({ token, user }: AuthPayload) {
@@ -114,7 +138,9 @@ export function publishAnonymousSession(reason = "session_expired") {
 export function getToken(): string | null {
   if (accessToken) return accessToken;
 
-  const restoredToken = safelyRead(getSessionStorage(), SESSION_ACCESS_TOKEN_KEY);
+  const restoredToken =
+    safelyRead(getSessionStorage(), SESSION_ACCESS_TOKEN_KEY) ||
+    safelyRead(getLocalStorage(), SESSION_ACCESS_TOKEN_KEY);
   if (restoredToken) accessToken = restoredToken;
   return restoredToken;
 }
@@ -136,6 +162,7 @@ export function clearManagerWorkspaceStorage() {
 export function clearAuth() {
   accessToken = null;
   safelyRemove(getSessionStorage(), SESSION_ACCESS_TOKEN_KEY);
+  safelyRemove(getLocalStorage(), SESSION_ACCESS_TOKEN_KEY);
   clearLegacyAuthStorage();
   clearManagerWorkspaceStorage();
 }
