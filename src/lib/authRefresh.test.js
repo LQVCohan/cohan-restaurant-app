@@ -23,6 +23,7 @@ function createDeferred() {
 describe("auth refresh session isolation", () => {
   beforeEach(() => {
     sessionStorage.clear();
+    localStorage.clear();
     clearAuth();
     clearRefreshPromise();
     vi.stubGlobal("fetch", vi.fn());
@@ -163,20 +164,17 @@ describe("auth refresh session isolation", () => {
     unsubscribe();
   });
 
-  it("clears and publishes the session only for an explicit auth rejection", async () => {
+  it("does not discard a reload-restorable token when the refresh cookie is rejected", async () => {
     const changes = [];
     const unsubscribe = subscribeAuthSession((change) => changes.push(change));
-    setAuth({ token: "expired-token" });
+    setAuth({ token: "still-valid-access-token" });
     fetch.mockResolvedValueOnce({ ok: false, status: 401 });
 
     await expect(refreshAccessTokenOnce()).resolves.toBeNull();
-    expect(getToken()).toBeNull();
-    expect(changes).toContainEqual({
-      status: "anonymous",
-      token: null,
-      user: null,
-      reason: "refresh_rejected",
-    });
+    expect(getToken()).toBe("still-valid-access-token");
+    expect(changes).not.toContainEqual(
+      expect.objectContaining({ status: "anonymous" }),
+    );
     unsubscribe();
   });
 });
