@@ -282,6 +282,7 @@ extend type Query {
   previewOrderDiscount(input: PreviewOrderDiscountInput!): DiscountBreakdown!
   ordersByRestaurantNow(restaurantId: ID!, limit: Int, cursor: ID): OrdersConnection!
   ordersByRestaurant(restaurantId: ID!, limit: Int, cursor: ID): OrdersConnection!
+  futureReservationOrders(restaurantId: ID!, limit: Int): [Order!]!
   ordersByTableCode(
     restaurantId: ID!
     tableCode: String!
