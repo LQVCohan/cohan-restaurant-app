@@ -35,3 +35,13 @@ extend input ValidateShiftAssignmentInput {
   overrideReason: String
   ignoreShiftId: ID
 }
+
+# createStaffShift performs the authoritative policy validation and already
+# consumes these values in the resolver. Expose them in SDL so GraphQL does not
+# reject the manager request before validation runs.
+extend input CreateStaffShiftInput {
+  status: String
+  notes: String
+  allowOverride: Boolean
+  overrideReason: String
+}
