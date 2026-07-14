@@ -1,22 +1,68 @@
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1"]);
+const DEV_TUNNEL_HOST_SUFFIXES = [
+  ".ngrok-free.dev",
+  ".ngrok-free.app",
+  ".ngrok.app",
+  ".trycloudflare.com",
+];
+
+function isDevTunnelHost(hostname: string) {
+  const normalized = String(hostname || "").trim().toLowerCase();
+  return DEV_TUNNEL_HOST_SUFFIXES.some((suffix) =>
+    normalized.endsWith(suffix),
+  );
+}
+
+function isPrivateIpv4Host(hostname: string) {
+  const parts = String(hostname || "")
+    .split(".")
+    .map((part) => Number(part));
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return false;
+  }
+
+  return (
+    parts[0] === 10 ||
+    (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+    (parts[0] === 192 && parts[1] === 168)
+  );
+}
 
 export function normalizeLocalDevGraphqlUrl(
   configuredUrl: string,
   browserHostname: string,
   isDev = import.meta.env.DEV,
+  forceCrossOrigin = false,
 ) {
-  if (!isDev || !browserHostname || configuredUrl.startsWith("/")) {
+  if (
+    !isDev ||
+    forceCrossOrigin ||
+    !browserHostname ||
+    configuredUrl.startsWith("/")
+  ) {
     return configuredUrl;
   }
 
   try {
     const apiUrl = new URL(configuredUrl);
+    const browserHost = browserHostname.trim().toLowerCase();
+    const apiHost = apiUrl.hostname.trim().toLowerCase();
     const hasLoopbackMismatch =
-      LOOPBACK_HOSTS.has(apiUrl.hostname) &&
-      LOOPBACK_HOSTS.has(browserHostname) &&
-      apiUrl.hostname !== browserHostname;
+      LOOPBACK_HOSTS.has(apiHost) &&
+      LOOPBACK_HOSTS.has(browserHost) &&
+      apiHost !== browserHost;
+    const mobileDevNeedsProxy =
+      LOOPBACK_HOSTS.has(apiHost) &&
+      (isPrivateIpv4Host(browserHost) || isDevTunnelHost(browserHost));
+    const tunnelPairNeedsProxy =
+      isDevTunnelHost(browserHost) && isDevTunnelHost(apiHost);
 
-    if (hasLoopbackMismatch) {
+    // Vite already proxies /graphql and /api to the configured backend. Keeping
+    // browser requests on the frontend origin makes refresh cookies first-party,
+    // which is required by private browsing and mobile browsers that block
+    // cross-site cookies. VITE_API_FORCE_CROSS_ORIGIN=true remains an escape hatch
+    // for development setups that intentionally call a remote API directly.
+    if (hasLoopbackMismatch || mobileDevNeedsProxy || tunnelPairNeedsProxy) {
       return `${apiUrl.pathname}${apiUrl.search}${apiUrl.hash}` || "/graphql";
     }
   } catch {
@@ -31,8 +77,16 @@ export function getGraphqlUrl() {
     import.meta.env.VITE_API_URL || "http://localhost:4000/graphql";
   const browserHostname =
     typeof window !== "undefined" ? window.location.hostname : "";
+  const forceCrossOrigin =
+    String(import.meta.env.VITE_API_FORCE_CROSS_ORIGIN || "").toLowerCase() ===
+    "true";
 
-  return normalizeLocalDevGraphqlUrl(configuredUrl, browserHostname);
+  return normalizeLocalDevGraphqlUrl(
+    configuredUrl,
+    browserHostname,
+    import.meta.env.DEV,
+    forceCrossOrigin,
+  );
 }
 
 const stripGraphqlSuffix = (value: string) =>
