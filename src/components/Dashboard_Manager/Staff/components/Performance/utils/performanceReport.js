@@ -142,12 +142,12 @@ export const buildPerformanceReportHtml = (reportData) => `
       <h3>Đánh giá khách hàng</h3>
       <p>${escapeHtml(reportData.customerRating.label)}</p>
       ${reportData.customerRating.hasRating ? `<p>${escapeHtml(reportData.customerRating.hint)}</p>` : ""}
-      <p><em>Đánh giá khách hàng chỉ là bằng chứng Quality cho nhóm order/phục vụ và thu ngân khi đủ mẫu; không thay thế điểm quản lý.</em></p>
+      <p><em>Đánh giá khách hàng chỉ là dữ liệu tham khảo cho quản lý. Khi đủ mẫu, dữ liệu này là bằng chứng Quality cho nhóm order/phục vụ và thu ngân; không thay thế điểm quản lý.</em></p>
       <p><em>Dữ liệu này được cập nhật vào kỳ đánh giá khi tính lại hiệu suất.</em></p>
       ${reportData.snapshotUpdatedAt ? `<p><em>Snapshot cập nhật lần cuối: ${escapeHtml(formatDate(reportData.snapshotUpdatedAt))}</em></p>` : ""}
       <h3>Nguồn dữ liệu năng suất</h3>
       ${reportData.productivitySource === "shift_completion" ? `
-      <p>Năng suất dựa trên tỷ lệ thời lượng làm thực tế / thời lượng ca được phân công; order chỉ dùng để tham khảo.</p>
+      <p>Năng suất dựa trên tỷ lệ hoàn thành ca được phân công, tính theo thời lượng làm thực tế / thời lượng ca được phân công; order chỉ dùng để tham khảo.</p>
       <p>Thời lượng ca được phân công: ${escapeHtml(formatMinutesDuration(reportData.scheduledMinutes))}</p>
       <p>Thời lượng làm thực tế: ${escapeHtml(formatMinutesDuration(reportData.actualWorkedMinutes))}</p>
       <p>Order chỉ là dữ liệu tham khảo: ${escapeHtml(reportData.orderCount ?? "--")}</p>
