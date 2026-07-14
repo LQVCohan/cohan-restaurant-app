@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 import { getStaffOrderingPermissions } from "../staffOrderingPermissions";
+import { getStaffCartCheckoutReadiness } from "../staffCartCheckout";
 import "./CartBottomSheet.scss";
 
 const NO_PERMISSION_MESSAGE =
@@ -83,6 +84,19 @@ export default function CartBottomSheet({
   const permissions = useMemo(() => {
     return getStaffOrderingPermissions(user, { isRemoteOrder });
   }, [isRemoteOrder, user]);
+  const checkoutReadiness = useMemo(
+    () => getStaffCartCheckoutReadiness(cart),
+    [cart],
+  );
+  const checkoutAvailable = checkoutEnabled && checkoutReadiness.enabled;
+  const checkoutButtonLabel = checkoutEnabled
+    ? checkoutReadiness.label
+    : "Chưa thể thanh toán";
+  const checkoutButtonTitle = !permissions.canRequestPayment
+    ? READONLY_MESSAGE
+    : !checkoutEnabled
+      ? "Chưa hỗ trợ thanh toán cho ngữ cảnh này"
+      : checkoutReadiness.reason || "Yêu cầu thanh toán";
 
   const handleRequestVoid = (item) => {
     if (!permissions.canRequestItemVoid) {
@@ -124,6 +138,10 @@ export default function CartBottomSheet({
   const handleCheckout = () => {
     if (!permissions.canRequestPayment) {
       alert(NO_PERMISSION_MESSAGE);
+      return;
+    }
+    if (!checkoutAvailable) {
+      alert(checkoutButtonTitle);
       return;
     }
     onCheckout?.();
@@ -506,21 +524,11 @@ export default function CartBottomSheet({
             <button
               type="button"
               className="btn-primary btn-checkout"
-              disabled={
-                cart.length === 0 ||
-                !checkoutEnabled ||
-                !permissions.canRequestPayment
-              }
+              disabled={!checkoutAvailable || !permissions.canRequestPayment}
               onClick={handleCheckout}
-              title={
-                permissions.canRequestPayment
-                  ? checkoutEnabled
-                    ? "Yêu cầu thanh toán"
-                    : "Chưa hỗ trợ thanh toán cho ngữ cảnh này"
-                  : READONLY_MESSAGE
-              }
+              title={checkoutButtonTitle}
             >
-              <Banknote size={20} /> Thanh toán
+              <Banknote size={20} /> {checkoutButtonLabel}
             </button>
           </div>
         </div>

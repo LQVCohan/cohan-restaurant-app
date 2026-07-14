@@ -20,7 +20,10 @@ export function getStaffOrderingPermissions(
     canAddItems: canMutateOrder,
     canAssignCustomer: isElevated || isServer || isHost,
     canRemoveCustomer: isElevated || isHost,
-    canCreateOrder: isRemoteOrder ? isElevated : canMutateOrder,
+    // Nhân viên phục vụ đã có quyền tạo/cập nhật order tại nhà hàng thì cũng
+    // phải hoàn tất được luồng "lên đơn hộ khách". Chỉ quyền áp dụng ưu đãi
+    // cho đơn từ xa vẫn được giữ ở vai trò quản lý.
+    canCreateOrder: isRemoteOrder ? isElevated || isServer : canMutateOrder,
     canRequestPayment: canMutateOrder,
     canRemindItems: canMutateOrder,
     canAdjustItemQuantity: canMutateOrder,
