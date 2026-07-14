@@ -27,7 +27,10 @@ export default function PosFutureReservationWatcher() {
     );
   }, [currentTable?.id, tables]);
 
-  const reservationTime = getTableReservationTime(selectedTable);
+  const reservationTime = useMemo(
+    () => getTableReservationTime(selectedTable),
+    [selectedTable?.nextReservationAt],
+  );
   const scheduleKey = reservationTime
     ? `${selectedTable?.id || selectedTable?.code}:${reservationTime.toISOString()}`
     : null;
