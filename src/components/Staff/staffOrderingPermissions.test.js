@@ -19,18 +19,33 @@ describe("getStaffOrderingPermissions", () => {
     expect(permissions.canCheckout).toBe(false);
   });
 
-  it("restricts staff-assisted remote order creation to elevated roles", () => {
+  it("allows servers and elevated roles to submit staff-assisted remote orders", () => {
     expect(
       getStaffOrderingPermissions(
         { roleName: "server" },
         { isRemoteOrder: true },
       ).canCreateOrder,
-    ).toBe(false);
+    ).toBe(true);
     expect(
       getStaffOrderingPermissions(
         { roleName: "manager" },
         { isRemoteOrder: true },
       ).canCreateOrder,
+    ).toBe(true);
+  });
+
+  it("keeps remote-order coupon application restricted to elevated roles", () => {
+    expect(
+      getStaffOrderingPermissions(
+        { roleName: "server" },
+        { isRemoteOrder: true },
+      ).canApplyCoupon,
+    ).toBe(false);
+    expect(
+      getStaffOrderingPermissions(
+        { roleName: "manager" },
+        { isRemoteOrder: true },
+      ).canApplyCoupon,
     ).toBe(true);
   });
 });
