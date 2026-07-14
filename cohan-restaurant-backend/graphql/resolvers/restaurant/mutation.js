@@ -9,6 +9,7 @@ import {
 } from "../../../models/index.js";
 import { applyRecentRestaurant } from "../shared/customerIdentity.js";
 import { buildPublicRestaurantFilter } from "./publicRestaurantAccess.js";
+import { applyRestaurantUpdateToDocument } from "./updateDocument.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requirePermission } from "../../../src/services/auth/authorization.service.js";
 import { rewriteRestaurantProfileDescription as rewriteRestaurantProfileDescriptionService } from "../../../src/services/ai/restaurantProfileRewrite.service.js";
@@ -181,7 +182,7 @@ async function updateRestaurant(_, { id, input }, ctx) {
   if (rest.address) {
     rest.address = normalizeRestaurantAddress(rest.address);
   }
-  Object.assign(doc, rest);
+  applyRestaurantUpdateToDocument(doc, rest);
   await doc.save();
   return doc.toObject();
 }
