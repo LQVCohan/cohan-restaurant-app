@@ -81,7 +81,7 @@ describe("reservation deposit POS allocation", () => {
     expect(allocation.breakdown[0].tableDepositRetained).toBe(100000);
   });
 
-  it("caps the deposit credit at the invoice gross total", () => {
+  it("caps the deposit credit at the invoice gross total while prioritizing menu prepayment", () => {
     const allocation = allocateDepositCredit(
       [
         {
@@ -98,8 +98,8 @@ describe("reservation deposit POS allocation", () => {
 
     expect(allocation.totalCredit).toBe(120000);
     expect(allocation.breakdown[0]).toMatchObject({
-      tableDepositApplied: 100000,
-      menuDepositApplied: 20000,
+      tableDepositApplied: 70000,
+      menuDepositApplied: 50000,
     });
   });
 
