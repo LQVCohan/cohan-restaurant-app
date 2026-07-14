@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 
 import TableOrderAccessGate from "./TableOrderAccessGate";
 import TableOrderDraftLauncher from "./TableOrderDraftLauncher";
+import TableOrderDraftCategoryEnhancer from "./TableOrderDraftCategoryEnhancer";
 import TableOrderExperience from "./TableOrderExperience";
 import TableProofUpdateNotifier from "./TableProofUpdateNotifier";
 
@@ -39,6 +40,7 @@ export default function TableOrderRouteExperience() {
     <React.Fragment key={routeInstanceKey}>
       <TableOrderAccessGate />
       <TableOrderDraftLauncher />
+      <TableOrderDraftCategoryEnhancer />
       <TableOrderExperience />
       <TableProofUpdateNotifier />
     </React.Fragment>
