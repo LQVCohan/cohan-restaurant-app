@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ArrowRightLeft } from "lucide-react";
 import { usePos } from "../../../../../context/PosContext";
 import SplitTableModal from "../modals/SplitTableModal";
-import styles from "./POSLayout.module.scss";
+import styles from "./TableOrderSplitDock.module.scss";
 
 export default function TableOrderSplitDock() {
   const {
@@ -41,7 +41,7 @@ export default function TableOrderSplitDock() {
     <>
       <button
         type="button"
-        className={styles.splitOrderButton}
+        className={styles.button}
         onClick={() => setOpen(true)}
         title="Tách món sang bàn khác hoặc gộp lại lần tách đang hoạt động"
       >
