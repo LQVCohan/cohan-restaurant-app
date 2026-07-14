@@ -89,6 +89,7 @@ import { installCustomerMenuRestaurantCombos } from "./utils/installCustomerMenu
 import { installBackupChecklistClarity } from "./utils/installBackupChecklistClarity";
 import { installBackupConflictFriendlyLabels } from "./utils/installBackupConflictFriendlyLabels";
 import { installStaffReservationQrScannerEntry } from "./utils/installStaffReservationQrScannerEntry";
+import { installPosPaymentModalEnhancement } from "./utils/installPosPaymentModalEnhancement";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 import "./styles/ResponsiveFoundation.css";
 import "./styles/CustomTableBuilderResponsiveFix.css";
@@ -114,6 +115,7 @@ import "./styles/CustomerMenuRestaurantCombos.css";
 import "./styles/BackupChecklistClarity.css";
 import "./styles/BackupConflictFriendly.css";
 import "./styles/StaffReservationQrScannerEntry.css";
+import "./styles/PosPaymentModalUpgrade.css";
 
 const normalizeLegacyManagerHash = () => {
   if (
@@ -155,6 +157,7 @@ installBackupChecklistClarity();
 installBackupConflictFriendlyLabels();
 installStaffReservationQrScannerEntry();
 installAttendanceWordingTuning();
+installPosPaymentModalEnhancement();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
