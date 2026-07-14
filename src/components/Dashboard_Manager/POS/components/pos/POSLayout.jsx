@@ -110,7 +110,16 @@ function RestaurantBar({
         )}
       </div>
 
-      <div className={styles.restaurantBarActions}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: "0.55rem",
+          flexWrap: "wrap",
+          flexShrink: 0,
+        }}
+      >
         <TransferQueueBell restaurantId={restaurantId} />
         {showSplitAction && <TableOrderSplitDock />}
         <button
