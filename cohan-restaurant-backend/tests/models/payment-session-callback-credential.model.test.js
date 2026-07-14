@@ -8,13 +8,20 @@ const credentialService = vi.hoisted(() => ({
   resolvePaymentProviderCredential: vi.fn(),
 }));
 
+const providerService = vi.hoisted(() => ({
+  primePaymentCredentialContext: vi.fn(),
+}));
+
 vi.mock("../../src/services/payment/paymentCredential.service.js", () =>
   credentialService,
 );
 
-const { resolveCallbackCredentialsForPayment } = await import(
-  "../../models/payment-session.model.js"
-);
+vi.mock("../../src/services/payment/providers.js", () => providerService);
+
+const {
+  primeCallbackCredentialsForPayments,
+  resolveCallbackCredentialsForPayment,
+} = await import("../../models/payment-session.model.js");
 
 describe("payment session callback credential provenance", () => {
   beforeEach(() => {
@@ -55,6 +62,103 @@ describe("payment session callback credential provenance", () => {
     ).not.toHaveBeenCalled();
     expect(
       credentialService.resolvePaymentProviderCredential,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("primes the exact VNPAY credential for sessions returned by a POS find query", async () => {
+    const credentials = {
+      tmnCode: "POS-TMN",
+      hashSecret: "pos-hash-secret",
+    };
+    credentialService.decryptPaymentCredential.mockReturnValue({
+      provider: "vnpay",
+      mode: "sandbox",
+      credentials,
+    });
+    const payment = {
+      _id: "payment-pos-1",
+      provider: "vnpay",
+      reference: "ORD-20260714-4AC263",
+      callbackCredentialCiphertext: "encrypted-pos-snapshot",
+      $locals: {},
+    };
+
+    await expect(
+      primeCallbackCredentialsForPayments([payment]),
+    ).resolves.toBe(1);
+
+    expect(payment.$locals.paymentProviderCredentials).toEqual(credentials);
+    expect(
+      payment.$locals.paymentCredentialResolutionError,
+    ).toBeUndefined();
+    expect(providerService.primePaymentCredentialContext).toHaveBeenCalledWith(
+      "vnpay",
+      "ORD-20260714-4AC263",
+      credentials,
+    );
+  });
+
+  it("loads an unselected encrypted snapshot before priming callback verification", async () => {
+    const credentials = {
+      tmnCode: "POS-TMN",
+      hashSecret: "pos-hash-secret",
+    };
+    credentialService.decryptPaymentCredential.mockReturnValue({
+      provider: "vnpay",
+      credentials,
+    });
+    const collection = {
+      findOne: vi.fn().mockResolvedValue({
+        callbackCredentialCiphertext: "encrypted-from-storage",
+      }),
+    };
+    const payment = {
+      _id: "payment-pos-2",
+      provider: "vnpay",
+      reference: "ORD-20260714-NEW001",
+      callbackCredentialCiphertext: undefined,
+      $locals: {},
+    };
+
+    await expect(
+      primeCallbackCredentialsForPayments(payment, { collection }),
+    ).resolves.toBe(1);
+
+    expect(collection.findOne).toHaveBeenCalledWith(
+      { _id: "payment-pos-2" },
+      { projection: { callbackCredentialCiphertext: 1 } },
+    );
+    expect(payment.callbackCredentialCiphertext).toBe(
+      "encrypted-from-storage",
+    );
+    expect(providerService.primePaymentCredentialContext).toHaveBeenCalledWith(
+      "vnpay",
+      "ORD-20260714-NEW001",
+      credentials,
+    );
+  });
+
+  it("marks a reused POS session when its callback credential cannot be restored", async () => {
+    credentialService.decryptPaymentCredential.mockImplementation(() => {
+      throw new Error("PAYMENT_CALLBACK_CREDENTIAL_DECRYPT_FAILED");
+    });
+    const payment = {
+      _id: "payment-pos-broken",
+      provider: "vnpay",
+      reference: "ORD-20260714-BROKEN",
+      callbackCredentialCiphertext: "invalid-ciphertext",
+      $locals: {},
+    };
+
+    await expect(
+      primeCallbackCredentialsForPayments([payment]),
+    ).resolves.toBe(0);
+
+    expect(payment.$locals.paymentCredentialResolutionError).toBe(
+      "PAYMENT_CALLBACK_CREDENTIAL_DECRYPT_FAILED",
+    );
+    expect(
+      providerService.primePaymentCredentialContext,
     ).not.toHaveBeenCalled();
   });
 

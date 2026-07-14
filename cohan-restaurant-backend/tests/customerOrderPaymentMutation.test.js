@@ -48,7 +48,10 @@ describe("customer order payment mutation", () => {
     mocks.paymentQuery.sort.mockResolvedValue([]);
     mocks.findPaymentSessions.mockReturnValue(mocks.paymentQuery);
     mocks.countDocuments.mockResolvedValue(1);
-    mocks.createOrderPayment.mockResolvedValue({ id: "payment-1", payUrl: "https://pay.test" });
+    mocks.createOrderPayment.mockResolvedValue({
+      id: "payment-1",
+      payUrl: "https://pay.test",
+    });
   });
 
   it("recognizes orders owned by the authenticated customer", async () => {
@@ -64,7 +67,9 @@ describe("customer order payment mutation", () => {
       callbackCredentialCiphertext: undefined,
       payUrl: "https://sandbox.vnpayment.vn/old-payment",
       status: "pending",
+      callbackStatus: "none",
       events: [],
+      $locals: {},
       save,
     };
     mocks.paymentQuery.sort.mockResolvedValue([legacyPayment]);
@@ -91,12 +96,13 @@ describe("customer order payment mutation", () => {
       payload: {
         reason: "legacy_session_missing_callback_credential_snapshot",
         source: "pos_retry_guard",
+        credentialResolutionError: undefined,
       },
     });
     expect(save).toHaveBeenCalledOnce();
   });
 
-  it("keeps a reusable POS gateway session that has an exact credential snapshot", async () => {
+  it("keeps a reusable POS gateway session after its callback credential is restored", async () => {
     const save = vi.fn();
     mocks.paymentQuery.sort.mockResolvedValue([
       {
@@ -104,7 +110,9 @@ describe("customer order payment mutation", () => {
         callbackCredentialCiphertext: "encrypted-session-credential",
         payUrl: "https://sandbox.vnpayment.vn/current-payment",
         status: "pending",
+        callbackStatus: "none",
         events: [],
+        $locals: { paymentProviderCredentials: { hashSecret: "secret" } },
         save,
       },
     ]);
@@ -119,6 +127,75 @@ describe("customer order payment mutation", () => {
     ).resolves.toBe(0);
 
     expect(save).not.toHaveBeenCalled();
+  });
+
+  it("replaces a POS session whose encrypted callback credential cannot be restored", async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    const brokenPayment = {
+      metadata: { source: "order_payment", orderIds: [orderId] },
+      callbackCredentialCiphertext: "encrypted-session-credential",
+      payUrl: "https://sandbox.vnpayment.vn/stale-payment",
+      status: "pending",
+      callbackStatus: "none",
+      events: [],
+      $locals: {
+        paymentCredentialResolutionError:
+          "PAYMENT_CALLBACK_CREDENTIAL_SNAPSHOT_INCOMPLETE",
+      },
+      save,
+    };
+    mocks.paymentQuery.sort.mockResolvedValue([brokenPayment]);
+
+    await expect(
+      cancelLegacyExternalOrderPaymentSessions({
+        restaurantId,
+        orderIds: [orderId],
+        provider: "vnpay",
+        paymentMethod: "vnpay",
+      }),
+    ).resolves.toBe(1);
+
+    expect(brokenPayment.cancelReason).toBe(
+      "callback_credential_snapshot_unreadable",
+    );
+    expect(brokenPayment.events.at(-1)).toMatchObject({
+      type: "payment_cancelled",
+      payload: {
+        source: "pos_retry_guard",
+        credentialResolutionError:
+          "PAYMENT_CALLBACK_CREDENTIAL_SNAPSHOT_INCOMPLETE",
+      },
+    });
+    expect(save).toHaveBeenCalledOnce();
+  });
+
+  it("replaces a POS session after a provider callback signature was rejected", async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    const rejectedPayment = {
+      metadata: { source: "order_payment", orderIds: [orderId] },
+      callbackCredentialCiphertext: "encrypted-session-credential",
+      payUrl: "https://sandbox.vnpayment.vn/rejected-payment",
+      status: "pending",
+      callbackStatus: "rejected",
+      events: [],
+      $locals: {},
+      save,
+    };
+    mocks.paymentQuery.sort.mockResolvedValue([rejectedPayment]);
+
+    await expect(
+      cancelLegacyExternalOrderPaymentSessions({
+        restaurantId,
+        orderIds: [orderId],
+        provider: "vnpay",
+        paymentMethod: "vnpay",
+      }),
+    ).resolves.toBe(1);
+
+    expect(rejectedPayment.cancelReason).toBe(
+      "previous_callback_signature_rejected",
+    );
+    expect(save).toHaveBeenCalledOnce();
   });
 
   it("does not touch bank-transfer sessions", async () => {
