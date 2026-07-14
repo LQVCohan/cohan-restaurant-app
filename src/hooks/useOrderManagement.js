@@ -9,7 +9,7 @@ import {
 } from "@/utils/kitchenOrderVisibility";
 
 const PAY_SELECTED_TABLE_ORDERS = gql`
-  mutation PaySelectedTableOrders($input: PayOrdersByOrderIdsInput!) {
+  mutation PayOrdersByOrderIds($input: PayOrdersByOrderIdsInput!) {
     payOrdersByOrderIds(input: $input) {
       warning
       pendingOrderCodes
