@@ -5,6 +5,10 @@ import { usePos } from "@/context/PosContext";
 import useOrderManagement from "@/hooks/useOrderManagement";
 import { groupItemsByBatch } from "@/utils/orderBatchGrouping";
 import {
+  getAuthoritativeLineTotal,
+  normalizeLegacyPaymentDisplayItem,
+} from "@/utils/paymentLinePricing";
+import {
   clearPartialTablePaymentSelection,
   clearTablePartialPaymentHistory,
   markTablePartialPaymentHistory,
@@ -38,19 +42,6 @@ const formatVnd = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 
-const getLineTotal = (item) => {
-  if (Number.isFinite(Number(item?.lineSubtotal))) {
-    return Math.max(0, Number(item.lineSubtotal));
-  }
-
-  return Math.max(
-    0,
-    (Number(item?.price ?? item?.unitPrice ?? item?.basePrice ?? 0) +
-      Number(item?.modifiersPrice || 0)) *
-      Number(item?.quantity || 0),
-  );
-};
-
 const normalizeId = (value) => String(value || "").trim();
 
 const uniqueIds = (values = []) => [
@@ -77,7 +68,7 @@ export default function PaymentModal(props) {
           orderId: normalizeId(batch.orderId),
           batchIndex: Number(batch.batchIndex || index + 1),
           amount: (batch.items || []).reduce(
-            (sum, item) => sum + getLineTotal(item),
+            (sum, item) => sum + getAuthoritativeLineTotal(item),
             0,
           ),
         })),
@@ -184,9 +175,17 @@ export default function PaymentModal(props) {
     );
   }, [isPartialPayment, order, selectedIdSet]);
 
+  const legacyDisplayItems = useMemo(
+    () => selectedItems.map(normalizeLegacyPaymentDisplayItem),
+    [selectedItems],
+  );
+
   const selectedTotalAmount = useMemo(() => {
     if (!isPartialPayment) return Number(totalAmount || 0);
-    return selectedItems.reduce((sum, item) => sum + getLineTotal(item), 0);
+    return selectedItems.reduce(
+      (sum, item) => sum + getAuthoritativeLineTotal(item),
+      0,
+    );
   }, [isPartialPayment, selectedItems, totalAmount]);
 
   const reservationDepositCredit = useMemo(() => {
@@ -331,7 +330,7 @@ export default function PaymentModal(props) {
     <>
       <PaymentModalLegacy
         {...props}
-        order={selectedItems}
+        order={legacyDisplayItems}
         totalAmount={
           reservationDepositCredit > 0
             ? amountAfterReservationDeposit
