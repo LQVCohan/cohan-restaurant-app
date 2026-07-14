@@ -106,6 +106,20 @@ function findSameMenuGift({
   return candidates[0]?.item || null;
 }
 
+function findFirstSameMenuPair(menuItems = []) {
+  const groups = new Map();
+  for (const item of menuItems) {
+    const menuId = item?.menuId ? String(item.menuId) : "";
+    if (!menuId || !item?._id || !isSellableMenuItem(item)) continue;
+    const rows = groups.get(menuId) || [];
+    rows.push(item);
+    groups.set(menuId, rows);
+  }
+
+  const firstGroup = [...groups.values()].find((rows) => rows.length >= 2);
+  return firstGroup ? firstGroup.slice(0, 2) : [];
+}
+
 async function resolveRestaurant() {
   if (DEMO_RESTAURANT_ID) {
     const restaurant = await Restaurant.findById(DEMO_RESTAURANT_ID);
@@ -262,9 +276,12 @@ async function seedPromotions(restaurantId) {
       })
     : null;
 
-  const comboItems = normalizedItems
-    .slice(0, 2)
-    .map((item) => ({ itemId: item._id, quantity: 1 }));
+  const comboSourceItems =
+    pho && tea ? [pho, tea] : findFirstSameMenuPair(normalizedItems);
+  const comboItems = comboSourceItems.map((item) => ({
+    itemId: item._id,
+    quantity: 1,
+  }));
 
   const definitions = [
     {
