@@ -113,11 +113,19 @@ function ensureProgress(surface) {
   return progress;
 }
 
+function getActiveProviderLabel(surface) {
+  const panelText = normalizeText(
+    surface.querySelector('[data-cohan-payment-online-panel="true"]')?.textContent,
+  );
+  return panelText.startsWith("momo") ? "MoMo" : "VNPAY";
+}
+
 function detectOnlineState(surface) {
   const text = normalizeText(surface.textContent);
   const hasLaunchLink = Boolean(surface.querySelector("[data-cohan-payment-launch]"));
   const hasReference = text.includes("mã tham chiếu:");
   const hasOnlineSession = hasLaunchLink || (hasReference && text.includes("số tiền thanh toán"));
+  const providerLabel = getActiveProviderLabel(surface);
 
   if (!hasOnlineSession) return { active: false, state: "idle", message: "" };
   if (
@@ -129,6 +137,13 @@ function detectOnlineState(surface) {
       active: true,
       state: "success",
       message: "Thanh toán đã được xác nhận. COHAN đang hoàn tất hóa đơn.",
+    };
+  }
+  if (surface.dataset.cohanPaymentPopupBlocked === "true") {
+    return {
+      active: true,
+      state: "failed",
+      message: "Trình duyệt đang chặn cửa sổ thanh toán. Hãy cho phép pop-up cho COHAN rồi bấm mở lại.",
     };
   }
   if (
@@ -146,13 +161,13 @@ function detectOnlineState(surface) {
     return {
       active: true,
       state: "pending",
-      message: "Đang chờ VNPAY phản hồi. Không cần bấm xác nhận thêm lần nữa.",
+      message: `Đang chờ ${providerLabel} phản hồi. Không cần bấm xác nhận thêm lần nữa.`,
     };
   }
   return {
     active: true,
     state: "ready",
-    message: "Mở VNPAY, hoàn tất giao dịch rồi quay lại đây. Trạng thái sẽ tự cập nhật.",
+    message: `Mở ${providerLabel}, hoàn tất giao dịch rồi quay lại đây. Trạng thái sẽ tự cập nhật.`,
   };
 }
 
@@ -162,6 +177,9 @@ function updateProgress(surface) {
   progress.hidden = !status.active;
   surface.dataset.cohanOnlinePaymentState = status.state;
   progress.dataset.state = status.state;
+
+  const gatewayLabel = progress.querySelector('[data-step="gateway"] b');
+  if (gatewayLabel) gatewayLabel.textContent = `Thanh toán ${getActiveProviderLabel(surface)}`;
 
   const message = progress.querySelector(".cohan-payment-progress__message");
   if (message && message.textContent !== status.message) message.textContent = status.message;
@@ -235,6 +253,7 @@ function openPaymentWindow(link, surface) {
 
   const popup = window.open(href, "cohan-payment-gateway", features);
   if (!popup) {
+    surface.dataset.cohanPaymentPopupBlocked = "true";
     setPopupStatus(
       surface,
       "Trình duyệt đang chặn cửa sổ thanh toán. Hãy cho phép pop-up cho COHAN rồi bấm mở lại.",
@@ -243,11 +262,16 @@ function openPaymentWindow(link, surface) {
     return;
   }
 
-  popup.opener = null;
+  delete surface.dataset.cohanPaymentPopupBlocked;
+  try {
+    popup.opener = null;
+  } catch (_) {
+    // Some browsers expose a read-only opener on an already-navigated window.
+  }
   popup.focus?.();
   setPopupStatus(
     surface,
-    "Cổng VNPAY đã được mở trong cửa sổ riêng. Hoàn tất giao dịch rồi quay lại COHAN.",
+    `Cổng ${getActiveProviderLabel(surface)} đã được mở trong cửa sổ riêng. Hoàn tất giao dịch rồi quay lại COHAN.`,
     "pending",
   );
 }
