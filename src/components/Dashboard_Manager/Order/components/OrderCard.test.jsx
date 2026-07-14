@@ -39,6 +39,32 @@ describe("OrderCard operations UI", () => {
       expect(onUpdateStatus).toHaveBeenCalledWith(baseOrder.id, "preparing"),
     );
   });
+
+  it("starts preparation from a confirmed order using its action order id", async () => {
+    const onUpdateStatus = vi.fn().mockResolvedValue(undefined);
+    render(
+      <OrderCard
+        order={{
+          ...baseOrder,
+          currentStatus: "confirmed",
+          actionOrderId: "confirmed-action-order-7",
+        }}
+        onUpdateStatus={onUpdateStatus}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /bắt đầu chế biến/i }),
+    );
+
+    await waitFor(() =>
+      expect(onUpdateStatus).toHaveBeenCalledWith(
+        "confirmed-action-order-7",
+        "preparing",
+      ),
+    );
+  });
+
   it("calls the reject callback from a remote pending order", () => {
     const onRejectOrder = vi.fn();
     render(
