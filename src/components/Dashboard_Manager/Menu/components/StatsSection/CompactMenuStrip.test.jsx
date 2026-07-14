@@ -1,31 +1,40 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthContext } from "@/context/AuthContext";
+import { AuthContext } from "../../../../../context/AuthContext";
 import CompactMenuStrip from "./CompactMenuStrip";
 
-const refetchQueries = vi.fn().mockResolvedValue(undefined);
+const refetchQueries = vi.fn().mockResolvedValue([]);
 const mutation = vi.fn().mockResolvedValue({ data: {} });
 
-vi.mock("@/apollo/client", () => ({
-  apolloClient: {
-    refetchQueries,
-    mutate: mutation,
-  },
+vi.mock("@apollo/client", () => ({
+  gql: (strings) => strings.join(""),
+  useApolloClient: () => ({ refetchQueries }),
+  useMutation: () => [mutation],
+}));
+
+vi.mock("../AuditLogModal/AuditLogModal", () => ({
+  default: () => null,
 }));
 
 const dinnerMenus = [
   {
     id: "menu-vip",
-    name: "Menu VIP",
+    restaurantId: "restaurant-1",
     timeSlot: "dinner",
+    name: "Menu VIP",
+    description: "Không gian riêng và món cao cấp",
     isActive: true,
+    itemCount: 8,
   },
   {
     id: "menu-casual",
-    name: "Menu ăn chơi",
+    restaurantId: "restaurant-1",
     timeSlot: "dinner",
-    isActive: false,
+    name: "Menu ăn chơi",
+    description: "Món chia sẻ và đồ uống",
+    isActive: true,
+    itemCount: 12,
   },
 ];
 
@@ -33,7 +42,7 @@ const renderStrip = (props = {}) =>
   render(
     <AuthContext.Provider
       value={{
-        user: { id: "manager-1", roleName: "manager" },
+        user: { roleName: "manager" },
         activeRestaurantId: "restaurant-1",
       }}
     >
@@ -90,8 +99,35 @@ describe("CompactMenuStrip", () => {
       .closest("article");
     fireEvent.click(within(casualCard).getByRole("button", { pressed: false }));
 
-    await waitFor(() =>
-      expect(onTimeSlotChange).toHaveBeenCalledWith("dinner", "menu-casual"),
+    await waitFor(() => {
+      expect(within(casualCard).getByRole("button", { pressed: true })).toBeInTheDocument();
+    });
+    expect(onTimeSlotChange).toHaveBeenCalledWith("dinner");
+    expect(
+      JSON.parse(window.sessionStorage.getItem("manager.menu.selection")),
+    ).toEqual({
+      restaurantId: "restaurant-1",
+      menuId: "menu-casual",
+      timeSlot: "dinner",
+    });
+  });
+
+  it("opens a create form for an empty time slot even when another slot has menus", () => {
+    renderStrip({ onAddMenu: vi.fn() });
+
+    const dialog = openMenuList();
+    const breakfastSection = within(dialog)
+      .getByRole("heading", { name: "Bữa sáng" })
+      .closest("section");
+    fireEvent.click(
+      within(breakfastSection).getByRole("button", {
+        name: /Tạo menu đầu tiên cho bữa sáng/i,
+      }),
+    );
+
+    expect(within(dialog).getByText("Tạo thực đơn mới")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Mốc giờ phục vụ")).toHaveValue(
+      "breakfast",
     );
   });
 });
