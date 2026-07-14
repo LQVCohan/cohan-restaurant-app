@@ -46,7 +46,7 @@ describe("production-facing seed display data", () => {
     const source = await readFile(couponSeedPath, "utf8");
 
     expect(source).toContain('name: "Ưu đãi thành viên 10%"');
-    expect(source).toContain('name: "Tặng trà đào khi gọi phở"');
+    expect(source).toContain('name: `Tặng ${tea.name} khi gọi ${pho.name}`');
     expect(source).toContain('code: "THANHVIEN10"');
     expect(source).toContain('code: "PHOTANGTRA"');
     expect(source).not.toMatch(/name:\s*"(?:Active|Expired|Demo|Fixed 20k)/i);
