@@ -1,6 +1,7 @@
 const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
 
 const toFiniteNumber = (value, fallback = null) => {
+  if (value == null || value === "") return fallback;
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 };
