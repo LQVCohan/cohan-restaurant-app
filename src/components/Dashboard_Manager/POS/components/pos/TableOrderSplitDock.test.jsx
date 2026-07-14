@@ -12,6 +12,9 @@ const modal = read(
 const dock = read(
   "src/components/Dashboard_Manager/POS/components/pos/TableOrderSplitDock.jsx",
 );
+const dockStyles = read(
+  "src/components/Dashboard_Manager/POS/components/pos/TableOrderSplitDock.module.scss",
+);
 const layout = read(
   "src/components/Dashboard_Manager/POS/components/pos/POSLayout.jsx",
 );
@@ -35,10 +38,22 @@ describe("POS standalone table order split UI", () => {
     expect(modal).toContain("canRevert");
   });
 
-  it("mounts the action in the active POS table workspace", () => {
+  it("mounts the action in the POS top bar instead of overlaying the order footer", () => {
     expect(dock).toContain("Tách / gộp order");
     expect(dock).toContain("selectTableForOrder");
-    expect(layout).toContain("TableOrderSplitDock");
+    expect(dock).toContain("TableOrderSplitDock.module.scss");
+    expect(dock).not.toContain('position: "absolute"');
+    expect(dock).not.toContain("bottom: 14");
+    expect(dockStyles).toContain(".button");
+    expect(dockStyles).not.toContain("position: absolute");
+
+    expect(layout).toContain("function RestaurantBar");
+    expect(layout).toContain("{showSplitAction && <TableOrderSplitDock />}");
+    expect(layout).toContain("<RestaurantBar {...restaurantBarProps} showSplitAction />");
+
+    const contentStart = layout.indexOf("function POSContent");
+    const barStart = layout.indexOf("function RestaurantBar");
+    expect(layout.slice(contentStart, barStart)).not.toContain("<TableOrderSplitDock");
     expect(styles).toContain(".revertCard");
     expect(styles).toContain(".orderList");
   });

@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useLayoutEffect, useState } from "react";
-import { BriefcaseBusiness, TimerReset } from "lucide-react";
+import { BriefcaseBusiness, RefreshCw, TimerReset } from "lucide-react";
 import { apolloClient } from "@/apollo/client";
 import "@/styles/schedule-manager-experience.css";
 import "@/styles/schedule-action-center.css";
@@ -161,11 +161,29 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
             <small>Block 4 giờ, tự nối giờ và kiểm tra availability</small>
           </span>
         </button>
+        <button
+          type="button"
+          className={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.ROTATING ? "active" : ""}
+          aria-pressed={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.ROTATING}
+          onClick={() => setEmploymentView(SCHEDULE_EMPLOYMENT_SCOPES.ROTATING)}
+        >
+          <RefreshCw size={18} />
+          <span>
+            <strong>Lịch xoay ca</strong>
+            <small>Nhân sự được cấu hình ROTATING, phân công linh hoạt theo ca</small>
+          </span>
+        </button>
       </nav>
 
       {employmentView === SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME ? (
         <div className="schedule-employment-view schedule-employment-view--full-time">
           <ScheduleEmploymentScopeProvider scope={SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME}>
+            <ScheduleManagement />
+          </ScheduleEmploymentScopeProvider>
+        </div>
+      ) : employmentView === SCHEDULE_EMPLOYMENT_SCOPES.ROTATING ? (
+        <div className="schedule-employment-view schedule-employment-view--rotating">
+          <ScheduleEmploymentScopeProvider scope={SCHEDULE_EMPLOYMENT_SCOPES.ROTATING}>
             <ScheduleManagement />
           </ScheduleEmploymentScopeProvider>
         </div>
