@@ -90,9 +90,11 @@
     "graphql-scalars": "^1.25.0",
     "jsonwebtoken": "^9.0.2",
     "lodash-es": "^4.17.21",
+    "mercurius": "^16.9.0",
+    "mime": "^4.0.7",
     "mongodb": "^6.17.0",
     "mongoose": "^8.16.2",
-    "mongoose-lean-virtuals": "^0.0.3",
+    "mongoose-lean-virtuals": "^2.0.0",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
     "nodemailer": "^8.0.10",
@@ -100,7 +102,7 @@
     "qrcode": "^1.5.4",
     "sharp": "^0.34.5",
     "socket.io": "^4.8.1",
-    "zxcvbn": "^3.2.0"
+    "zxcvbn": "^4.2.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.10",
