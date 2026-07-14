@@ -1,11 +1,19 @@
-import { notifyCustomerServiceRequest } from "../../../../src/services/notification/notificationWorkflow.service.js";
+import {
+  notifyCustomerServiceRequest,
+  notifyReadyOrderItem,
+} from "../../../../src/services/notification/notificationWorkflow.service.js";
 
 const CUSTOMER_REQUEST_CREATED_EVENTS = new Set([
   "CUSTOMER_STAFF_CALL_REQUESTED",
   "CUSTOMER_PAYMENT_REQUESTED",
 ]);
 
-async function dispatchCustomerRequestNotification(restaurantId, type, payload) {
+async function dispatchCustomerRequestNotification(
+  restaurantId,
+  type,
+  payload,
+  io = null,
+) {
   if (!CUSTOMER_REQUEST_CREATED_EVENTS.has(String(type || "").toUpperCase())) return;
 
   try {
@@ -16,6 +24,7 @@ async function dispatchCustomerRequestNotification(restaurantId, type, payload) 
       tableCode: payload?.tableCode || payload?.request?.tableCode || null,
       orderCode: payload?.request?.orderCode || payload?.order?.orderCode || null,
       message: payload?.message || payload?.request?.message || null,
+      io,
     });
   } catch (error) {
     console.warn(
@@ -25,15 +34,51 @@ async function dispatchCustomerRequestNotification(restaurantId, type, payload) 
   }
 }
 
+async function dispatchReadyItemNotification(
+  restaurantId,
+  type,
+  payload,
+  io = null,
+) {
+  if (String(type || "").toUpperCase() !== "ORDER_ITEM_STATUS_CHANGED") return;
+  if (String(payload?.meta?.statusTo || "").toLowerCase() !== "ready") return;
+
+  const order = payload?.order || null;
+  const itemId = String(payload?.meta?.itemId || "").trim();
+  const item = (order?.items || []).find(
+    (candidate) => String(candidate?._id || candidate?.id || "") === itemId,
+  ) || {
+    _id: itemId,
+    name: payload?.meta?.itemName || "Món",
+    station: payload?.meta?.station || null,
+  };
+
+  try {
+    await notifyReadyOrderItem({
+      restaurantId,
+      order,
+      item,
+      io,
+    });
+  } catch (error) {
+    console.warn(
+      `[NOTIFICATION] Ready-item fan-out failed (${payload?.meta?.itemName || itemId || "unknown"}):`,
+      error?.message || error,
+    );
+  }
+}
+
 // ===============================
 // Gửi event cho trang quản lý / POS / Kitchen Display
 // ===============================
 export async function emitRestaurantEvent(ctx, restaurantId, type, payload) {
-  await dispatchCustomerRequestNotification(restaurantId, type, payload);
+  const io = ctx?.io || null;
+  await dispatchCustomerRequestNotification(restaurantId, type, payload, io);
+  await dispatchReadyItemNotification(restaurantId, type, payload, io);
 
-  if (!ctx?.io) return;
+  if (!io) return;
 
-  ctx.io.to(`restaurant_${restaurantId}`).emit("orderEvents", {
+  io.to(`restaurant_${restaurantId}`).emit("orderEvents", {
     type,
     ...payload,
   });
