@@ -233,9 +233,9 @@ describe("AuthProvider", () => {
     expect(screen.getByTestId("session-state")).not.toHaveTextContent("anonymous");
   });
 
-  it("keeps token while user is temporarily null during restore validation", async () => {
+  it("keeps a restored token when the refresh cookie is blocked on reload", async () => {
     sessionStorage.setItem(SESSION_ACCESS_TOKEN_KEY, "stored-token");
-    global.fetch = vi.fn().mockResolvedValue({ ok: false });
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 401 });
 
     render(
       <AuthProvider>
@@ -247,6 +247,7 @@ describe("AuthProvider", () => {
     expect(screen.getByTestId("user-id")).toHaveTextContent("");
     expect(screen.getByTestId("session-state")).toHaveTextContent("restoring");
     expect(screen.getByTestId("is-auth")).toHaveTextContent("true");
+    expect(sessionStorage.getItem(SESSION_ACCESS_TOKEN_KEY)).toBe("stored-token");
   });
 
   it("pageshow persisted restores token and triggers session restore", async () => {
