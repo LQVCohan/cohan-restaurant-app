@@ -92,9 +92,13 @@ function InvoiceReceiptModal({
   const method = transaction?.method || receiptData?.method || "cash";
   const displayTable = table?.code || invoice?.tableCode || "—";
 
+  const openBrowserPrint = () => {
+    window.setTimeout(() => window.print?.(), 0);
+  };
+
   const handlePrint = async () => {
     if (!restaurantId) {
-      window.print?.();
+      openBrowserPrint();
       return;
     }
 
@@ -109,7 +113,7 @@ function InvoiceReceiptModal({
             printerId: null,
             stationId: "cashier",
             printType: "invoice_print_now",
-            templateKey: "invoice",
+            templateKey: "receipt",
             payload: {
               invoice,
               transaction,
@@ -121,15 +125,23 @@ function InvoiceReceiptModal({
         },
       });
 
-      const jobId = result?.data?.enqueuePrintJob?.id;
+      const job = result?.data?.enqueuePrintJob || null;
+      if (String(job?.status || "").toLowerCase() === "failed") {
+        setPrintMessage(
+          job?.error || "Máy in chưa sẵn sàng. Đã mở bản in trình duyệt.",
+        );
+        openBrowserPrint();
+        return;
+      }
+
       setPrintMessage(
-        jobId ? `Đã tạo lệnh in #${jobId}.` : "Đã tạo lệnh in hóa đơn.",
+        job?.id ? `Đã tạo lệnh in #${job.id}.` : "Đã tạo lệnh in hóa đơn.",
       );
     } catch (error) {
       setPrintMessage(
         error?.message || "Không tạo được lệnh in. Đã mở in trình duyệt.",
       );
-      window.print?.();
+      openBrowserPrint();
     } finally {
       setPrinting(false);
     }
