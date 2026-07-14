@@ -6,6 +6,7 @@ import CenterPanel from "./CenterPanel";
 import RightPanel from "./RightPanel";
 import PosMenuAvailabilityRealtimeNotice from "./PosMenuAvailabilityRealtimeNotice";
 import PosReservationRealtimeNotice from "./PosReservationRealtimeNotice";
+import PosFutureReservationWatcher from "./PosFutureReservationWatcher";
 import PosNotificationCenter from "./PosNotificationCenter";
 import DiscountCouponDock from "./DiscountCouponDock";
 import PosDiscountSummaryOverlay from "./PosDiscountSummaryOverlay";
@@ -276,6 +277,7 @@ export default function POSLayout() {
         />
         <PosMenuAvailabilityRealtimeNotice restaurantId={restaurantId} />
         <PosReservationRealtimeNotice restaurantId={restaurantId} />
+        <PosFutureReservationWatcher />
         <POSContent />
       </div>
     </PosProvider>
