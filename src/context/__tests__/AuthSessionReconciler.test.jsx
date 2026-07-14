@@ -94,6 +94,7 @@ function Harness({ loginImplementation, onLogout = () => {} }) {
 describe("AuthSessionReconciler", () => {
   beforeEach(() => {
     sessionStorage.clear();
+    localStorage.clear();
     clearAuth();
     vi.useRealTimers();
   });
@@ -160,6 +161,24 @@ describe("AuthSessionReconciler", () => {
     expect(screen.getByTestId("token")).toHaveTextContent("login-token");
     expect(screen.getByTestId("user-name")).toHaveTextContent("Khách đăng nhập");
     expect(screen.getByTestId("session-state")).toHaveTextContent("authenticated");
+  });
+
+  it("does not resurrect a session after auth storage was deliberately cleared", async () => {
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("login"));
+    await waitFor(() =>
+      expect(screen.getByTestId("token")).toHaveTextContent("login-token"),
+    );
+
+    act(() => clearAuth());
+    fireEvent.click(screen.getByText("parent-clear"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("token")).toHaveTextContent(""),
+    );
+    expect(screen.getByTestId("user-name")).toHaveTextContent("");
+    expect(screen.getByTestId("session-state")).toHaveTextContent("anonymous");
   });
 
   it("switches the UI to anonymous only after an explicit session rejection", async () => {
