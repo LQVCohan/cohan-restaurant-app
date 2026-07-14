@@ -318,3 +318,48 @@
     transition: none;
   }
 }
+
+/* Keep the employee scanner above the routed customer/staff shell. The host is
+   appended after #root, so leaving it in normal document flow pushes the scanner
+   below the first viewport on mobile. */
+.staff-reservation-qr-scanner-mode body {
+  overflow: hidden;
+}
+
+.staff-reservation-qr-scanner-mode #root {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.staff-reservation-qr-scanner-mode #cohan-staff-reservation-scanner-root {
+  position: fixed;
+  z-index: 2147483000;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  background: #eef5f0;
+}
+
+@media (max-width: 520px) {
+  .staff-reservation-scanner-overlay.table-qr-scanner {
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-bottom: calc(28px + env(safe-area-inset-bottom));
+  }
+
+  .staff-reservation-scanner-overlay .table-qr-scanner__container {
+    gap: 12px;
+  }
+
+  .staff-reservation-scanner-overlay .staff-reservation-qr-returnbar {
+    margin-bottom: 0;
+  }
+
+  .staff-reservation-scanner-overlay .table-qr-scanner__intro {
+    display: none;
+  }
+}
