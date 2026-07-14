@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const credentialService = vi.hoisted(() => ({
+  decryptPaymentCredential: vi.fn(),
+  encryptPaymentCredential: vi.fn(),
   getPlatformPaymentCredentials: vi.fn(),
   hasCompletePaymentCredentials: vi.fn(),
   resolvePaymentProviderCredential: vi.fn(),
@@ -20,7 +22,61 @@ describe("payment session callback credential provenance", () => {
     credentialService.hasCompletePaymentCredentials.mockReturnValue(true);
   });
 
-  it("keeps a platform-created payment on the platform credential", async () => {
+  it("prefers the encrypted credential snapshot used to create the payment", async () => {
+    const snapshotCredentials = {
+      tmnCode: "SNAPSHOT-TMN",
+      hashSecret: "snapshot-secret",
+    };
+    credentialService.decryptPaymentCredential.mockReturnValue({
+      provider: "vnpay",
+      mode: "sandbox",
+      credentials: snapshotCredentials,
+    });
+    credentialService.getPlatformPaymentCredentials.mockReturnValue({
+      tmnCode: "CHANGED-PLATFORM-TMN",
+      hashSecret: "changed-platform-secret",
+    });
+
+    await expect(
+      resolveCallbackCredentialsForPayment({
+        provider: "vnpay",
+        providerCredentialSource: "platform",
+        providerCredentialMode: "sandbox",
+        callbackCredentialCiphertext: "encrypted-snapshot",
+        restaurantId: "restaurant-1",
+      }),
+    ).resolves.toEqual(snapshotCredentials);
+
+    expect(credentialService.decryptPaymentCredential).toHaveBeenCalledWith(
+      "encrypted-snapshot",
+    );
+    expect(
+      credentialService.getPlatformPaymentCredentials,
+    ).not.toHaveBeenCalled();
+    expect(
+      credentialService.resolvePaymentProviderCredential,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("rejects a credential snapshot from another provider", async () => {
+    credentialService.decryptPaymentCredential.mockReturnValue({
+      provider: "momo",
+      credentials: {
+        partnerCode: "MOMO",
+        accessKey: "access",
+        secretKey: "secret",
+      },
+    });
+
+    await expect(
+      resolveCallbackCredentialsForPayment({
+        provider: "vnpay",
+        callbackCredentialCiphertext: "encrypted-wrong-provider",
+      }),
+    ).rejects.toThrow("PAYMENT_CALLBACK_CREDENTIAL_PROVIDER_MISMATCH");
+  });
+
+  it("keeps a platform-created legacy payment on the platform credential", async () => {
     const platformCredentials = {
       tmnCode: "PLATFORM-TMN",
       hashSecret: "platform-secret",
@@ -43,7 +99,7 @@ describe("payment session callback credential provenance", () => {
     ).not.toHaveBeenCalled();
   });
 
-  it("uses the exact credential version stored on a restaurant payment", async () => {
+  it("uses the exact credential version stored on a legacy restaurant payment", async () => {
     const credentials = {
       tmnCode: "RESTAURANT-TMN-V2",
       hashSecret: "restaurant-secret-v2",
@@ -72,7 +128,7 @@ describe("payment session callback credential provenance", () => {
     });
   });
 
-  it("rejects a restaurant payment when its original credential id is missing", async () => {
+  it("rejects a legacy restaurant payment when its original credential id is missing", async () => {
     await expect(
       resolveCallbackCredentialsForPayment({
         provider: "vnpay",
