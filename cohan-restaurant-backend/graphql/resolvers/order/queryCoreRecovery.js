@@ -20,9 +20,15 @@ const isPaidOrder = (order) => {
   return paymentStatus === "paid" || orderPaymentStatus === "paid";
 };
 
+const getOrderReservationId = (order) => {
+  const reservationId =
+    order?.reservationId || order?.clientMeta?.reservationId || null;
+  return reservationId ? String(reservationId) : null;
+};
+
 const isDetachedReservationPreorder = (order) =>
   Boolean(
-    order?.reservationId &&
+    getOrderReservationId(order) &&
       !order?.parentOrderId &&
       !order?.rootOrderId,
   );
@@ -47,7 +53,7 @@ const toTime = (value) => {
 };
 
 function isFutureReservationOrder(order, reservation, now = new Date()) {
-  if (!order?.reservationId || !reservation) return false;
+  if (!getOrderReservationId(order) || !reservation) return false;
   if (normalizeStatus(reservation.status) === "seated") return false;
 
   const scheduledAt = toTime(reservation.timeTo);
@@ -60,9 +66,12 @@ function enrichOrderWithReservation(order, reservation) {
   const scheduledAt = reservation.timeTo
     ? new Date(reservation.timeTo).toISOString()
     : null;
+  const reservationId =
+    getOrderReservationId(order) || String(reservation._id || "") || null;
 
   return {
     ...order,
+    reservationId,
     customerInfo: {
       ...(order?.customerInfo || {}),
       name:
@@ -78,6 +87,7 @@ function enrichOrderWithReservation(order, reservation) {
     },
     clientMeta: {
       ...(order?.clientMeta || {}),
+      reservationId,
       reservationStatus: reservation.status || null,
       reservationTimeTo: scheduledAt,
       reservationOrderCode: reservation.orderCode || null,
@@ -95,12 +105,13 @@ function classifyOrdersByReservationSchedule(
 
   for (const order of Array.isArray(orders) ? orders : []) {
     if (!order || isPaidOrder(order)) continue;
-    if (!order.reservationId) {
+    const reservationId = getOrderReservationId(order);
+    if (!reservationId) {
       activeOrders.push(order);
       continue;
     }
 
-    const reservation = reservationById.get(String(order.reservationId)) || null;
+    const reservation = reservationById.get(reservationId) || null;
     if (!reservation) {
       if (!isDetachedReservationPreorder(order)) activeOrders.push(order);
       continue;
@@ -126,9 +137,8 @@ async function loadReservationMap(orders = []) {
   const ids = [
     ...new Set(
       (Array.isArray(orders) ? orders : [])
-        .map((order) => order?.reservationId)
-        .filter((id) => id && mongoose.isValidObjectId(id))
-        .map(String),
+        .map(getOrderReservationId)
+        .filter((id) => id && mongoose.isValidObjectId(id)),
     ),
   ];
   if (!ids.length) return new Map();
@@ -280,6 +290,7 @@ export const orderCoreRecoveryInternals = {
   classifyOrdersByReservationSchedule,
   enrichOrderWithReservation,
   filterActiveOrders,
+  getOrderReservationId,
   isDetachedReservationPreorder,
   isFutureReservationOrder,
   isPaidOrder,
