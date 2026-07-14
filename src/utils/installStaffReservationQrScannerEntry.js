@@ -4,6 +4,8 @@ import StaffReservationQrScanner from "@/components/Staff/StaffReservationQrScan
 
 const STAFF_SCAN_URL = "/scan-table?source=staff";
 const STAFF_SCANNER_HOST_ID = "cohan-staff-reservation-scanner-root";
+const CUSTOMER_SCANNER_HIDDEN_CLASS =
+  "staff-reservation-qr-customer-scanner-hidden";
 
 let scannerRoot = null;
 
@@ -25,6 +27,31 @@ function isStaffScannerRoute() {
   return (
     window.location.pathname === "/scan-table" && params.get("source") === "staff"
   );
+}
+
+export function resolveStaffScannerMountTarget(root = document) {
+  return (
+    root.querySelector("#root .mobile-customer-shell__main") ||
+    root.querySelector("#root") ||
+    root.body
+  );
+}
+
+function findCustomerScanner(root = document) {
+  return root.querySelector(
+    "#root .table-qr-scanner:not(.staff-reservation-scanner-overlay)",
+  );
+}
+
+function restoreCustomerScanner(root = document) {
+  root
+    .querySelectorAll(`.${CUSTOMER_SCANNER_HIDDEN_CLASS}`)
+    .forEach((scanner) => {
+      scanner.hidden = false;
+      scanner.classList.remove(CUSTOMER_SCANNER_HIDDEN_CLASS);
+      scanner.removeAttribute("aria-hidden");
+      scanner.removeAttribute("inert");
+    });
 }
 
 function createLink({ className, href, label, title, iconSize = 20 }) {
@@ -76,31 +103,47 @@ function addStaffDashboardCard(root) {
   grid.prepend(card);
 }
 
+function unmountStaffScanner() {
+  restoreCustomerScanner();
+  if (scannerRoot) {
+    scannerRoot.unmount();
+    scannerRoot = null;
+  }
+  document.getElementById(STAFF_SCANNER_HOST_ID)?.remove();
+}
+
 function mountStaffScanner() {
   const active = isStaffScannerRoute();
-  document.documentElement.classList.toggle(
-    "staff-reservation-qr-scanner-mode",
-    active,
-  );
 
-  const customerScanner = document.querySelector("#root .table-qr-scanner");
+  // The old implementation toggled a global selector that hid every scanner
+  // inside #root. The staff scanner is now mounted in the route content itself,
+  // so only the customer scanner being replaced should be hidden.
+  document.documentElement.classList.remove("staff-reservation-qr-scanner-mode");
 
   if (!active) {
-    customerScanner?.removeAttribute("aria-hidden");
-    if (scannerRoot) {
-      scannerRoot.unmount();
-      scannerRoot = null;
-    }
-    document.getElementById(STAFF_SCANNER_HOST_ID)?.remove();
+    unmountStaffScanner();
     return;
   }
 
-  customerScanner?.setAttribute("aria-hidden", "true");
+  const customerScanner = findCustomerScanner();
+  if (customerScanner) {
+    customerScanner.hidden = true;
+    customerScanner.classList.add(CUSTOMER_SCANNER_HIDDEN_CLASS);
+    customerScanner.setAttribute("aria-hidden", "true");
+    customerScanner.setAttribute("inert", "");
+  }
+
+  const mountTarget = resolveStaffScannerMountTarget();
   let host = document.getElementById(STAFF_SCANNER_HOST_ID);
   if (!host) {
     host = document.createElement("div");
     host.id = STAFF_SCANNER_HOST_ID;
-    document.body.append(host);
+  }
+
+  // Keep the scanner inside MobileCustomerShell.__main. Appending it to body
+  // placed it after a 100dvh shell, which produced a blank first screen on mobile.
+  if (host.parentElement !== mountTarget) {
+    mountTarget.append(host);
   }
 
   if (!scannerRoot) {
