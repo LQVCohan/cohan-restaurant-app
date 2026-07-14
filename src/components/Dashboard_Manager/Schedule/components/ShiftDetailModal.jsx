@@ -3,15 +3,22 @@ import ShiftDetailModalBase from "./ShiftDetailModalBase";
 import {
   filterStaffForScheduleScope,
   useScheduleEmploymentScope,
+  useScheduleStaffShiftTypes,
 } from "../ScheduleEmploymentScope";
 
 const idString = (value) => String(value?.id || value?._id || value || "");
 
 const ShiftDetailModal = (props) => {
   const employmentScope = useScheduleEmploymentScope();
+  const shiftTypeByStaffId = useScheduleStaffShiftTypes();
   const scopedStaffList = useMemo(
-    () => filterStaffForScheduleScope(props.staffList || [], employmentScope),
-    [props.staffList, employmentScope],
+    () =>
+      filterStaffForScheduleScope(
+        props.staffList || [],
+        employmentScope,
+        shiftTypeByStaffId,
+      ),
+    [props.staffList, employmentScope, shiftTypeByStaffId],
   );
   const scopedStaffIds = useMemo(
     () => new Set(scopedStaffList.map((person) => idString(person.id))),
