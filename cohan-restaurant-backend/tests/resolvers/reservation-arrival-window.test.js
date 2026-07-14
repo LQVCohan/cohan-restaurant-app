@@ -8,6 +8,9 @@ import { assertReservationArrivalWindow } from "../../graphql/resolvers/reservat
 describe("reservation arrival window", () => {
   const reservation = {
     status: "confirmed",
+    orderCode: "RSV-001",
+    customerName: "Nguyễn Minh Anh",
+    tableCode: "T101",
     timeTo: new Date("2026-07-14T10:00:00.000Z"),
   };
 
@@ -29,26 +32,44 @@ describe("reservation arrival window", () => {
     ).not.toThrow();
   });
 
-  it("blocks a manual or QR check-in before the 15 minute window", () => {
+  it("returns early-arrival details before the normal 15 minute window", () => {
     expect(
       isReservationCheckInOpen(
         reservation,
-        new Date("2026-07-14T09:44:59.999Z"),
+        new Date("2026-07-14T09:30:00.000Z"),
       ),
     ).toBe(false);
 
     try {
       assertReservationArrivalWindow(
         reservation,
-        new Date("2026-07-14T09:44:59.999Z"),
+        new Date("2026-07-14T09:30:00.000Z"),
       );
-      throw new Error("Expected check-in to be rejected");
+      throw new Error("Expected early arrival confirmation to be required");
     } catch (error) {
       expect(error.extensions?.code).toBe("RESERVATION_CHECK_IN_TOO_EARLY");
       expect(error.extensions?.earliestCheckInAt).toBe(
         "2026-07-14T09:45:00.000Z",
       );
+      expect(error.extensions?.reservationTime).toBe(
+        "2026-07-14T10:00:00.000Z",
+      );
+      expect(error.extensions?.minutesBeforeReservation).toBe(30);
+      expect(error.extensions?.requiresStaffConfirmation).toBe(true);
+      expect(error.extensions?.orderCode).toBe("RSV-001");
+      expect(error.extensions?.customerName).toBe("Nguyễn Minh Anh");
+      expect(error.extensions?.tableCode).toBe("T101");
     }
+  });
+
+  it("allows an early check-in only after explicit staff confirmation", () => {
+    expect(() =>
+      assertReservationArrivalWindow(
+        reservation,
+        new Date("2026-07-14T09:30:00.000Z"),
+        { confirmEarlyArrival: true },
+      ),
+    ).not.toThrow();
   });
 
   it("keeps an already seated reservation idempotent", () => {
