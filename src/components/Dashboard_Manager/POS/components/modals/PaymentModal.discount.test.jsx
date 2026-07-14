@@ -22,6 +22,9 @@ const orderManagementSource = read("src/hooks/useOrderManagement.js");
 const orderManagementLegacySource = read(
   "src/hooks/useOrderManagementLegacy.js",
 );
+const partialSelectionSource = read(
+  "src/utils/partialTablePaymentSelection.js",
+);
 
 describe("PaymentModal voucher payment flow", () => {
   it("keeps voucher preview helpers and the existing payment-stage flow", () => {
@@ -75,7 +78,7 @@ describe("PaymentModal voucher payment flow", () => {
 });
 
 describe("partial table payment batches", () => {
-  it("defaults to every batch and filters the legacy modal when partially selected", () => {
+  it("defaults to every batch and normalizes lines passed to the legacy modal", () => {
     expect(paymentModalSource).toContain("PaymentModalLegacy");
     expect(paymentModalSource).toContain("groupItemsByBatch");
     expect(paymentModalSource).toContain(
@@ -83,16 +86,18 @@ describe("partial table payment batches", () => {
     );
     expect(paymentModalSource).toContain("selectedOrderIds");
     expect(paymentModalSource).toContain("selectedItems");
+    expect(paymentModalSource).toContain("legacyDisplayItems");
     expect(paymentModalSource).toContain(
-      "totalAmount={selectedTotalAmount}",
+      "normalizeLegacyPaymentDisplayItem",
     );
+    expect(paymentModalSource).toContain("selectedTotalAmount");
     expect(paymentModalSource).toContain("Đợt gọi món");
     expect(partialPaymentStylesSource).toContain(
       ".partial-table-payment-panel",
     );
   });
 
-  it("routes only a partial selection to payOrdersByOrderIds and keeps the all-table fallback", () => {
+  it("routes the exact visible batch IDs to payOrdersByOrderIds", () => {
     expect(orderManagementSource).toContain(
       "useOrderManagementLegacy",
     );
@@ -102,6 +107,9 @@ describe("partial table payment batches", () => {
     expect(orderManagementSource).toContain("payOrdersByOrderIds");
     expect(orderManagementSource).toContain(
       "getPartialTablePaymentSelection",
+    );
+    expect(partialSelectionSource).toContain(
+      "useOrderIds: active && allOrderIds.length > 0",
     );
     expect(orderManagementSource).toContain(
       "return legacy.confirmPayment",

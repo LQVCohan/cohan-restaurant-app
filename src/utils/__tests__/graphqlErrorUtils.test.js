@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getGraphQLErrorCode,
+  getGraphQLErrorMessage,
   isForbiddenError,
   isUnauthenticatedError,
 } from "../graphqlErrorUtils";
@@ -28,6 +29,24 @@ describe("graphqlErrorUtils", () => {
 
     expect(getGraphQLErrorCode(error)).toBe(
       "RESERVATION_CHECK_IN_TOO_EARLY",
+    );
+    expect(getGraphQLErrorMessage(error)).toBe("Khách đến sớm");
+  });
+
+  it("prefers the nested payment business message over the generic wrapper", () => {
+    const error = {
+      name: "CombinedGraphQLErrors",
+      message: "GraphQL request failed",
+      errors: [
+        {
+          message:
+            "Không thể thanh toán khi còn món chưa phục vụ xong.",
+        },
+      ],
+    };
+
+    expect(getGraphQLErrorMessage(error, "Thanh toán thất bại.")).toBe(
+      "Không thể thanh toán khi còn món chưa phục vụ xong.",
     );
   });
 
@@ -58,6 +77,7 @@ describe("graphqlErrorUtils", () => {
     const error = new Error("Backend down");
 
     expect(getGraphQLErrorCode(error)).toBe("");
+    expect(getGraphQLErrorMessage(error)).toBe("Backend down");
     expect(isForbiddenError(error)).toBe(false);
     expect(isUnauthenticatedError(error)).toBe(false);
   });
