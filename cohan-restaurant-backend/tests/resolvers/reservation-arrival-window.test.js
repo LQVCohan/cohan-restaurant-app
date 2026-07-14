@@ -4,6 +4,7 @@ import {
   isReservationCheckInOpen,
 } from "../../src/services/reservationTableTiming.service.js";
 import { assertReservationArrivalWindow } from "../../graphql/resolvers/reservation/checkIn.js";
+import { isOnTimeReservationArrival } from "../../graphql/resolvers/reservation/arrivalAudit.js";
 
 describe("reservation arrival window", () => {
   const reservation = {
@@ -70,6 +71,21 @@ describe("reservation arrival window", () => {
         { confirmEarlyArrival: true },
       ),
     ).not.toThrow();
+  });
+
+  it("marks arrival through the 15 minute grace boundary as on time", () => {
+    expect(
+      isOnTimeReservationArrival(
+        reservation,
+        new Date("2026-07-14T10:15:00.000Z"),
+      ),
+    ).toBe(true);
+    expect(
+      isOnTimeReservationArrival(
+        reservation,
+        new Date("2026-07-14T10:15:00.001Z"),
+      ),
+    ).toBe(false);
   });
 
   it("keeps an already seated reservation idempotent", () => {
