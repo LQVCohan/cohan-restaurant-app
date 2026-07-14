@@ -33,6 +33,79 @@ function normalizeText(value) {
     .trim();
 }
 
+function sameId(left, right) {
+  return Boolean(left && right && String(left) === String(right));
+}
+
+function isSellableMenuItem(item) {
+  return ["available", "out_of_stock"].includes(
+    String(item?.status || "").toLowerCase(),
+  );
+}
+
+function scoreGiftCandidate(item, { preferredCodes = [], preferredName = "" } = {}) {
+  const code = String(item?.code || "").trim().toUpperCase();
+  const normalizedName = item?.normalizedName || normalizeText(item?.name);
+  const normalizedPreferredName = normalizeText(preferredName);
+  let score = 0;
+
+  const preferredIndex = preferredCodes
+    .map((value) => String(value || "").trim().toUpperCase())
+    .indexOf(code);
+  if (preferredIndex >= 0) score += 1000 - preferredIndex * 20;
+
+  if (normalizedPreferredName && normalizedName === normalizedPreferredName) {
+    score += 800;
+  }
+  if (normalizedPreferredName && normalizedName.includes(normalizedPreferredName)) {
+    score += 500;
+  }
+
+  if (normalizedName.includes("tra dao")) score += 320;
+  else if (normalizedName.includes("tra") || normalizedName.includes("tea")) {
+    score += 260;
+  } else if (
+    normalizedName.includes("ca phe") ||
+    normalizedName.includes("nuoc") ||
+    normalizedName.includes("soda")
+  ) {
+    score += 120;
+  }
+
+  if (String(item?.prepStation || "").toLowerCase() === "bar") score += 80;
+  if (String(item?.status || "").toLowerCase() === "available") score += 40;
+
+  return score;
+}
+
+function findSameMenuGift({
+  buyItem,
+  currentGiftItem = null,
+  menuItems = [],
+  preferredCodes = [],
+}) {
+  if (!buyItem?.menuId) return null;
+
+  const candidates = menuItems
+    .filter((item) => item?._id && !sameId(item._id, buyItem._id))
+    .filter((item) => sameId(item.menuId, buyItem.menuId))
+    .filter(isSellableMenuItem)
+    .map((item) => ({
+      item,
+      score: scoreGiftCandidate(item, {
+        preferredCodes,
+        preferredName: currentGiftItem?.name || "",
+      }),
+    }))
+    .sort(
+      (left, right) =>
+        right.score - left.score ||
+        String(left.item?.name || "").localeCompare(String(right.item?.name || ""), "vi"),
+    );
+
+  return candidates[0]?.item || null;
+}
+
 async function resolveRestaurant() {
   if (DEMO_RESTAURANT_ID) {
     const restaurant = await Restaurant.findById(DEMO_RESTAURANT_ID);
@@ -157,20 +230,37 @@ async function seedPromotions(restaurantId) {
     restaurantId,
     isDeleted: { $ne: true },
   })
-    .select("_id name")
+    .select("_id name code menuId categoryId prepStation status")
     .lean();
   const normalizedItems = menuItems.map((item) => ({
     ...item,
     normalizedName: normalizeText(item.name),
   }));
 
-  let pho = normalizedItems.find((item) => item.normalizedName.includes("pho"));
-  let tea = normalizedItems.find(
-    (item) =>
-      item.normalizedName.includes("tra") || item.normalizedName.includes("tea"),
-  );
+  let pho =
+    normalizedItems.find(
+      (item) => String(item.code || "").toUpperCase() === "MON-PHO-001",
+    ) || normalizedItems.find((item) => item.normalizedName.includes("pho"));
+
   if (!pho && normalizedItems[0]) pho = normalizedItems[0];
-  if (!tea && normalizedItems[1]) tea = normalizedItems[1];
+
+  const preferredTea =
+    normalizedItems.find(
+      (item) => String(item.code || "").toUpperCase() === "NUOC-TRA-001",
+    ) ||
+    normalizedItems.find(
+      (item) =>
+        item.normalizedName.includes("tra") || item.normalizedName.includes("tea"),
+    );
+
+  const tea = pho
+    ? findSameMenuGift({
+        buyItem: pho,
+        currentGiftItem: preferredTea,
+        menuItems: normalizedItems,
+        preferredCodes: ["NUOC-TRA-001", "TRA-TAC"],
+      })
+    : null;
 
   const comboItems = normalizedItems
     .slice(0, 2)
@@ -215,8 +305,8 @@ async function seedPromotions(restaurantId) {
 
   if (pho && tea && String(pho._id) !== String(tea._id)) {
     definitions.push({
-      name: "Tặng trà đào khi gọi phở",
-      description: "Mua một phần phở, tặng một ly trà đào cam sả.",
+      name: `Tặng ${tea.name} khi gọi ${pho.name}`,
+      description: `Mua một phần ${pho.name}, tặng một ${tea.name} trong cùng menu phục vụ.`,
       code: "PHOTANGTRA",
       promotionType: "BOGO",
       scope: "ITEM",
@@ -228,6 +318,10 @@ async function seedPromotions(restaurantId) {
       discountValue: 100,
       stacking: false,
     });
+  } else if (pho) {
+    console.warn(
+      `[seed:coupon-promotion] Bỏ qua PHOTANGTRA vì không tìm thấy món uống cùng menu với "${pho.name}".`,
+    );
   }
 
   if (comboItems.length >= 2) {
