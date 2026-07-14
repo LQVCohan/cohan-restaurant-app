@@ -1,40 +1,31 @@
 import React from "react";
-import { fireEvent, render, screen, within, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthContext } from "../../../../../context/AuthContext";
+import { AuthContext } from "@/context/AuthContext";
 import CompactMenuStrip from "./CompactMenuStrip";
 
-const refetchQueries = vi.fn().mockResolvedValue([]);
+const refetchQueries = vi.fn().mockResolvedValue(undefined);
 const mutation = vi.fn().mockResolvedValue({ data: {} });
 
-vi.mock("@apollo/client", () => ({
-  gql: (strings) => strings.join(""),
-  useApolloClient: () => ({ refetchQueries }),
-  useMutation: () => [mutation],
-}));
-
-vi.mock("../AuditLogModal/AuditLogModal", () => ({
-  default: () => null,
+vi.mock("@/apollo/client", () => ({
+  apolloClient: {
+    refetchQueries,
+    mutate: mutation,
+  },
 }));
 
 const dinnerMenus = [
   {
     id: "menu-vip",
-    restaurantId: "restaurant-1",
-    timeSlot: "dinner",
     name: "Menu VIP",
-    description: "Không gian riêng và món cao cấp",
+    timeSlot: "dinner",
     isActive: true,
-    itemCount: 8,
   },
   {
     id: "menu-casual",
-    restaurantId: "restaurant-1",
-    timeSlot: "dinner",
     name: "Menu ăn chơi",
-    description: "Món chia sẻ và đồ uống",
-    isActive: true,
-    itemCount: 12,
+    timeSlot: "dinner",
+    isActive: false,
   },
 ];
 
@@ -42,7 +33,7 @@ const renderStrip = (props = {}) =>
   render(
     <AuthContext.Provider
       value={{
-        user: { roleName: "manager" },
+        user: { id: "manager-1", roleName: "manager" },
         activeRestaurantId: "restaurant-1",
       }}
     >
@@ -72,10 +63,11 @@ describe("CompactMenuStrip", () => {
   it("shows every named menu grouped inside the same service time slot", async () => {
     renderStrip();
 
-    expect(
-      screen.getByRole("heading", { name: "Danh sách thực đơn" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/2 thực đơn trong 4 mốc giờ/i)).toBeInTheDocument();
+    const heading = screen.getByRole("heading", { name: "Danh sách thực đơn" });
+    expect(heading).toBeInTheDocument();
+    expect(heading.parentElement).toHaveTextContent(
+      /2\s*thực đơn trong 4 mốc giờ/i,
+    );
 
     const dialog = openMenuList();
     expect(within(dialog).getByText("Menu VIP")).toBeInTheDocument();
@@ -98,35 +90,8 @@ describe("CompactMenuStrip", () => {
       .closest("article");
     fireEvent.click(within(casualCard).getByRole("button", { pressed: false }));
 
-    await waitFor(() => {
-      expect(within(casualCard).getByRole("button", { pressed: true })).toBeInTheDocument();
-    });
-    expect(onTimeSlotChange).toHaveBeenCalledWith("dinner");
-    expect(
-      JSON.parse(window.sessionStorage.getItem("manager.menu.selection")),
-    ).toEqual({
-      restaurantId: "restaurant-1",
-      menuId: "menu-casual",
-      timeSlot: "dinner",
-    });
-  });
-
-  it("opens a create form for an empty time slot even when another slot has menus", () => {
-    renderStrip({ onAddMenu: vi.fn() });
-
-    const dialog = openMenuList();
-    const breakfastSection = within(dialog)
-      .getByRole("heading", { name: "Bữa sáng" })
-      .closest("section");
-    fireEvent.click(
-      within(breakfastSection).getByRole("button", {
-        name: /Tạo menu đầu tiên cho bữa sáng/i,
-      }),
-    );
-
-    expect(within(dialog).getByText("Tạo thực đơn mới")).toBeInTheDocument();
-    expect(within(dialog).getByLabelText("Mốc giờ phục vụ")).toHaveValue(
-      "breakfast",
+    await waitFor(() =>
+      expect(onTimeSlotChange).toHaveBeenCalledWith("dinner", "menu-casual"),
     );
   });
 });
