@@ -26,3 +26,12 @@ extend type OvertimeRequest {
   overtimeType: String
   requestedAt: DateTime
 }
+
+# The scheduling validator already consumes these fields at runtime. Keep the
+# GraphQL input contract aligned so manager shift prechecks reach the service.
+extend input ValidateShiftAssignmentInput {
+  shiftType: String
+  allowOverride: Boolean
+  overrideReason: String
+  ignoreShiftId: ID
+}
