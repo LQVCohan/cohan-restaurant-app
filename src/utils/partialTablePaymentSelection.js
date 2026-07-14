@@ -79,18 +79,22 @@ export function setPartialTablePaymentSelection(selection = {}) {
     restaurantId: String(selection.restaurantId || "").trim(),
     tableId: String(selection.tableId || "").trim(),
   };
+  const active = Boolean(selection.active && selectedOrderIds.length);
   const isPartial =
     selectedOrderIds.length > 0 &&
     allOrderIds.length > 0 &&
     selectedOrderIds.length < allOrderIds.length;
 
   currentSelection = {
-    active: Boolean(selection.active && selectedOrderIds.length),
+    active,
     ...scope,
     selectedOrderIds,
     allOrderIds,
     isPartial,
-    useOrderIds: isPartial || tableHasPartialPaymentHistory(scope),
+    // The modal total is calculated from the exact visible order batches.
+    // Always pay those IDs, even when all batches are selected, so hidden or
+    // stale table orders cannot silently change the backend payment scope.
+    useOrderIds: active && allOrderIds.length > 0,
   };
 
   return currentSelection;
