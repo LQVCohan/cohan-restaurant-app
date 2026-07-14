@@ -42,18 +42,21 @@ function buildPaymentEventPayload(payment, eventType, message = null) {
   };
 }
 
-export async function emitPaymentRealtime({ io, payment, eventType = "PAYMENT_VERIFIED", message = null }) {
-  if (!io || !payment) return;
+async function emitPaymentRealtimeUnsafe({ io, payment, eventType, message }) {
+  if (!io || !payment) return { ok: true, skipped: true };
 
   const paymentPayload = normalizePayment(payment);
-  if (!paymentPayload) return;
+  if (!paymentPayload) return { ok: true, skipped: true };
 
   if (paymentPayload.userId) {
-    io.to(`user_${paymentPayload.userId}`).emit("paymentEvents", buildPaymentEventPayload(paymentPayload, eventType, message));
+    io.to(`user_${paymentPayload.userId}`).emit(
+      "paymentEvents",
+      buildPaymentEventPayload(paymentPayload, eventType, message),
+    );
   }
 
   const orderIds = orderIdsFromPayment(paymentPayload);
-  if (!orderIds.length) return;
+  if (!orderIds.length) return { ok: true, skipped: false };
 
   const orders = await Order.find({
     _id: { $in: orderIds },
@@ -65,14 +68,56 @@ export async function emitPaymentRealtime({ io, payment, eventType = "PAYMENT_VE
     if (!restaurantId) continue;
 
     const orderPayload = typeof order.toObject === "function" ? order.toObject() : order;
-    io.to(`restaurant_${restaurantId}`).emit("orderEvents", { type: "PAYMENT_VERIFIED", order: orderPayload });
+    io.to(`restaurant_${restaurantId}`).emit("orderEvents", {
+      type: "PAYMENT_VERIFIED",
+      order: orderPayload,
+    });
     const releasedOrderIds = Array.isArray(paymentPayload?.metadata?.release?.orderIds)
       ? paymentPayload.metadata.release.orderIds.map(String)
       : [];
-    if (isBankTransferPayment(paymentPayload) && releasedOrderIds.includes(String(order._id))) {
-      io.to(`restaurant_${restaurantId}`).emit("orderEvents", { type: "ORDER_CREATED", order: orderPayload });
+    if (
+      isBankTransferPayment(paymentPayload)
+      && releasedOrderIds.includes(String(order._id))
+    ) {
+      io.to(`restaurant_${restaurantId}`).emit("orderEvents", {
+        type: "ORDER_CREATED",
+        order: orderPayload,
+      });
     }
     emitCustomerTrackingUpdateIfChanged({ ctx: { io }, orderDoc: order, force: true });
+  }
+
+  return { ok: true, skipped: false };
+}
+
+/**
+ * Realtime delivery is a best-effort side effect after the durable payment
+ * state has already been settled. A disconnected socket adapter or malformed
+ * legacy tracking row must never bubble up to the VNPAY ReturnURL and make a
+ * successful transaction look like an invalid checksum.
+ */
+export async function emitPaymentRealtime({
+  io,
+  payment,
+  eventType = "PAYMENT_VERIFIED",
+  message = null,
+}) {
+  try {
+    return await emitPaymentRealtimeUnsafe({ io, payment, eventType, message });
+  } catch (error) {
+    // Do not log callback payloads or credentials here. The reference and a
+    // stable error label are enough to trace the failed notification attempt.
+    // eslint-disable-next-line no-console
+    console.warn("[payment] realtime emission failed", {
+      eventType,
+      paymentSessionId: stringId(payment?._id || payment?.id),
+      reference: payment?.reference || null,
+      errorCode: String(error?.code || error?.name || "PAYMENT_REALTIME_ERROR"),
+    });
+    return {
+      ok: false,
+      errorCode: "PAYMENT_REALTIME_EMIT_FAILED",
+    };
   }
 }
 

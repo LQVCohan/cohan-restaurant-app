@@ -1,3 +1,8 @@
+import OrderModel from "./order.model.js";
+import { installOrderSettlementStateCompatibility } from "./order-settlement-state-compatibility.js";
+
+installOrderSettlementStateCompatibility(OrderModel);
+
 export { default as Role } from "./role.model.js";
 export { default as ParentRole } from "./parent-role.model.js";
 export { default as Permission } from "./permission.model.js";
@@ -29,7 +34,7 @@ export { default as Reservation } from "./reservation.model.js";
 export { default as ReservationSlotLock } from "./reservation-slot-lock.model.js";
 export { default as AvailabilityLock } from "./availability-lock.model.js";
 export { default as MenuAvailabilityWatch } from "./menu-availability-watch.model.js";
-export { default as Order } from "./order.model.js";
+export { OrderModel as Order };
 export { default as PaymentTransaction } from "./payment-transaction.model.js";
 export { default as PaymentSession } from "./payment-session.model.js";
 export { default as PaymentRequestLock } from "./payment-request-lock.model.js";
