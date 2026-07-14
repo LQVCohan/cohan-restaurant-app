@@ -1,8 +1,5 @@
 import { getRefreshUrl } from "@/lib/apiBaseUrl";
-import {
-  publishAnonymousSession,
-  publishAuthenticatedSession,
-} from "@/lib/authStorage";
+import { publishAuthenticatedSession } from "@/lib/authStorage";
 
 export const STALE_AUTH_REFRESH_CODE = "STALE_AUTH_REFRESH";
 export const TRANSIENT_AUTH_REFRESH_CODE = "TRANSIENT_AUTH_REFRESH";
@@ -92,8 +89,10 @@ export function refreshAccessTokenOnce() {
           throw createStaleAuthRefreshError();
         }
 
+        // A missing/blocked refresh cookie does not prove that the access token
+        // already stored by the browser is invalid. The request that receives
+        // an actual access-token 401 decides when the session must be cleared.
         if (payload?.token) publishAuthenticatedSession(payload);
-        else publishAnonymousSession("refresh_rejected");
         return payload;
       })
       .catch((error) => {
