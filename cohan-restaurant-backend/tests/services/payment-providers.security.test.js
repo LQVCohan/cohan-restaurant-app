@@ -21,14 +21,15 @@ function signMomo(payload) {
     .digest("hex");
 }
 
-function signVnpay(payload) {
+function signVnpay(payload, { spacesAsPlus = true } = {}) {
   const sorted = Object.keys(payload)
-    .filter((key) => key.startsWith("vnp_"))
+    .filter((key) => key.startsWith("vnp_") && !["vnp_SecureHash", "vnp_SecureHashType"].includes(key))
     .sort()
-    .map(
-      (key) =>
-        `${encodeURIComponent(key)}=${encodeURIComponent(payload[key]).replace(/%20/g, "+")}`,
-    )
+    .map((key) => {
+      const scalar = Array.isArray(payload[key]) ? payload[key][0] : payload[key];
+      const encoded = encodeURIComponent(String(scalar ?? ""));
+      return `${encodeURIComponent(key)}=${spacesAsPlus ? encoded.replace(/%20/g, "+") : encoded}`;
+    })
     .join("&");
   return crypto
     .createHmac("sha512", process.env.VNPAY_HASH_SECRET)
@@ -116,6 +117,64 @@ describe("payment provider signature checks", () => {
         vnp_SecureHash: signature + "aa",
       }),
     ).toBe(false);
+  });
+
+  it("accepts uppercase VNPAY hash returned by the gateway", () => {
+    const payload = {
+      vnp_Amount: "54000000",
+      vnp_BankCode: "NCB",
+      vnp_OrderInfo: "Thanh toan Cohan ORD-20260714-6B0135",
+      vnp_ResponseCode: "00",
+      vnp_TransactionNo: "VNP156198488",
+      vnp_TransactionStatus: "00",
+      vnp_TmnCode: "TESTCODE",
+      vnp_TxnRef: "ORD-20260714-6B0135",
+    };
+
+    expect(
+      verifyVnpayCallback({
+        ...payload,
+        vnp_SecureHash: signVnpay(payload).toUpperCase(),
+      }),
+    ).toBe(true);
+  });
+
+  it("accepts equivalent VNPAY return encoding when spaces remain percent-encoded", () => {
+    const payload = {
+      vnp_Amount: "54000000",
+      vnp_BankCode: "NCB",
+      vnp_OrderInfo: "Thanh toan Cohan ORD-20260714-6B0135",
+      vnp_ResponseCode: "00",
+      vnp_TransactionNo: "VNP156198488",
+      vnp_TransactionStatus: "00",
+      vnp_TmnCode: "TESTCODE",
+      vnp_TxnRef: "ORD-20260714-6B0135",
+    };
+
+    expect(
+      verifyVnpayCallback({
+        ...payload,
+        vnp_SecureHash: signVnpay(payload, { spacesAsPlus: false }),
+      }),
+    ).toBe(true);
+  });
+
+  it("normalizes scalar values when a query parser returns single-item arrays", () => {
+    const payload = {
+      vnp_Amount: ["54000000"],
+      vnp_OrderInfo: ["Thanh toan Cohan ORD-20260714-6B0135"],
+      vnp_ResponseCode: ["00"],
+      vnp_TransactionStatus: ["00"],
+      vnp_TmnCode: ["TESTCODE"],
+      vnp_TxnRef: ["ORD-20260714-6B0135"],
+    };
+
+    expect(
+      verifyVnpayCallback({
+        ...payload,
+        vnp_SecureHash: signVnpay(payload),
+      }),
+    ).toBe(true);
   });
 
   it("requires both VNPAY response and transaction status to be successful", () => {

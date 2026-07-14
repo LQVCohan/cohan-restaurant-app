@@ -15,7 +15,7 @@ export function resolvePaymentRuntimeMode(mode, env = process.env) {
       .trim()
       .toLowerCase() === "true";
 
-  // ponytail: local development must not reach a real payment gateway by accident.
+  // Local development must not reach a real payment gateway by accident.
   return requestedMode === "production" && !productionAllowed
     ? "sandbox"
     : requestedMode;
@@ -153,6 +153,52 @@ PaymentSessionSchema.pre("save", async function attachRestaurantCredential() {
   this.$locals.paymentProviderCredentials = resolved.credentials;
 });
 
+export async function resolveCallbackCredentialsForPayment(payment) {
+  const {
+    getPlatformPaymentCredentials,
+    hasCompletePaymentCredentials,
+    resolvePaymentProviderCredential,
+  } = await import("../src/services/payment/paymentCredential.service.js");
+
+  const provider = String(payment.provider || "").toLowerCase();
+  const mode = payment.providerCredentialMode || "sandbox";
+  const source = String(payment.providerCredentialSource || "").toLowerCase();
+
+  // The callback must use the same credential source that created the payment.
+  // Falling back to the restaurant's current active credential can break an
+  // already-open VNPAY session after credential rotation or configuration edits.
+  if (source === "platform") {
+    const credentials = getPlatformPaymentCredentials(provider);
+    if (!hasCompletePaymentCredentials(provider, credentials)) {
+      throw new Error("PAYMENT_PLATFORM_CREDENTIAL_UNAVAILABLE");
+    }
+    return credentials;
+  }
+
+  if (source === "restaurant") {
+    if (!payment.providerCredentialId) {
+      throw new Error("PAYMENT_SESSION_CREDENTIAL_ID_MISSING");
+    }
+    const resolved = await resolvePaymentProviderCredential({
+      restaurantId: payment.restaurantId,
+      provider,
+      mode,
+      credentialId: payment.providerCredentialId,
+    });
+    return resolved.credentials;
+  }
+
+  // Compatibility for payment sessions created before credential provenance was
+  // persisted. New sessions always take one of the explicit branches above.
+  const resolved = await resolvePaymentProviderCredential({
+    restaurantId: payment.restaurantId,
+    provider,
+    mode,
+    credentialId: payment.providerCredentialId,
+  });
+  return resolved.credentials;
+}
+
 PaymentSessionSchema.post("findOne", async function primeCallbackCredential(payment) {
   const query = this.getQuery?.() || {};
   if (
@@ -162,18 +208,14 @@ PaymentSessionSchema.post("findOne", async function primeCallbackCredential(paym
     !EXTERNAL_PROVIDERS.has(String(payment.provider))
   ) return;
   try {
-    const { resolvePaymentProviderCredential } = await import("../src/services/payment/paymentCredential.service.js");
     const { primePaymentCredentialContext } = await import("../src/services/payment/providers.js");
-    const resolved = await resolvePaymentProviderCredential({
-      restaurantId: payment.restaurantId,
-      provider: payment.provider,
-      mode: payment.providerCredentialMode || "sandbox",
-      credentialId: payment.providerCredentialId,
-    });
-    payment.$locals.paymentProviderCredentials = resolved.credentials;
-    primePaymentCredentialContext(payment.provider, payment.reference, resolved.credentials);
-  } catch (_) {
-    // Verification will safely fall back to platform credentials and reject on mismatch.
+    const credentials = await resolveCallbackCredentialsForPayment(payment);
+    payment.$locals.paymentProviderCredentials = credentials;
+    primePaymentCredentialContext(payment.provider, payment.reference, credentials);
+  } catch (error) {
+    payment.$locals.paymentCredentialResolutionError = error?.message || "PAYMENT_CALLBACK_CREDENTIAL_RESOLUTION_FAILED";
+    // Verification safely rejects when the exact payment-session credential
+    // cannot be recovered. It must not silently switch to another tenant key.
   }
 });
 
