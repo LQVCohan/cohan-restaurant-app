@@ -11,9 +11,16 @@ const isPaidOrder = (order) => {
   return paymentStatus === "paid" || orderPaymentStatus === "paid";
 };
 
+const isDetachedReservationPreorder = (order) =>
+  Boolean(
+    order?.reservationId &&
+      !order?.parentOrderId &&
+      !order?.rootOrderId,
+  );
+
 const filterActiveOrders = (orders = []) =>
   (Array.isArray(orders) ? orders : []).filter(
-    (order) => !isPaidOrder(order),
+    (order) => !isPaidOrder(order) && !isDetachedReservationPreorder(order),
   );
 
 async function activeTableSessionOrders(parent, args, ctx, info) {
@@ -69,6 +76,12 @@ async function ordersByRestaurantNow(parent, args, ctx, info) {
     ),
   };
 }
+
+export const orderCoreRecoveryInternals = {
+  filterActiveOrders,
+  isDetachedReservationPreorder,
+  isPaidOrder,
+};
 
 export const OrderCoreRecoveryQuery = {
   ...LegacyOrderCoreRecoveryQuery,
