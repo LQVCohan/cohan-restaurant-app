@@ -6,8 +6,9 @@ Script dùng `MenuItem.code` để tìm món trong đúng nhà hàng, không ph�
 
 ## Dữ liệu được tạo
 
-- 9 combo theo bữa sáng, cơm trưa, cơm gia đình, lẩu, hải sản và món thanh nhẹ.
+- 11 combo theo bữa sáng, cơm trưa, cơm gia đình, lẩu, hải sản và món thanh nhẹ.
 - 11 nhóm modifier: kích cỡ đồ uống, mức đường, lượng đá, mức cay, topping phở/bún bò, topping cháo, rau thơm/hành, mức chín bò, món ăn kèm lẩu, topping cơm phần và khẩu phần gà nướng.
+- Toàn bộ 36 `MenuItem.code` trong file nguồn đều được dùng ít nhất một lần trong combo hoặc modifier.
 - Giá combo được tính từ giá món hiện tại trong DB rồi áp dụng tỷ lệ giảm và làm tròn đến 1.000đ.
 - Combo, modifier group và modifier option dùng ID ổn định; chạy lại sẽ upsert thay vì tạo bản ghi trùng.
 
