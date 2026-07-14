@@ -111,11 +111,58 @@ const SCHEDULE_STATUS_LABELS = {
   closed: "Đã đóng",
 };
 
+const SHIFT_INPUT_FIELD_LABELS = {
+  status: "trạng thái ca",
+  notes: "ghi chú ca",
+  shiftType: "loại ca",
+  allowOverride: "quyền ghi đè chính sách",
+  overrideReason: "lý do ghi đè chính sách",
+};
+
 const getErrorMessage = (error, fallback) =>
   error?.graphQLErrors?.[0]?.message ||
   error?.networkError?.result?.errors?.[0]?.message ||
   error?.message ||
   fallback;
+
+const getFriendlyShiftError = (error, fallback) => {
+  const message = getErrorMessage(error, fallback);
+  const unsupportedField = message.match(
+    /Field "([^"]+)" is not defined by type "([^"]+)"/,
+  );
+
+  if (unsupportedField) {
+    const fieldName = unsupportedField[1];
+    const fieldLabel = SHIFT_INPUT_FIELD_LABELS[fieldName] || `trường “${fieldName}”`;
+    return `Máy chủ chưa hỗ trợ ${fieldLabel}. Hãy cập nhật và khởi động lại backend rồi thử lại.`;
+  }
+
+  if (/Variable "\$input" got invalid value/.test(message)) {
+    return "Dữ liệu ca làm chưa tương thích với máy chủ. Hãy cập nhật và khởi động lại backend rồi thử lại.";
+  }
+
+  return message;
+};
+
+const formatFailureSummary = (failures) => {
+  const groupedFailures = new Map();
+
+  failures.forEach(({ employeeName, message }) => {
+    const names = groupedFailures.get(message) || [];
+    names.push(employeeName);
+    groupedFailures.set(message, names);
+  });
+
+  return Array.from(groupedFailures.entries())
+    .map(([message, names]) => {
+      const displayNames =
+        names.length <= 3
+          ? names.join(", ")
+          : `${names.slice(0, 2).join(", ")} và ${names.length - 2} nhân viên khác`;
+      return `${displayNames}: ${message}`;
+    })
+    .join("\n");
+};
 
 const PartTimeScheduleWorkspace = () => {
   const { showNotification } = useNotification();
@@ -301,6 +348,14 @@ const PartTimeScheduleWorkspace = () => {
             );
           }
 
+          const overrideInput =
+            needsOverride && hasOverrideReason
+              ? {
+                  allowOverride: true,
+                  overrideReason: payload.overrideReason,
+                }
+              : {};
+
           await createShift({
             variables: {
               input: {
@@ -309,29 +364,30 @@ const PartTimeScheduleWorkspace = () => {
                 shiftType: "ROTATING",
                 startTime: range.startTime.toISOString(),
                 endTime: range.endTime.toISOString(),
-                status: "scheduled",
                 notes: payload.notes || "Ca bán thời gian",
-                allowOverride: needsOverride && hasOverrideReason,
-                overrideReason:
-                  needsOverride && hasOverrideReason
-                    ? payload.overrideReason
-                    : undefined,
+                ...overrideInput,
               },
             },
           });
           successCount += 1;
         } catch (error) {
-          failures.push(
-            `${person?.name || employeeId}: ${getErrorMessage(error, "Không thể tạo ca")}`,
-          );
+          failures.push({
+            employeeName: person?.name || employeeId,
+            message: getFriendlyShiftError(error, "Không thể tạo ca."),
+          });
         }
       }
-      if (!successCount) throw new Error(failures.join("\n") || "Không tạo được ca nào.");
+
+      const failureSummary = formatFailureSummary(failures);
+      if (!successCount) {
+        throw new Error(failureSummary || "Không tạo được ca nào.");
+      }
+
       await refetchShifts();
       setModalContext(null);
       showNotification(
         failures.length
-          ? `Đã tạo ${successCount}/${payload.staffIds.length} phân công. ${failures.join(" | ")}`
+          ? `Đã tạo ${successCount}/${payload.staffIds.length} phân công. ${failureSummary}`
           : `Đã tạo block ${payload.startTime} trong ${payload.durationHours} giờ cho ${successCount} nhân viên.`,
         failures.length ? "warning" : "success",
       );
