@@ -1,0 +1,342 @@
+[data-cohan-pos-payment-backdrop="true"] {
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.66) !important;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+[data-cohan-pos-payment-modal="true"] {
+  width: min(1080px, calc(100vw - 48px)) !important;
+  max-width: 1080px !important;
+  max-height: calc(100dvh - 48px) !important;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 22px !important;
+  box-shadow:
+    0 28px 80px rgba(15, 23, 42, 0.32),
+    0 4px 16px rgba(15, 23, 42, 0.14) !important;
+}
+
+[data-cohan-pos-payment-modal="true"] [data-cohan-payment-title="true"] {
+  margin: 0;
+  padding: 22px 72px 14px 26px !important;
+  font-size: clamp(1.24rem, 2vw, 1.55rem) !important;
+  letter-spacing: -0.02em;
+}
+
+[data-cohan-pos-payment-modal="true"] [data-cohan-payment-content="true"] {
+  grid-template-columns: minmax(330px, 0.9fr) minmax(430px, 1.1fr) !important;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+
+[data-cohan-pos-payment-modal="true"] [data-cohan-payment-items="true"],
+[data-cohan-pos-payment-modal="true"] [data-cohan-payment-controls="true"] {
+  min-width: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+[data-cohan-pos-payment-modal="true"] [data-cohan-payment-currency="true"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+[data-cohan-pos-payment-modal="true"] [data-cohan-payment-methods="true"] {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+[data-cohan-pos-payment-modal="true"] [data-cohan-payment-methods="true"] button {
+  min-height: 52px;
+  padding: 10px 8px !important;
+  border-radius: 12px !important;
+  font-size: 0.9rem !important;
+  line-height: 1.2;
+}
+
+[data-cohan-pos-payment-modal="true"] [data-cohan-payment-online-panel="true"] {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: start;
+  gap: 18px !important;
+  margin: 16px 20px 4px !important;
+  padding: 18px !important;
+  border: 1px solid #bae6fd !important;
+  border-radius: 16px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(14, 165, 233, 0.14), transparent 42%),
+    linear-gradient(145deg, #f8fcff 0%, #eff9ff 100%) !important;
+  box-shadow: 0 10px 28px rgba(2, 132, 199, 0.08);
+}
+
+[data-cohan-pos-payment-modal="true"] [data-cohan-payment-launch="true"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 42px;
+  padding: 10px 16px;
+  border-radius: 11px;
+  background: #0284c7;
+  color: #fff !important;
+  font-weight: 700;
+  text-decoration: none !important;
+  box-shadow: 0 8px 18px rgba(2, 132, 199, 0.2);
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+[data-cohan-pos-payment-modal="true"] [data-cohan-payment-launch="true"]::after {
+  content: "↗";
+  margin-left: 8px;
+  font-size: 1rem;
+}
+
+[data-cohan-pos-payment-modal="true"] [data-cohan-payment-launch="true"]:hover {
+  background: #0369a1;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(2, 132, 199, 0.28);
+}
+
+[data-cohan-payment-progress="true"] {
+  padding: 12px 26px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+}
+
+[data-cohan-payment-progress="true"][hidden] {
+  display: none !important;
+}
+
+.cohan-payment-progress__steps {
+  display: grid;
+  grid-template-columns: max-content minmax(24px, 1fr) max-content minmax(24px, 1fr) max-content;
+  align-items: center;
+  gap: 10px;
+}
+
+.cohan-payment-progress__steps > div {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #64748b;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.cohan-payment-progress__steps > div > span {
+  display: inline-grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.cohan-payment-progress__steps > i {
+  height: 2px;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.cohan-payment-progress__steps > div[data-active="done"] {
+  color: #166534;
+}
+
+.cohan-payment-progress__steps > div[data-active="done"] > span {
+  border-color: #86efac;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.cohan-payment-progress__steps > div[data-active="current"] {
+  color: #075985;
+}
+
+.cohan-payment-progress__steps > div[data-active="current"] > span,
+.cohan-payment-progress__steps > div[data-active="waiting"] > span {
+  border-color: #7dd3fc;
+  background: #e0f2fe;
+  color: #0369a1;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
+}
+
+.cohan-payment-progress__steps > div[data-active="error"] {
+  color: #991b1b;
+}
+
+.cohan-payment-progress__steps > div[data-active="error"] > span {
+  border-color: #fecaca;
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.cohan-payment-progress__message {
+  margin: 9px 0 0;
+  color: #475569;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+[data-cohan-payment-progress="true"][data-state="pending"]
+  .cohan-payment-progress__message::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 999px;
+  background: #0ea5e9;
+  box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.35);
+  animation: cohan-payment-pulse 1.7s infinite;
+}
+
+[data-cohan-payment-progress="true"][data-state="success"]
+  .cohan-payment-progress__message {
+  color: #166534;
+  font-weight: 650;
+}
+
+[data-cohan-payment-progress="true"][data-state="failed"]
+  .cohan-payment-progress__message {
+  color: #991b1b;
+  font-weight: 650;
+}
+
+[data-cohan-pos-payment-modal="true"] [data-cohan-payment-actions="true"] {
+  position: sticky;
+  z-index: 20;
+  bottom: 0;
+  padding: 14px 22px !important;
+  border-top: 1px solid rgba(203, 213, 225, 0.9) !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.06);
+}
+
+[data-cohan-pos-payment-modal="true"] [data-cohan-payment-actions="true"] button {
+  min-height: 48px;
+  border-radius: 12px !important;
+}
+
+[data-cohan-pos-payment-modal="true"][data-cohan-online-payment-state="pending"]
+  [data-cohan-payment-actions="true"] button:last-child {
+  cursor: wait;
+}
+
+@keyframes cohan-payment-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.35);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(14, 165, 233, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0);
+  }
+}
+
+@media (max-width: 900px) {
+  [data-cohan-pos-payment-backdrop="true"] {
+    padding: 12px;
+  }
+
+  [data-cohan-pos-payment-modal="true"] {
+    width: calc(100vw - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+  }
+
+  [data-cohan-pos-payment-modal="true"] [data-cohan-payment-content="true"] {
+    grid-template-columns: minmax(280px, 0.82fr) minmax(380px, 1.18fr) !important;
+  }
+
+  [data-cohan-pos-payment-modal="true"] [data-cohan-payment-methods="true"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 680px) {
+  [data-cohan-pos-payment-backdrop="true"] {
+    align-items: flex-end !important;
+    padding: 0;
+  }
+
+  [data-cohan-pos-payment-modal="true"] {
+    width: 100vw !important;
+    max-width: none !important;
+    max-height: 100dvh !important;
+    border-radius: 22px 22px 0 0 !important;
+  }
+
+  [data-cohan-pos-payment-modal="true"] [data-cohan-payment-title="true"] {
+    padding: 18px 58px 12px 18px !important;
+  }
+
+  [data-cohan-pos-payment-modal="true"] [data-cohan-payment-content="true"] {
+    display: block !important;
+    overflow-y: auto !important;
+  }
+
+  [data-cohan-pos-payment-modal="true"] [data-cohan-payment-items="true"] {
+    max-height: 210px;
+    border-right: 0 !important;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  [data-cohan-pos-payment-modal="true"] [data-cohan-payment-controls="true"] {
+    overflow: visible !important;
+  }
+
+  [data-cohan-pos-payment-modal="true"] [data-cohan-payment-methods="true"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  [data-cohan-pos-payment-modal="true"] [data-cohan-payment-online-panel="true"] {
+    grid-template-columns: 1fr !important;
+    margin: 12px 14px 4px !important;
+    padding: 15px !important;
+  }
+
+  [data-cohan-pos-payment-modal="true"] [data-cohan-payment-launch="true"] {
+    width: 100%;
+  }
+
+  [data-cohan-payment-progress="true"] {
+    padding: 11px 16px 12px;
+  }
+
+  .cohan-payment-progress__steps {
+    grid-template-columns: 1fr 20px 1fr 20px 1fr;
+    gap: 5px;
+  }
+
+  .cohan-payment-progress__steps > div {
+    flex-direction: column;
+    gap: 4px;
+    text-align: center;
+    white-space: normal;
+    font-size: 0.67rem;
+  }
+
+  [data-cohan-pos-payment-modal="true"] [data-cohan-payment-actions="true"] {
+    grid-template-columns: minmax(100px, 0.7fr) minmax(0, 1.3fr) !important;
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-cohan-pos-payment-modal="true"] *,
+  [data-cohan-payment-progress="true"] * {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
