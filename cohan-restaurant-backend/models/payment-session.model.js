@@ -153,7 +153,7 @@ PaymentSessionSchema.pre("save", async function attachRestaurantCredential() {
   this.$locals.paymentProviderCredentials = resolved.credentials;
 });
 
-async function resolveCallbackCredentialsForPayment(payment) {
+export async function resolveCallbackCredentialsForPayment(payment) {
   const {
     getPlatformPaymentCredentials,
     hasCompletePaymentCredentials,
