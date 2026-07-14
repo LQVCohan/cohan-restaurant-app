@@ -4,7 +4,15 @@ import process from "node:process";
 
 const DEFAULT_TIMEOUT = Number(process.env.PAYMENT_PROVIDER_TIMEOUT_MS || 30000);
 const DEFAULT_VNPAY_TTL_MINUTES = Number(process.env.PAYMENT_SESSION_TTL_MINUTES || 10);
-const CALLBACK_CREDENTIAL_TTL_MS = 60_000;
+const CALLBACK_CREDENTIAL_TTL_MS = Math.max(
+  60_000,
+  Number(
+    process.env.PAYMENT_CALLBACK_CREDENTIAL_TTL_MS ||
+      (Number.isFinite(DEFAULT_VNPAY_TTL_MINUTES) && DEFAULT_VNPAY_TTL_MINUTES > 0
+        ? DEFAULT_VNPAY_TTL_MINUTES * 60 * 1000
+        : 10 * 60 * 1000),
+  ),
+);
 const paymentCredentialContexts = new Map();
 
 function credentialContextKey(provider, reference) {
@@ -212,10 +220,19 @@ export function verifyMomoCallback(payload = {}) {
   return safeCompareString(expected, payload.signature);
 }
 
-function safeCompareString(a, b) {
-  const left = String(a || "").trim();
-  const right = String(b || "").trim();
+function safeCompareString(a, b, { caseInsensitiveHex = false } = {}) {
+  let left = String(a || "").trim();
+  let right = String(b || "").trim();
   if (!left || !right) return false;
+
+  if (
+    caseInsensitiveHex &&
+    /^[0-9a-f]+$/i.test(left) &&
+    /^[0-9a-f]+$/i.test(right)
+  ) {
+    left = left.toLowerCase();
+    right = right.toLowerCase();
+  }
 
   const leftBuf = Buffer.from(left, "utf8");
   const rightBuf = Buffer.from(right, "utf8");
@@ -228,12 +245,17 @@ function safeCompareString(a, b) {
   }
 }
 
-function buildVnpHashData(payload) {
+function normalizeCallbackValue(value) {
+  const scalar = Array.isArray(value) ? value[0] : value;
+  return String(scalar ?? "");
+}
+
+function buildVnpHashData(payload, { spacesAsPlus = true } = {}) {
   return Object.entries(sortObject(payload))
-    .map(
-      ([k, v]) =>
-        `${encodeURIComponent(k)}=${encodeURIComponent(v).replace(/%20/g, "+")}`,
-    )
+    .map(([k, v]) => {
+      const encodedValue = encodeURIComponent(normalizeCallbackValue(v));
+      return `${encodeURIComponent(k)}=${spacesAsPlus ? encodedValue.replace(/%20/g, "+") : encodedValue}`;
+    })
     .join("&");
 }
 
@@ -316,18 +338,30 @@ export function verifyVnpayCallback(payload = {}) {
   const hashSecret = String(merchant.hashSecret || "").trim();
   if (!hashSecret) return false;
 
-  const secureHash = payload.vnp_SecureHash;
+  const secureHash = normalizeCallbackValue(payload.vnp_SecureHash).trim();
   const working = Object.fromEntries(
-    Object.entries(payload).filter(
-      ([key, value]) =>
-        key.startsWith("vnp_") &&
-        !["vnp_SecureHash", "vnp_SecureHashType"].includes(key) &&
-        value !== undefined &&
-        value !== null,
-    ),
+    Object.entries(payload)
+      .filter(
+        ([key, value]) =>
+          key.startsWith("vnp_") &&
+          !["vnp_SecureHash", "vnp_SecureHashType"].includes(key) &&
+          value !== undefined &&
+          value !== null,
+      )
+      .map(([key, value]) => [key, normalizeCallbackValue(value)]),
   );
 
-  const signData = buildVnpHashData(working);
-  const expected = hmacSHA512(signData, hashSecret);
-  return safeCompareString(expected, secureHash);
+  // VNPAY documents application/x-www-form-urlencoded canonicalization with
+  // spaces represented as '+'. Some proxies/query parsers preserve them as
+  // '%20', so verify both equivalent encodings while keeping HMAC validation.
+  const signDataCandidates = [
+    buildVnpHashData(working, { spacesAsPlus: true }),
+    buildVnpHashData(working, { spacesAsPlus: false }),
+  ];
+
+  return signDataCandidates.some((signData) =>
+    safeCompareString(hmacSHA512(signData, hashSecret), secureHash, {
+      caseInsensitiveHex: true,
+    }),
+  );
 }
