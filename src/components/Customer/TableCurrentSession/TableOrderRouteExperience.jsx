@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import TableOrderAccessGate from "./TableOrderAccessGate";
-import TableOrderDraftCategoryEnhancer from "./TableOrderDraftCategoryEnhancer";
 import TableOrderDraftLauncher from "./TableOrderDraftLauncher";
+import TableOrderDraftCategoryEnhancer from "./TableOrderDraftCategoryEnhancer";
 import TableOrderExperience from "./TableOrderExperience";
 import TableProofUpdateNotifier from "./TableProofUpdateNotifier";
 
