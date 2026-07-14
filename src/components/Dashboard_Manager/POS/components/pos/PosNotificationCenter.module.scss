@@ -132,13 +132,12 @@
 }
 
 @media (max-width: 768px) {
-  .notificationCenter {
-    position: static;
+  .popover {
+    width: min(470px, calc(100vw - 1.2rem));
+    max-height: 68vh;
   }
 
-  .popover {
-    right: 0.6rem;
-    left: 0.6rem;
-    width: auto;
+  .popoverBody {
+    max-height: calc(68vh - 65px);
   }
 }
