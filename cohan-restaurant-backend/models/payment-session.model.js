@@ -27,7 +27,7 @@ const PaymentEventSchema = new Schema(
     at: { type: Date, default: Date.now },
     payload: { type: Schema.Types.Mixed },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const TransferPaymentSchema = new Schema(
@@ -61,8 +61,16 @@ const TransferPaymentSchema = new Schema(
     providerTransactionId: { type: String, trim: true },
     receivedAmount: { type: Number, min: 0 },
     varianceAmount: { type: Number },
-    matchedBankTransactionId: { type: Types.ObjectId, ref: "BankTransaction", index: true },
-    matchedReconciliationId: { type: Types.ObjectId, ref: "PaymentReconciliation", index: true },
+    matchedBankTransactionId: {
+      type: Types.ObjectId,
+      ref: "BankTransaction",
+      index: true,
+    },
+    matchedReconciliationId: {
+      type: Types.ObjectId,
+      ref: "PaymentReconciliation",
+      index: true,
+    },
     rejectedCount: { type: Number, default: 0, min: 0 },
     maxRejectedCount: { type: Number, default: 3, min: 1 },
     lastRejectedAt: { type: Date },
@@ -72,7 +80,7 @@ const TransferPaymentSchema = new Schema(
     resumedAt: { type: Date },
     proofCycleStartedAt: { type: Date },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const PaymentSessionSchema = BaseSchemaModel({
@@ -106,8 +114,15 @@ const PaymentSessionSchema = BaseSchemaModel({
   requestId: { type: String, required: true, index: true },
   reference: { type: String, required: true, index: true },
   providerTransactionId: { type: String, index: true },
-  providerCredentialId: { type: Types.ObjectId, ref: "PaymentProviderCredential", index: true },
-  providerCredentialSource: { type: String, enum: ["restaurant", "platform"] },
+  providerCredentialId: {
+    type: Types.ObjectId,
+    ref: "PaymentProviderCredential",
+    index: true,
+  },
+  providerCredentialSource: {
+    type: String,
+    enum: ["restaurant", "platform"],
+  },
   providerCredentialMode: { type: String, enum: ["sandbox", "production"] },
   callbackCredentialCiphertext: { type: String, select: false },
   payUrl: { type: String },
@@ -130,7 +145,13 @@ const PaymentSessionSchema = BaseSchemaModel({
 });
 
 PaymentSessionSchema.pre("save", async function attachRestaurantCredential() {
-  if (!this.isNew || !this.restaurantId || !EXTERNAL_PROVIDERS.has(String(this.provider))) return;
+  if (
+    !this.isNew ||
+    !this.restaurantId ||
+    !EXTERNAL_PROVIDERS.has(String(this.provider))
+  ) {
+    return;
+  }
   const {
     encryptPaymentCredential,
     getRestaurantProviderMode,
@@ -159,12 +180,16 @@ PaymentSessionSchema.pre("save", async function attachRestaurantCredential() {
   });
   this.$locals.paymentProviderCredentials = resolved.credentials;
 
-  // Prime the exact key at creation time as well. The callback query hook below
-  // remains the durable recovery path after a backend restart.
+  // Prime the exact key at creation time as well. The callback query hooks below
+  // remain the durable recovery path after a backend restart.
   const { primePaymentCredentialContext } = await import(
     "../src/services/payment/providers.js"
   );
-  primePaymentCredentialContext(this.provider, this.reference, resolved.credentials);
+  primePaymentCredentialContext(
+    this.provider,
+    this.reference,
+    resolved.credentials,
+  );
 });
 
 export async function resolveCallbackCredentialsForPayment(payment) {
@@ -180,7 +205,9 @@ export async function resolveCallbackCredentialsForPayment(payment) {
   const source = String(payment.providerCredentialSource || "").toLowerCase();
 
   if (payment.callbackCredentialCiphertext) {
-    const snapshot = decryptPaymentCredential(payment.callbackCredentialCiphertext);
+    const snapshot = decryptPaymentCredential(
+      payment.callbackCredentialCiphertext,
+    );
     const snapshotProvider = String(snapshot?.provider || provider).toLowerCase();
     const credentials = snapshot?.credentials || snapshot;
     if (snapshotProvider !== provider) {
@@ -224,35 +251,79 @@ export async function resolveCallbackCredentialsForPayment(payment) {
   return resolved.credentials;
 }
 
-PaymentSessionSchema.post("findOne", async function primeCallbackCredential(payment) {
-  const query = this.getQuery?.() || {};
-  if (
-    !payment ||
-    !query.provider ||
-    !query.reference ||
-    !EXTERNAL_PROVIDERS.has(String(payment.provider))
-  ) return;
-  try {
-    if (!payment.callbackCredentialCiphertext) {
-      const stored = await this.model.collection.findOne(
-        { _id: payment._id },
-        { projection: { callbackCredentialCiphertext: 1 } },
+export async function primeCallbackCredentialsForPayments(
+  payments,
+  { collection } = {},
+) {
+  const rows = Array.isArray(payments) ? payments : [payments];
+  const externalRows = rows.filter(
+    (payment) =>
+      payment &&
+      payment.reference &&
+      EXTERNAL_PROVIDERS.has(String(payment.provider || "").toLowerCase()),
+  );
+  if (!externalRows.length) return 0;
+
+  const { primePaymentCredentialContext } = await import(
+    "../src/services/payment/providers.js"
+  );
+  let primed = 0;
+
+  for (const payment of externalRows) {
+    try {
+      if (!payment.callbackCredentialCiphertext && collection?.findOne) {
+        const stored = await collection.findOne(
+          { _id: payment._id },
+          { projection: { callbackCredentialCiphertext: 1 } },
+        );
+        payment.callbackCredentialCiphertext =
+          stored?.callbackCredentialCiphertext;
+      }
+
+      const credentials = await resolveCallbackCredentialsForPayment(payment);
+      payment.$locals = payment.$locals || {};
+      payment.$locals.paymentProviderCredentials = credentials;
+      delete payment.$locals.paymentCredentialResolutionError;
+      primePaymentCredentialContext(
+        payment.provider,
+        payment.reference,
+        credentials,
       );
-      payment.callbackCredentialCiphertext = stored?.callbackCredentialCiphertext;
+      primed += 1;
+    } catch (error) {
+      payment.$locals = payment.$locals || {};
+      payment.$locals.paymentCredentialResolutionError =
+        error?.message || "PAYMENT_CALLBACK_CREDENTIAL_RESOLUTION_FAILED";
+      // Verification safely rejects when the exact payment-session credential
+      // cannot be recovered. It must not silently switch to another tenant key.
     }
-
-    const { primePaymentCredentialContext } = await import("../src/services/payment/providers.js");
-    const credentials = await resolveCallbackCredentialsForPayment(payment);
-    payment.$locals.paymentProviderCredentials = credentials;
-    primePaymentCredentialContext(payment.provider, payment.reference, credentials);
-  } catch (error) {
-    payment.$locals.paymentCredentialResolutionError = error?.message || "PAYMENT_CALLBACK_CREDENTIAL_RESOLUTION_FAILED";
-    // Verification safely rejects when the exact payment-session credential
-    // cannot be recovered. It must not silently switch to another tenant key.
   }
-});
 
-PaymentSessionSchema.index({ provider: 1, reference: 1 }, { unique: true });
+  return primed;
+}
+
+PaymentSessionSchema.post(
+  "findOne",
+  async function primeCallbackCredential(payment) {
+    await primeCallbackCredentialsForPayments(payment, {
+      collection: this.model?.collection,
+    });
+  },
+);
+
+PaymentSessionSchema.post(
+  "find",
+  async function primeCallbackCredentialsForReusedPayments(payments) {
+    await primeCallbackCredentialsForPayments(payments, {
+      collection: this.model?.collection,
+    });
+  },
+);
+
+PaymentSessionSchema.index(
+  { provider: 1, reference: 1 },
+  { unique: true },
+);
 PaymentSessionSchema.index({ provider: 1, requestId: 1 });
 PaymentSessionSchema.index({ reservationId: 1, createdAt: -1 });
 PaymentSessionSchema.index({ orderId: 1, createdAt: -1 });
