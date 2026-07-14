@@ -6,13 +6,20 @@ import React, {
   useEffect,
   useRef,
 } from "react";
-import { gql, useLazyQuery } from "@apollo/client";
+import { gql, useLazyQuery, useQuery } from "@apollo/client";
 import cls from "./CenterPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import { formatPrice } from "../../utils/format";
 import MenuItemModal from "../modals/MenuItemModal";
 import { useActiveMenuPromotions } from "@/hooks/useActiveMenuPromotions";
 import { MENU_AVAILABILITY_SOCKET_EVENT } from "@/hooks/useSocketOrder";
+import {
+  buildPosCategoryTabs,
+  filterPosMenuByCategory,
+  hasPosCategory,
+  POS_ALL_CATEGORY_KEY,
+} from "./posMenuCategoryUtils";
+
 const SEARCH_SUGGESTIONS = gql`
   query PosSearchSuggestions($query: String!, $timeSlot: TimeSlot) {
     searchSuggestions(query: $query, timeSlot: $timeSlot, limitPerType: 6) {
@@ -23,6 +30,18 @@ const SEARCH_SUGGESTIONS = gql`
         thumbImage
         basePrice
       }
+    }
+  }
+`;
+
+const POS_MENU_CATEGORIES = gql`
+  query PosMenuCategories($restaurantId: ID!, $timeSlot: TimeSlot!) {
+    categories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
+      id
+      name
+      order
+      isActive
+      menuItemCount
     }
   }
 `;
@@ -53,8 +72,6 @@ export default function CenterPanel() {
   const {
     restaurantId,
     filteredMenu,
-    currentCategory,
-    setCurrentCategory,
     setSearchTerm,
     addToOrder,
     timeSlotOptions,
@@ -67,6 +84,9 @@ export default function CenterPanel() {
   const [recentSearches, setRecentSearches] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [availabilityOverrides, setAvailabilityOverrides] = useState({});
+  const [selectedCategory, setSelectedCategory] = useState(
+    POS_ALL_CATEGORY_KEY,
+  );
   const hideTimerRef = useRef(null);
   const suggestionRequestRef = useRef(0);
 
@@ -74,7 +94,11 @@ export default function CenterPanel() {
     const handleAvailabilityEvent = (event) => {
       const evt = event?.detail?.event;
       if (!evt?.type) return;
-      if (evt.restaurantId && restaurantId && String(evt.restaurantId) !== String(restaurantId)) {
+      if (
+        evt.restaurantId &&
+        restaurantId &&
+        String(evt.restaurantId) !== String(restaurantId)
+      ) {
         return;
       }
       const menuItemId = getMenuItemIdFromAvailabilityEvent(evt);
@@ -103,8 +127,15 @@ export default function CenterPanel() {
       }
     };
 
-    window.addEventListener(MENU_AVAILABILITY_SOCKET_EVENT, handleAvailabilityEvent);
-    return () => window.removeEventListener(MENU_AVAILABILITY_SOCKET_EVENT, handleAvailabilityEvent);
+    window.addEventListener(
+      MENU_AVAILABILITY_SOCKET_EVENT,
+      handleAvailabilityEvent,
+    );
+    return () =>
+      window.removeEventListener(
+        MENU_AVAILABILITY_SOCKET_EVENT,
+        handleAvailabilityEvent,
+      );
   }, [restaurantId]);
 
   const recentKey = useMemo(
@@ -116,6 +147,19 @@ export default function CenterPanel() {
     SEARCH_SUGGESTIONS,
     { fetchPolicy: "network-only" },
   );
+
+  const {
+    data: menuCategoriesData,
+    error: menuCategoriesError,
+  } = useQuery(POS_MENU_CATEGORIES, {
+    variables: {
+      restaurantId,
+      timeSlot: selectedTimeSlot,
+    },
+    skip: !restaurantId || !selectedTimeSlot,
+    fetchPolicy: "cache-and-network",
+    errorPolicy: "all",
+  });
 
   useEffect(() => {
     if (!recentKey) return;
@@ -133,6 +177,12 @@ export default function CenterPanel() {
       console.error("POS searchSuggestions error:", suggestionsError);
     }
   }, [suggestionsError]);
+
+  useEffect(() => {
+    if (menuCategoriesError) {
+      console.error("POS menu categories error:", menuCategoriesError);
+    }
+  }, [menuCategoriesError]);
 
   useEffect(() => {
     const query = searchValue.trim();
@@ -164,19 +214,27 @@ export default function CenterPanel() {
   }, [searchValue, selectedTimeSlot, loadSuggestions]);
 
   const categoryTabs = useMemo(
-    () => [
-      { key: "all", label: "Tất cả" },
-      { key: "appetizer", label: "Khai vị" },
-      { key: "main", label: "Món chính" },
-      { key: "seafood", label: "Hải sản" },
-      { key: "hotpot", label: "Lẩu" },
-      { key: "drink", label: "Đồ uống" },
-      { key: "dessert", label: "Tráng miệng" },
-    ],
-    [],
+    () => buildPosCategoryTabs(menuCategoriesData?.categories || []),
+    [menuCategoriesData],
   );
 
-  const onSelectCategory = (cat) => setCurrentCategory?.(cat);
+  useEffect(() => {
+    setSelectedCategory(POS_ALL_CATEGORY_KEY);
+  }, [restaurantId, selectedTimeSlot]);
+
+  useEffect(() => {
+    if (!hasPosCategory(categoryTabs, selectedCategory)) {
+      setSelectedCategory(POS_ALL_CATEGORY_KEY);
+    }
+  }, [categoryTabs, selectedCategory]);
+
+  const menuBySelectedCategory = useMemo(
+    () => filterPosMenuByCategory(filteredMenu, selectedCategory),
+    [filteredMenu, selectedCategory],
+  );
+
+  const onSelectCategory = (categoryKey) =>
+    setSelectedCategory(String(categoryKey || POS_ALL_CATEGORY_KEY));
   const { getPromotionForMenuItem, getPromotionLabel } =
     useActiveMenuPromotions(restaurantId);
   const withDisplay = useMemo(() => {
@@ -185,7 +243,7 @@ export default function CenterPanel() {
       return Number.isFinite(n) ? n : null;
     };
 
-    return (filteredMenu || []).map((it) => {
+    return (menuBySelectedCategory || []).map((it) => {
       const variants = Array.isArray(it._normalizedVariants)
         ? it._normalizedVariants
         : Array.isArray(it.servingVariants)
@@ -233,11 +291,15 @@ export default function CenterPanel() {
       const cookingOption = defaultVariant?.name || "";
       const activePromotion = getPromotionForMenuItem(it);
       const promotionLabel = getPromotionLabel(activePromotion);
-      const availabilityOverride = availabilityOverrides[String(it.id)] || null;
-      const baseStatus = String(it.status || it.availabilityStatus || "").toLowerCase();
+      const availabilityOverride =
+        availabilityOverrides[String(it.id)] || null;
+      const baseStatus = String(
+        it.status || it.availabilityStatus || "",
+      ).toLowerCase();
       const isOutOfStock =
         availabilityOverride?.status === "out_of_stock" ||
-        (!availabilityOverride && ["out_of_stock", "unavailable", "sold_out"].includes(baseStatus));
+        (!availabilityOverride &&
+          ["out_of_stock", "unavailable", "sold_out"].includes(baseStatus));
       return {
         ...it,
         _displayPrice: displayPrice,
@@ -253,7 +315,12 @@ export default function CenterPanel() {
         _isOutOfStock: isOutOfStock,
       };
     });
-  }, [filteredMenu, getPromotionForMenuItem, getPromotionLabel, availabilityOverrides]);
+  }, [
+    menuBySelectedCategory,
+    getPromotionForMenuItem,
+    getPromotionLabel,
+    availabilityOverrides,
+  ]);
 
   // Modal logic
   const [modalOpen, setModalOpen] = useState(false);
@@ -304,7 +371,9 @@ export default function CenterPanel() {
 
       const chosenUnit =
         unit ||
-        (variant?.mode === "BY_WEIGHT" ? variant?.sellUnit || "kg" : "portion");
+        (variant?.mode === "BY_WEIGHT"
+          ? variant?.sellUnit || "kg"
+          : "portion");
 
       const core = {
         id: menuItem?.id,
@@ -533,15 +602,16 @@ export default function CenterPanel() {
       {/* TABS AREA */}
       <div className={cls.tabsScroll}>
         <div className={cls.tabs}>
-          {categoryTabs.map((c) => (
+          {categoryTabs.map((category) => (
             <button
-              key={c.key}
+              key={category.key}
+              type="button"
               className={`${cls.tab} ${
-                currentCategory === c.key ? cls.tabActive : ""
+                selectedCategory === category.key ? cls.tabActive : ""
               }`}
-              onClick={() => onSelectCategory(c.key)}
+              onClick={() => onSelectCategory(category.key)}
             >
-              {c.label}
+              {category.label}
             </button>
           ))}
         </div>
@@ -569,7 +639,9 @@ export default function CenterPanel() {
             return (
               <div
                 key={item.id}
-                className={`${cls.card} ${isOutOfStock ? cls.cardOutOfStock : ""}`}
+                className={`${cls.card} ${
+                  isOutOfStock ? cls.cardOutOfStock : ""
+                }`}
                 data-menu-id={item.id}
                 onClick={() => openModal(item)}
                 role="button"
@@ -592,9 +664,10 @@ export default function CenterPanel() {
                   {isOutOfStock && (
                     <div className={cls.stockBadge}>Hết món</div>
                   )}
-                  {!isOutOfStock && item._availabilityOverride?.status === "available" && (
-                    <div className={cls.availableBadge}>Có lại</div>
-                  )}
+                  {!isOutOfStock &&
+                    item._availabilityOverride?.status === "available" && (
+                      <div className={cls.availableBadge}>Có lại</div>
+                    )}
                   {item._promotionLabel && !isOutOfStock && (
                     <div
                       className={cls.promoBadge}
@@ -644,7 +717,10 @@ export default function CenterPanel() {
                     <p className={cls.cardDesc}>{item.description}</p>
                   )}
                   {isOutOfStock && (
-                    <div className={cls.stockHint}>Có thể đăng ký nhắc từ banner phía trên khi khách vẫn muốn món này.</div>
+                    <div className={cls.stockHint}>
+                      Có thể đăng ký nhắc từ banner phía trên khi khách vẫn muốn
+                      món này.
+                    </div>
                   )}
 
                   <div className={cls.cardFooter}>
