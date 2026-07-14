@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import FutureOrdersModal from "../../Order/components/FutureOrdersModal";
 import "./ManagementPageHeader.scss";
 
 const MANAGER_RESTAURANT_STORAGE_KEY = "manager.selectedRestaurantId";
@@ -47,8 +46,6 @@ const ManagementPageHeader = ({
   statsPlacement = "right",
 }) => {
   const [currentTime, setCurrentTime] = useState(() => new Date());
-  const [showFutureOrders, setShowFutureOrders] = useState(false);
-  const isOrderManager = eyebrow === "ORDER MANAGER";
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -140,192 +137,152 @@ const ManagementPageHeader = ({
     );
   };
 
-  const handleViewFutureOrder = (orderId) => {
-    if (!orderId || typeof window === "undefined") return;
-    setShowFutureOrders(false);
-    window.dispatchEvent(
-      new CustomEvent("manager:navigation-query", {
-        detail: {
-          page: "orders",
-          query: {
-            orderId,
-            restaurantId: String(selectedRestaurant || ""),
-          },
-        },
-      }),
-    );
-  };
-
   return (
-    <>
-      <section
-        className={`management-page-header density-${density} stats-${statsPlacement} ${isCollapsed ? "is-collapsed" : ""} ${className}`.trim()}
-      >
-        {onToggle && (
-          <button
-            className="mph-toggle"
-            onClick={onToggle}
-            title="Thu gọn/Mở rộng"
-            type="button"
-          >
-            <span>{isCollapsed ? "▼" : "▲"}</span>
-          </button>
+    <section
+      className={`management-page-header density-${density} stats-${statsPlacement} ${isCollapsed ? "is-collapsed" : ""} ${className}`.trim()}
+    >
+      {onToggle && (
+        <button
+          className="mph-toggle"
+          onClick={onToggle}
+          title="Thu gọn/Mở rộng"
+          type="button"
+        >
+          <span>{isCollapsed ? "▼" : "▲"}</span>
+        </button>
+      )}
+
+      <div className="mph-left">
+        {eyebrow && <div className="mph-eyebrow">{eyebrow}</div>}
+        <h1 className="mph-title">
+          {icon && <span className="mph-title__icon">{icon}</span>}
+          <span>{title}</span>
+        </h1>
+        {!isCollapsed && (
+          <>
+            <p className="mph-greeting">{greeting || shiftInfo.greet}</p>
+            {subtitle && <p className="mph-subtitle">{subtitle}</p>}
+          </>
         )}
 
-        <div className="mph-left">
-          {eyebrow && <div className="mph-eyebrow">{eyebrow}</div>}
-          <h1 className="mph-title">
-            {icon && <span className="mph-title__icon">{icon}</span>}
-            <span>{title}</span>
-          </h1>
-          {!isCollapsed && (
-            <>
-              <p className="mph-greeting">{greeting || shiftInfo.greet}</p>
-              {subtitle && <p className="mph-subtitle">{subtitle}</p>}
-            </>
-          )}
-
-          {!isCollapsed && showTimeWidget && (
-            <div className="mph-time-widget">
-              <div className="mph-time-widget__main">
-                {currentTime.toLocaleTimeString("vi-VN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </div>
-              <div className="mph-time-widget__sub">
-                {currentTime.toLocaleDateString("vi-VN", {
-                  weekday: "long",
-                  day: "2-digit",
-                  month: "2-digit",
-                })}
-              </div>
-              <div className="mph-time-widget__shift">
-                {shiftInfo.icon} {shiftInfo.label}
-              </div>
+        {!isCollapsed && showTimeWidget && (
+          <div className="mph-time-widget">
+            <div className="mph-time-widget__main">
+              {currentTime.toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </div>
-          )}
-        </div>
+            <div className="mph-time-widget__sub">
+              {currentTime.toLocaleDateString("vi-VN", {
+                weekday: "long",
+                day: "2-digit",
+                month: "2-digit",
+              })}
+            </div>
+            <div className="mph-time-widget__shift">
+              {shiftInfo.icon} {shiftInfo.label}
+            </div>
+          </div>
+        )}
+      </div>
 
-        <div className="mph-right">
-          {!isCollapsed && statsPlacement !== "none" && stats.length > 0 && (
-            <div className="mph-stats-grid">
-              {stats.slice(0, 4).map((item) => (
-                <div
-                  key={item.id || item.label}
-                  className={`mph-stat-card tone-${item.tone || "default"}`}
-                >
-                  <div className="mph-stat-card__icon">{item.icon || "•"}</div>
-                  <div className="mph-stat-card__body">
-                    <span className="mph-stat-card__label">{item.label}</span>
-                    <div className="mph-stat-card__value-wrap">
-                      <strong className="mph-stat-card__value">
-                        {loading ? "--" : formatValue(item.value)}
-                      </strong>
-                      {item.suffix && (
-                        <span className="mph-stat-card__suffix">{item.suffix}</span>
-                      )}
-                      {item.trend && (
-                        <span className="mph-stat-card__trend">{item.trend}</span>
-                      )}
-                    </div>
+      <div className="mph-right">
+        {!isCollapsed && statsPlacement !== "none" && stats.length > 0 && (
+          <div className="mph-stats-grid">
+            {stats.slice(0, 4).map((item) => (
+              <div
+                key={item.id || item.label}
+                className={`mph-stat-card tone-${item.tone || "default"}`}
+              >
+                <div className="mph-stat-card__icon">{item.icon || "•"}</div>
+                <div className="mph-stat-card__body">
+                  <span className="mph-stat-card__label">{item.label}</span>
+                  <div className="mph-stat-card__value-wrap">
+                    <strong className="mph-stat-card__value">
+                      {loading ? "--" : formatValue(item.value)}
+                    </strong>
+                    {item.suffix && (
+                      <span className="mph-stat-card__suffix">{item.suffix}</span>
+                    )}
+                    {item.trend && (
+                      <span className="mph-stat-card__trend">{item.trend}</span>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mph-controls-row">
+          {beforeControls}
+
+          {onSearchChange && (
+            <label className="mph-search" aria-label="search">
+              <span>🔍</span>
+              <input
+                type="text"
+                value={searchValue}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder={searchPlaceholder}
+              />
+            </label>
           )}
 
-          <div className="mph-controls-row">
-            {beforeControls}
+          {onRestaurantChange && (
+            <select
+              className="mph-select"
+              value={selectedRestaurant || ""}
+              onChange={(e) => publishRestaurantSelection(e.target.value)}
+              disabled={restaurantDisabled}
+            >
+              {!restaurantList.length && (
+                <option value="">{restaurantPlaceholder}</option>
+              )}
+              {restaurantList.map((restaurant) => {
+                const restaurantId = getRestaurantId(restaurant);
+                return (
+                  <option key={restaurantId} value={restaurantId}>
+                    {restaurant.name}
+                  </option>
+                );
+              })}
+            </select>
+          )}
 
-            {onSearchChange && (
-              <label className="mph-search" aria-label="search">
-                <span>🔍</span>
-                <input
-                  type="text"
-                  value={searchValue}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  placeholder={searchPlaceholder}
-                />
-              </label>
-            )}
-
-            {onRestaurantChange && (
-              <select
-                className="mph-select"
-                value={selectedRestaurant || ""}
-                onChange={(e) => publishRestaurantSelection(e.target.value)}
-                disabled={restaurantDisabled}
-              >
-                {!restaurantList.length && (
-                  <option value="">{restaurantPlaceholder}</option>
-                )}
-                {restaurantList.map((restaurant) => {
-                  const restaurantId = getRestaurantId(restaurant);
-                  return (
-                    <option key={restaurantId} value={restaurantId}>
-                      {restaurant.name}
-                    </option>
-                  );
-                })}
-              </select>
-            )}
-
-            {customFilters}
-
-            {isOrderManager && !isCollapsed && (
-              <button
-                type="button"
-                className="mph-btn mph-btn--secondary"
-                onClick={() => setShowFutureOrders(true)}
-                disabled={!selectedRestaurant}
-                title="Xem các order đặt cho thời điểm trong tương lai"
-              >
-                <span aria-hidden="true">📅</span>
-                <span>Order trước</span>
-              </button>
-            )}
-
-            {!isCollapsed &&
-              quickActions.map((action) => (
-                <button
-                  key={action.label}
-                  type="button"
-                  className="mph-icon-btn"
-                  onClick={action.onClick}
-                  title={action.title || action.label}
-                  aria-label={action.ariaLabel || action.label}
-                  disabled={action.disabled || action.loading}
-                >
-                  {renderActionIcon(action.icon)}
-                </button>
-              ))}
-
-            {secondaryActions.map((action) => renderAction(action))}
-            {renderAction(primaryAction, "primary")}
-            {afterControls}
-            {customControls}
-          </div>
+          {customFilters}
 
           {!isCollapsed &&
-            (footerLeft || footerRight || customFooterLeft || customFooterRight) && (
-              <div className="mph-footer-row">
-                <div>{customFooterLeft || footerLeft}</div>
-                <div>{customFooterRight || footerRight}</div>
-              </div>
-            )}
-        </div>
-      </section>
+            quickActions.map((action) => (
+              <button
+                key={action.label}
+                type="button"
+                className="mph-icon-btn"
+                onClick={action.onClick}
+                title={action.title || action.label}
+                aria-label={action.ariaLabel || action.label}
+                disabled={action.disabled || action.loading}
+              >
+                {renderActionIcon(action.icon)}
+              </button>
+            ))}
 
-      {isOrderManager && (
-        <FutureOrdersModal
-          open={showFutureOrders}
-          restaurantId={selectedRestaurant}
-          onClose={() => setShowFutureOrders(false)}
-          onViewOrder={handleViewFutureOrder}
-        />
-      )}
-    </>
+          {secondaryActions.map((action) => renderAction(action))}
+          {renderAction(primaryAction, "primary")}
+          {afterControls}
+          {customControls}
+        </div>
+
+        {!isCollapsed &&
+          (footerLeft || footerRight || customFooterLeft || customFooterRight) && (
+            <div className="mph-footer-row">
+              <div>{customFooterLeft || footerLeft}</div>
+              <div>{customFooterRight || footerRight}</div>
+            </div>
+          )}
+      </div>
+    </section>
   );
 };
 
