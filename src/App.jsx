@@ -3,6 +3,7 @@ import React from "react";
 import { BrowserRouter as Router, useLocation } from "react-router-dom";
 import AppRouter from "./routes/AppRouter";
 import { AuthProvider } from "./context/AuthProvider";
+import AuthSessionReconciler from "./context/AuthSessionReconciler";
 import { ApolloProvider } from "@apollo/client/react";
 import { apolloClient } from "./apollo/client";
 import ManagerMenuSelectionSync from "./apollo/ManagerMenuSelectionSync";
@@ -64,23 +65,25 @@ function App() {
     <ApolloProvider client={apolloClient}>
       <Router>
         <AuthProvider>
-          <NotificationProvider>
-            <AppErrorBoundary>
-              <ScrollToTop />
-              <ManagerMenuSelectionSync />
-              <CustomerNotificationProvider>
-                <CartProvider>
-                  <AppRouter />
-                  <Table3DPreviewLauncher />
-                  <StaffKitchenFocusLauncher />
-                  <RestaurantMediaExperienceLauncher />
-                  <ScopedMenuAvailabilityPrompt />
-                  <ScopedAiChatbotWidget />
-                </CartProvider>
-              </CustomerNotificationProvider>
-            </AppErrorBoundary>
-            <NotificationContainer />
-          </NotificationProvider>
+          <AuthSessionReconciler>
+            <NotificationProvider>
+              <AppErrorBoundary>
+                <ScrollToTop />
+                <ManagerMenuSelectionSync />
+                <CustomerNotificationProvider>
+                  <CartProvider>
+                    <AppRouter />
+                    <Table3DPreviewLauncher />
+                    <StaffKitchenFocusLauncher />
+                    <RestaurantMediaExperienceLauncher />
+                    <ScopedMenuAvailabilityPrompt />
+                    <ScopedAiChatbotWidget />
+                  </CartProvider>
+                </CustomerNotificationProvider>
+              </AppErrorBoundary>
+              <NotificationContainer />
+            </NotificationProvider>
+          </AuthSessionReconciler>
         </AuthProvider>
       </Router>
     </ApolloProvider>

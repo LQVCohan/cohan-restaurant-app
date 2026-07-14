@@ -3,8 +3,14 @@ import {
   clearRefreshPromise,
   refreshAccessTokenOnce,
   STALE_AUTH_REFRESH_CODE,
+  TRANSIENT_AUTH_REFRESH_CODE,
 } from "./authRefresh";
-import { clearAuth, getToken, setAuth } from "./authStorage";
+import {
+  clearAuth,
+  getToken,
+  setAuth,
+  subscribeAuthSession,
+} from "./authStorage";
 
 function createDeferred() {
   let resolve;
@@ -61,6 +67,7 @@ describe("auth refresh session isolation", () => {
     setAuth({ token: "new-login-token" });
     oldRefresh.resolve({
       ok: true,
+      status: 200,
       json: async () => ({
         token: "old-refreshed-token",
         user: { id: "old-user" },
@@ -97,6 +104,7 @@ describe("auth refresh session isolation", () => {
 
     activeRefresh.resolve({
       ok: true,
+      status: 200,
       json: async () => ({
         token: "rotated-new-token",
         user: { id: "new-user" },
@@ -107,5 +115,68 @@ describe("auth refresh session isolation", () => {
       token: "rotated-new-token",
       user: { id: "new-user" },
     });
+  });
+
+  it("preserves the current session when the refresh request has a network failure", async () => {
+    setAuth({ token: "still-valid-local-token" });
+    fetch.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    await expect(refreshAccessTokenOnce()).rejects.toMatchObject({
+      code: TRANSIENT_AUTH_REFRESH_CODE,
+    });
+    expect(getToken()).toBe("still-valid-local-token");
+  });
+
+  it("preserves the current session when the auth service returns a temporary server error", async () => {
+    setAuth({ token: "token-before-503" });
+    fetch.mockResolvedValueOnce({ ok: false, status: 503 });
+
+    await expect(refreshAccessTokenOnce()).rejects.toMatchObject({
+      code: TRANSIENT_AUTH_REFRESH_CODE,
+      status: 503,
+    });
+    expect(getToken()).toBe("token-before-503");
+  });
+
+  it("publishes and stores a successful refreshed session", async () => {
+    const changes = [];
+    const unsubscribe = subscribeAuthSession((change) => changes.push(change));
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        token: "fresh-token",
+        user: { id: "user-1", fullName: "Nguyễn An" },
+      }),
+    });
+
+    await expect(refreshAccessTokenOnce()).resolves.toMatchObject({
+      token: "fresh-token",
+    });
+
+    expect(getToken()).toBe("fresh-token");
+    expect(changes).toContainEqual({
+      status: "authenticated",
+      token: "fresh-token",
+      user: { id: "user-1", fullName: "Nguyễn An" },
+    });
+    unsubscribe();
+  });
+
+  it("clears and publishes the session only for an explicit auth rejection", async () => {
+    const changes = [];
+    const unsubscribe = subscribeAuthSession((change) => changes.push(change));
+    setAuth({ token: "expired-token" });
+    fetch.mockResolvedValueOnce({ ok: false, status: 401 });
+
+    await expect(refreshAccessTokenOnce()).resolves.toBeNull();
+    expect(getToken()).toBeNull();
+    expect(changes).toContainEqual({
+      status: "anonymous",
+      token: null,
+      user: null,
+      reason: "refresh_rejected",
+    });
+    unsubscribe();
   });
 });
