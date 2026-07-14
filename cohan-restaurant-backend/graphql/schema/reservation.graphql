@@ -22,6 +22,7 @@ type Reservation {
   linkedMenuSubtotal: Int
   depositAmount: Int!
   tableDepositAmount: Int
+  tableDepositRefundEligible: Boolean
   menuDepositAmount: Int
   depositTxnId: ID
   depositStatus: String!

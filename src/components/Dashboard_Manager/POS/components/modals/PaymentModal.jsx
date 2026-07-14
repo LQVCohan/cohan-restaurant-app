@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import PaymentModalLegacy from "./PaymentModalLegacy";
+import ReservationDepositPaymentModal from "./ReservationDepositPaymentModal";
 import { usePos } from "@/context/PosContext";
 import useOrderManagement from "@/hooks/useOrderManagement";
 import { groupItemsByBatch } from "@/utils/orderBatchGrouping";
@@ -8,6 +9,10 @@ import {
   getAuthoritativeLineTotal,
   normalizeLegacyPaymentDisplayItem,
 } from "@/utils/paymentLinePricing";
+import {
+  calculateReservationDepositSettlement,
+  getReservationDepositAvailability,
+} from "@/utils/reservationDepositSettlement";
 import {
   clearPartialTablePaymentSelection,
   clearTablePartialPaymentHistory,
@@ -26,6 +31,7 @@ const ACTIVE_RESERVATION_DEPOSIT = gql`
       customerName
       depositAmount
       tableDepositAmount
+      tableDepositRefundEligible
       menuDepositAmount
       depositStatus
       depositAppliedAmount
@@ -188,27 +194,42 @@ export default function PaymentModal(props) {
     );
   }, [isPartialPayment, selectedItems, totalAmount]);
 
-  const reservationDepositCredit = useMemo(() => {
+  const reservationSettlement = useMemo(() => {
     if (
       !reservationDeposit ||
       isPartialPayment ||
       String(reservationDeposit.depositStatus || "").toLowerCase() !== "paid" ||
       reservationDeposit.depositAppliedAt
     ) {
-      return 0;
+      return null;
     }
-    const remaining = Math.max(
-      0,
-      Number(reservationDeposit.depositAmount || 0) -
-        Number(reservationDeposit.depositAppliedAmount || 0),
-    );
-    return Math.min(Math.max(0, selectedTotalAmount), remaining);
-  }, [isPartialPayment, reservationDeposit, selectedTotalAmount]);
+    return getReservationDepositAvailability(reservationDeposit);
+  }, [isPartialPayment, reservationDeposit]);
 
-  const amountAfterReservationDeposit = Math.max(
-    0,
-    selectedTotalAmount - reservationDepositCredit,
+  const settlementPreview = useMemo(
+    () =>
+      calculateReservationDepositSettlement({
+        grossTotal: selectedTotalAmount,
+        ...(reservationSettlement || {}),
+      }),
+    [reservationSettlement, selectedTotalAmount],
   );
+
+  const reservationDepositCredit = reservationSettlement
+    ? settlementPreview.menuDepositCredit
+    : 0;
+  const amountAfterReservationDeposit = reservationSettlement
+    ? settlementPreview.amountToCollect
+    : selectedTotalAmount;
+  const tableDepositRefund = reservationSettlement
+    ? settlementPreview.tableDepositRefund
+    : 0;
+  const customerPaysBeforeDiscount = reservationSettlement
+    ? settlementPreview.customerPays
+    : selectedTotalAmount;
+  const customerReceivesBeforeDiscount = reservationSettlement
+    ? settlementPreview.customerReceives
+    : 0;
 
   const toggleBatch = useCallback((orderId) => {
     const normalized = normalizeId(orderId);
@@ -248,7 +269,6 @@ export default function PaymentModal(props) {
       ...tableSnapshot,
       status: "occupied",
     });
-
     try {
       await pos?.setTableStatus?.({ id: tableId, status: "occupied" });
     } catch {
@@ -298,7 +318,10 @@ export default function PaymentModal(props) {
         paidBatchCount: paidOrderIds.length,
         totalBatchCount: allOrderIds.length,
         reservationDepositCredit,
+        tableDepositRefund,
         amountCollectedAfterDeposit: amountAfterReservationDeposit,
+        customerPaysAfterDeposit: customerPaysBeforeDiscount,
+        customerReceivesAfterDeposit: customerReceivesBeforeDiscount,
       });
 
       if (isPartialPayment) {
@@ -308,12 +331,15 @@ export default function PaymentModal(props) {
     [
       allOrderIds,
       amountAfterReservationDeposit,
+      customerPaysBeforeDiscount,
+      customerReceivesBeforeDiscount,
       isPartialPayment,
       onComplete,
       paymentScope,
       reservationDepositCredit,
       restoreTableAfterPartialPayment,
       selectedIdSet,
+      tableDepositRefund,
     ],
   );
 
@@ -326,16 +352,17 @@ export default function PaymentModal(props) {
     String(reservationDeposit.depositStatus || "").toLowerCase() === "paid" &&
     Number(reservationDeposit.depositAmount || 0) > 0;
 
+  const PaymentComponent = reservationSettlement
+    ? ReservationDepositPaymentModal
+    : PaymentModalLegacy;
+
   return (
     <>
-      <PaymentModalLegacy
+      <PaymentComponent
         {...props}
         order={legacyDisplayItems}
-        totalAmount={
-          reservationDepositCredit > 0
-            ? amountAfterReservationDeposit
-            : selectedTotalAmount
-        }
+        totalAmount={selectedTotalAmount}
+        {...(reservationSettlement ? { reservationSettlement } : {})}
         onComplete={handleComplete}
       />
 
@@ -359,27 +386,49 @@ export default function PaymentModal(props) {
             )}
             {Number(reservationDeposit.menuDepositAmount || 0) > 0 && (
               <div>
-                <span>Cọc món</span>
+                <span>Cọc món đã trả trước</span>
                 <strong>{formatVnd(reservationDeposit.menuDepositAmount)}</strong>
               </div>
             )}
-            {!isPartialPayment && (
+            {!isPartialPayment && reservationDepositCredit > 0 && (
               <div className="reservation-deposit-credit-panel__credit">
-                <span>Khấu trừ vào order tổng</span>
+                <span>Cọc món dùng thanh toán</span>
                 <strong>-{formatVnd(reservationDepositCredit)}</strong>
               </div>
             )}
             {!isPartialPayment && (
-              <div className="reservation-deposit-credit-panel__due">
-                <span>Còn phải thu trước ưu đãi</span>
+              <div>
+                <span>Còn lại tiền món trước ưu đãi</span>
                 <strong>{formatVnd(amountAfterReservationDeposit)}</strong>
+              </div>
+            )}
+            {!isPartialPayment && tableDepositRefund > 0 && (
+              <div className="reservation-deposit-credit-panel__credit">
+                <span>Hoàn lại cọc bàn</span>
+                <strong>{formatVnd(tableDepositRefund)}</strong>
+              </div>
+            )}
+            {!isPartialPayment && (
+              <div className="reservation-deposit-credit-panel__due">
+                <span>
+                  {customerReceivesBeforeDiscount > 0
+                    ? "Khách được nhận trước ưu đãi"
+                    : "Khách cần thanh toán trước ưu đãi"}
+                </span>
+                <strong>
+                  {formatVnd(
+                    customerReceivesBeforeDiscount > 0
+                      ? customerReceivesBeforeDiscount
+                      : customerPaysBeforeDiscount,
+                  )}
+                </strong>
               </div>
             )}
           </div>
           <p>
             {isPartialPayment
-              ? "Tiền cọc chưa dùng cho thanh toán từng đợt. Hệ thống sẽ trừ một lần khi thanh toán toàn bộ phần còn lại của bàn."
-              : "Backend sẽ khấu trừ tiền cọc sau khi tính coupon/promotion và chỉ ghi nhận phần tiền thực thu mới vào giao dịch POS."}
+              ? "Tiền cọc chỉ được quyết toán khi thanh toán toàn bộ các đợt còn lại của bàn."
+              : "Cọc món chỉ trừ đúng phần đã trả trước. Cọc bàn được hoàn riêng; hệ thống hiển thị chênh lệch cuối cùng khách cần trả hoặc được nhận sau coupon/promotion."}
           </p>
         </aside>
       )}

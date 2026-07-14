@@ -15,8 +15,7 @@ import publicTablePaymentMutation from "./publicTablePaymentMutation.js";
 import PublicTableAccessGuardMutation from "./publicTableAccessGuardMutation.js";
 import withPaymentIdempotency from "./paymentIdempotencyMutation.js";
 import withWalletMoneyIdempotency from "./walletMoneyIdempotencyMutation.js";
-import withReservationDepositPayment from "./reservationDepositPaymentMutation.js";
-import withReservationDepositPaymentScopeCorrection from "./reservationDepositPaymentScopeCorrectionMutation.js";
+import withReservationDepositSettlement from "./reservationDepositSettlementMutation.js";
 import withPosPaymentLineCorrection from "./posPaymentLineCorrectionMutation.js";
 import {
   PaymentCredentialMutation,
@@ -47,24 +46,22 @@ const financeDashboard = async (parent, { input }, ctx, info) => {
   );
 };
 
-const paymentMutation = withReservationDepositPaymentScopeCorrection(
-  withReservationDepositPayment(
-    withPosPaymentLineCorrection({
-      ...PaymentMutation,
-      ...ReconciliationPaymentConfirmationMutation,
-      ...FinanceOperationGuardMutation,
-      ...StrictOrderPaymentMutation,
-      ...TransferPaymentMutation,
-      ...publicTablePaymentMutation,
-      ...PublicTableAccessGuardMutation,
-      ...(wallet.Mutation || {}),
-      ...MergedTablePaymentMutation,
-      ...PaymentCredentialMutation,
-      ...TransactionManagementGuardMutation,
-      // Keep this last so customer ownership is checked before the provider session is created.
-      ...CustomerOrderPaymentMutation,
-    }),
-  ),
+const paymentMutation = withReservationDepositSettlement(
+  withPosPaymentLineCorrection({
+    ...PaymentMutation,
+    ...ReconciliationPaymentConfirmationMutation,
+    ...FinanceOperationGuardMutation,
+    ...StrictOrderPaymentMutation,
+    ...TransferPaymentMutation,
+    ...publicTablePaymentMutation,
+    ...PublicTableAccessGuardMutation,
+    ...(wallet.Mutation || {}),
+    ...MergedTablePaymentMutation,
+    ...PaymentCredentialMutation,
+    ...TransactionManagementGuardMutation,
+    // Keep this last so customer ownership is checked before the provider session is created.
+    ...CustomerOrderPaymentMutation,
+  }),
 );
 
 export default {
