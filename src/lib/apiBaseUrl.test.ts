@@ -76,4 +76,46 @@ describe("apiBaseUrl", () => {
       ),
     ).toBe("http://localhost:4000/graphql");
   });
+
+  it("keeps login and refresh first-party on phone and ngrok development hosts", async () => {
+    const mod = await import("./apiBaseUrl");
+
+    expect(
+      mod.normalizeLocalDevGraphqlUrl(
+        "http://localhost:4000/graphql",
+        "192.168.1.25",
+        true,
+      ),
+    ).toBe("/graphql");
+    expect(
+      mod.normalizeLocalDevGraphqlUrl(
+        "https://api-cohan.ngrok-free.dev/graphql",
+        "gly-jemma.ngrok-free.dev",
+        true,
+      ),
+    ).toBe("/graphql");
+    expect(
+      mod.normalizeLocalDevGraphqlUrl(
+        "https://api-cohan.ngrok-free.dev/graphql",
+        "gly-jemma.ngrok-free.dev",
+        true,
+        true,
+      ),
+    ).toBe("https://api-cohan.ngrok-free.dev/graphql");
+  });
+
+  it("derives same-origin auth URLs for an ngrok frontend in dev", async () => {
+    vi.stubEnv(
+      "VITE_API_URL",
+      "https://api-cohan.ngrok-free.dev/graphql",
+    );
+    vi.stubGlobal("window", {
+      location: { hostname: "gly-jemma.ngrok-free.dev" },
+    });
+
+    const mod = await import("./apiBaseUrl");
+
+    expect(mod.getGraphqlUrl()).toBe("/graphql");
+    expect(mod.getRefreshUrl()).toBe("/api/auth/refresh");
+  });
 });
