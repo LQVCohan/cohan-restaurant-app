@@ -1,7 +1,11 @@
 import { gql, useMutation } from "@apollo/client";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import useOrderManagementLegacy from "./useOrderManagementLegacy";
 import { getPartialTablePaymentSelection } from "@/utils/partialTablePaymentSelection";
+import {
+  filterKitchenVisibleOrders,
+  isStaffKitchenWorkspacePath,
+} from "@/utils/kitchenOrderVisibility";
 
 const PAY_SELECTED_TABLE_ORDERS = gql`
   mutation PaySelectedTableOrders($input: PayOrdersByOrderIdsInput!) {
@@ -73,6 +77,16 @@ export default function useOrderManagement(pos = null) {
   const legacy = useOrderManagementLegacy(pos);
   const [paySelectedOrders, { loading: paySelectedOrdersLoading }] =
     useMutation(PAY_SELECTED_TABLE_ORDERS);
+  const kitchenWorkspace = isStaffKitchenWorkspacePath(
+    typeof window !== "undefined" ? window.location.pathname : "",
+  );
+  const visibleOrdersNow = useMemo(
+    () =>
+      kitchenWorkspace
+        ? filterKitchenVisibleOrders(legacy.ordersNow)
+        : legacy.ordersNow,
+    [kitchenWorkspace, legacy.ordersNow],
+  );
 
   const confirmPayment = useCallback(
     async ({
@@ -204,6 +218,7 @@ export default function useOrderManagement(pos = null) {
 
   return {
     ...legacy,
+    ordersNow: visibleOrdersNow,
     confirmPayment,
     resolvePayableOrderIds,
     payLoading: Boolean(legacy.payLoading || paySelectedOrdersLoading),
