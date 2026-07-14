@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Order } from "../../../models/index.js";
+import { Order, PaymentSession } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import { getPaymentPublicBaseUrl } from "../../../src/services/payment/paymentIntegrationConfig.service.js";
@@ -8,10 +8,88 @@ import {
   sanitizePaymentSessionForClient,
 } from "../../../src/services/payment/paymentSession.service.js";
 
+const EXTERNAL_PAYMENT_PROVIDERS = new Set(["momo", "vnpay"]);
+
 const toId = (value) =>
   value && mongoose.isValidObjectId(value)
     ? new mongoose.Types.ObjectId(value)
     : null;
+
+const normalizeOrderIds = (values = []) =>
+  [...new Set((values || []).map(String).filter(Boolean))].sort();
+
+const sameOrderSet = (payment, expectedOrderIds) => {
+  const paymentOrderIds = normalizeOrderIds(payment?.metadata?.orderIds || []);
+  return (
+    paymentOrderIds.length === expectedOrderIds.length &&
+    paymentOrderIds.every((id, index) => id === expectedOrderIds[index])
+  );
+};
+
+/**
+ * POS retries may find a pending order-payment session created before callback
+ * credential snapshots were introduced. Reusing that old payUrl makes VNPAY
+ * return with a valid gateway signature that COHAN can no longer verify.
+ * Cancel only matching legacy external sessions so createOrderPayment builds a
+ * fresh URL with the exact encrypted credential snapshot.
+ */
+export async function cancelLegacyExternalOrderPaymentSessions({
+  restaurantId,
+  orderIds = [],
+  provider,
+  paymentMethod,
+  now = new Date(),
+}) {
+  const normalizedProvider = String(provider || "").trim().toLowerCase();
+  const expectedOrderIds = normalizeOrderIds(orderIds);
+  const restaurantObjectId = toId(restaurantId);
+
+  if (
+    !restaurantObjectId ||
+    !expectedOrderIds.length ||
+    !EXTERNAL_PAYMENT_PROVIDERS.has(normalizedProvider)
+  ) {
+    return 0;
+  }
+
+  const candidates = await PaymentSession.find({
+    restaurantId: restaurantObjectId,
+    provider: normalizedProvider,
+    paymentMethod: paymentMethod || normalizedProvider,
+    status: "pending",
+    "metadata.source": "order_payment",
+  })
+    .select("+callbackCredentialCiphertext")
+    .sort({ createdAt: -1 });
+
+  let cancelled = 0;
+  for (const payment of candidates || []) {
+    if (!sameOrderSet(payment, expectedOrderIds)) continue;
+
+    const hasCredentialSnapshot = Boolean(
+      String(payment?.callbackCredentialCiphertext || "").trim(),
+    );
+    const hasProviderUrl = Boolean(String(payment?.payUrl || "").trim());
+    if (hasCredentialSnapshot && hasProviderUrl) continue;
+
+    const reason = !hasCredentialSnapshot
+      ? "legacy_session_missing_callback_credential_snapshot"
+      : "legacy_session_missing_provider_url";
+
+    payment.status = "cancelled";
+    payment.cancelledAt = now;
+    payment.cancelReason = reason;
+    payment.events = Array.isArray(payment.events) ? payment.events : [];
+    payment.events.push({
+      type: "payment_cancelled",
+      payload: { reason, source: "pos_retry_guard" },
+    });
+    await payment.save();
+    cancelled += 1;
+  }
+
+  return cancelled;
+}
 
 export async function canCustomerPayOwnOrders({ userId, restaurantId, orderIds = [] }) {
   const uid = toId(userId);
@@ -58,6 +136,14 @@ export async function createCustomerOwnedOrderPayment(parent, { input }, ctx) {
   }
   const clientIp =
     ctx?.request?.ip || ctx?.req?.ip || ctx?.request?.headers?.["x-forwarded-for"] || "127.0.0.1";
+
+  await cancelLegacyExternalOrderPaymentSessions({
+    restaurantId,
+    orderIds: input?.orderIds,
+    provider: input?.provider,
+    paymentMethod: input?.paymentMethod,
+  });
+
   const payment = await createOrderPayment({
     ...input,
     userId: String(userId),
