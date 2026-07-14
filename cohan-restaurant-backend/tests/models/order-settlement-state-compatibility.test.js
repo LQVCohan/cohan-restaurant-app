@@ -11,6 +11,7 @@ installOrderSettlementStateCompatibility(Order);
 describe("order settlement state compatibility", () => {
   it("normalizes legacy uppercase parent-session values before validation", async () => {
     const order = new Order({
+      orderCode: "SESSION-POS-VNPAY-TEST",
       restaurantId: new mongoose.Types.ObjectId(),
       orderType: "dine_in",
       items: [],
