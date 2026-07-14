@@ -56,6 +56,28 @@ const COMBO_SPECS = [
     ],
   },
   {
+    name: "Combo cơm nhà cá lóc 2-3 người",
+    description:
+      "Cá lóc kho tộ, canh chua cá lóc và rau muống xào tỏi cho bữa cơm gia đình.",
+    discountPercent: 11,
+    items: [
+      ["CA-LOC-KHO-TO", 1],
+      ["CANH-CHUA-CA-LOC", 1],
+      ["RAU-MUONG-XAO-TOI", 1],
+    ],
+  },
+  {
+    name: "Combo tối Mì xào bò",
+    description:
+      "Mì xào bò dùng cùng khoai tây chiên và trà tắc.",
+    discountPercent: 10,
+    items: [
+      ["MI-XAO-BO", 1],
+      ["KHOAI-TAY-CHIEN", 1],
+      ["TRA-TAC", 1],
+    ],
+  },
+  {
     name: "Combo hải sản 3-4 người",
     description:
       "Set hải sản dùng chung gồm gỏi, nghêu, tôm rang muối, cơm chiên và trái cây.",
@@ -182,6 +204,7 @@ const MODIFIER_SPECS = [
     itemCodes: [
       "BUN-BO-HUE",
       "TOM-SU-RANG-ME-PHAN",
+      "CUA-CA-MAU-SOT-ME",
       "CA-DUC-NUONG-MUOI-OT",
       "MUC-LA-NUONG-SA-TE",
       "LAU-GA-LA-E",
