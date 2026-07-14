@@ -100,7 +100,7 @@ export default function AuthSessionReconciler({ children }) {
 
           window.setTimeout(() => {
             const latestAuth = parentAuthRef.current || {};
-            if (!latestAuth.token || !latestAuth.logout) return;
+            if (!latestAuth.logout) return;
             latestAuth.logout();
           }, 0);
         }
