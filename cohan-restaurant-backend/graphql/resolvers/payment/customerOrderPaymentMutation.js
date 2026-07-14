@@ -27,11 +27,11 @@ const sameOrderSet = (payment, expectedOrderIds) => {
 };
 
 /**
- * POS retries may find a pending order-payment session created before callback
- * credential snapshots were introduced. Reusing that old payUrl makes VNPAY
- * return with a valid gateway signature that COHAN can no longer verify.
- * Cancel only matching legacy external sessions so createOrderPayment builds a
- * fresh URL with the exact encrypted credential snapshot.
+ * POS retries can reuse a pending order-payment session after a backend restart.
+ * Before returning the old payUrl, the PaymentSession find hook restores the
+ * exact callback credential snapshot into the provider verification context.
+ * Sessions whose snapshot cannot be restored must be cancelled so a fresh,
+ * verifiable gateway URL is generated instead of failing after VNPAY redirects.
  */
 export async function cancelLegacyExternalOrderPaymentSessions({
   restaurantId,
@@ -70,11 +70,28 @@ export async function cancelLegacyExternalOrderPaymentSessions({
       String(payment?.callbackCredentialCiphertext || "").trim(),
     );
     const hasProviderUrl = Boolean(String(payment?.payUrl || "").trim());
-    if (hasCredentialSnapshot && hasProviderUrl) continue;
+    const credentialResolutionError = String(
+      payment?.$locals?.paymentCredentialResolutionError || "",
+    ).trim();
+    const callbackRejected =
+      String(payment?.callbackStatus || "").toLowerCase() === "rejected";
 
-    const reason = !hasCredentialSnapshot
-      ? "legacy_session_missing_callback_credential_snapshot"
-      : "legacy_session_missing_provider_url";
+    if (
+      hasCredentialSnapshot &&
+      hasProviderUrl &&
+      !credentialResolutionError &&
+      !callbackRejected
+    ) {
+      continue;
+    }
+
+    const reason = credentialResolutionError
+      ? "callback_credential_snapshot_unreadable"
+      : callbackRejected
+        ? "previous_callback_signature_rejected"
+        : !hasCredentialSnapshot
+          ? "legacy_session_missing_callback_credential_snapshot"
+          : "legacy_session_missing_provider_url";
 
     payment.status = "cancelled";
     payment.cancelledAt = now;
@@ -82,7 +99,11 @@ export async function cancelLegacyExternalOrderPaymentSessions({
     payment.events = Array.isArray(payment.events) ? payment.events : [];
     payment.events.push({
       type: "payment_cancelled",
-      payload: { reason, source: "pos_retry_guard" },
+      payload: {
+        reason,
+        source: "pos_retry_guard",
+        credentialResolutionError: credentialResolutionError || undefined,
+      },
     });
     await payment.save();
     cancelled += 1;
@@ -91,13 +112,22 @@ export async function cancelLegacyExternalOrderPaymentSessions({
   return cancelled;
 }
 
-export async function canCustomerPayOwnOrders({ userId, restaurantId, orderIds = [] }) {
+export async function canCustomerPayOwnOrders({
+  userId,
+  restaurantId,
+  orderIds = [],
+}) {
   const uid = toId(userId);
   const rid = toId(restaurantId);
   const ids = [...new Set((orderIds || []).map(String))]
     .map(toId)
     .filter(Boolean);
-  if (!uid || !rid || !ids.length || ids.length !== new Set(orderIds.map(String)).size) {
+  if (
+    !uid ||
+    !rid ||
+    !ids.length ||
+    ids.length !== new Set(orderIds.map(String)).size
+  ) {
     return false;
   }
 
@@ -135,7 +165,10 @@ export async function createCustomerOwnedOrderPayment(parent, { input }, ctx) {
     throw new Error("PAYMENT_PUBLIC_BASE_URL_REQUIRED");
   }
   const clientIp =
-    ctx?.request?.ip || ctx?.req?.ip || ctx?.request?.headers?.["x-forwarded-for"] || "127.0.0.1";
+    ctx?.request?.ip ||
+    ctx?.req?.ip ||
+    ctx?.request?.headers?.["x-forwarded-for"] ||
+    "127.0.0.1";
 
   await cancelLegacyExternalOrderPaymentSessions({
     restaurantId,
