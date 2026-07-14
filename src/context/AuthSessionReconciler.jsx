@@ -118,7 +118,6 @@ export default function AuthSessionReconciler({ children }) {
       );
       lastAuthenticatedRef.current = parentSession;
       parentWasAuthenticatedRef.current = true;
-      explicitAnonymousRef.current = false;
       return;
     }
 
