@@ -32,6 +32,7 @@ export async function refreshAccessToken({ signal } = {}) {
     response = await fetch(getRefreshUrl(), {
       method: "POST",
       credentials: "include",
+      cache: "no-store",
       signal,
     });
   } catch (error) {
