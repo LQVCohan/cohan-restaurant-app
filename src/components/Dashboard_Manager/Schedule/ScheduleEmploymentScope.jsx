@@ -1,5 +1,11 @@
-import React, { createContext, useContext, useMemo } from "react";
-import { gql, useQuery } from "@apollo/client";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { gql, useApolloClient, useQuery } from "@apollo/client";
 
 export const SCHEDULE_EMPLOYMENT_SCOPES = {
   ALL: "all",
@@ -11,9 +17,42 @@ export const SCHEDULE_EMPLOYMENT_SCOPES = {
 const FULL_TIME_TYPES = new Set(["full_time", "probation", "contract"]);
 const PART_TIME_TYPES = new Set(["part_time", "seasonal"]);
 
+const GET_SCHEDULE_SCOPE_ME = gql`
+  query ScheduleScopeMe {
+    me {
+      id
+      roleName
+    }
+  }
+`;
+
+const GET_SCHEDULE_SCOPE_RESTAURANTS = gql`
+  query ScheduleScopeRestaurants($limit: Int = 100, $cursor: ID) {
+    scopedRestaurants(limit: $limit, cursor: $cursor) {
+      edges {
+        node {
+          id
+        }
+      }
+    }
+  }
+`;
+
+const GET_SCHEDULE_SCOPE_ALL_RESTAURANTS = gql`
+  query ScheduleScopeAllRestaurants($limit: Int = 100, $cursor: ID) {
+    restaurants(limit: $limit, cursor: $cursor) {
+      edges {
+        node {
+          id
+        }
+      }
+    }
+  }
+`;
+
 const GET_SCHEDULE_STAFF_SHIFT_TYPES = gql`
-  query ScheduleStaffShiftTypes {
-    staffList {
+  query ScheduleStaffShiftTypes($restaurantId: ID!) {
+    staffList(restaurantId: $restaurantId) {
       id
       shiftType
     }
@@ -89,20 +128,82 @@ export function filterStaffForScheduleScope(
 
 export function ScheduleEmploymentScopeProvider({ scope = "all", children }) {
   const value = useMemo(() => scope || "all", [scope]);
-  const { data } = useQuery(GET_SCHEDULE_STAFF_SHIFT_TYPES, {
-    fetchPolicy: "cache-and-network",
-    nextFetchPolicy: "cache-first",
+  const apolloClient = useApolloClient();
+  const [shiftTypeByStaffId, setShiftTypeByStaffId] = useState(new Map());
+
+  const { data: meData } = useQuery(GET_SCHEDULE_SCOPE_ME, {
+    fetchPolicy: "cache-first",
   });
-  const shiftTypeByStaffId = useMemo(
-    () =>
-      new Map(
-        (data?.staffList || []).map((staff) => [
-          idString(staff?.id),
-          normalizeStaffShiftType(staff?.shiftType),
-        ]),
-      ),
-    [data?.staffList],
+  const isAdmin = meData?.me?.roleName === "admin";
+
+  const { data: scopedRestaurantsData } = useQuery(
+    GET_SCHEDULE_SCOPE_RESTAURANTS,
+    {
+      variables: { limit: 100 },
+      skip: !meData?.me?.id || isAdmin,
+      fetchPolicy: "cache-and-network",
+      nextFetchPolicy: "cache-first",
+    },
   );
+  const { data: allRestaurantsData } = useQuery(
+    GET_SCHEDULE_SCOPE_ALL_RESTAURANTS,
+    {
+      variables: { limit: 100 },
+      skip: !isAdmin,
+      fetchPolicy: "cache-and-network",
+      nextFetchPolicy: "cache-first",
+    },
+  );
+
+  const restaurantIds = useMemo(() => {
+    const edges = isAdmin
+      ? allRestaurantsData?.restaurants?.edges
+      : scopedRestaurantsData?.scopedRestaurants?.edges;
+    return Array.from(
+      new Set((edges || []).map((edge) => idString(edge?.node?.id)).filter(Boolean)),
+    );
+  }, [allRestaurantsData, isAdmin, scopedRestaurantsData]);
+  const restaurantIdsKey = restaurantIds.join("|");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!restaurantIds.length) {
+      setShiftTypeByStaffId(new Map());
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    Promise.all(
+      restaurantIds.map((restaurantId) =>
+        apolloClient.query({
+          query: GET_SCHEDULE_STAFF_SHIFT_TYPES,
+          variables: { restaurantId },
+          fetchPolicy: "cache-first",
+        }),
+      ),
+    )
+      .then((responses) => {
+        if (cancelled) return;
+        const nextMap = new Map();
+        responses.forEach((response) => {
+          (response?.data?.staffList || []).forEach((staff) => {
+            const staffId = idString(staff?.id);
+            if (!staffId) return;
+            nextMap.set(staffId, normalizeStaffShiftType(staff?.shiftType));
+          });
+        });
+        setShiftTypeByStaffId(nextMap);
+      })
+      .catch(() => {
+        if (!cancelled) setShiftTypeByStaffId(new Map());
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [apolloClient, restaurantIdsKey]);
 
   return (
     <ScheduleEmploymentScopeContext.Provider value={value}>
