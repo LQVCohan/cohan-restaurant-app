@@ -6,7 +6,6 @@ import FullTimeScheduleWorkspace from "./FullTimeScheduleWorkspace";
 vi.mock("lucide-react", () => ({
   BriefcaseBusiness: () => <span aria-hidden="true" />,
   CalendarDays: () => <span aria-hidden="true" />,
-  ShieldCheck: () => <span aria-hidden="true" />,
 }));
 
 vi.mock("./ScheduleManagement", () => ({
@@ -25,7 +24,7 @@ vi.mock("./ScheduleEmploymentScope", () => ({
 }));
 
 describe("FullTimeScheduleWorkspace", () => {
-  it("renders a dedicated full-time shell instead of exposing the legacy page directly", () => {
+  it("renders the compact full-time shell and keeps registration out of the week canvas", () => {
     render(<FullTimeScheduleWorkspace />);
 
     expect(
@@ -37,7 +36,10 @@ describe("FullTimeScheduleWorkspace", () => {
     );
     expect(screen.getByTestId("full-time-schedule-core")).toBeInTheDocument();
     expect(
-      screen.getByText(/khu vực lịch chính chỉ tập trung vào xếp ca và kiểm tra vận hành/i),
+      screen.getByText(/màn hình này chỉ dùng để xếp ca và công bố lịch tuần/i),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/không trộn với block bán thời gian hoặc ca xoay/i),
+    ).not.toBeInTheDocument();
   });
 });
