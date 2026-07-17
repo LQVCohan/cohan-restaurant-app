@@ -551,7 +551,7 @@ const AddShiftModal = ({
           ) : null}
 
           <div className="add-shift-workspace__grid">
-            <section className="add-shift-workspace__main">
+            <section className="add-shift-workspace__main form-group">
               <div className="staff-section-heading">
                 <div>
                   <span className="workspace-eyebrow">Phân công</span>
