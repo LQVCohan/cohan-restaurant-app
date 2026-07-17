@@ -1,9 +1,9 @@
 .full-time-schedule-workspace {
   position: relative;
   display: grid;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
-  padding: 16px;
+  padding: 14px;
   border: 1px solid #dde6e1;
   border-radius: 22px;
   background: #f8faf9;
@@ -12,7 +12,8 @@
 
 .full-time-schedule-header {
   min-width: 0;
-  padding: 20px 360px 20px 20px;
+  min-height: 108px;
+  padding: 20px 370px 20px 20px;
   border: 1px solid #dce8e1;
   border-radius: 18px;
   background: linear-gradient(135deg, #ffffff 0%, #edf6f0 100%);
@@ -32,6 +33,7 @@
   margin: 0;
   color: #173b2e;
   font-size: clamp(22px, 2vw, 30px);
+  line-height: 1.15;
 }
 
 .full-time-schedule-header p {
@@ -46,22 +48,41 @@
 }
 
 /*
- * Full-time still uses ScheduleManagement as its business engine. This scope
- * intentionally resets every global schedule polish layer that can turn the
- * engine into a multi-column dashboard. The visible flow is always:
- * header -> one command bar -> notices -> schedule board.
+ * ScheduleManagement remains the business engine, but this workspace owns the
+ * visual shell. The engine itself must not create a second dashboard around the
+ * week board.
  */
 .manager-page-shell--schedules
   .full-time-schedule-workspace
   .schedule-container.schedule-container,
 .full-time-schedule-workspace .schedule-container.schedule-container {
+  position: static !important;
   width: 100% !important;
   max-width: none !important;
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) !important;
-  grid-auto-flow: row !important;
-  align-items: stretch !important;
-  gap: 12px !important;
+  min-width: 0 !important;
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+/* Only the real action buttons from the legacy header remain visible. They are
+ * anchored to the outer workspace, so they sit inside the green heading card
+ * instead of creating a separate empty row below it. */
+.manager-page-shell--schedules
+  .full-time-schedule-workspace
+  .schedule-container.schedule-container
+  .schedule-header,
+.full-time-schedule-workspace .schedule-container.schedule-container .schedule-header {
+  position: static !important;
+  display: block !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
   margin: 0 !important;
   padding: 0 !important;
   border: 0 !important;
@@ -72,42 +93,20 @@
 
 .manager-page-shell--schedules
   .full-time-schedule-workspace
-  .schedule-container.schedule-container
-  .schedule-header,
-.full-time-schedule-workspace .schedule-container.schedule-container .schedule-header {
-  position: static !important;
-  display: block !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-/* Put the three management actions inside the workspace heading, not in a
- * second card beside the toolbar. */
-.manager-page-shell--schedules
-  .full-time-schedule-workspace
   .schedule-header
   .header-top,
 .full-time-schedule-workspace .schedule-header .header-top {
   position: absolute !important;
-  top: 30px !important;
-  right: 30px !important;
-  z-index: 3 !important;
+  top: 28px !important;
+  right: 28px !important;
+  z-index: 4 !important;
   width: auto !important;
   min-width: 0 !important;
   min-height: 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-end !important;
-  gap: 8px !important;
+  display: block !important;
   margin: 0 !important;
   padding: 0 !important;
   border: 0 !important;
-  border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
 }
@@ -118,6 +117,7 @@
 
 .full-time-schedule-workspace .schedule-header .header-actions {
   width: auto !important;
+  min-width: 0 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: flex-end !important;
@@ -155,7 +155,8 @@
   font-weight: 800 !important;
 }
 
-/* Operational metrics and attendance belong to Statistics/Action center. */
+/* Operational summaries belong to Statistics and the action centre, not the
+ * primary week canvas. */
 .full-time-schedule-workspace .schedule-header .kpi-grid.compact,
 .full-time-schedule-workspace .schedule-header .schedule-quality-panel,
 .full-time-schedule-workspace .schedule-legend,
@@ -164,8 +165,8 @@
   display: none !important;
 }
 
-/* One full-width command bar. This overrides all global 3-column toolbar
- * templates and prevents the controls from being squeezed into the left half. */
+/* A single compact command bar. Explicit height resets are necessary because
+ * several global schedule polish files otherwise stretch this element. */
 .manager-page-shell--schedules
   .full-time-schedule-workspace
   .schedule-container.schedule-container
@@ -176,13 +177,17 @@
   z-index: 2 !important;
   width: 100% !important;
   min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
   display: grid !important;
-  grid-template-columns: minmax(360px, 1.25fr) minmax(210px, 0.62fr) auto !important;
+  grid-template-columns: minmax(460px, 1.15fr) minmax(320px, 0.72fr) auto !important;
+  grid-auto-rows: auto !important;
   align-items: center !important;
+  align-content: center !important;
   justify-content: stretch !important;
-  gap: 12px !important;
+  gap: 10px !important;
   margin: 0 !important;
-  padding: 12px !important;
+  padding: 10px 12px !important;
   border: 1px solid #e0e7e3 !important;
   border-left: 1px solid #e0e7e3 !important;
   border-radius: 15px !important;
@@ -200,25 +205,31 @@
 }
 
 .full-time-schedule-workspace .schedule-toolbar .toolbar-group {
+  width: auto !important;
   min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
   margin: 0 !important;
+  padding: 0 !important;
+  align-self: center !important;
 }
 
 .full-time-schedule-workspace .schedule-toolbar .toolbar-group--view {
-  width: 100% !important;
   display: grid !important;
   grid-template-columns: auto minmax(0, 1fr) !important;
   align-items: center !important;
-  gap: 10px !important;
+  gap: 9px !important;
 }
 
 .full-time-schedule-workspace .schedule-toolbar .view-toggles {
   flex: 0 0 auto !important;
+  min-height: 36px !important;
 }
 
 .full-time-schedule-workspace .schedule-toolbar .date-navigation {
   width: 100% !important;
   min-width: 0 !important;
+  min-height: 36px !important;
   margin: 0 !important;
 }
 
@@ -231,26 +242,24 @@
 }
 
 .full-time-schedule-workspace .schedule-toolbar .toolbar-group--filters {
-  width: 100% !important;
   display: grid !important;
-  grid-template-columns: 1fr !important;
-  align-self: stretch !important;
+  grid-template-columns: repeat(2, minmax(145px, 1fr)) !important;
+  gap: 8px !important;
   justify-self: stretch !important;
-  gap: 7px !important;
 }
 
 .full-time-schedule-workspace .schedule-toolbar .toolbar-group--filters select {
   width: 100% !important;
   min-width: 0 !important;
   max-width: none !important;
+  min-height: 36px !important;
+  height: 36px !important;
 }
 
 .full-time-schedule-workspace .schedule-toolbar .toolbar-group--actions {
-  width: auto !important;
   display: flex !important;
   align-items: center !important;
   justify-content: flex-end !important;
-  align-self: center !important;
   justify-self: end !important;
   flex-wrap: nowrap !important;
   gap: 7px !important;
@@ -259,8 +268,8 @@
 .full-time-schedule-workspace .schedule-toolbar .toolbar-group--actions > button,
 .full-time-schedule-workspace .schedule-toolbar .schedule-status-badge {
   min-width: 0 !important;
-  min-height: 34px !important;
-  height: 34px !important;
+  min-height: 36px !important;
+  height: 36px !important;
   padding-inline: 10px !important;
   white-space: nowrap !important;
   font-size: 11px !important;
@@ -277,15 +286,22 @@
 .full-time-schedule-workspace .daily-view {
   width: 100% !important;
   min-width: 0 !important;
-  grid-column: 1 !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
+}
+
+.full-time-schedule-workspace .schedule-toolbar + .schedule-publish-reminder,
+.full-time-schedule-workspace .schedule-toolbar + .schedule-empty-state,
+.full-time-schedule-workspace .schedule-toolbar + .schedule-feedback,
+.full-time-schedule-workspace .schedule-toolbar + .schedule-board,
+.full-time-schedule-workspace .schedule-toolbar + .daily-view {
+  margin-top: 12px !important;
 }
 
 .full-time-schedule-workspace .schedule-board,
 .full-time-schedule-workspace .calendar-grid,
 .full-time-schedule-workspace .daily-view {
-  margin: 0 !important;
+  margin-bottom: 0 !important;
   border: 1px solid #dfe7e3 !important;
   border-radius: 16px !important;
   background: #ffffff !important;
@@ -309,13 +325,13 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 12px 14px;
+  padding: 10px 13px;
   border: 1px solid #dfe7e3;
   border-radius: 13px;
   background: #ffffff;
   color: #607168;
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .full-time-schedule-footer-note svg {
@@ -323,9 +339,36 @@
   color: #447b5e;
 }
 
-@media (max-width: 1260px) {
+@media (max-width: 1360px) {
+  .manager-page-shell--schedules
+    .full-time-schedule-workspace
+    .schedule-container.schedule-container
+    .schedule-toolbar,
+  .full-time-schedule-workspace .schedule-container.schedule-container .schedule-toolbar {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.75fr) !important;
+  }
+
+  .full-time-schedule-workspace .schedule-toolbar .toolbar-group--actions {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    justify-content: flex-end !important;
+  }
+}
+
+@media (max-width: 1120px) {
   .full-time-schedule-header {
+    min-height: 0;
     padding-right: 20px;
+  }
+
+  .manager-page-shell--schedules
+    .full-time-schedule-workspace
+    .schedule-container.schedule-container
+    .schedule-header,
+  .full-time-schedule-workspace .schedule-container.schedule-container .schedule-header {
+    width: 100% !important;
+    height: auto !important;
+    margin-bottom: 10px !important;
   }
 
   .manager-page-shell--schedules
@@ -335,8 +378,8 @@
   .full-time-schedule-workspace .schedule-header .header-top {
     position: static !important;
     width: 100% !important;
+    display: flex !important;
     justify-content: flex-end !important;
-    margin-top: 0 !important;
   }
 
   .manager-page-shell--schedules
@@ -344,41 +387,24 @@
     .schedule-container.schedule-container
     .schedule-toolbar,
   .full-time-schedule-workspace .schedule-container.schedule-container .schedule-toolbar {
-    grid-template-columns: minmax(0, 1fr) minmax(210px, 0.48fr) !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .full-time-schedule-workspace .schedule-toolbar .toolbar-group--filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
   .full-time-schedule-workspace .schedule-toolbar .toolbar-group--actions {
-    grid-column: 1 / -1 !important;
-    width: 100% !important;
-    justify-content: flex-end !important;
+    grid-column: auto !important;
+    justify-content: flex-start !important;
     flex-wrap: wrap !important;
   }
 }
 
-@media (max-width: 900px) {
-  .full-time-schedule-workspace .schedule-container.schedule-container .schedule-toolbar {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-
-  .full-time-schedule-workspace .schedule-toolbar .toolbar-group--view {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-
-  .full-time-schedule-workspace .schedule-toolbar .view-toggles,
-  .full-time-schedule-workspace .schedule-toolbar .date-navigation {
-    width: 100% !important;
-  }
-
-  .full-time-schedule-workspace .schedule-toolbar .toolbar-group--actions {
-    grid-column: 1 !important;
-    justify-content: flex-start !important;
-  }
-}
-
-@media (max-width: 720px) {
+@media (max-width: 760px) {
   .full-time-schedule-workspace {
-    gap: 12px;
-    padding: 12px;
+    gap: 10px;
+    padding: 10px;
     border-radius: 17px;
   }
 
@@ -387,15 +413,34 @@
     border-radius: 15px;
   }
 
-  .full-time-schedule-workspace .schedule-header .header-actions,
-  .full-time-schedule-workspace .schedule-toolbar .toolbar-group--actions {
+  .full-time-schedule-header h2 {
+    font-size: 21px;
+  }
+
+  .full-time-schedule-workspace .schedule-header .header-actions {
     width: 100% !important;
     display: grid !important;
     grid-template-columns: 1fr !important;
   }
 
   .full-time-schedule-workspace .schedule-header .header-actions > button,
-  .full-time-schedule-workspace .schedule-header .schedule-settings-trigger,
+  .full-time-schedule-workspace .schedule-header .schedule-settings-trigger {
+    width: 100% !important;
+  }
+
+  .full-time-schedule-workspace .schedule-toolbar .toolbar-group--view {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .full-time-schedule-workspace .schedule-toolbar .toolbar-group--filters {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .full-time-schedule-workspace .schedule-toolbar .toolbar-group--actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
   .full-time-schedule-workspace .schedule-toolbar .toolbar-group--actions > button,
   .full-time-schedule-workspace .schedule-toolbar .schedule-status-badge {
     width: 100% !important;

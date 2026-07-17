@@ -12,7 +12,8 @@ const FullTimeScheduleWorkspace = () => (
     <section
       className="full-time-schedule-workspace"
       aria-labelledby="full-time-schedule-workspace-title"
-      data-layout="single-column"
+      data-layout="integrated-header-compact-toolbar"
+      data-visual-density="compact"
     >
       <header className="full-time-schedule-header">
         <div>
