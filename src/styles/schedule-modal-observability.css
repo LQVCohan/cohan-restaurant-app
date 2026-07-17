@@ -1,0 +1,330 @@
+/* Shared operational sizing and scroll behavior for schedule child modals. */
+
+/* Shift detail workspace */
+.modal-container:has(.shift-detail-content) {
+  width: min(1080px, calc(100vw - 32px));
+}
+
+.modal-container:has(.shift-detail-content) > .modal-body {
+  min-height: 0;
+  padding: 16px 18px;
+  overflow-y: auto;
+  background: #f8fafc;
+}
+
+.modal-container:has(.shift-detail-content) .shift-detail-content {
+  max-width: none;
+  margin: 0;
+}
+
+.modal-container:has(.shift-detail-content) .summary-card {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.modal-container:has(.shift-detail-content) .assigned-list,
+.modal-container:has(.shift-detail-content) .candidate-list {
+  max-height: 360px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.modal-container:has(.shift-detail-content) .section-block.add-section {
+  min-height: 320px;
+}
+
+/* Nested confirmations inside shift detail. */
+.modal-container:has(.shift-detail-content) .time-change-backdrop,
+.modal-container:has(.shift-detail-content) .remove-confirm-backdrop,
+.modal-container:has(.shift-detail-content) .delete-confirm-backdrop,
+.modal-container:has(.shift-detail-content) .close-confirm-backdrop {
+  padding: 18px;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(4px);
+}
+
+.modal-container:has(.shift-detail-content) .time-change-card,
+.modal-container:has(.shift-detail-content) .remove-confirm-card,
+.modal-container:has(.shift-detail-content) .delete-confirm-card,
+.modal-container:has(.shift-detail-content) .close-confirm-card {
+  width: min(620px, 100%);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+  overscroll-behavior: contain;
+}
+
+.modal-container:has(.shift-detail-content) .time-change-actions,
+.modal-container:has(.shift-detail-content) .remove-confirm-actions,
+.modal-container:has(.shift-detail-content) .delete-confirm-actions,
+.modal-container:has(.shift-detail-content) .close-confirm-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-left: -2px;
+  margin-right: -2px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.97);
+}
+
+/* Automatic scheduling setup and preview. */
+.auto-schedule-modal,
+.auto-schedule-preview-modal {
+  width: min(1120px, calc(100vw - 32px));
+}
+
+.auto-schedule-modal .modal-header,
+.auto-schedule-preview-modal .modal-header {
+  min-height: 62px;
+  padding: 14px 20px;
+}
+
+.auto-schedule-modal .auto-schedule-body,
+.auto-schedule-preview-modal .auto-preview-body {
+  min-height: 0;
+  max-height: calc(100dvh - 190px);
+  padding: 16px 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #f8fafc;
+}
+
+.auto-schedule-modal .auto-readiness-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.auto-schedule-modal .auto-actions-strip {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  border: 1px solid #dbe4ef;
+  box-shadow: 0 -8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.auto-schedule-modal .auto-schedule-footer,
+.auto-schedule-preview-modal .auto-preview-footer {
+  min-height: 66px;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 18px;
+  background: #ffffff;
+}
+
+.auto-schedule-preview-modal .auto-preview-page {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.auto-schedule-preview-modal .assignment-block ul {
+  max-height: 300px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Shift policy and scoring settings. */
+.shift-rules-modal {
+  width: min(1120px, calc(100vw - 32px));
+}
+
+.shift-rules-modal > .modal-body {
+  min-height: 0;
+  max-height: calc(100dvh - 190px);
+  padding: 0 18px 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #f8fafc;
+}
+
+.shift-rules-modal .shift-rules-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  margin: 0 -18px 14px;
+  padding: 12px 18px;
+  border-bottom: 1px solid #dbe4ef;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+}
+
+.shift-rules-modal .shift-rules-toolbar,
+.shift-rules-modal .policy-banner {
+  border-radius: 14px;
+}
+
+.shift-rules-modal .shift-rule-list {
+  max-height: 420px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.shift-rules-modal .rules-grid,
+.shift-rules-modal .scoring-grid.enhanced {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.shift-rules-modal > .modal-footer {
+  min-height: 66px;
+  padding: 10px 18px;
+  background: #ffffff;
+}
+
+/* Availability snapshot: custom overlay rather than common Modal. */
+.availability-snapshot-modal-overlay {
+  padding: 18px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(4px);
+}
+
+.availability-snapshot-modal {
+  width: min(1440px, 100%);
+  height: min(920px, calc(100dvh - 36px));
+  max-height: calc(100dvh - 36px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 20px;
+}
+
+.availability-snapshot-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  flex: 0 0 auto;
+  padding: 16px 20px;
+  border-bottom: 1px solid #dbe4ef;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(10px);
+}
+
+.availability-snapshot-modal > .availability-summary-cards,
+.availability-snapshot-modal > .availability-snapshot-controls,
+.availability-snapshot-modal > .availability-results-bar,
+.availability-snapshot-modal > .availability-template-strip,
+.availability-snapshot-modal > .availability-legend-row,
+.availability-snapshot-modal > .availability-window-note,
+.availability-snapshot-modal > .availability-error-state,
+.availability-snapshot-modal > .availability-loading-state,
+.availability-snapshot-modal > .availability-empty-state {
+  flex: 0 0 auto;
+}
+
+.availability-snapshot-modal .availability-group-stack {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 18px;
+  overscroll-behavior: contain;
+}
+
+.availability-snapshot-modal .availability-table-shell {
+  max-height: 480px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.availability-snapshot-modal .availability-snapshot-table thead th,
+.availability-snapshot-modal .availability-snapshot-table .employee-col {
+  position: sticky;
+  z-index: 2;
+  background: #ffffff;
+}
+
+.availability-snapshot-modal .availability-snapshot-table thead th {
+  top: 0;
+}
+
+.availability-snapshot-modal .availability-snapshot-table .employee-col {
+  left: 0;
+  z-index: 3;
+}
+
+/* Shared mobile rules. */
+@media (max-width: 820px) {
+  .modal-container:has(.shift-detail-content),
+  .auto-schedule-modal,
+  .auto-schedule-preview-modal,
+  .shift-rules-modal {
+    width: min(100%, calc(100vw - 20px));
+  }
+
+  .modal-container:has(.shift-detail-content) > .modal-body,
+  .auto-schedule-modal .auto-schedule-body,
+  .auto-schedule-preview-modal .auto-preview-body,
+  .shift-rules-modal > .modal-body {
+    max-height: none;
+  }
+
+  .modal-container:has(.shift-detail-content) .summary-card {
+    position: relative;
+  }
+
+  .auto-schedule-modal .auto-readiness-grid,
+  .shift-rules-modal .rules-grid,
+  .shift-rules-modal .scoring-grid.enhanced {
+    grid-template-columns: 1fr;
+  }
+
+  .availability-snapshot-modal-overlay {
+    padding: 10px;
+  }
+
+  .availability-snapshot-modal {
+    height: calc(100dvh - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 14px;
+  }
+}
+
+@media (max-width: 620px) {
+  .modal-container:has(.shift-detail-content) > .modal-body,
+  .auto-schedule-modal .auto-schedule-body,
+  .auto-schedule-preview-modal .auto-preview-body,
+  .shift-rules-modal > .modal-body {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .shift-rules-modal .shift-rules-tabs {
+    margin-left: -12px;
+    margin-right: -12px;
+    padding-left: 12px;
+    padding-right: 12px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .auto-schedule-modal .auto-schedule-footer,
+  .auto-schedule-preview-modal .auto-preview-footer,
+  .shift-rules-modal > .modal-footer {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 10px 12px;
+  }
+
+  .auto-schedule-modal .auto-schedule-footer button,
+  .auto-schedule-preview-modal .auto-preview-footer button,
+  .shift-rules-modal > .modal-footer button {
+    width: 100%;
+  }
+
+  .availability-snapshot-header {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .availability-snapshot-modal .availability-summary-cards,
+  .availability-snapshot-modal .availability-snapshot-controls,
+  .availability-snapshot-modal .availability-results-bar,
+  .availability-snapshot-modal .availability-template-strip,
+  .availability-snapshot-modal .availability-legend-row,
+  .availability-snapshot-modal .availability-group-stack {
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+}

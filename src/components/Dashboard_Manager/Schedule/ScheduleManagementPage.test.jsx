@@ -17,8 +17,10 @@ const {
 
 vi.mock("lucide-react", () => ({
   BriefcaseBusiness: () => <span aria-hidden="true" />,
+  ClipboardList: () => <span aria-hidden="true" />,
   RefreshCw: () => <span aria-hidden="true" />,
   TimerReset: () => <span aria-hidden="true" />,
+  X: () => <span aria-hidden="true" />,
 }));
 vi.mock("@/apollo/client", () => ({ apolloClient: {} }));
 vi.mock("@/utils/scheduleApolloPerformancePatch.js", () => ({
@@ -29,6 +31,9 @@ vi.mock("@/utils/scheduleManagerDomPolish.js", () => ({
 }));
 vi.mock("@/utils/scheduleManagerAdminPolish.js", () => ({
   initScheduleManagerAdminPolish: () => vi.fn(),
+}));
+vi.mock("@/utils/scheduleObservabilityLayout.js", () => ({
+  initScheduleObservabilityLayout: () => vi.fn(),
 }));
 
 vi.mock("./FullTimeScheduleWorkspace", () => ({
@@ -80,33 +85,51 @@ describe("ScheduleManagementPage workspace routing", () => {
     window.history.replaceState({}, "", "/manager/schedules");
   });
 
-  it("renders a distinct component and registration scope for each schedule type", () => {
+  it("keeps registration controls out of the primary schedule until requested", () => {
     render(<ScheduleManagementPage />);
 
     expect(screen.getByTestId("full-time-workspace")).toBeInTheDocument();
+    expect(screen.queryByTestId("workspace-registration")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Trung tâm xử lý/i }));
+
+    expect(
+      screen.getByRole("dialog", { name: /Trung tâm xử lý và đăng ký lịch/i }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("workspace-registration")).toHaveAttribute(
       "data-workspace-type",
       "full_time",
     );
+  });
+
+  it("renders a distinct component and registration scope for each schedule type", () => {
+    render(<ScheduleManagementPage />);
+
+    expect(screen.getByTestId("full-time-workspace")).toBeInTheDocument();
     expect(screen.queryByTestId("part-time-workspace")).not.toBeInTheDocument();
     expect(screen.queryByTestId("rotating-workspace")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Lịch bán thời gian/i }));
     expect(screen.getByTestId("part-time-workspace")).toBeInTheDocument();
+    expect(screen.queryByTestId("full-time-workspace")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Trung tâm xử lý/i }));
     expect(screen.getByTestId("workspace-registration")).toHaveAttribute(
       "data-workspace-type",
       "part_time",
     );
-    expect(screen.queryByTestId("full-time-workspace")).not.toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole("button", { name: /Đóng trung tâm xử lý/i }));
     fireEvent.click(screen.getByRole("button", { name: /Lịch xoay ca/i }));
     expect(screen.getByTestId("rotating-workspace")).toBeInTheDocument();
+    expect(screen.queryByTestId("full-time-workspace")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("part-time-workspace")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Trung tâm xử lý/i }));
     expect(screen.getByTestId("workspace-registration")).toHaveAttribute(
       "data-workspace-type",
       "rotating",
     );
-    expect(screen.queryByTestId("full-time-workspace")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("part-time-workspace")).not.toBeInTheDocument();
   });
 
   it("does not reuse the full-time component for rotating schedule", () => {
@@ -117,6 +140,8 @@ describe("ScheduleManagementPage workspace routing", () => {
 
     expect(rotatingRenderSpy).toHaveBeenCalledTimes(1);
     expect(fullTimeRenderSpy).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /Trung tâm xử lý/i }));
     expect(registrationRenderSpy).toHaveBeenLastCalledWith("rotating");
   });
 });

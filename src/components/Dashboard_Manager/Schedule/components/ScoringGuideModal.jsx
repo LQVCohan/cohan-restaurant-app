@@ -111,7 +111,7 @@ const ScoringGuideModal = ({ isOpen, onClose, weights = {} }) => (
   <Modal
     isOpen={isOpen}
     onClose={onClose}
-    size="sm"
+    size="lg"
     zIndex={1140}
     className="scoring-guide-modal"
   >
