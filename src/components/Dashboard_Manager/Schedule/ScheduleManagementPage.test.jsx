@@ -7,10 +7,12 @@ const {
   fullTimeRenderSpy,
   partTimeRenderSpy,
   rotatingRenderSpy,
+  registrationRenderSpy,
 } = vi.hoisted(() => ({
   fullTimeRenderSpy: vi.fn(),
   partTimeRenderSpy: vi.fn(),
   rotatingRenderSpy: vi.fn(),
+  registrationRenderSpy: vi.fn(),
 }));
 
 vi.mock("lucide-react", () => ({
@@ -50,6 +52,17 @@ vi.mock("./RotatingScheduleWorkspace", () => ({
   },
 }));
 
+vi.mock("./components/WorkspaceAvailabilityPanel", () => ({
+  default: ({ workspaceType }) => {
+    registrationRenderSpy(workspaceType);
+    return (
+      <div data-testid="workspace-registration" data-workspace-type={workspaceType}>
+        Registration {workspaceType}
+      </div>
+    );
+  },
+}));
+
 vi.mock("./ScheduleEmploymentScope", () => ({
   SCHEDULE_EMPLOYMENT_SCOPES: {
     FULL_TIME: "full_time",
@@ -63,22 +76,35 @@ describe("ScheduleManagementPage workspace routing", () => {
     fullTimeRenderSpy.mockClear();
     partTimeRenderSpy.mockClear();
     rotatingRenderSpy.mockClear();
+    registrationRenderSpy.mockClear();
     window.history.replaceState({}, "", "/manager/schedules");
   });
 
-  it("renders a distinct component for each schedule type", () => {
+  it("renders a distinct component and registration scope for each schedule type", () => {
     render(<ScheduleManagementPage />);
 
     expect(screen.getByTestId("full-time-workspace")).toBeInTheDocument();
+    expect(screen.getByTestId("workspace-registration")).toHaveAttribute(
+      "data-workspace-type",
+      "full_time",
+    );
     expect(screen.queryByTestId("part-time-workspace")).not.toBeInTheDocument();
     expect(screen.queryByTestId("rotating-workspace")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Lịch bán thời gian/i }));
     expect(screen.getByTestId("part-time-workspace")).toBeInTheDocument();
+    expect(screen.getByTestId("workspace-registration")).toHaveAttribute(
+      "data-workspace-type",
+      "part_time",
+    );
     expect(screen.queryByTestId("full-time-workspace")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Lịch xoay ca/i }));
     expect(screen.getByTestId("rotating-workspace")).toBeInTheDocument();
+    expect(screen.getByTestId("workspace-registration")).toHaveAttribute(
+      "data-workspace-type",
+      "rotating",
+    );
     expect(screen.queryByTestId("full-time-workspace")).not.toBeInTheDocument();
     expect(screen.queryByTestId("part-time-workspace")).not.toBeInTheDocument();
   });
@@ -91,5 +117,6 @@ describe("ScheduleManagementPage workspace routing", () => {
 
     expect(rotatingRenderSpy).toHaveBeenCalledTimes(1);
     expect(fullTimeRenderSpy).toHaveBeenCalledTimes(1);
+    expect(registrationRenderSpy).toHaveBeenLastCalledWith("rotating");
   });
 });
