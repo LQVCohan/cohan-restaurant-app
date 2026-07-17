@@ -2,7 +2,8 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import StaffReservationQrScanner from "@/components/Staff/StaffReservationQrScanner";
 
-const STAFF_SCAN_URL = "/scan-table?source=staff";
+export const STAFF_SCAN_URL = "/staff/orders?scanner=reservation";
+const LEGACY_STAFF_SCAN_PATH = "/scan-table";
 const STAFF_SCANNER_HOST_ID = "cohan-staff-reservation-scanner-root";
 
 let scannerRoot = null;
@@ -20,11 +21,78 @@ const arrowIcon = `
   </svg>
 `;
 
-function isStaffScannerRoute() {
-  const params = new URLSearchParams(window.location.search);
+export function isStaffScannerLocation(locationLike = window.location) {
+  const params = new URLSearchParams(locationLike?.search || "");
   return (
-    window.location.pathname === "/scan-table" && params.get("source") === "staff"
+    locationLike?.pathname === "/staff/orders" &&
+    params.get("scanner") === "reservation"
   );
+}
+
+export function isLegacyStaffScannerLocation(locationLike = window.location) {
+  const params = new URLSearchParams(locationLike?.search || "");
+  return (
+    locationLike?.pathname === LEGACY_STAFF_SCAN_PATH &&
+    params.get("source") === "staff"
+  );
+}
+
+function createPopStateEvent() {
+  if (typeof PopStateEvent === "function") {
+    return new PopStateEvent("popstate", { state: window.history.state });
+  }
+  return new Event("popstate");
+}
+
+export function navigateWithinApp(href, { replace = false } = {}) {
+  if (typeof window === "undefined") return false;
+
+  let target;
+  try {
+    target = new URL(href, window.location.href);
+  } catch {
+    return false;
+  }
+
+  if (target.origin !== window.location.origin) return false;
+
+  const nextPath = `${target.pathname}${target.search}${target.hash}`;
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (nextPath === currentPath) return true;
+
+  const method = replace ? "replaceState" : "pushState";
+  window.history[method](window.history.state, "", nextPath);
+  window.dispatchEvent(createPopStateEvent());
+  return true;
+}
+
+function shouldHandleInternalAnchorClick(event, anchor) {
+  if (!anchor || event.defaultPrevented) return false;
+  if (typeof event.button === "number" && event.button !== 0) return false;
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
+  if (anchor.hasAttribute("download")) return false;
+  const target = String(anchor.getAttribute("target") || "").toLowerCase();
+  if (target && target !== "_self") return false;
+
+  try {
+    return new URL(anchor.href, window.location.href).origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+function attachInternalNavigation(anchor) {
+  anchor.addEventListener("click", (event) => {
+    if (!shouldHandleInternalAnchorClick(event, anchor)) return;
+    event.preventDefault();
+    navigateWithinApp(anchor.href);
+  });
+  return anchor;
+}
+
+function normalizeLegacyStaffScannerRoute() {
+  if (!isLegacyStaffScannerLocation()) return false;
+  return navigateWithinApp(STAFF_SCAN_URL, { replace: true });
 }
 
 function createLink({ className, href, label, title, iconSize = 20 }) {
@@ -34,7 +102,7 @@ function createLink({ className, href, label, title, iconSize = 20 }) {
   link.setAttribute("aria-label", label);
   link.title = title || label;
   link.innerHTML = `${qrIcon(iconSize)}<span>${label}</span>`;
-  return link;
+  return attachInternalNavigation(link);
 }
 
 function addStaffHeaderLauncher(root) {
@@ -73,20 +141,29 @@ function addStaffDashboardCard(root) {
     </span>
     <span class="staff-dashboard-action__arrow" aria-hidden="true">${arrowIcon}</span>
   `;
-  grid.prepend(card);
+  grid.prepend(attachInternalNavigation(card));
+}
+
+function bindScannerInternalNavigation(host) {
+  if (host.dataset.internalNavigationBound === "true") return;
+  host.dataset.internalNavigationBound = "true";
+  host.addEventListener("click", (event) => {
+    const anchor = event.target?.closest?.("a[href]");
+    if (!anchor || !host.contains(anchor)) return;
+    if (!shouldHandleInternalAnchorClick(event, anchor)) return;
+    event.preventDefault();
+    navigateWithinApp(anchor.href);
+  });
 }
 
 function mountStaffScanner() {
-  const active = isStaffScannerRoute();
+  const active = isStaffScannerLocation();
   document.documentElement.classList.toggle(
     "staff-reservation-qr-scanner-mode",
     active,
   );
 
-  const customerScanner = document.querySelector("#root .table-qr-scanner");
-
   if (!active) {
-    customerScanner?.removeAttribute("aria-hidden");
     if (scannerRoot) {
       scannerRoot.unmount();
       scannerRoot = null;
@@ -95,11 +172,11 @@ function mountStaffScanner() {
     return;
   }
 
-  customerScanner?.setAttribute("aria-hidden", "true");
   let host = document.getElementById(STAFF_SCANNER_HOST_ID);
   if (!host) {
     host = document.createElement("div");
     host.id = STAFF_SCANNER_HOST_ID;
+    bindScannerInternalNavigation(host);
     document.body.append(host);
   }
 
@@ -110,6 +187,7 @@ function mountStaffScanner() {
 }
 
 function applyStaffReservationQrUi() {
+  if (normalizeLegacyStaffScannerRoute()) return;
   addStaffHeaderLauncher(document);
   addStaffDashboardCard(document);
   mountStaffScanner();
