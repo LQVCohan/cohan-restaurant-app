@@ -1,0 +1,252 @@
+/* Visual workspace for the legacy add-staff modal without changing its data contract. */
+.modal-container:has(.add-modal-content) {
+  width: min(1100px, calc(100vw - 32px));
+}
+
+.modal-container:has(.add-modal-content) .modal-body {
+  padding: 0;
+  overflow: hidden;
+}
+
+.modal-container:has(.add-modal-content) .add-modal-content {
+  min-height: 0;
+  max-height: calc(100dvh - 126px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  grid-auto-rows: auto;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.modal-container:has(.add-modal-content) .shift-info-box {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 12px 20px;
+  border: 0;
+  border-bottom: 1px solid #e2e8f0;
+  border-radius: 0;
+  background: #f8fafc;
+}
+
+.modal-container:has(.add-modal-content) .shift-coverage-summary,
+.modal-container:has(.add-modal-content) .published-change-warning {
+  grid-column: 1 / -1;
+  margin: 10px 20px 0;
+}
+
+.modal-container:has(.add-modal-content) .form-group {
+  min-width: 0;
+  margin: 0;
+}
+
+.modal-container:has(.add-modal-content) .form-group:has(.staff-selector) {
+  min-height: 0;
+  display: flex;
+  grid-column: 1;
+  grid-row: 4 / span 4;
+  flex-direction: column;
+  padding: 16px 18px 16px 20px;
+  border-right: 1px solid #e2e8f0;
+}
+
+.modal-container:has(.add-modal-content) .form-group:has(.job-grid),
+.modal-container:has(.add-modal-content) .form-group:has(#published-shift-reason),
+.modal-container:has(.add-modal-content) .form-group:has(#new-shift-note) {
+  grid-column: 2;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.modal-container:has(.add-modal-content) .form-group:has(.job-grid) {
+  grid-row: 4;
+}
+
+.modal-container:has(.add-modal-content) .form-group:has(#published-shift-reason) {
+  grid-row: 5;
+}
+
+.modal-container:has(.add-modal-content) .form-group:has(#new-shift-note) {
+  grid-row: 6;
+}
+
+.modal-container:has(.add-modal-content) .staff-selector {
+  min-height: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.modal-container:has(.add-modal-content) .search-wrapper {
+  flex: 0 0 auto;
+}
+
+.modal-container:has(.add-modal-content) .staff-role-filter-tabs {
+  flex: 0 0 auto;
+  margin-bottom: 8px;
+}
+
+.modal-container:has(.add-modal-content) .staff-filter-hint {
+  flex: 0 0 auto;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.modal-container:has(.add-modal-content) .staff-list {
+  min-height: 320px;
+  max-height: none;
+  flex: 1 1 auto;
+  border-radius: 12px;
+  overscroll-behavior: contain;
+}
+
+.modal-container:has(.add-modal-content) .staff-item {
+  min-height: 68px;
+  padding: 10px 12px;
+}
+
+.modal-container:has(.add-modal-content) .staff-item .name {
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+.modal-container:has(.add-modal-content) .staff-item .role {
+  margin-top: 2px;
+}
+
+.modal-container:has(.add-modal-content) .job-grid {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.modal-container:has(.add-modal-content) .job-checkbox {
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+.modal-container:has(.add-modal-content) .job-helper-text {
+  margin-bottom: 8px;
+  color: #64748b;
+}
+
+.modal-container:has(.add-modal-content) .note-input {
+  min-height: 72px;
+}
+
+.modal-container:has(.add-modal-content) .submit-error {
+  grid-column: 1 / -1;
+  margin: 0 20px 10px;
+}
+
+.modal-container:has(.add-modal-content) .actions {
+  position: relative;
+  bottom: auto;
+  grid-column: 1 / -1;
+  grid-row: 8;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 12px 20px;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.modal-container:has(.add-modal-content) .actions button {
+  min-width: 150px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+}
+
+.modal-container:has(.add-modal-content) .actions .btn-submit {
+  min-width: 220px;
+}
+
+@media (max-width: 820px) {
+  .modal-container:has(.add-modal-content) {
+    width: min(100%, calc(100vw - 20px));
+  }
+
+  .modal-container:has(.add-modal-content) .modal-body {
+    overflow-y: auto;
+  }
+
+  .modal-container:has(.add-modal-content) .add-modal-content {
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .modal-container:has(.add-modal-content) .shift-info-box {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .modal-container:has(.add-modal-content) .form-group:has(.staff-selector),
+  .modal-container:has(.add-modal-content) .form-group:has(.job-grid),
+  .modal-container:has(.add-modal-content) .form-group:has(#published-shift-reason),
+  .modal-container:has(.add-modal-content) .form-group:has(#new-shift-note) {
+    padding: 14px;
+    border-right: 0;
+    border-bottom: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+
+  .modal-container:has(.add-modal-content) .form-group:has(.staff-selector) {
+    min-height: 500px;
+    order: 1;
+  }
+
+  .modal-container:has(.add-modal-content) .form-group:has(.job-grid) {
+    order: 2;
+  }
+
+  .modal-container:has(.add-modal-content) .form-group:has(#published-shift-reason),
+  .modal-container:has(.add-modal-content) .form-group:has(#new-shift-note) {
+    order: 3;
+  }
+
+  .modal-container:has(.add-modal-content) .actions {
+    position: sticky;
+    bottom: 0;
+    order: 5;
+    padding: 10px 14px;
+  }
+}
+
+@media (max-width: 560px) {
+  .modal-container:has(.add-modal-content) .shift-info-box {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .modal-container:has(.add-modal-content) .shift-info-box .info-item:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .modal-container:has(.add-modal-content) .shift-coverage-summary,
+  .modal-container:has(.add-modal-content) .published-change-warning {
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+
+  .modal-container:has(.add-modal-content) .salary {
+    display: none;
+  }
+
+  .modal-container:has(.add-modal-content) .actions {
+    flex-direction: column-reverse;
+  }
+
+  .modal-container:has(.add-modal-content) .actions button,
+  .modal-container:has(.add-modal-content) .actions .btn-submit {
+    width: 100%;
+    min-width: 0;
+  }
+}
