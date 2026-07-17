@@ -21,6 +21,29 @@ function workspaceFilter(workspaceType) {
   };
 }
 
+function isLegacyPeriodIndex(index) {
+  const keys = Object.keys(index?.key || {});
+  return (
+    index?.unique === true &&
+    keys.length === 3 &&
+    index.key.restaurantId === 1 &&
+    index.key.periodStart === 1 &&
+    index.key.periodEnd === 1
+  );
+}
+
+function isWorkspacePeriodIndex(index) {
+  const keys = Object.keys(index?.key || {});
+  return (
+    index?.unique === true &&
+    keys.length === 4 &&
+    index.key.restaurantId === 1 &&
+    index.key.periodStart === 1 &&
+    index.key.periodEnd === 1 &&
+    index.key.workspaceType === 1
+  );
+}
+
 async function ensureWorkspaceWindowIndex() {
   if (workspaceIndexMigrationPromise) return workspaceIndexMigrationPromise;
 
@@ -33,26 +56,26 @@ async function ensureWorkspaceWindowIndex() {
       { $set: { workspaceType: "full_time" } },
     );
 
-    const indexes = await collection.indexes();
-    const legacyIndex = (indexes || []).find((index) => {
-      const keys = Object.keys(index?.key || {});
-      return (
-        index?.unique === true &&
-        keys.length === 3 &&
-        index.key.restaurantId === 1 &&
-        index.key.periodStart === 1 &&
-        index.key.periodEnd === 1
-      );
-    });
+    let indexes = await collection.indexes();
+    const legacyIndex = (indexes || []).find(isLegacyPeriodIndex);
 
     if (legacyIndex?.name) {
-      await collection.dropIndex(legacyIndex.name);
+      try {
+        await collection.dropIndex(legacyIndex.name);
+      } catch (error) {
+        if (![26, 27].includes(error?.code) && error?.codeName !== "IndexNotFound") {
+          throw error;
+        }
+      }
+      indexes = await collection.indexes();
     }
 
-    await collection.createIndex(
-      { restaurantId: 1, periodStart: 1, periodEnd: 1, workspaceType: 1 },
-      { unique: true, name: "availability_workspace_period_unique" },
-    );
+    if (!(indexes || []).some(isWorkspacePeriodIndex)) {
+      await collection.createIndex(
+        { restaurantId: 1, periodStart: 1, periodEnd: 1, workspaceType: 1 },
+        { unique: true },
+      );
+    }
   })().catch((error) => {
     workspaceIndexMigrationPromise = null;
     throw error;
