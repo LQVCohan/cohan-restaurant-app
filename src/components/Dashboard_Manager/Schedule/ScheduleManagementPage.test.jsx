@@ -3,9 +3,15 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ScheduleManagementPage from "./ScheduleManagementPage";
 
-const fullTimeRenderSpy = vi.fn();
-const partTimeRenderSpy = vi.fn();
-const rotatingRenderSpy = vi.fn();
+const {
+  fullTimeRenderSpy,
+  partTimeRenderSpy,
+  rotatingRenderSpy,
+} = vi.hoisted(() => ({
+  fullTimeRenderSpy: vi.fn(),
+  partTimeRenderSpy: vi.fn(),
+  rotatingRenderSpy: vi.fn(),
+}));
 
 vi.mock("@/apollo/client", () => ({ apolloClient: {} }));
 vi.mock("@/utils/scheduleApolloPerformancePatch.js", () => ({
