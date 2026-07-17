@@ -1,14 +1,23 @@
 import React, { memo, useEffect, useLayoutEffect, useState } from "react";
-import { BriefcaseBusiness, RefreshCw, TimerReset } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  ClipboardList,
+  RefreshCw,
+  TimerReset,
+  X,
+} from "lucide-react";
 import { apolloClient } from "@/apollo/client";
 import "@/styles/schedule-manager-experience.css";
 import "@/styles/schedule-action-center.css";
 import "@/styles/schedule-polish.css";
 import "@/styles/schedule-sidebar-safe-performance.css";
 import "@/styles/schedule-availability-feedback.css";
+import "@/styles/schedule-observability-redesign.css";
+import "@/styles/schedule-add-shift-observability.css";
 import { installScheduleApolloPerformancePatch } from "@/utils/scheduleApolloPerformancePatch.js";
 import { initScheduleManagerDomPolish } from "@/utils/scheduleManagerDomPolish.js";
 import { initScheduleManagerAdminPolish } from "@/utils/scheduleManagerAdminPolish.js";
+import { initScheduleObservabilityLayout } from "@/utils/scheduleObservabilityLayout.js";
 import FullTimeScheduleWorkspace from "./FullTimeScheduleWorkspace";
 import PartTimeScheduleWorkspace from "./PartTimeScheduleWorkspace";
 import RotatingScheduleWorkspace from "./RotatingScheduleWorkspace";
@@ -56,6 +65,7 @@ function getAvailabilityActionErrorMessage(reason) {
 const ScheduleManagementPage = memo(function ScheduleManagementPage() {
   const [readinessFocus, setReadinessFocus] = useState("");
   const [availabilityActionError, setAvailabilityActionError] = useState("");
+  const [operationsOpen, setOperationsOpen] = useState(false);
   const [employmentView, setEmploymentView] = useState(
     SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME,
   );
@@ -88,6 +98,27 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
       window.removeEventListener("unhandledrejection", handleUnhandledRejection);
   }, []);
 
+  useEffect(() => {
+    if (!operationsOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setOperationsOpen(false);
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [operationsOpen]);
+
+  useEffect(() => {
+    setOperationsOpen(false);
+  }, [employmentView]);
+
   useLayoutEffect(() => {
     const apolloCleanup = installScheduleApolloPerformancePatch(apolloClient);
     const domPolishTimer = window.setTimeout(() => {
@@ -99,6 +130,7 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
       }
       window.__scheduleDomPolishCleanup = initScheduleManagerDomPolish?.();
       window.__scheduleAdminPolishCleanup = initScheduleManagerAdminPolish?.();
+      window.__scheduleObservabilityCleanup = initScheduleObservabilityLayout?.();
     }, 520);
 
     return () => {
@@ -112,8 +144,27 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
         window.__scheduleAdminPolishCleanup();
         window.__scheduleAdminPolishCleanup = null;
       }
+      if (typeof window.__scheduleObservabilityCleanup === "function") {
+        window.__scheduleObservabilityCleanup();
+        window.__scheduleObservabilityCleanup = null;
+      }
     };
   }, [employmentView]);
+
+  const workspace =
+    employmentView === SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME ? (
+      <div className="schedule-employment-view schedule-employment-view--full-time">
+        <FullTimeScheduleWorkspace />
+      </div>
+    ) : employmentView === SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME ? (
+      <div className="schedule-employment-view schedule-employment-view--part-time">
+        <PartTimeScheduleWorkspace />
+      </div>
+    ) : (
+      <div className="schedule-employment-view schedule-employment-view--rotating">
+        <RotatingScheduleWorkspace />
+      </div>
+    );
 
   return (
     <>
@@ -138,63 +189,100 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
         </div>
       ) : null}
 
-      <nav className="schedule-employment-tabs" aria-label="Chọn loại lịch nhân sự">
-        <button
-          type="button"
-          className={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME ? "active" : ""}
-          aria-pressed={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME}
-          onClick={() => setEmploymentView(SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME)}
-        >
-          <BriefcaseBusiness size={18} />
-          <span>
-            <strong>Lịch toàn thời gian</strong>
-            <small>Ca cố định và nhân sự theo ngày làm việc</small>
-          </span>
-        </button>
-        <button
-          type="button"
-          className={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME ? "active" : ""}
-          aria-pressed={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME}
-          onClick={() => setEmploymentView(SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME)}
-        >
-          <TimerReset size={18} />
-          <span>
-            <strong>Lịch bán thời gian</strong>
-            <small>Block 4 giờ, tự nối giờ và kiểm tra availability</small>
-          </span>
-        </button>
-        <button
-          type="button"
-          className={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.ROTATING ? "active" : ""}
-          aria-pressed={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.ROTATING}
-          onClick={() => setEmploymentView(SCHEDULE_EMPLOYMENT_SCOPES.ROTATING)}
-        >
-          <RefreshCw size={18} />
-          <span>
-            <strong>Lịch xoay ca</strong>
-            <small>Workspace riêng cho nhân sự được cấu hình ROTATING</small>
-          </span>
-        </button>
-      </nav>
+      <div className="schedule-page-command-row">
+        <nav className="schedule-employment-tabs" aria-label="Chọn loại lịch nhân sự">
+          <button
+            type="button"
+            className={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME ? "active" : ""}
+            aria-pressed={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME}
+            onClick={() => setEmploymentView(SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME)}
+          >
+            <BriefcaseBusiness size={18} />
+            <span>
+              <strong>Lịch toàn thời gian</strong>
+              <small>Ca cố định và nhân sự theo ngày làm việc</small>
+            </span>
+          </button>
+          <button
+            type="button"
+            className={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME ? "active" : ""}
+            aria-pressed={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME}
+            onClick={() => setEmploymentView(SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME)}
+          >
+            <TimerReset size={18} />
+            <span>
+              <strong>Lịch bán thời gian</strong>
+              <small>Block 4 giờ, tự nối giờ và kiểm tra availability</small>
+            </span>
+          </button>
+          <button
+            type="button"
+            className={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.ROTATING ? "active" : ""}
+            aria-pressed={employmentView === SCHEDULE_EMPLOYMENT_SCOPES.ROTATING}
+            onClick={() => setEmploymentView(SCHEDULE_EMPLOYMENT_SCOPES.ROTATING)}
+          >
+            <RefreshCw size={18} />
+            <span>
+              <strong>Lịch xoay ca</strong>
+              <small>Workspace riêng cho nhân sự được cấu hình ROTATING</small>
+            </span>
+          </button>
+        </nav>
 
-      <WorkspaceAvailabilityPanel
-        key={employmentView}
-        workspaceType={employmentView}
-      />
+        <button
+          type="button"
+          className="schedule-operations-trigger"
+          aria-expanded={operationsOpen}
+          aria-controls="schedule-operations-drawer"
+          onClick={() => setOperationsOpen(true)}
+        >
+          <ClipboardList size={18} />
+          Trung tâm xử lý
+        </button>
+      </div>
 
-      {employmentView === SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME ? (
-        <div className="schedule-employment-view schedule-employment-view--full-time">
-          <FullTimeScheduleWorkspace />
+      <main className="schedule-workspace-primary">{workspace}</main>
+
+      {operationsOpen ? (
+        <div
+          className="schedule-operations-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setOperationsOpen(false);
+          }}
+        >
+          <aside
+            id="schedule-operations-drawer"
+            className="schedule-operations-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="schedule-operations-title"
+          >
+            <header className="schedule-operations-drawer__header">
+              <div>
+                <h2 id="schedule-operations-title">Trung tâm xử lý và đăng ký lịch</h2>
+                <p>
+                  Các thao tác phụ được tách khỏi lịch tuần để khu vực xếp ca luôn dễ quan sát.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="schedule-operations-drawer__close"
+                onClick={() => setOperationsOpen(false)}
+                aria-label="Đóng trung tâm xử lý"
+              >
+                <X size={18} />
+              </button>
+            </header>
+            <div className="schedule-operations-drawer__body">
+              <WorkspaceAvailabilityPanel
+                key={employmentView}
+                workspaceType={employmentView}
+              />
+            </div>
+          </aside>
         </div>
-      ) : employmentView === SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME ? (
-        <div className="schedule-employment-view schedule-employment-view--part-time">
-          <PartTimeScheduleWorkspace />
-        </div>
-      ) : (
-        <div className="schedule-employment-view schedule-employment-view--rotating">
-          <RotatingScheduleWorkspace />
-        </div>
-      )}
+      ) : null}
     </>
   );
 });
