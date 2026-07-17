@@ -12,7 +12,16 @@ const baseProps = {
   onConfirm: vi.fn(),
 };
 
-describe("AddShiftModal availability visibility", () => {
+const getStaffButton = (name) =>
+  screen.getByRole("button", { name: new RegExp(name, "i") });
+
+const getRoleCard = (label) =>
+  screen
+    .getAllByText(label)
+    .map((node) => node.closest(".job-checkbox"))
+    .find(Boolean);
+
+describe("AddShiftModal availability observability", () => {
   it("shows part-time with approved official slot even if workingDays mismatch", () => {
     render(
       <AddShiftModal
@@ -42,10 +51,14 @@ describe("AddShiftModal availability visibility", () => {
         ]}
       />,
     );
-    expect(screen.getByText("Part-time A")).toBeInTheDocument();
+
+    expect(getStaffButton("Part-time A")).toBeEnabled();
+    expect(getStaffButton("Part-time A")).toHaveTextContent(
+      "Đã đăng ký có thể làm",
+    );
   });
 
-  it("hides part-time with pending slots only", () => {
+  it("keeps part-time with pending slots visible but disabled with a reason", () => {
     render(
       <AddShiftModal
         {...baseProps}
@@ -74,10 +87,13 @@ describe("AddShiftModal availability visibility", () => {
         ]}
       />,
     );
-    expect(screen.queryByText("Part-time A")).not.toBeInTheDocument();
+
+    const button = getStaffButton("Part-time A");
+    expect(button).toBeDisabled();
+    expect(button).toHaveTextContent("Không có lịch rảnh đã duyệt phù hợp");
   });
 
-  it("hides full-time outside workingDays", () => {
+  it("keeps full-time outside workingDays visible but disabled", () => {
     render(
       <AddShiftModal
         {...baseProps}
@@ -92,10 +108,13 @@ describe("AddShiftModal availability visibility", () => {
         ]}
       />,
     );
-    expect(screen.queryByText("FT A")).not.toBeInTheDocument();
+
+    const button = getStaffButton("FT A");
+    expect(button).toBeDisabled();
+    expect(button).toHaveTextContent("Ngoài ngày làm việc mặc định");
   });
 
-  it("hides full-time with official unavailable exception", () => {
+  it("keeps full-time with official unavailable exception visible but disabled", () => {
     render(
       <AddShiftModal
         {...baseProps}
@@ -123,7 +142,10 @@ describe("AddShiftModal availability visibility", () => {
         ]}
       />,
     );
-    expect(screen.queryByText("FT A")).not.toBeInTheDocument();
+
+    const button = getStaffButton("FT A");
+    expect(button).toBeDisabled();
+    expect(button).toHaveTextContent("Đã báo không khả dụng cho ca này");
   });
 
   it("shows full-time in workingDays without unavailable exception", () => {
@@ -141,11 +163,44 @@ describe("AddShiftModal availability visibility", () => {
         ]}
       />,
     );
-    expect(screen.getByText("FT A")).toBeInTheDocument();
+
+    expect(getStaffButton("FT A")).toBeEnabled();
+  });
+
+  it("filters blocked employees without hiding their explanation", () => {
+    render(
+      <AddShiftModal
+        {...baseProps}
+        staffList={[
+          {
+            id: "blocked",
+            name: "Blocked Staff",
+            employmentType: "full_time",
+            workingDays: ["tue"],
+          },
+          {
+            id: "ready",
+            name: "Ready Staff",
+            employmentType: "full_time",
+            workingDays: ["mon"],
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Không thể chọn \(1\)/i }),
+    );
+
+    expect(screen.getByText("Blocked Staff")).toBeInTheDocument();
+    expect(screen.queryByText("Ready Staff")).not.toBeInTheDocument();
+    expect(getStaffButton("Blocked Staff")).toHaveTextContent(
+      "Ngoài ngày làm việc mặc định",
+    );
   });
 });
 
-describe("AddShiftModal mandatoryShiftRoles sync", () => {
+describe("AddShiftModal selected staff workspace", () => {
   const staffList = [
     {
       id: "s1",
@@ -176,6 +231,23 @@ describe("AddShiftModal mandatoryShiftRoles sync", () => {
     },
   ];
 
+  it("keeps selected employees visible in the side summary and allows removal", () => {
+    render(<AddShiftModal {...baseProps} staffList={staffList.slice(0, 1)} />);
+
+    fireEvent.click(getStaffButton("Cashier A"));
+    const selectedPanel = screen
+      .getByRole("region", { name: "Nhân viên đã chọn" });
+    expect(selectedPanel).toHaveTextContent("Cashier A");
+    expect(screen.getByText(/1 nhân viên đã chọn/i)).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Bỏ Cashier A khỏi ca/i }),
+    );
+
+    expect(selectedPanel).not.toHaveTextContent("Cashier A");
+    expect(screen.getByText(/0 nhân viên đã chọn/i)).toBeInTheDocument();
+  });
+
   it("preselects and locks mandatory roles, while allowing additional selections", async () => {
     const onConfirm = vi.fn().mockResolvedValue(undefined);
     render(
@@ -187,12 +259,8 @@ describe("AddShiftModal mandatoryShiftRoles sync", () => {
       />,
     );
 
-    const serverRoleCard = screen
-      .getByText("Nhân viên phục vụ")
-      .closest(".job-checkbox");
-    const cashierRoleCard = screen
-      .getByText("Thu ngân")
-      .closest(".job-checkbox");
+    const serverRoleCard = getRoleCard("Nhân viên phục vụ");
+    const cashierRoleCard = getRoleCard("Thu ngân");
 
     expect(serverRoleCard).toHaveClass("checked", "locked");
     expect(cashierRoleCard).toHaveClass("checked", "locked");
@@ -203,19 +271,17 @@ describe("AddShiftModal mandatoryShiftRoles sync", () => {
       expect.stringContaining("không thể bỏ chọn"),
     );
 
-    fireEvent.click(screen.getByText("Bếp trưởng"));
-    expect(screen.getByText("Bếp trưởng").closest(".job-checkbox")).toHaveClass(
-      "checked",
-    );
+    fireEvent.click(getRoleCard("Bếp trưởng"));
+    expect(getRoleCard("Bếp trưởng")).toHaveClass("checked");
 
-    fireEvent.click(screen.getByRole("button", { name: /Cashier A/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Server A/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Chef A/i }));
+    fireEvent.click(getStaffButton("Cashier A"));
+    fireEvent.click(getStaffButton("Server A"));
+    fireEvent.click(getStaffButton("Chef A"));
 
     expect(screen.getByText(/3 nhân viên đã chọn/i)).toBeInTheDocument();
     expect(
-      screen.getByText("Đã đủ nhân viên cho các vị trí bắt buộc."),
-    ).toBeInTheDocument();
+      screen.getAllByText("Đã đủ nhân viên cho các vị trí bắt buộc.").length,
+    ).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Tạo ca làm việc" }));
 
@@ -234,15 +300,16 @@ describe("AddShiftModal mandatoryShiftRoles sync", () => {
         mandatoryShiftRoles={["cashier"]}
       />,
     );
-    expect(
-      screen.getByText("Cashier A").closest(".staff-item"),
-    ).toHaveTextContent("Khớp vị trí");
-    expect(
-      screen.getByText("Server A").closest(".staff-item"),
-    ).toHaveTextContent("Không khớp vị trí bắt buộc");
+
+    expect(getStaffButton("Cashier A")).toHaveTextContent(
+      "Khớp vị trí bắt buộc",
+    );
+    expect(getStaffButton("Server A")).toHaveTextContent(
+      "Không khớp vị trí bắt buộc",
+    );
   });
 
-  it("renders policy mandatory roles once and avoids duplicate role labels", () => {
+  it("renders policy mandatory roles once in the editor and avoids duplicate role labels", () => {
     render(
       <AddShiftModal
         {...baseProps}
@@ -266,10 +333,12 @@ describe("AddShiftModal mandatoryShiftRoles sync", () => {
       .getAllByText("Thu ngân")
       .filter((node) => node.closest(".job-checkbox"));
     expect(roleCards).toHaveLength(1);
+    expect(getStaffButton("Cashier A")).not.toHaveTextContent(
+      "Thu ngân · Thu ngân",
+    );
     expect(
-      screen.getByText("Cashier A").closest(".staff-item"),
-    ).not.toHaveTextContent("Thu ngân · Thu ngân");
-    expect(screen.getByText(/Vị trí từ chính sách đã được khóa/)).toBeInTheDocument();
+      screen.getByText(/Vị trí từ chính sách đã được khóa/),
+    ).toBeInTheDocument();
   });
 
   it("shows missing required roles before submit", () => {
@@ -281,9 +350,9 @@ describe("AddShiftModal mandatoryShiftRoles sync", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Cashier A/i }));
+    fireEvent.click(getStaffButton("Cashier A"));
 
-    expect(screen.getByText(/Còn thiếu: Nhân viên phục vụ/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Còn thiếu: Nhân viên phục vụ/i).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Tạo ca làm việc" }));
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Ca làm còn thiếu vị trí bắt buộc",
