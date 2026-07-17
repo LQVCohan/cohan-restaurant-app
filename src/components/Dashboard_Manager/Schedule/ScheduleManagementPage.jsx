@@ -14,6 +14,7 @@ import "@/styles/schedule-sidebar-safe-performance.css";
 import "@/styles/schedule-availability-feedback.css";
 import "@/styles/schedule-observability-redesign.css";
 import "@/styles/schedule-add-shift-observability.css";
+import "@/styles/schedule-modal-observability.css";
 import { installScheduleApolloPerformancePatch } from "@/utils/scheduleApolloPerformancePatch.js";
 import { initScheduleManagerDomPolish } from "@/utils/scheduleManagerDomPolish.js";
 import { initScheduleManagerAdminPolish } from "@/utils/scheduleManagerAdminPolish.js";
