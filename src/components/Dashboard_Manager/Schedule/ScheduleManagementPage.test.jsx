@@ -24,7 +24,7 @@ vi.mock("@/utils/scheduleManagerAdminPolish.js", () => ({
   initScheduleManagerAdminPolish: () => vi.fn(),
 }));
 
-vi.mock("./ScheduleManagement", () => ({
+vi.mock("./FullTimeScheduleWorkspace", () => ({
   default: () => {
     fullTimeRenderSpy();
     return <div data-testid="full-time-workspace">Full-time workspace</div>;
@@ -51,9 +51,6 @@ vi.mock("./ScheduleEmploymentScope", () => ({
     PART_TIME: "part_time",
     ROTATING: "rotating",
   },
-  ScheduleEmploymentScopeProvider: ({ children }) => (
-    <div data-testid="full-time-scope">{children}</div>
-  ),
 }));
 
 describe("ScheduleManagementPage workspace routing", () => {
