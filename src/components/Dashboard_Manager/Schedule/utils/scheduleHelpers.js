@@ -48,6 +48,13 @@ const SMART_SHIFT_PRESETS = {
   ],
 };
 
+const SHIFT_ICON_BY_TYPE = {
+  morning: "🌅",
+  afternoon: "☀️",
+  evening: "🌙",
+  night: "🌃",
+};
+
 const ROLE_EMOJI = {
   server: "🍽️",
   supervisor: "🎯",
@@ -75,6 +82,7 @@ const ROLE_COLOR = {
   storekeeper: "#7c2d12",
   bartender: "#7c3aed",
 };
+
 export const ROLE_ALIAS_MAP = {
   service: "server",
   server: "server",
@@ -115,15 +123,22 @@ const POSITION_TITLE_ROLE_MAP = [
   [/pha chế|bartender|bar/, "bartender"],
 ];
 
-export const resolveConcreteStaffRoleSlug = (staff = {}, { allowDepartmentFallback = false } = {}) => {
+export const resolveConcreteStaffRoleSlug = (
+  staff = {},
+  { allowDepartmentFallback = false } = {},
+) => {
   const fromRoleSlug = normalizeRoleKey(staff?.role?.slug || staff?.roleSlug);
   if (STAFF_ROLE_SLUGS.includes(fromRoleSlug)) return fromRoleSlug;
 
   const fromRoleName = normalizeRoleKey(staff?.roleName);
   if (STAFF_ROLE_SLUGS.includes(fromRoleName)) return fromRoleName;
 
-  const normalizedTitle = String(staff?.positionTitle || "").trim().toLowerCase();
-  const matched = POSITION_TITLE_ROLE_MAP.find(([pattern]) => pattern.test(normalizedTitle));
+  const normalizedTitle = String(staff?.positionTitle || "")
+    .trim()
+    .toLowerCase();
+  const matched = POSITION_TITLE_ROLE_MAP.find(([pattern]) =>
+    pattern.test(normalizedTitle),
+  );
   if (matched) return matched[1];
 
   if (!allowDepartmentFallback) return "";
@@ -132,30 +147,71 @@ export const resolveConcreteStaffRoleSlug = (staff = {}, { allowDepartmentFallba
   return STAFF_ROLE_SLUGS.includes(maybeSlug) ? maybeSlug : "";
 };
 
-const toMinutes = (timeText) => {
+export const toShiftMinutes = (timeText) => {
   if (!/^\d{2}:\d{2}$/.test(String(timeText || ""))) return null;
   const [hour, minute] = timeText.split(":").map(Number);
   if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
   return hour * 60 + minute;
 };
 
-const normalizeRule = (rule) => ({
-  type: String(rule?.type || "").toLowerCase(),
-  label: rule?.label || "",
-  startTime: rule?.startTime || "",
-  endTime: rule?.endTime || "",
-  icon: rule?.icon || "⏱️",
-});
+export const normalizeShiftRule = (rule) => {
+  const type = String(rule?.type || rule?.key || "")
+    .trim()
+    .toLowerCase();
+  const startTime = String(rule?.startTime || "");
+  const endTime = String(rule?.endTime || "");
+
+  return {
+    type,
+    label: String(rule?.label || rule?.type || rule?.key || ""),
+    startTime,
+    endTime,
+    icon: rule?.icon || SHIFT_ICON_BY_TYPE[type] || "⏱️",
+    time: `${startTime} - ${endTime}`,
+  };
+};
 
 export const buildSmartShiftRules = (count = 3) =>
-  (SMART_SHIFT_PRESETS[count] || SMART_SHIFT_PRESETS[3]).map((rule) => ({
-    ...rule,
-    time: `${rule.startTime} - ${rule.endTime}`,
-  }));
+  (SMART_SHIFT_PRESETS[count] || SMART_SHIFT_PRESETS[3]).map(normalizeShiftRule);
+
+export const resizeShiftRules = (rules = [], count = 3) => {
+  const targetCount = count <= 2 ? 2 : 3;
+  const presets = buildSmartShiftRules(targetCount);
+  const current = (rules || []).map(normalizeShiftRule);
+  const currentByType = new Map(current.map((rule) => [rule.type, rule]));
+
+  const resized = presets.map((preset) => currentByType.get(preset.type) || preset);
+
+  if (resized.length < targetCount) {
+    current.forEach((rule) => {
+      if (
+        resized.length < targetCount &&
+        !resized.some((item) => item.type === rule.type)
+      ) {
+        resized.push(rule);
+      }
+    });
+  }
+
+  return resized.slice(0, targetCount).map(normalizeShiftRule);
+};
+
+export const shiftTemplatesToRules = (templates = []) =>
+  (templates || [])
+    .filter((template) => template?.enabled !== false)
+    .map((template) =>
+      normalizeShiftRule({
+        type: template.key,
+        label: template.label || template.key,
+        startTime: template.startTime,
+        endTime: template.endTime,
+        icon: SHIFT_ICON_BY_TYPE[String(template.key || "").toLowerCase()],
+      }),
+    );
 
 export const shiftRulesToTypes = (rules = []) =>
   rules.reduce((acc, rule) => {
-    const normalized = normalizeRule(rule);
+    const normalized = normalizeShiftRule(rule);
     if (!normalized.type) return acc;
     acc[normalized.type] = {
       label: normalized.label,
@@ -169,40 +225,62 @@ export const shiftRulesToTypes = (rules = []) =>
 
 export const validateShiftRules = (rules = []) => {
   const errors = [];
-  const normalizedRules = rules.map(normalizeRule);
+  const normalizedRules = (rules || []).map(normalizeShiftRule);
+  const seenTypes = new Set();
+
+  if (normalizedRules.length < 2 || normalizedRules.length > 3) {
+    errors.push("Cần cấu hình từ 2 đến 3 khung ca.");
+  }
 
   normalizedRules.forEach((rule, index) => {
     const label = rule.label || `Ca ${index + 1}`;
-    const start = toMinutes(rule.startTime);
-    const end = toMinutes(rule.endTime);
+    const start = toShiftMinutes(rule.startTime);
+    const end = toShiftMinutes(rule.endTime);
 
-    if (!rule.type) errors.push(`${label}: thiếu loại ca.`);
+    if (!rule.type) {
+      errors.push(`${label}: thiếu loại ca.`);
+    } else if (seenTypes.has(rule.type)) {
+      errors.push(`${label}: loại ca "${rule.type}" bị trùng.`);
+    } else {
+      seenTypes.add(rule.type);
+    }
+
     if (start == null || end == null) {
       errors.push(`${label}: giờ bắt đầu/kết thúc không hợp lệ.`);
       return;
     }
+
     if (start === end) {
       errors.push(`${label}: giờ kết thúc phải khác giờ bắt đầu.`);
     }
-    if (end < start) {
-      errors.push(`${label}: cấu hình quy tắc ca không hỗ trợ qua ngày.`);
-    }
+    // end < start is a supported cross-day shift. The concrete shift builder
+    // advances endTime to the following day and the backend stores allowCrossDay.
   });
 
-  // Các khung ca có thể chồng nhau để nhiều nhóm nhân sự cùng phủ giờ cao điểm.
-  // Xung đột của cùng một nhân viên vẫn được backend kiểm tra theo employeeId.
   return {
     ok: errors.length === 0,
     errors,
+    message: errors.join(" "),
   };
 };
 
-export const loadStoredShiftRules = () => {
+const getScopedStorageKey = (scopeKey) => {
+  const normalized = String(scopeKey || "").trim();
+  return normalized
+    ? `${SHIFT_RULE_STORAGE_KEY}.${normalized}`
+    : SHIFT_RULE_STORAGE_KEY;
+};
+
+export const loadStoredShiftRules = (scopeKey) => {
   if (typeof window === "undefined") return buildSmartShiftRules(3);
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(SHIFT_RULE_STORAGE_KEY) || "null");
+    const scopedKey = getScopedStorageKey(scopeKey);
+    const raw =
+      window.localStorage.getItem(scopedKey) ||
+      (scopeKey ? window.localStorage.getItem(SHIFT_RULE_STORAGE_KEY) : null);
+    const parsed = JSON.parse(raw || "null");
     if (Array.isArray(parsed) && validateShiftRules(parsed).ok) {
-      return parsed.map(normalizeRule);
+      return parsed.map(normalizeShiftRule);
     }
   } catch {
     // Fall through to default rules.
@@ -210,9 +288,12 @@ export const loadStoredShiftRules = () => {
   return buildSmartShiftRules(3);
 };
 
-export const persistShiftRules = (rules) => {
+export const persistShiftRules = (rules, scopeKey) => {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(SHIFT_RULE_STORAGE_KEY, JSON.stringify(rules.map(normalizeRule)));
+  window.localStorage.setItem(
+    getScopedStorageKey(scopeKey),
+    JSON.stringify((rules || []).map(normalizeShiftRule)),
+  );
 };
 
 export const shiftTypes = shiftRulesToTypes(buildSmartShiftRules(3));
@@ -225,11 +306,15 @@ export const jobOptions = STAFF_ROLE_OPTIONS.map((role) => ({
 
 export const getJobName = (job) => {
   const normalized = normalizeRoleKey(job);
-  return STAFF_ROLE_LABEL_BY_SLUG[normalized] || jobOptions.find((j) => j.value === normalized)?.label || job;
+  return (
+    STAFF_ROLE_LABEL_BY_SLUG[normalized] ||
+    jobOptions.find((item) => item.value === normalized)?.label ||
+    job
+  );
 };
 
 export const getJobEmoji = (job) => {
-  const found = jobOptions.find((j) => j.value === job);
+  const found = jobOptions.find((item) => item.value === job);
   return found ? found.emoji : "👤";
 };
 
