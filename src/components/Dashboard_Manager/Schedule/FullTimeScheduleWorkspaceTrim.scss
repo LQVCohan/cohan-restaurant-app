@@ -1,0 +1,47 @@
+.full-time-schedule-workspace[data-content="essential-only"] {
+  align-self: start !important;
+  align-content: start !important;
+  grid-auto-rows: max-content !important;
+  min-height: 0 !important;
+  height: fit-content !important;
+}
+
+.full-time-schedule-workspace[data-content="essential-only"]
+  .full-time-schedule-header {
+  display: flex;
+  align-items: center;
+  min-height: 0 !important;
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
+
+.full-time-schedule-workspace[data-content="essential-only"]
+  .full-time-schedule-header h2 {
+  margin: 0;
+}
+
+.full-time-schedule-workspace[data-content="essential-only"]
+  .full-time-schedule-core,
+.full-time-schedule-workspace[data-content="essential-only"]
+  .schedule-container,
+.full-time-schedule-workspace[data-content="essential-only"]
+  .schedule-board,
+.full-time-schedule-workspace[data-content="essential-only"]
+  .calendar-grid,
+.full-time-schedule-workspace[data-content="essential-only"]
+  .daily-view {
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+.full-time-schedule-workspace[data-content="essential-only"]
+  .schedule-empty-guidance {
+  display: none !important;
+}
+
+@media (max-width: 1120px) {
+  .full-time-schedule-workspace[data-content="essential-only"]
+    .full-time-schedule-header {
+    padding-right: 20px !important;
+  }
+}
