@@ -12,6 +12,7 @@ import { initScheduleManagerAdminPolish } from "@/utils/scheduleManagerAdminPoli
 import FullTimeScheduleWorkspace from "./FullTimeScheduleWorkspace";
 import PartTimeScheduleWorkspace from "./PartTimeScheduleWorkspace";
 import RotatingScheduleWorkspace from "./RotatingScheduleWorkspace";
+import WorkspaceAvailabilityPanel from "./components/WorkspaceAvailabilityPanel";
 import { SCHEDULE_EMPLOYMENT_SCOPES } from "./ScheduleEmploymentScope";
 import "@/styles/schedule-manager-workspace-final.css";
 import "@/styles/schedule-manager-drawer-workspace.css";
@@ -45,6 +46,9 @@ function getAvailabilityActionErrorMessage(reason) {
   }
   if (raw.includes("NOT_FOUND")) {
     return "Không tìm thấy kỳ đăng ký. Hãy tải lại trang và thử lại.";
+  }
+  if (raw.includes("WORKSPACE_MISMATCH")) {
+    return "Nhân viên không thuộc đúng loại lịch của kỳ đăng ký này.";
   }
   return "Không thể cập nhật kỳ đăng ký lịch. Hãy kiểm tra lại trạng thái tuần và thử lại.";
 }
@@ -172,6 +176,11 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
           </span>
         </button>
       </nav>
+
+      <WorkspaceAvailabilityPanel
+        key={employmentView}
+        workspaceType={employmentView}
+      />
 
       {employmentView === SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME ? (
         <div className="schedule-employment-view schedule-employment-view--full-time">
