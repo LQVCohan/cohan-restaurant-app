@@ -13,6 +13,11 @@ const {
   rotatingRenderSpy: vi.fn(),
 }));
 
+vi.mock("lucide-react", () => ({
+  BriefcaseBusiness: () => <span aria-hidden="true" />,
+  RefreshCw: () => <span aria-hidden="true" />,
+  TimerReset: () => <span aria-hidden="true" />,
+}));
 vi.mock("@/apollo/client", () => ({ apolloClient: {} }));
 vi.mock("@/utils/scheduleApolloPerformancePatch.js", () => ({
   installScheduleApolloPerformancePatch: () => vi.fn(),
