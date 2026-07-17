@@ -1,0 +1,254 @@
+.rotating-shift-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rotating-shift-modal__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rotating-shift-modal__summary > div,
+.rotating-shift-modal__section {
+  padding: 12px;
+  border: 1px solid #dce6e2;
+  border-radius: 12px;
+  background: #f8fbfa;
+}
+
+.rotating-shift-modal__summary span,
+.rotating-shift-modal__summary strong {
+  display: block;
+}
+
+.rotating-shift-modal__summary span,
+.rotating-shift-modal .eyebrow {
+  color: #6d8078;
+  font-size: 12px;
+}
+
+.rotating-shift-modal__summary strong {
+  margin-top: 4px;
+  color: #213c32;
+}
+
+.rotating-shift-modal__section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.rotating-shift-modal__section-heading h4 {
+  margin: 3px 0 0;
+  color: #263f36;
+}
+
+.rotating-template-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.rotating-template-list button,
+.rotating-staff-list button {
+  border: 1px solid #d5e1dc;
+  border-radius: 10px;
+  background: #fff;
+  color: #2f4b41;
+  cursor: pointer;
+}
+
+.rotating-template-list button {
+  padding: 10px;
+  text-align: left;
+}
+
+.rotating-template-list button strong,
+.rotating-template-list button span {
+  display: block;
+}
+
+.rotating-template-list button span {
+  margin-top: 3px;
+  color: #6b7e77;
+  font-size: 12px;
+}
+
+.rotating-template-list button.active,
+.rotating-staff-list button.selected {
+  border-color: #6e9b8b;
+  background: #edf6f2;
+}
+
+.rotating-time-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.rotating-time-fields label,
+.rotating-shift-modal__section.compact label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #4b6259;
+  font-size: 13px;
+}
+
+.rotating-time-fields input,
+.rotating-shift-modal__section textarea,
+.rotating-staff-search input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cfdcd7;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.rotating-time-fields input {
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+.rotating-time-result {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 6px;
+  color: #49665b;
+  font-size: 13px;
+}
+
+.selected-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #49665b;
+  font-size: 13px;
+}
+
+.rotating-staff-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 0 10px;
+  border: 1px solid #cfdcd7;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.rotating-staff-search input {
+  min-height: 40px;
+  padding: 8px 0;
+  border: 0;
+  outline: 0;
+}
+
+.rotating-staff-list {
+  display: grid;
+  max-height: 290px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.rotating-staff-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  text-align: left;
+}
+
+.rotating-staff-list button.blocked {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.rotating-staff-list__identity strong,
+.rotating-staff-list__identity small,
+.rotating-staff-list__identity em {
+  display: block;
+}
+
+.rotating-staff-list__identity small {
+  margin-top: 3px;
+  color: #6d7d77;
+}
+
+.rotating-staff-list__identity em {
+  margin-top: 4px;
+  color: #9b5555;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.rotating-staff-list__empty {
+  grid-column: 1 / -1;
+  padding: 18px;
+  color: #74867f;
+  text-align: center;
+}
+
+.rotating-shift-modal__section.compact {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rotating-shift-modal__section textarea {
+  resize: vertical;
+  padding: 9px 10px;
+}
+
+.rotating-shift-modal__error {
+  white-space: pre-line;
+  padding: 11px 12px;
+  border: 1px solid #ebcaca;
+  border-radius: 10px;
+  background: #fff4f4;
+  color: #963d3d;
+  font-size: 13px;
+}
+
+.rotating-shift-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.rotating-shift-modal__footer button {
+  min-width: 110px;
+  padding: 9px 14px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.rotating-shift-modal__footer .secondary {
+  border: 1px solid #cfdcd7;
+  background: #fff;
+  color: #40584f;
+}
+
+.rotating-shift-modal__footer .primary {
+  border: 1px solid #486e60;
+  background: #486e60;
+  color: #fff;
+}
+
+@media (max-width: 720px) {
+  .rotating-shift-modal__summary,
+  .rotating-template-list,
+  .rotating-staff-list,
+  .rotating-shift-modal__section.compact,
+  .rotating-time-fields {
+    grid-template-columns: 1fr;
+  }
+}
