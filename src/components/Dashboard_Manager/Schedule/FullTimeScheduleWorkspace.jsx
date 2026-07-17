@@ -43,8 +43,8 @@ const FullTimeScheduleWorkspace = () => (
       <footer className="full-time-schedule-footer-note">
         <CalendarDays size={17} />
         <span>
-          Đăng ký lịch theo workspace được quản lý tại Trung tâm xử lý; panel đăng
-          ký legacy bên trong lịch toàn thời gian không còn hiển thị trong luồng chính.
+          Đăng ký lịch theo workspace được quản lý tại Trung tâm xử lý; khu vực
+          lịch chính chỉ tập trung vào xếp ca và kiểm tra vận hành.
         </span>
       </footer>
     </section>
