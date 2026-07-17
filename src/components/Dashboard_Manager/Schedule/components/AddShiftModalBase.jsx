@@ -555,7 +555,7 @@ const AddShiftModal = ({
               <div className="staff-section-heading">
                 <div>
                   <span className="workspace-eyebrow">Phân công</span>
-                  <h3>Phân công nhân viên</h3>
+                  <h3>Phân công nhân viên ({selectedStaff.length})</h3>
                 </div>
                 <span className="selected-counter">
                   <Users size={15} /> {selectedStaff.length} đã chọn
