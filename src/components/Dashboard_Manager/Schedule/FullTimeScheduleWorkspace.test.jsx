@@ -3,10 +3,6 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import FullTimeScheduleWorkspace from "./FullTimeScheduleWorkspace";
 
-vi.mock("lucide-react", () => ({
-  CalendarDays: () => <span aria-hidden="true" />,
-}));
-
 vi.mock("./ScheduleManagement", () => ({
   default: () => <div data-testid="full-time-schedule-core">Schedule core</div>,
 }));
@@ -23,7 +19,7 @@ vi.mock("./ScheduleEmploymentScope", () => ({
 }));
 
 describe("FullTimeScheduleWorkspace", () => {
-  it("renders the integrated compact full-time workspace shell", () => {
+  it("renders only the essential full-time workspace content", () => {
     render(<FullTimeScheduleWorkspace />);
 
     const heading = screen.getByRole("heading", {
@@ -36,14 +32,19 @@ describe("FullTimeScheduleWorkspace", () => {
       "integrated-header-compact-toolbar",
     );
     expect(workspace).toHaveAttribute("data-visual-density", "compact");
+    expect(workspace).toHaveAttribute("data-content", "essential-only");
     expect(screen.getByTestId("employment-scope")).toHaveAttribute(
       "data-scope",
       "full_time",
     );
     expect(screen.getByTestId("full-time-schedule-core")).toBeInTheDocument();
+
+    expect(screen.queryByText("Lịch toàn thời gian")).not.toBeInTheDocument();
     expect(
-      screen.getByText(/màn hình này tập trung vào xếp ca và công bố lịch tuần/i),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("Toàn thời gian")).not.toBeInTheDocument();
+      screen.queryByText(/Xếp ca cố định theo tuần, kiểm tra phân công/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Đăng ký lịch được quản lý tại Trung tâm xử lý/i),
+    ).not.toBeInTheDocument();
   });
 });
