@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useLayoutEffect, useMemo } from "react";
 import AddShiftModalBase from "./AddShiftModalBase";
 import {
   filterStaffForScheduleScope,
@@ -32,6 +32,15 @@ const AddShiftModal = (props) => {
       }),
     [props.staffList, employmentScope, shiftTypeByStaffId],
   );
+
+  useLayoutEffect(() => {
+    if (!props.isOpen) return undefined;
+    const staffSection = document.querySelector(
+      ".add-shift-workspace-modal .add-shift-workspace__main",
+    );
+    staffSection?.classList.add("form-group");
+    return () => staffSection?.classList.remove("form-group");
+  }, [props.isOpen]);
 
   return <AddShiftModalBase {...props} staffList={scopedStaffList} />;
 };
