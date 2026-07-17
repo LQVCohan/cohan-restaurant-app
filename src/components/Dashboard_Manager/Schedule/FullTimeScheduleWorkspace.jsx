@@ -1,5 +1,5 @@
 import React from "react";
-import { BriefcaseBusiness, CalendarDays } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import ScheduleManagement from "./ScheduleManagement";
 import {
   ScheduleEmploymentScopeProvider,
@@ -12,6 +12,7 @@ const FullTimeScheduleWorkspace = () => (
     <section
       className="full-time-schedule-workspace"
       aria-labelledby="full-time-schedule-workspace-title"
+      data-layout="single-column"
     >
       <header className="full-time-schedule-header">
         <div>
@@ -22,14 +23,9 @@ const FullTimeScheduleWorkspace = () => (
             Ca cố định theo ngày làm việc
           </h2>
           <p>
-            Xếp ca cố định theo tuần cho nhân sự toàn thời gian và kiểm tra tình trạng
-            phân công trước khi công bố.
+            Xếp ca cố định theo tuần, kiểm tra phân công và công bố lịch cho nhân sự
+            toàn thời gian.
           </p>
-        </div>
-        <div className="full-time-schedule-header__status">
-          <span>
-            <BriefcaseBusiness size={15} /> Toàn thời gian
-          </span>
         </div>
       </header>
 
@@ -40,8 +36,8 @@ const FullTimeScheduleWorkspace = () => (
       <footer className="full-time-schedule-footer-note">
         <CalendarDays size={17} />
         <span>
-          Đăng ký lịch được quản lý tại Trung tâm xử lý; màn hình này chỉ dùng để xếp
-          ca và công bố lịch tuần.
+          Đăng ký lịch được quản lý tại Trung tâm xử lý; màn hình này tập trung vào
+          xếp ca và công bố lịch tuần.
         </span>
       </footer>
     </section>
