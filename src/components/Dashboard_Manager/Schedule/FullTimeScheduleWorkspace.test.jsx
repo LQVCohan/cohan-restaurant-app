@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import FullTimeScheduleWorkspace from "./FullTimeScheduleWorkspace";
 
 vi.mock("lucide-react", () => ({
-  BriefcaseBusiness: () => <span aria-hidden="true" />,
   CalendarDays: () => <span aria-hidden="true" />,
 }));
 
@@ -24,22 +23,25 @@ vi.mock("./ScheduleEmploymentScope", () => ({
 }));
 
 describe("FullTimeScheduleWorkspace", () => {
-  it("renders the compact full-time shell and keeps registration out of the week canvas", () => {
+  it("renders a compact single-column full-time workspace", () => {
     render(<FullTimeScheduleWorkspace />);
 
-    expect(
-      screen.getByRole("heading", { name: /Ca cố định theo ngày làm việc/i }),
-    ).toBeInTheDocument();
+    const heading = screen.getByRole("heading", {
+      name: /Ca cố định theo ngày làm việc/i,
+    });
+
+    expect(heading.closest("section")).toHaveAttribute(
+      "data-layout",
+      "single-column",
+    );
     expect(screen.getByTestId("employment-scope")).toHaveAttribute(
       "data-scope",
       "full_time",
     );
     expect(screen.getByTestId("full-time-schedule-core")).toBeInTheDocument();
     expect(
-      screen.getByText(/màn hình này chỉ dùng để xếp ca và công bố lịch tuần/i),
+      screen.getByText(/màn hình này tập trung vào xếp ca và công bố lịch tuần/i),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/không trộn với block bán thời gian hoặc ca xoay/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Toàn thời gian")).not.toBeInTheDocument();
   });
 });
