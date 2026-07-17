@@ -11,6 +11,7 @@ import { initScheduleManagerDomPolish } from "@/utils/scheduleManagerDomPolish.j
 import { initScheduleManagerAdminPolish } from "@/utils/scheduleManagerAdminPolish.js";
 import ScheduleManagement from "./ScheduleManagement";
 import PartTimeScheduleWorkspace from "./PartTimeScheduleWorkspace";
+import RotatingScheduleWorkspace from "./RotatingScheduleWorkspace";
 import {
   ScheduleEmploymentScopeProvider,
   SCHEDULE_EMPLOYMENT_SCOPES,
@@ -170,7 +171,7 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
           <RefreshCw size={18} />
           <span>
             <strong>Lịch xoay ca</strong>
-            <small>Nhân sự được cấu hình ROTATING, phân công linh hoạt theo ca</small>
+            <small>Workspace riêng cho nhân sự được cấu hình ROTATING</small>
           </span>
         </button>
       </nav>
@@ -181,17 +182,13 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
             <ScheduleManagement />
           </ScheduleEmploymentScopeProvider>
         </div>
-      ) : employmentView === SCHEDULE_EMPLOYMENT_SCOPES.ROTATING ? (
-        <div className="schedule-employment-view schedule-employment-view--rotating">
-          <ScheduleEmploymentScopeProvider scope={SCHEDULE_EMPLOYMENT_SCOPES.ROTATING}>
-            <ScheduleManagement />
-          </ScheduleEmploymentScopeProvider>
+      ) : employmentView === SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME ? (
+        <div className="schedule-employment-view schedule-employment-view--part-time">
+          <PartTimeScheduleWorkspace />
         </div>
       ) : (
-        <div className="schedule-employment-view schedule-employment-view--part-time">
-          <ScheduleEmploymentScopeProvider scope={SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME}>
-            <PartTimeScheduleWorkspace />
-          </ScheduleEmploymentScopeProvider>
+        <div className="schedule-employment-view schedule-employment-view--rotating">
+          <RotatingScheduleWorkspace />
         </div>
       )}
     </>
