@@ -23,17 +23,19 @@ vi.mock("./ScheduleEmploymentScope", () => ({
 }));
 
 describe("FullTimeScheduleWorkspace", () => {
-  it("renders a compact single-column full-time workspace", () => {
+  it("renders the integrated compact full-time workspace shell", () => {
     render(<FullTimeScheduleWorkspace />);
 
     const heading = screen.getByRole("heading", {
       name: /Ca cố định theo ngày làm việc/i,
     });
+    const workspace = heading.closest("section");
 
-    expect(heading.closest("section")).toHaveAttribute(
+    expect(workspace).toHaveAttribute(
       "data-layout",
-      "single-column",
+      "integrated-header-compact-toolbar",
     );
+    expect(workspace).toHaveAttribute("data-visual-density", "compact");
     expect(screen.getByTestId("employment-scope")).toHaveAttribute(
       "data-scope",
       "full_time",
