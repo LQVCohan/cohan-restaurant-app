@@ -9,12 +9,11 @@ import "@/styles/schedule-availability-feedback.css";
 import { installScheduleApolloPerformancePatch } from "@/utils/scheduleApolloPerformancePatch.js";
 import { initScheduleManagerDomPolish } from "@/utils/scheduleManagerDomPolish.js";
 import { initScheduleManagerAdminPolish } from "@/utils/scheduleManagerAdminPolish.js";
-import ScheduleManagement from "./ScheduleManagement";
+import FullTimeScheduleWorkspace from "./FullTimeScheduleWorkspace";
 import PartTimeScheduleWorkspace from "./PartTimeScheduleWorkspace";
-import {
-  ScheduleEmploymentScopeProvider,
-  SCHEDULE_EMPLOYMENT_SCOPES,
-} from "./ScheduleEmploymentScope";
+import RotatingScheduleWorkspace from "./RotatingScheduleWorkspace";
+import WorkspaceAvailabilityPanel from "./components/WorkspaceAvailabilityPanel";
+import { SCHEDULE_EMPLOYMENT_SCOPES } from "./ScheduleEmploymentScope";
 import "@/styles/schedule-manager-workspace-final.css";
 import "@/styles/schedule-manager-drawer-workspace.css";
 import "@/styles/schedule-storage-alignment.css";
@@ -47,6 +46,9 @@ function getAvailabilityActionErrorMessage(reason) {
   }
   if (raw.includes("NOT_FOUND")) {
     return "Không tìm thấy kỳ đăng ký. Hãy tải lại trang và thử lại.";
+  }
+  if (raw.includes("WORKSPACE_MISMATCH")) {
+    return "Nhân viên không thuộc đúng loại lịch của kỳ đăng ký này.";
   }
   return "Không thể cập nhật kỳ đăng ký lịch. Hãy kiểm tra lại trạng thái tuần và thử lại.";
 }
@@ -170,28 +172,27 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
           <RefreshCw size={18} />
           <span>
             <strong>Lịch xoay ca</strong>
-            <small>Nhân sự được cấu hình ROTATING, phân công linh hoạt theo ca</small>
+            <small>Workspace riêng cho nhân sự được cấu hình ROTATING</small>
           </span>
         </button>
       </nav>
 
+      <WorkspaceAvailabilityPanel
+        key={employmentView}
+        workspaceType={employmentView}
+      />
+
       {employmentView === SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME ? (
         <div className="schedule-employment-view schedule-employment-view--full-time">
-          <ScheduleEmploymentScopeProvider scope={SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME}>
-            <ScheduleManagement />
-          </ScheduleEmploymentScopeProvider>
+          <FullTimeScheduleWorkspace />
         </div>
-      ) : employmentView === SCHEDULE_EMPLOYMENT_SCOPES.ROTATING ? (
-        <div className="schedule-employment-view schedule-employment-view--rotating">
-          <ScheduleEmploymentScopeProvider scope={SCHEDULE_EMPLOYMENT_SCOPES.ROTATING}>
-            <ScheduleManagement />
-          </ScheduleEmploymentScopeProvider>
+      ) : employmentView === SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME ? (
+        <div className="schedule-employment-view schedule-employment-view--part-time">
+          <PartTimeScheduleWorkspace />
         </div>
       ) : (
-        <div className="schedule-employment-view schedule-employment-view--part-time">
-          <ScheduleEmploymentScopeProvider scope={SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME}>
-            <PartTimeScheduleWorkspace />
-          </ScheduleEmploymentScopeProvider>
+        <div className="schedule-employment-view schedule-employment-view--rotating">
+          <RotatingScheduleWorkspace />
         </div>
       )}
     </>

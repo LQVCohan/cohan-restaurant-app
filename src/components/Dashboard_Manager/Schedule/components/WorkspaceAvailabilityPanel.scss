@@ -1,0 +1,182 @@
+.workspace-availability-panel {
+  margin: 0 0 18px;
+  padding: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.workspace-availability-panel__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.workspace-availability-panel__heading h3 {
+  margin: 4px 0 4px;
+  font-size: 20px;
+}
+
+.workspace-availability-panel__heading p {
+  margin: 0;
+  color: #64748b;
+}
+
+.workspace-availability-panel__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.workspace-availability-panel__status {
+  flex: 0 0 auto;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.workspace-availability-panel__status.is-open {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.workspace-availability-panel__status.is-closed,
+.workspace-availability-panel__status.is-draft {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.workspace-availability-panel__status.is-locked,
+.workspace-availability-panel__status.is-used_for_schedule {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.workspace-availability-panel__grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.3fr) repeat(3, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.workspace-availability-panel__grid > div,
+.workspace-availability-panel__grid > label {
+  min-height: 72px;
+  padding: 11px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.workspace-availability-panel__grid > div {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: center;
+  column-gap: 8px;
+}
+
+.workspace-availability-panel__grid > div strong {
+  grid-column: 2;
+}
+
+.workspace-availability-panel__grid span,
+.workspace-availability-panel__grid label {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.workspace-availability-panel__grid strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.workspace-availability-panel__grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.workspace-availability-panel__grid select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #fff;
+  color: #0f172a;
+  padding: 0 10px;
+}
+
+.workspace-availability-panel__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.workspace-availability-panel__actions button {
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.workspace-availability-panel__actions .btn-primary {
+  background: #0f766e;
+  color: #fff;
+}
+
+.workspace-availability-panel__actions .btn-secondary {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+}
+
+.workspace-availability-panel__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.workspace-availability-panel__error {
+  margin: 12px 0 0;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+/* The legacy full-time component still mounts its old combined panel. Hide it
+   inside the workspace body so only the explicit three-workspace control is actionable. */
+.schedule-employment-view--full-time .schedule-availability-panel {
+  display: none !important;
+}
+
+@media (max-width: 1100px) {
+  .workspace-availability-panel__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .workspace-availability-panel__heading {
+    flex-direction: column;
+  }
+
+  .workspace-availability-panel__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-availability-panel__actions {
+    flex-direction: column;
+  }
+}

@@ -10,6 +10,13 @@ const AvailabilityRegistrationWindowSchema = new Schema(
     openAt: { type: Date, required: true },
     closeAt: { type: Date, required: true },
     registrationModeSnapshot: { type: String, enum: ["auto", "manual"], default: "manual" },
+    workspaceType: {
+      type: String,
+      enum: ["full_time", "part_time", "rotating"],
+      default: "full_time",
+      required: true,
+      index: true,
+    },
     status: {
       type: String,
       enum: ["draft", "open", "closed", "used_for_schedule", "cancelled"],
@@ -23,7 +30,7 @@ const AvailabilityRegistrationWindowSchema = new Schema(
           enum: ["full_time", "part_time", "probation", "seasonal", "contract"],
         },
       ],
-      default: ["part_time", "seasonal"],
+      default: ["full_time"],
     },
     allowFullTimeUnavailableException: { type: Boolean, default: true },
     lateChangeRequiresApproval: { type: Boolean, default: true },
@@ -39,7 +46,7 @@ const AvailabilityRegistrationWindowSchema = new Schema(
 );
 
 AvailabilityRegistrationWindowSchema.index(
-  { restaurantId: 1, periodStart: 1, periodEnd: 1 },
+  { restaurantId: 1, periodStart: 1, periodEnd: 1, workspaceType: 1 },
   { unique: true },
 );
 

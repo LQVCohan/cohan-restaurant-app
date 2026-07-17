@@ -6,6 +6,12 @@ enum AvailabilityWindowStatus {
   cancelled
 }
 
+enum AvailabilityWorkspaceType {
+  full_time
+  part_time
+  rotating
+}
+
 enum EmploymentType {
   full_time
   part_time
@@ -51,6 +57,7 @@ type AvailabilityWindow {
   effectiveStatus: AvailabilityWindowStatus!
   registrationMode: String!
   registrationModeSnapshot: String
+  workspaceType: AvailabilityWorkspaceType!
   targetEmploymentTypes: [EmploymentType!]!
   allowFullTimeUnavailableException: Boolean!
   lateChangeRequiresApproval: Boolean!
@@ -108,6 +115,7 @@ input CreateAvailabilityWindowInput {
   periodEnd: DateTime!
   openAt: DateTime
   closeAt: DateTime
+  workspaceType: AvailabilityWorkspaceType
   targetEmploymentTypes: [EmploymentType!]
   allowFullTimeUnavailableException: Boolean
   lateChangeRequiresApproval: Boolean
@@ -130,8 +138,19 @@ input ReviewStaffAvailabilitySubmissionInput {
 }
 
 extend type Query {
-  availabilityWindow(restaurantId: ID!, periodStart: DateTime!, periodEnd: DateTime!): AvailabilityWindow
-  availabilityWindows(restaurantId: ID!, from: DateTime, to: DateTime, status: AvailabilityWindowStatus): [AvailabilityWindow!]!
+  availabilityWindow(
+    restaurantId: ID!
+    periodStart: DateTime!
+    periodEnd: DateTime!
+    workspaceType: AvailabilityWorkspaceType
+  ): AvailabilityWindow
+  availabilityWindows(
+    restaurantId: ID!
+    from: DateTime
+    to: DateTime
+    status: AvailabilityWindowStatus
+    workspaceType: AvailabilityWorkspaceType
+  ): [AvailabilityWindow!]!
   staffAvailabilitySubmission(windowId: ID!, employeeId: ID!): StaffAvailabilitySubmission
   staffAvailabilitySubmissions(windowId: ID!, restaurantId: ID!, status: StaffAvailabilitySubmissionStatus, employmentType: EmploymentType): [StaffAvailabilitySubmission!]!
 }
