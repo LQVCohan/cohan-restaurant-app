@@ -9,13 +9,10 @@ import "@/styles/schedule-availability-feedback.css";
 import { installScheduleApolloPerformancePatch } from "@/utils/scheduleApolloPerformancePatch.js";
 import { initScheduleManagerDomPolish } from "@/utils/scheduleManagerDomPolish.js";
 import { initScheduleManagerAdminPolish } from "@/utils/scheduleManagerAdminPolish.js";
-import ScheduleManagement from "./ScheduleManagement";
+import FullTimeScheduleWorkspace from "./FullTimeScheduleWorkspace";
 import PartTimeScheduleWorkspace from "./PartTimeScheduleWorkspace";
 import RotatingScheduleWorkspace from "./RotatingScheduleWorkspace";
-import {
-  ScheduleEmploymentScopeProvider,
-  SCHEDULE_EMPLOYMENT_SCOPES,
-} from "./ScheduleEmploymentScope";
+import { SCHEDULE_EMPLOYMENT_SCOPES } from "./ScheduleEmploymentScope";
 import "@/styles/schedule-manager-workspace-final.css";
 import "@/styles/schedule-manager-drawer-workspace.css";
 import "@/styles/schedule-storage-alignment.css";
@@ -178,9 +175,7 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
 
       {employmentView === SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME ? (
         <div className="schedule-employment-view schedule-employment-view--full-time">
-          <ScheduleEmploymentScopeProvider scope={SCHEDULE_EMPLOYMENT_SCOPES.FULL_TIME}>
-            <ScheduleManagement />
-          </ScheduleEmploymentScopeProvider>
+          <FullTimeScheduleWorkspace />
         </div>
       ) : employmentView === SCHEDULE_EMPLOYMENT_SCOPES.PART_TIME ? (
         <div className="schedule-employment-view schedule-employment-view--part-time">
