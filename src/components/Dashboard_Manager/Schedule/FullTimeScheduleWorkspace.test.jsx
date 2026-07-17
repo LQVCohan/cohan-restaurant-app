@@ -37,7 +37,7 @@ describe("FullTimeScheduleWorkspace", () => {
     );
     expect(screen.getByTestId("full-time-schedule-core")).toBeInTheDocument();
     expect(
-      screen.getByText(/panel đăng ký legacy bên trong lịch toàn thời gian không còn hiển thị/i),
+      screen.getByText(/khu vực lịch chính chỉ tập trung vào xếp ca và kiểm tra vận hành/i),
     ).toBeInTheDocument();
   });
 });
