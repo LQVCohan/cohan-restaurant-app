@@ -1,5 +1,6 @@
 @use "../styles/variables.scss" as *;
 @use "../styles/mixins.scss" as *;
+@import "../styles/ManagerUiFoundationV2.css";
 
 $manager-sidebar-collapsed: 72px;
 $manager-sidebar-expanded: 304px;
