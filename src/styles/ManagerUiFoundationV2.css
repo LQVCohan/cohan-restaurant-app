@@ -1,0 +1,276 @@
+/*
+ * Manager UI Foundation v2
+ * Scoped to .manager-layout so customer/staff surfaces remain unchanged.
+ * This layer standardizes density, controls, cards, tables and interaction states
+ * while preserving route-specific semantics and layouts.
+ */
+
+.manager-layout {
+  --manager-v2-radius-sm: 10px;
+  --manager-v2-radius-md: 14px;
+  --manager-v2-radius-lg: 18px;
+  --manager-v2-control-height: 40px;
+  --manager-v2-focus: 0 0 0 3px rgba(47, 125, 104, 0.14);
+  --manager-v2-shadow-soft: 0 8px 22px rgba(48, 72, 61, 0.07);
+  --manager-v2-shadow-card: 0 14px 34px rgba(48, 72, 61, 0.09);
+  --manager-v2-shadow-hover: 0 18px 40px rgba(48, 72, 61, 0.12);
+}
+
+.manager-layout .manager-page-shell__body {
+  color: var(--manager-text, #24312c);
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+/* Core surfaces */
+.manager-layout .manager-page-shell__body :is(
+  .ant-card,
+  .dashboard-card,
+  .summary-card,
+  .metric-card,
+  .kpi-card,
+  .finance-card,
+  .report-card,
+  .review-card,
+  .customer-card,
+  .staff-card,
+  .settings-card,
+  .backup-card
+) {
+  border-color: var(--manager-border, rgba(83, 108, 97, 0.22));
+  border-radius: var(--manager-v2-radius-lg);
+  box-shadow: var(--manager-v2-shadow-card);
+}
+
+.manager-layout .manager-page-shell__body :is(
+  .ant-card,
+  .dashboard-card,
+  .summary-card,
+  .metric-card,
+  .kpi-card
+) {
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .manager-layout .manager-page-shell__body :is(
+    .dashboard-card,
+    .summary-card,
+    .metric-card,
+    .kpi-card
+  ):hover {
+    border-color: var(--manager-border-strong, rgba(83, 108, 97, 0.34));
+    box-shadow: var(--manager-v2-shadow-hover);
+    transform: translateY(-1px);
+  }
+}
+
+/* Inputs and selectors */
+.manager-layout .manager-page-shell__body :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea,
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-select-selector,
+  .ant-picker
+) {
+  min-height: var(--manager-v2-control-height);
+  border-color: var(--manager-border, rgba(83, 108, 97, 0.22));
+  border-radius: var(--manager-v2-radius-sm);
+  color: var(--manager-text, #24312c);
+  background: rgba(252, 254, 253, 0.94);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.manager-layout .manager-page-shell__body :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea,
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-select-selector,
+  .ant-picker
+):hover {
+  border-color: var(--manager-border-strong, rgba(83, 108, 97, 0.34));
+}
+
+.manager-layout .manager-page-shell__body :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea,
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-picker
+):focus,
+.manager-layout .manager-page-shell__body :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea,
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-picker
+):focus-within,
+.manager-layout .manager-page-shell__body .ant-select-focused .ant-select-selector {
+  border-color: var(--manager-accent, #2f7d68) !important;
+  box-shadow: var(--manager-v2-focus) !important;
+  outline: 0;
+}
+
+/* Buttons */
+.manager-layout .manager-page-shell__body :is(
+  button,
+  .ant-btn
+) {
+  border-radius: var(--manager-v2-radius-sm);
+}
+
+.manager-layout .manager-page-shell__body :is(
+  .ant-btn-primary,
+  .btn-primary,
+  .primary-btn,
+  .primary-button
+) {
+  border-color: var(--manager-accent, #2f7d68);
+  color: #fff;
+  background: linear-gradient(135deg, var(--manager-accent, #2f7d68), var(--manager-primary-hover, #40584e));
+  box-shadow: 0 8px 18px rgba(47, 125, 104, 0.16);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .manager-layout .manager-page-shell__body :is(
+    .ant-btn-primary,
+    .btn-primary,
+    .primary-btn,
+    .primary-button
+  ):hover:not(:disabled) {
+    box-shadow: 0 11px 24px rgba(47, 125, 104, 0.22);
+    transform: translateY(-1px);
+  }
+}
+
+.manager-layout .manager-page-shell__body :is(button, .ant-btn):focus-visible {
+  outline: 0;
+  box-shadow: var(--manager-v2-focus);
+}
+
+.manager-layout .manager-page-shell__body :is(button, .ant-btn):disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+  transform: none !important;
+}
+
+/* Tables */
+.manager-layout .manager-page-shell__body :is(
+  .ant-table-wrapper,
+  .ant-table-container,
+  .table-wrapper,
+  .data-table-wrapper
+) {
+  border-radius: var(--manager-v2-radius-md);
+}
+
+.manager-layout .manager-page-shell__body :is(table, .ant-table) {
+  color: var(--manager-text, #24312c);
+}
+
+.manager-layout .manager-page-shell__body :is(table, .ant-table) thead :is(th, td) {
+  color: var(--manager-muted, #607069);
+  background: rgba(232, 241, 236, 0.9);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.manager-layout .manager-page-shell__body :is(table, .ant-table) tbody tr {
+  transition: background-color 130ms ease;
+}
+
+.manager-layout .manager-page-shell__body :is(table, .ant-table) tbody tr:hover > * {
+  background: rgba(229, 240, 235, 0.68) !important;
+}
+
+/* Tabs / segmented navigation */
+.manager-layout .manager-page-shell__body :is(
+  .ant-tabs-tab,
+  .tab-btn,
+  .page-nav-item,
+  .status-tab
+) {
+  border-radius: 999px;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.manager-layout .manager-page-shell__body :is(
+  .ant-tabs-tab-active,
+  .tab-btn.active,
+  .page-nav-item.active,
+  .status-tab.active
+) {
+  color: var(--manager-primary-hover, #40584e);
+}
+
+/* Empty / loading / alert surfaces */
+.manager-layout .manager-page-shell__body :is(
+  .empty-state,
+  .loading-state,
+  .error-state,
+  .ant-empty,
+  .ant-result
+) {
+  border-radius: var(--manager-v2-radius-lg);
+}
+
+/* Modal polish without changing sizing rules owned by feature modules */
+.manager-layout :is(.ant-modal-content, .modal-content, .dialog-content) {
+  border: 1px solid var(--manager-border, rgba(83, 108, 97, 0.22));
+  border-radius: 20px;
+  box-shadow: 0 28px 70px rgba(31, 52, 43, 0.18);
+}
+
+.manager-layout :is(.ant-modal-header, .modal-header, .dialog-header) {
+  border-bottom-color: var(--manager-border, rgba(83, 108, 97, 0.22));
+}
+
+/* Better compact density on laptops, roomier touch targets on mobile */
+@media (max-width: 1180px) {
+  .manager-layout {
+    --manager-v2-control-height: 38px;
+  }
+}
+
+@media (max-width: 768px) {
+  .manager-layout {
+    --manager-v2-control-height: 44px;
+    --manager-v2-radius-sm: 12px;
+    --manager-v2-radius-md: 15px;
+    --manager-v2-radius-lg: 18px;
+  }
+
+  .manager-layout .manager-page-shell__body :is(
+    .ant-card,
+    .dashboard-card,
+    .summary-card,
+    .metric-card,
+    .kpi-card
+  ) {
+    box-shadow: 0 10px 26px rgba(48, 72, 61, 0.08);
+  }
+
+  .manager-layout .manager-page-shell__body :is(table, .ant-table) thead :is(th, td) {
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manager-layout .manager-page-shell__body *,
+  .manager-layout .manager-page-shell__body *::before,
+  .manager-layout .manager-page-shell__body *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
