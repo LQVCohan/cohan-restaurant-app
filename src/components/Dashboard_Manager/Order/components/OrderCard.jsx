@@ -11,6 +11,7 @@ import {
   StickyNote,
 } from "lucide-react";
 import { isTableQrOrderAwaitingStaffConfirmation } from "@/utils/kitchenOrderVisibility";
+import { minutesSince, normalizeTimeThresholds } from "../orderWaitTime";
 import "./OrderCard.scss";
 
 /* --- HELPERS --- */
@@ -56,12 +57,6 @@ const ORDER_STATUS_LABELS = {
   failed: "Thất bại",
 };
 
-const DEFAULT_TIME_THRESHOLDS = {
-  warn: 10,
-  danger: 20,
-  critical: 30,
-};
-
 const DEFAULT_TIME_COLORS = {
   ok: "#16a34a",
   warn: "#eab308",
@@ -87,35 +82,6 @@ const getBatchTitle = (order) => {
   if (order?.orderType !== "dine_in" || !order?.tableCode) return null;
   if (order?.batchDisplayIndex) return `Đợt ${order.batchDisplayIndex}`;
   return null;
-};
-
-const minutesSince = (createdAt) => {
-  if (!createdAt) return 0;
-  const d = new Date(createdAt);
-  return isNaN(d.getTime())
-    ? 0
-    : Math.floor((Date.now() - d.getTime()) / 60000);
-};
-
-const toPositiveNumber = (value, fallback) => {
-  const number = Number(value);
-  return Number.isFinite(number) && number > 0 ? number : fallback;
-};
-
-const normalizeTimeThresholds = (settings) => {
-  const warn = toPositiveNumber(settings?.warn, DEFAULT_TIME_THRESHOLDS.warn);
-  const dangerRaw = toPositiveNumber(
-    settings?.danger,
-    DEFAULT_TIME_THRESHOLDS.danger,
-  );
-  const danger = dangerRaw > warn ? dangerRaw : warn + 5;
-  const criticalRaw = toPositiveNumber(
-    settings?.critical,
-    DEFAULT_TIME_THRESHOLDS.critical,
-  );
-  const critical = criticalRaw > danger ? criticalRaw : danger + 5;
-
-  return { warn, danger, critical };
 };
 
 const sanitizeColor = (value, fallback) => {
@@ -188,6 +154,8 @@ const OrderCard = ({
   onMessageCustomer,
   timeThresholds,
   timeColors,
+  now,
+  isOverdue = false,
 }) => {
   const [isActionLoading, setIsActionLoading] = useState(false);
   const normalizedThresholds = useMemo(
@@ -207,7 +175,7 @@ const OrderCard = ({
     timeStatus,
   } = useMemo(() => {
     const items = mergeDuplicateItems(order?.items || []);
-    const age = minutesSince(order?.createdAt);
+    const age = minutesSince(order?.createdAt, now);
 
     const totalItems = items.reduce((sum, it) => sum + it.quantity, 0);
     const doneItems = items.reduce(
@@ -241,7 +209,7 @@ const OrderCard = ({
       statusColorClass: colorClass,
       timeStatus: currentTimeStatus,
     };
-  }, [order, normalizedThresholds]);
+  }, [order, normalizedThresholds, now]);
 
   const MAX_ITEMS = isFocusMode ? 20 : 4;
   const visibleItems = mergedItems.slice(0, MAX_ITEMS);
@@ -272,7 +240,9 @@ const OrderCard = ({
     isTableQrOrderAwaitingStaffConfirmation(order);
   const statusLabel = awaitingStaffConfirmation
     ? "Chờ nhân viên nhận"
-    : getOrderStatusLabel(order?.currentStatus);
+    : isRemoteStaffPending && !isFocusMode
+      ? "Đơn từ xa chờ xác nhận"
+      : getOrderStatusLabel(order?.currentStatus);
   const batchTitle = getBatchTitle(order);
   const progressStep = Math.max(0, Math.min(100, Math.round(progress / 10) * 10));
   const orderDisplayCode = order?.orderCode || order?.id || "Chưa có mã";
@@ -484,6 +454,11 @@ const OrderCard = ({
           colors={normalizedColors}
         />
       </div>
+      {isOverdue && (
+        <div className="om-order-wait-label">
+          <Clock size={14} aria-hidden="true" /> Chờ lâu
+        </div>
+      )}
       {batchTitle && (
         <div className="oc-batch-info">
           <span className="oc-batch-title">{batchTitle}</span>

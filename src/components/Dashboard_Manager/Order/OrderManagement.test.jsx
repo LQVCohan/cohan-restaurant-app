@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { useState } from "react";
 import OrderManagement, { RejectOrderDialog } from "./OrderManagement";
@@ -51,8 +51,11 @@ vi.mock("@/hooks/useSocketOrder", () => ({
 }));
 
 vi.mock("./components/OrderCard", () => ({
-  default: ({ order }) => (
+  default: ({ order, isOverdue, isRemoteStaffPending }) => (
     <article>
+      <span>{order.orderCode}</span>
+      {isOverdue && <span>Chờ lâu</span>}
+      {isRemoteStaffPending && <span>Đơn từ xa</span>}
       {(order.items || []).map((item) => (
         <span key={item._id}>{item.name}</span>
       ))}
@@ -213,6 +216,55 @@ describe("OrderManagement kitchen display", () => {
       expect(fetchOrderByIdMock).toHaveBeenCalledWith("historical-order-1"),
     );
     expect(screen.getByText("Order modal")).toBeInTheDocument();
+  });
+
+  it("prioritizes filtered pending and overdue orders once, only outside kitchen mode", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-20T10:00:00Z"));
+    try {
+      const edge = (id, status, createdAt, extra = {}) => ({
+        node: {
+          ...mixedStationOrder.node,
+          id,
+          orderCode: id,
+          currentStatus: status,
+          createdAt: `2026-11-20T${createdAt}Z`,
+          ...extra,
+        },
+      });
+      apolloState.edges = [
+        edge("OLD", "preparing", "09:40:00"),
+        edge("REMOTE", "pending", "09:57:00", {
+          orderType: "delivery",
+          clientMeta: { source: "staff_remote" },
+        }),
+        edge("SOON", "confirmed", "09:50:05"),
+        edge("PAID", "pending", "09:30:00", { orderPaymentStatus: "paid" }),
+      ];
+      const { container } = renderOrderManagement();
+      const cardIds = () => Array.from(
+        container.querySelectorAll("[data-order-id]"),
+        (card) => card.dataset.orderId,
+      );
+
+      expect(screen.getByRole("heading", { name: "Cần xử lý 2 đơn" })).toBeInTheDocument();
+      expect(cardIds()).toEqual(["OLD", "REMOTE", "SOON"]);
+      expect(screen.getByText("Đơn từ xa")).toBeInTheDocument();
+      expect(screen.getAllByText("Chờ lâu")).toHaveLength(1);
+
+      act(() => vi.advanceTimersByTime(15_000));
+      expect(screen.getByRole("heading", { name: "Cần xử lý 3 đơn" })).toBeInTheDocument();
+      expect(cardIds()).toEqual(["OLD", "SOON", "REMOTE"]);
+      expect(screen.getAllByText("Chờ lâu")).toHaveLength(2);
+
+      fireEvent.change(screen.getByLabelText("Loại đơn"), { target: { value: "dine_in" } });
+      expect(cardIds()).toEqual(["OLD", "SOON"]);
+      fireEvent.click(screen.getByRole("button", { name: "Chế độ Bếp" }));
+      expect(screen.queryByRole("heading", { name: /Cần xử lý/ })).not.toBeInTheDocument();
+      expect(screen.queryByText("Chờ lâu")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("renders fullscreen kitchen display and locks body scroll when focus mode is enabled", () => {

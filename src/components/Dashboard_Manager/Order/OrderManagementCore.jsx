@@ -3,6 +3,7 @@ import React, {
   useState,
   useEffect,
   useMemo,
+  useRef,
   useCallback,
 } from "react";
 import {
@@ -10,6 +11,7 @@ import {
   CheckCircle,
   AlertTriangle,
   ChevronDown,
+  ArrowDown,
   Minimize2,
   Plus,
   Filter,
@@ -30,6 +32,7 @@ import { useNotification } from "@/hooks/useNotification";
 import useSocketOrder from "@/hooks/useSocketOrder";
 import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 
+import { minutesSince, normalizeTimeThresholds } from "./orderWaitTime";
 import "./OrderManagement.scss";
 
 /* ---------------- GQL ---------------- */
@@ -241,6 +244,8 @@ const REQUEST_ORDER_ITEM_VOID = gql`
     }
   }
 `;
+
+const OVERDUE_ORDER_STATUSES = new Set(["pending", "confirmed", "preparing", "ready"]);
 
 const ACTIVE_ORDER_HIDDEN_STATUSES = new Set([
   "served",
@@ -541,6 +546,8 @@ const OrderManagement = () => {
   const [sortBy, setSortBy] = useState("oldest");
 
   const [focusMode, setFocusMode] = useState(false);
+  const [now, setNow] = useState(Date.now);
+  const priorityHeadingRef = useRef(null);
   const [stationMode, setStationMode] = useState("kitchen");
   const [highlightDishKey, setHighlightDishKey] = useState(null);
   const [highlightedOrderIds, setHighlightedOrderIds] = useState([]);
@@ -1027,6 +1034,34 @@ const OrderManagement = () => {
       isRemoteStaffPendingOrder,
     ],
   );
+
+  const trackWaitTime = !focusMode && displayOrders.length > 0;
+  useEffect(() => {
+    if (!trackWaitTime) return;
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(timer);
+  }, [trackWaitTime]);
+
+  const { priorityOrders, remainingOrders } = useMemo(() => {
+    if (focusMode) return { priorityOrders: [], remainingOrders: displayOrders };
+
+    const priorityOrders = [];
+    const remainingOrders = [];
+    const { warn } = normalizeTimeThresholds(timeSettings);
+    for (const order of displayOrders) {
+      const status = normalizeStatus(order.currentStatus);
+      const isOverdue =
+        OVERDUE_ORDER_STATUSES.has(status) &&
+        minutesSince(order.createdAt, now) >= warn;
+      if (status === "pending" || isOverdue) {
+        priorityOrders.push({ order, isOverdue });
+      } else {
+        remainingOrders.push(order);
+      }
+    }
+    return { priorityOrders, remainingOrders };
+  }, [displayOrders, focusMode, now, timeSettings]);
 
   const focusItemCount = useMemo(
     () =>
@@ -1559,6 +1594,20 @@ const OrderManagement = () => {
           </header>
         )}
 
+        {!ordersLoading && !ordersError && priorityOrders.length > 0 && (
+          <button
+            type="button"
+            className="om-order-queue-shortcut"
+            onClick={() => {
+              priorityHeadingRef.current?.scrollIntoView({ block: "start" });
+              priorityHeadingRef.current?.focus({ preventScroll: true });
+            }}
+          >
+            <span>{priorityOrders.length} đơn cần xử lý</span>
+            <ArrowDown size={16} aria-hidden="true" />
+          </button>
+        )}
+
         {!focusMode && (
           <section className="om-kpi-panel" aria-label="Tổng quan đơn hàng">
             {ORDER_STATUS_KPI_DEFS.map((item) => (
@@ -1851,7 +1900,23 @@ const OrderManagement = () => {
             </div>
           ) : (
             <div className="om-grid">
-              {displayOrders.map((order) => (
+              {priorityOrders.length > 0 && (
+                <h2 className="om-order-queue-title" ref={priorityHeadingRef} tabIndex={-1}>
+                  <AlertTriangle size={18} aria-hidden="true" />
+                  Cần xử lý <span>{priorityOrders.length} đơn</span>
+                </h2>
+              )}
+              {[
+                ...priorityOrders,
+                ...(priorityOrders.length && remainingOrders.length
+                  ? [{ heading: true }]
+                  : []),
+                ...remainingOrders.map((order) => ({ order })),
+              ].map(({ order, isOverdue, heading }) => heading ? (
+                <h2 className="om-order-queue-title om-order-queue-title--plain" key="remaining-heading">
+                  Đơn còn lại
+                </h2>
+              ) : (
                 <div
                   key={order.id}
                   data-order-id={order.id}
@@ -1890,6 +1955,8 @@ const OrderManagement = () => {
                     }}
                     timeThresholds={timeSettings}
                     timeColors={timeColors}
+                    now={focusMode ? undefined : now}
+                    isOverdue={isOverdue}
                   />
                 </div>
               ))}
