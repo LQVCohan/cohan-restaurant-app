@@ -105,21 +105,11 @@
 
 .manager-dashboard:not(.manager-dashboard--no-restaurant) .dashboard-card {
   border-radius: 18px;
-  box-shadow: 0 8px 22px rgba(38, 54, 39, 0.06);
+  box-shadow: none;
 }
 
 .manager-dashboard:not(.manager-dashboard--no-restaurant) .dashboard-card--recent-orders {
   min-height: 190px;
-  border-top: 3px solid var(--dash-accent-strong);
-}
-
-.manager-dashboard:not(.manager-dashboard--no-restaurant) .dashboard-card--performance-summary {
-  border-top: 3px solid var(--dash-primary);
-  background: linear-gradient(180deg, var(--dash-surface), var(--dash-accent-soft));
-}
-
-.manager-dashboard:not(.manager-dashboard--no-restaurant) .dashboard-side-stack > *:first-child {
-  border-top: 3px solid var(--dash-primary);
 }
 
 .manager-dashboard:not(.manager-dashboard--no-restaurant) .dashboard-card--alerts {
@@ -128,10 +118,6 @@
 
 .manager-dashboard:not(.manager-dashboard--no-restaurant) .dashboard-card--alerts-warning {
   border-left-color: var(--dash-warning);
-}
-
-.manager-dashboard:not(.manager-dashboard--no-restaurant) .dashboard-card--revenue {
-  background: linear-gradient(180deg, var(--dash-surface), rgba(237, 245, 241, 0.72));
 }
 
 @media (max-width: 1180px) {

@@ -32,7 +32,7 @@ $dashboard-danger: #ba514b;
   --dash-success: var(--manager-success, #{$dashboard-success});
   --dash-success-soft: var(--manager-success-soft, #edf5f1);
   --dash-warning: var(--manager-warn, #{$dashboard-warning});
-  --dash-warning-soft: var(--manager-warn-soft, #f6efe6);
+  --dash-warning-soft: var(--manager-warning-soft, #f6efe6);
   --dash-danger: var(--manager-danger, #{$dashboard-danger});
   --dash-danger-soft: var(--manager-danger-soft, #f7eceb);
   --dash-radius-lg: var(--radius-lg, 18px);
@@ -251,7 +251,12 @@ $dashboard-danger: #ba514b;
   padding: clamp(12px, 2vw, 20px);
   border: 1px solid var(--dash-border);
   border-radius: 20px;
-  background: var(--dash-accent-soft);
+  background: var(--dash-surface);
+
+  &--active {
+    background: var(--dash-accent-soft);
+    border-color: var(--manager-border-strong, var(--dash-border));
+  }
 
   > h2 {
     margin: 0 0 12px;
@@ -562,7 +567,7 @@ $dashboard-danger: #ba514b;
   color: var(--dash-warning);
 
   svg {
-    background: #fff;
+    background: var(--dash-surface);
     border: 1px solid rgba(138, 99, 63, 0.3);
     border-radius: 999px;
     padding: 4px;

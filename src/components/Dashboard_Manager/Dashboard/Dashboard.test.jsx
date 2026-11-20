@@ -217,6 +217,8 @@ describe("Dashboard manager command center", () => {
       pendingReservationCount: 0,
     });
 
+    expect(screen.getByRole("region", { name: "Cần xử lý" }))
+      .toHaveClass("dashboard-priority--active");
     const summary = screen.getByLabelText("Tổng yêu cầu chờ xác nhận");
     expect(summary).toHaveTextContent("1");
     expect(summary).toHaveTextContent("đơn món");
@@ -267,6 +269,8 @@ describe("Dashboard manager command center", () => {
   it("distinguishes a successful empty result from a clear work queue", () => {
     renderDashboard({ recentOrders: [] });
 
+    expect(screen.getByRole("region", { name: "Cần xử lý" }))
+      .not.toHaveClass("dashboard-priority--active");
     expect(screen.getByText("Không có yêu cầu nào đang chờ").closest(".dashboard-state"))
       .toHaveClass("dashboard-state--clear");
     expect(screen.getByText("Chưa có đơn hàng trong thời gian đã chọn").closest(".dashboard-state"))

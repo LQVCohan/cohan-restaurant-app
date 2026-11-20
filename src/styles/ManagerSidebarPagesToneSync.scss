@@ -138,10 +138,8 @@
 }
 
 .manager-layout__content :where(
-  .dashboard-compact-header,
   .dashboard-no-restaurant,
   .dashboard-error,
-  .dashboard-card,
   .dashboard-panel,
   .stats-card,
   .stat-card,
@@ -183,7 +181,6 @@
 }
 
 .manager-layout__content :where(
-  .dashboard-compact-header,
   .page-header,
   .manager-page-header,
   .management-page-header,
@@ -211,7 +208,6 @@
 }
 
 .manager-layout__content :where(
-  .dashboard-compact-header::after,
   .page-header::after,
   .manager-page-header::after,
   .management-page-header::after,
@@ -328,7 +324,6 @@
 /* Buttons */
 .manager-layout__content :where(
   .ant-btn-primary,
-  .dashboard-btn--primary,
   .btn-primary,
   .primary-btn,
   .button-primary,
@@ -345,7 +340,6 @@
 
 .manager-layout__content :where(
   .ant-btn-primary:hover,
-  .dashboard-btn--primary:hover,
   .btn-primary:hover,
   .primary-btn:hover,
   .button-primary:hover,
@@ -362,7 +356,6 @@
 .manager-layout__content :where(
   .ant-btn-default,
   .ant-btn,
-  .dashboard-btn--ghost,
   .btn-secondary,
   .secondary-btn,
   .button-secondary,
@@ -431,10 +424,6 @@
 .manager-layout--dashboard .manager-dashboard {
   width: min(100%, 1480px) !important;
   margin-inline: auto !important;
-}
-
-.manager-layout--dashboard .dashboard-compact-header {
-  box-shadow: var(--sidebar-sync-shadow), inset 0 1px rgba(255, 255, 255, 0.84) !important;
 }
 
 .manager-layout--dashboard .dashboard-no-restaurant__icon {
@@ -535,7 +524,6 @@
 
 @media (max-width: 768px) {
   .manager-layout__content :where(
-    .dashboard-compact-header,
     .page-header,
     .manager-page-header,
     .management-page-header,

@@ -1,21 +1,6 @@
 .top-dishes-widget {
   &--bare { border: 0; box-shadow: none; border-radius: 0; padding: 0; background: transparent; }
 
-  .top-dishes-empty-note {
-    min-height: 78px;
-    max-height: 96px;
-    display: grid;
-    place-items: center;
-    text-align: center;
-    padding: 12px;
-    border: 1px dashed #d6d3d1;
-    border-radius: 14px;
-    background: #fffdf8;
-    color: #78716c;
-    font-size: 13px;
-    line-height: 1.4;
-  }
-
   .dishes-list { display: grid; gap: 10px; max-height: 230px; overflow: auto; }
 
   .dish-row {
@@ -23,31 +8,31 @@
     grid-template-columns: 32px 1fr;
     gap: 10px;
     padding: 10px;
-    border: 1px solid #eee7dc;
+    border: 1px solid var(--dash-border);
     border-radius: 14px;
-    background: #ffffff;
+    background: var(--dash-surface);
   }
 
   .rank-badge {
     width: 32px;
     height: 32px;
     border-radius: 11px;
-    background: #f5f5f4;
-    color: #57534e;
+    background: var(--dash-accent-soft);
+    color: var(--dash-text-sub);
     font-size: 11px;
     font-weight: 850;
     display: flex;
     align-items: center;
     justify-content: center;
 
-    &.rank-top { background: #fff7ed; color: #b45309; }
+    &.rank-top { background: var(--dash-success-soft); color: var(--dash-accent-strong); }
   }
 
   .dish-content { min-width: 0; }
-  .dish-name { margin: 0; font-size: 13px; font-weight: 850; color: #1f2933; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dish-name { margin: 0; font-size: 13px; font-weight: 850; color: var(--dash-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .info-top { display: flex; justify-content: space-between; gap: 8px; }
   .dish-meta,
-  .revenue-meta { font-size: 12px; color: #57534e; font-variant-numeric: tabular-nums; }
+  .revenue-meta { font-size: 12px; color: var(--dash-text-sub); font-variant-numeric: tabular-nums; }
   .revenue-meta { margin: 3px 0 7px; }
 
   .progress-meter {
@@ -59,12 +44,8 @@
     display: block;
   }
 
-  .progress-meter::-webkit-meter-bar { background: #eee7dc; border: 0; border-radius: 999px; }
-  .progress-meter::-webkit-meter-optimum-value { background: linear-gradient(90deg, #b45309, #d97706); border-radius: 999px; }
-  .progress-meter::-moz-meter-bar { background: linear-gradient(90deg, #b45309, #d97706); border-radius: 999px; }
+  .progress-meter::-webkit-meter-bar { background: var(--dash-border); border: 0; border-radius: 999px; }
+  .progress-meter::-webkit-meter-optimum-value { background: var(--dash-accent); border-radius: 999px; }
+  .progress-meter::-moz-meter-bar { background: var(--dash-accent); border-radius: 999px; }
 
-  .empty-state { font-size: 13px; color: #78716c; text-align: center; }
-  .empty-state--compact { min-height: 76px; display: grid; place-content: center; border: 1px dashed #d6d3d1; border-radius: 14px; background: #fffdf8; }
-  &--empty-compact { min-height: auto; }
-  &--empty-compact .dishes-list { max-height: none; overflow: visible; }
 }

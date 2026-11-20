@@ -91,6 +91,11 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
     ? `${formatChartDate(firstPeriodDay)} – ${formatChartDate(lastPeriodDay)}`
     : "";
   const alertsCount = safeLowStockItems.length;
+  const hasPriorityWork = !loading && !error && Boolean(
+    pendingOrderCount || pendingReservationCount || pendingSupportRequestCount ||
+    safePendingOrders.length || safePendingReservations.length ||
+    safePendingSupportRequests.length || alertsCount
+  );
   const resourceCounts = {
     customers: Number(stats?.customers || 0),
     tables: Number(stats?.tables || 0),
@@ -300,7 +305,10 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
         </section>
       ) : (
         <>
-          <section className="dashboard-priority" aria-labelledby="dashboard-priority-title">
+          <section
+            className={`dashboard-priority${hasPriorityWork ? " dashboard-priority--active" : ""}`}
+            aria-labelledby="dashboard-priority-title"
+          >
             <h2 id="dashboard-priority-title">Cần xử lý</h2>
             <div className="dashboard-priority__grid">
               <DashboardActionQueue

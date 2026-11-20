@@ -1,24 +1,13 @@
 .manager-dashboard {
-  --dash-bg: #f5f4ef;
-  --dash-surface: #fffdf9;
-  --dash-border: #ded6cb;
-  --dash-text: #24303f;
-  --dash-text-sub: #667085;
-  --dash-primary: #1f6a60;
-  --dash-primary-dark: #17554d;
-  --dash-accent: #1f6a60;
-  --dash-accent-strong: #17554d;
-  --dash-accent-soft: #dcefe9;
-  --dash-success: #1f6a60;
-  --dash-success-soft: #f2faf7;
-  --dash-warning: #835b20;
-  --dash-warning-soft: #fbf1df;
-  --dash-danger: #9a413d;
-  --dash-danger-soft: #faece8;
-  --dash-shadow-sm: 0 8px 22px rgba(42, 36, 27, 0.055);
-  --dash-shadow-md: 0 14px 36px rgba(42, 36, 27, 0.075);
-  --dash-shadow-lg: 0 20px 46px rgba(42, 36, 27, 0.1);
-  color: var(--dash-text);
+  --dash-surface: var(--manager-surface, #fffdf9);
+  --dash-text-sub: var(--manager-muted, #667085);
+  --dash-accent-strong: var(--manager-primary-hover, #17554d);
+  --dash-on-primary: #fff;
+}
+
+body.manager-dark-mode .manager-dashboard {
+  --dash-on-primary: var(--manager-bg-base);
+  --dash-warning: var(--manager-warning);
 }
 
 .dashboard-compact-header,
@@ -32,29 +21,23 @@
 .performance-empty,
 .performance-loading,
 .performance-error {
-  border-color: rgba(128, 109, 83, 0.15);
-  background: rgba(255, 253, 249, 0.8);
-  box-shadow: 0 14px 36px rgba(42, 36, 27, 0.075);
-}
-
-.dashboard-compact-header {
-  background:
-    radial-gradient(circle at 100% 0%, rgba(31, 106, 96, 0.11), transparent 18rem),
-    rgba(255, 253, 249, 0.84);
+  border-color: var(--dash-border);
+  background: var(--dash-surface);
+  box-shadow: none;
 }
 
 .dashboard-btn--primary,
 .queue-btn--primary {
-  border-color: #1f6a60;
-  background: #1f6a60;
-  color: #fff;
-  box-shadow: 0 10px 22px rgba(31, 106, 96, 0.2);
+  border-color: var(--dash-primary);
+  background: var(--dash-primary);
+  color: var(--dash-on-primary);
+  box-shadow: none;
 }
 
 .dashboard-btn--primary:hover:not(:disabled),
 .queue-btn--primary:hover:not(:disabled) {
-  border-color: #17554d;
-  background: #17554d;
+  border-color: var(--dash-primary-dark);
+  background: var(--dash-primary-dark);
 }
 
 .dashboard-btn--ghost,
@@ -63,22 +46,13 @@
 .queue-count,
 .orders-pill {
   border-color: rgba(31, 106, 96, 0.14);
-  background: #f2faf7;
-  color: #17554d;
+  background: var(--dash-success-soft);
+  color: var(--dash-accent-strong);
 }
 
-.dashboard-card--support-queue {
-  border-color: rgba(31, 106, 96, 0.15);
-  background:
-    radial-gradient(circle at 100% 0%, rgba(31, 106, 96, 0.08), transparent 16rem),
-    rgba(255, 253, 249, 0.8);
-}
-
-.dashboard-card--action-queue-active {
-  border-color: rgba(131, 91, 32, 0.2);
-  background:
-    radial-gradient(circle at 100% 0%, rgba(131, 91, 32, 0.08), transparent 18rem),
-    rgba(255, 253, 249, 0.82);
+.dashboard-priority .dashboard-card--support-queue,
+.dashboard-priority .dashboard-card--action-queue {
+  background: var(--dash-surface);
 }
 
 .dashboard-queue-item,
@@ -87,14 +61,14 @@
 .dashboard-card--action-queue .dashboard-queue-section__empty,
 .revenue-chart-empty {
   border-color: rgba(128, 109, 83, 0.15);
-  background: rgba(255, 253, 249, 0.78);
+  background: var(--dash-surface);
 }
 
 .dashboard-queue-item:hover,
 .dashboard-support-item:hover,
 .dashboard-staff-roster__item:hover {
   border-color: rgba(31, 106, 96, 0.24);
-  background: #f2faf7;
+  background: var(--dash-success-soft);
 }
 
 .queue-age--new,
@@ -102,8 +76,8 @@
 .status-pill--completed,
 .revenue-chart-widget .growth-badge.positive {
   border-color: rgba(31, 106, 96, 0.18) !important;
-  background: #f2faf7 !important;
-  color: #17554d !important;
+  background: var(--dash-success-soft) !important;
+  color: var(--dash-accent-strong) !important;
 }
 
 .queue-age--waiting,
@@ -111,8 +85,8 @@
 .status-pill--pending,
 .status-pill--preparing {
   border-color: rgba(131, 91, 32, 0.18) !important;
-  background: #fbf1df !important;
-  color: #835b20 !important;
+  background: var(--dash-warning-soft) !important;
+  color: var(--dash-warning) !important;
 }
 
 .queue-age--overdue,
@@ -121,23 +95,23 @@
 .revenue-chart-widget .growth-badge.negative,
 .performance-error {
   border-color: rgba(154, 65, 61, 0.2) !important;
-  background: #faece8 !important;
-  color: #9a413d !important;
+  background: var(--dash-danger-soft) !important;
+  color: var(--dash-danger) !important;
 }
 
 .queue-btn--ghost,
 .revenue-chart-widget .comparison-note {
-  border-color: #ded6cb;
-  background: rgba(255, 253, 249, 0.82);
-  color: #3c4650;
+  border-color: var(--dash-border);
+  background: var(--dash-surface);
+  color: var(--dash-text);
 }
 
 .stat-card--primary .icon-badge,
 .stat-card--success .icon-badge,
 .stat-card--neutral .icon-badge {
   border-color: rgba(31, 106, 96, 0.16);
-  background: #f2faf7;
-  color: #17554d;
+  background: var(--dash-success-soft);
+  color: var(--dash-accent-strong);
 }
 
 .stat-card--primary.stat-card--summary::before,
@@ -147,32 +121,32 @@
 
 .stat-card--primary.stat-card--summary::after,
 .stat-card--success.stat-card--summary::after {
-  background: #1f6a60;
+  background: var(--dash-primary);
 }
 
 .stat-card--warning .icon-badge {
   border-color: rgba(131, 91, 32, 0.18);
-  background: #fbf1df;
-  color: #835b20;
+  background: var(--dash-warning-soft);
+  color: var(--dash-warning);
 }
 
 .stat-card--warning.stat-card--summary::after {
-  background: #835b20;
+  background: var(--dash-warning);
 }
 
 .stat-card--danger .icon-badge {
   border-color: rgba(154, 65, 61, 0.18);
-  background: #faece8;
-  color: #9a413d;
+  background: var(--dash-danger-soft);
+  color: var(--dash-danger);
 }
 
 .stat-card--danger.stat-card--summary {
   border-color: rgba(154, 65, 61, 0.22);
-  background: rgba(255, 253, 249, 0.82);
+  background: var(--dash-surface);
 }
 
 .stat-card--danger.stat-card--summary::after {
-  background: #9a413d;
+  background: var(--dash-danger);
 }
 
 .stat-label,
@@ -182,7 +156,7 @@
 .performance-panel .kpi-card span,
 .performance-panel .performance-summary-note p,
 .revenue-chart-widget .widget-title {
-  color: #667085;
+  color: var(--dash-text-sub);
 }
 
 .stat-value,
@@ -191,12 +165,12 @@
 .performance-panel__header h3,
 .performance-panel .kpi-card strong,
 .revenue-chart-widget .total-amount {
-  color: #24303f;
+  color: var(--dash-text);
 }
 
 .performance-panel .performance-summary-note--compact {
   border-color: rgba(31, 106, 96, 0.16);
-  background: #f2faf7;
+  background: var(--dash-success-soft);
 }
 
 .performance-panel .performance-summary-note--compact p,
@@ -205,7 +179,7 @@
 .dashboard-staff-roster__group-label,
 .dashboard-staff-roster__online-icon,
 .dashboard-staff-roster__footer button {
-  color: #17554d;
+  color: var(--dash-accent-strong);
 }
 
 .performance-summary-score {
@@ -214,13 +188,13 @@
 
 .dashboard-staff-roster__presence.is-online {
   border-color: rgba(31, 106, 96, 0.18);
-  background: #f2faf7;
-  color: #17554d;
+  background: var(--dash-success-soft);
+  color: var(--dash-accent-strong);
 }
 
 .revenue-chart-empty__icon,
 .empty-icon--operation {
   border-color: rgba(31, 106, 96, 0.16);
-  background: #f2faf7;
-  color: #17554d;
+  background: var(--dash-success-soft);
+  color: var(--dash-accent-strong);
 }

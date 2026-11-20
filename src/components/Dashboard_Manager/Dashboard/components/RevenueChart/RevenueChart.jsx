@@ -95,20 +95,21 @@ const RevenueChart = ({ data = [], loading, compact = false }) => {
 
       <ResponsiveContainer width="100%" height={compact ? 220 : 260}>
         <AreaChart data={safeData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee7dc" />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--dash-border)" />
           <XAxis
             dataKey="key"
             axisLine={false}
             tickLine={false}
             tickFormatter={(value) => formatChartDate(value).replace(/\/\d{4}$/, "")}
             minTickGap={20}
-            tick={{ fill: "#78716c", fontSize: 12 }}
+            tick={{ fill: "var(--dash-text-sub)", fontSize: 12 }}
           />
-          <YAxis axisLine={false} tickLine={false} tickFormatter={formatCompactVND} width={54} tick={{ fill: "#78716c", fontSize: 12 }} />
+          <YAxis axisLine={false} tickLine={false} tickFormatter={formatCompactVND} width={54} tick={{ fill: "var(--dash-text-sub)", fontSize: 12 }} />
           <Tooltip
             formatter={(value, name) => [formatCurrency(value), name]}
             labelFormatter={(label) => `Ngày ${formatChartDate(label)}`}
-            labelStyle={{ color: "#1f2933" }}
+            contentStyle={{ background: "var(--dash-surface)", borderColor: "var(--dash-border)" }}
+            labelStyle={{ color: "var(--dash-text)" }}
           />
           {summary.hasComparison ? <Legend iconType="plainline" /> : null}
           {summary.hasComparison ? (
@@ -116,7 +117,7 @@ const RevenueChart = ({ data = [], loading, compact = false }) => {
               type="monotone"
               dataKey="previous"
               name="Kỳ trước"
-              stroke="#78716c"
+              stroke="var(--dash-text-sub)"
               strokeDasharray="5 4"
               fillOpacity={0}
               strokeWidth={2}
@@ -126,10 +127,10 @@ const RevenueChart = ({ data = [], loading, compact = false }) => {
             type="monotone"
             dataKey="current"
             name="Kỳ hiện tại"
-            stroke="#b45309"
+            stroke="var(--dash-accent)"
             strokeWidth={2.5}
             fillOpacity={0.16}
-            fill="#b45309"
+            fill="var(--dash-accent)"
           />
         </AreaChart>
       </ResponsiveContainer>
