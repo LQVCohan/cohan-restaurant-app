@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { useManagerPerformanceDashboard } from "@/hooks/useManagerPerformanceDashboard";
+import DashboardState from "../Dashboard/components/DashboardState";
 import "./ManagerPerformancePanel.scss";
 
 const ACTION_LABELS = {
@@ -86,46 +87,50 @@ const ManagerPerformancePanel = ({
     </div>
   );
 
-  const renderPanelState = (stateClass, message, role) => (
+  const renderPanelState = (state, message, role) => (
     <div
       className={`performance-panel ${summaryOnly ? "performance-panel--summary" : ""}`}
     >
       {renderPanelHeader()}
-      <div className={stateClass} role={role}>
-        {message}
-      </div>
+      {summaryOnly ? (
+        <DashboardState state={state} title={message} />
+      ) : (
+        <div className={`performance-${state}`} role={role}>
+          {message}
+        </div>
+      )}
     </div>
   );
 
   if (!restaurantId && restaurantLoading) {
     return renderPanelState(
-      "performance-loading",
+      "loading",
       "Đang tải dữ liệu hiệu suất nhân viên...",
       "status",
     );
   }
   if (!restaurantId) {
     return renderPanelState(
-      "performance-empty",
+      "empty",
       "Hãy chọn nhà hàng để xem hiệu suất nhân viên.",
     );
   }
   if (loading) {
     return renderPanelState(
-      "performance-loading",
+      "loading",
       "Đang tải dữ liệu hiệu suất nhân viên...",
       "status",
     );
   }
   if (error) {
     return renderPanelState(
-      "performance-error",
+      "error",
       "Không thể tải dữ liệu hiệu suất. Vui lòng thử lại.",
     );
   }
   if (isEmpty) {
     return renderPanelState(
-      "performance-empty",
+      "empty",
       "Chưa phát sinh dữ liệu đánh giá hoặc điều chỉnh điểm trong tháng này.",
     );
   }

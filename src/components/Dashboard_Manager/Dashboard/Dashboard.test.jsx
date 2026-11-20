@@ -264,6 +264,17 @@ describe("Dashboard manager command center", () => {
     expect(screen.queryByText("Chưa có kỳ đối chiếu")).not.toBeInTheDocument();
   });
 
+  it("distinguishes a successful empty result from a clear work queue", () => {
+    renderDashboard({ recentOrders: [] });
+
+    expect(screen.getByText("Không có yêu cầu nào đang chờ").closest(".dashboard-state"))
+      .toHaveClass("dashboard-state--clear");
+    expect(screen.getByText("Chưa có đơn hàng trong thời gian đã chọn").closest(".dashboard-state"))
+      .toHaveClass("dashboard-state--empty");
+    expect(screen.getByRole("region", { name: "Các số liệu vận hành cơ bản" }))
+      .toBeVisible();
+  });
+
   it("renders loading skeleton states without replacing the whole dashboard with a spinner", () => {
     renderDashboard({ loading: true, recentOrders: [], revenueTrend: [] });
 
@@ -301,5 +312,11 @@ describe("Dashboard manager command center", () => {
     );
     expect(screen.getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
     expect(screen.getByText("Lỗi tải dữ liệu", { exact: true })).toBeVisible();
+    expect(screen.getByText("Không thể tải thông tin vận hành.").closest(".dashboard-state"))
+      .toHaveClass("dashboard-state--error");
+    expect(screen.getByText("Không thể tải món bán chạy.")).toBeVisible();
+    expect(screen.queryByRole("region", { name: "Các số liệu vận hành cơ bản" }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByText("Tồn kho ổn định")).not.toBeInTheDocument();
   });
 });

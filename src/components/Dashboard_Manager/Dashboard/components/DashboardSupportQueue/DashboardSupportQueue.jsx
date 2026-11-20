@@ -1,6 +1,8 @@
 import React from "react";
 import { Headphones } from "lucide-react";
 
+import DashboardState from "../DashboardState";
+
 const formatDateTime = (value) => {
   if (!value) return "Chưa có thời gian";
   const date = new Date(value);
@@ -65,15 +67,9 @@ export default function DashboardSupportQueue({
       </div>
 
       {loading ? (
-        <div className="dashboard-empty dashboard-empty--compact dashboard-empty--loading">
-          <h4>Đang tải yêu cầu hỗ trợ</h4>
-          <p>Hệ thống đang kiểm tra các yêu cầu cần nhân viên xử lý.</p>
-        </div>
+        <DashboardState state="loading" title="Đang tải yêu cầu hỗ trợ" />
       ) : error ? (
-        <div className="dashboard-empty dashboard-empty--compact dashboard-empty--error">
-          <h4>Không thể tải yêu cầu hỗ trợ</h4>
-          <p>{error?.message || "Vui lòng làm mới trang và thử lại."}</p>
-        </div>
+        <DashboardState state="error" title="Không thể tải yêu cầu hỗ trợ" />
       ) : requests.length ? (
         <div className="dashboard-support-list">
           {requests.slice(0, 5).map((request) => {
@@ -122,10 +118,9 @@ export default function DashboardSupportQueue({
           })}
         </div>
       ) : (
-        <div className="dashboard-empty dashboard-empty--compact dashboard-empty--healthy">
-          <h4>Hiện không có yêu cầu hỗ trợ</h4>
+        <DashboardState state="clear" title="Hiện không có yêu cầu hỗ trợ">
           <p>Yêu cầu mới sẽ hiển thị tại đây.</p>
-        </div>
+        </DashboardState>
       )}
 
       <button

@@ -234,7 +234,11 @@
 
 @keyframes orderSkeleton { to { background-position: -100% 0; } }
 
-@media (max-width: 768px) {
+.dashboard-card--recent-orders {
+  container: recent-orders / inline-size;
+}
+
+@container recent-orders (max-width: 420px) {
   .recent-orders .order-table-head { display: none; }
   .recent-orders .order-row,
   .recent-orders .orders-skeleton__row { grid-template-columns: 1fr; gap: 8px; }

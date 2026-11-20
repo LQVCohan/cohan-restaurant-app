@@ -313,16 +313,6 @@
   border-color: rgba(186, 81, 75, 0.28);
 }
 
-.revenue-compact-empty--simple {
-  grid-template-columns: 34px minmax(0, 1fr);
-  align-items: center;
-  align-content: center;
-}
-
-.revenue-compact-empty--simple .revenue-compact-empty__text {
-  line-height: 1.45;
-}
-
 @media (max-width: 1280px) {
   .dashboard-card.dashboard-card--action-queue .dashboard-queue-sections {
     grid-template-columns: minmax(0, 1fr);

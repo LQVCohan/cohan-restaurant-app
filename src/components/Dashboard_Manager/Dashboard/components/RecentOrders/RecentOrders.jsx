@@ -1,5 +1,6 @@
 import React from "react";
-import { ShoppingBag, Monitor } from "lucide-react";
+import { Monitor } from "lucide-react";
+import DashboardState from "../DashboardState";
 import "./RecentOrders.scss";
 import "./RecentOrdersPolish.scss";
 
@@ -115,14 +116,8 @@ const RecentOrders = ({
         ) : null}
 
         {isEmpty ? (
-          <div className="empty-state empty-state--operation">
-            <div className="empty-icon empty-icon--operation" aria-hidden="true">
-              <ShoppingBag size={19} />
-            </div>
-            <div className="empty-state__content">
-              <h4>Chưa có đơn hàng trong thời gian đã chọn</h4>
-              <p>Đơn mới sẽ xuất hiện tại đây sau khi được tạo.</p>
-            </div>
+          <DashboardState state="empty" title="Chưa có đơn hàng trong thời gian đã chọn">
+            <p>Đơn mới sẽ xuất hiện tại đây sau khi được tạo.</p>
             {typeof onOpenPOS === "function" ? (
               <div className="empty-state__actions">
                 <button
@@ -135,7 +130,7 @@ const RecentOrders = ({
                 </button>
               </div>
             ) : null}
-          </div>
+          </DashboardState>
         ) : null}
 
         {!loading &&

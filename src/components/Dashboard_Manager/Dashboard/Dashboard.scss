@@ -295,7 +295,7 @@ $dashboard-danger: #ba514b;
   min-width: 0;
 }
 
-@media (min-width: 901px) and (max-width: 1200px) {
+@media (min-width: 769px) and (max-width: 1200px) {
   .dashboard-priority__side {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -357,7 +357,7 @@ $dashboard-danger: #ba514b;
   gap: 12px;
 }
 
-@media (min-width: 1100px) {
+@media (min-width: 769px) {
   .dashboard-period__grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
@@ -589,125 +589,53 @@ $dashboard-danger: #ba514b;
   color: #78716c;
 }
 
-.dashboard-empty {
+.dashboard-state {
   min-height: 56px;
-  display: grid;
-  grid-template-columns: 22px minmax(0, auto);
-  justify-content: center;
-  align-items: center;
-  gap: 8px 9px;
-  text-align: left;
-  border: 1px solid #bbf7d0;
-  border-radius: 16px;
-  background: #f0fdf4;
-  padding: 9px 10px;
-
-  &::before {
-    content: "✓";
-    width: 22px;
-    height: 22px;
-    border-radius: 999px;
-    display: inline-grid;
-    grid-row: 1 / span 2;
-    place-items: center;
-    color: #166534;
-    background: #dcfce7;
-    font-size: 12px;
-    font-weight: 900;
-  }
-
-  h4,
-  p {
-    grid-column: 2;
-  }
-  h4 {
-    margin: 0;
-    font-size: 13px;
-    color: #166534;
-  }
-  p {
-    margin: 2px 0 0;
-    font-size: 12px;
-    color: #166534;
-  }
-}
-
-.dashboard-empty--loading {
-  background: #fafaf9;
-  border-color: #e7e5e4;
-
-  &::before {
-    content: "…";
-    color: #57534e;
-    background: #f5f5f4;
-  }
-
-  h4 {
-    color: #44403c;
-  }
-  p {
-    color: #78716c;
-  }
-}
-
-.revenue-compact-empty {
-  min-height: 78px;
-  border: 1px solid var(--dash-border);
-  border-radius: 16px;
-  padding: 14px;
-  display: grid;
-  align-content: center;
+  padding: 12px;
+  display: flex;
+  align-items: flex-start;
   gap: 8px;
-  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: 12px;
+  background: var(--dash-accent-soft);
+  color: var(--dash-text);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 
   &__icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 12px;
-    background: var(--dash-accent-soft);
+    flex: 0 0 auto;
     color: var(--dash-accent-strong);
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
-  &__value {
-    margin: 0;
-    font-size: 28px;
-    font-weight: 900;
-    color: var(--dash-text);
-    letter-spacing: -0.03em;
-    font-variant-numeric: tabular-nums;
+  &__content {
+    min-width: 0;
   }
 
-  &__text {
-    margin: 0;
-    font-size: 12px;
+  p {
+    margin: 3px 0 0;
     color: var(--dash-text-sub);
   }
 }
 
-.revenue-compact-skeleton {
-  display: grid;
-  gap: 7px;
+.dashboard-state--loading {
+  border-style: dashed;
+  background: var(--dash-surface);
+}
 
-  span {
-    height: 12px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, #e8e6df 25%, #f5f3ee 37%, #e8e6df 63%);
-    background-size: 400% 100%;
-    animation: dashboardSkeleton 1.15s ease-in-out infinite;
-  }
+.dashboard-state--error {
+  background: var(--dash-danger-soft);
 
-  span:nth-child(1) {
-    width: 62%;
-    height: 22px;
+  .dashboard-state__icon {
+    color: var(--dash-danger);
   }
-  span:nth-child(2) {
-    width: 84%;
-  }
-  span:nth-child(3) {
-    width: 48%;
+}
+
+.dashboard-state--clear {
+  background: var(--dash-success-soft);
+
+  .dashboard-state__icon {
+    color: var(--dash-success);
   }
 }
 
@@ -809,11 +737,6 @@ $dashboard-danger: #ba514b;
     transform: rotate(360deg);
   }
 }
-@keyframes dashboardSkeleton {
-  to {
-    background-position: -100% 0;
-  }
-}
 
 @media (max-width: 1200px) {
   .dashboard-operations-grid {
@@ -850,6 +773,19 @@ $dashboard-danger: #ba514b;
 }
 
 @media (max-width: 480px) {
+  .dashboard-error {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+
+    .dashboard-btn {
+      grid-column: 2;
+      width: auto;
+      justify-self: start;
+      min-height: 44px;
+    }
+  }
+
   .dashboard-btn {
     width: 100%;
     justify-content: center;
@@ -1065,22 +1001,6 @@ $dashboard-danger: #ba514b;
   font-size: 13px;
   font-weight: 850;
   cursor: pointer;
-}
-
-.dashboard-empty--error {
-  background: #fff7f7;
-  border-color: #fecaca;
-
-  &::before {
-    content: "!";
-    color: #991b1b;
-    background: #fee2e2;
-  }
-
-  h4,
-  p {
-    color: #991b1b;
-  }
 }
 
 .dashboard-modal-backdrop {

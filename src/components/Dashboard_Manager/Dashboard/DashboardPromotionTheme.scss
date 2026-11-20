@@ -85,8 +85,6 @@
 .dashboard-support-item,
 .dashboard-staff-roster__item,
 .dashboard-card--action-queue .dashboard-queue-section__empty,
-.dashboard-empty,
-.revenue-compact-empty,
 .revenue-chart-empty {
   border-color: rgba(128, 109, 83, 0.15);
   background: rgba(255, 253, 249, 0.78);
@@ -214,8 +212,6 @@
   border-color: rgba(31, 106, 96, 0.18);
 }
 
-.dashboard-empty--healthy,
-.dashboard-card--alerts-healthy .dashboard-empty,
 .dashboard-staff-roster__presence.is-online {
   border-color: rgba(31, 106, 96, 0.18);
   background: #f2faf7;
@@ -223,7 +219,6 @@
 }
 
 .revenue-chart-empty__icon,
-.revenue-compact-empty__icon,
 .empty-icon--operation {
   border-color: rgba(31, 106, 96, 0.16);
   background: #f2faf7;

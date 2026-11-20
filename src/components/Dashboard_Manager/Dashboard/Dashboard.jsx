@@ -6,13 +6,12 @@ import {
   CalendarRange,
   Store,
   ShieldAlert,
-  ClipboardList,
-  TrendingUp,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 import { useDashboard } from "../../../hooks/useDashboard";
 import { useDashboardActionQueue } from "../../../hooks/useDashboardActionQueue";
 import useSocketOrder from "../../../hooks/useSocketOrder";
+import DashboardState from "./components/DashboardState";
 import StatsGrid from "./components/StatsGrid";
 import RevenueChart, { formatChartDate } from "./components/RevenueChart";
 import RecentOrders from "./components/RecentOrders";
@@ -116,6 +115,7 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
   const hasRestaurantContext = hasSelectedRestaurant || hasRestaurants;
   const isResourceSetupEmpty =
     !loading &&
+    !error &&
     hasRestaurantContext &&
     Object.values(resourceCounts).every((value) => value === 0);
   const hasCompletedOrders = Number(stats?.statusCounts?.completed || 0) > 0;
@@ -243,7 +243,7 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
         </div>
       </section>
 
-      {error && !showNoRestaurantState ? (
+      {error && !loading && !showNoRestaurantState ? (
         <section className="dashboard-error" role="alert">
           <AlertTriangle size={18} />
           <div>
@@ -348,13 +348,9 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
                   </div>
 
                   {loading ? (
-                    <div className="dashboard-empty dashboard-empty--compact dashboard-empty--loading">
-                      <h4>Đang tải cảnh báo</h4>
-                    </div>
+                    <DashboardState state="loading" title="Đang tải cảnh báo tồn kho" />
                   ) : error ? (
-                    <div className="dashboard-empty dashboard-empty--compact dashboard-empty--error">
-                      <h4>Không thể tải cảnh báo tồn kho</h4>
-                    </div>
+                    <DashboardState state="error" title="Không thể tải cảnh báo tồn kho" />
                   ) : alertsCount > 0 ? (
                     <div className="operational-alerts">
                       {safeLowStockItems.slice(0, 3).map((item, index) => (
@@ -380,10 +376,9 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
                       ) : null}
                     </div>
                   ) : (
-                    <div className="dashboard-empty dashboard-empty--compact dashboard-empty--healthy">
-                      <h4>Tồn kho ổn định</h4>
+                    <DashboardState state="clear" title="Tồn kho ổn định">
                       <p>Không có mặt hàng sắp hết.</p>
-                    </div>
+                    </DashboardState>
                   )}
                   {alertsCardState === "warning" && canOpenInventory ? (
                     <button
@@ -407,10 +402,8 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
                 {periodDates ? <span>{periodDates}</span> : null}
               </p>
             </div>
-            {error ? (
-              <p className="dashboard-empty dashboard-empty--compact dashboard-empty--error">
-                Không thể tải doanh thu và đơn hàng trong kỳ này.
-              </p>
+            {error && !loading ? (
+              <DashboardState state="error" title="Không thể tải doanh thu và đơn hàng trong kỳ này." />
             ) : (
               <div className="dashboard-period__grid">
                 <article className="dashboard-card dashboard-card--revenue">
@@ -419,26 +412,7 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
                   </div>
 
                   {loading ? (
-                    <div
-                      className="revenue-compact-empty"
-                      role="status"
-                      aria-live="polite"
-                    >
-                      <div className="revenue-compact-empty__icon">
-                        <ClipboardList size={16} />
-                      </div>
-                      <div
-                        className="revenue-compact-skeleton"
-                        aria-hidden="true"
-                      >
-                        <span />
-                        <span />
-                        <span />
-                      </div>
-                      <p className="revenue-compact-empty__text">
-                        Đang tải dữ liệu doanh thu...
-                      </p>
-                    </div>
+                    <DashboardState state="loading" title="Đang tải dữ liệu doanh thu..." />
                   ) : hasRevenue ? (
                     <RevenueChart
                       data={safeRevenueTrend}
@@ -446,18 +420,7 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
                       compact
                     />
                   ) : (
-                    <div
-                      className="revenue-compact-empty revenue-compact-empty--simple"
-                      role="status"
-                      aria-live="polite"
-                    >
-                      <div className="revenue-compact-empty__icon">
-                        <TrendingUp size={16} />
-                      </div>
-                      <p className="revenue-compact-empty__text">
-                        Chưa có doanh thu trong khoảng thời gian này.
-                      </p>
-                    </div>
+                    <DashboardState state="empty" title="Chưa có doanh thu trong khoảng thời gian này." />
                   )}
                 </article>
 
@@ -494,7 +457,11 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
               </h2>
               <p>Tổng hợp nhanh dữ liệu cơ bản của nhà hàng.</p>
             </div>
-            <StatsGrid stats={stats} isLoading={loading} variant="compact" />
+            {error && !loading ? (
+              <DashboardState state="error" title="Không thể tải thông tin vận hành." />
+            ) : (
+              <StatsGrid stats={stats} isLoading={loading} variant="compact" />
+            )}
           </section>
 
           <section
@@ -530,13 +497,16 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
                       <p>Các món bán nhiều nhất trong thời gian đã chọn.</p>
                     </div>
                   </div>
-                  <TopDishes
-                    data={safeTopDishes}
-                    loading={loading}
-                    variant="bare"
-                    compactWhenEmpty
-                    hasCompletedOrders={hasCompletedOrders}
-                  />
+                  {error && !loading ? (
+                    <DashboardState state="error" title="Không thể tải món bán chạy." />
+                  ) : (
+                    <TopDishes
+                      data={safeTopDishes}
+                      loading={loading}
+                      variant="bare"
+                      hasCompletedOrders={hasCompletedOrders}
+                    />
+                  )}
                 </article>
               </div>
             </div>

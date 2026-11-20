@@ -5,6 +5,7 @@ import {
   ShoppingBag,
   X,
 } from "lucide-react";
+import DashboardState from "../DashboardState";
 import "./DashboardActionQueuePolish.scss";
 
 const formatCurrency = (value) =>
@@ -225,20 +226,13 @@ export default function DashboardActionQueue({
       </div>
 
       {loading ? (
-        <div className="dashboard-empty dashboard-empty--compact dashboard-empty--loading">
-          <h4>Đang tải yêu cầu chờ xác nhận</h4>
-          <p>Hệ thống đang kiểm tra đơn hàng và yêu cầu đặt bàn mới.</p>
-        </div>
+        <DashboardState state="loading" title="Đang tải yêu cầu chờ xác nhận" />
       ) : error ? (
-        <div className="dashboard-empty dashboard-empty--compact dashboard-empty--error">
-          <h4>Không thể tải yêu cầu chờ xác nhận</h4>
-          <p>{error?.message || "Vui lòng làm mới trang và thử lại."}</p>
-        </div>
+        <DashboardState state="error" title="Không thể tải yêu cầu chờ xác nhận" />
       ) : empty ? (
-        <div className="dashboard-empty dashboard-empty--compact dashboard-empty--healthy">
-          <h4>Không có yêu cầu nào đang chờ</h4>
+        <DashboardState state="clear" title="Không có yêu cầu nào đang chờ">
           <p>Đơn đặt món và đặt bàn mới sẽ hiển thị tại đây.</p>
-        </div>
+        </DashboardState>
       ) : (
         <div className={sectionsClassName}>
           {hasOrders ? (

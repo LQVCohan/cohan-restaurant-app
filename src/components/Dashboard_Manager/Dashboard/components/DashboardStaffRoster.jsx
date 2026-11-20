@@ -9,6 +9,7 @@ import {
   isSameRestaurantEvent,
 } from "@/utils/staffSyncEvents";
 import StaffAvatarMedia from "../../Staff/components/StaffAvatarMedia";
+import DashboardState from "./DashboardState";
 import "./DashboardStaffRoster.scss";
 
 const DASHBOARD_STAFF_ROSTER_QUERY = gql`
@@ -146,20 +147,14 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
         </div>
         <span className="dashboard-staff-roster__count">
           <UsersRound size={14} />
-          {loading && !staff.length ? "..." : `${staff.length} nhân viên`}
+          {loading ? "Đang tải" : error ? "Lỗi tải" : `${staff.length} nhân viên`}
         </span>
       </div>
 
       {loading && !staff.length ? (
-        <div className="dashboard-staff-roster__loading" role="status">
-          {[0, 1, 2].map((item) => (
-            <span key={item} />
-          ))}
-        </div>
+        <DashboardState state="loading" title="Đang tải danh sách nhân viên" />
       ) : error ? (
-        <div className="dashboard-staff-roster__state is-error">
-          Không thể tải danh sách nhân viên.
-        </div>
+        <DashboardState state="error" title="Không thể tải danh sách nhân viên." />
       ) : visibleStaff.length ? (
         <div className="dashboard-staff-roster__list">
           {onlineCount > 0 ? (
@@ -213,13 +208,11 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
           })}
         </div>
       ) : (
-        <div className="dashboard-staff-roster__state">
-          Chưa có nhân viên đang công tác tại nhà hàng này.
-        </div>
+        <DashboardState state="empty" title="Chưa có nhân viên đang công tác tại nhà hàng này." />
       )}
 
       <div className="dashboard-staff-roster__footer">
-        <span>{onlineCount} người đang trực tuyến</span>
+        {!loading && !error ? <span>{onlineCount} người đang trực tuyến</span> : null}
         <button type="button" onClick={onOpenStaff} disabled={!onOpenStaff}>
           Xem tất cả nhân viên
           <ArrowRight size={15} />

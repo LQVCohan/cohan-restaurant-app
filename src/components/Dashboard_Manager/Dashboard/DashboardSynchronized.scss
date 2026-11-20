@@ -200,35 +200,6 @@
     border-color: rgba(77, 117, 102, 0.24);
   }
 
-  .dashboard-empty {
-    color: var(--dash-success);
-    background: var(--dash-success-soft);
-    border-color: rgba(77, 117, 102, 0.24);
-  }
-
-  .dashboard-empty::before {
-    color: var(--dash-success);
-    background: rgba(77, 117, 102, 0.12);
-  }
-
-  .dashboard-empty h4,
-  .dashboard-empty p {
-    color: var(--dash-success);
-  }
-
-  .dashboard-empty--loading {
-    background: rgba(247, 245, 239, 0.68);
-    border-color: var(--dash-border);
-  }
-
-  .dashboard-empty--loading h4 {
-    color: var(--dash-text);
-  }
-
-  .dashboard-empty--loading p {
-    color: var(--dash-text-sub);
-  }
-
   .dashboard-staff-roster__list {
     gap: 3px;
   }
