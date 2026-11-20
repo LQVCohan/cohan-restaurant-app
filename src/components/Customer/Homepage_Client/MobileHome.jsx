@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
-  MapPin,
+  ArrowUpRight,
   ReceiptText,
   Search,
   Store,
@@ -17,13 +17,6 @@ const QUICK_ACTIONS = [
   { label: "Thực đơn", caption: "Chọn món", path: "/cus-menu", icon: UtensilsCrossed },
   { label: "Đơn hàng", caption: "Theo dõi", path: "/orders", icon: ReceiptText },
   { label: "Ưu đãi", caption: "Coupon", path: "/coupons", icon: Tags },
-];
-
-const SEARCH_CHIPS = [
-  { label: "Gần bạn", path: "/restaurants" },
-  { label: "Món Việt", query: "món Việt" },
-  { label: "Ưu đãi", path: "/coupons" },
-  { label: "Đặt bàn", path: "/restaurants" },
 ];
 
 const getCurrentTimeSlot = () => {
@@ -46,15 +39,6 @@ export default function MobileHome() {
     navigate(`/search?q=${encodeURIComponent(search)}`);
   };
 
-  const handleSearchChip = (chip) => {
-    if (chip.path) {
-      navigate(chip.path);
-      return;
-    }
-
-    navigate(`/search?q=${encodeURIComponent(chip.query)}`);
-  };
-
   const handleCategorySelect = useCallback(
     (category) => {
       const categoryName = typeof category === "object" ? category?.name : category;
@@ -67,11 +51,10 @@ export default function MobileHome() {
   return (
     <div className="mobile-home">
       <section className="mobile-home__intro" aria-labelledby="mobile-home-title">
-        <span className="mobile-home__eyebrow">Ăn ngon quanh bạn</span>
-        <h1 id="mobile-home-title">Hôm nay bạn muốn ăn gì?</h1>
-        <p>Tìm món ăn, nhà hàng và ưu đãi gần bạn.</p>
+        <h1 id="mobile-home-title">Món ngon quanh bạn</h1>
+        <p>Tìm món ăn hoặc nhà hàng bạn muốn thử.</p>
 
-        <form className="mobile-home__search" onSubmit={handleSearch}>
+        <form className="mobile-home__search" role="search" onSubmit={handleSearch}>
           <Search aria-hidden="true" />
           <input
             value={query}
@@ -82,30 +65,17 @@ export default function MobileHome() {
           <button type="submit">Tìm</button>
         </form>
 
-        <div className="mobile-home__chips" aria-label="Gợi ý tìm nhanh">
-          {SEARCH_CHIPS.map((chip) => (
-            <button key={chip.label} type="button" onClick={() => handleSearchChip(chip)}>
-              {chip.label}
-            </button>
-          ))}
+        <div className="mobile-home__discover">
+          <Link to="/restaurants">
+            Khám phá nhà hàng <ArrowUpRight size={16} aria-hidden="true" />
+          </Link>
+          <Link to="/search?q=m%C3%B3n+Vi%E1%BB%87t">Món Việt</Link>
         </div>
-
-        <button
-          type="button"
-          className="mobile-home__nearby"
-          onClick={() => navigate("/restaurants")}
-        >
-          <MapPin aria-hidden="true" />
-          Xem nhà hàng gần bạn
-        </button>
       </section>
 
       <section className="mobile-home__quick" aria-labelledby="mobile-quick-title">
         <div className="mobile-home__section-heading">
-          <div>
-            <span>Truy cập nhanh</span>
-            <h2 id="mobile-quick-title">Bạn cần gì?</h2>
-          </div>
+          <h2 id="mobile-quick-title">Truy cập nhanh</h2>
         </div>
         <div className="mobile-home__quick-grid">
           {QUICK_ACTIONS.map(({ label, caption, path, icon: Icon }) => (

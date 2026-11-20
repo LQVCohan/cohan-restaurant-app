@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
-import { Clock, LocateFixed, Sparkles, Star, Truck, Utensils } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, ChevronRight, LocateFixed } from "lucide-react";
+import { Link } from "react-router-dom";
 import LocationPickerMap from "./LocationPickerMap";
 import { reverseGeocodeCoordinates } from "../../../../lib/reverseGeocode";
 import "../../../../styles/Homepage/HeroSection.scss";
@@ -31,9 +32,6 @@ const GET_HERO_TOP_RESTAURANTS = gql`
       name
       coverImage
       avatar
-      avgRating
-      reviewCount
-      capabilities
     }
   }
 `;
@@ -45,28 +43,9 @@ const GET_HERO_NEARBY_RESTAURANTS = gql`
       name
       coverImage
       avatar
-      avgRating
-      reviewCount
-      capabilities
-      estimatedTravelMinutes
     }
   }
 `;
-
-const FALLBACK_HERO_METRICS = {
-  ratingTitle: "4.9/5",
-  ratingDesc: "Đánh giá tốt",
-  timeTitle: "30 phút",
-  timeDesc: "Giao siêu tốc",
-  deliveryTitle: "Freeship",
-  deliveryDesc: "Đơn từ 0đ",
-};
-
-const toFiniteNumber = (value) => {
-  if (value == null) return null;
-  const normalized = Number(value);
-  return Number.isFinite(normalized) ? normalized : null;
-};
 
 export const buildHeroSlides = (restaurants = []) =>
   HERO_FALLBACK_IMAGES.map((fallback, index) => {
@@ -83,46 +62,6 @@ export const buildHeroSlides = (restaurants = []) =>
       restaurant,
     };
   });
-
-export const buildHeroMetrics = (restaurant) => {
-  const rating = toFiniteNumber(restaurant?.avgRating);
-  const reviewCount = toFiniteNumber(restaurant?.reviewCount);
-  const estimatedTravelMinutes = toFiniteNumber(
-    restaurant?.estimatedTravelMinutes
-  );
-  const deliveryCapability = restaurant?.capabilities?.acceptsDelivery;
-
-  return {
-    ratingTitle:
-      rating != null && rating > 0
-        ? `${Math.min(rating, 5).toFixed(1)}/5`
-        : FALLBACK_HERO_METRICS.ratingTitle,
-    ratingDesc:
-      reviewCount != null && reviewCount > 0
-        ? `${Math.round(reviewCount)} đánh giá`
-        : FALLBACK_HERO_METRICS.ratingDesc,
-    timeTitle:
-      estimatedTravelMinutes != null && estimatedTravelMinutes > 0
-        ? `${Math.max(1, Math.round(estimatedTravelMinutes))} phút`
-        : FALLBACK_HERO_METRICS.timeTitle,
-    timeDesc:
-      estimatedTravelMinutes != null && estimatedTravelMinutes > 0
-        ? "Ước tính đến bạn"
-        : FALLBACK_HERO_METRICS.timeDesc,
-    deliveryTitle:
-      deliveryCapability === true
-        ? "Có giao hàng"
-        : deliveryCapability === false
-          ? "Nhận tại quán"
-          : FALLBACK_HERO_METRICS.deliveryTitle,
-    deliveryDesc:
-      deliveryCapability === true
-        ? "Nhà hàng hỗ trợ"
-        : deliveryCapability === false
-          ? "Chưa hỗ trợ giao"
-          : FALLBACK_HERO_METRICS.deliveryDesc,
-  };
-};
 
 const NOMINATIM_SEARCH = "https://nominatim.openstreetmap.org/search";
 
@@ -204,21 +143,10 @@ const HeroSection = ({ onSearch }) => {
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
 
-  const activeSlide = heroSlides[currentSlide] || heroSlides[0];
-  const heroMetrics = buildHeroMetrics(activeSlide?.restaurant);
-
   const cacheRef = useRef(new Map());
   const abortRef = useRef(null);
   const debounceRef = useRef(null);
   const reverseDebounceRef = useRef(null);
-
-  // Tự động chuyển ảnh sau 5s
-  useEffect(() => {
-    const timer = setInterval(() => {
-      handleNext();
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [currentSlide, heroSlides.length]);
 
   const handleNext = () => {
     setCurrentSlide((prev) =>
@@ -235,6 +163,7 @@ const HeroSection = ({ onSearch }) => {
   // Xử lý vuốt tay (Swipe) trên Mobile
   const handleTouchStart = (e) => {
     touchStartX.current = e.targetTouches[0].clientX;
+    touchEndX.current = touchStartX.current;
   };
 
   const handleTouchMove = (e) => {
@@ -568,18 +497,12 @@ const HeroSection = ({ onSearch }) => {
     <section id="home" className="hero" aria-labelledby="home-hero-title">
       <div className="hero__container">
         <div className="hero__content">
-          <div className="hero__badge">
-            <Sparkles className="hero__badge-icon" aria-hidden="true" />
-            <span>Giao hàng nhanh trong {heroMetrics.timeTitle}</span>
-          </div>
-
           <h1 className="hero__title" id="home-hero-title">
-            Món ngon <span className="text-highlight">giao nhanh</span>
-            <br /> đến bạn
+            Món ngon <span className="text-highlight">quanh bạn</span>
           </h1>
 
           <p className="hero__subtitle">
-            Khám phá nhà hàng uy tín, đặt món dễ dàng và nhận món nóng hổi tại nhà.
+            Nhập địa chỉ để tìm nhà hàng gần bạn.
           </p>
 
           <div
@@ -607,7 +530,7 @@ const HeroSection = ({ onSearch }) => {
               </span>
               <input
                 type="text"
-                placeholder="Nhập địa chỉ giao hàng của bạn..."
+                placeholder="Địa chỉ giao hàng"
                 aria-label="Địa chỉ giao hàng"
                 aria-describedby={
                   suggestionMessage ? "hero-suggestion-message" : undefined
@@ -681,37 +604,12 @@ const HeroSection = ({ onSearch }) => {
               </div>
             )}
 
-          <div className="hero__stats" aria-label="Các thao tác chính trên Cohan">
-            <div className="hero__stat-item" aria-label="Tìm nhà hàng gần bạn">
-              <LocateFixed className="stat-icon" aria-hidden="true" />
-              <strong className="stat-num">Tìm gần bạn</strong>
-              <span className="stat-label">Gợi ý theo vị trí</span>
-            </div>
-            <div className="hero__stat-divider" aria-hidden="true"></div>
-            <div className="hero__stat-item" aria-label="Đặt món nhanh">
-              <Utensils className="stat-icon" aria-hidden="true" />
-              <strong className="stat-num">Đặt món</strong>
-              <span className="stat-label">Giữ món trong giỏ</span>
-            </div>
-            <div className="hero__stat-divider" aria-hidden="true"></div>
-            <div className="hero__stat-item" aria-label="Theo dõi trạng thái đơn">
-              <Clock className="stat-icon" aria-hidden="true" />
-              <strong className="stat-num">Theo dõi</strong>
-              <span className="stat-label">Cập nhật trạng thái</span>
-            </div>
-          </div>
+          <Link className="hero__browse" to="/restaurants">
+            Khám phá nhà hàng <ArrowUpRight size={18} aria-hidden="true" />
+          </Link>
         </div>
 
-        <div
-          className="hero__image-area"
-          aria-label={
-            activeSlide?.restaurant?.name
-              ? `Nhà hàng nổi bật ${activeSlide.restaurant.name}`
-              : "Ảnh món ăn nổi bật"
-          }
-        >
-          <div className="hero__image-bg" aria-hidden="true"></div>
-
+        <div className="hero__image-area">
           <div
             className="hero__slider"
             onTouchStart={handleTouchStart}
@@ -737,51 +635,24 @@ const HeroSection = ({ onSearch }) => {
             ))}
           </div>
 
-          <button
-            className="hero__slider-btn prev"
-            type="button"
-            onClick={handlePrev}
-            aria-label="Xem ảnh món trước"
-          >
-            ‹
-          </button>
-          <button
-            className="hero__slider-btn next"
-            type="button"
-            onClick={handleNext}
-            aria-label="Xem ảnh món tiếp theo"
-          >
-            ›
-          </button>
-
-          <div className="hero__float-card float-review">
-            <div className="float-icon">
-              <Star aria-hidden="true" />
-            </div>
-            <div className="float-content">
-              <span className="float-title">{heroMetrics.ratingTitle}</span>
-              <span className="float-desc">{heroMetrics.ratingDesc}</span>
-            </div>
-          </div>
-
-          <div className="hero__float-card float-time">
-            <div className="float-icon">
-              <Clock aria-hidden="true" />
-            </div>
-            <div className="float-content">
-              <span className="float-title">{heroMetrics.timeTitle}</span>
-              <span className="float-desc">{heroMetrics.timeDesc}</span>
-            </div>
-          </div>
-
-          <div className="hero__float-card float-delivery">
-            <div className="float-icon">
-              <Truck aria-hidden="true" />
-            </div>
-            <div className="float-content">
-              <span className="float-title">{heroMetrics.deliveryTitle}</span>
-              <span className="float-desc">{heroMetrics.deliveryDesc}</span>
-            </div>
+          <div className="hero__photo-controls" role="group" aria-label="Ảnh món ăn">
+            <button
+              className="hero__slider-btn prev"
+              type="button"
+              onClick={handlePrev}
+              aria-label="Xem ảnh món trước"
+            >
+              <ChevronLeft size={20} aria-hidden="true" />
+            </button>
+            <span>{currentSlide + 1} / {heroSlides.length}</span>
+            <button
+              className="hero__slider-btn next"
+              type="button"
+              onClick={handleNext}
+              aria-label="Xem ảnh món tiếp theo"
+            >
+              <ChevronRight size={20} aria-hidden="true" />
+            </button>
           </div>
         </div>
       </div>

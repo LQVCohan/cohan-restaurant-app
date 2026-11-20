@@ -43,4 +43,11 @@ describe("MobileHome search", () => {
       new URLSearchParams(screen.getByTestId("query-string").textContent).get("q"),
     ).toBe("Cá nướng");
   });
+
+  it("links directly to restaurant discovery", () => {
+    render(<MemoryRouter><MobileHome /></MemoryRouter>);
+
+    expect(screen.getByRole("link", { name: "Khám phá nhà hàng" }))
+      .toHaveAttribute("href", "/restaurants");
+  });
 });

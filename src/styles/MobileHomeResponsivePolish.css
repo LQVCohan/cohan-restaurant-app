@@ -66,38 +66,20 @@
   }
 
   .mobile-home__search > svg,
-  .mobile-home__nearby > svg,
   .mobile-home__quick-grid button > svg {
     flex: 0 0 auto !important;
     max-width: none !important;
   }
 
-  .mobile-home__chips {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    overflow: visible !important;
-    gap: 8px !important;
-    padding-bottom: 0 !important;
-  }
-
-  .mobile-home__chips button {
-    width: 100% !important;
-    min-width: 0 !important;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   .mobile-home__quick-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 10px !important;
   }
 
   .mobile-home__quick-grid button {
     min-width: 0 !important;
-    min-height: 92px !important;
+    min-height: 78px !important;
     gap: 5px !important;
-    padding: 12px 8px !important;
+    padding: 9px 4px !important;
   }
 
   .mobile-home__quick-grid button > svg {

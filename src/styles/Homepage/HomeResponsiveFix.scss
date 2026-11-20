@@ -74,26 +74,8 @@
     display: none !important;
   }
 
-  .home .hero__container {
-    width: min(720px, calc(100% - 32px));
-    grid-template-columns: 1fr;
-    gap: 24px;
-    padding: 32px;
-  }
-
-  .home .hero__content {
-    max-width: none;
-    padding-left: 0;
-  }
-
-  .home .hero__search-box {
-    max-width: 100%;
-  }
-
-  .home .hero__image-area {
-    width: min(100%, 500px);
-    justify-self: center;
-    padding-inline: 28px;
+  .home .hero .hero__container {
+    width: calc(100% - 32px);
   }
 }
 
