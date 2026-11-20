@@ -239,8 +239,8 @@
 }
 
 /*
- * Operational priority: current orders and staff first, then support/alerts/
- * performance, followed by secondary commercial insights.
+ * Secondary dashboard grid: recent orders and staff first, then
+ * performance and commercial insights.
  */
 @media (min-width: 1201px) {
   .dashboard-synchronized-shell .dashboard-operations-grid {
@@ -271,18 +271,6 @@
     .dashboard-staff-roster-slot
     > .dashboard-staff-roster {
     height: 100%;
-  }
-
-  .dashboard-synchronized-shell .dashboard-card--support-queue {
-    grid-column: 1 / span 4;
-    grid-row: 2;
-    align-self: stretch;
-  }
-
-  .dashboard-synchronized-shell .dashboard-card--alerts {
-    grid-column: 5 / span 4;
-    grid-row: 2;
-    align-self: stretch;
   }
 
   .dashboard-synchronized-shell .dashboard-card--performance-summary {
@@ -330,14 +318,6 @@
     order: 2;
   }
 
-  .dashboard-synchronized-shell .dashboard-card--support-queue {
-    order: 3;
-  }
-
-  .dashboard-synchronized-shell .dashboard-card--alerts {
-    order: 4;
-  }
-
   .dashboard-synchronized-shell .dashboard-card--performance-summary {
     order: 5;
   }
@@ -355,8 +335,6 @@
   .dashboard-synchronized-shell
     .dashboard-staff-roster-slot
     > .dashboard-staff-roster,
-  .dashboard-synchronized-shell .dashboard-card--support-queue,
-  .dashboard-synchronized-shell .dashboard-card--alerts,
   .dashboard-synchronized-shell .dashboard-card--performance-summary,
   .dashboard-synchronized-shell
     .dashboard-main-secondary
@@ -387,8 +365,6 @@
 
   .dashboard-synchronized-shell .dashboard-card--recent-orders,
   .dashboard-synchronized-shell .dashboard-staff-roster-slot,
-  .dashboard-synchronized-shell .dashboard-card--support-queue,
-  .dashboard-synchronized-shell .dashboard-card--alerts,
   .dashboard-synchronized-shell .dashboard-card--performance-summary,
   .dashboard-synchronized-shell
     .dashboard-main-secondary
@@ -404,14 +380,6 @@
 
   .dashboard-synchronized-shell .dashboard-staff-roster-slot {
     order: 2;
-  }
-
-  .dashboard-synchronized-shell .dashboard-card--support-queue {
-    order: 3;
-  }
-
-  .dashboard-synchronized-shell .dashboard-card--alerts {
-    order: 4;
   }
 
   .dashboard-synchronized-shell .dashboard-card--performance-summary {

@@ -59,8 +59,8 @@ export default function DashboardSupportQueue({
           <p>Các yêu cầu từ trợ lý AI hoặc khách tại bàn cần nhân viên xử lý.</p>
         </div>
         <span className="queue-count queue-count--support">
-          <Headphones size={14} />
-          {loading ? "Đang tải" : `${requestCount} yêu cầu`}
+          <Headphones size={14} aria-hidden="true" />
+          {loading ? "Đang tải" : error ? "Lỗi tải" : `${requestCount} yêu cầu`}
         </span>
       </div>
 

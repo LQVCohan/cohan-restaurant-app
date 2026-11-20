@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
@@ -74,7 +74,7 @@ const baseDashboard = {
   refetchDashboard: vi.fn(),
 };
 
-const renderDashboard = (overrides = {}) => {
+const renderDashboard = (overrides = {}, canOpenInventory = false) => {
   useDashboard.mockReturnValue({ ...baseDashboard, ...overrides });
   useDashboardActionQueue.mockReturnValue({
     busyKey: "",
@@ -89,7 +89,7 @@ const renderDashboard = (overrides = {}) => {
   return render(
     <MemoryRouter>
       <AuthContext.Provider value={{ user: { fullName: "Quản lý ca" } }}>
-        <Dashboard />
+        <Dashboard canOpenInventory={canOpenInventory} />
       </AuthContext.Provider>
     </MemoryRouter>,
   );
@@ -123,6 +123,44 @@ describe("Dashboard manager command center", () => {
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
     expect(screen.getByText("#ORD-1001")).toBeInTheDocument();
     expect(screen.queryByText("#raw-order-id")).not.toBeInTheDocument();
+  });
+
+  it("groups the queues and stock alerts before the statistics", () => {
+    renderDashboard();
+
+    const priority = screen.getByRole("region", { name: "Cần xử lý" });
+    for (const name of [
+      "Yêu cầu chờ xác nhận",
+      "Yêu cầu hỗ trợ khách hàng",
+      "Cảnh báo tồn kho",
+    ]) {
+      expect(within(priority).getByRole("heading", { name })).toBeVisible();
+    }
+    expect(priority.compareDocumentPosition(
+      screen.getByRole("heading", { name: "Thông tin vận hành" }),
+    ) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("links low-stock alerts to inventory for permitted users", () => {
+    const alerts = { lowStockItems: [{ id: "stock-1", name: "Gạo", onHand: 2 }] };
+    const { unmount } = renderDashboard(alerts);
+    expect(screen.queryByRole("button", { name: "Mở quản lý kho" })).toBeNull();
+    unmount();
+
+    const previousUrl = window.location.href;
+    const onNavigate = vi.fn();
+    window.addEventListener("manager:navigate", onNavigate);
+    try {
+      renderDashboard(alerts, true);
+      expect(screen.getByText("1 cảnh báo")).toBeVisible();
+      fireEvent.click(screen.getByRole("button", { name: "Mở quản lý kho" }));
+      expect(onNavigate).toHaveBeenCalledWith(
+        expect.objectContaining({ detail: expect.objectContaining({ page: "inventory" }) }),
+      );
+    } finally {
+      window.removeEventListener("manager:navigate", onNavigate);
+      window.history.replaceState(null, "", previousUrl);
+    }
   });
 
   it("uses one full-width queue section when only orders are waiting", () => {

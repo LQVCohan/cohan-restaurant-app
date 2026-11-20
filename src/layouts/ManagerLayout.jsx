@@ -449,7 +449,7 @@ const ManagerLayout = () => {
     if (currentPage === "brands" && !brandAccessResolved) return <PageLoadingFallback />;
     if (!allowedPages.has(currentPage)) return <PermissionFallback />;
     switch (currentPage) {
-      case "dashboard": return <Dashboard />;
+      case "dashboard": return <Dashboard canOpenInventory={allowedPages.has("inventory")} />;
       case "brands": return <BrandManagement />;
       case "tables": return <TableManagement onOpenTableSettings={allowedPages.has(TABLE_SETTINGS_ACTION) ? openTableSettings : undefined} />;
       case "table-qr": return <TableQrManagementPage />;

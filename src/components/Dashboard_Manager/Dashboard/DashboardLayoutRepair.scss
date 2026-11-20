@@ -60,22 +60,8 @@
 
   .dashboard-synchronized-shell
     .manager-dashboard:not(.manager-dashboard--no-restaurant)
-    .dashboard-card--support-queue {
-    grid-column: 1 / span 4;
-    grid-row: 2;
-  }
-
-  .dashboard-synchronized-shell
-    .manager-dashboard:not(.manager-dashboard--no-restaurant)
-    .dashboard-card--alerts {
-    grid-column: 5 / span 4;
-    grid-row: 2;
-  }
-
-  .dashboard-synchronized-shell
-    .manager-dashboard:not(.manager-dashboard--no-restaurant)
     .dashboard-card--performance-summary {
-    grid-column: 9 / -1;
+    grid-column: 1 / span 4;
     grid-row: 2;
   }
 
@@ -83,15 +69,15 @@
     .manager-dashboard:not(.manager-dashboard--no-restaurant)
     .dashboard-main-secondary
     > .dashboard-card:not(.dashboard-card--performance-summary) {
-    grid-column: 1 / span 6;
-    grid-row: 3;
+    grid-column: 5 / span 4;
+    grid-row: 2;
   }
 
   .dashboard-synchronized-shell
     .manager-dashboard:not(.manager-dashboard--no-restaurant)
     .dashboard-card--revenue {
-    grid-column: 7 / -1;
-    grid-row: 3;
+    grid-column: 9 / -1;
+    grid-row: 2;
   }
 
   .dashboard-synchronized-shell
@@ -100,12 +86,6 @@
   .dashboard-synchronized-shell
     .manager-dashboard:not(.manager-dashboard--no-restaurant)
     .dashboard-staff-roster-slot,
-  .dashboard-synchronized-shell
-    .manager-dashboard:not(.manager-dashboard--no-restaurant)
-    .dashboard-card--support-queue,
-  .dashboard-synchronized-shell
-    .manager-dashboard:not(.manager-dashboard--no-restaurant)
-    .dashboard-card--alerts,
   .dashboard-synchronized-shell
     .manager-dashboard:not(.manager-dashboard--no-restaurant)
     .dashboard-card--performance-summary,
@@ -155,12 +135,6 @@
     .dashboard-staff-roster-slot,
   .dashboard-synchronized-shell
     .manager-dashboard:not(.manager-dashboard--no-restaurant)
-    .dashboard-card--support-queue,
-  .dashboard-synchronized-shell
-    .manager-dashboard:not(.manager-dashboard--no-restaurant)
-    .dashboard-card--alerts,
-  .dashboard-synchronized-shell
-    .manager-dashboard:not(.manager-dashboard--no-restaurant)
     .dashboard-card--performance-summary,
   .dashboard-synchronized-shell
     .manager-dashboard:not(.manager-dashboard--no-restaurant)
@@ -186,18 +160,6 @@
     .manager-dashboard:not(.manager-dashboard--no-restaurant)
     .dashboard-staff-roster-slot {
     order: 2;
-  }
-
-  .dashboard-synchronized-shell
-    .manager-dashboard:not(.manager-dashboard--no-restaurant)
-    .dashboard-card--support-queue {
-    order: 3;
-  }
-
-  .dashboard-synchronized-shell
-    .manager-dashboard:not(.manager-dashboard--no-restaurant)
-    .dashboard-card--alerts {
-    order: 4;
   }
 
   .dashboard-synchronized-shell
@@ -254,12 +216,6 @@
     .dashboard-staff-roster-slot,
   .dashboard-synchronized-shell
     .manager-dashboard:not(.manager-dashboard--no-restaurant)
-    .dashboard-card--support-queue,
-  .dashboard-synchronized-shell
-    .manager-dashboard:not(.manager-dashboard--no-restaurant)
-    .dashboard-card--alerts,
-  .dashboard-synchronized-shell
-    .manager-dashboard:not(.manager-dashboard--no-restaurant)
     .dashboard-card--performance-summary,
   .dashboard-synchronized-shell
     .manager-dashboard:not(.manager-dashboard--no-restaurant)
@@ -285,18 +241,6 @@
     .manager-dashboard:not(.manager-dashboard--no-restaurant)
     .dashboard-staff-roster-slot {
     order: 2;
-  }
-
-  .dashboard-synchronized-shell
-    .manager-dashboard:not(.manager-dashboard--no-restaurant)
-    .dashboard-card--support-queue {
-    order: 3;
-  }
-
-  .dashboard-synchronized-shell
-    .manager-dashboard:not(.manager-dashboard--no-restaurant)
-    .dashboard-card--alerts {
-    order: 4;
   }
 
   .dashboard-synchronized-shell

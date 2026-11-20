@@ -175,7 +175,7 @@ export default function DashboardActionQueue({
   const cardClassName = [
     "dashboard-card",
     "dashboard-card--action-queue",
-    totalCount > 0 ? "dashboard-card--action-queue-active" : "",
+    !loading && !error && totalCount > 0 ? "dashboard-card--action-queue-active" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -198,10 +198,10 @@ export default function DashboardActionQueue({
           className="dashboard-queue-summary"
           aria-label="Tổng yêu cầu chờ xác nhận"
         >
-          {loading ? (
+          {loading || error ? (
             <span className="queue-summary-chip queue-summary-chip--loading">
               <ClipboardList size={14} aria-hidden="true" />
-              Đang tải
+              {loading ? "Đang tải" : "Lỗi tải"}
             </span>
           ) : (
             <>

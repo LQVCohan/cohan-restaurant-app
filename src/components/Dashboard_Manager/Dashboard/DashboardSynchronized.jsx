@@ -8,7 +8,6 @@ import Dashboard from "./Dashboard";
 import DashboardStaffRoster from "./components/DashboardStaffRoster";
 import "./DashboardSynchronized.scss";
 import "./DashboardEmptyState.scss";
-import "./DashboardStockWording.scss";
 import "./DashboardLabelReset.scss";
 import "./DashboardPromotionTheme.scss";
 import "./DashboardLayoutRepair.scss";
@@ -16,7 +15,7 @@ import "./DashboardLayoutRepair.scss";
 const getRestaurantId = (restaurant) =>
   String(restaurant?.id ?? restaurant?._id ?? restaurant?.restaurantId ?? "");
 
-const DashboardSynchronized = () => {
+const DashboardSynchronized = ({ canOpenInventory = false }) => {
   const { restaurants = [] } = useContext(AuthContext) || {};
   const accessibleRestaurantIds = useMemo(
     () =>
@@ -83,6 +82,7 @@ const DashboardSynchronized = () => {
   return (
     <div className="dashboard-synchronized-shell">
       <Dashboard
+        canOpenInventory={canOpenInventory}
         staffRoster={
           activeRestaurantId ? (
             <DashboardStaffRoster

@@ -28,7 +28,7 @@ const RANGE_LABELS = {
   month: "30 ngày gần nhất",
 };
 
-const Dashboard = ({ staffRoster = null }) => {
+const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
   const { user } = useContext(AuthContext);
   const {
     selectedRestaurant,
@@ -109,9 +109,11 @@ const Dashboard = ({ staffRoster = null }) => {
     selectedRestaurantId || selectedRestaurant?.id || "";
   const alertsCardState = loading
     ? "loading"
-    : alertsCount > 0
-      ? "warning"
-      : "healthy";
+    : error
+      ? "error"
+      : alertsCount > 0
+        ? "warning"
+        : "healthy";
 
   const navigateManagerPage = (page, query = {}) => {
     if (!page || typeof window === "undefined") return;
@@ -291,23 +293,104 @@ const Dashboard = ({ staffRoster = null }) => {
         </section>
       ) : (
         <>
-          <DashboardActionQueue
-            orders={safePendingOrders}
-            reservations={safePendingReservations}
-            counts={{
-              orders: pendingOrderCount,
-              reservations: pendingReservationCount,
-            }}
-            loading={loading}
-            error={error}
-            busyKey={dashboardQueue.busyKey}
-            onConfirmOrder={dashboardQueue.confirmOrder}
-            onRejectOrder={dashboardQueue.rejectOrder}
-            onConfirmReservation={dashboardQueue.confirmReservation}
-            onCancelReservation={dashboardQueue.cancelReservation}
-            onOpenOrders={handleGoToOrders}
-            onOpenTables={handleGoToTables}
-          />
+          <section className="dashboard-priority" aria-labelledby="dashboard-priority-title">
+            <h2 id="dashboard-priority-title">Cần xử lý</h2>
+            <div className="dashboard-priority__grid">
+              <DashboardActionQueue
+                orders={safePendingOrders}
+                reservations={safePendingReservations}
+                counts={{
+                  orders: pendingOrderCount,
+                  reservations: pendingReservationCount,
+                }}
+                loading={loading}
+                error={error}
+                busyKey={dashboardQueue.busyKey}
+                onConfirmOrder={dashboardQueue.confirmOrder}
+                onRejectOrder={dashboardQueue.rejectOrder}
+                onConfirmReservation={dashboardQueue.confirmReservation}
+                onCancelReservation={dashboardQueue.cancelReservation}
+                onOpenOrders={handleGoToOrders}
+                onOpenTables={handleGoToTables}
+              />
+              <div className="dashboard-priority__side">
+                <DashboardSupportQueue
+                  requests={safePendingSupportRequests}
+                  count={pendingSupportRequestCount}
+                  loading={loading}
+                  error={error}
+                  busyKey={dashboardQueue.busyKey}
+                  onAcknowledge={dashboardQueue.acknowledgeSupport}
+                  onResolve={dashboardQueue.resolveSupport}
+                  onOpenHandoff={handleGoToHandoff}
+                />
+
+                <article
+                  className={`dashboard-card dashboard-card--side dashboard-card--alerts dashboard-card--alerts-${alertsCardState}`}
+                >
+                  <div className="dashboard-card__head dashboard-card__head--compact">
+                    <div>
+                      <h3>Cảnh báo tồn kho</h3>
+                      <p>Mặt hàng sắp hết cần kiểm tra.</p>
+                    </div>
+                    <span
+                      className={`alert-count alert-count--${alertsCardState}`}
+                    >
+                      {loading ? "Đang tải" : error ? "Lỗi tải" : `${alertsCount} cảnh báo`}
+                    </span>
+                  </div>
+
+                  {loading ? (
+                    <div className="dashboard-empty dashboard-empty--compact dashboard-empty--loading">
+                      <h4>Đang tải cảnh báo</h4>
+                    </div>
+                  ) : error ? (
+                    <div className="dashboard-empty dashboard-empty--compact dashboard-empty--error">
+                      <h4>Không thể tải cảnh báo tồn kho</h4>
+                    </div>
+                  ) : alertsCount > 0 ? (
+                    <div className="operational-alerts">
+                      {safeLowStockItems.slice(0, 3).map((item, index) => (
+                        <div
+                          className="operational-alert"
+                          key={`${item.id || item.name}-${index}`}
+                        >
+                          <ShieldAlert size={16} aria-hidden="true" />
+                          <div>
+                            <p>Tồn kho thấp</p>
+                            <span>
+                              {item.name || "Chưa cập nhật tên mặt hàng"} — Còn
+                              lại: {item.onHand ?? 0}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      {safeLowStockItems.length > 3 ? (
+                        <p className="operational-alerts__more">
+                          Còn {safeLowStockItems.length - 3} cảnh báo khác trong
+                          kho.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="dashboard-empty dashboard-empty--compact dashboard-empty--healthy">
+                      <h4>Tồn kho ổn định</h4>
+                      <p>Không có mặt hàng sắp hết.</p>
+                    </div>
+                  )}
+                  {alertsCardState === "warning" && canOpenInventory ? (
+                    <button
+                      type="button"
+                      className="dashboard-btn dashboard-btn--ghost dashboard-stock-open"
+                      onClick={() => navigateManagerPage("inventory")}
+                    >
+                      Mở quản lý kho
+                    </button>
+                  ) : null}
+                </article>
+              </div>
+            </div>
+          </section>
 
           <section
             className="dashboard-system-overview"
@@ -385,69 +468,6 @@ const Dashboard = ({ staffRoster = null }) => {
                   {staffRoster}
                 </div>
               ) : null}
-              <DashboardSupportQueue
-                requests={safePendingSupportRequests}
-                count={pendingSupportRequestCount}
-                loading={loading}
-                error={error}
-                busyKey={dashboardQueue.busyKey}
-                onAcknowledge={dashboardQueue.acknowledgeSupport}
-                onResolve={dashboardQueue.resolveSupport}
-                onOpenHandoff={handleGoToHandoff}
-              />
-
-              <article
-                className={`dashboard-card dashboard-card--side dashboard-card--alerts dashboard-card--alerts-${alertsCardState}`}
-              >
-                <div className="dashboard-card__head dashboard-card__head--compact">
-                  <div>
-                    <h3>Cảnh báo vận hành</h3>
-                    <p>Các vấn đề về tồn kho hoặc vận hành cần kiểm tra.</p>
-                  </div>
-                  <span
-                    className={`alert-count alert-count--${alertsCardState}`}
-                  >
-                    {loading ? "Đang kiểm tra" : `${alertsCount} cảnh báo`}
-                  </span>
-                </div>
-
-                {loading ? (
-                  <div className="dashboard-empty dashboard-empty--compact dashboard-empty--loading">
-                    <h4>Đang tải cảnh báo</h4>
-                    <p>Đang kiểm tra tồn kho và trạng thái vận hành.</p>
-                  </div>
-                ) : safeLowStockItems.length > 0 ? (
-                  <div className="operational-alerts">
-                    {safeLowStockItems.slice(0, 3).map((item, index) => (
-                      <div
-                        className="operational-alert"
-                        key={`${item.id || item.name}-${index}`}
-                      >
-                        <ShieldAlert size={16} />
-                        <div>
-                          <p>Tồn kho thấp</p>
-                          <span>
-                            {item.name || "Chưa cập nhật tên mặt hàng"} — Còn
-                            lại: {item.onHand ?? 0}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                    {safeLowStockItems.length > 3 ? (
-                      <p className="operational-alerts__more">
-                        Còn {safeLowStockItems.length - 3} cảnh báo khác trong
-                        kho.
-                      </p>
-                    ) : null}
-                  </div>
-                ) : (
-                  <div className="dashboard-empty dashboard-empty--compact dashboard-empty--healthy">
-                    <h4>Vận hành ổn định</h4>
-                    <p>Không có cảnh báo quan trọng.</p>
-                  </div>
-                )}
-              </article>
-
               <article className="dashboard-card dashboard-card--side dashboard-card--revenue">
                 <div className="dashboard-card__head dashboard-card__head--compact">
                   <div>
