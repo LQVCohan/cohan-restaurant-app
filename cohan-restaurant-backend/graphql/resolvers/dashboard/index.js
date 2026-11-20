@@ -14,7 +14,6 @@ import {
   requireRestaurantAccess,
 } from "../../guards.js";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_RANGE_DAYS = 7;
 const MAX_RECENT_ORDERS = 6;
 const MAX_PENDING_ITEMS = 8;
@@ -41,14 +40,20 @@ const endOfDay = (value) => {
   return date;
 };
 
+const shiftDays = (value, offset) => {
+  const date = new Date(value);
+  date.setDate(date.getDate() + offset);
+  return date;
+};
+
 const getRangeDays = (range) => (String(range).toLowerCase() === "month" ? 30 : DEFAULT_RANGE_DAYS);
 
 const getDashboardRanges = (range, now = new Date()) => {
   const days = getRangeDays(range);
   const currentEnd = endOfDay(now);
-  const currentStart = startOfDay(new Date(currentEnd.getTime() - (days - 1) * DAY_MS));
-  const previousEnd = endOfDay(new Date(currentStart.getTime() - DAY_MS));
-  const previousStart = startOfDay(new Date(previousEnd.getTime() - (days - 1) * DAY_MS));
+  const currentStart = startOfDay(shiftDays(currentEnd, 1 - days));
+  const previousEnd = endOfDay(shiftDays(currentStart, -1));
+  const previousStart = startOfDay(shiftDays(currentStart, -days));
 
   return {
     days,
@@ -112,7 +117,7 @@ const buildStatusCounts = (orders) => {
   return counts;
 };
 
-const buildTrend = ({ currentOrders, previousOrders, days, mode }) => {
+const buildTrend = ({ currentOrders, previousOrders, currentStart, previousStart, days, mode }) => {
   const currentMap = new Map();
   const previousMap = new Map();
 
@@ -126,18 +131,9 @@ const buildTrend = ({ currentOrders, previousOrders, days, mode }) => {
   currentOrders.forEach((order) => accumulate(currentMap, order));
   previousOrders.forEach((order) => accumulate(previousMap, order));
 
-  const currentKeys = Array.from(currentMap.keys()).sort();
-  const previousKeys = Array.from(previousMap.keys()).sort();
-  const fallbackCurrentStart = currentOrders.length
-    ? startOfDay(currentOrders.reduce((min, order) => {
-        const date = new Date(order.createdAt);
-        return date < min ? date : min;
-      }, new Date(currentOrders[0].createdAt)))
-    : startOfDay(new Date(Date.now() - (days - 1) * DAY_MS));
-
   return Array.from({ length: days }, (_, index) => {
-    const key = currentKeys[index] || toDateKey(new Date(fallbackCurrentStart.getTime() + index * DAY_MS));
-    const previousKey = previousKeys[index] || "";
+    const key = toDateKey(shiftDays(currentStart, index));
+    const previousKey = toDateKey(shiftDays(previousStart, index));
     return {
       key,
       current: Number(currentMap.get(key) || 0),
@@ -366,12 +362,16 @@ const managerDashboard = async (_, { restaurantId, range = "week" }, ctx) => {
     revenueTrend: buildTrend({
       currentOrders,
       previousOrders,
+      currentStart,
+      previousStart,
       days,
       mode: "revenue",
     }),
     orderTrend: buildTrend({
       currentOrders,
       previousOrders,
+      currentStart,
+      previousStart,
       days,
       mode: "orders",
     }),

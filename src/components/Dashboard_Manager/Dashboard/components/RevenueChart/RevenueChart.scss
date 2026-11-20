@@ -6,6 +6,7 @@
 .revenue-chart-widget .widget-header {
   display: flex;
   justify-content: space-between;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 10px;
 }

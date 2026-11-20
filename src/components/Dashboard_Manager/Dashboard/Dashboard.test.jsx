@@ -200,6 +200,25 @@ describe("Dashboard manager command center", () => {
     expect(screen.getByText("Cơm gà")).toBeInTheDocument();
   });
 
+  it("groups revenue and recent orders under the selected period", () => {
+    renderDashboard({
+      range: "month",
+      revenueTrend: [
+        { key: "2026-05-25", current: 0, previous: 0 },
+        { key: "2026-06-23", current: 0, previous: 0 },
+      ],
+    });
+
+    const period = screen.getByRole("region", { name: "Doanh thu và đơn hàng" });
+    expect(within(period).getByText("30 ngày gần nhất")).toBeVisible();
+    expect(within(period).getByText("25/05/2026 – 23/06/2026")).toBeVisible();
+    expect(within(period).getByRole("heading", { name: "Xu hướng doanh thu" })).toBeVisible();
+    expect(within(period).getByRole("heading", { name: "Đơn hàng gần đây" })).toBeVisible();
+    expect(period.compareDocumentPosition(
+      screen.getByRole("heading", { name: "Món bán chạy" }),
+    ) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("shows meaningful empty revenue copy instead of fake trend data when revenueTrend is empty", () => {
     renderDashboard({ revenueTrend: [] });
 

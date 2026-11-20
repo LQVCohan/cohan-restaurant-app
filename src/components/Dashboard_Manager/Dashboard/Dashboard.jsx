@@ -14,7 +14,7 @@ import { useDashboard } from "../../../hooks/useDashboard";
 import { useDashboardActionQueue } from "../../../hooks/useDashboardActionQueue";
 import useSocketOrder from "../../../hooks/useSocketOrder";
 import StatsGrid from "./components/StatsGrid";
-import RevenueChart from "./components/RevenueChart";
+import RevenueChart, { formatChartDate } from "./components/RevenueChart";
 import RecentOrders from "./components/RecentOrders";
 import TopDishes from "./components/TopDishes";
 import DashboardActionQueue from "./components/DashboardActionQueue";
@@ -79,13 +79,18 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
     : [];
 
   const hasRevenue = safeRevenueTrend.some(
-    (item) => Number(item?.current || 0) > 0,
+    (item) => Number(item?.current || 0) > 0 || Number(item?.previous || 0) > 0,
   );
   const greetingText = useMemo(
     () => `Xin chào, ${user?.fullName || user?.name || "Quản lý"}`,
     [user],
   );
   const rangeLabel = RANGE_LABELS[range] || RANGE_LABELS.week;
+  const firstPeriodDay = safeRevenueTrend[0]?.key;
+  const lastPeriodDay = safeRevenueTrend.at(-1)?.key;
+  const periodDates = !loading && !error && firstPeriodDay && lastPeriodDay
+    ? `${formatChartDate(firstPeriodDay)} – ${formatChartDate(lastPeriodDay)}`
+    : "";
   const alertsCount = safeLowStockItems.length;
   const resourceCounts = {
     customers: Number(stats?.customers || 0),
@@ -392,6 +397,91 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
             </div>
           </section>
 
+          <section className="dashboard-period" aria-labelledby="dashboard-period-title">
+            <div className="dashboard-period__heading">
+              <h2 id="dashboard-period-title">Doanh thu và đơn hàng</h2>
+              <p className="dashboard-period__range">
+                {rangeLabel}
+                {periodDates ? <span>{periodDates}</span> : null}
+              </p>
+            </div>
+            {error ? (
+              <p className="dashboard-empty dashboard-empty--compact dashboard-empty--error">
+                Không thể tải doanh thu và đơn hàng trong kỳ này.
+              </p>
+            ) : (
+              <div className="dashboard-period__grid">
+                <article className="dashboard-card dashboard-card--revenue">
+                  <div className="dashboard-card__head dashboard-card__head--compact">
+                    <h3>Xu hướng doanh thu</h3>
+                  </div>
+
+                  {loading ? (
+                    <div
+                      className="revenue-compact-empty"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <div className="revenue-compact-empty__icon">
+                        <ClipboardList size={16} />
+                      </div>
+                      <div
+                        className="revenue-compact-skeleton"
+                        aria-hidden="true"
+                      >
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                      <p className="revenue-compact-empty__text">
+                        Đang tải dữ liệu doanh thu...
+                      </p>
+                    </div>
+                  ) : hasRevenue ? (
+                    <RevenueChart
+                      data={safeRevenueTrend}
+                      loading={loading}
+                      compact
+                    />
+                  ) : (
+                    <div
+                      className="revenue-compact-empty revenue-compact-empty--simple"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <div className="revenue-compact-empty__icon">
+                        <TrendingUp size={16} />
+                      </div>
+                      <p className="revenue-compact-empty__text">
+                        Chưa có doanh thu trong khoảng thời gian này.
+                      </p>
+                    </div>
+                  )}
+                </article>
+
+                <article className="dashboard-card dashboard-card--primary-orders dashboard-card--recent-orders">
+                  <div className="dashboard-card__head dashboard-card__head--compact">
+                    <div>
+                      <h3>Đơn hàng gần đây</h3>
+                      <p>Các đơn mới nhất trong kỳ đã chọn.</p>
+                    </div>
+                    {!loading && safeRecentOrders.length > 0 ? (
+                      <span className="orders-pill">
+                        {Math.min(safeRecentOrders.length, 6)} đơn gần nhất
+                      </span>
+                    ) : null}
+                  </div>
+                  <RecentOrders
+                    orders={safeRecentOrders}
+                    loading={loading}
+                    variant="bare"
+                    onOpenPOS={handleSwitchToPOS}
+                  />
+                </article>
+              </div>
+            )}
+          </section>
+
           <section
             className="dashboard-system-overview"
             aria-labelledby="dashboard-system-overview-title"
@@ -409,28 +499,28 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
             className="dashboard-operations-grid"
             aria-label="Khu vực vận hành chính"
           >
-            <div className="dashboard-main-stack">
-              <article className="dashboard-card dashboard-card--primary-orders dashboard-card--recent-orders">
-                <div className="dashboard-card__head dashboard-card__head--compact">
-                  <div>
-                    <h3>Đơn hàng gần đây</h3>
-                    <p>Các đơn hàng mới nhất và trạng thái xử lý.</p>
-                  </div>
-                  {safeRecentOrders.length > 0 ? (
-                    <span className="orders-pill">
-                      {Math.min(safeRecentOrders.length, 6)} đơn gần nhất
-                    </span>
-                  ) : null}
+            <aside
+              className="dashboard-side-stack"
+              aria-label="Nhân viên trong ca"
+            >
+              {staffRoster ? (
+                <div className="dashboard-staff-roster-slot">
+                  {staffRoster}
                 </div>
-                <RecentOrders
-                  orders={safeRecentOrders}
-                  loading={loading}
-                  variant="bare"
-                  onOpenPOS={handleSwitchToPOS}
-                />
-              </article>
-
+              ) : null}
+            </aside>
+            <div className="dashboard-main-stack">
               <div className="dashboard-main-secondary">
+                <article className="dashboard-card dashboard-card--dense dashboard-card--performance-summary">
+                  <ManagerPerformancePanel
+                    restaurantId={effectiveRestaurantId}
+                    restaurantLoading={loading}
+                    summaryOnly
+                    showViewAll
+                    compactWhenHealthy
+                  />
+                </article>
+
                 <article className="dashboard-card dashboard-card--dense">
                   <div className="dashboard-card__head dashboard-card__head--compact">
                     <div>
@@ -446,79 +536,8 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
                     hasCompletedOrders={hasCompletedOrders}
                   />
                 </article>
-
-                <article className="dashboard-card dashboard-card--dense dashboard-card--performance-summary">
-                  <ManagerPerformancePanel
-                    restaurantId={effectiveRestaurantId}
-                    restaurantLoading={loading}
-                    summaryOnly
-                    showViewAll
-                    compactWhenHealthy
-                  />
-                </article>
               </div>
             </div>
-
-            <aside
-              className="dashboard-side-stack"
-              aria-label="Trạng thái vận hành và cảnh báo"
-            >
-              {staffRoster ? (
-                <div className="dashboard-staff-roster-slot">
-                  {staffRoster}
-                </div>
-              ) : null}
-              <article className="dashboard-card dashboard-card--side dashboard-card--revenue">
-                <div className="dashboard-card__head dashboard-card__head--compact">
-                  <div>
-                    <h3>Xu hướng doanh thu</h3>
-                    <p>{rangeLabel}</p>
-                  </div>
-                </div>
-
-                {loading ? (
-                  <div
-                    className="revenue-compact-empty"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    <div className="revenue-compact-empty__icon">
-                      <ClipboardList size={16} />
-                    </div>
-                    <div
-                      className="revenue-compact-skeleton"
-                      aria-hidden="true"
-                    >
-                      <span />
-                      <span />
-                      <span />
-                    </div>
-                    <p className="revenue-compact-empty__text">
-                      Đang tải dữ liệu doanh thu...
-                    </p>
-                  </div>
-                ) : hasRevenue ? (
-                  <RevenueChart
-                    data={safeRevenueTrend}
-                    loading={loading}
-                    compact
-                  />
-                ) : (
-                  <div
-                    className="revenue-compact-empty revenue-compact-empty--simple"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    <div className="revenue-compact-empty__icon">
-                      <TrendingUp size={16} />
-                    </div>
-                    <p className="revenue-compact-empty__text">
-                      Chưa có doanh thu trong khoảng thời gian này.
-                    </p>
-                  </div>
-                )}
-              </article>
-            </aside>
           </section>
 
           {isResourceSetupEmpty ? (

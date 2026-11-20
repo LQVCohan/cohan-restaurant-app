@@ -1,1 +1,1 @@
-export { default } from "./RevenueChart";
+export { default, formatChartDate } from "./RevenueChart";

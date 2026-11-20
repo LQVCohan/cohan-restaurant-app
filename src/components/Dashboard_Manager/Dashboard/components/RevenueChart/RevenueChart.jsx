@@ -6,6 +6,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from "recharts";
 import { ArrowUpRight, ArrowDownRight, BarChart3 } from "lucide-react";
@@ -52,7 +53,6 @@ const RevenueChartSkeleton = () => (
 
 const RevenueChart = ({ data = [], loading, compact = false }) => {
   const safeData = Array.isArray(data) ? data : [];
-  const hasRevenue = safeData.some((item) => Number(item?.current || 0) > 0);
 
   const summary = useMemo(() => {
     const current = safeData.reduce((sum, x) => sum + Number(x.current || 0), 0);
@@ -64,7 +64,7 @@ const RevenueChart = ({ data = [], loading, compact = false }) => {
 
   if (loading) return <RevenueChartSkeleton />;
 
-  if (!hasRevenue) {
+  if (summary.current <= 0 && !summary.hasComparison) {
     return (
       <div className="revenue-chart-empty" role="status" aria-live="polite">
         <span className="revenue-chart-empty__icon" aria-hidden="true">
@@ -80,13 +80,13 @@ const RevenueChart = ({ data = [], loading, compact = false }) => {
     <div className={`revenue-chart-widget ${compact ? "revenue-chart-widget--compact" : ""}`}>
       <div className="widget-header">
         <div>
-          <h3 className="widget-title">Tổng doanh thu</h3>
+          <p className="widget-title">Tổng doanh thu</p>
           <p className="total-amount">{formatCurrency(summary.current)}</p>
         </div>
         {summary.hasComparison ? (
           <div className={`growth-badge ${summary.isPositive ? "positive" : "negative"}`}>
             <span aria-hidden="true">{summary.isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}</span>
-            <span>{Math.abs(summary.growth).toFixed(1)}%</span>
+            <span>{summary.growth > 0 ? "+" : ""}{summary.growth.toFixed(1)}% so với kỳ trước</span>
           </div>
         ) : (
           <span className="comparison-note">Chưa có kỳ đối chiếu</span>
@@ -100,7 +100,8 @@ const RevenueChart = ({ data = [], loading, compact = false }) => {
             dataKey="key"
             axisLine={false}
             tickLine={false}
-            tickFormatter={formatChartDate}
+            tickFormatter={(value) => formatChartDate(value).replace(/\/\d{4}$/, "")}
+            minTickGap={20}
             tick={{ fill: "#78716c", fontSize: 12 }}
           />
           <YAxis axisLine={false} tickLine={false} tickFormatter={formatCompactVND} width={54} tick={{ fill: "#78716c", fontSize: 12 }} />
@@ -109,12 +110,14 @@ const RevenueChart = ({ data = [], loading, compact = false }) => {
             labelFormatter={(label) => `Ngày ${formatChartDate(label)}`}
             labelStyle={{ color: "#1f2933" }}
           />
+          {summary.hasComparison ? <Legend iconType="plainline" /> : null}
           {summary.hasComparison ? (
             <Area
               type="monotone"
               dataKey="previous"
               name="Kỳ trước"
-              stroke="#a8a29e"
+              stroke="#78716c"
+              strokeDasharray="5 4"
               fillOpacity={0}
               strokeWidth={2}
             />
