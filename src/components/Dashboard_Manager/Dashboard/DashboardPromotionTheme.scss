@@ -22,7 +22,6 @@
 }
 
 .dashboard-compact-header,
-.dashboard-filterbar,
 .dashboard-system-overview,
 .dashboard-card,
 .stat-card,
@@ -42,10 +41,6 @@
   background:
     radial-gradient(circle at 100% 0%, rgba(31, 106, 96, 0.11), transparent 18rem),
     rgba(255, 253, 249, 0.84);
-}
-
-.dashboard-compact-header::before {
-  background: radial-gradient(circle, rgba(31, 106, 96, 0.12), transparent 68%);
 }
 
 .dashboard-btn--primary,

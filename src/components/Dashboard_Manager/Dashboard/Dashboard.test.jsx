@@ -125,6 +125,41 @@ describe("Dashboard manager command center", () => {
     expect(screen.queryByText("#raw-order-id")).not.toBeInTheDocument();
   });
 
+  it("groups branch, period, refresh status, and actions in one toolbar", () => {
+    const handleRestaurantChange = vi.fn();
+    const setRange = vi.fn();
+    const handleGenerateReport = vi.fn();
+    const handleSwitchToPOS = vi.fn();
+    renderDashboard({
+      restaurants: [...baseDashboard.restaurants, { id: "res-2", name: "Cohan 2" }],
+      handleRestaurantChange,
+      setRange,
+      handleGenerateReport,
+      handleSwitchToPOS,
+    });
+
+    const tools = within(screen.getByRole("group", { name: "Công cụ tổng quan" }));
+    expect(tools.getByText("Tự cập nhật mỗi 30 giây")).toBeVisible();
+    fireEvent.change(tools.getByLabelText("Chọn nhà hàng"), { target: { value: "res-2" } });
+    fireEvent.change(tools.getByLabelText("Chọn khoảng thời gian"), { target: { value: "month" } });
+    fireEvent.click(tools.getByRole("button", { name: "Làm mới" }));
+    fireEvent.click(tools.getByRole("button", { name: "Mở bán hàng" }));
+
+    expect(handleRestaurantChange).toHaveBeenCalledWith("res-2");
+    expect(setRange).toHaveBeenCalledWith("month");
+    expect(handleGenerateReport).toHaveBeenCalledOnce();
+    expect(handleSwitchToPOS).toHaveBeenCalledOnce();
+  });
+
+  it("shows the waiting state when there is no branch", () => {
+    renderDashboard({ restaurants: [], selectedRestaurant: null, selectedRestaurantId: "" });
+
+    const tools = within(screen.getByRole("group", { name: "Công cụ tổng quan" }));
+    expect(tools.getByText("Chờ chi nhánh")).toBeVisible();
+    expect(tools.getByRole("button", { name: "Làm mới" })).toBeDisabled();
+    expect(tools.getByRole("button", { name: "Mở bán hàng" })).toBeDisabled();
+  });
+
   it("groups the queues and stock alerts before the statistics", () => {
     renderDashboard();
 
@@ -239,6 +274,7 @@ describe("Dashboard manager command center", () => {
       screen.getByText("Đang tải dữ liệu doanh thu..."),
     ).toBeInTheDocument();
     expect(screen.getByText("Đang tải dữ liệu đơn hàng")).toBeInTheDocument();
+    expect(screen.getByText("Đang cập nhật")).toBeVisible();
   });
 
   it("shows restaurant loading copy before empty assigned state", () => {
@@ -264,5 +300,6 @@ describe("Dashboard manager command center", () => {
       "Không thể tải dữ liệu tổng quan",
     );
     expect(screen.getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
+    expect(screen.getByText("Lỗi tải dữ liệu", { exact: true })).toBeVisible();
   });
 });

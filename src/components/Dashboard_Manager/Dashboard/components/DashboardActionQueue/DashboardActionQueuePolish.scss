@@ -17,12 +17,10 @@
   overflow-x: clip;
 }
 
-.dashboard-compact-header > div:first-child,
 .dashboard-card__head > div:first-child {
   min-width: 0;
 }
 
-.dashboard-compact-header__actions,
 .dashboard-card__head > :last-child,
 .queue-count,
 .orders-pill,
@@ -328,16 +326,6 @@
 @media (max-width: 1280px) {
   .dashboard-card.dashboard-card--action-queue .dashboard-queue-sections {
     grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 900px) {
-  .dashboard-filterbar__context {
-    width: 100%;
-    margin-left: 0;
-    padding: 10px 0 0;
-    border-left: 0;
-    border-top: 1px solid var(--dash-border);
   }
 }
 

@@ -104,6 +104,15 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
     selectedRestaurantId || selectedRestaurant?.id,
   );
   const showNoRestaurantState = !restaurantsLoading && !hasRestaurants;
+  const updateStatus = restaurantsLoading
+    ? "Đang tải chi nhánh"
+    : !hasSelectedRestaurant
+      ? "Chờ chi nhánh"
+      : loading
+        ? "Đang cập nhật"
+        : error
+          ? "Lỗi tải dữ liệu"
+          : "Tự cập nhật mỗi 30 giây";
   const hasRestaurantContext = hasSelectedRestaurant || hasRestaurants;
   const isResourceSetupEmpty =
     !loading &&
@@ -150,94 +159,87 @@ const Dashboard = ({ staffRoster = null, canOpenInventory = false }) => {
         <div>
           <p className="dashboard-compact-header__greeting">{greetingText}</p>
           <h1 id="dashboard-title">Tổng quan quản lý</h1>
-          <p className="dashboard-compact-header__subtitle">
-            Theo dõi nhanh doanh thu, đơn hàng, tồn kho và hiệu suất trong ca.
-          </p>
         </div>
 
-        <div className="dashboard-compact-header__actions">
-          <button
-            type="button"
-            className="dashboard-btn dashboard-btn--ghost"
-            onClick={() => handleGenerateReport?.()}
-            disabled={loading || showNoRestaurantState}
-          >
-            <RefreshCw size={16} className={loading ? "spin" : ""} />
-            <span>Làm mới</span>
-          </button>
-          <button
-            type="button"
-            className="dashboard-btn dashboard-btn--primary"
-            onClick={() => handleSwitchToPOS?.()}
-            disabled={
-              !hasSelectedRestaurant ||
-              typeof handleSwitchToPOS !== "function"
-            }
-          >
-            <Monitor size={16} />
-            <span>Mở bán hàng</span>
-          </button>
-        </div>
-      </section>
+        <div className="dashboard-toolbar" role="group" aria-label="Công cụ tổng quan">
+          <div className="dashboard-toolbar__filters">
+            <label className="dashboard-field">
+              <span>Nhà hàng</span>
+              <span className="dashboard-field__control">
+                <Store size={15} aria-hidden="true" />
+                <select
+                  aria-label="Chọn nhà hàng"
+                  value={selectedRestaurantId || ""}
+                  onChange={(event) =>
+                    handleRestaurantChange?.(event.target.value)
+                  }
+                  disabled={loading || restaurantsLoading || !hasRestaurants}
+                >
+                  {hasRestaurants ? (
+                    (restaurants || []).map((restaurant) => (
+                      <option key={restaurant.id} value={restaurant.id}>
+                        {restaurant.name}
+                      </option>
+                    ))
+                  ) : restaurantsLoading ? (
+                    <option value="" disabled>
+                      Đang tải nhà hàng...
+                    </option>
+                  ) : (
+                    <option value="" disabled>
+                      Chưa có chi nhánh
+                    </option>
+                  )}
+                </select>
+              </span>
+            </label>
 
-      <section
-        className="dashboard-filterbar"
-        aria-label="Bộ lọc tổng quan vận hành"
-      >
-        <label className="dashboard-field">
-          <span>Nhà hàng</span>
-          <div className="dashboard-field__control">
-            <Store size={15} />
-            <select
-              aria-label="Chọn nhà hàng"
-              value={selectedRestaurantId || ""}
-              onChange={(event) =>
-                handleRestaurantChange?.(event.target.value)
+            <label className="dashboard-field">
+              <span>Khoảng thời gian</span>
+              <span className="dashboard-field__control">
+                <CalendarRange size={15} aria-hidden="true" />
+                <select
+                  aria-label="Chọn khoảng thời gian"
+                  value={range}
+                  onChange={(event) => setRange?.(event.target.value)}
+                  disabled={!hasSelectedRestaurant}
+                >
+                  <option value="week">{RANGE_LABELS.week}</option>
+                  <option value="month">{RANGE_LABELS.month}</option>
+                </select>
+              </span>
+            </label>
+          </div>
+
+          <div className="dashboard-toolbar__status">
+            <span>Trạng thái dữ liệu</span>
+            <strong>{updateStatus}</strong>
+          </div>
+
+          <div className="dashboard-toolbar__actions">
+            <button
+              type="button"
+              className="dashboard-btn dashboard-btn--ghost"
+              onClick={() => handleGenerateReport?.()}
+              disabled={loading || !hasSelectedRestaurant}
+            >
+              <RefreshCw size={16} aria-hidden="true" />
+              <span>Làm mới</span>
+            </button>
+            <button
+              type="button"
+              className="dashboard-btn dashboard-btn--primary"
+              onClick={() => handleSwitchToPOS?.()}
+              disabled={
+                restaurantsLoading ||
+                !hasSelectedRestaurant ||
+                typeof handleSwitchToPOS !== "function"
               }
-              disabled={loading || restaurantsLoading || !hasRestaurants}
             >
-              {hasRestaurants ? (
-                (restaurants || []).map((restaurant) => (
-                  <option key={restaurant.id} value={restaurant.id}>
-                    {restaurant.name}
-                  </option>
-                ))
-              ) : restaurantsLoading ? (
-                <option value="" disabled>
-                  Đang tải nhà hàng...
-                </option>
-              ) : (
-                <option value="" disabled>
-                  Chưa có chi nhánh khả dụng
-                </option>
-              )}
-            </select>
+              <Monitor size={16} aria-hidden="true" />
+              <span>Mở bán hàng</span>
+            </button>
           </div>
-        </label>
-
-        <label className="dashboard-field">
-          <span>Khoảng thời gian</span>
-          <div className="dashboard-field__control">
-            <CalendarRange size={15} />
-            <select
-              aria-label="Chọn khoảng thời gian"
-              value={range}
-              onChange={(event) => setRange?.(event.target.value)}
-              disabled={!hasSelectedRestaurant}
-            >
-              <option value="week">7 ngày gần nhất</option>
-              <option value="month">30 ngày gần nhất</option>
-            </select>
-          </div>
-        </label>
-
-        <div className="dashboard-filterbar__context" aria-live="polite">
-          <span>
-            {hasSelectedRestaurant ? "Tự động cập nhật" : "Trạng thái dữ liệu"}
-          </span>
-          <strong>
-            {hasSelectedRestaurant ? "Mỗi 30 giây" : "Chờ chi nhánh"}
-          </strong>
         </div>
       </section>
 
