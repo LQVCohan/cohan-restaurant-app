@@ -23,6 +23,8 @@ import "./OrderModal.scss";
 import { formatDiscountReasonLabel } from "@/utils/discountDisplay";
 import { getOrderLineDisplay } from "@/utils/orderLineDisplay";
 import OrderTrackingQrCard from "./OrderTrackingQrCard";
+import { getOrderCustomerName, getOrderTypeLabel } from "../orderIdentity";
+import { minutesSince } from "../orderWaitTime";
 
 const formatCurrency = (amount) => {
   const n = Number(amount) || 0;
@@ -35,11 +37,6 @@ const toSafeDate = (v) => {
   return isNaN(d.getTime()) ? null : d;
 };
 
-const getMinutesElapsed = (dateStr) => {
-  const start = toSafeDate(dateStr);
-  if (!start) return 0;
-  return Math.floor((Date.now() - start.getTime()) / 60000);
-};
 const ORDER_STATUS_LABELS = {
   draft: "Đơn nháp",
   pending: "Đơn mới tạo",
@@ -62,6 +59,7 @@ const SYSTEM_NOTE_LABELS = {
 const PAYMENT_STATUS_LABELS = {
   pending: "Chưa thanh toán",
   paid: "Đã thanh toán",
+  payment_requested: "Khách gọi thanh toán",
   partially_paid: "Thanh toán một phần",
   failed: "Thanh toán không thành công",
   refunded: "Đã hoàn tiền",
@@ -245,7 +243,13 @@ const OrderItemRow = React.memo(
                 +{formatCurrency(item.modifiersPrice)}
               </span>
             )}
-            {item.method && <span className="metaTag">{item.method}</span>}
+            {item.modifiers?.map((modifier, index) => {
+              const name = modifier.optionName || modifier.name;
+              return name ? <span key={index} className="metaTag mod">{name}</span> : null;
+            })}
+            {(item.method || item.servingVariant?.name) && (
+              <span className="metaTag">{item.method || item.servingVariant.name}</span>
+            )}
             {item.unit && <span className="metaTag gray">{item.unit}</span>}
           </div>
           {item.note && (
@@ -393,6 +397,9 @@ const OrderModal = ({
 }) => {
   const [savingMap, setSavingMap] = useState({});
   const completingRef = useRef(false);
+  const closeButtonRef = useRef(null);
+  const modalRef = useRef(null);
+  const actionDialogRef = useRef(null);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [actionDialog, setActionDialog] = useState(null);
   const [actionSubmitting, setActionSubmitting] = useState(false);
@@ -486,9 +493,9 @@ const OrderModal = ({
     };
   }, [order?.totals, items]);
   useEffect(() => {
-    setElapsedMinutes(getMinutesElapsed(order?.createdAt));
+    setElapsedMinutes(minutesSince(order?.createdAt));
     const interval = setInterval(() => {
-      setElapsedMinutes(getMinutesElapsed(order?.createdAt));
+      setElapsedMinutes(minutesSince(order?.createdAt));
     }, 60000);
     return () => clearInterval(interval);
   }, [order?.createdAt]);
@@ -507,6 +514,23 @@ const OrderModal = ({
     } else {
       setActionForm((prev) => ({ ...prev, note: "" }));
     }
+  }, [actionDialog]);
+
+  useEffect(() => {
+    const opener = document.activeElement;
+    closeButtonRef.current?.focus();
+    return () => {
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true });
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!actionDialog) return;
+    const opener = document.activeElement;
+    actionDialogRef.current?.focus();
+    return () => {
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true });
+    };
   }, [actionDialog]);
 
   const handleClose = useCallback(() => onClose?.(), [onClose]);
@@ -562,6 +586,22 @@ const OrderModal = ({
 
   useEffect(() => {
     const handleKeyDown = (event) => {
+      if (event.key === "Tab") {
+        const dialog = actionDialogRef.current || modalRef.current;
+        if (!dialog) return;
+        const controls = [...dialog.querySelectorAll(
+          'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], summary',
+        )].filter((element) => element.getClientRects().length > 0);
+        const first = controls[0];
+        const last = controls.at(-1);
+        const active = document.activeElement;
+        if (!first || !dialog.contains(active) || (event.shiftKey && [dialog, first].includes(active)) ||
+          (!event.shiftKey && active === last)) {
+          event.preventDefault();
+          (event.shiftKey ? last || dialog : first || dialog).focus();
+        }
+        return;
+      }
       if (event.key !== "Escape") return;
       if (actionDialog) {
         closeActionDialog();
@@ -655,11 +695,24 @@ const OrderModal = ({
     }
   };
 
+  const orderTypeLabel = getOrderTypeLabel(order?.orderType);
+  const tableCode = order?.orderType === "dine_in" ? order?.tableCode : "";
+  const phone = order?.shipping?.phone || order?.customerInfo?.phone || order?.user?.phone;
+  const paymentStatus = order?.payment?.status || order?.orderPaymentStatus;
+  const paymentLabel = PAYMENT_STATUS_LABELS[paymentStatus] || "Chưa thanh toán";
+  const paymentMethod = PAYMENT_METHOD_LABELS[order?.payment?.method];
+  const shipping = order?.shipping;
+  const deliveryTime = shipping?.deliveryTime ||
+    [shipping?.scheduleDate, shipping?.scheduleTime].filter(Boolean).join(" ");
+  const hasDeliveryInfo = shipping?.fullName || shipping?.address || deliveryTime || order?.clientMeta?.channel;
+
   return createPortal(
     <div className="om-overlay" onClick={handleClose}>
       <div
         className="om-modal-box"
         role="dialog"
+        ref={modalRef}
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby="order-detail-title"
         onClick={(e) => e.stopPropagation()}
@@ -677,28 +730,23 @@ const OrderModal = ({
             </div>
             <div className="om-header__meta">
               <span className="meta-item">
-                <Clock size={14} /> {elapsedMinutes} phút trước
+                {renderOrderTypeIcon(order?.orderType)} {orderTypeLabel}
+                {tableCode && ` · ${tableCode}`}
               </span>
-              <span className="meta-item">
-                {renderOrderTypeIcon(order?.orderType)}{" "}
-                {order?.tableCode || "Mang về"}
-              </span>
+              {toSafeDate(order?.createdAt) && (
+                <span className="meta-item">
+                  <Clock size={14} aria-hidden="true" />
+                  {elapsedMinutes > 0 ? `${elapsedMinutes} phút trước` : "Vừa tạo"}
+                </span>
+              )}
             </div>
           </div>
           <div className="om-header__actions">
             <button
               type="button"
               className="om-btn ghost icon-only"
-              onClick={() => onCreateTemporaryBill?.(order)}
-              title="In phiếu"
-              aria-label="In phiếu tạm tính"
-            >
-              <Printer size={20} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="om-btn ghost icon-only"
               onClick={handleClose}
+              ref={closeButtonRef}
               title="Đóng"
               aria-label="Đóng chi tiết đơn hàng"
             >
@@ -707,123 +755,53 @@ const OrderModal = ({
           </div>
         </header>
 
-        <div className="om-progress">
-          <div className="om-progress__track">
-            <div
-              className="om-progress__fill"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-          <div className="om-progress__text">
-            Hoàn thành: <b>{progress}%</b>
-          </div>
-        </div>
-
         <div className="om-body custom-scrollbar">
-          <section className="om-section info-card">
-            <div className="info-row">
-              <label>Khách hàng:</label>
-              <strong>{order?.user?.fullName || "Khách lẻ"}</strong>
-            </div>
-            <div className="info-row">
-              <label>Thanh toán:</label>
-              <strong>
-                {PAYMENT_STATUS_LABELS[order?.payment?.status] || "Chưa thanh toán"}
-                {" · "}
-                {PAYMENT_METHOD_LABELS[order?.payment?.method] || "Tiền mặt"}
-              </strong>
-            </div>
-            {(order?.shipping?.fullName || order?.shipping?.phone) && (
-              <div className="info-row">
-                <label>Giao hàng:</label>
-                <strong>
-                  {order?.shipping?.fullName || "N/A"}{" "}
-                  {order?.shipping?.phone ? `(${order.shipping.phone})` : ""}
-                  {order?.shipping?.address && (
-                    <div className="info-row">
-                      <label>Địa chỉ:</label>
-                      <strong>{order.shipping.address}</strong>
-                    </div>
-                  )}
-                  {(order?.shipping?.deliveryTime ||
-                    order?.shipping?.scheduleDate ||
-                    order?.shipping?.scheduleTime) && (
-                    <div className="info-row">
-                      <label>Thời gian:</label>
-                      <strong>
-                        {order.shipping.deliveryTime ||
-                          [
-                            order.shipping.scheduleDate,
-                            order.shipping.scheduleTime,
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                      </strong>
-                    </div>
-                  )}
-                  {order?.clientMeta?.channel && (
-                    <div className="info-row">
-                      <label>Kênh nhận:</label>
-                      <strong>{order.clientMeta.channel}</strong>
-                    </div>
-                  )}
-                </strong>
+          <section className="om-section info-card" aria-label="Thông tin đơn">
+            <dl className="om-detail-facts">
+              <div>
+                <dt>Khách hàng</dt>
+                <dd>{getOrderCustomerName(order)}</dd>
               </div>
+              {phone && <div><dt>Điện thoại</dt><dd>{phone}</dd></div>}
+              <div>
+                <dt>Thanh toán</dt>
+                <dd>{paymentLabel}{paymentMethod && ` · ${paymentMethod}`}</dd>
+              </div>
+            </dl>
+            {hasDeliveryInfo && (
+              <dl className="om-detail-facts om-detail-facts--delivery">
+                {shipping?.fullName && <div><dt>Người nhận</dt><dd>{shipping.fullName}</dd></div>}
+                {shipping?.address && <div><dt>Địa chỉ giao</dt><dd>{shipping.address}</dd></div>}
+                {deliveryTime && <div><dt>Thời gian giao</dt><dd>{deliveryTime}</dd></div>}
+                {order?.clientMeta?.channel && <div><dt>Kênh nhận</dt><dd>{order.clientMeta.channel}</dd></div>}
+              </dl>
             )}
             {order?.note && (
               <div className="order-note-box">
-                <Utensils size={16} /> <span className="text">{order.note}</span>
+                <Utensils size={16} aria-hidden="true" />
+                <span className="text"><strong>Ghi chú đơn</strong> {order.note}</span>
               </div>
             )}
           </section>
-          <section className="om-section info-card">
-            <OrderTrackingQrCard orderId={order?.actionOrderId || order?.id || order?._id} />
-          </section>
-
-          {Array.isArray(order?.statusTimeline) &&
-            order.statusTimeline.length > 0 && (
-              <section className="om-section">
-                <div className="section-header">
-                  <h3>Lịch sử xử lý</h3>
-                </div>
-                <div className="items-grid">
-                  {order.statusTimeline
-                    .slice()
-                    .reverse()
-                    .map((s, idx) => (
-                      <div key={`${s.status}-${idx}`} className="itemCard">
-                        <div className="itemCard__info">
-                          <div className="itemCard__header">
-                            <span className="itemName">
-                              {getTimelineLabel(s)}
-                            </span>
-                          </div>
-                          <div className="itemCard__meta">
-                            <span className="metaTag">
-                              {toSafeDate(s.at)?.toLocaleString("vi-VN") || "—"}
-                            </span>
-                          </div>
-                          {s.note && !SYSTEM_NOTE_LABELS[s.note] && (
-                            <div className="itemCard__note">
-                              <span>Ghi chú:</span> {s.note}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </section>
-            )}
 
           <section className="om-section">
             <div className="section-header">
               <h3>Danh sách món ({items.length})</h3>
-              {progress < 100 && order?.currentStatus !== "cancelled" && (
+              {items.length > 0 && progress < 100 && order?.currentStatus !== "cancelled" && (
                 <button className="text-link-btn" onClick={handleServeAll}>
                   Trả hết món
                 </button>
               )}
             </div>
+            {items.length > 0 && (
+              <div className="om-progress" aria-label={`Tiến độ trả món ${progress}%`}>
+                <div className="om-progress__track" aria-hidden="true">
+                  <div className="om-progress__fill" style={{ width: `${progress}%` }} />
+                </div>
+                <div className="om-progress__text">Đã trả món <b>{progress}%</b></div>
+              </div>
+            )}
+            {!items.length && <p className="om-detail-empty-items">Đơn chưa có món.</p>}
             <div className="items-grid">
               {items.map((item, index) => (
                 <OrderItemRow
@@ -904,27 +882,60 @@ const OrderModal = ({
               </div>
             )}
 
-            <div className="summary-row grand-total">
-              <span>Tổng cộng</span>
-              <span>{formatCurrency(totals.grandTotal)}</span>
-            </div>
           </section>
+          <details className="om-detail-disclosure">
+            <summary>Mã QR theo dõi đơn</summary>
+            <OrderTrackingQrCard orderId={actionOrderId} />
+          </details>
+
+          {Array.isArray(order?.statusTimeline) &&
+            order.statusTimeline.length > 0 && (
+              <details className="om-detail-disclosure">
+                <summary>Lịch sử xử lý</summary>
+                <div className="items-grid">
+                  {order.statusTimeline
+                    .slice()
+                    .reverse()
+                    .map((s, idx) => (
+                      <div key={`${s.status}-${idx}`} className="itemCard">
+                        <div className="itemCard__info">
+                          <div className="itemCard__header">
+                            <span className="itemName">
+                              {getTimelineLabel(s)}
+                            </span>
+                          </div>
+                          <div className="itemCard__meta">
+                            <span className="metaTag">
+                              {toSafeDate(s.at)?.toLocaleString("vi-VN") || "—"}
+                            </span>
+                          </div>
+                          {s.note && !SYSTEM_NOTE_LABELS[s.note] && (
+                            <div className="itemCard__note">
+                              <span>Ghi chú:</span> {s.note}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </details>
+            )}
         </div>
 
         <footer className="om-footer">
-          <button className="om-btn secondary" onClick={handleClose}>
-            Đóng
-          </button>
-          <button
-            className="om-btn primary"
-            onClick={() => onCreateTemporaryBill?.(order)}
-          >
-            <Printer size={18} /> In phiếu tạm tính
-          </button>
+          <div className="om-detail-total">
+            <span>Tổng cộng</span>
+            <strong>{formatCurrency(totals.grandTotal)}</strong>
+          </div>
+          {onCreateTemporaryBill && (
+            <button type="button" className="om-btn primary" onClick={() => onCreateTemporaryBill(order)}>
+              <Printer size={18} aria-hidden="true" /> In phiếu tạm tính
+            </button>
+          )}
         </footer>
         {actionDialog && (
           <div className="om-actionDialogOverlay" onClick={closeActionDialog}>
-            <div className="om-actionDialog" role="dialog" aria-modal="true" aria-labelledby="order-action-dialog-title" onClick={(e) => e.stopPropagation()}>
+            <div className="om-actionDialog" role="dialog" ref={actionDialogRef} tabIndex={-1} aria-modal="true" aria-labelledby="order-action-dialog-title" onClick={(e) => e.stopPropagation()}>
               <div id="order-action-dialog-title" className="om-actionDialog__header">{actionDialog.title}</div>
               <div className="om-actionDialog__body">
                 {actionDialog.type === "approveVoid" && <p>Duyệt hủy x{actionDialog.request?.quantity} món {actionDialog.item?.name}. Tổng tiền sẽ được cập nhật, kho không được hoàn tự động.</p>}

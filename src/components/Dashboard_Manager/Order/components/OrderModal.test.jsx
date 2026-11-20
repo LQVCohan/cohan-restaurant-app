@@ -34,6 +34,36 @@ describe("OrderModal return reason preset builder", () => {
   });
 });
 
+describe("OrderModal order summary", () => {
+  it("shows delivery details without a registered account and focuses the close control", () => {
+    const order = {
+      id: "delivery-1",
+      orderCode: "DELIVERY-01",
+      orderType: "delivery",
+      customerInfo: { name: "Nguyễn An", phone: "0900000001" },
+      shipping: { address: "12 Nguyễn Trãi", scheduleTime: "18:30" },
+      note: "Gọi khi tới",
+      payment: { status: "pending", method: "bank_transfer" },
+      totals: { grandTotal: 79000 },
+      statusTimeline: [{ status: "pending", note: "Order created" }],
+    };
+    const onPrint = vi.fn();
+    render(<OrderModal order={order} onCreateTemporaryBill={onPrint} />);
+
+    expect(screen.getByRole("button", { name: "Đóng chi tiết đơn hàng" })).toHaveFocus();
+    expect(screen.getByText("Giao hàng")).toBeInTheDocument();
+    expect(screen.getByText("Nguyễn An")).toBeInTheDocument();
+    expect(screen.getByText("0900000001")).toBeInTheDocument();
+    expect(screen.getByText("12 Nguyễn Trãi")).toBeInTheDocument();
+    expect(screen.getByText("18:30")).toBeInTheDocument();
+    expect(screen.getByText("Gọi khi tới")).toBeInTheDocument();
+    expect(screen.getByText("Chưa thanh toán · Chuyển khoản")).toBeInTheDocument();
+    expect(screen.getByText("Lịch sử xử lý").closest("details")).not.toHaveAttribute("open");
+    fireEvent.click(screen.getByRole("button", { name: "In phiếu tạm tính" }));
+    expect(onPrint).toHaveBeenCalledExactlyOnceWith(order);
+  });
+});
+
 describe("OrderModal immediate item cancellation", () => {
   it("requires a reason and submits the selected item once", async () => {
     const onCancelItem = vi.fn(async () => undefined);
@@ -95,6 +125,7 @@ describe("OrderModal immediate item cancellation", () => {
               quantity: 1,
               unitPrice: 59000,
               status: "pending",
+              modifiers: [{ optionName: "Thêm trứng" }],
               voidRequests: [],
               returnRequests: [],
             },
@@ -106,6 +137,7 @@ describe("OrderModal immediate item cancellation", () => {
     );
 
     expect(screen.getByText("Chưa thanh toán · Tiền mặt")).toBeInTheDocument();
+    expect(screen.getByText("Thêm trứng")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Bắt đầu chế biến" }));
     await waitFor(() =>
       expect(onUpdateItemStatus).toHaveBeenCalledWith("order-2", 0, "preparing"),

@@ -9,9 +9,11 @@ import {
   MoreHorizontal,
   AlertTriangle,
   StickyNote,
+  ChevronRight,
 } from "lucide-react";
 import { isTableQrOrderAwaitingStaffConfirmation } from "@/utils/kitchenOrderVisibility";
 import { minutesSince, normalizeTimeThresholds } from "../orderWaitTime";
+import { getOrderCustomerName, getOrderTypeLabel } from "../orderIdentity";
 import "./OrderCard.scss";
 
 /* --- HELPERS --- */
@@ -118,7 +120,7 @@ const isClosedOrderStatus = (status) =>
   );
 
 /* --- SUB-COMPONENT: TIME BADGE --- */
-const TimeBadge = ({ minutes, thresholds, colors }) => {
+const TimeBadge = ({ minutes, thresholds, colors, compact = false }) => {
   const statusClass = getTimeStatus(minutes, thresholds);
   const statusColor = getTimeStatusColor(statusClass, colors);
   const isStrongStatus = ["danger", "critical"].includes(statusClass);
@@ -137,7 +139,7 @@ const TimeBadge = ({ minutes, thresholds, colors }) => {
       title={`Ngưỡng: cảnh báo ${thresholds.warn}p, nguy hiểm ${thresholds.danger}p, khẩn cấp ${thresholds.critical}p`}
     >
       <Clock size={12} strokeWidth={2.5} />
-      <span>{minutes > 0 ? `${minutes}p` : "Mới"}</span>
+      <span>{minutes > 0 ? `${minutes}${compact ? "p" : " phút"}` : "Mới"}</span>
     </div>
   );
 };
@@ -211,14 +213,11 @@ const OrderCard = ({
     };
   }, [order, normalizedThresholds, now]);
 
-  const MAX_ITEMS = isFocusMode ? 20 : 4;
+  const MAX_ITEMS = isFocusMode ? 20 : 2;
   const visibleItems = mergedItems.slice(0, MAX_ITEMS);
   const remainCount = Math.max(0, mergedItems.length - MAX_ITEMS);
-  const customerName =
-    order?.customerInfo?.name ||
-    order?.shipping?.fullName ||
-    order?.user?.fullName ||
-    "Khách lẻ";
+  const customerName = getOrderCustomerName(order);
+  const priority = String(order?.priority || "").toUpperCase();
   const hasNote = !!order?.note;
   const hasPendingVoidRequest = (order?.items || []).some((it) =>
     (it?.voidRequests || []).some((r) => r?.status === "pending"),
@@ -250,7 +249,7 @@ const OrderCard = ({
   const shouldUseTimeAlertColor = !isClosedOrderStatus(order?.currentStatus);
 
   const handleCardKeyDown = (e) => {
-    if (["Enter", " "].includes(e.key)) {
+    if (e.target === e.currentTarget && ["Enter", " "].includes(e.key)) {
       e.preventDefault();
       onViewOrder?.(order);
     }
@@ -293,28 +292,42 @@ const OrderCard = ({
           );
         }
         if (isRemoteStaffPending) {
+          const confirmButton = (
+            <button
+              type="button"
+              className="oc-btn primary"
+              onClick={(e) => handleAction(e, "confirmed")}
+            >
+              <Check size={16} /> Xác nhận đơn
+            </button>
+          );
           return (
-            <div className="oc-actions-grid">
-              <button
-                type="button"
-                className="oc-btn secondary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewOrder?.(order);
-                }}
-              >
-                Xem chi tiết khách
-              </button>
-              <button
-                type="button"
-                className="oc-btn secondary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewOrder?.(order);
-                }}
-              >
-                Xem ghi chú/món
-              </button>
+            <div className="oc-actions-grid oc-actions-grid--remote">
+              {!isFocusMode && confirmButton}
+              {isFocusMode && (
+                <>
+                  <button
+                    type="button"
+                    className="oc-btn secondary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewOrder?.(order);
+                    }}
+                  >
+                    Xem chi tiết khách
+                  </button>
+                  <button
+                    type="button"
+                    className="oc-btn secondary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewOrder?.(order);
+                    }}
+                  >
+                    Xem ghi chú/món
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 className="oc-btn secondary cancel"
@@ -325,24 +338,20 @@ const OrderCard = ({
               >
                 Từ chối đơn
               </button>
-              <button
-                type="button"
-                className="oc-btn primary"
-                onClick={(e) => handleAction(e, "confirmed")}
-              >
-                <Check size={16} /> Xác nhận đơn
-              </button>
-              <button
-                type="button"
-                className="oc-btn secondary"
-                disabled={!order?.clientMeta?.chatThreadId}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMessageCustomer?.(order);
-                }}
-              >
-                Nhắn khách
-              </button>
+              {isFocusMode && confirmButton}
+              {(isFocusMode || order?.clientMeta?.chatThreadId) && (
+                <button
+                  type="button"
+                  className="oc-btn secondary"
+                  disabled={!order?.clientMeta?.chatThreadId}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMessageCustomer?.(order);
+                  }}
+                >
+                  Nhắn khách
+                </button>
+              )}
             </div>
           );
         }
@@ -422,88 +431,141 @@ const OrderCard = ({
           : undefined
       }
       onClick={() => onViewOrder?.(order)}
-      onKeyDown={handleCardKeyDown}
-      role="button"
-      tabIndex={0}
-      aria-label={`Mở chi tiết đơn ${orderDisplayCode}`}
+      {...(isFocusMode && {
+        onKeyDown: handleCardKeyDown,
+        role: "button",
+        tabIndex: 0,
+        "aria-label": `Mở chi tiết đơn ${orderDisplayCode}`,
+      })}
     >
       <div className="oc-status-strip"></div>
 
-      <div className="oc-header">
-        <div className="oc-header-left">
-          <div
-            className={`oc-table-tag ${
-              order?.orderType === "takeaway" ? "takeaway" : ""
-            }`}
-          >
-            {orderLocationLabel}
+      {isFocusMode ? (
+        <>
+          <div className="oc-header">
+            <div className="oc-header-left">
+              <div
+                className={`oc-table-tag ${
+                  order?.orderType === "takeaway" ? "takeaway" : ""
+                }`}
+              >
+                {orderLocationLabel}
+              </div>
+
+              <span className="oc-order-code">{orderDisplayCode}</span>
+
+              <span
+                className={`oc-status-pill oc-status-pill--${order?.currentStatus || "unknown"}`}
+              >
+                {statusLabel}
+              </span>
+            </div>
+
+            <TimeBadge
+              minutes={ageMinutes}
+              thresholds={normalizedThresholds}
+              colors={normalizedColors}
+              compact
+            />
+          </div>
+          {batchTitle && (
+            <div className="oc-batch-info">
+              <span className="oc-batch-title">{batchTitle}</span>
+              {order?.orderCode && (
+                <span className="oc-batch-code">{order.orderCode}</span>
+              )}
+            </div>
+          )}
+          <div className="oc-info-section">
+            <div className="oc-guest">
+              <AlertTriangle size={12} />
+              <span className="name">
+                {PRIORITY_LABELS[priority] ||
+                  "Ưu tiên vừa"}
+              </span>
+            </div>
           </div>
 
-          <span className="oc-order-code">{orderDisplayCode}</span>
-
-          <span
-            className={`oc-status-pill oc-status-pill--${order?.currentStatus || "unknown"}`}
-          >
-            {statusLabel}
-          </span>
-        </div>
-
-        <TimeBadge
-          minutes={ageMinutes}
-          thresholds={normalizedThresholds}
-          colors={normalizedColors}
-        />
-      </div>
-      {isOverdue && (
-        <div className="om-order-wait-label">
-          <Clock size={14} aria-hidden="true" /> Chờ lâu
+        </>
+      ) : (
+        <div className="oc-header oc-header--summary">
+          <div className="oc-identity">
+            <button
+              type="button"
+              className="oc-detail-link"
+              aria-label={`Mở chi tiết đơn ${orderDisplayCode}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewOrder?.(order);
+              }}
+            >
+              <span>{orderDisplayCode}</span>
+              <ChevronRight size={16} aria-hidden="true" />
+            </button>
+            <div className="oc-identity__meta">
+              <span className={`oc-table-tag ${order?.orderType === "takeaway" ? "takeaway" : ""}`}>
+                {getOrderTypeLabel(order?.orderType)}
+                {order?.orderType === "dine_in" && order.tableCode && ` · ${order.tableCode}`}
+              </span>
+              {batchTitle && <span className="oc-batch-title">{batchTitle}</span>}
+            </div>
+            <span className="oc-guest">
+              <User size={14} aria-hidden="true" />
+              <span className="name">{customerName}</span>
+            </span>
+          </div>
+          <div className="oc-identity__state">
+            <TimeBadge
+              minutes={ageMinutes}
+              thresholds={normalizedThresholds}
+              colors={normalizedColors}
+            />
+            {isOverdue && <span className="oc-wait-label">Chờ lâu</span>}
+          </div>
+          <div className="oc-identity__status">
+            <span className={`oc-status-pill oc-status-pill--${order?.currentStatus || "unknown"}`}>
+              {statusLabel}
+            </span>
+            {priority === "HIGH" && (
+              <span className="oc-guest">
+                <AlertTriangle size={14} aria-hidden="true" /> Ưu tiên cao
+              </span>
+            )}
+          </div>
         </div>
       )}
-      {batchTitle && (
-        <div className="oc-batch-info">
-          <span className="oc-batch-title">{batchTitle}</span>
-          {order?.orderCode && (
-            <span className="oc-batch-code">{order.orderCode}</span>
+
+      {(isFocusMode || isPaymentRequested || hasPendingVoidRequest || hasPendingReturnRequest || hasNote) && (
+        <div className="oc-info-section">
+          {isFocusMode && (
+            <div className="oc-guest">
+              <User size={12} />
+              <span className="name">{customerName}</span>
+            </div>
+          )}
+          {isPaymentRequested && (
+            <div className="oc-note-badge oc-note-badge--payment">
+              Khách gọi thanh toán
+            </div>
+          )}
+          {hasPendingVoidRequest && (
+            <div className="oc-note-badge oc-note-badge--void">
+              Có yêu cầu hủy món
+            </div>
+          )}
+          {hasPendingReturnRequest && (
+            <div className="oc-note-badge oc-note-badge--return">
+              Có yêu cầu trả lại món
+            </div>
+          )}
+          {hasNote && (
+            <div className="oc-note-box">
+              <StickyNote size={12} aria-hidden="true" />
+              <span>{isFocusMode ? order.note : "Có ghi chú trong chi tiết đơn"}</span>
+            </div>
           )}
         </div>
       )}
-      <div className="oc-info-section">
-        <div className="oc-guest">
-          <AlertTriangle size={12} />
-          <span className="name">
-            {PRIORITY_LABELS[(order?.priority || "MEDIUM").toUpperCase()] ||
-              "Ưu tiên vừa"}
-          </span>
-        </div>
-      </div>
-
-      <div className="oc-info-section">
-        <div className="oc-guest">
-          <User size={12} />
-          <span className="name">{customerName}</span>
-        </div>
-        {isPaymentRequested && (
-          <div className="oc-note-badge oc-note-badge--payment">
-            Khách gọi thanh toán
-          </div>
-        )}
-        {hasPendingVoidRequest && (
-          <div className="oc-note-badge oc-note-badge--void">
-            Có yêu cầu hủy món
-          </div>
-        )}
-        {hasPendingReturnRequest && (
-          <div className="oc-note-badge oc-note-badge--return">
-            Có yêu cầu trả lại món
-          </div>
-        )}
-        {hasNote && (
-          <div className="oc-note-box">
-            <StickyNote size={12} />
-            <span>{order.note}</span>
-          </div>
-        )}
-      </div>
 
       {order?.currentStatus === "preparing" && (
         <div className="oc-progress-track">
@@ -517,43 +579,47 @@ const OrderCard = ({
         </div>
       )}
 
-      <div className="oc-items-wrapper custom-scrollbar">
-        {visibleItems.map((item, idx) => {
-          const isDone = ["ready", "served"].includes(item.status);
-          return (
-            <div
-              key={idx}
-              className={`oc-item-row ${isDone ? "done" : ""}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onViewItem) onViewItem({ item, orderInfo: order });
-              }}
-            >
-              <div className="qty-badge">{item.quantity}</div>
-              <div className="item-content">
-                <div className="item-name">{item.name}</div>
-                {(item.modifiers?.length > 0 || item.method) && (
-                  <div className="item-meta">
-                    {item.method && (
-                      <span className="method">{item.method}</span>
-                    )}
-                    {item.modifiers?.map((mod, i) => (
-                      <span key={i} className="mod">
-                        + {mod.name || mod.optionName || "Modifier"}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
+      {(isFocusMode || visibleItems.length > 0) && (
+        <div className="oc-items-wrapper custom-scrollbar">
+          {visibleItems.map((item, idx) => {
+            const isDone = ["ready", "served"].includes(item.status);
+            const ItemControl = !isFocusMode && onViewItem ? "button" : "div";
+            return (
+              <ItemControl
+                key={idx}
+                type={ItemControl === "button" ? "button" : undefined}
+                className={`oc-item-row ${isDone ? "done" : ""}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onViewItem) onViewItem({ item, orderInfo: order });
+                }}
+              >
+                <span className="qty-badge">{item.quantity}</span>
+                <span className="item-content">
+                  <span className="item-name">{item.name}</span>
+                  {isFocusMode && (item.modifiers?.length > 0 || item.method) && (
+                    <span className="item-meta">
+                      {item.method && (
+                        <span className="method">{item.method}</span>
+                      )}
+                      {item.modifiers?.map((mod, i) => (
+                        <span key={i} className="mod">
+                          + {mod.name || mod.optionName || "Modifier"}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                </span>
+              </ItemControl>
+            );
+          })}
+          {remainCount > 0 && (
+            <div className="oc-more-items">
+              <MoreHorizontal size={14} /> +{remainCount} món khác
             </div>
-          );
-        })}
-        {remainCount > 0 && (
-          <div className="oc-more-items">
-            <MoreHorizontal size={14} /> +{remainCount} món khác
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       <div className="oc-footer">
         <div className="oc-total">

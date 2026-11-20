@@ -81,6 +81,10 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
               sellQty
               sellUnit
             }
+            modifiers {
+              groupName
+              optionName
+            }
             modifiersPrice
             unitPrice
             lineSubtotal

@@ -817,3 +817,151 @@ $st-cancelled-text: #b91c1c;
     transition: none;
   }
 }
+
+.om-modal-box {
+  .om-header,
+  .om-footer {
+    flex: 0 0 auto;
+  }
+
+  .om-header {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .om-header__left {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .om-header__actions {
+    flex: none;
+    width: auto;
+  }
+
+  .om-header__title-row,
+  .om-header__meta,
+  .om-footer {
+    flex-wrap: wrap;
+  }
+
+  .om-header .title,
+  .order-note-box .text {
+    overflow-wrap: anywhere;
+  }
+
+  .om-header .status-badge {
+    text-transform: none;
+  }
+
+  .om-header .icon-only {
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .om-body {
+    min-height: 0;
+    gap: 1rem;
+    padding-block: 1rem;
+  }
+
+  .om-progress {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--order-line, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  .om-footer {
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .om-footer .om-btn,
+  .section-header .text-link-btn {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 44px;
+  }
+
+  .om-footer .om-btn {
+    max-width: 185px;
+  }
+
+  .section-header {
+    gap: 8px;
+
+    .text-link-btn {
+      max-width: max-content;
+    }
+  }
+
+  :is(button, summary):focus-visible {
+    outline: 2px solid var(--order-ink, #24303f);
+    outline-offset: 2px;
+  }
+}
+
+.om-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 142px), 1fr));
+  gap: 10px 16px;
+  margin: 0;
+
+  &--delivery {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--order-line, #e2e8f0);
+  }
+
+  dt {
+    margin-bottom: 2px;
+    color: var(--order-muted, #64748b);
+    font-size: 0.8125rem;
+  }
+
+  dd {
+    margin: 0;
+    color: var(--order-ink, #24303f);
+    font-weight: 650;
+    overflow-wrap: anywhere;
+  }
+}
+
+.om-detail-total {
+  display: grid;
+  gap: 2px;
+  color: var(--order-ink, #24303f);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
+
+  strong {
+    font-size: 1.125rem;
+  }
+}
+
+.om-detail-disclosure {
+  padding: 0 12px;
+  border: 1px solid var(--order-line, #e2e8f0);
+  border-radius: 8px;
+  color: var(--order-ink, #24303f);
+
+  summary {
+    display: list-item;
+    min-height: 44px;
+    padding-block: 10px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
+  &[open] {
+    padding-bottom: 12px;
+  }
+
+  .itemCard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

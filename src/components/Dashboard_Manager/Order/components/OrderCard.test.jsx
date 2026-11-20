@@ -40,6 +40,32 @@ describe("OrderCard operations UI", () => {
     expect(screen.queryByText("64f9-raw-internal-id")).not.toBeInTheDocument();
   });
 
+  it("provides independent controls for the order and its short item preview", () => {
+    const onViewOrder = vi.fn();
+    const onViewItem = vi.fn();
+    const order = {
+      ...baseOrder,
+      note: "Ghi chú đầy đủ",
+      items: [
+        ...baseOrder.items,
+        { dishId: "dish-2", name: "Cơm gà", quantity: 1 },
+        { dishId: "dish-3", name: "Chè", quantity: 1 },
+      ],
+    };
+    render(<OrderCard order={order} onViewOrder={onViewOrder} onViewItem={onViewItem} />);
+
+    expect(screen.getByText("Tại bàn · B12")).toBeInTheDocument();
+    expect(screen.getByText("Có ghi chú trong chi tiết đơn")).toBeInTheDocument();
+    expect(screen.queryByText("Ghi chú đầy đủ")).not.toBeInTheDocument();
+    expect(screen.getByText("+1 món khác")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Phở bò/ }));
+    expect(onViewItem).toHaveBeenCalledWith({ item: order.items[0], orderInfo: order });
+    expect(onViewOrder).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Mở chi tiết đơn ORD-2026-0007" }));
+    expect(onViewOrder).toHaveBeenCalledExactlyOnceWith(order);
+  });
+
   it("renders a readable status badge", () => {
     render(<OrderCard order={baseOrder} />);
 

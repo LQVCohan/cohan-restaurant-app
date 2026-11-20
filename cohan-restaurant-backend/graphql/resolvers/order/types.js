@@ -2,6 +2,12 @@
 import { User } from "../../../models/index.js";
 
 export const OrderResolvers = {
+  OrderItem: {
+    modifiers(parent) {
+      return Array.isArray(parent?.modifiers) ? parent.modifiers : [];
+    },
+  },
+
   Order: {
     id(parent) {
       const value = parent?.id || parent?._id;

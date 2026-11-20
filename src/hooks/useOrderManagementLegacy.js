@@ -618,6 +618,17 @@ const GET_ORDER = gql`
       id
       orderCode
       tableCode
+      orderType
+      orderPaymentStatus
+      customerInfo {
+        name
+        phone
+      }
+      user {
+        fullName
+        phone
+      }
+      clientMeta
       currentStatus
       priority
       items {
@@ -636,6 +647,10 @@ const GET_ORDER = gql`
           price
           sellQty
           sellUnit
+        }
+        modifiers {
+          groupName
+          optionName
         }
         modifiersPrice
         unitPrice

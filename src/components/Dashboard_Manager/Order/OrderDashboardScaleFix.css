@@ -170,7 +170,7 @@
 .manager-layout.manager-layout--orders
   .om-container:not(.om-container--focus)
   .oc-card:not(.mode-focus) {
-  min-height: 390px !important;
+  min-height: 0;
   border-radius: 22px !important;
 }
 
