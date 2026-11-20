@@ -10,27 +10,28 @@ import {
   ChefHat,
   CheckCircle,
   AlertTriangle,
-  ChevronDown,
   ArrowDown,
   Minimize2,
   Plus,
-  Filter,
   Download,
+  History,
+  CalendarClock,
+  Settings,
 } from "lucide-react";
 import { gql, useLazyQuery, useMutation } from "@apollo/client";
 
 import OrderCard from "./components/OrderCard";
 import OrderModal from "./components/OrderModal";
-import ManagementPageHeader from "../shared/ManagementPageHeader";
 import ItemModal from "./components/ItemModal";
 import HistoryModal from "./components/HistoryModal";
 import NewOrderModal from "./components/NewOrderModal";
 import OrderSettingsModal from "./components/OrderSettingsModal";
+import FutureOrdersModal from "./components/FutureOrdersModal";
 
 import useOrderManagement from "../../../hooks/useOrderManagement";
 import { useNotification } from "@/hooks/useNotification";
 import useSocketOrder from "@/hooks/useSocketOrder";
-import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
+import useManagerRestaurantSelection, { getRestaurantId } from "@/hooks/useManagerRestaurantSelection";
 
 import { minutesSince, normalizeTimeThresholds } from "./orderWaitTime";
 import "./OrderManagement.scss";
@@ -298,12 +299,11 @@ const resolveKitchenActionOrderId = (order, fallbackId = null) => {
   );
 };
 
-const ORDER_STATUS_KPI_DEFS = [
-  { id: "total", icon: "🧾", label: "Tổng đơn", tone: "neutral" },
-  { id: "pending", icon: "⏳", label: "Chờ xử lý", tone: "warning" },
-  { id: "preparing", icon: "👨‍🍳", label: "Đang chuẩn bị", tone: "accent" },
-  { id: "completed", icon: "✅", label: "Hoàn thành", tone: "success" },
-  { id: "cancelled", icon: "✕", label: "Đã hủy", tone: "danger" },
+const ACTIVE_ORDER_STATUS_OPTIONS = [
+  { value: "pending", label: "Chờ xác nhận" },
+  { value: "confirmed", label: "Đã xác nhận" },
+  { value: "preparing", label: "Đang chuẩn bị" },
+  { value: "ready", label: "Sẵn sàng" },
 ];
 const KITCHEN_STATUS_FILTER_OPTIONS = [
   { value: "", label: "Tất cả" },
@@ -525,6 +525,7 @@ const OrderManagement = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [showFutureOrders, setShowFutureOrders] = useState(false);
   const [historyCustomerContext, setHistoryCustomerContext] = useState({
     customerId: "",
     customerName: "",
@@ -562,7 +563,7 @@ const OrderManagement = () => {
   } = useManagerRestaurantSelection();
   const [
     loadOrders,
-    { data: ordersData, loading: ordersLoading, error: ordersError },
+    { data: ordersData, loading: ordersLoading, error: ordersError, variables: orderQueryVariables },
   ] = useLazyQuery(ORDERS_BY_RESTAURANT_NOW, {
     notifyOnNetworkStatusChange: true,
   });
@@ -722,11 +723,13 @@ const OrderManagement = () => {
   const orders = useMemo(() => {
     const nodes =
       ordersData?.ordersByRestaurantNow?.edges?.map((edge) => edge.node) || [];
-    return nodes.map((order) => ({
-      ...order,
-      actionOrderId: resolveKitchenActionOrderId(order, order?.id),
-    }));
-  }, [ordersData]);
+    return nodes
+      .filter((order) => selectedRestaurantId && String(order.restaurantId) === selectedRestaurantId)
+      .map((order) => ({
+        ...order,
+        actionOrderId: resolveKitchenActionOrderId(order, order.id),
+      }));
+  }, [ordersData, selectedRestaurantId]);
 
   useEffect(() => {
     setHiddenOrderIds([]);
@@ -1171,20 +1174,37 @@ const OrderManagement = () => {
       });
   }, [displayOrders]);
 
-  const stats = useMemo(() => {
-    const countByStatus = (statuses) =>
-      orders.filter((order) =>
-        statuses.includes(normalizeStatus(order.currentStatus)),
-      ).length;
+  const visibleStatusCounts = useMemo(() => {
+    const counts = new Map();
+    if (focusMode) return counts;
+    for (const order of displayOrders) {
+      const status = normalizeStatus(order.currentStatus);
+      const key = ACTIVE_ORDER_STATUS_OPTIONS.some(({ value }) => value === status)
+        ? status
+        : "other";
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return counts;
+  }, [displayOrders, focusMode]);
 
-    return {
-      total: orders.length,
-      pending: countByStatus(["pending"]),
-      preparing: countByStatus(["preparing"]),
-      completed: countByStatus(["completed"]),
-      cancelled: countByStatus(["cancelled"]),
-    };
-  }, [orders]);
+  const hasOrderFilters = Boolean(
+    searchTerm || statusFilter || tableFilter || dateFrom || dateTo || sortBy !== "oldest",
+  );
+  const showOrderCounts = Boolean(
+    selectedRestaurantId &&
+      orderQueryVariables?.restaurantId === selectedRestaurantId &&
+      ordersData &&
+      !ordersLoading &&
+      !ordersError,
+  );
+  const clearOrderFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("");
+    setTableFilter("");
+    setDateFrom("");
+    setDateTo("");
+    setSortBy("oldest");
+  };
 
   const mergeSelectedOrderMetadata = useCallback(
     (updatedOrder, fallbackOrder = null) => {
@@ -1532,36 +1552,136 @@ const OrderManagement = () => {
     >
       <div className="om-wrapper">
         {!focusMode ? (
-          <ManagementPageHeader
-            eyebrow="ORDER MANAGER"
-            title="Quản lý đơn hàng"
-            subtitle="Xử lý đơn tại chỗ, mang đi, giao hàng và thanh toán trong ca làm."
-            icon="🍽️"
-            statsPlacement="none"
-            searchValue={searchTerm}
-            onSearchChange={setSearchTerm}
-            searchPlaceholder="Tìm mã đơn, khách, bàn, món..."
-            selectedRestaurant={selectedRestaurantId}
-            onRestaurantChange={setSelectedRestaurantId}
-            restaurantList={restaurantList}
-            quickActions={[
-              {
-                icon: "🕘",
-                label: "Lịch sử",
-                onClick: () => setShowHistory(true),
-              },
-              {
-                icon: "⚙️",
-                label: "Cài đặt",
-                onClick: () => setIsSettingsOpen(true),
-              },
-            ]}
-            primaryAction={{
-              icon: focusMode ? "🡼" : "🡾",
-              label: focusMode ? "Thoát chế độ Bếp" : "Chế độ Bếp",
-              onClick: () => setFocusMode(!focusMode),
-            }}
-          />
+          <section className="om-order-controls" aria-labelledby="om-order-title">
+            <header className="om-order-controls__row">
+              <h1 id="om-order-title">Quản lý đơn hàng</h1>
+              <div className="om-order-controls__buttons">
+                <button type="button" className="om-control-action" onClick={() => setShowHistory(true)}>
+                  <History size={16} aria-hidden="true" /> Lịch sử
+                </button>
+                <button type="button" className="om-control-action" onClick={() => setIsSettingsOpen(true)}>
+                  <Settings size={16} aria-hidden="true" /> Cài đặt
+                </button>
+                <button type="button" className="om-control-action" onClick={() => setShowFutureOrders(true)}
+                  disabled={!selectedRestaurantId}>
+                  <CalendarClock size={16} aria-hidden="true" /> Đơn đặt trước
+                </button>
+                <button type="button" className="om-control-action" onClick={() => setFocusMode(true)}>
+                  <ChefHat size={16} aria-hidden="true" /> Chế độ Bếp
+                </button>
+              </div>
+            </header>
+
+            <div className="om-order-controls__fields" role="group" aria-label="Bộ lọc đơn hàng">
+              <label className="om-order-controls__search">
+                Tìm đơn hàng
+                <input type="search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Mã đơn, khách, bàn, món…" />
+              </label>
+              <label>
+                Chi nhánh
+                <select value={selectedRestaurantId || ""}
+                  onChange={(e) => setSelectedRestaurantId(e.target.value)}
+                  disabled={!restaurantList.length}>
+                  {!selectedRestaurantId && <option value="">Chọn chi nhánh</option>}
+                  {restaurantList.map((restaurant) => (
+                    <option key={getRestaurantId(restaurant)} value={getRestaurantId(restaurant)}>
+                      {restaurant.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Trạng thái đơn
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                  <option value="">Tất cả trạng thái</option>
+                  {ACTIVE_ORDER_STATUS_OPTIONS.map(({ value, label }) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                  <option value="remote_staff_pending">Đơn từ xa chờ xác nhận</option>
+                </select>
+              </label>
+              <label>
+                Loại đơn
+                <select value={tableFilter} onChange={(e) => setTableFilter(e.target.value)}>
+                  <option value="">Tất cả loại</option>
+                  <option value="dine_in">Tại bàn</option>
+                  <option value="takeaway">Mang về</option>
+                  <option value="delivery">Giao hàng</option>
+                </select>
+              </label>
+              <label>
+                Sắp xếp đơn hàng
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                  <option value="oldest">Cũ nhất trước</option>
+                  <option value="newest">Mới nhất trước</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="om-order-controls__row om-order-controls__secondary">
+              <details className="om-order-controls__dates">
+                <summary>Ngày tạo{(dateFrom || dateTo) && " · Đang lọc"}</summary>
+                <div>
+                  <label>
+                    Từ ngày
+                    <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+                  </label>
+                  <label>
+                    Đến ngày
+                    <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+                  </label>
+                </div>
+              </details>
+              <button type="button" className="om-control-action" onClick={clearOrderFilters} disabled={!hasOrderFilters}>
+                Xóa bộ lọc
+              </button>
+            </div>
+
+            <div className="om-order-controls__row om-order-controls__footer">
+              <div className="om-order-controls__buttons">
+                {showOrderCounts && priorityOrders.length > 0 && (
+                  <button
+                    type="button"
+                    className="om-order-queue-shortcut"
+                    onClick={() => {
+                      priorityHeadingRef.current?.scrollIntoView({ block: "start" });
+                      priorityHeadingRef.current?.focus({ preventScroll: true });
+                    }}
+                  >
+                    <span>{priorityOrders.length} đơn cần xử lý</span>
+                    <ArrowDown size={16} aria-hidden="true" />
+                  </button>
+                )}
+                <button type="button" className="om-control-action" onClick={handleExportCsv}
+                  disabled={!showOrderCounts || !displayOrders.length}>
+                  <Download size={16} aria-hidden="true" /> Xuất CSV
+                </button>
+                <button type="button" className="om-control-action om-control-action--primary"
+                  onClick={() => setShowNewOrderModal(true)} disabled={!selectedRestaurantId}>
+                  <Plus size={16} aria-hidden="true" /> Đơn mới
+                </button>
+              </div>
+              {showOrderCounts && (
+                <div className="om-order-counts" role="status">
+                  <strong>{displayOrders.length.toLocaleString("vi-VN")} đơn đang hiển thị</strong>
+                  <ul aria-label="Trạng thái của các đơn đang hiển thị">
+                    {ACTIVE_ORDER_STATUS_OPTIONS.map(({ value, label }) => (
+                      <li key={value}>
+                        <span>{label}</span> <b>{(visibleStatusCounts.get(value) || 0).toLocaleString("vi-VN")}</b>
+                      </li>
+                    ))}
+                    {visibleStatusCounts.has("other") && (
+                      <li><span>Trạng thái khác</span> <b>{visibleStatusCounts.get("other").toLocaleString("vi-VN")}</b></li>
+                    )}
+                  </ul>
+                  {ordersData.ordersByRestaurantNow?.pageInfo?.hasNextPage && (
+                    <small>Chỉ lọc trong các đơn đã tải. Mở Lịch sử để tra cứu thêm.</small>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
         ) : (
           <header className="om-header">
             <div>
@@ -1594,48 +1714,10 @@ const OrderManagement = () => {
           </header>
         )}
 
-        {!ordersLoading && !ordersError && priorityOrders.length > 0 && (
-          <button
-            type="button"
-            className="om-order-queue-shortcut"
-            onClick={() => {
-              priorityHeadingRef.current?.scrollIntoView({ block: "start" });
-              priorityHeadingRef.current?.focus({ preventScroll: true });
-            }}
-          >
-            <span>{priorityOrders.length} đơn cần xử lý</span>
-            <ArrowDown size={16} aria-hidden="true" />
-          </button>
-        )}
-
-        {!focusMode && (
-          <section className="om-kpi-panel" aria-label="Tổng quan đơn hàng">
-            {ORDER_STATUS_KPI_DEFS.map((item) => (
-              <article
-                key={item.id}
-                className={`om-kpi-card om-kpi-card--${item.tone}`}
-              >
-                <span className="om-kpi-card__icon" aria-hidden="true">
-                  {item.icon}
-                </span>
-                <div className="om-kpi-card__body">
-                  <span className="om-kpi-card__label">{item.label}</span>
-                  <strong className="om-kpi-card__value">
-                    {stats[item.id].toLocaleString("vi-VN")}
-                  </strong>
-                </div>
-              </article>
-            ))}
-          </section>
-        )}
-
-        <section
-          className={`om-toolbar ${focusMode ? "om-toolbar--focus" : ""}`}
-          aria-label={focusMode ? "Điều khiển màn hình chế biến" : "Bộ lọc đơn hàng"}
-        >
-          <div className="om-toolbar__inner">
-            <div className="om-toolbar__filters">
-              {focusMode && (
+        {focusMode && (
+          <section className="om-toolbar om-toolbar--focus" aria-label="Điều khiển màn hình chế biến">
+            <div className="om-toolbar__inner">
+              <div className="om-toolbar__filters">
                 <div
                   className="om-station-switcher"
                   role="group"
@@ -1661,10 +1743,7 @@ const OrderManagement = () => {
                     );
                   })}
                 </div>
-              )}
-
-              <div className="om-filter-group">
-                {focusMode ? (
+                <div className="om-filter-group">
                   <div className="om-field om-field--kitchen-status">
                     <span className="om-field__label">Trạng thái món</span>
                     <div
@@ -1689,101 +1768,9 @@ const OrderManagement = () => {
                       ))}
                     </div>
                   </div>
-                ) : (
-                  <label className="om-field">
-                    <span className="om-field__label">Trạng thái đơn</span>
-                    <span className="om-select-wrapper">
-                      <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="om-select-input"
-                        aria-label="Trạng thái đơn"
-                      >
-                        <option value="">Tất cả trạng thái</option>
-                        <option value="pending">Chờ xác nhận</option>
-                        <option value="remote_staff_pending">
-                          Đơn từ xa chờ xác nhận
-                        </option>
-                        <option value="confirmed">Đã xác nhận</option>
-                        <option value="preparing">Đang chuẩn bị</option>
-                        <option value="ready">Sẵn sàng</option>
-                      </select>
-                      <Filter size={16} className="om-select-icon-left" />
-                      <ChevronDown size={14} className="om-select-icon-right" />
-                    </span>
-                  </label>
-                )}
-
-                {!focusMode && (
-                  <label className="om-field">
-                    <span className="om-field__label">Loại đơn</span>
-                    <span className="om-select-wrapper">
-                      <select
-                        value={tableFilter}
-                        onChange={(e) => setTableFilter(e.target.value)}
-                        className="om-select-input"
-                        aria-label="Loại đơn"
-                      >
-                        <option value="">Tất cả loại</option>
-                        <option value="dine_in">Tại bàn</option>
-                        <option value="takeaway">Mang về</option>
-                        <option value="delivery">Giao hàng</option>
-                      </select>
-                      <ChevronDown size={14} className="om-select-icon-right" />
-                    </span>
-                  </label>
-                )}
-                {!focusMode && (
-                  <>
-                    <label className="om-field">
-                      <span className="om-field__label">Từ ngày</span>
-                      <span className="om-select-wrapper">
-                        <input
-                          type="date"
-                          value={dateFrom}
-                          onChange={(e) => setDateFrom(e.target.value)}
-                          className="om-select-input"
-                          aria-label="Từ ngày"
-                        />
-                      </span>
-                    </label>
-                    <label className="om-field">
-                      <span className="om-field__label">Đến ngày</span>
-                      <span className="om-select-wrapper">
-                        <input
-                          type="date"
-                          value={dateTo}
-                          onChange={(e) => setDateTo(e.target.value)}
-                          className="om-select-input"
-                          aria-label="Đến ngày"
-                        />
-                      </span>
-                    </label>
-                    <label className="om-field">
-                      <span className="om-field__label">Sắp xếp</span>
-                      <span className="om-select-wrapper">
-                        <select
-                          value={sortBy}
-                          onChange={(e) => setSortBy(e.target.value)}
-                          className="om-select-input"
-                          aria-label="Sắp xếp đơn hàng"
-                        >
-                          <option value="oldest">Cũ nhất trước</option>
-                          <option value="newest">Mới nhất trước</option>
-                        </select>
-                        <ChevronDown
-                          size={14}
-                          className="om-select-icon-right"
-                        />
-                      </span>
-                    </label>
-                  </>
-                )}
+                </div>
               </div>
-            </div>
-
-            <div className="om-toolbar__actions">
-              {focusMode ? (
+              <div className="om-toolbar__actions">
                 <div className="om-size-control om-size-control--segmented">
                   <span>Cỡ thẻ:</span>
                   <div
@@ -1808,31 +1795,10 @@ const OrderManagement = () => {
                     ))}
                   </div>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  className="om-btn-outline"
-                  onClick={handleExportCsv}
-                >
-                  <Download size={18} />
-                  <span>Xuất BC</span>
-                </button>
-              )}
-
-              {!focusMode && (
-                <button
-                  type="button"
-                  onClick={() => setShowNewOrderModal(true)}
-                  disabled={!selectedRestaurantId}
-                  className="om-btn-primary"
-                >
-                  <Plus size={18} />
-                  <span>Đơn mới</span>
-                </button>
-              )}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {focusMode && dishSummaries.length > 0 && (
           <DishSummaryPanel
@@ -1963,6 +1929,18 @@ const OrderManagement = () => {
             </div>
           )}
         </section>
+
+        {showFutureOrders && !focusMode && (
+          <FutureOrdersModal
+            open
+            restaurantId={selectedRestaurantId}
+            onClose={() => setShowFutureOrders(false)}
+            onViewOrder={(orderId) => {
+              setShowFutureOrders(false);
+              void openOrderDetailById(orderId);
+            }}
+          />
+        )}
 
         {showNewOrderModal && (
           <NewOrderModal

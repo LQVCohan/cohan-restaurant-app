@@ -21,6 +21,7 @@ vi.mock("@apollo/client", () => ({
       },
       loading: false,
       error: null,
+      variables: { restaurantId: "restaurant-1" },
     },
   ],
   useMutation: () => [vi.fn(() => Promise.resolve({ data: {} }))],
@@ -77,19 +78,6 @@ vi.mock("./components/NewOrderModal", () => ({
 vi.mock("./components/OrderSettingsModal", () => ({
   default: () => <div>Order settings modal</div>,
 }));
-vi.mock("../shared/ManagementPageHeader", () => ({
-  default: ({ title, primaryAction }) => (
-    <section>
-      <h1>{title}</h1>
-      {primaryAction ? (
-        <button type="button" onClick={primaryAction.onClick}>
-          {primaryAction.label}
-        </button>
-      ) : null}
-    </section>
-  ),
-}));
-
 const mixedStationOrder = {
   cursor: "order-1",
   node: {
@@ -265,6 +253,38 @@ describe("OrderManagement kitchen display", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("keeps visible counts, priority and CSV scope in sync with the filters", () => {
+    apolloState.edges = [
+      mixedStationOrder,
+      { node: { ...mixedStationOrder.node, id: "remote", orderCode: "REMOTE-02",
+        currentStatus: "pending", orderType: "delivery", clientMeta: { source: "staff_remote" } } },
+      { node: { ...mixedStationOrder.node, id: "paid", orderPaymentStatus: "paid" } },
+      { node: { ...mixedStationOrder.node, id: "finished", currentStatus: "completed" } },
+      { node: { ...mixedStationOrder.node, id: "other-branch", restaurantId: "restaurant-2" } },
+    ];
+    renderOrderManagement();
+
+    const counts = screen.getByRole("status");
+    expect(counts).toHaveTextContent("2 đơn đang hiển thị");
+    expect(counts).toHaveTextContent("Chờ xác nhận 1");
+    expect(counts).toHaveTextContent("Đã xác nhận 1");
+
+    fireEvent.change(screen.getByLabelText("Trạng thái đơn"), { target: { value: "remote_staff_pending" } });
+    expect(counts).toHaveTextContent("1 đơn đang hiển thị");
+    expect(screen.getByRole("button", { name: "1 đơn cần xử lý" })).toBeInTheDocument();
+    expect(screen.getByText("REMOTE-02")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Tìm đơn hàng" }), { target: { value: "không tồn tại" } });
+    expect(counts).toHaveTextContent("0 đơn đang hiển thị");
+    expect(screen.getByRole("button", { name: "Xuất CSV" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /đơn cần xử lý/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Xóa bộ lọc" }));
+    expect(counts).toHaveTextContent("2 đơn đang hiển thị");
+    expect(screen.getByRole("button", { name: "Xuất CSV" })).toBeEnabled();
+    expect(screen.getByLabelText("Chi nhánh")).toHaveValue("restaurant-1");
   });
 
   it("renders fullscreen kitchen display and locks body scroll when focus mode is enabled", () => {

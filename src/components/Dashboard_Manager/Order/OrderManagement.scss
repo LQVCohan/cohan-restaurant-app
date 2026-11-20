@@ -1805,3 +1805,207 @@ body.order-kitchen-active .om-container--focus .om-grid {
   outline: 2px solid currentColor;
   outline-offset: -3px;
 }
+
+.om-order-controls {
+  --om-control-on-primary: #fff;
+  container-type: inline-size;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: clamp(12px, 2vw, 18px);
+  border: 1px solid var(--manager-border, #ded6cb);
+  border-radius: 16px;
+  background: var(--manager-surface, #fffdf9);
+  color: var(--manager-text, #24303f);
+  box-shadow: var(--manager-shadow, none);
+
+  body.manager-dark-mode & {
+    --om-control-on-primary: var(--manager-bg-base);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(1.25rem, 2.2vw, 1.55rem);
+    line-height: 1.2;
+    font-weight: 750;
+  }
+
+  &__row,
+  &__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  &__row {
+    justify-content: space-between;
+  }
+
+  &__fields,
+  &__dates > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  &__search {
+    grid-column: 1 / -1;
+  }
+
+  &__secondary {
+    align-items: start;
+    justify-content: flex-start;
+  }
+
+  &__dates {
+    max-width: 100%;
+
+    summary {
+      display: list-item;
+      cursor: pointer;
+      padding-block: 11px;
+      min-height: 44px;
+      font-size: 0.875rem;
+      font-weight: 650;
+    }
+  }
+
+  &__footer {
+    justify-content: flex-start;
+    align-items: flex-start;
+    flex-direction: column;
+    border-top: 1px solid var(--manager-border, #ded6cb);
+    padding-top: 10px;
+  }
+
+  label {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    color: var(--manager-text, #24303f);
+    font-size: 0.8125rem;
+    font-weight: 650;
+  }
+
+  :is(input, select) {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 8px;
+    border: 1px solid var(--manager-border-strong, #b0c6bc);
+    border-radius: 9px;
+    background: var(--manager-surface-soft, #f2faf7);
+    color: var(--manager-text, #24303f);
+    font: inherit;
+    font-size: 1rem;
+  }
+
+  :is(.om-control-action, .om-order-queue-shortcut) {
+    width: auto;
+    max-width: 100%;
+  }
+
+  :is(input, select, summary, button):focus-visible {
+    outline: 2px solid var(--manager-text, #24303f);
+    outline-offset: 2px;
+  }
+}
+
+@container (min-width: 720px) {
+  .om-order-controls__fields {
+    grid-template-columns: minmax(175px, 1.45fr) repeat(4, minmax(0, 1fr));
+  }
+
+  .om-order-controls__search {
+    grid-column: auto;
+  }
+
+  .om-order-controls :is(input, select) {
+    font-size: 0.875rem;
+  }
+}
+
+.om-control-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--manager-border-strong, #b0c6bc);
+  border-radius: 9px;
+  background: var(--manager-surface, #fffdf9);
+  color: var(--manager-text, #24303f);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 650;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--manager-accent-soft, #dcefe9);
+  }
+
+  &--primary,
+  &--primary:hover:not(:disabled) {
+    border-color: var(--manager-primary, #536c61);
+    background: var(--manager-primary, #536c61);
+    color: var(--om-control-on-primary);
+  }
+
+  &--primary:hover:not(:disabled) {
+    background: var(--manager-primary-hover, #40584e);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+.om-order-counts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: flex;
+    gap: 4px;
+  }
+
+  small {
+    flex-basis: 100%;
+    font-size: 0.8125rem;
+  }
+}
+
+@container (max-width: 479px) {
+  .om-order-controls__buttons,
+  .om-order-controls__secondary {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .om-order-controls__buttons > .om-order-queue-shortcut,
+  .om-order-controls__dates[open] {
+    grid-column: 1 / -1;
+  }
+
+  .om-order-controls__buttons > .om-order-queue-shortcut {
+    justify-content: center;
+  }
+}
